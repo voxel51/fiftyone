@@ -27,8 +27,6 @@ const MODAL_ATOMS = {
   confidenceBounds: selectors.labelConfidenceBounds,
 };
 
-const CheckBoxContainer = animated(styled.div``);
-
 const Body = styled.div`
   vertical-align: middle;
   font-weight: bold;
@@ -129,6 +127,8 @@ const Body = styled.div`
   }
 `;
 
+const CheckboxContainer = animated(styled.div``);
+
 export type Entry = {
   name: string;
   selected: boolean;
@@ -169,7 +169,7 @@ const Entry = ({ entry, onCheck, modal }) => {
   });
 
   return (
-    <CheckBoxContainer key={entry.name} style={containerProps}>
+    <CheckboxContainer key={entry.name} style={containerProps}>
       <FormControlLabel
         disabled={entry.disabled}
         label={
@@ -224,13 +224,11 @@ const Entry = ({ entry, onCheck, modal }) => {
           />
         }
       />
-      {expanded &&
-        (isNumericField ? (
-          <NumericFieldFilter entry={entry} />
-        ) : (
-          <Filter entry={entry} {...atoms} />
-        ))}
-    </CheckBoxContainer>
+      {isNumericField && (
+        <NumericFieldFilter expanded={expanded} entry={entry} />
+      )}
+      {entry.type && <Filter expanded={expanded} entry={entry} {...atoms} />}
+    </CheckboxContainer>
   );
 };
 

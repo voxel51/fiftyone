@@ -1,14 +1,14 @@
-import React, { useContext, useEffect, useRef } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
-import { Checkbox, FormControlLabel } from "@material-ui/core";
 import uuid from "uuid-v4";
+import { animated, useSpring } from "react-spring";
+import useMeasure from "react-use-measure";
 
 import * as selectors from "../recoil/selectors";
 import { useOutsideClick } from "../utils/hooks";
-import RangeSlider from "./RangeSlider";
 import SearchResults from "./ViewBar/ViewStage/SearchResults";
 import { NamedRangeSlider } from "./RangeSlider";
 
@@ -211,14 +211,14 @@ const ClassFilter = ({ name, atoms }) => {
     atoms.includeLabels(name)
   );
   const [state, send] = useMachine(classFilterMachine);
-  const ref = useRef();
+  const inputRef = useRef();
 
   useEffect(() => {
     send({ type: "SET_CLASSES", classes });
     setSelectedClasses(selectedClasses.filter((c) => classes.includes(c)));
   }, [classes]);
 
-  useOutsideClick(ref, () => send("BLUR"));
+  useOutsideClick(inputRef, () => send("BLUR"));
   const { inputValue, results, currentResult, selected } = state.context;
 
   useEffect(() => {
@@ -247,7 +247,7 @@ const ClassFilter = ({ name, atoms }) => {
         ) : null}
       </div>
       <ClassFilterContainer>
-        <div ref={ref}>
+        <div ref={inputRef}>
           <ClassInput
             value={inputValue}
             placeholder={"+ add label"}
@@ -307,9 +307,36 @@ const ClassFilter = ({ name, atoms }) => {
   );
 };
 
-const Filter = React.memo(({ style, entry, ...atoms }) => {
+const CLS_TO_STAGE = {
+  Classification: "FilterField",
+  Classifications: "FilterClassifications",
+  Detection: "Filter",
+  Detections: "FilterDetections",
+};
+
+const makeFilter = (fieldName, cls, labels, range, includeNone) => {
+  let expr,
+    rangeExpr = null;
+  let fieldStr = `$${fieldName}`;
+  if (range) {
+    rangeExpr = {
+      $and: [{ $gte: [fieldStr, range[0]] }, { $lte: [fieldStr, range[1]] }],
+    };
+  }
+  if (includeNone) {
+    expr = { $or: [rangeExpr, { $eq: [fieldStr, null] }] };
+  }
+  return {
+    kwargs: [["filter", { $expr: expr }]],
+    _cls: `fiftyone.core.stages.${CLS_TO_STAGE[cls]}`,
+  };
+};
+
+const Filter = React.memo(({ expanded, style, entry, ...atoms }) => {
   const [range, setRange] = useRecoilState(atoms.confidenceRange(entry.name));
+  const includeNone = useRecoilValue(atoms.includeNoConfidence(entry.name));
   const bounds = useRecoilValue(atoms.confidenceBounds(entry.name));
+  const labels = useRecoilValue(atoms.includeLabels(entry.name));
   const hasBounds = bounds.every((b) => b !== null);
 
   useEffect(() => {
@@ -318,20 +345,42 @@ const Filter = React.memo(({ style, entry, ...atoms }) => {
       setRange([0 < bounds[0] ? 0 : bounds[0], 1 > bounds[1] ? 1 : bounds[1]]);
   }, [bounds]);
 
+  const [ref, { height }] = useMeasure();
+  const props = useSpring({
+    height: expanded ? height : 0,
+    from: {
+      height: 0,
+    },
+  });
+
+  useEffect(() => {
+    const filter = makeFilter(
+      entry.name,
+      entry.type,
+      labels,
+      range,
+      includeNone
+    );
+  }, [range, includeNone, labels]);
+
   return (
-    <div style={{ margin: 3 }}>
-      <ClassFilter name={entry.name} atoms={atoms} />
-      <NamedRangeSlider
-        color={entry.color}
-        name={"Confidence"}
-        valueName={"confidence"}
-        includeNoneAtom={atoms.includeNoConfidence(entry.name)}
-        boundsAtom={atoms.confidenceBounds(entry.name)}
-        rangeAtom={atoms.confidenceRange(entry.name)}
-        maxMin={0}
-        minMax={1}
-      />
-    </div>
+    <animated.div style={{ ...props, overflow: "hidden" }}>
+      <div ref={ref}>
+        <div style={{ margin: 3 }}>
+          <ClassFilter name={entry.name} atoms={atoms} />
+          <NamedRangeSlider
+            color={entry.color}
+            name={"Confidence"}
+            valueName={"confidence"}
+            includeNoneAtom={atoms.includeNoConfidence(entry.name)}
+            boundsAtom={atoms.confidenceBounds(entry.name)}
+            rangeAtom={atoms.confidenceRange(entry.name)}
+            maxMin={0}
+            minMax={1}
+          />
+        </div>
+      </div>
+    </animated.div>
   );
 });
 

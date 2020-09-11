@@ -159,74 +159,79 @@ type NamedProps = {
   color: string;
 };
 
-export const NamedRangeSlider = ({
-  color,
-  name,
-  valueName,
-  includeNoneAtom,
-  ...rangeSliderProps
-}: NamedProps) => {
-  const theme = useContext(ThemeContext);
-  const [includeNone, setIncludeNone] = useRecoilState(includeNoneAtom);
-  const [range, setRange] = useRecoilState(rangeSliderProps.rangeAtom);
-  const bounds = useRecoilValue(rangeSliderProps.boundsAtom);
+export const NamedRangeSlider = React.forwardRef(
+  (
+    {
+      color,
+      name,
+      valueName,
+      includeNoneAtom,
+      ...rangeSliderProps
+    }: NamedProps,
+    ref
+  ) => {
+    const theme = useContext(ThemeContext);
+    const [includeNone, setIncludeNone] = useRecoilState(includeNoneAtom);
+    const [range, setRange] = useRecoilState(rangeSliderProps.rangeAtom);
+    const bounds = useRecoilValue(rangeSliderProps.boundsAtom);
 
-  const isDefaultRange = range[0] === bounds[0] && range[1] === bounds[1];
-  const hasBounds = bounds.every((b) => b !== null);
-  const isSingleValue = hasBounds && bounds[0] === bounds[1];
+    const isDefaultRange = range[0] === bounds[0] && range[1] === bounds[1];
+    const hasBounds = bounds.every((b) => b !== null);
+    const isSingleValue = hasBounds && bounds[0] === bounds[1];
 
-  return (
-    <NamedRangeSliderContainer>
-      <NamedRangeSliderHeader>
-        {name}
-        {!isDefaultRange || !includeNone ? (
-          <a
-            style={{ cursor: "pointer", textDecoration: "underline" }}
-            onClick={() => {
-              setRange([...bounds]);
-              setIncludeNone(true);
-            }}
-          >
-            reset
-          </a>
-        ) : null}
-      </NamedRangeSliderHeader>
-      <RangeSliderContainer>
-        {isSingleValue && (
-          <span
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              padding: "0 6px",
-            }}
-          >
-            Only one non-none value exists:{" "}
-            <span style={{ color: theme.font }}>
-              {bounds[0].toLocaleString()}
-            </span>
-          </span>
-        )}
-        {hasBounds && !isSingleValue && <RangeSlider {...rangeSliderProps} />}
-        <FormControlLabel
-          label={
-            <div style={{ lineHeight: "20px", fontSize: 14 }}>
-              Show no {valueName}
-            </div>
-          }
-          control={
-            <Checkbox
-              checked={includeNone}
-              onChange={() => setIncludeNone(!includeNone)}
-              style={{
-                padding: "0 5px",
-                color,
+    return (
+      <NamedRangeSliderContainer ref={ref}>
+        <NamedRangeSliderHeader>
+          {name}
+          {!isDefaultRange || !includeNone ? (
+            <a
+              style={{ cursor: "pointer", textDecoration: "underline" }}
+              onClick={() => {
+                setRange([...bounds]);
+                setIncludeNone(true);
               }}
-            />
-          }
-        />
-      </RangeSliderContainer>
-    </NamedRangeSliderContainer>
-  );
-};
+            >
+              reset
+            </a>
+          ) : null}
+        </NamedRangeSliderHeader>
+        <RangeSliderContainer>
+          {isSingleValue && (
+            <span
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                padding: "0 6px",
+              }}
+            >
+              Only one non-none value exists:{" "}
+              <span style={{ color: theme.font }}>
+                {bounds[0].toLocaleString()}
+              </span>
+            </span>
+          )}
+          {hasBounds && !isSingleValue && <RangeSlider {...rangeSliderProps} />}
+          <FormControlLabel
+            label={
+              <div style={{ lineHeight: "20px", fontSize: 14 }}>
+                Show no {valueName}
+              </div>
+            }
+            control={
+              <Checkbox
+                checked={includeNone}
+                onChange={() => setIncludeNone(!includeNone)}
+                style={{
+                  padding: "0 5px",
+                  color,
+                }}
+              />
+            }
+          />
+        </RangeSliderContainer>
+      </NamedRangeSliderContainer>
+    );
+  }
+);
 
 export default RangeSlider;

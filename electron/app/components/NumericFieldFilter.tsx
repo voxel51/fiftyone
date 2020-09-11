@@ -5,6 +5,8 @@ import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { NamedRangeSlider } from "./RangeSlider";
 import { getSocket } from "../utils/socket";
+import { animated, useSpring } from "react-spring";
+import useMeasure from "react-use-measure";
 
 const makeFilter = (fieldName, range, includeNone) => {
   let expr,
@@ -24,7 +26,7 @@ const makeFilter = (fieldName, range, includeNone) => {
   };
 };
 
-const NumericFieldFilter = ({ entry }) => {
+const NumericFieldFilter = ({ expanded, entry }) => {
   const port = useRecoilValue(atoms.port);
   const socket = getSocket(port, "state");
   const boundsAtom = selectors.numericFieldBounds(entry.name);
@@ -36,7 +38,6 @@ const NumericFieldFilter = ({ entry }) => {
   const [range, setRange] = useRecoilState(rangeAtom);
   const hasBounds = bounds.every((b) => b !== null);
   const isDefaultRange = range[0] === bounds[0] && range[1] === bounds[1];
-  console.log(bounds);
   useEffect(() => {
     hasBounds && range.every((r) => r === null) && setRange([...bounds]);
   }, [bounds]);
@@ -48,13 +49,16 @@ const NumericFieldFilter = ({ entry }) => {
     const filter = makeFilter(entry.name, range, includeNone);
     if (
       JSON.stringify(filter) ===
-      JSON.stringify(newState.filter_stages[entry.name])
+      JSON.stringify(newState.filter_stages[entry.name].stage)
     )
       return;
     if (isDefaultRange && newState.filter_stages[entry.name]) {
       delete newState.filter_stages[entry.name];
     } else {
-      newState.filter_stages[entry.name] = filter;
+      newState.filter_stages[entry.name] = {
+        with_pagination: true,
+        stage: filter,
+      };
     }
     hasBounds &&
       socket.emit(
@@ -67,15 +71,26 @@ const NumericFieldFilter = ({ entry }) => {
       );
   }, [range, bounds, includeNone]);
 
+  const [ref, { height }] = useMeasure();
+  const props = useSpring({
+    height: expanded ? height : 0,
+    from: {
+      height: 0,
+    },
+  });
+
   return (
-    <NamedRangeSlider
-      color={entry.color}
-      name={"Range"}
-      valueName={"value"}
-      includeNoneAtom={includeNoneAtom}
-      boundsAtom={boundsAtom}
-      rangeAtom={rangeAtom}
-    />
+    <animated.div style={{ ...props, overflow: "hidden" }}>
+      <NamedRangeSlider
+        color={entry.color}
+        name={"Range"}
+        valueName={"value"}
+        includeNoneAtom={includeNoneAtom}
+        boundsAtom={boundsAtom}
+        rangeAtom={rangeAtom}
+        ref={ref}
+      />
+    </animated.div>
   );
 };
 

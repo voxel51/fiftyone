@@ -113,12 +113,12 @@ class StateDescriptionWithDerivables(StateDescription):
     broker.
     """
 
-    def __init__(self, filter_stages={}, *args, **kwargs):
+    def __init__(self, filter_stages={}, with_stats=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.filter_stages = filter_stages
         view = self.view if self.view is not None else self.dataset
-        if view is None:
+        if view is None or not with_stats:
             return
 
         self.labels = self._get_label_fields(view)
@@ -129,7 +129,7 @@ class StateDescriptionWithDerivables(StateDescription):
         extended_view = view
         for stage_dict in self.filter_stages.values():
             extended_view = extended_view.add_stage(
-                fos.ViewStage._from_dict(stage_dict)
+                fos.ViewStage._from_dict(stage_dict["stage"])
             )
 
         if extended_view == view:
@@ -143,6 +143,7 @@ class StateDescriptionWithDerivables(StateDescription):
     @classmethod
     def from_dict(cls, d, **kwargs):
         kwargs["filter_stages"] = d.get("filter_stages", {})
+        kwargs["with_stats"] = d.get("with_stats", True)
         return super().from_dict(d, **kwargs)
 
     def _get_view_stats(self, view):

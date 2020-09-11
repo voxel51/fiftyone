@@ -234,7 +234,9 @@ class StateController(Namespace):
             return []
 
         for i in state.filter_stages.values():
-            view = view.add_stage(ViewStage._from_dict(i))
+            if not i["with_pagination"]:
+                continue
+            view = view.add_stage(ViewStage._from_dict(i["stage"]))
 
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
         samples = [

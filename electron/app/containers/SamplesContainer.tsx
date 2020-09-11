@@ -19,6 +19,7 @@ const Root = styled.div`
     flex: 0 0 17rem;
     z-index: 400;
     margin-right: -0.5em;
+    width: 400px;
   }
 
   .ui.grid > .content-column {
@@ -129,7 +130,6 @@ const DisplayOptionsWrapper = (props) => {
 
 const SamplesContainer = (props) => {
   const [showSidebar, setShowSidebar] = useRecoilState(atoms.sidebarVisible);
-  const datasetName = useRecoilValue(selectors.datasetName);
 
   const theme = useContext(ThemeContext);
 

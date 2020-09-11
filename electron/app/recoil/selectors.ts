@@ -58,7 +58,6 @@ export const totalCount = selector({
 export const filteredCount = selector({
   key: "filteredCount",
   get: ({ get }): number => {
-    console.log(get(atoms.stateDescription));
     return get(atoms.stateDescription).extended_view_count;
   },
 });
