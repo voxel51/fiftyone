@@ -313,7 +313,9 @@ const Filter = React.memo(({ style, entry, ...atoms }) => {
   const hasBounds = bounds.every((b) => b !== null);
 
   useEffect(() => {
-    hasBounds && range.every((r) => r === null) && setRange([...bounds]);
+    hasBounds &&
+      range.every((r) => r === null) &&
+      setRange([0 < bounds[0] ? 0 : bounds[0], 1 > bounds[1] ? 1 : bounds[1]]);
   }, [bounds]);
 
   return (
@@ -326,6 +328,8 @@ const Filter = React.memo(({ style, entry, ...atoms }) => {
         includeNoneAtom={atoms.includeNoConfidence(entry.name)}
         boundsAtom={atoms.confidenceBounds(entry.name)}
         rangeAtom={atoms.confidenceRange(entry.name)}
+        maxMin={0}
+        minMax={1}
       />
     </div>
   );

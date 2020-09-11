@@ -75,9 +75,11 @@ const valueText = (value: number) => {
 type Props = {
   rangeAtom: RecoilState<Range>;
   boundsAtom: RecoilState<Range>;
+  maxMin?: number;
+  minMax?: number;
 };
 
-const RangeSlider = ({ rangeAtom, boundsAtom }: Props) => {
+const RangeSlider = ({ rangeAtom, boundsAtom, maxMin, minMax }: Props) => {
   const [value, setValue] = useRecoilState<Range>(rangeAtom);
   const bounds = useRecoilValue<Range>(boundsAtom);
   const [localValue, setLocalValue] = useState<Range>([null, null]);
@@ -88,10 +90,14 @@ const RangeSlider = ({ rangeAtom, boundsAtom }: Props) => {
 
   const hasBounds = bounds.every((b) => b !== null);
   const hasValue = value.every((v) => v !== null);
+  const stretchedBounds = [
+    maxMin < bounds[0] ? maxMin : bounds[0],
+    minMax > bounds[1] ? minMax : bounds[1],
+  ];
 
   return hasBounds && hasValue ? (
     <SliderContainer>
-      {bounds[0].toFixed(2)}
+      {stretchedBounds[0].toFixed(2)}
       <Slider
         value={[...localValue]}
         onChange={(_, v: Range) => setLocalValue([...v])}
@@ -109,11 +115,11 @@ const RangeSlider = ({ rangeAtom, boundsAtom }: Props) => {
         aria-labelledby="range-slider"
         getAriaValueText={valueText}
         valueLabelDisplay={"on"}
-        max={bounds[1]}
-        min={bounds[0]}
-        step={(bounds[1] - bounds[0]) / 100}
+        max={stretchedBounds[1]}
+        min={stretchedBounds[0]}
+        step={(stretchedBounds[1] - stretchedBounds[0]) / 100}
       />
-      {bounds[1].toFixed(2)}
+      {stretchedBounds[1].toFixed(2)}
     </SliderContainer>
   ) : null;
 };
@@ -141,6 +147,8 @@ type NamedProps = {
   rangeAtom: RecoilState<Range>;
   boundsAtom: RecoilState<Range>;
   includeNoneAtom: RecoilState<boolean>;
+  maxMin?: number;
+  minMax?: number;
   name: string;
   valueName: string;
   color: string;
