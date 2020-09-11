@@ -16,8 +16,7 @@ export const createStage = (
   active,
   parameters,
   submitted,
-  loaded,
-  placeholder
+  loaded
 ) => ({
   id: uuid(),
   stage: stage,
