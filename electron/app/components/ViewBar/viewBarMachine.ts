@@ -16,7 +16,8 @@ export const createStage = (
   active,
   parameters,
   submitted,
-  loaded
+  loaded,
+  placeholder
 ) => ({
   id: uuid(),
   stage: stage,
@@ -110,7 +111,8 @@ function setStages(ctx, stageInfo) {
               true,
               false,
               j === stageInfoResult.params.length - 1,
-              i === Math.min(view.length - 1, ctx.activeStage)
+              i === Math.min(view.length - 1, ctx.activeStage),
+              stageInfoResult.params[j].placeholder
             );
           }),
         true,

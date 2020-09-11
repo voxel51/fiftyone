@@ -14,7 +14,8 @@ export const createParameter = (
   submitted,
   focusOnInit,
   tail,
-  active
+  active,
+  placeholder
 ) => ({
   id: uuid(),
   defaultValue,
@@ -29,6 +30,7 @@ export const createParameter = (
   currentResult: null,
   results: [],
   active,
+  placeholder,
 });
 
 const isValidStage = (stageInfo, stage) => {
@@ -246,7 +248,8 @@ const viewStageMachine = Machine(
                             false,
                             i === 0,
                             i === result.length - 1,
-                            ctx.active
+                            ctx.active,
+                            parameter.placeholder
                           )
                         );
                         return parameters.map((parameter) => ({
