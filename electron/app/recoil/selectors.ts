@@ -26,7 +26,6 @@ export const datasetName = selector({
   key: "datasetName",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
-    console.log(stateDescription);
     return stateDescription.dataset ? stateDescription.dataset.name : null;
   },
 });
@@ -43,17 +42,23 @@ export const extendedDatasetStats = selector({
   key: "extendedDatasetStats",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
-    console.log(stateDescription);
     return stateDescription.extended_view_stats
       ? stateDescription.extended_view_stats
       : {};
   },
 });
 
-export const numSamples = selector({
-  key: "numSamples",
-  get: ({ get }) => {
-    return get(atoms.stateDescription).count;
+export const totalCount = selector({
+  key: "totalCount",
+  get: ({ get }): number => {
+    return get(atoms.stateDescription).view_count;
+  },
+});
+
+export const filteredCount = selector({
+  key: "filteredCount",
+  get: ({ get }): number => {
+    return get(atoms.stateDescription).extended_view_count;
   },
 });
 

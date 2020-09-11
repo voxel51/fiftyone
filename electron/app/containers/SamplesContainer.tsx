@@ -130,7 +130,7 @@ const DisplayOptionsWrapper = (props) => {
 const SamplesContainer = (props) => {
   const [showSidebar, setShowSidebar] = useRecoilState(atoms.sidebarVisible);
   const datasetName = useRecoilValue(selectors.datasetName);
-  const numSamples = useRecoilValue(selectors.numSamples);
+
   const theme = useContext(ThemeContext);
 
   const containerRef = useRef();
@@ -163,8 +163,6 @@ const SamplesContainer = (props) => {
       >
         <ViewBar />
         <ImageContainerHeader
-          datasetName={datasetName}
-          total={numSamples}
           showSidebar={showSidebar}
           onShowSidebar={setShowSidebar}
         />
