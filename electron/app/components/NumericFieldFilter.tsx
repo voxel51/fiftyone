@@ -36,6 +36,7 @@ const NumericFieldFilter = ({ entry }) => {
   const [range, setRange] = useRecoilState(rangeAtom);
   const hasBounds = bounds.every((b) => b !== null);
   const isDefaultRange = range[0] === bounds[0] && range[1] === bounds[1];
+  console.log(bounds);
   useEffect(() => {
     hasBounds && range.every((r) => r === null) && setRange([...bounds]);
   }, [bounds]);

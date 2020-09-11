@@ -10,6 +10,7 @@ import * as selectors from "../recoil/selectors";
 import { useOutsideClick } from "../utils/hooks";
 import RangeSlider from "./RangeSlider";
 import SearchResults from "./ViewBar/ViewStage/SearchResults";
+import { NamedRangeSlider } from "./RangeSlider";
 
 const classFilterMachine = Machine({
   id: "classFilter",
@@ -306,24 +307,9 @@ const ClassFilter = ({ name, atoms }) => {
   );
 };
 
-const ConfidenceContainer = styled.div`
-  background: ${({ theme }) => theme.backgroundDark};
-  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
-  border: 1px solid #191c1f;
-  border-radius: 2px;
-  margin: 0.25rem 0;
-  color: ${({ theme }) => theme.fontDark};
-`;
-
 const Filter = React.memo(({ style, entry, ...atoms }) => {
-  const [includeNoConfidence, setIncludeNoConfidence] = useRecoilState(
-    atoms.includeNoConfidence(entry.name)
-  );
   const [range, setRange] = useRecoilState(atoms.confidenceRange(entry.name));
   const bounds = useRecoilValue(atoms.confidenceBounds(entry.name));
-  const theme = useContext(ThemeContext);
-
-  const isDefaultRange = range[0] === bounds[0] && range[1] === bounds[1];
   const hasBounds = bounds.every((b) => b !== null);
 
   useEffect(() => {
@@ -331,43 +317,16 @@ const Filter = React.memo(({ style, entry, ...atoms }) => {
   }, [bounds]);
 
   return (
-    <div style={{ paddingBottom: "0.5rem", margin: 3 }}>
+    <div style={{ margin: 3 }}>
       <ClassFilter name={entry.name} atoms={atoms} />
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        Confidence{" "}
-        {!isDefaultRange || !includeNoConfidence ? (
-          <a
-            style={{ cursor: "pointer", textDecoration: "underline" }}
-            onClick={() => {
-              setRange([...bounds]);
-              setIncludeNoConfidence(true);
-            }}
-          >
-            reset
-          </a>
-        ) : null}
-      </div>
-      <ConfidenceContainer>
-        {hasBounds && (
-          <RangeSlider
-            rangeAtom={atoms.confidenceRange(entry.name)}
-            boundsAtom={selectors.labelConfidenceBounds(entry.name)}
-          />
-        )}
-        <FormControlLabel
-          label={<div style={{ lineHeight: "20px" }}>Show no confidence</div>}
-          control={
-            <Checkbox
-              checked={includeNoConfidence}
-              onChange={() => setIncludeNoConfidence(!includeNoConfidence)}
-              style={{
-                padding: "0 5px",
-                color: entry.selected ? entry.color : theme.fontDark,
-              }}
-            />
-          }
-        />
-      </ConfidenceContainer>
+      <NamedRangeSlider
+        color={entry.color}
+        name={"Confidence"}
+        valueName={"confidence"}
+        includeNoneAtom={atoms.includeNoConfidence(entry.name)}
+        boundsAtom={atoms.confidenceBounds(entry.name)}
+        rangeAtom={atoms.confidenceRange(entry.name)}
+      />
     </div>
   );
 });

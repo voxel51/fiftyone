@@ -86,8 +86,7 @@ const RangeSlider = ({ rangeAtom, boundsAtom }: Props) => {
       setLocalValue(value);
   }, [value]);
 
-  const hasBounds =
-    bounds.every((b) => b !== null) && bounds[1] - bounds[0] > 0;
+  const hasBounds = bounds.every((b) => b !== null);
   const hasValue = value.every((v) => v !== null);
 
   return hasBounds && hasValue ? (
@@ -166,7 +165,7 @@ export const NamedRangeSlider = ({
   return (
     <NamedRangeSliderContainer>
       <NamedRangeSliderHeader>
-        Confidence{" "}
+        {name}
         {!isDefaultRange || !includeNone ? (
           <a
             style={{ cursor: "pointer", textDecoration: "underline" }}
@@ -196,7 +195,11 @@ export const NamedRangeSlider = ({
         )}
         {hasBounds && !isSingleValue && <RangeSlider {...rangeSliderProps} />}
         <FormControlLabel
-          label={<div style={{ lineHeight: "20px" }}>Show no {valueName}</div>}
+          label={
+            <div style={{ lineHeight: "20px", fontSize: 14 }}>
+              Show no {valueName}
+            </div>
+          }
           control={
             <Checkbox
               checked={includeNone}
