@@ -43,8 +43,14 @@ const DisplayOptionsWrapper = (props) => {
     setActiveOther,
   } = displayProps;
   const labelSampleCounts = useRecoilValue(selectors.labelSampleCounts);
+  const filteredLabelSampleCounts = useRecoilValue(
+    selectors.filteredLabelSampleCounts
+  );
   const tagNames = useRecoilValue(selectors.tagNames);
   const tagSampleCounts = useRecoilValue(selectors.tagSampleCounts);
+  const filteredTagSampleCounts = useRecoilValue(
+    selectors.filteredTagSampleCounts
+  );
   const filters = useRecoilValue(selectors.labelFilters);
   const setModalFilters = useSetRecoilState(selectors.modalLabelFilters);
   const labelNameGroups = useRecoilValue(selectors.labelNameGroups);
@@ -53,11 +59,12 @@ const DisplayOptionsWrapper = (props) => {
     setModalFilters(filters);
   }, [filters]);
 
-  const getDisplayOptions = (values, counts, selected) => {
+  const getDisplayOptions = (values, filteredCounts, totalCounts, selected) => {
     return [...values].sort().map(({ name, type }) => ({
       name,
       type,
-      count: counts[name],
+      totalCount: totalCounts[name],
+      filteredCount: filteredCounts[name],
       selected: Boolean(selected[name]),
     }));
   };
@@ -80,11 +87,13 @@ const DisplayOptionsWrapper = (props) => {
         <DisplayOptionsSidebar
           tags={getDisplayOptions(
             tagNames.map((t) => ({ name: t })),
+            filteredLabelSampleCounts,
             tagSampleCounts,
             activeTags
           )}
           labels={getDisplayOptions(
             labelNameGroups.labels,
+            filteredLabelSampleCounts,
             labelSampleCounts,
             activeLabels
           )}
@@ -92,12 +101,14 @@ const DisplayOptionsWrapper = (props) => {
           onSelectLabel={handleSetDisplayOption(setActiveLabels)}
           scalars={getDisplayOptions(
             labelNameGroups.scalars,
+            filteredLabelSampleCounts,
             labelSampleCounts,
             activeOther
           )}
           onSelectScalar={handleSetDisplayOption(setActiveOther)}
           unsupported={getDisplayOptions(
             labelNameGroups.unsupported,
+            filteredLabelSampleCounts,
             labelSampleCounts,
             activeLabels
           )}

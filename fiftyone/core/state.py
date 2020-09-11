@@ -118,6 +118,9 @@ class StateDescriptionWithDerivables(StateDescription):
 
         self.filter_stages = filter_stages
         view = self.view if self.view is not None else self.dataset
+        if view is None:
+            return
+
         self.labels = self._get_label_fields(view)
         self.tags = list(sorted(view.get_tags()))
         self.view_stats = get_view_stats(view)

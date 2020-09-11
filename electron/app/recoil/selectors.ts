@@ -38,6 +38,16 @@ export const datasetStats = selector({
   },
 });
 
+export const extendedDatasetStats = selector({
+  key: "extendedDatasetStats",
+  get: ({ get }) => {
+    const stateDescription = get(atoms.stateDescription);
+    return stateDescription.extended_view_stats
+      ? stateDescription.extended_view_stats
+      : {};
+  },
+});
+
 export const numSamples = selector({
   key: "numSamples",
   get: ({ get }) => {
@@ -57,6 +67,13 @@ export const tagSampleCounts = selector({
   key: "tagSampleCounts",
   get: ({ get }) => {
     return get(atoms.stateDescription).view_stats.tags || {};
+  },
+});
+
+export const filteredTagSampleCounts = selector({
+  key: "filteredTagSampleCounts",
+  get: ({ get }) => {
+    return get(atoms.stateDescription).extended_view_stats.tags || {};
   },
 });
 
@@ -110,6 +127,13 @@ export const labelSampleCounts = selector({
   },
 });
 
+export const filteredLabelSampleCounts = selector({
+  key: "filteredLabelSampleCounts",
+  get: ({ get }) => {
+    return get(extendedDatasetStats).custom_fields || {};
+  },
+});
+
 export const labelFilters = selector({
   key: "labelFilters",
   get: ({ get }) => {
@@ -120,7 +144,9 @@ export const labelFilters = selector({
       const none = get(atoms.filterLabelIncludeNoConfidence(label));
       const include = get(atoms.filterIncludeLabels(label));
       filters[label] = (s, useValue = false) => {
-        const inRange = range[0] <= s.confidence && s.confidence <= range[1];
+        const inRange =
+          range.every((r) => r === null) ||
+          (range[0] <= s.confidence && s.confidence <= range[1]);
         const noConfidence = none && s.confidence === undefined;
         const isIncluded =
           include.length === 0 ||
@@ -142,7 +168,9 @@ export const modalLabelFilters = selector({
       const none = get(atoms.modalFilterLabelIncludeNoConfidence(label));
       const include = get(atoms.modalFilterIncludeLabels(label));
       filters[label] = (s, useValue = false) => {
-        const inRange = range[0] <= s.confidence && s.confidence <= range[1];
+        const inRange =
+          range.every((r) => r === null) ||
+          (range[0] <= s.confidence && s.confidence <= range[1]);
         const noConfidence = none && s.confidence === undefined;
         const isIncluded =
           include.length === 0 ||
