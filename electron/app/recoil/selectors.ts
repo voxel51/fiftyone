@@ -26,6 +26,7 @@ export const datasetName = selector({
   key: "datasetName",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
+    console.log(stateDescription);
     return stateDescription.dataset ? stateDescription.dataset.name : null;
   },
 });
@@ -42,6 +43,7 @@ export const extendedDatasetStats = selector({
   key: "extendedDatasetStats",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
+    console.log(stateDescription);
     return stateDescription.extended_view_stats
       ? stateDescription.extended_view_stats
       : {};

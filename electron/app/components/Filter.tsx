@@ -11,17 +11,6 @@ import { useOutsideClick } from "../utils/hooks";
 import RangeSlider from "./RangeSlider";
 import SearchResults from "./ViewBar/ViewStage/SearchResults";
 
-const FilterDiv = styled.div`
-  width: 100%;
-  display: block;
-  background: ${({ theme }) => theme.backgroundLight};
-  padding: 0.5rem;
-  font-weight: bold;
-  font-size: 14px;
-  margin: 3px 0;
-  border-radius: 2px;
-`;
-
 const classFilterMachine = Machine({
   id: "classFilter",
   initial: "init",
@@ -210,8 +199,8 @@ const ClassButton = styled.button`
 `;
 
 const ClassFilterContainer = styled.div`
-  margin: 0.5rem 0;
   position: relative;
+  margin: 0.25rem 0;
 `;
 
 const ClassFilter = ({ name, atoms }) => {
@@ -322,7 +311,7 @@ const ConfidenceContainer = styled.div`
   box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
   border: 1px solid #191c1f;
   border-radius: 2px;
-  margin-top: 0.5rem;
+  margin: 0.25rem 0;
   color: ${({ theme }) => theme.fontDark};
 `;
 
@@ -342,7 +331,7 @@ const Filter = React.memo(({ style, entry, ...atoms }) => {
   }, [bounds]);
 
   return (
-    <div style={{ margin: 6 }}>
+    <div style={{ paddingBottom: "0.5rem", margin: 3 }}>
       <ClassFilter name={entry.name} atoms={atoms} />
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         Confidence{" "}

@@ -112,7 +112,7 @@ const RangeSlider = ({ rangeAtom, boundsAtom }: Props) => {
         valueLabelDisplay={"on"}
         max={bounds[1]}
         min={bounds[0]}
-        step={((bounds[1] - bounds[0]) / 100).toFixed(2)}
+        step={(bounds[1] - bounds[0]) / 100}
       />
       {bounds[1].toFixed(2)}
     </SliderContainer>

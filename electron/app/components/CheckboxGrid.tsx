@@ -3,6 +3,7 @@ import styled, { ThemeContext } from "styled-components";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
 import { ArrowDropDown } from "@material-ui/icons";
 import { useRecoilValue } from "recoil";
+import { animated, useSpring } from "react-spring";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
@@ -25,6 +26,8 @@ const MODAL_ATOMS = {
   confidenceRange: atoms.modalFilterLabelConfidenceRange,
   confidenceBounds: selectors.labelConfidenceBounds,
 };
+
+const CheckBoxContainer = animated(styled.div``);
 
 const Body = styled.div`
   vertical-align: middle;
@@ -49,7 +52,7 @@ const Body = styled.div`
       flex: 1;
       font-size: unset;
       align-items: center;
-      padding-right: 4px;
+      padding-right: 3px;
       max-width: 100%;
     }
 
@@ -150,22 +153,15 @@ const Entry = ({ entry, onCheck, modal }) => {
   const atoms = modal ? MODAL_ATOMS : GLOBAL_ATOMS;
 
   const checkboxClass = entry.hideCheckbox ? "no-checkbox" : "with-checkbox";
+  const containerProps = useSpring({
+    backgroundColor:
+      entry.hideCheckbox || entry.selected
+        ? theme.backgroundLight
+        : theme.background,
+  });
 
   return (
-    <div
-      key={entry.name}
-      style={{
-        border: fieldIsFiltered
-          ? `1px solid ${theme.brand}`
-          : entry.hideCheckbox || entry.selected
-          ? `1px solid ${theme.background}`
-          : `1px solid transparent`,
-        backgroundColor:
-          entry.hideCheckbox || entry.selected
-            ? theme.backgroundLight
-            : undefined,
-      }}
-    >
+    <CheckBoxContainer key={entry.name} style={containerProps}>
       <FormControlLabel
         disabled={entry.disabled}
         label={
@@ -179,8 +175,7 @@ const Entry = ({ entry, onCheck, modal }) => {
               !["Detections", "Classifications"].includes(entry.type)
             ) &&
               entry.selected &&
-              (entry.type || (isNumericField && !modal)) &&
-              entry.count > 0 && (
+              (entry.type || (isNumericField && !modal)) && (
                 <ArrowDropDown
                   onClick={(e) => {
                     e.preventDefault();
@@ -227,7 +222,7 @@ const Entry = ({ entry, onCheck, modal }) => {
         ) : (
           <Filter entry={entry} {...atoms} />
         ))}
-    </div>
+    </CheckBoxContainer>
   );
 };
 
