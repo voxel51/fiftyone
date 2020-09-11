@@ -124,9 +124,7 @@ const Cell = ({ label, icon, entries, onSelect, colorMap, title, modal }) => {
             name: e.name,
             selected: e.selected,
             type: e.type,
-            data: e.icon
-              ? e.icon
-              : [`${makeCount(e.filteredCount)} of ${makeCount(e.totalCount)}`],
+            data: e.icon ? e.icon : [makeData(e.filteredCount, e.totalCount)],
             totalCount: e.totalCount,
             filteredCount: e.filteredCount,
             color: colorMap[e.name],
@@ -145,6 +143,13 @@ const Cell = ({ label, icon, entries, onSelect, colorMap, title, modal }) => {
 
 const makeCount = (count) => {
   return (count || 0).toLocaleString();
+};
+
+const makeData = (filteredCount, totalCount) => {
+  if (typeof filteredCount === "number") {
+    return `${makeCount(filteredCount)} of ${makeCount(totalCount)}`;
+  }
+  return makeCount(totalCount);
 };
 
 const DisplayOptionsSidebar = React.forwardRef(

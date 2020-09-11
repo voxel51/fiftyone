@@ -80,7 +80,7 @@ export const tagSampleCounts = selector({
 export const filteredTagSampleCounts = selector({
   key: "filteredTagSampleCounts",
   get: ({ get }) => {
-    return get(atoms.stateDescription).extended_view_stats.tags || {};
+    return (get(atoms.stateDescription).extended_view_stats || {}).tags || {};
   },
 });
 

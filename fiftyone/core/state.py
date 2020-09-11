@@ -53,7 +53,7 @@ class StateDescription(etas.Serializable):
         self.dataset = dataset
         self.view = view
         self.selected = selected or []
-        self.count = (
+        self.view_count = (
             len(view)
             if view is not None
             else len(dataset)
@@ -128,10 +128,17 @@ class StateDescriptionWithDerivables(StateDescription):
 
         extended_view = view
         for stage_dict in self.filter_stages.values():
-            self._filtered_view = self._filtered_view.add_stage(
+            extended_view = extended_view.add_stage(
                 fos.ViewStage._from_dict(stage_dict)
             )
-        self.extended_view_stats = get_view_stats(extended_view)
+
+        if extended_view == view:
+            self.extended_view_stats = {}
+        else:
+            self.extended_view_stats = get_view_stats(extended_view)
+        self.extended_view_count = (
+            len(extended_view) if extended_view != view else None
+        )
 
     @classmethod
     def from_dict(cls, d, **kwargs):
