@@ -231,7 +231,7 @@ export const isLabel = selectorFamily({
 
 export const fieldIsFiltered = selectorFamily({
   key: "fieldIsFiltered",
-  get: (field) => ({ get }) => {
+  get: (field: string) => ({ get }): boolean => {
     const label = get(isLabel(field));
     const numeric = get(isNumericField(field));
     const range = get(
@@ -248,16 +248,22 @@ export const fieldIsFiltered = selectorFamily({
         : atoms.filterNumericFieldIncludeNone(field)
     );
     const include = get(atoms.filterIncludeLabels(field));
+    const maxMin = label ? 0 : bounds[0];
+    const minMax = label ? 0 : bounds[1];
+    const stretchedBounds = [
+      maxMin < bounds[0] ? maxMin : bounds[0],
+      minMax > bounds[1] ? minMax : bounds[1],
+    ];
 
     if (!label && !numeric) return false;
 
-    const rangeIsFiltered = bounds.some(
+    const rangeIsFiltered = stretchedBounds.some(
       (b, i) => range[i] !== b && b !== null && range[i] !== null
     );
 
     if (numeric) return rangeIsFiltered || !none;
 
-    return include.length || rangeIsFiltered || !none;
+    return Boolean(include.length) || rangeIsFiltered || !none;
   },
 });
 
