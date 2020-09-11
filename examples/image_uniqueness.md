@@ -67,8 +67,9 @@ session.view = least_unique_view
 
 ## Omit near-duplicate samples from the dataset
 
-Now, use the App to select visually similar samples and then omit them from the
-dataset.
+Next, we'll show how to omit visually similar samples from a dataset.
+
+First, use the App to select visually similar samples.
 
 Assuming the visually similar samples are currently selected in the App, we can
 easily add a `duplicate` tag to these samples via Python:
@@ -105,7 +106,7 @@ no_dups_view.export(
 )
 ```
 
-List contents of the exported dataset on disk:
+List contents of the exported dataset on disk to verify the export:
 
 ```shell
 ls -lah /tmp/fiftyone-examples/cifar10-no-dups
