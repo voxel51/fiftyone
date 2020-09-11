@@ -105,7 +105,7 @@ const Body = styled.div`
       span.count {
         text-overflow: ellipsis;
         overflow-x: hidden;
-        white-space: nowrap;
+        white-space: nowrap;r
       }
 
       span.data {
@@ -159,6 +159,9 @@ const Entry = ({ entry, onCheck, modal }) => {
 
   const checkboxClass = entry.hideCheckbox ? "no-checkbox" : "with-checkbox";
   const containerProps = useSpring({
+    border: `1px solid ${
+      fieldIsFiltered ? theme.brand : theme.brandFullyTransparent
+    }`,
     backgroundColor:
       entry.hideCheckbox || entry.selected
         ? theme.backgroundLight
@@ -181,7 +184,6 @@ const Entry = ({ entry, onCheck, modal }) => {
               entry.icon &&
               !["Detections", "Classifications"].includes(entry.type)
             ) &&
-              entry.selected &&
               (entry.type || (isNumericField && !modal)) && (
                 <ArrowDropDown
                   onClick={(e) => {
@@ -223,7 +225,6 @@ const Entry = ({ entry, onCheck, modal }) => {
         }
       />
       {expanded &&
-        entry.selected &&
         (isNumericField ? (
           <NumericFieldFilter entry={entry} />
         ) : (

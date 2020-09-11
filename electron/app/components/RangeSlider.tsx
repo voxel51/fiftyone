@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import styled from "styled-components";
+import React, { useContext, useEffect, useState } from "react";
+import styled, { ThemeContext } from "styled-components";
 import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
 
@@ -154,12 +154,14 @@ export const NamedRangeSlider = ({
   includeNoneAtom,
   ...rangeSliderProps
 }: NamedProps) => {
+  const theme = useContext(ThemeContext);
   const [includeNone, setIncludeNone] = useRecoilState(includeNoneAtom);
   const [range, setRange] = useRecoilState(rangeSliderProps.rangeAtom);
   const bounds = useRecoilValue(rangeSliderProps.boundsAtom);
 
   const isDefaultRange = range[0] === bounds[0] && range[1] === bounds[1];
   const hasBounds = bounds.every((b) => b !== null);
+  const isSingleValue = hasBounds && bounds[0] === bounds[1];
 
   return (
     <NamedRangeSliderContainer>
@@ -178,7 +180,21 @@ export const NamedRangeSlider = ({
         ) : null}
       </NamedRangeSliderHeader>
       <RangeSliderContainer>
-        {hasBounds && <RangeSlider {...rangeSliderProps} />}
+        {isSingleValue && (
+          <span
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              padding: "0 6px",
+            }}
+          >
+            Only one non-none value exists:{" "}
+            <span style={{ color: theme.font }}>
+              {bounds[0].toLocaleString()}
+            </span>
+          </span>
+        )}
+        {hasBounds && !isSingleValue && <RangeSlider {...rangeSliderProps} />}
         <FormControlLabel
           label={<div style={{ lineHeight: "20px" }}>Show no {valueName}</div>}
           control={

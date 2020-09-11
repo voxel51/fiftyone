@@ -36,7 +36,7 @@ const grey60 = "hsl(230, 3%, 60%)";
 const grey68 = "hsl(220, 2%, 68%)";
 
 const orange49 = "hsl(27, 95%, 49%)";
-const orange49a0 = "hsla(27, 95%, 49%, 0.1)";
+const orange49a0 = "hsla(27, 95%, 49%, 0)";
 const orange49a10 = "hsla(27, 95%, 49%, 0.1)";
 const orange49a40 = "hsla(27, 95%, 49%, 0.4)";
 
