@@ -31,9 +31,7 @@ const NumericFieldFilter = ({ entry }) => {
   const rangeAtom = atoms.filterNumericFieldRange(entry.name);
   const includeNoneAtom = atoms.filterNumericFieldIncludeNone(entry.name);
   const includeNone = useRecoilValue(includeNoneAtom);
-  const [stateDescription, setStateDescription] = useRecoilState(
-    atoms.stateDescription
-  );
+  const stateDescription = useRecoilValue(atoms.stateDescription);
   const bounds = useRecoilValue(boundsAtom);
   const [range, setRange] = useRecoilState(rangeAtom);
   const hasBounds = bounds.every((b) => b !== null);

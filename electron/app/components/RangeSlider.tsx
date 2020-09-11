@@ -120,7 +120,8 @@ const RangeSlider = ({ rangeAtom, boundsAtom }: Props) => {
 };
 
 const NamedRangeSliderContainer = styled.div`
-  margin: 6px;
+  padding-bottom: 0.5rem;
+  margin: 3px;
 `;
 
 const NamedRangeSliderHeader = styled.div`
@@ -133,8 +134,8 @@ const RangeSliderContainer = styled.div`
   box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
   border: 1px solid #191c1f;
   border-radius: 2px;
-  margin-top: 0.5rem;
   color: ${({ theme }) => theme.fontDark};
+  margin-top: 0.25rem;
 `;
 
 type NamedProps = {

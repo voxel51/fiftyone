@@ -94,13 +94,18 @@ const Body = styled.div`
       }
 
       span.name {
-        padding-left: 4px;
+        padding: 0 4px;
         white-space: nowrap;
         overflow-x: hidden;
         text-overflow: ellipsis;
         flex-grow: 1;
         max-width: 100%;
         line-height: 24px;
+      }
+      span.count {
+        text-overflow: ellipsis;
+        overflow-x: hidden;
+        white-space: nowrap;
       }
 
       span.data {
@@ -169,7 +174,9 @@ const Entry = ({ entry, onCheck, modal }) => {
             <span className="name" title={entry.name}>
               {entry.name}
             </span>
-            {entry.data}
+            <span className="count" title={entry.data}>
+              {entry.data}
+            </span>
             {!(
               entry.icon &&
               !["Detections", "Classifications"].includes(entry.type)
