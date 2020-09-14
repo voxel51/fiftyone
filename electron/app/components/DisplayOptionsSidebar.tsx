@@ -146,7 +146,7 @@ const makeCount = (count) => {
 };
 
 const makeData = (filteredCount, totalCount) => {
-  if (typeof filteredCount === "number") {
+  if (typeof filteredCount === "number" && filteredCount !== totalCount) {
     return `${makeCount(filteredCount)} of ${makeCount(totalCount)}`;
   }
   return makeCount(totalCount);
