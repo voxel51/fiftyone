@@ -143,7 +143,7 @@ const viewBarMachine = Machine(
         always: [
           {
             target: "running.hist",
-            cond: (ctx) => ctx.stageInfo,
+            cond: (ctx) => ctx.stageInfo && ctx.stateDescription.view,
             actions: [
               assign({
                 activeStage: (ctx) =>
