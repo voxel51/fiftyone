@@ -11,7 +11,7 @@ import styled, { ThemeContext } from "styled-components";
 import { useService } from "@xstate/react";
 import AutosizeInput from "react-input-autosize";
 
-import { PARSER, toTypeAnnotation } from "./viewStageParameterMachine";
+import { PARSER } from "./viewStageParameterMachine";
 import { useOutsideClick } from "../../../utils/hooks";
 import ErrorMessage from "./ErrorMessage";
 
@@ -131,7 +131,7 @@ const convert = (value, placeholder) => {
 };
 
 const makePlaceholder = ({ placeholder, parameter }) => {
-  if (typeof placeholder !== undefined) return placeholder;
+  if (placeholder !== undefined) return placeholder;
   return parameter;
 };
 
