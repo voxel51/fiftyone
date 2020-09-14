@@ -49,16 +49,13 @@ const NumericFieldFilter = ({ expanded, entry }) => {
     const filter = makeFilter(entry.name, range, includeNone);
     if (
       JSON.stringify(filter) ===
-      JSON.stringify(newState.filter_stages[entry.name].stage)
+      JSON.stringify(newState.filter_stages[entry.name])
     )
       return;
     if (isDefaultRange && newState.filter_stages[entry.name]) {
       delete newState.filter_stages[entry.name];
     } else {
-      newState.filter_stages[entry.name] = {
-        with_pagination: true,
-        stage: filter,
-      };
+      newState.filter_stages[entry.name] = filter;
     }
     hasBounds &&
       socket.emit(

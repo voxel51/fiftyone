@@ -129,7 +129,7 @@ class StateDescriptionWithDerivables(StateDescription):
         extended_view = view
         for stage_dict in self.filter_stages.values():
             extended_view = extended_view.add_stage(
-                fos.ViewStage._from_dict(stage_dict["stage"])
+                fos.ViewStage._from_dict(stage_dict)
             )
 
         if extended_view == view:

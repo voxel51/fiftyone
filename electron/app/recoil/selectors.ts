@@ -228,6 +228,34 @@ export const isLabel = selectorFamily({
   },
 });
 
+export const modalFieldIsFiltered = selectorFamily({
+  key: "modalFieldIsFiltered",
+  get: (field: string) => ({ get }): boolean => {
+    const label = get(isLabel(field));
+
+    if (!label) {
+      return false;
+    }
+
+    const range = get(atoms.modalFilterLabelConfidenceRange(field));
+    const bounds = get(labelConfidenceBounds(field));
+    const none = get(atoms.modalFilterLabelIncludeNoConfidence(field));
+    const include = get(atoms.modalFilterIncludeLabels(field));
+    const maxMin = label ? 0 : bounds[0];
+    const minMax = label ? 0 : bounds[1];
+    const stretchedBounds = [
+      maxMin < bounds[0] ? maxMin : bounds[0],
+      minMax > bounds[1] ? minMax : bounds[1],
+    ];
+
+    const rangeIsFiltered = stretchedBounds.some(
+      (b, i) => range[i] !== b && b !== null && range[i] !== null
+    );
+
+    return Boolean(include.length) || rangeIsFiltered || !none;
+  },
+});
+
 export const fieldIsFiltered = selectorFamily({
   key: "fieldIsFiltered",
   get: (field: string) => ({ get }): boolean => {

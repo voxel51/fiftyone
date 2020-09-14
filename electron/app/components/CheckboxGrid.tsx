@@ -17,6 +17,7 @@ const GLOBAL_ATOMS = {
   includeNoConfidence: atoms.filterLabelIncludeNoConfidence,
   confidenceRange: atoms.filterLabelConfidenceRange,
   confidenceBounds: selectors.labelConfidenceBounds,
+  fieldIsFiltered: selectors.fieldIsFiltered,
 };
 
 const MODAL_ATOMS = {
@@ -25,6 +26,7 @@ const MODAL_ATOMS = {
   includeNoConfidence: atoms.modalFilterLabelIncludeNoConfidence,
   confidenceRange: atoms.modalFilterLabelConfidenceRange,
   confidenceBounds: selectors.labelConfidenceBounds,
+  fieldIsFiltered: selectors.modalFieldIsFiltered,
 };
 
 const Body = styled.div`
@@ -147,7 +149,8 @@ type Props = {
 const Entry = ({ entry, onCheck, modal }) => {
   const [expanded, setExpanded] = useState(false);
   const theme = useContext(ThemeContext);
-  const fieldIsFiltered = useRecoilValue(selectors.fieldIsFiltered(entry.name));
+  const atoms = modal ? MODAL_ATOMS : GLOBAL_ATOMS;
+  const fieldIsFiltered = useRecoilValue(atoms.fieldIsFiltered(entry.name));
   const isNumericField = useRecoilValue(selectors.isNumericField(entry.name));
 
   const handleCheck = (entry) => {
@@ -155,7 +158,6 @@ const Entry = ({ entry, onCheck, modal }) => {
       onCheck({ ...entry, selected: !entry.selected });
     }
   };
-  const atoms = modal ? MODAL_ATOMS : GLOBAL_ATOMS;
 
   const checkboxClass = entry.hideCheckbox ? "no-checkbox" : "with-checkbox";
   const containerProps = useSpring({

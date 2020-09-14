@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useRef } from "react";
 import styled, { ThemeContext } from "styled-components";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { Machine, assign } from "xstate";
@@ -332,11 +332,20 @@ const makeFilter = (fieldName, cls, labels, range, includeNone) => {
   };
 };
 
-const Filter = React.memo(({ expanded, style, entry, ...atoms }) => {
-  const [range, setRange] = useRecoilState(atoms.confidenceRange(entry.name));
-  const includeNone = useRecoilValue(atoms.includeNoConfidence(entry.name));
-  const bounds = useRecoilValue(atoms.confidenceBounds(entry.name));
-  const labels = useRecoilValue(atoms.includeLabels(entry.name));
+const modalUpdateHook = (atoms) => {
+  useEffect(() => {}, [atoms]);
+};
+
+const globalUpdate = (atoms) => {
+  useEffect(() => {}, [atoms]);
+};
+
+const Filter = React.memo(({ expanded, style, entry, ...rest }) => {
+  const [range, setRange] = useRecoilState(rest.confidenceRange(entry.name));
+  const includeNone = useRecoilValue(rest.includeNoConfidence(entry.name));
+  const bounds = useRecoilValue(rest.confidenceBounds(entry.name));
+  const labels = useRecoilValue(rest.includeLabels(entry.name));
+  const fieldIsFiltered = useRecoilValue(rest.fieldIsFiltered(entry.name));
   const hasBounds = bounds.every((b) => b !== null);
 
   useEffect(() => {
@@ -353,21 +362,11 @@ const Filter = React.memo(({ expanded, style, entry, ...atoms }) => {
     },
   });
 
-  useEffect(() => {
-    const filter = makeFilter(
-      entry.name,
-      entry.type,
-      labels,
-      range,
-      includeNone
-    );
-  }, [range, includeNone, labels]);
-
   return (
     <animated.div style={{ ...props, overflow: "hidden" }}>
       <div ref={ref}>
         <div style={{ margin: 3 }}>
-          <ClassFilter name={entry.name} atoms={atoms} />
+          <ClassFilter name={entry.name} atoms={rest} />
           <NamedRangeSlider
             color={entry.color}
             name={"Confidence"}
