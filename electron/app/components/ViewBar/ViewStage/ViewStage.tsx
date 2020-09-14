@@ -373,7 +373,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
         </ViewStageDiv>
         {parameters.map((parameter) => (
           <ViewStageParameter
-            key={parameter.id}
+            key={parameter.parameter}
             parameterRef={parameter.ref}
             barRef={barRef}
             stageRef={stageRef}

@@ -7,6 +7,7 @@ View stages.
 """
 import random
 import reprlib
+import uuid
 
 from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
@@ -29,6 +30,8 @@ class ViewStage(object):
     :class:`fiftyone.core.sample.Sample` should be passed. The output of
     view stages are represented by a :class:`fiftyone.core.view.DatasetView`.
     """
+
+    _uuid = None
 
     def __str__(self):
         return repr(self)
@@ -98,9 +101,12 @@ class ViewStage(object):
         Returns:
             a JSON dict
         """
+        if self._uuid is None:
+            self._uuid = uuid.uuid4()
         return {
             "kwargs": self._kwargs(),
             "_cls": etau.get_class_name(self),
+            "_uuid": self._uuid,
         }
 
     def _kwargs(self):
@@ -134,7 +140,10 @@ class ViewStage(object):
             a :class:`ViewStage`
         """
         view_stage_cls = etau.get_class(d["_cls"])
-        return view_stage_cls(**{k: v for (k, v) in d["kwargs"]})
+        uuid = d.pop("uuid", None)
+        stage = view_stage_cls(**{k: v for (k, v) in d["kwargs"]})
+        stage._uuid = uuid
+        return stage
 
 
 class ViewStageError(Exception):

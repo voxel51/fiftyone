@@ -8,6 +8,7 @@ import { PARSER as PARAM_PARSER } from "./ViewStage/viewStageParameterMachine";
 const { choose } = actions;
 
 export const createStage = (
+  id,
   stage,
   index,
   stageInfo,
@@ -18,7 +19,7 @@ export const createStage = (
   submitted,
   loaded
 ) => ({
-  id: uuid(),
+  id: id || uuid(),
   stage: stage,
   parameters,
   stageInfo,
@@ -47,6 +48,7 @@ function serializeStage(stage, stageMap) {
         operate(stageMap[stage.stage][i].type, "castTo", param.value),
       ];
     }),
+    _uuid: stage.id,
     _cls: `fiftyone.core.stages.${stage.stage}`,
   };
 }
@@ -67,7 +69,7 @@ function serializeView(stages, stageMap) {
 }
 
 function makeEmptyView(stageInfo) {
-  const stage = createStage("", 0, stageInfo, false, 1, true, [], false);
+  const stage = createStage(null, "", 0, stageInfo, false, 1, true, [], false);
   return [
     {
       ...stage,
@@ -89,6 +91,7 @@ function setStages(ctx, stageInfo) {
       let stageName = stage._cls.split(".");
       stageName = stageName[stageName.length - 1];
       const newStage = createStage(
+        stage._uuid,
         stageName,
         i,
         stageInfo,
@@ -341,6 +344,7 @@ const viewBarMachine = Machine(
             activeStage: (_, { index }) => index,
             stages: (ctx, { index }) => {
               const newStage = createStage(
+                null,
                 "",
                 index,
                 ctx.stageInfo,
@@ -389,6 +393,7 @@ const viewBarMachine = Machine(
           assign({
             stages: (ctx) => {
               const stage = createStage(
+                null,
                 "",
                 0,
                 ctx.stageInfo,
@@ -416,6 +421,7 @@ const viewBarMachine = Machine(
             stages: ({ stages, stageInfo }, e) => {
               if (stages.length === 1 && stages[0].id === e.stage.id) {
                 const stage = createStage(
+                  null,
                   "",
                   0,
                   stageInfo,
