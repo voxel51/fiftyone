@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 
 import * as atoms from "../recoil/atoms";
@@ -37,6 +37,7 @@ const NumericFieldFilter = ({ expanded, entry }) => {
   const bounds = useRecoilValue(boundsAtom);
   const [range, setRange] = useRecoilState(rangeAtom);
   const hasBounds = bounds.every((b) => b !== null);
+  const [overflow, setOverflow] = useState("hidden");
   const isDefaultRange = range[0] === bounds[0] && range[1] === bounds[1];
   useEffect(() => {
     hasBounds && range.every((r) => r === null) && setRange([...bounds]);
@@ -74,10 +75,12 @@ const NumericFieldFilter = ({ expanded, entry }) => {
     from: {
       height: 0,
     },
+    onStart: () => !expanded && setOverflow("hidden"),
+    onRest: () => expanded && setOverflow("visible"),
   });
 
   return (
-    <animated.div style={{ ...props, overflow: "hidden" }}>
+    <animated.div style={{ ...props, overflow }}>
       <NamedRangeSlider
         color={entry.color}
         name={"Range"}

@@ -61,9 +61,6 @@ const Slider = styled(SliderUnstyled)`
 
   .valueLabel > span > span {
     color: ${({ theme }) => theme.font};
-  }
-
-  .thumb:active .valueLabel > span > span {
     background: ${({ theme }) => theme.backgroundDark};
     border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
   }

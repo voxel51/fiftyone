@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useRef } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { Machine, assign } from "xstate";
@@ -332,22 +332,6 @@ const makeFilter = (fieldName, cls, labels, range, includeNone) => {
   };
 };
 
-const modalUpdateCallback = (
-  bounds,
-  range,
-  includeNone,
-  labels,
-  fieldIsFiltered
-) => {};
-
-const globalUpdateCallback = (
-  bounds,
-  range,
-  includeNone,
-  labels,
-  fieldIsFiltered
-) => {};
-
 const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
   const [range, setRange] = useRecoilState(rest.confidenceRange(entry.name));
   const includeNone = useRecoilValue(rest.includeNoConfidence(entry.name));
@@ -355,6 +339,7 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
   const labels = useRecoilValue(rest.includeLabels(entry.name));
   const fieldIsFiltered = useRecoilValue(rest.fieldIsFiltered(entry.name));
   const hasBounds = bounds.every((b) => b !== null);
+  const [overflow, setOverflow] = useState("hidden");
 
   useEffect(() => {
     hasBounds &&
@@ -368,16 +353,16 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
     from: {
       height: 0,
     },
+    onStart: () => !expanded && setOverflow("hidden"),
+    onRest: () => expanded && setOverflow("visible"),
   });
 
-  const callback = modal ? modalUpdateCallback : globalUpdateCallback;
-
-  useEffect(() => {
-    callback(bounds, range, includeNone, labels, fieldIsFiltered);
-  }, [bounds, range, includeNone, labels, fieldIsFiltered]);
+  if (!modal) {
+    useEffect(() => {}, [bounds, range, includeNone, labels, fieldIsFiltered]);
+  }
 
   return (
-    <animated.div style={{ ...props, overflow: "hidden" }}>
+    <animated.div style={{ ...props, overflow }}>
       <div ref={ref}>
         <div style={{ margin: 3 }}>
           <ClassFilter name={entry.name} atoms={rest} />
