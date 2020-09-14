@@ -24,7 +24,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 from fiftyone.core.service import DatabaseService
 from fiftyone.core.stages import _STAGES
-from fiftyone.core.stages import ViewStage
+import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
 
 from util import get_image_size
@@ -106,6 +106,13 @@ def _load_state(trigger_update=False):
         return wrapper
 
     return decorator
+
+
+_WITHOUT_PAGINATION_EXTENDED_STAGES = {
+    fosg.FilterClassifications,
+    fosg.FilterDetections,
+    fosg.FilterField,
+}
 
 
 class StateController(Namespace):
@@ -234,7 +241,10 @@ class StateController(Namespace):
             return []
 
         for stage in state.filter_stages.values():
-            view = view.add_stage(ViewStage._from_dict(stage))
+            stage = fosg.ViewStage._from_dict(stage)
+            if type(stage) in _WITHOUT_PAGINATION_EXTENDED_STAGES:
+                continue
+            view = view.add_stage(stage)
 
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
         samples = [
