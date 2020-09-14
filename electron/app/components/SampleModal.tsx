@@ -315,7 +315,8 @@ const SampleModal = ({
           <Close style={{ color: colorMap[name] }} />
         )
       ) : undefined,
-      count: countOrExists[name],
+      totalCount: countOrExists[name],
+      filteredCount: countOrExists[name],
       selected: Boolean(selected[name]),
     }));
   };

@@ -332,15 +332,23 @@ const makeFilter = (fieldName, cls, labels, range, includeNone) => {
   };
 };
 
-const modalUpdateHook = (atoms) => {
-  useEffect(() => {}, [atoms]);
-};
+const modalUpdateCallback = (
+  bounds,
+  range,
+  includeNone,
+  labels,
+  fieldIsFiltered
+) => {};
 
-const globalUpdate = (atoms) => {
-  useEffect(() => {}, [atoms]);
-};
+const globalUpdateCallback = (
+  bounds,
+  range,
+  includeNone,
+  labels,
+  fieldIsFiltered
+) => {};
 
-const Filter = React.memo(({ expanded, style, entry, ...rest }) => {
+const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
   const [range, setRange] = useRecoilState(rest.confidenceRange(entry.name));
   const includeNone = useRecoilValue(rest.includeNoConfidence(entry.name));
   const bounds = useRecoilValue(rest.confidenceBounds(entry.name));
@@ -362,6 +370,12 @@ const Filter = React.memo(({ expanded, style, entry, ...rest }) => {
     },
   });
 
+  const callback = modal ? modalUpdateCallback : globalUpdateCallback;
+
+  useEffect(() => {
+    callback(bounds, range, includeNone, labels, fieldIsFiltered);
+  }, [bounds, range, includeNone, labels, fieldIsFiltered]);
+
   return (
     <animated.div style={{ ...props, overflow: "hidden" }}>
       <div ref={ref}>
@@ -371,9 +385,9 @@ const Filter = React.memo(({ expanded, style, entry, ...rest }) => {
             color={entry.color}
             name={"Confidence"}
             valueName={"confidence"}
-            includeNoneAtom={atoms.includeNoConfidence(entry.name)}
-            boundsAtom={atoms.confidenceBounds(entry.name)}
-            rangeAtom={atoms.confidenceRange(entry.name)}
+            includeNoneAtom={rest.includeNoConfidence(entry.name)}
+            boundsAtom={rest.confidenceBounds(entry.name)}
+            rangeAtom={rest.confidenceRange(entry.name)}
             maxMin={0}
             minMax={1}
           />
