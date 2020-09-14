@@ -3,7 +3,6 @@ import uuid from "react-uuid";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 
 import Player51 from "../player51/build/cjs/player51.min.js";
-import clickHandler from "../utils/click.ts";
 import {
   RESERVED_FIELDS,
   VALID_SCALAR_TYPES,
@@ -99,7 +98,6 @@ export default ({
   const filter = useRecoilValue(filterSelector);
   const colorMap = useRecoilValue(atoms.colorMap);
   const [overlay, playerColorMap] = loadOverlay(sample, colorMap, fieldSchema);
-  const [handleClick, handleDoubleClick] = clickHandler(onClick, onDoubleClick);
   const [initLoad, setInitLoad] = useState(false);
   const id = uuid();
   const [player] = useState(
@@ -127,9 +125,7 @@ export default ({
   if (playerRef) {
     playerRef.current = player;
   }
-  const props = thumbnail
-    ? { onClick: handleClick, onDoubleClick: handleDoubleClick }
-    : {};
+  const props = thumbnail ? { onClick, onDoubleClick } : {};
   useEffect(() => {
     if (!initLoad) {
       if (thumbnail) {

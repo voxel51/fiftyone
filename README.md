@@ -2,6 +2,8 @@
 
 <img alt="FiftyOne" src="https://user-images.githubusercontent.com/25985824/90993132-ac26fe80-e581-11ea-9efc-c3e1a0f876d8.png">
 
+![Build](https://github.com/voxel51/fiftyone/workflows/Build/badge.svg?branch=develop&event=push)
+
 [FiftyOne](http://www.voxel51.com/docs/fiftyone) is an open source machine
 learning tool created by [Voxel51](https://voxel51.com) that helps you get
 closer to your data and ML models.
