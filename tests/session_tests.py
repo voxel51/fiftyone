@@ -16,18 +16,22 @@ import fiftyone.core.session as fos
 
 def _run_helper(*args):
     # -u: unbuffered output, to ensure that the warning gets captured
-    return subprocess.check_output(
-        [
-            sys.executable,
-            "-u",
-            os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                "utils",
-                "session_helper.py",
-            ),
-        ]
-        + list(args)
-    ).decode()
+    return (
+        subprocess.check_output(
+            [
+                sys.executable,
+                "-u",
+                os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)),
+                    "utils",
+                    "session_helper.py",
+                ),
+            ]
+            + list(args)
+        )
+        .decode()
+        .replace("\r", "")
+    )
 
 
 def test_fast_shutdown(capsys):
