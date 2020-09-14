@@ -296,6 +296,7 @@ const ClassFilter = ({ name, atoms }) => {
         <Selected>
           {selected.map((s) => (
             <ClassButton
+              key={s}
               onClick={() => {
                 send({ type: "REMOVE", value: s });
               }}
