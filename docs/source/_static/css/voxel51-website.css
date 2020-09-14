@@ -119,9 +119,18 @@
   text-decoration: underline;
 }
 
+@media only screen and (min-device-width: 850px) {
+  .mobile_only {
+    display: none;
+  }
+}
+
 /* mobile responsive nav elements all here */
 @media only screen and (min-device-width: 320px) and (max-device-width: 850px) {
   /* navs do not stay at top in mobile mode */
+  .desktop_only {
+    display: none;
+  }
   .stay_at_top {
     position: relative;
   }

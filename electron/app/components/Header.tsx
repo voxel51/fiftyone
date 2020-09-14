@@ -67,9 +67,6 @@ const IconWrapper = styled.div`
     align-items: center;
     justify-content: center;
     cursor: pointer;
-  }
-
-  svg {
     margin-right: 0.5em;
   }
 

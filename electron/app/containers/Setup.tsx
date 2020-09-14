@@ -28,7 +28,7 @@ const Code = styled.pre`
   padding: 2rem;
   background-color: ${({ theme }) => theme.backgroundDark};
   border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
-  color: ${({ theme }) => theme.secondary};
+  color: ${({ theme }) => theme.font};
   border-radius: 3px;
 `;
 

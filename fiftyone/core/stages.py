@@ -202,7 +202,13 @@ class Exclude(ViewStage):
 
     @classmethod
     def _params(cls):
-        return [{"name": "sample_ids", "type": "list<id>|id"}]
+        return [
+            {
+                "name": "sample_ids",
+                "type": "list<id>|id",
+                "placeholder": "list,of,sample,ids",
+            }
+        ]
 
     def _validate_params(self):
         # Ensures that ObjectIDs are valid
@@ -267,7 +273,13 @@ class ExcludeFields(ViewStage):
 
     @classmethod
     def _params(self):
-        return [{"name": "field_names", "type": "list<str>"}]
+        return [
+            {
+                "name": "field_names",
+                "type": "list<str>",
+                "placeholder": "list,of,fields",
+            }
+        ]
 
     def _validate_params(self):
         default_fields = set(default_sample_fields())
@@ -361,7 +373,12 @@ class Exists(ViewStage):
     def _params(cls):
         return [
             {"name": "field", "type": "str"},
-            {"name": "bool", "type": "bool", "default": "True"},
+            {
+                "name": "bool",
+                "type": "bool",
+                "default": "True",
+                "placeholder": "bool (default=True)",
+            },
         ]
 
 
@@ -450,7 +467,7 @@ class FilterField(ViewStage):
     def _params(self):
         return [
             {"name": "field", "type": "str"},
-            {"name": "filter", "type": "dict"},
+            {"name": "filter", "type": "dict", "placeholder": ""},
         ]
 
     def _validate_params(self):
@@ -663,7 +680,7 @@ class Limit(ViewStage):
 
     @classmethod
     def _params(cls):
-        return [{"name": "limit", "type": "int"}]
+        return [{"name": "limit", "type": "int", "placeholder": "int"}]
 
 
 class Match(ViewStage):
@@ -754,7 +771,7 @@ class Match(ViewStage):
 
     @classmethod
     def _params(cls):
-        return [{"name": "filter", "type": "dict"}]
+        return [{"name": "filter", "type": "dict", "placeholder": ""}]
 
 
 class MatchTag(ViewStage):
@@ -847,7 +864,13 @@ class MatchTags(ViewStage):
 
     @classmethod
     def _params(cls):
-        return [{"name": "tags", "type": "list<str>"}]
+        return [
+            {
+                "name": "tags",
+                "type": "list<str>",
+                "placeholder": "list,of,tags",
+            }
+        ]
 
 
 class Mongo(ViewStage):
@@ -913,7 +936,7 @@ class Mongo(ViewStage):
 
     @classmethod
     def _params(self):
-        return [{"name": "pipeline", "type": "dict"}]
+        return [{"name": "pipeline", "type": "dict", "placeholder": ""}]
 
 
 class Select(ViewStage):
@@ -979,7 +1002,13 @@ class Select(ViewStage):
 
     @classmethod
     def _params(cls):
-        return [{"name": "sample_ids", "type": "list<id>|id"}]
+        return [
+            {
+                "name": "sample_ids",
+                "type": "list<id>|id",
+                "placeholder": "list,of,sample,ids",
+            }
+        ]
 
     def _validate_params(self):
         # Ensures that ObjectIDs are valid
@@ -1054,6 +1083,7 @@ class SelectFields(ViewStage):
                 "name": "field_names",
                 "type": "list<str>|NoneType",
                 "default": "None",
+                "placeholder": "list,of,fields",
             }
         ]
 
@@ -1124,7 +1154,14 @@ class Shuffle(ViewStage):
 
     @classmethod
     def _params(self):
-        return [{"name": "seed", "type": "float|NoneType", "default": "None"}]
+        return [
+            {
+                "name": "seed",
+                "type": "float|NoneType",
+                "default": "None",
+                "placeholder": "seed (default=None",
+            }
+        ]
 
 
 class Skip(ViewStage):
@@ -1173,7 +1210,7 @@ class Skip(ViewStage):
 
     @classmethod
     def _params(cls):
-        return [{"name": "skip", "type": "int"}]
+        return [{"name": "skip", "type": "int", "placeholder": "int"}]
 
 
 class SortBy(ViewStage):
@@ -1270,7 +1307,12 @@ class SortBy(ViewStage):
     def _params(cls):
         return [
             {"name": "field_or_expr", "type": "dict|str"},
-            {"name": "reverse", "type": "bool", "default": "False"},
+            {
+                "name": "reverse",
+                "type": "bool",
+                "default": "False",
+                "placeholder": "reverse (default=False)",
+            },
         ]
 
     def validate(self, sample_collection):
@@ -1350,8 +1392,13 @@ class Take(ViewStage):
     @classmethod
     def _params(cls):
         return [
-            {"name": "size", "type": "int"},
-            {"name": "seed", "type": "float|NoneType", "default": "None"},
+            {"name": "size", "type": "int", "placeholder": "int"},
+            {
+                "name": "seed",
+                "type": "float|NoneType",
+                "default": "None",
+                "placeholder": "reverse (default=False)",
+            },
         ]
 
 

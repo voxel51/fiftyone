@@ -12,3 +12,5 @@ session = fo.launch_app(remote=args.remote)
 if args.slow:
     assert isinstance(session._disable_wait_warning, bool)
     session._disable_wait_warning = True
+
+session.__del__()
