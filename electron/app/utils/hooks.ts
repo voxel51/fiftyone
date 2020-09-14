@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect } from "react";
+import { useState, useEffect, useLayoutEffect, useCallback } from "react";
 
 export const useResizeHandler = (handler, deps = []) => {
   useLayoutEffect(() => {
@@ -74,7 +74,8 @@ export const useFollow = (leaderRef, followerRef, set, deps = []) => {
 // allows re-rendering before recoil's Batcher updates
 export const useFastRerender = () => {
   const [counter, setCounter] = useState(0);
-  return () => {
+  const rerender = useCallback(() => {
     setCounter((prev) => prev + 1);
-  };
+  }, []);
+  return rerender;
 };
