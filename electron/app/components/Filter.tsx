@@ -7,10 +7,12 @@ import uuid from "uuid-v4";
 import { animated, useSpring } from "react-spring";
 import useMeasure from "react-use-measure";
 
+import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { useOutsideClick } from "../utils/hooks";
 import SearchResults from "./ViewBar/ViewStage/SearchResults";
 import { NamedRangeSlider } from "./RangeSlider";
+import { VALID_LIST_TYPES } from "../utils/labels";
 
 const classFilterMachine = Machine({
   id: "classFilter",
@@ -316,18 +318,26 @@ const CLS_TO_STAGE = {
 
 const makeFilter = (fieldName, cls, labels, range, includeNone) => {
   let expr,
-    rangeExpr = null;
-  let fieldStr = `$${fieldName}`;
-  if (range) {
-    rangeExpr = {
-      $and: [{ $gte: [fieldStr, range[0]] }, { $lte: [fieldStr, range[1]] }],
-    };
-  }
+    rangeExpr,
+    labelsExpr = null;
+  const fieldStr = VALID_LIST_TYPES ? "$$this" : `$${fieldName}`;
+  const confidenceStr = `${fieldStr}.confidence`;
+  const labelStr = `${fieldStr}.label`;
+  rangeExpr = {
+    $and: [
+      { $gte: [confidenceStr, range[0]] },
+      { $lte: [confidenceStr, range[1]] },
+    ],
+  };
+  labelsExpr = { $in: [labelStr, labels] };
   if (includeNone) {
-    expr = { $or: [rangeExpr, { $eq: [fieldStr, null] }] };
+    rangeExpr = { $or: [rangeExpr, { $eq: [confidenceStr, null] }] };
   }
   return {
-    kwargs: [["filter", { $expr: expr }]],
+    kwargs: [
+      ["field", fieldName],
+      ["filter", { $and: [labelsExpr, rangeExpr] }],
+    ],
     _cls: `fiftyone.core.stages.${CLS_TO_STAGE[cls]}`,
   };
 };
@@ -338,6 +348,7 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
   const bounds = useRecoilValue(rest.confidenceBounds(entry.name));
   const labels = useRecoilValue(rest.includeLabels(entry.name));
   const fieldIsFiltered = useRecoilValue(rest.fieldIsFiltered(entry.name));
+  const stateDescription = useRecoilValue(atoms.stateDescription);
   const hasBounds = bounds.every((b) => b !== null);
   const [overflow, setOverflow] = useState("hidden");
 
@@ -358,7 +369,10 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
   });
 
   if (!modal) {
-    useEffect(() => {}, [bounds, range, includeNone, labels, fieldIsFiltered]);
+    useEffect(() => {
+      const newState = JSON.parse(JSON.stringify(stateDescription));
+      if (!fieldIsFiltered && !(entry.name in newState.filter_stages)) return;
+    }, [bounds, range, includeNone, labels, fieldIsFiltered]);
   }
 
   return (
