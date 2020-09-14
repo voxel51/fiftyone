@@ -334,7 +334,7 @@ const makeFilter = (fieldName, cls, labels, range, includeNone) => {
   return {
     kwargs: [
       ["field", fieldName],
-      ["filter", { $and: [labelsExpr, rangeExpr] }],
+      ["filter", labels.length ? { $and: [labelsExpr, rangeExpr] } : rangeExpr],
     ],
     _cls: `fiftyone.core.stages.${CLS_TO_STAGE[cls]}`,
   };
