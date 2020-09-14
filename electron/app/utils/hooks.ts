@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect } from "react";
 
 export const useResizeHandler = (handler, deps = []) => {
-  useEffect(() => {
+  useLayoutEffect(() => {
     window.addEventListener("resize", handler);
     return () => {
       window.removeEventListener("resize", handler);
@@ -10,7 +10,7 @@ export const useResizeHandler = (handler, deps = []) => {
 };
 
 export const useScrollHandler = (handler, deps = []) => {
-  useEffect(() => {
+  useLayoutEffect(() => {
     window.addEventListener("scroll", handler);
     return () => {
       window.removeEventListener("scroll", handler);
