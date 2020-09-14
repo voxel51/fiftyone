@@ -36,10 +36,15 @@ const PARSERS = {
         name,
         label: `${obj.label}`,
         confidence: obj.confidence,
-        bounding_box: {
-          top_left: { x: bb[0], y: bb[1] },
-          bottom_right: { x: bb[0] + bb[2], y: bb[1] + bb[3] },
-        },
+        bounding_box: bb
+          ? {
+              top_left: { x: bb[0], y: bb[1] },
+              bottom_right: { x: bb[0] + bb[2], y: bb[1] + bb[3] },
+            }
+          : {
+              top_left: { x: 0, y: 0 },
+              bottom_right: { x: 0, y: 0 },
+            },
         attrs: { attrs },
       };
     },

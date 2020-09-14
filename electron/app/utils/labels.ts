@@ -1,5 +1,6 @@
 export const VALID_OBJECT_TYPES = ["Detection", "Detections"];
 export const VALID_CLASS_TYPES = ["Classification", "Classifications"];
+export const VALID_LIST_TYPES = ["Classifications", "Detections"];
 export const VALID_LABEL_TYPES = [...VALID_CLASS_TYPES, ...VALID_OBJECT_TYPES];
 
 export const VALID_SCALAR_TYPES = [

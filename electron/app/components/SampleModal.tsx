@@ -211,6 +211,7 @@ const SampleModal = ({
   const playerContainerRef = useRef();
   const [playerStyle, setPlayerStyle] = useState({ height: "100%" });
   const [showJSON, setShowJSON] = useState(false);
+  const [enableJSONFilter, setEnableJSONFilter] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const [activeLabels, setActiveLabels] = useRecoilState(
     atoms.modalActiveLabels
@@ -374,7 +375,11 @@ const SampleModal = ({
     <Container className={fullscreen ? "fullscreen" : ""}>
       <div className="player" ref={playerContainerRef}>
         {showJSON ? (
-          <JSONView object={sample} />
+          <JSONView
+            object={sample}
+            filterJSON={enableJSONFilter}
+            enableFilter={setEnableJSONFilter}
+          />
         ) : (
           <Player51
             key={sampleUrl} // force re-render when this changes
