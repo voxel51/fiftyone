@@ -8,6 +8,7 @@ import { animated, useSpring } from "react-spring";
 import useMeasure from "react-use-measure";
 
 import * as atoms from "../recoil/atoms";
+import { getSocket } from "../utils/socket";
 import * as selectors from "../recoil/selectors";
 import { useOutsideClick } from "../utils/hooks";
 import SearchResults from "./ViewBar/ViewStage/SearchResults";
@@ -317,22 +318,19 @@ const CLS_TO_STAGE = {
 };
 
 const makeFilter = (fieldName, cls, labels, range, includeNone) => {
-  let expr,
-    rangeExpr,
-    labelsExpr = null;
   const fieldStr = VALID_LIST_TYPES ? "$$this" : `$${fieldName}`;
   const confidenceStr = `${fieldStr}.confidence`;
   const labelStr = `${fieldStr}.label`;
-  rangeExpr = {
+  let rangeExpr = {
     $and: [
       { $gte: [confidenceStr, range[0]] },
       { $lte: [confidenceStr, range[1]] },
     ],
   };
-  labelsExpr = { $in: [labelStr, labels] };
   if (includeNone) {
     rangeExpr = { $or: [rangeExpr, { $eq: [confidenceStr, null] }] };
   }
+  const labelsExpr = { $in: [labelStr, labels] };
   return {
     kwargs: [
       ["field", fieldName],
@@ -343,12 +341,16 @@ const makeFilter = (fieldName, cls, labels, range, includeNone) => {
 };
 
 const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
+  const port = useRecoilValue(atoms.port);
+  const socket = getSocket(port, "state");
   const [range, setRange] = useRecoilState(rest.confidenceRange(entry.name));
   const includeNone = useRecoilValue(rest.includeNoConfidence(entry.name));
   const bounds = useRecoilValue(rest.confidenceBounds(entry.name));
   const labels = useRecoilValue(rest.includeLabels(entry.name));
   const fieldIsFiltered = useRecoilValue(rest.fieldIsFiltered(entry.name));
-  const stateDescription = useRecoilValue(atoms.stateDescription);
+  const [stateDescription, setStateDescription] = useRecoilState(
+    atoms.stateDescription
+  );
   const hasBounds = bounds.every((b) => b !== null);
   const [overflow, setOverflow] = useState("hidden");
 
@@ -372,6 +374,34 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
     useEffect(() => {
       const newState = JSON.parse(JSON.stringify(stateDescription));
       if (!fieldIsFiltered && !(entry.name in newState.filter_stages)) return;
+      const filter = makeFilter(
+        entry.name,
+        entry.type,
+        labels,
+        range,
+        includeNone
+      );
+      if (
+        JSON.stringify(filter) ===
+        JSON.stringify(newState.filter_stages[entry.name])
+      )
+        return;
+      if (!fieldIsFiltered && entry.name in newState.filter_stages) {
+        delete newState.filter_stages[entry.name];
+      } else {
+        newState.filter_stages[entry.name] = filter;
+      }
+      if (hasBounds) {
+        setStateDescription(newState);
+        socket.emit(
+          "update",
+          {
+            data: newState,
+            include_self: false,
+          },
+          (data) => setStateDescription(data)
+        );
+      }
     }, [bounds, range, includeNone, labels, fieldIsFiltered]);
   }
 

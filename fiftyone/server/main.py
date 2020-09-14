@@ -155,6 +155,7 @@ class StateController(Namespace):
             broadcast=True,
             include_self=data["include_self"],
         )
+        return self.state
 
     def on_get_fiftyone_info(self):
         """Retrieves information about the FiftyOne installation."""
