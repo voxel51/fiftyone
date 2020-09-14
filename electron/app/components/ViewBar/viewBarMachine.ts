@@ -102,10 +102,6 @@ function setStages(ctx, stageInfo) {
           const stageInfoResult = stageInfo.filter(
             (s) => s.name === stageName
           )[0];
-          console.log(
-            p[0],
-            operate(stageInfoResult.params[j].type, "castFrom", p[1], false)
-          );
           return createParameter(
             stageName,
             p[0],
@@ -115,7 +111,8 @@ function setStages(ctx, stageInfo) {
             true,
             false,
             j === stageInfoResult.params.length - 1,
-            i === Math.min(view.length - 1, ctx.activeStage)
+            i === Math.min(view.length - 1, ctx.activeStage),
+            stageInfoResult.params[j].placeholder
           );
         }),
         true,
@@ -147,7 +144,7 @@ const viewBarMachine = Machine(
         always: [
           {
             target: "running.hist",
-            cond: (ctx) => ctx.stageInfo,
+            cond: (ctx) => ctx.stageInfo && ctx.stateDescription.view,
             actions: [
               assign({
                 activeStage: (ctx) =>

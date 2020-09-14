@@ -11,7 +11,7 @@ import styled, { ThemeContext } from "styled-components";
 import { useService } from "@xstate/react";
 import AutosizeInput from "react-input-autosize";
 
-import { PARSER, toTypeAnnotation } from "./viewStageParameterMachine";
+import { PARSER } from "./viewStageParameterMachine";
 import { useOutsideClick } from "../../../utils/hooks";
 import ErrorMessage from "./ErrorMessage";
 
@@ -130,11 +130,10 @@ const convert = (value, placeholder) => {
   return value;
 };
 
-const makePlaceholder = (parameter, type, defaultValue) =>
-  [
-    defaultValue ? [parameter, defaultValue].join("=") : parameter,
-    toTypeAnnotation(type),
-  ].join(": ");
+const makePlaceholder = ({ placeholder, parameter }) => {
+  if (placeholder !== undefined) return placeholder;
+  return parameter;
+};
 
 const ObjectEditor = ({
   barRef,
@@ -251,7 +250,7 @@ const ObjectEditor = ({
       >
         {state.matches("reading") ? (
           <div style={{ padding: "0.5em", whiteSpace: "nowrap" }}>
-            {convert(value, makePlaceholder(parameter, type, defaultValue))}
+            {convert(value, makePlaceholder(state.context))}
           </div>
         ) : (
           <>
@@ -312,7 +311,7 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
     return () => parameterRef.listeners.delete(listener);
   }, []);
 
-  const { defaultValue, parameter, tail, type, value, active } = state.context;
+  const { tail, type, value, active } = state.context;
   const hasObjectType = typeof type === "string" && type.includes("dict");
 
   const props = useSpring({
@@ -357,7 +356,7 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
       ) : (
         <ViewStageParameterDiv style={props}>
           <ViewStageParameterInput
-            placeholder={makePlaceholder(parameter, type, defaultValue)}
+            placeholder={makePlaceholder(state.context)}
             autoFocus={state.matches("editing")}
             value={
               state.matches("reading") && value.length > 24

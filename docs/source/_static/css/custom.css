@@ -320,6 +320,14 @@ article.pytorch-article .reference.download.internal {
   }
 }
 
+.nav__item {
+  padding: 0 10px;
+}
+
+.nav__main .fa-header-icon {
+  font-size: 25px;
+}
+
 .footer-wrapper {
   background-color: var(--bg-dark-secondary);
 }

@@ -9,6 +9,7 @@ import Tag from "./Tags/Tag";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { getLabelText, stringify } from "../utils/labels";
+import { useFastRerender } from "../utils/hooks";
 
 const Sample = ({ displayProps, dispatch, sample, port, setView }) => {
   const host = `http://127.0.0.1:${port}`;
@@ -21,6 +22,7 @@ const Sample = ({ displayProps, dispatch, sample, port, setView }) => {
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     atoms.selectedSamples
   );
+  const rerender = useFastRerender();
 
   const handleClick = () => {
     const newSelected = new Set(selectedSamples);
@@ -33,6 +35,7 @@ const Sample = ({ displayProps, dispatch, sample, port, setView }) => {
       event = "add_selection";
     }
     setSelectedSamples(newSelected);
+    rerender();
     socket.emit(event, id, (data) => {
       dispatch(updateState(data));
     });

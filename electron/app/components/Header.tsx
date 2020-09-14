@@ -67,10 +67,11 @@ const IconWrapper = styled.div`
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    margin-right: 0.5em;
   }
 
-  svg {
-    margin-right: 0.5em;
+  svg:focus {
+    outline: none;
   }
 `;
 
