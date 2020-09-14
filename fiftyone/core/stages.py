@@ -102,7 +102,7 @@ class ViewStage(object):
             a JSON dict
         """
         if self._uuid is None:
-            self._uuid = uuid.uuid4()
+            self._uuid = str(uuid.uuid4())
         return {
             "kwargs": self._kwargs(),
             "_cls": etau.get_class_name(self),
@@ -140,7 +140,7 @@ class ViewStage(object):
             a :class:`ViewStage`
         """
         view_stage_cls = etau.get_class(d["_cls"])
-        uuid = d.pop("uuid", None)
+        uuid = d.pop("_uuid", None)
         stage = view_stage_cls(**{k: v for (k, v) in d["kwargs"]})
         stage._uuid = uuid
         return stage
@@ -1133,7 +1133,10 @@ class Shuffle(ViewStage):
 
     @classmethod
     def _params(self):
-        return [{"name": "seed", "type": "float|NoneType", "default": "None"}]
+        return [
+            {"name": "seed", "type": "float|NoneType", "default": "None"},
+            {"name": "_randint", "type": "int|NoneType"},
+        ]
 
 
 class Skip(ViewStage):
@@ -1361,6 +1364,7 @@ class Take(ViewStage):
         return [
             {"name": "size", "type": "int"},
             {"name": "seed", "type": "float|NoneType", "default": "None"},
+            {"name": "_randint", "type": "int|NoneType"},
         ]
 
 

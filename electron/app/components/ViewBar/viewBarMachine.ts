@@ -98,24 +98,26 @@ function setStages(ctx, stageInfo) {
         false,
         ctx.stages.length,
         i === Math.min(view.length - 1, ctx.activeStage),
-        stage.kwargs
-          .filter((k) => !k[0].startsWith("_"))
-          .map((p, j) => {
-            const stageInfoResult = stageInfo.filter(
-              (s) => s.name === stageName
-            )[0];
-            return createParameter(
-              stageName,
-              p[0],
-              stageInfoResult.params[j].type,
-              stageInfoResult.params[j].default,
-              operate(stageInfoResult.params[j].type, "castFrom", p[1], false),
-              true,
-              false,
-              j === stageInfoResult.params.length - 1,
-              i === Math.min(view.length - 1, ctx.activeStage)
-            );
-          }),
+        stage.kwargs.map((p, j) => {
+          const stageInfoResult = stageInfo.filter(
+            (s) => s.name === stageName
+          )[0];
+          console.log(
+            p[0],
+            operate(stageInfoResult.params[j].type, "castFrom", p[1], false)
+          );
+          return createParameter(
+            stageName,
+            p[0],
+            stageInfoResult.params[j].type,
+            stageInfoResult.params[j].default,
+            operate(stageInfoResult.params[j].type, "castFrom", p[1], false),
+            true,
+            false,
+            j === stageInfoResult.params.length - 1,
+            i === Math.min(view.length - 1, ctx.activeStage)
+          );
+        }),
         true,
         true
       );
