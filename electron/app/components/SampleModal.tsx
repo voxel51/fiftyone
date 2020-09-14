@@ -216,7 +216,7 @@ const SampleModal = ({
   const [activeLabels, setActiveLabels] = useRecoilState(
     atoms.modalActiveLabels
   );
-  const filters = useRecoilValue(selectors.modalLabelFilters);
+  const filter = useRecoilValue(selectors.sampleModalFilter);
   const activeTags = useRecoilValue(atoms.modalActiveTags);
   const tagNames = useRecoilValue(selectors.tagNames);
   const fieldSchema = useRecoilValue(selectors.fieldSchema);
@@ -302,7 +302,8 @@ const SampleModal = ({
     values,
     countOrExists,
     selected,
-    hideCheckbox = false
+    hideCheckbox = false,
+    filteredCountOrExists
   ) => {
     return [...values].sort().map(({ name, type }) => ({
       hideCheckbox,
@@ -316,7 +317,9 @@ const SampleModal = ({
         )
       ) : undefined,
       totalCount: countOrExists[name],
-      filteredCount: countOrExists[name],
+      filteredCount: filteredCountOrExists
+        ? filteredCountOrExists[name]
+        : undefined,
       selected: Boolean(selected[name]),
     }));
   };
@@ -336,23 +339,25 @@ const SampleModal = ({
     {}
   );
 
-  const labelSampleValues = labelNameGroups.labels.reduce(
-    (obj, { name, type }) => {
+  const labelSampleValuesReducer = (s) => {
+    return labelNameGroups.labels.reduce((obj, { name, type }) => {
       let value;
-      if (!sample[name]) {
+      if (!s[name]) {
         value = 0;
       } else {
         value = ["Detections", "Classifcations"].includes(type)
-          ? sample[name][type.toLowerCase()].length
+          ? s[name][type.toLowerCase()].length
           : 1;
       }
       return {
         ...obj,
         [name]: value,
       };
-    },
-    {}
-  );
+    }, {});
+  };
+
+  const labelSampleValues = labelSampleValuesReducer(sample);
+  const filteredLabelSampleValues = labelSampleValuesReducer(filter(sample));
 
   const scalarSampleValues = labelNameGroups.scalars.reduce(
     (obj, { name }) => ({
@@ -451,7 +456,9 @@ const SampleModal = ({
             labels={getDisplayOptions(
               labelNameGroups.labels,
               labelSampleValues,
-              activeLabels
+              activeLabels,
+              false,
+              filteredLabelSampleValues
             )}
             onSelectLabel={handleSetDisplayOption(setActiveLabels)}
             scalars={getDisplayOptions(
