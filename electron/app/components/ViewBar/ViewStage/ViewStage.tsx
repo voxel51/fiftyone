@@ -371,14 +371,16 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
             </ExternalLink>
           )}
         </ViewStageDiv>
-        {parameters.map((parameter) => (
-          <ViewStageParameter
-            key={parameter.id}
-            parameterRef={parameter.ref}
-            barRef={barRef}
-            stageRef={stageRef}
-          />
-        ))}
+        {parameters
+          .filter((p) => !p.parameter.startsWith("_"))
+          .map((parameter) => (
+            <ViewStageParameter
+              key={parameter.parameter}
+              parameterRef={parameter.ref}
+              barRef={barRef}
+              stageRef={stageRef}
+            />
+          ))}
         {state.matches("delible.yes") && parameters.length ? (
           <ViewStageDelete spring={deleteProps} send={send} />
         ) : null}
