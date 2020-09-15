@@ -66,7 +66,10 @@ def normalize_wrapper_process(process):
         psutil.Process
     """
     if _is_wrapper_process(process):
-        return process.children()[0]
+        try:
+            return process.children()[0]
+        except IndexError:
+            pass
     return process
 
 
