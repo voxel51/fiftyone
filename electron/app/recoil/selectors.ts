@@ -308,9 +308,8 @@ export const labelConfidenceBounds = selectorFamily({
 export const numericFieldBounds = selectorFamily({
   key: "numericFieldBounds",
   get: (label) => ({ get }) => {
-    const bounds = get(atoms.stateDescription).view_stats.numeric_field_bounds[
-      label
-    ];
+    const stats = get(atoms.stateDescription).view_stats;
+    const bounds = stats ? stats.numeric_field_bounds[label] : null;
     return bounds ? bounds : [null, null];
   },
 });
