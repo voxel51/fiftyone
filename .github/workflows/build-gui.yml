@@ -11,8 +11,8 @@ on:
     tags:
       - gui-v*
     paths:
-      - electron/
-      - package/gui/
+      - electron/**
+      - package/gui/**
       - .github/workflows/build-gui.yml
   pull_request:
     branches:
@@ -20,8 +20,8 @@ on:
       - rel-*
       - release-*
     paths:
-      - electron/
-      - package/gui/
+      - electron/**
+      - package/gui/**
       - .github/workflows/build-gui.yml
 
 jobs:

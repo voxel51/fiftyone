@@ -125,11 +125,10 @@ class ServerServiceTests(unittest.TestCase):
             _normalize_session(session), _normalize_session(client)
         )
         self.assertEqual(
-            sorted(client["derivables"]["tags"]),
-            sorted(self.dataset.get_tags()),
+            sorted(client["tags"]), sorted(self.dataset.get_tags()),
         )
-        self.assertEqual(client["count"], len(self.session.view))
-        self.assertNotEqual(client["count"], len(self.dataset))
+        self.assertEqual(client["view_count"], len(self.session.view))
+        self.assertNotEqual(client["view_count"], len(self.dataset))
 
     def step_selection(self):
         self.client.emit("add_selection", self.sample1.id)

@@ -13,9 +13,9 @@ on:
       - docs-publish
     paths:
       - .github/workflows/build-docs.yml
-      - docs/
-      - examples/
-      - fiftyone/
+      - docs/**
+      - examples/**
+      - fiftyone/**
       - "**.py"
       - "**.md"
       - "**.rst"
@@ -26,9 +26,9 @@ on:
       - release-*
     paths:
       - .github/workflows/build-docs.yml
-      - docs/
-      - examples/
-      - fiftyone/
+      - docs/**
+      - examples/**
+      - fiftyone/**
       - "**.py"
       - "**.md"
       - "**.rst"
@@ -101,4 +101,5 @@ jobs:
           token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
           author: voxel51-bot <bot@voxel51.com>
           labels: documentation
-          reviewers: voxel51/developers
+          reviewers: jasoncorso, brimoor
+          team-reviewers: developers
