@@ -41,7 +41,7 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
   const totalCount = useRecoilValue(selectors.totalCount);
   const filteredCount = useRecoilValue(selectors.filteredCount);
   const countStr =
-    filteredCount !== null
+    typeof filteredCount === "number"
       ? `${filteredCount.toLocaleString()} of ${totalCount.toLocaleString()}`
       : (totalCount || 0).toLocaleString();
   return (
