@@ -18,14 +18,14 @@ const makeFilter = (fieldName, range, includeNone, isDefaultRange) => {
     };
   }
   if (!includeNone && isDefaultRange) {
-    expr = { $ne: [fieldStr, null] };
+    expr = { [fieldName]: { $exists: true, $ne: null } };
   } else if (includeNone && !isDefaultRange) {
-    expr = { $or: [rangeExpr, { $eq: [fieldStr, null] }] };
+    expr = { $expr: { $or: [rangeExpr, expr] } };
   } else {
     expr = rangeExpr;
   }
   return {
-    kwargs: [["filter", { $expr: expr }]],
+    kwargs: [["filter", expr]],
     _cls: "fiftyone.core.stages.Match",
   };
 };
