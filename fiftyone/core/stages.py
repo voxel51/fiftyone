@@ -1170,7 +1170,8 @@ class Shuffle(ViewStage):
                 "default": "None",
                 "placeholder": "seed (default=None)",
             },
-            {"name": "_randint", "type": "int|NoneType"},
+            {"name": "seed", "type": "float|NoneType", "default": "None"},
+            {"name": "_randint", "type": "int|NoneType", "default": "None"},
         ]
 
 
@@ -1409,7 +1410,7 @@ class Take(ViewStage):
                 "default": "None",
                 "placeholder": "seed (default=None)",
             },
-            {"name": "_randint", "type": "int|NoneType"},
+            {"name": "_randint", "type": "int|NoneType", "default": "None"},
         ]
 
 

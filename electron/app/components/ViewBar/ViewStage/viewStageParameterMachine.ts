@@ -203,6 +203,7 @@ export default Machine(
                         }, undefined),
                   errorId: undefined,
                 }),
+                "blurInput",
                 sendParent((ctx) => ({
                   type: "PARAMETER.COMMIT",
                   parameter: ctx,
