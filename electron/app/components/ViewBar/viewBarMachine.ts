@@ -490,6 +490,7 @@ const viewBarMachine = Machine(
           return;
         const newState = {
           ...stateDescription,
+          filter_stages: {},
           view: {
             dataset,
             view: result,

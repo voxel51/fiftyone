@@ -159,13 +159,11 @@ const Entry = ({ entry, onCheck, modal }) => {
 
   const checkboxClass = entry.hideCheckbox ? "no-checkbox" : "with-checkbox";
   const containerProps = useSpring({
-    border: `1px solid ${
-      fieldIsFiltered ? theme.brand : theme.brandFullyTransparent
-    }`,
-    backgroundColor:
-      entry.hideCheckbox || entry.selected
-        ? theme.backgroundLight
-        : theme.background,
+    backgroundColor: fieldIsFiltered
+      ? "#6C757D"
+      : entry.hideCheckbox || entry.selected
+      ? theme.backgroundLight
+      : theme.background,
   });
 
   return (

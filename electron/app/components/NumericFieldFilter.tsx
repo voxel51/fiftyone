@@ -42,9 +42,14 @@ const NumericFieldFilter = ({ expanded, entry }) => {
   const [range, setRange] = useRecoilState(rangeAtom);
   const hasBounds = bounds.every((b) => b !== null);
   const [overflow, setOverflow] = useState("hidden");
+  const [localBounds, setLocalBounds] = useState([null, null]);
   const isDefaultRange = range[0] === bounds[0] && range[1] === bounds[1];
   useEffect(() => {
-    hasBounds && range.every((r) => r === null) && setRange([...bounds]);
+    if (!hasBounds) {
+      return;
+    }
+    setLocalBounds(bounds);
+    localBounds.some((b, i) => b !== bounds[i]) && setRange([...bounds]);
   }, [bounds]);
 
   useEffect(() => {
@@ -76,7 +81,7 @@ const NumericFieldFilter = ({ expanded, entry }) => {
         },
         () => {}
       );
-  }, [range, bounds, includeNone]);
+  }, [range, includeNone]);
 
   const [ref, { height }] = useMeasure();
   const props = useSpring({
