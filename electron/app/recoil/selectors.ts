@@ -297,20 +297,26 @@ export const fieldIsFiltered = selectorFamily({
   },
 });
 
+export const viewStats = selector({
+  key: "viewStats",
+  get: ({ get }) => {
+    return get(atoms.stateDescription).view_stats || {};
+  },
+});
+
 export const labelConfidenceBounds = selectorFamily({
   key: "labelConfidenceBounds",
   get: (label) => ({ get }) => {
-    return get(atoms.stateDescription).view_stats.labels[label]
-      .confidence_bounds;
+    const labels = get(viewStats).labels;
+    return labels[label] ? labels[label].confidence_bounds : [null, null];
   },
 });
 
 export const numericFieldBounds = selectorFamily({
   key: "numericFieldBounds",
   get: (label) => ({ get }) => {
-    const stats = get(atoms.stateDescription).view_stats;
-    const bounds = stats ? stats.numeric_field_bounds[label] : null;
-    return bounds ? bounds : [null, null];
+    const bounds = get(viewStats).numeric_field_bounds;
+    return bounds && bounds[label] ? bounds[label] : [null, null];
   },
 });
 
