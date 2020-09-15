@@ -22,7 +22,7 @@ const makeFilter = (fieldName, range, includeNone, isDefaultRange) => {
   } else if (includeNone && !isDefaultRange) {
     expr = { $expr: { $or: [rangeExpr, expr] } };
   } else {
-    expr = rangeExpr;
+    expr = { $expr: rangeExpr };
   }
   return {
     kwargs: [["filter", expr]],
