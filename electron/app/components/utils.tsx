@@ -66,3 +66,18 @@ export const ModalFooter = styled.footer`
   padding: 1em;
   background-color: ${({ theme }) => theme.backgroundLight};
 `;
+
+export const scrollbarStyles = ({ theme }) => `
+  &::-webkit-scrollbar {
+    width: 10px;
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    border-radius: 5px;
+    background-color: transparent;
+    transition: background-color linear 0.5s;
+  }
+  &:hover::-webkit-scrollbar-thumb {
+    background-color: ${theme.fontDarkest};
+  }
+`;
