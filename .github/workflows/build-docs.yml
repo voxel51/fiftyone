@@ -13,9 +13,9 @@ on:
       - docs-publish
     paths:
       - .github/workflows/build-docs.yml
-      - docs/
-      - examples/
-      - fiftyone/
+      - docs/**
+      - examples/**
+      - fiftyone/**
       - "**.py"
       - "**.md"
       - "**.rst"
@@ -26,9 +26,9 @@ on:
       - release-*
     paths:
       - .github/workflows/build-docs.yml
-      - docs/
-      - examples/
-      - fiftyone/
+      - docs/**
+      - examples/**
+      - fiftyone/**
       - "**.py"
       - "**.md"
       - "**.rst"
