@@ -1,5 +1,6 @@
 import { createGlobalStyle, css } from "styled-components";
 import { color, typography } from "./styles";
+import { scrollbarStyles } from "../components/utils";
 
 export const styles = css`
   body,
@@ -16,6 +17,13 @@ export const styles = css`
     margin: 0 !important;
     padding: 0 !important;
     background-color: ${({ theme }) => theme.background};
+  }
+
+  body {
+    ${scrollbarStyles};
+    ::-webkit-scrollbar {
+      background-color: ${({ theme }) => theme.background};
+    }
   }
 
   input {

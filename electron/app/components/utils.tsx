@@ -73,6 +73,7 @@ export const scrollbarStyles = ({ theme }) => `
     background: transparent;
   }
   &::-webkit-scrollbar-thumb {
+    width: 10px;
     border-radius: 5px;
     background-color: transparent;
     transition: background-color linear 0.5s;
