@@ -244,8 +244,10 @@ const viewStageMachine = Machine(
                             parameter.name,
                             parameter.type,
                             parameter.default,
-                            "",
-                            false,
+                            parameter.name.startsWith("_")
+                              ? parameter.default
+                              : "",
+                            parameter.name.startsWith("_"),
                             i === 0,
                             i === result.length - 1,
                             ctx.active,
@@ -262,6 +264,7 @@ const viewStageMachine = Machine(
                       errorId: undefined,
                     }),
                     send("UPDATE_DELIBLE"),
+                    "blurInput",
                   ],
                   cond: ({ stageInfo }, { value }) =>
                     getMatch(stageInfo, value),
