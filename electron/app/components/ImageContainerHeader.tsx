@@ -1,12 +1,12 @@
 import React from "react";
 import styled from "styled-components";
+import { useRecoilValue } from "recoil";
 
 import DropdownHandle from "./DropdownHandle";
 import SelectionMenu from "./SelectionMenu";
+import * as selectors from "../recoil/selectors";
 
 type Props = {
-  datasetName: string;
-  total: number;
   showSidebar: boolean;
   onShowSidebar: (show: boolean) => void;
 };
@@ -37,12 +37,13 @@ const Wrapper = styled.div`
   }
 `;
 
-const ImageContainerHeader = ({
-  datasetName,
-  total = 0,
-  showSidebar,
-  onShowSidebar,
-}: Props) => {
+const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
+  const totalCount = useRecoilValue(selectors.totalCount);
+  const filteredCount = useRecoilValue(selectors.filteredCount);
+  const countStr =
+    typeof filteredCount === "number"
+      ? `${filteredCount.toLocaleString()} of ${totalCount.toLocaleString()}`
+      : (totalCount || 0).toLocaleString();
   return (
     <Wrapper>
       <div>
@@ -58,7 +59,7 @@ const ImageContainerHeader = ({
       </div>
       <div>
         <div className="total">
-          Viewing <strong>{total.toLocaleString()} samples</strong>
+          Viewing <strong>{countStr} samples</strong>
         </div>
       </div>
     </Wrapper>

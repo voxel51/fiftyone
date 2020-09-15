@@ -24,6 +24,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 from fiftyone.core.service import DatabaseService
 from fiftyone.core.stages import _STAGES
+import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
 
 from util import get_image_size
@@ -107,6 +108,13 @@ def _load_state(trigger_update=False):
     return decorator
 
 
+_WITHOUT_PAGINATION_EXTENDED_STAGES = {
+    fosg.FilterClassifications,
+    fosg.FilterDetections,
+    fosg.FilterField,
+}
+
+
 class StateController(Namespace):
     """State controller.
 
@@ -147,6 +155,7 @@ class StateController(Namespace):
             broadcast=True,
             include_self=data["include_self"],
         )
+        return self.state
 
     def on_get_fiftyone_info(self):
         """Retrieves information about the FiftyOne installation."""
@@ -231,6 +240,12 @@ class StateController(Namespace):
             view = state.dataset.view()
         else:
             return []
+
+        for stage_dict in state.filter_stages.values():
+            stage = fosg.ViewStage._from_dict(stage_dict)
+            if type(stage) in _WITHOUT_PAGINATION_EXTENDED_STAGES:
+                continue
+            view = view.add_stage(stage)
 
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
         samples = [

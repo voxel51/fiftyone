@@ -19,6 +19,7 @@ const Root = styled.div`
     flex: 0 0 17rem;
     z-index: 400;
     margin-right: -0.5em;
+    width: 400px;
   }
 
   .ui.grid > .content-column {
@@ -43,24 +44,28 @@ const DisplayOptionsWrapper = (props) => {
     setActiveOther,
   } = displayProps;
   const labelSampleCounts = useRecoilValue(selectors.labelSampleCounts);
+  const filteredLabelSampleCounts = useRecoilValue(
+    selectors.filteredLabelSampleCounts
+  );
   const tagNames = useRecoilValue(selectors.tagNames);
   const tagSampleCounts = useRecoilValue(selectors.tagSampleCounts);
+  const filteredTagSampleCounts = useRecoilValue(
+    selectors.filteredTagSampleCounts
+  );
   const filters = useRecoilValue(selectors.labelFilters);
   const setModalFilters = useSetRecoilState(selectors.modalLabelFilters);
-
-  const fieldSchema = useRecoilValue(selectors.fieldSchema);
-  const labelNames = useRecoilValue(selectors.labelNames);
-  const labelTypes = useRecoilValue(selectors.labelTypes);
+  const labelNameGroups = useRecoilValue(selectors.labelNameGroups);
 
   useEffect(() => {
     setModalFilters(filters);
   }, [filters]);
 
-  const getDisplayOptions = (values, counts, selected) => {
+  const getDisplayOptions = (values, filteredCounts, totalCounts, selected) => {
     return [...values].sort().map(({ name, type }) => ({
       name,
       type,
-      count: counts[name],
+      totalCount: totalCounts[name],
+      filteredCount: filteredCounts[name],
       selected: Boolean(selected[name]),
     }));
   };
@@ -71,12 +76,6 @@ const DisplayOptionsWrapper = (props) => {
     }));
   };
 
-  const labelNameGroups = makeLabelNameGroups(
-    fieldSchema,
-    labelNames,
-    labelTypes
-  );
-
   return (
     <Grid.Column className="sidebar-column">
       <Sticky
@@ -84,16 +83,19 @@ const DisplayOptionsWrapper = (props) => {
         offset={headerHeight}
         styleElement={{
           paddingTop: "1rem",
+          width: 240,
         }}
       >
         <DisplayOptionsSidebar
           tags={getDisplayOptions(
             tagNames.map((t) => ({ name: t })),
+            filteredLabelSampleCounts,
             tagSampleCounts,
             activeTags
           )}
           labels={getDisplayOptions(
             labelNameGroups.labels,
+            filteredLabelSampleCounts,
             labelSampleCounts,
             activeLabels
           )}
@@ -101,12 +103,14 @@ const DisplayOptionsWrapper = (props) => {
           onSelectLabel={handleSetDisplayOption(setActiveLabels)}
           scalars={getDisplayOptions(
             labelNameGroups.scalars,
+            filteredLabelSampleCounts,
             labelSampleCounts,
             activeOther
           )}
           onSelectScalar={handleSetDisplayOption(setActiveOther)}
           unsupported={getDisplayOptions(
             labelNameGroups.unsupported,
+            filteredLabelSampleCounts,
             labelSampleCounts,
             activeLabels
           )}
@@ -127,8 +131,7 @@ const DisplayOptionsWrapper = (props) => {
 
 const SamplesContainer = (props) => {
   const [showSidebar, setShowSidebar] = useRecoilState(atoms.sidebarVisible);
-  const datasetName = useRecoilValue(selectors.datasetName);
-  const numSamples = useRecoilValue(selectors.numSamples);
+
   const theme = useContext(ThemeContext);
 
   const containerRef = useRef();
@@ -161,8 +164,6 @@ const SamplesContainer = (props) => {
       >
         <ViewBar />
         <ImageContainerHeader
-          datasetName={datasetName}
-          total={numSamples}
           showSidebar={showSidebar}
           onShowSidebar={setShowSidebar}
         />

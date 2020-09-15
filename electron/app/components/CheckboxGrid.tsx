@@ -1,17 +1,23 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
 import { ArrowDropDown } from "@material-ui/icons";
+import { useRecoilValue } from "recoil";
+import { animated, useSpring } from "react-spring";
 
 import * as atoms from "../recoil/atoms";
+import * as selectors from "../recoil/selectors";
 
 import Filter from "./Filter";
+import NumericFieldFilter from "./NumericFieldFilter";
 
 const GLOBAL_ATOMS = {
   includeLabels: atoms.filterIncludeLabels,
   invertInclude: atoms.filterInvertIncludeLabels,
   includeNoConfidence: atoms.filterLabelIncludeNoConfidence,
   confidenceRange: atoms.filterLabelConfidenceRange,
+  confidenceBounds: selectors.labelConfidenceBounds,
+  fieldIsFiltered: selectors.fieldIsFiltered,
 };
 
 const MODAL_ATOMS = {
@@ -19,20 +25,26 @@ const MODAL_ATOMS = {
   invertInclude: atoms.modalFilterInvertIncludeLabels,
   includeNoConfidence: atoms.modalFilterLabelIncludeNoConfidence,
   confidenceRange: atoms.modalFilterLabelConfidenceRange,
+  confidenceBounds: selectors.labelConfidenceBounds,
+  fieldIsFiltered: selectors.modalFieldIsFiltered,
 };
 
 const Body = styled.div`
   vertical-align: middle;
+  font-weight: bold;
 
-  label {
-    width: 100%;
-    height: 32px;
+  & > div {
     margin-top: 3px;
-    margin-bottom: 3px;
     margin-left: 0;
     margin-right: 0;
-    padding: 0.2em;
+    padding: 0 0.2em;
     border-radius: 2px;
+  }
+
+  label {
+    margin: 0;
+    width: 100%;
+    height: 32px;
     display: flex;
     justify-content: space-between;
 
@@ -40,7 +52,7 @@ const Body = styled.div`
       flex: 1;
       font-size: unset;
       align-items: center;
-      padding-right: 4px;
+      padding-right: 3px;
       max-width: 100%;
     }
 
@@ -82,13 +94,16 @@ const Body = styled.div`
       }
 
       span.name {
-        padding-left: 4px;
+        padding: 0 4px;
         white-space: nowrap;
         overflow-x: hidden;
         text-overflow: ellipsis;
         flex-grow: 1;
         max-width: 100%;
         line-height: 24px;
+      }
+      span.count {
+        white-space: nowrap;
       }
 
       span.data {
@@ -112,6 +127,8 @@ const Body = styled.div`
   }
 `;
 
+const CheckboxContainer = animated(styled.div``);
+
 export type Entry = {
   name: string;
   selected: boolean;
@@ -124,23 +141,33 @@ export type Entry = {
 type Props = {
   entries: Entry[];
   onCheck: (entry: Entry) => void;
+  modal: boolean;
 };
 
 const Entry = ({ entry, onCheck, modal }) => {
   const [expanded, setExpanded] = useState(false);
   const theme = useContext(ThemeContext);
+  const atoms = modal ? MODAL_ATOMS : GLOBAL_ATOMS;
+  const fieldIsFiltered = useRecoilValue(atoms.fieldIsFiltered(entry.name));
+  const isNumericField = useRecoilValue(selectors.isNumericField(entry.name));
 
   const handleCheck = (entry) => {
     if (onCheck) {
       onCheck({ ...entry, selected: !entry.selected });
     }
   };
-  const atoms = modal ? MODAL_ATOMS : GLOBAL_ATOMS;
 
   const checkboxClass = entry.hideCheckbox ? "no-checkbox" : "with-checkbox";
+  const containerProps = useSpring({
+    backgroundColor: fieldIsFiltered
+      ? "#6C757D"
+      : entry.hideCheckbox || entry.selected
+      ? theme.backgroundLight
+      : theme.background,
+  });
 
   return (
-    <div key={entry.name}>
+    <CheckboxContainer key={entry.name} style={containerProps}>
       <FormControlLabel
         disabled={entry.disabled}
         label={
@@ -148,19 +175,20 @@ const Entry = ({ entry, onCheck, modal }) => {
             <span className="name" title={entry.name}>
               {entry.name}
             </span>
-            {entry.data}
+            <span className="count" title={entry.data}>
+              {entry.data}
+            </span>
             {!(
               entry.icon &&
               !["Detections", "Classifications"].includes(entry.type)
             ) &&
-              entry.selected &&
-              entry.type &&
-              entry.count > 0 && (
+              (entry.type || (isNumericField && !modal)) && (
                 <ArrowDropDown
                   onClick={(e) => {
                     e.preventDefault();
                     setExpanded(!expanded);
                   }}
+                  style={{ marginRight: -4 }}
                 />
               )}
           </>
@@ -170,10 +198,6 @@ const Entry = ({ entry, onCheck, modal }) => {
           label: checkboxClass,
         }}
         style={{
-          backgroundColor:
-            entry.hideCheckbox || entry.selected
-              ? theme.backgroundLight
-              : undefined,
           width: "100%",
           color:
             entry.selected || entry.hideCheckbox
@@ -198,8 +222,13 @@ const Entry = ({ entry, onCheck, modal }) => {
           />
         }
       />
-      {expanded && entry.selected && <Filter entry={entry} {...atoms} />}
-    </div>
+      {isNumericField && (
+        <NumericFieldFilter expanded={expanded} entry={entry} />
+      )}
+      {entry.type && (
+        <Filter expanded={expanded} entry={entry} {...atoms} modal={modal} />
+      )}
+    </CheckboxContainer>
   );
 };
 
