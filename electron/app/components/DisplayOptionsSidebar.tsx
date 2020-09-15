@@ -14,7 +14,7 @@ import CellHeader from "./CellHeader";
 import CheckboxGrid from "./CheckboxGrid";
 import DropdownCell from "./DropdownCell";
 import SelectionTag from "./Tags/SelectionTag";
-import { Button } from "./utils";
+import { Button, scrollbarStyles } from "./utils";
 import * as atoms from "../recoil/atoms";
 import { refreshColorMap as refreshColorMapSelector } from "../recoil/selectors";
 
@@ -36,16 +36,8 @@ type Props = {
 const Container = styled.div`
   margin-bottom: 2px;
   height: 100%;
-  &::-webkit-scrollbar {
-    width: 0px;
-    background: transparent;
-    display: none;
-  }
-  &::-webkit-scrollbar-thumb {
-    width: 0px;
-    display: none;
-  }
   padding-bottom: 1em;
+  ${scrollbarStyles};
 
   .MuiCheckbox-root {
     padding: 4px 8px 4px 4px;
