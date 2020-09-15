@@ -3,7 +3,7 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
-FiftyOne 0.5.4
+FiftyOne 0.5.5
 --------------
 *Released September 15, 2020*
 
