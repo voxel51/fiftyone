@@ -100,7 +100,7 @@ jobs:
           pip install torch==1.6.0+cpu torchvision==0.7.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
       - name: Run tests
         run: |
-          pytest tests/ --verbose --ignore tests/benchmarking/ --ignore tests/isolated/ --ignore tests/utils/
+          python tests/utils/pytest_wrapper.py tests/ --verbose --ignore tests/benchmarking/ --ignore tests/isolated/ --ignore tests/utils/
       - name: Run isolated tests
         if: success() || failure()
         run: |
