@@ -53,7 +53,7 @@ class StateDescription(etas.Serializable):
         self.dataset = dataset
         self.view = view
         self.selected = selected or []
-        self.count = (
+        self.view_count = (
             len(view)
             if view is not None
             else len(dataset)
@@ -113,33 +113,44 @@ class StateDescriptionWithDerivables(StateDescription):
     broker.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, filter_stages={}, with_stats=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.derivables = self.get_derivables()
+        self.filter_stages = filter_stages
+        view = self.view if self.view is not None else self.dataset
+        if view is None or not with_stats:
+            return
 
-    def get_derivables(self):
-        """Computes all "derivable" data that needs to be passed to the app,
-        but does not define the state.
+        self.labels = self._get_label_fields(view)
+        self.tags = list(sorted(view.get_tags()))
+        self.view_stats = get_view_stats(view)
+        self.field_schema = self._get_field_schema()
 
-        Returns:
-            a dictionary with key, value pairs for each piece of derivable
-                information.
-        """
-        return {
-            "view_stats": self._get_view_stats(),
-            "field_schema": self._get_field_schema(),
-            **self._get_label_info(),
-        }
+        extended_view = view
+        for stage_dict in self.filter_stages.values():
+            extended_view = extended_view.add_stage(
+                fos.ViewStage._from_dict(stage_dict)
+            )
 
-    def _get_view_stats(self):
+        if extended_view == view:
+            self.extended_view_stats = {}
+        else:
+            self.extended_view_stats = get_view_stats(extended_view)
+        self.extended_view_count = (
+            len(extended_view) if extended_view != view else None
+        )
+
+    @classmethod
+    def from_dict(cls, d, **kwargs):
+        kwargs["filter_stages"] = d.get("filter_stages", {})
+        kwargs["with_stats"] = d.get("with_stats", True)
+        return super().from_dict(d, **kwargs)
+
+    def _get_view_stats(self, view):
         if self.view is not None:
-            return get_view_stats(self.view)
+            return get_view_stats(view)
 
-        if self.dataset is None:
-            return {}
-
-        return get_view_stats(self.dataset)
+        return {}
 
     def _get_field_schema(self):
         if self.dataset is None:
@@ -150,35 +161,18 @@ class StateDescriptionWithDerivables(StateDescription):
             for name, field in self.dataset.get_field_schema().items()
         }
 
-    def _get_label_info(self):
-        if self.view is not None:
-            view = self.view
-        elif self.dataset is not None:
-            view = self.dataset.view()
-        else:
-            return {}
-
-        return {
-            "labels": self._get_label_fields(view),
-            "tags": list(sorted(view.get_tags())),
-        }
-
     @staticmethod
     def _get_label_fields(view):
         label_fields = []
 
-        # @todo is this necessary?
-        label_fields.append({"_id": {"field": "_id"}})
-
-        # @todo can we remove the "_id" nesting?
         for k, v in view.get_field_schema().items():
             d = {"field": k}
             if isinstance(v, fof.EmbeddedDocumentField):
                 d["cls"] = v.document_type.__name__
 
-            label_fields.append({"_id": d})
+            label_fields.append(d)
 
-        return sorted(label_fields, key=lambda field: field["_id"]["field"])
+        return sorted(label_fields, key=lambda field: field["field"])
 
 
 def get_view_stats(dataset_or_view):
@@ -219,20 +213,33 @@ def get_view_stats(dataset_or_view):
     return {
         "tags": {tag: len(view.match_tag(tag)) for tag in view.get_tags()},
         "custom_fields": {
-            field_name: _get_field_count(view, field_name, field)
+            field_name: _get_field_count(view, field)
             for field_name, field in custom_fields_schema.items()
         },
-        "label_classes": {
-            field_name: _get_label_classes(view, field_name, field)
-            for field_name, field in _get_label_fields(custom_fields_schema)
-        },
+        "labels": _get_label_field_derivables(view),
+        "numeric_field_bounds": _get_numeric_field_bounds(view),
     }
 
 
-def _get_label_classes(view, field_name, field):
+def _get_label_field_derivables(view):
+    label_fields = _get_label_fields(view)
+    confidence_bounds = _get_label_confidence_bounds(view)
+    classes = {
+        field.name: _get_label_classes(view, field) for field in label_fields
+    }
+    return {
+        field.name: {
+            "confidence_bounds": confidence_bounds[field.name],
+            "classes": classes[field.name],
+        }
+        for field in label_fields
+    }
+
+
+def _get_label_classes(view, field):
     pipeline = []
     is_list = False
-    path = "$%s" % field_name
+    path = "$%s" % field.name
     if issubclass(field.document_type, fol.Classifications):
         path = "%s.classifications" % path
         is_list = True
@@ -254,9 +261,8 @@ def _get_label_classes(view, field_name, field):
         pass
 
 
-def _get_label_fields(custom_fields_schema):
-    def _filter(item):
-        _, field = item
+def _get_label_fields(view):
+    def _filter(field):
         if not isinstance(field, fof.EmbeddedDocumentField):
             return False
 
@@ -265,15 +271,93 @@ def _get_label_fields(custom_fields_schema):
 
         return False
 
-    return filter(_filter, custom_fields_schema.items())
+    return list(filter(_filter, view.get_field_schema().values()))
 
 
-def _get_field_count(view, field_name, field):
+def _get_bounds(fields, view, facets):
+    pipeline = [{"$facet": facets}]
+
+    try:
+        result = next(view.aggregate(pipeline))
+    except StopIteration:
+        return {}
+    bounds = {}
+    for field in fields:
+        try:
+            bounds[field.name] = [
+                round(float(result[field.name][0]["min"]), 2),
+                round(float(result[field.name][0]["max"]), 2),
+            ]
+        except:
+            bounds[field.name] = [None, None]
+
+    return bounds
+
+
+def _get_numeric_field_bounds(view):
+    numeric_fields = list(
+        filter(
+            lambda f: type(f) in {fof.FloatField, fof.IntField},
+            view.get_field_schema().values(),
+        )
+    )
+    path = "$%s"
+    facets = {
+        field.name: [
+            {
+                "$group": {
+                    "_id": None,
+                    "min": {"$min": path % field.name},
+                    "max": {"$max": path % field.name},
+                }
+            }
+        ]
+        for field in numeric_fields
+    }
+
+    return _get_bounds(numeric_fields, view, facets)
+
+
+def _get_label_confidence_bounds(view):
+    fields = _get_label_fields(view)
+    facets = {}
+    for field in fields:
+        is_list = False
+        path = "$%s" % field.name
+        if issubclass(field.document_type, fol.Classifications):
+            path = "%s.classifications" % path
+            is_list = True
+        elif issubclass(field.document_type, fol.Detections):
+            path = "%s.detections" % path
+            is_list = True
+
+        facet_pipeline = []
+        if is_list:
+            facet_pipeline.append(
+                {"$unwind": {"path": path, "preserveNullAndEmptyArrays": True}}
+            )
+
+        path = "%s.confidence" % path
+        facet_pipeline.append(
+            {
+                "$group": {
+                    "_id": None,
+                    "min": {"$min": path},
+                    "max": {"$max": path},
+                }
+            },
+        )
+        facets[field.name] = facet_pipeline
+
+    return _get_bounds(fields, view, facets)
+
+
+def _get_field_count(view, field):
     if isinstance(field, fof.EmbeddedDocumentField):
         if issubclass(field.document_type, fol.Classifications):
-            array_field = "$%s.classifications" % field_name
+            array_field = "$%s.classifications" % field.name
         elif issubclass(field.document_type, fol.Detections):
-            array_field = "$%s.detections" % field_name
+            array_field = "$%s.detections" % field.name
         else:
             array_field = None
 
@@ -300,4 +384,4 @@ def _get_field_count(view, field_name, field):
             except StopIteration:
                 return 0
 
-    return len(view.exists(field_name))
+    return len(view.exists(field.name))

@@ -1,7 +1,12 @@
 import { selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
 import { generateColorMap } from "../utils/colors";
-import { RESERVED_FIELDS, VALID_LIST_TYPES } from "../utils/labels";
+import {
+  RESERVED_FIELDS,
+  VALID_LIST_TYPES,
+  VALID_NUMERIC_TYPES,
+  makeLabelNameGroups,
+} from "../utils/labels";
 
 export const viewStages = selector({
   key: "viewStages",
@@ -29,16 +34,38 @@ export const datasetStats = selector({
   key: "datasetStats",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
-    return stateDescription.derivables
-      ? stateDescription.derivables.view_stats
+    return stateDescription.view_stats ? stateDescription.view_stats : {};
+  },
+});
+
+export const extendedDatasetStats = selector({
+  key: "extendedDatasetStats",
+  get: ({ get }) => {
+    const stateDescription = get(atoms.stateDescription);
+    return stateDescription.extended_view_stats
+      ? stateDescription.extended_view_stats
       : {};
   },
 });
 
-export const numSamples = selector({
-  key: "numSamples",
-  get: ({ get }) => {
-    return get(atoms.stateDescription).count;
+export const totalCount = selector({
+  key: "totalCount",
+  get: ({ get }): number => {
+    return get(atoms.stateDescription).view_count;
+  },
+});
+
+export const filterStage = selectorFamily({
+  key: "filterStage",
+  get: (fieldName: string) => ({ get }) => {
+    return get(atoms.stateDescription).filter_stages[fieldName];
+  },
+});
+
+export const filteredCount = selector({
+  key: "filteredCount",
+  get: ({ get }): number => {
+    return get(atoms.stateDescription).extended_view_count;
   },
 });
 
@@ -46,24 +73,28 @@ export const tagNames = selector({
   key: "tagNames",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
-    return (
-      (stateDescription.derivables && stateDescription.derivables.tags) || []
-    );
+    return stateDescription.tags || [];
   },
 });
 
 export const tagSampleCounts = selector({
   key: "tagSampleCounts",
   get: ({ get }) => {
-    return get(atoms.stateDescription).derivables.view_stats.tags || {};
+    return get(atoms.stateDescription).view_stats.tags || {};
+  },
+});
+
+export const filteredTagSampleCounts = selector({
+  key: "filteredTagSampleCounts",
+  get: ({ get }) => {
+    return get(atoms.stateDescription).extended_view_stats.tags || {};
   },
 });
 
 export const fieldSchema = selector({
   key: "fieldSchema",
   get: ({ get }) => {
-    const derivables = get(atoms.stateDescription).derivables || {};
-    return derivables.field_schema || {};
+    return get(atoms.stateDescription).field_schema || {};
   },
 });
 
@@ -72,11 +103,11 @@ export const labelNames = selector({
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
     const stats = get(datasetStats);
-    if (!stateDescription.derivables || !stateDescription.derivables.labels) {
+    if (!stateDescription.labels) {
       return [];
     }
-    return stateDescription.derivables.labels
-      .map((label) => label._id.field)
+    return stateDescription.labels
+      .map((label) => label.field)
       .filter((name) => stats.custom_fields.hasOwnProperty(name));
   },
 });
@@ -84,12 +115,12 @@ export const labelNames = selector({
 export const labelTypes = selector({
   key: "labelTypes",
   get: ({ get }) => {
-    const labels = (get(atoms.stateDescription).derivables || {}).labels || [];
+    const labels = get(atoms.stateDescription).labels || [];
     const names = get(labelNames);
     const types = {};
     for (const label of labels) {
-      if (names.includes(label._id.field)) {
-        types[label._id.field] = label._id.cls;
+      if (names.includes(label.field)) {
+        types[label.field] = label.cls;
       }
     }
     return types;
@@ -99,9 +130,7 @@ export const labelTypes = selector({
 export const labelClasses = selectorFamily({
   key: "labelClasses",
   get: (label) => ({ get }) => {
-    return get(atoms.stateDescription).derivables.view_stats.label_classes[
-      label
-    ];
+    return get(atoms.stateDescription).view_stats.labels[label].classes;
   },
 });
 
@@ -109,6 +138,13 @@ export const labelSampleCounts = selector({
   key: "labelSampleCounts",
   get: ({ get }) => {
     return get(datasetStats).custom_fields || {};
+  },
+});
+
+export const filteredLabelSampleCounts = selector({
+  key: "filteredLabelSampleCounts",
+  get: ({ get }) => {
+    return get(extendedDatasetStats).custom_fields || {};
   },
 });
 
@@ -187,6 +223,118 @@ export const refreshColorMap = selector({
   },
 });
 
+export const isLabel = selectorFamily({
+  key: "isLabel",
+  get: (field) => ({ get }) => {
+    const types = get(labelTypes);
+    return Boolean(types[field]);
+  },
+});
+
+export const modalFieldIsFiltered = selectorFamily({
+  key: "modalFieldIsFiltered",
+  get: (field: string) => ({ get }): boolean => {
+    const label = get(isLabel(field));
+
+    if (!label) {
+      return false;
+    }
+
+    const range = get(atoms.modalFilterLabelConfidenceRange(field));
+    const bounds = get(labelConfidenceBounds(field));
+    const none = get(atoms.modalFilterLabelIncludeNoConfidence(field));
+    const include = get(atoms.modalFilterIncludeLabels(field));
+    const maxMin = label ? 0 : bounds[0];
+    const minMax = label ? 1 : bounds[1];
+    const stretchedBounds = [
+      maxMin < bounds[0] && bounds[1] !== bounds[0] ? maxMin : bounds[0],
+      minMax > bounds[1] && bounds[1] !== bounds[0] ? minMax : bounds[1],
+    ];
+
+    const rangeIsFiltered =
+      stretchedBounds.some(
+        (b, i) => range[i] !== b && b !== null && range[i] !== null
+      ) && bounds[0] !== bounds[1];
+
+    return Boolean(include.length) || rangeIsFiltered || !none;
+  },
+});
+
+export const fieldIsFiltered = selectorFamily({
+  key: "fieldIsFiltered",
+  get: (field: string) => ({ get }): boolean => {
+    const label = get(isLabel(field));
+    const numeric = get(isNumericField(field));
+    const range = get(
+      label
+        ? atoms.filterLabelConfidenceRange(field)
+        : atoms.filterNumericFieldRange(field)
+    );
+    const bounds = get(
+      label ? labelConfidenceBounds(field) : numericFieldBounds(field)
+    );
+    const none = get(
+      label
+        ? atoms.filterLabelIncludeNoConfidence(field)
+        : atoms.filterNumericFieldIncludeNone(field)
+    );
+    const include = get(atoms.filterIncludeLabels(field));
+    const maxMin = label ? 0 : bounds[0];
+    const minMax = label ? 1 : bounds[1];
+    const stretchedBounds = [
+      maxMin < bounds[0] ? maxMin : bounds[0],
+      minMax > bounds[1] ? minMax : bounds[1],
+    ];
+
+    if (!label && !numeric) return false;
+
+    const rangeIsFiltered =
+      stretchedBounds.some(
+        (b, i) => range[i] !== b && b !== null && range[i] !== null
+      ) && bounds[0] !== bounds[1];
+
+    if (numeric) return rangeIsFiltered || !none;
+
+    return Boolean(include.length) || rangeIsFiltered || !none;
+  },
+});
+
+export const viewStats = selector({
+  key: "viewStats",
+  get: ({ get }) => {
+    return get(atoms.stateDescription).view_stats || {};
+  },
+});
+
+export const labelConfidenceBounds = selectorFamily({
+  key: "labelConfidenceBounds",
+  get: (label) => ({ get }) => {
+    const labels = get(viewStats).labels;
+    return labels[label] ? labels[label].confidence_bounds : [null, null];
+  },
+});
+
+export const numericFieldBounds = selectorFamily({
+  key: "numericFieldBounds",
+  get: (label) => ({ get }) => {
+    const bounds = get(viewStats).numeric_field_bounds;
+    return bounds && bounds[label] ? bounds[label] : [null, null];
+  },
+});
+
+export const labelNameGroups = selector({
+  key: "labelNameGroups",
+  get: ({ get }) =>
+    makeLabelNameGroups(get(fieldSchema), get(labelNames), get(labelTypes)),
+});
+
+export const isNumericField = selectorFamily({
+  key: "isNumericField",
+  get: (name) => ({ get }) => {
+    return VALID_NUMERIC_TYPES.includes(get(fieldSchema)[name]);
+  },
+});
+
 export const sampleModalFilter = selector({
   key: "sampleModalFilter",
   get: ({ get }) => {
@@ -196,8 +344,17 @@ export const sampleModalFilter = selector({
       return Object.entries(sample).reduce((acc, [key, value]) => {
         if (key === "tags") {
           acc[key] = value;
-        } else if (value !== null && VALID_LIST_TYPES.includes(value._cls)) {
-          acc[key] = value[value._cls.toLowerCase()].filter(filters[key]);
+        } else if (
+          filters[key] &&
+          value !== null &&
+          VALID_LIST_TYPES.includes(value._cls)
+        ) {
+          acc[key] = {
+            ...value,
+            [value._cls.toLowerCase()]: value[value._cls.toLowerCase()].filter(
+              filters[key]
+            ),
+          };
         } else if (value !== null && filters[key] && filters[key](value)) {
           acc[key] = value;
         } else if (RESERVED_FIELDS.includes(key)) {

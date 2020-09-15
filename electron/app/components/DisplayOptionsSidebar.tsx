@@ -116,8 +116,9 @@ const Cell = ({ label, icon, entries, onSelect, colorMap, title, modal }) => {
             name: e.name,
             selected: e.selected,
             type: e.type,
-            data: e.icon ? e.icon : [(e.count || 0).toLocaleString()],
-            count: e.count,
+            data: e.icon ? e.icon : [makeData(e.filteredCount, e.totalCount)],
+            totalCount: e.totalCount,
+            filteredCount: e.filteredCount,
             color: colorMap[e.name],
             hideCheckbox: e.hideCheckbox,
             disabled: Boolean(e.disabled),
@@ -130,6 +131,17 @@ const Cell = ({ label, icon, entries, onSelect, colorMap, title, modal }) => {
       )}
     </DropdownCell>
   );
+};
+
+const makeCount = (count) => {
+  return (count || 0).toLocaleString();
+};
+
+const makeData = (filteredCount, totalCount) => {
+  if (typeof filteredCount === "number" && filteredCount !== totalCount) {
+    return `${makeCount(filteredCount)} of ${makeCount(totalCount)}`;
+  }
+  return makeCount(totalCount);
 };
 
 const DisplayOptionsSidebar = React.forwardRef(

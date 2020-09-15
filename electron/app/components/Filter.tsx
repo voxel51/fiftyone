@@ -1,136 +1,19 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
-import { Slider as SliderUnstyled } from "@material-ui/core";
-import {
-  useSetRecoilState,
-  useRecoilSetState,
-  useRecoilState,
-  useRecoilValue,
-} from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
-import { Checkbox, FormControlLabel } from "@material-ui/core";
 import uuid from "uuid-v4";
+import { animated, useSpring } from "react-spring";
+import useMeasure from "react-use-measure";
 
-import { labelClasses } from "../recoil/selectors";
+import * as atoms from "../recoil/atoms";
+import { getSocket } from "../utils/socket";
+import * as selectors from "../recoil/selectors";
 import { useOutsideClick } from "../utils/hooks";
 import SearchResults from "./ViewBar/ViewStage/SearchResults";
-
-function valuetext(value: number[]) {
-  return `${value[0]}-${value[1]}`;
-}
-
-const SearchResultsWrapper = styled.div`
-  display: block;
-  position: relative;
-  top: -2rem;
-`;
-
-const SliderContainer = styled.div`
-  font-weight: bold;
-  display: flex;
-  padding: 1.5rem 0.5rem 0.5rem;
-  line-height: 1.9rem;
-`;
-
-const Slider = styled(SliderUnstyled)`
-  && {
-    color: ${({ theme }) => theme.brand};
-    margin: 0 1rem 0 0.8rem;
-    height: 3px;
-  }
-
-  .rail {
-    height: 7px;
-    border-radius: 6px;
-    background: ${({ theme }) => theme.backgroundLight};
-  }
-
-  .track {
-    height: 7px;
-    border-radius: 6px;
-    background: ${({ theme }) => theme.brand};
-  }
-
-  .thumb {
-    height: 1rem;
-    width: 1rem;
-    border-radius: 0.5rem;
-    background: ${({ theme }) => theme.brand};
-    box-shadow: none;
-    color: transparent;
-  }
-
-  .thumb:hover,
-  .thumb.active {
-    box-shadow: none;
-  }
-
-  .valueLabel {
-    margin-top: 0.5rem;
-    font-weight: bold;
-    font-family: "Palanquin", sans-serif;
-    font-size: 14px;
-    padding: 0.2rem;
-    border-radius: 6rem;
-    color: transparent;
-  }
-
-  .valueLabel > span > span {
-    color: transparent;
-  }
-
-  .valueLabel > span > span {
-    color: ${({ theme }) => theme.font};
-  }
-`;
-
-const RangeSlider = ({ atom, ...rest }) => {
-  const [value, setValue] = useRecoilState(atom);
-  const [localValue, setLocalValue] = useState([0, 1]);
-  useEffect(() => {
-    JSON.stringify(value) !== JSON.stringify(localValue) &&
-      setLocalValue(value);
-  }, [value]);
-
-  return (
-    <SliderContainer>
-      0
-      <Slider
-        value={[...localValue]}
-        onChange={(_, v) => setLocalValue([...v])}
-        onChangeCommitted={(e, v) => {
-          setLocalValue([...v]);
-          setValue([...v]);
-        }}
-        classes={{
-          thumb: "thumb",
-          track: "track",
-          rail: "rail",
-          active: "active",
-          valueLabel: "valueLabel",
-        }}
-        valueLabelDisplay="auto"
-        aria-labelledby="range-slider"
-        getAriaValueText={valuetext}
-        valueLabelDisplay={"on"}
-        {...rest}
-      />
-      1
-    </SliderContainer>
-  );
-};
-
-const FilterDiv = styled.div`
-  width: 100%;
-  display: block;
-  background: ${({ theme }) => theme.backgroundLight};
-  padding: 0.5rem;
-  font-weight: bold;
-  font-size: 14px;
-  margin: 3px 0;
-  border-radius: 2px;
-`;
+import { NamedRangeSlider } from "./RangeSlider";
+import { VALID_LIST_TYPES } from "../utils/labels";
 
 const classFilterMachine = Machine({
   id: "classFilter",
@@ -320,25 +203,25 @@ const ClassButton = styled.button`
 `;
 
 const ClassFilterContainer = styled.div`
-  margin: 0.5rem 0;
   position: relative;
+  margin: 0.25rem 0;
 `;
 
 const ClassFilter = ({ name, atoms }) => {
   const theme = useContext(ThemeContext);
-  const classes = useRecoilValue(labelClasses(name));
+  const classes = useRecoilValue(selectors.labelClasses(name));
   const [selectedClasses, setSelectedClasses] = useRecoilState(
     atoms.includeLabels(name)
   );
   const [state, send] = useMachine(classFilterMachine);
-  const ref = useRef();
+  const inputRef = useRef();
 
   useEffect(() => {
     send({ type: "SET_CLASSES", classes });
     setSelectedClasses(selectedClasses.filter((c) => classes.includes(c)));
   }, [classes]);
 
-  useOutsideClick(ref, () => send("BLUR"));
+  useOutsideClick(inputRef, () => send("BLUR"));
   const { inputValue, results, currentResult, selected } = state.context;
 
   useEffect(() => {
@@ -367,7 +250,7 @@ const ClassFilter = ({ name, atoms }) => {
         ) : null}
       </div>
       <ClassFilterContainer>
-        <div ref={ref}>
+        <div ref={inputRef}>
           <ClassInput
             value={inputValue}
             placeholder={"+ add label"}
@@ -413,6 +296,7 @@ const ClassFilter = ({ name, atoms }) => {
         <Selected>
           {selected.map((s) => (
             <ClassButton
+              key={s}
               onClick={() => {
                 send({ type: "REMOVE", value: s });
               }}
@@ -427,60 +311,150 @@ const ClassFilter = ({ name, atoms }) => {
   );
 };
 
-const ConfidenceContainer = styled.div`
-  background: ${({ theme }) => theme.backgroundDark};
-  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
-  border: 1px solid #191c1f;
-  border-radius: 2px;
-  margin-top: 0.5rem;
-  color: ${({ theme }) => theme.fontDark};
-`;
+const CLS_TO_STAGE = {
+  Classification: "FilterField",
+  Classifications: "FilterClassifications",
+  Detection: "FilterField",
+  Detections: "FilterDetections",
+};
 
-const Filter = React.memo(({ style, entry, ...atoms }) => {
-  const [includeNoConfidence, setIncludeNoConfidence] = useRecoilState(
-    atoms.includeNoConfidence(entry.name)
+const makeFilter = (fieldName, cls, labels, range, includeNone, hasBounds) => {
+  const fieldStr = VALID_LIST_TYPES.includes(cls) ? "$$this" : `$${fieldName}`;
+  const confidenceStr = `${fieldStr}.confidence`;
+  const labelStr = `${fieldStr}.label`;
+  let rangeExpr = null;
+  if (hasBounds) {
+    rangeExpr = {
+      $and: [
+        { $gte: [confidenceStr, range[0]] },
+        { $lte: [confidenceStr, range[1]] },
+      ],
+    };
+  }
+  if (includeNone && hasBounds) {
+    rangeExpr = { $or: [rangeExpr, { $eq: [confidenceStr, null] }] };
+  } else if (hasBounds) {
+    rangeExpr = {
+      $or: [rangeExpr, confidenceStr, { $eq: [confidenceStr, null] }],
+    };
+  } else if (!includeNone) {
+    rangeExpr = { $or: [confidenceStr, { $eq: [confidenceStr, null] }] };
+  }
+  const labelsExpr = { $in: [labelStr, labels] };
+  return {
+    kwargs: [
+      ["field", fieldName],
+      [
+        "filter",
+        labels.length && rangeExpr
+          ? { $and: [labelsExpr, rangeExpr] }
+          : rangeExpr
+          ? rangeExpr
+          : labelsExpr,
+      ],
+    ],
+    _cls: `fiftyone.core.stages.${CLS_TO_STAGE[cls]}`,
+  };
+};
+
+const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
+  const port = useRecoilValue(atoms.port);
+  const socket = getSocket(port, "state");
+  const [range, setRange] = useRecoilState(rest.confidenceRange(entry.name));
+  const [includeNone, setIncludeNone] = useRecoilState(
+    rest.includeNoConfidence(entry.name)
   );
-  const [range, setRange] = useRecoilState(atoms.confidenceRange(entry.name));
-  const theme = useContext(ThemeContext);
+  const bounds = useRecoilValue(rest.confidenceBounds(entry.name));
+  const [labels, setLabels] = useRecoilState(rest.includeLabels(entry.name));
+  const fieldIsFiltered = useRecoilValue(rest.fieldIsFiltered(entry.name));
 
-  const isDefaultRange = range[0] === 0 && range[1] === 1;
+  const [stateDescription, setStateDescription] = useRecoilState(
+    atoms.stateDescription
+  );
+  const filterStage = useRecoilValue(selectors.filterStage(entry.name));
+  useEffect(() => {
+    if (filterStage) return;
+    setLabels([]);
+    setIncludeNone(true);
+    setRange([
+      0 < bounds[0] && bounds[0] !== bounds[1] ? 0 : bounds[0],
+      1 > bounds[1] && bounds[0] !== bounds[1] ? 1 : bounds[1],
+    ]);
+  }, [filterStage]);
+  const hasBounds = bounds.every((b) => b !== null);
+  const [overflow, setOverflow] = useState("hidden");
+
+  useEffect(() => {
+    hasBounds &&
+      range.every((r) => r === null) &&
+      setRange([
+        0 < bounds[0] && bounds[0] !== bounds[1] ? 0 : bounds[0],
+        1 > bounds[1] && bounds[0] !== bounds[1] ? 1 : bounds[1],
+      ]);
+  }, [bounds]);
+
+  const [ref, { height }] = useMeasure();
+  const props = useSpring({
+    height: expanded ? height : 0,
+    from: {
+      height: 0,
+    },
+    onStart: () => !expanded && setOverflow("hidden"),
+    onRest: () => expanded && setOverflow("visible"),
+  });
+
+  if (!modal) {
+    useEffect(() => {
+      const newState = JSON.parse(JSON.stringify(stateDescription));
+      if (!fieldIsFiltered && !(entry.name in newState.filter_stages)) return;
+      const filter = makeFilter(
+        entry.name,
+        entry.type,
+        labels,
+        range,
+        includeNone,
+        hasBounds
+      );
+      if (
+        JSON.stringify(filter) ===
+        JSON.stringify(newState.filter_stages[entry.name])
+      )
+        return;
+      if (!fieldIsFiltered && entry.name in newState.filter_stages) {
+        delete newState.filter_stages[entry.name];
+      } else {
+        newState.filter_stages[entry.name] = filter;
+      }
+      setStateDescription(newState);
+      socket.emit(
+        "update",
+        {
+          data: newState,
+          include_self: false,
+        },
+        (data) => setStateDescription(data)
+      );
+    }, [bounds, range, includeNone, labels, fieldIsFiltered]);
+  }
 
   return (
-    <FilterDiv style={style}>
-      <ClassFilter name={entry.name} atoms={atoms} />
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        Confidence{" "}
-        {!isDefaultRange ? (
-          <a
-            style={{ cursor: "pointer", textDecoration: "underline" }}
-            onClick={() => setRange([0, 1])}
-          >
-            reset
-          </a>
-        ) : null}
+    <animated.div style={{ ...props, overflow }}>
+      <div ref={ref}>
+        <div style={{ margin: 3 }}>
+          <ClassFilter name={entry.name} atoms={rest} />
+          <NamedRangeSlider
+            color={entry.color}
+            name={"Confidence"}
+            valueName={"confidence"}
+            includeNoneAtom={rest.includeNoConfidence(entry.name)}
+            boundsAtom={rest.confidenceBounds(entry.name)}
+            rangeAtom={rest.confidenceRange(entry.name)}
+            maxMin={0}
+            minMax={1}
+          />
+        </div>
       </div>
-      <ConfidenceContainer>
-        <RangeSlider
-          atom={atoms.confidenceRange(entry.name)}
-          title={"Confidence"}
-          min={0}
-          max={1}
-          step={0.01}
-        />
-        <FormControlLabel
-          label={<div style={{ lineHeight: "20px" }}>Show no confidence</div>}
-          control={
-            <Checkbox
-              checked={includeNoConfidence}
-              onChange={() => setIncludeNoConfidence(!includeNoConfidence)}
-              style={{
-                color: entry.selected ? entry.color : theme.fontDark,
-              }}
-            />
-          }
-        />
-      </ConfidenceContainer>
-    </FilterDiv>
+    </animated.div>
   );
 });
 
