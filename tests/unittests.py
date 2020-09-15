@@ -30,6 +30,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
 from fiftyone.core.odm.sample import default_sample_fields
 import fiftyone.core.sample as fos
+import fiftyone.core.stages as fosg
 from fiftyone import ViewField as F
 
 
@@ -2163,6 +2164,14 @@ class ViewStageTests(unittest.TestCase):
     def test_take(self):
         result = list(self.dataset.take(1))
         self.assertIs(len(result), 1)
+
+    def test_uuids(self):
+        stage = fosg.Take(1)
+        stage_dict = stage._serialize()
+        self.assertEqual(stage._uuid, stage_dict["_uuid"])
+        self.assertEqual(
+            stage_dict["_uuid"], fosg.ViewStage._from_dict(stage_dict)._uuid
+        )
 
 
 if __name__ == "__main__":
