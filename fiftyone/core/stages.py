@@ -1407,7 +1407,7 @@ class Take(ViewStage):
                 "name": "seed",
                 "type": "float|NoneType",
                 "default": "None",
-                "placeholder": "reverse (default=False)",
+                "placeholder": "seed (default=None)",
             },
             {"name": "_randint", "type": "int|NoneType"},
         ]
