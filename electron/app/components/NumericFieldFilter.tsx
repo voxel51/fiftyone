@@ -8,17 +8,21 @@ import { getSocket } from "../utils/socket";
 import { animated, useSpring } from "react-spring";
 import useMeasure from "react-use-measure";
 
-const makeFilter = (fieldName, range, includeNone) => {
+const makeFilter = (fieldName, range, includeNone, isDefaultRange) => {
   let expr,
     rangeExpr = null;
   let fieldStr = `$${fieldName}`;
-  if (range) {
+  if (!isDefaultRange) {
     rangeExpr = {
       $and: [{ $gte: [fieldStr, range[0]] }, { $lte: [fieldStr, range[1]] }],
     };
   }
-  if (includeNone) {
+  if (!includeNone && isDefaultRange) {
+    expr = { $ne: [fieldStr, null] };
+  } else if (includeNone && !isDefaultRange) {
     expr = { $or: [rangeExpr, { $eq: [fieldStr, null] }] };
+  } else {
+    expr = rangeExpr;
   }
   return {
     kwargs: [["filter", { $expr: expr }]],
@@ -46,14 +50,19 @@ const NumericFieldFilter = ({ expanded, entry }) => {
   useEffect(() => {
     const newState = JSON.parse(JSON.stringify(stateDescription));
     if (range.every((e) => e === null)) return;
-    if (isDefaultRange && !(entry.name in newState.filter_stages)) return;
-    const filter = makeFilter(entry.name, range, includeNone);
+    if (
+      includeNone &&
+      isDefaultRange &&
+      !(entry.name in newState.filter_stages)
+    )
+      return;
+    const filter = makeFilter(entry.name, range, includeNone, isDefaultRange);
     if (
       JSON.stringify(filter) ===
       JSON.stringify(newState.filter_stages[entry.name])
     )
       return;
-    if (isDefaultRange && newState.filter_stages[entry.name]) {
+    if (isDefaultRange && includeNone && newState.filter_stages[entry.name]) {
       delete newState.filter_stages[entry.name];
     } else {
       newState.filter_stages[entry.name] = filter;

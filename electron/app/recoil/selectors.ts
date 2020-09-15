@@ -272,7 +272,7 @@ export const fieldIsFiltered = selectorFamily({
     );
     const include = get(atoms.filterIncludeLabels(field));
     const maxMin = label ? 0 : bounds[0];
-    const minMax = label ? 0 : bounds[1];
+    const minMax = label ? 1 : bounds[1];
     const stretchedBounds = [
       maxMin < bounds[0] ? maxMin : bounds[0],
       minMax > bounds[1] ? minMax : bounds[1],

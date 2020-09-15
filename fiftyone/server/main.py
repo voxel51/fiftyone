@@ -241,8 +241,8 @@ class StateController(Namespace):
         else:
             return []
 
-        for stage in state.filter_stages.values():
-            stage = fosg.ViewStage._from_dict(stage)
+        for stage_dict in state.filter_stages.values():
+            stage = fosg.ViewStage._from_dict(stage_dict)
             if type(stage) in _WITHOUT_PAGINATION_EXTENDED_STAGES:
                 continue
             view = view.add_stage(stage)

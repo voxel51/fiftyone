@@ -314,12 +314,14 @@ const ClassFilter = ({ name, atoms }) => {
 const CLS_TO_STAGE = {
   Classification: "FilterField",
   Classifications: "FilterClassifications",
-  Detection: "Filter",
+  Detection: "FilterField",
   Detections: "FilterDetections",
 };
 
 const makeFilter = (fieldName, cls, labels, range, includeNone) => {
-  const fieldStr = VALID_LIST_TYPES ? "$$this" : `$${fieldName}`;
+  const fieldStr = VALID_LIST_TYPES.includes(fieldName)
+    ? "$$this"
+    : `$${fieldName}`;
   const confidenceStr = `${fieldStr}.confidence`;
   const labelStr = `${fieldStr}.label`;
   let rangeExpr = {
