@@ -101,4 +101,5 @@ jobs:
           token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
           author: voxel51-bot <bot@voxel51.com>
           labels: documentation
-          reviewers: voxel51/developers
+          reviewers: jasoncorso, brimoor
+          team-reviewers: developers
