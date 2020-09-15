@@ -361,13 +361,22 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
   const port = useRecoilValue(atoms.port);
   const socket = getSocket(port, "state");
   const [range, setRange] = useRecoilState(rest.confidenceRange(entry.name));
-  const includeNone = useRecoilValue(rest.includeNoConfidence(entry.name));
+  const [includeNone, setIncludeNone] = useRecoilState(
+    rest.includeNoConfidence(entry.name)
+  );
   const bounds = useRecoilValue(rest.confidenceBounds(entry.name));
-  const labels = useRecoilValue(rest.includeLabels(entry.name));
+  const [labels, setLabels] = useRecoilState(rest.includeLabels(entry.name));
   const fieldIsFiltered = useRecoilValue(rest.fieldIsFiltered(entry.name));
   const [stateDescription, setStateDescription] = useRecoilState(
     atoms.stateDescription
   );
+  const filterStage = useRecoilValue(selectors.filterStage(entry.name));
+  useEffect(() => {
+    if (filterStage) return;
+    setLabels([]);
+    setIncludeNone(true);
+    setRange([0 < bounds[0] ? 0 : bounds[0], 1 > bounds[1] ? 1 : bounds[1]]);
+  }, [filterStage]);
   const hasBounds = bounds.every((b) => b !== null);
   const [overflow, setOverflow] = useState("hidden");
 

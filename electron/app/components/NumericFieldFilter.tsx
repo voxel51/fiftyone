@@ -36,7 +36,7 @@ const NumericFieldFilter = ({ expanded, entry }) => {
   const boundsAtom = selectors.numericFieldBounds(entry.name);
   const rangeAtom = atoms.filterNumericFieldRange(entry.name);
   const includeNoneAtom = atoms.filterNumericFieldIncludeNone(entry.name);
-  const includeNone = useRecoilValue(includeNoneAtom);
+  const [includeNone, setIncludeNone] = useRecoilState(includeNoneAtom);
   const stateDescription = useRecoilValue(atoms.stateDescription);
   const bounds = useRecoilValue(boundsAtom);
   const [range, setRange] = useRecoilState(rangeAtom);
@@ -44,6 +44,12 @@ const NumericFieldFilter = ({ expanded, entry }) => {
   const [overflow, setOverflow] = useState("hidden");
   const [localBounds, setLocalBounds] = useState([null, null]);
   const isDefaultRange = range[0] === bounds[0] && range[1] === bounds[1];
+  const filterStage = useRecoilValue(selectors.filterStage(entry.name));
+  useEffect(() => {
+    if (filterStage) return;
+    setIncludeNone(true);
+    setRange(bounds);
+  }, [filterStage]);
   useEffect(() => {
     if (!hasBounds) {
       return;
