@@ -245,15 +245,16 @@ export const modalFieldIsFiltered = selectorFamily({
     const none = get(atoms.modalFilterLabelIncludeNoConfidence(field));
     const include = get(atoms.modalFilterIncludeLabels(field));
     const maxMin = label ? 0 : bounds[0];
-    const minMax = label ? 0 : bounds[1];
+    const minMax = label ? 1 : bounds[1];
     const stretchedBounds = [
-      maxMin < bounds[0] ? maxMin : bounds[0],
-      minMax > bounds[1] ? minMax : bounds[1],
+      maxMin < bounds[0] && bounds[1] !== bounds[0] ? maxMin : bounds[0],
+      minMax > bounds[1] && bounds[1] !== bounds[0] ? minMax : bounds[1],
     ];
 
-    const rangeIsFiltered = stretchedBounds.some(
-      (b, i) => range[i] !== b && b !== null && range[i] !== null
-    );
+    const rangeIsFiltered =
+      stretchedBounds.some(
+        (b, i) => range[i] !== b && b !== null && range[i] !== null
+      ) && bounds[0] !== bounds[1];
 
     return Boolean(include.length) || rangeIsFiltered || !none;
   },
@@ -287,9 +288,10 @@ export const fieldIsFiltered = selectorFamily({
 
     if (!label && !numeric) return false;
 
-    const rangeIsFiltered = stretchedBounds.some(
-      (b, i) => range[i] !== b && b !== null && range[i] !== null
-    );
+    const rangeIsFiltered =
+      stretchedBounds.some(
+        (b, i) => range[i] !== b && b !== null && range[i] !== null
+      ) && bounds[0] !== bounds[1];
 
     if (numeric) return rangeIsFiltered || !none;
 

@@ -367,6 +367,7 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
   const bounds = useRecoilValue(rest.confidenceBounds(entry.name));
   const [labels, setLabels] = useRecoilState(rest.includeLabels(entry.name));
   const fieldIsFiltered = useRecoilValue(rest.fieldIsFiltered(entry.name));
+
   const [stateDescription, setStateDescription] = useRecoilState(
     atoms.stateDescription
   );
@@ -375,7 +376,10 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
     if (filterStage) return;
     setLabels([]);
     setIncludeNone(true);
-    setRange([0 < bounds[0] ? 0 : bounds[0], 1 > bounds[1] ? 1 : bounds[1]]);
+    setRange([
+      0 < bounds[0] && bounds[0] !== bounds[1] ? 0 : bounds[0],
+      1 > bounds[1] && bounds[0] !== bounds[1] ? 1 : bounds[1],
+    ]);
   }, [filterStage]);
   const hasBounds = bounds.every((b) => b !== null);
   const [overflow, setOverflow] = useState("hidden");
@@ -383,7 +387,10 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
   useEffect(() => {
     hasBounds &&
       range.every((r) => r === null) &&
-      setRange([0 < bounds[0] ? 0 : bounds[0], 1 > bounds[1] ? 1 : bounds[1]]);
+      setRange([
+        0 < bounds[0] && bounds[0] !== bounds[1] ? 0 : bounds[0],
+        1 > bounds[1] && bounds[0] !== bounds[1] ? 1 : bounds[1],
+      ]);
   }, [bounds]);
 
   const [ref, { height }] = useMeasure();

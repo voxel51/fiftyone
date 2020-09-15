@@ -157,8 +157,14 @@ type NamedProps = {
 };
 
 const isDefaultRange = (range, bounds, maxMin, minMax) => {
-  const min = maxMin !== undefined && maxMin < bounds[0] ? maxMin : bounds[0];
-  const max = minMax !== undefined && minMax > bounds[1] ? minMax : bounds[1];
+  const min =
+    maxMin !== undefined && maxMin < bounds[0] && bounds[1] !== bounds[0]
+      ? maxMin
+      : bounds[0];
+  const max =
+    minMax !== undefined && minMax > bounds[1] && bounds[1] !== bounds[0]
+      ? minMax
+      : bounds[1];
 
   return [min, max].every((b, i) => b === range[i]);
 };
