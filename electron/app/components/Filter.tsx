@@ -318,26 +318,40 @@ const CLS_TO_STAGE = {
   Detections: "FilterDetections",
 };
 
-const makeFilter = (fieldName, cls, labels, range, includeNone) => {
-  const fieldStr = VALID_LIST_TYPES.includes(fieldName)
-    ? "$$this"
-    : `$${fieldName}`;
+const makeFilter = (fieldName, cls, labels, range, includeNone, hasBounds) => {
+  const fieldStr = VALID_LIST_TYPES.includes(cls) ? "$$this" : `$${fieldName}`;
   const confidenceStr = `${fieldStr}.confidence`;
   const labelStr = `${fieldStr}.label`;
-  let rangeExpr = {
-    $and: [
-      { $gte: [confidenceStr, range[0]] },
-      { $lte: [confidenceStr, range[1]] },
-    ],
-  };
-  if (includeNone) {
+  let rangeExpr = null;
+  if (hasBounds) {
+    rangeExpr = {
+      $and: [
+        { $gte: [confidenceStr, range[0]] },
+        { $lte: [confidenceStr, range[1]] },
+      ],
+    };
+  }
+  if (includeNone && hasBounds) {
     rangeExpr = { $or: [rangeExpr, { $eq: [confidenceStr, null] }] };
+  } else if (hasBounds) {
+    rangeExpr = {
+      $or: [rangeExpr, confidenceStr, { $eq: [confidenceStr, null] }],
+    };
+  } else if (!includeNone) {
+    rangeExpr = { $or: [confidenceStr, { $eq: [confidenceStr, null] }] };
   }
   const labelsExpr = { $in: [labelStr, labels] };
   return {
     kwargs: [
       ["field", fieldName],
-      ["filter", labels.length ? { $and: [labelsExpr, rangeExpr] } : rangeExpr],
+      [
+        "filter",
+        labels.length && rangeExpr
+          ? { $and: [labelsExpr, rangeExpr] }
+          : rangeExpr
+          ? rangeExpr
+          : labelsExpr,
+      ],
     ],
     _cls: `fiftyone.core.stages.${CLS_TO_STAGE[cls]}`,
   };
@@ -382,7 +396,8 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
         entry.type,
         labels,
         range,
-        includeNone
+        includeNone,
+        hasBounds
       );
       if (
         JSON.stringify(filter) ===
@@ -394,17 +409,15 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
       } else {
         newState.filter_stages[entry.name] = filter;
       }
-      if (hasBounds) {
-        setStateDescription(newState);
-        socket.emit(
-          "update",
-          {
-            data: newState,
-            include_self: false,
-          },
-          (data) => setStateDescription(data)
-        );
-      }
+      setStateDescription(newState);
+      socket.emit(
+        "update",
+        {
+          data: newState,
+          include_self: false,
+        },
+        (data) => setStateDescription(data)
+      );
     }, [bounds, range, includeNone, labels, fieldIsFiltered]);
   }
 
