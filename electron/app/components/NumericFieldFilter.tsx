@@ -20,7 +20,11 @@ const makeFilter = (fieldName, range, includeNone, isDefaultRange) => {
   if (!includeNone && isDefaultRange) {
     expr = { [fieldName]: { $exists: true, $ne: null } };
   } else if (includeNone && !isDefaultRange) {
-    expr = { $expr: { $or: [rangeExpr, expr] } };
+    expr = {
+      $expr: {
+        $or: [rangeExpr, { $eq: [{ $ifNull: [fieldStr, null] }, null] }],
+      },
+    };
   } else {
     expr = { $expr: rangeExpr };
   }

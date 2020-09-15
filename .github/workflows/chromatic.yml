@@ -15,7 +15,7 @@ on:
       - rel-*
       - release-*
     paths:
-      - electron/
+      - electron/**
       - .github/workflows/chromatic.yml
 
 jobs:
