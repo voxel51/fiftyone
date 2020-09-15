@@ -103,9 +103,7 @@ const Body = styled.div`
         line-height: 24px;
       }
       span.count {
-        text-overflow: ellipsis;
-        overflow-x: hidden;
-        white-space: nowrap;r
+        white-space: nowrap;
       }
 
       span.data {
