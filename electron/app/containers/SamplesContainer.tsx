@@ -83,6 +83,7 @@ const DisplayOptionsWrapper = (props) => {
         offset={headerHeight}
         styleElement={{
           paddingTop: "1rem",
+          width: 240,
         }}
       >
         <DisplayOptionsSidebar
