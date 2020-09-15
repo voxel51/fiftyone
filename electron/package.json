@@ -2,6 +2,7 @@
   "name": "fiftyone",
   "productName": "FiftyOne",
   "version": "0.5.5",
+  "license": "Apache-2.0",
   "description": "FiftyOne by Voxel51",
   "scripts": {
     "build": "concurrently \"yarn build-main\" \"yarn build-renderer\"",
