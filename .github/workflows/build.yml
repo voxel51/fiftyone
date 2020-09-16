@@ -75,11 +75,11 @@ jobs:
         uses: actions/cache@v2
         with:
           path: pip-cache
-          key: pip-${{ runner.os }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements/*.txt') }}
+          key: pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements/*.txt') }}
           restore-keys: |
-            pip-${{ runner.os }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements/*.txt') }}
-            pip-${{ runner.os }}-${{ hashFiles('setup.py') }}-
-            pip-${{ runner.os }}-
+            pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements/*.txt') }}
+            pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('setup.py') }}-
+            pip-${{ runner.os }}-${{ matrix.python-version }}-
       - name: Download fiftyone wheel
         uses: actions/download-artifact@v2
         with:
