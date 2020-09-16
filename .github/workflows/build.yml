@@ -75,6 +75,11 @@ jobs:
         with:
           name: wheel
           path: downloads
+      - name: Fetch DB cache
+        uses: actions/cache@v2
+        with:
+          key: db-${{ hashFiles('package/db/setup.py') }}
+          path: package/db/cache/
       - name: Install fiftyone-db
         working-directory: package/db
         run: |
