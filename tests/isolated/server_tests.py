@@ -200,6 +200,13 @@ class ServerServiceTests(unittest.TestCase):
         self.assertEqual(len(_subscribed_sessions[port]), 0)
         self.assertEqual(len(_server_services), 1)
 
+    def step_empty_derivables(self):
+        self.session.dataset = fo.Dataset()
+        response = self.wait_for_response()
+        self.assertEqual(
+            _serialize(self.session.state), _serialize(self.client.data)
+        )
+
     def test_steps(self):
         for name, step in self.steps():
             try:
