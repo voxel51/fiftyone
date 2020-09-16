@@ -275,6 +275,9 @@ def _get_label_fields(view):
 
 
 def _get_bounds(fields, view, facets):
+    if len(facets) == 0:
+        return {}
+
     pipeline = [{"$facet": facets}]
 
     try:
