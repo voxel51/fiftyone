@@ -34,7 +34,7 @@ jobs:
           python-version: 3.8
       - name: Install dependencies
         run: |
-          pip install --upgrade pip setuptools "wheel<0.35"
+          pip install --upgrade pip setuptools wheel
       - name: Build wheel (Linux)
         run: |
           cd package/db
