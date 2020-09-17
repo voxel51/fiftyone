@@ -94,6 +94,7 @@ const ViewBar = React.memo(() => {
     barRef,
     () => state.matches("running.focus.focused") && send("TOGGLE_FOCUS")
   );
+  console.log(state.event);
 
   return (
     <ViewBarContainer>
