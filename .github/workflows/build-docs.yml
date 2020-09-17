@@ -43,9 +43,19 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.8
+      - name: Fetch pip cache
+        uses: actions/cache@v2
+        with:
+          path: pip-cache
+          key: pip-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements/*.txt') }}
+          restore-keys: |
+            pip-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements/*.txt') }}
+            pip-${{ hashFiles('setup.py') }}-
+            pip-
       - name: Install dependencies
         env:
           PIP_INDEX_URL: https://voxel51-ci:${{ secrets.FIFTYONE_GITHUB_TOKEN }}@pypi.voxel51.com
+          PIP_CACHE_DIR: pip-cache
         run: |
           sudo apt-get install pandoc
           pip install -e .
