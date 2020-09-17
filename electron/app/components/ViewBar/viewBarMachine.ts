@@ -155,11 +155,6 @@ const viewBarMachine = Machine(
             cond: (ctx) => ctx.stageInfo && ctx.stateDescription.view,
             actions: [
               assign({
-                activeStage: (ctx) =>
-                  Math.min(
-                    Math.max(ctx.stateDescription.view.view.length - 1, 0),
-                    ctx.activeStage
-                  ),
                 stages: (ctx) => setStages(ctx, ctx.stageInfo),
               }),
             ],
