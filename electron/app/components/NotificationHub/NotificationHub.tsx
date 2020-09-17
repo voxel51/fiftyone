@@ -7,11 +7,12 @@ export const Container = styled("div")`
   position: fixed;
   z-index: 1000;
   width: 0 auto;
-  top: ${(props) => (props.top ? "30px" : "unset")};
-  bottom: ${(props) => (props.top ? "unset" : "30px")};
+  top: ${(props) => (props.top ? "2em" : "unset")};
+  bottom: ${(props) => (props.top ? "unset" : "2em")};
   margin: 0 auto;
-  left: 30px;
-  right: 30px;
+  left: 2em;
+  right: 2em;
+  font-weight: bold;
   display: flex;
   flex-direction: ${(props) => (props.top ? "column-reverse" : "column")};
   pointer-events: none;
@@ -32,24 +33,27 @@ export const Message = styled(animated.div)`
   }
 `;
 
-export const Content = styled("div")`
-  color: white;
-  background: #445159;
-  opacity: 0.9;
-  padding: 12px 22px;
+const MessageText = styled.p`
+  margin-bottom: 2em;
+`;
+
+const Content = styled.div`
+  color: ${({ theme }) => theme.font};
+  background: ${({ theme }) => theme.backgroundDark};
+  border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
+  box-shadow: 0 2px 20px ${({ theme }) => theme.backgroundDark};
+  padding: 1em 2em 0 2em;
   font-size: 1em;
   display: grid;
   grid-template-columns: ${(props) =>
     props.canClose === false ? "1fr" : "1fr auto"};
-  grid-gap: 10px;
+  grid-gap: 2em;
   overflow: hidden;
   height: auto;
   border-radius: 3px;
-  margin-top: ${(props) => (props.top ? "0" : "10px")};
-  margin-bottom: ${(props) => (props.top ? "10px" : "0")};
 `;
 
-export const Button = styled("button")`
+const Button = styled.button`
   cursor: pointer;
   pointer-events: all;
   outline: 0;
@@ -60,27 +64,33 @@ export const Button = styled("button")`
   overflow: hidden;
   margin: 0;
   padding: 0;
-  padding-bottom: 14px;
-  color: rgba(255, 255, 255, 0.5);
+  padding-bottom: 2em;
+  color: ${({ theme }) => theme.font};
   :hover {
-    color: rgba(255, 255, 255, 0.6);
+    color: ${({ theme }) => theme.fontDark};
   }
 `;
 
-export const Life = styled(animated.div)`
+const Life = animated(styled.div`
   position: absolute;
-  bottom: ${(props) => (props.top ? "10px" : "0")};
+  bottom: ${(props) => (props.top ? "1em" : "0")};
   left: 0px;
   width: auto;
-  background-image: linear-gradient(130deg, #00b4e6, #00f0e0);
-  height: 5px;
-`;
+  border-bottom-left-radius: 3px;
+  border-bottom-right-radius: 3px;
+  background-image: linear-gradient(
+    130deg,
+    ${({ theme }) => theme.brand},
+    ${({ theme }) => theme.brandFullyTransparent}
+  );
+  height: 1em;
+`);
 
 let id = 0;
 
 const NotificationHub = ({
   config = { tension: 125, friction: 20, precision: 0.1 },
-  timeout = 3000,
+  timeout = 100000,
   children,
 }) => {
   const [refMap] = useState(() => new WeakMap());
@@ -115,7 +125,7 @@ const NotificationHub = ({
         <Message key={key} style={style}>
           <Content ref={(ref) => ref && refMap.set(item, ref)}>
             <Life style={{ right: life }} />
-            <p>{item.msg}</p>
+            <MessageText>{item.msg}</MessageText>
             <Button
               onClick={(e) => {
                 e.stopPropagation();
