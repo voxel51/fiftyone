@@ -3,7 +3,7 @@ import { animated, useTransition } from "react-spring";
 import styled from "styled-components";
 import { Close } from "@material-ui/icons";
 
-export const Container = styled("div")`
+const Container = styled("div")`
   position: fixed;
   z-index: 1000;
   width: 0 auto;
@@ -23,7 +23,8 @@ export const Container = styled("div")`
   }
 `;
 
-export const Message = styled(animated.div)`
+const Message = styled(animated.div)`
+  margin-top: 1em;
   box-sizing: border-box;
   position: relative;
   overflow: hidden;
@@ -34,7 +35,14 @@ export const Message = styled(animated.div)`
 `;
 
 const MessageText = styled.p`
-  margin-bottom: 2em;
+  margin-top: 1em;
+  margin-bottom: 1.5em;
+  color: ${({ theme }) => theme.fontDark};
+`;
+
+const MessageTitle = styled.h3`
+  font-size: 1.5em;
+  color: ${({ theme }) => theme.font};
 `;
 
 const Content = styled.div`
@@ -61,19 +69,20 @@ const Button = styled.button`
   background: transparent;
   display: flex;
   align-self: flex-end;
+  position: abo
   overflow: hidden;
   margin: 0;
   padding: 0;
   padding-bottom: 2em;
-  color: ${({ theme }) => theme.font};
+  color: ${({ theme }) => theme.fontDark};
   :hover {
-    color: ${({ theme }) => theme.fontDark};
+    color: ${({ theme }) => theme.font};
   }
 `;
 
 const Life = animated(styled.div`
   position: absolute;
-  bottom: ${(props) => (props.top ? "1em" : "0")};
+  bottom: ${(props) => (props.top ? "0.5em" : "0")};
   left: 0px;
   width: auto;
   border-bottom-left-radius: 3px;
@@ -83,14 +92,21 @@ const Life = animated(styled.div`
     ${({ theme }) => theme.brand},
     ${({ theme }) => theme.brandFullyTransparent}
   );
-  height: 1em;
+  height: 0.5em;
 `);
 
 let id = 0;
 
+type Notification = {
+  title: string;
+  message: string;
+  die: boolean;
+  titleColor: string;
+};
+
 const NotificationHub = ({
   config = { tension: 125, friction: 20, precision: 0.1 },
-  timeout = 100000,
+  timeout = 3000,
   children,
 }) => {
   const [refMap] = useState(() => new WeakMap());
@@ -108,14 +124,14 @@ const NotificationHub = ({
     },
     onRest: (item) =>
       setItems((state) => state.filter((i) => i.key !== item.key)),
-    config: (item, state) =>
+    config: (_, state) =>
       state === "leave" ? [{ duration: timeout }, config, config] : config,
   });
 
   useEffect(
     () =>
       void children((msg) =>
-        setItems((state) => [...state, { key: id++, msg }])
+        setItems((state) => [...state, { key: id++, ...msg }])
       ),
     []
   );
@@ -124,14 +140,17 @@ const NotificationHub = ({
       {transitions.map(({ key, item, props: { life, ...style } }) => (
         <Message key={key} style={style}>
           <Content ref={(ref) => ref && refMap.set(item, ref)}>
-            <Life style={{ right: life }} />
-            <MessageText>{item.msg}</MessageText>
+            {true ? <Life style={{ right: life }} /> : null}
+            <MessageTitle style={{ color: item.titleColor }}>
+              {item.title}
+            </MessageTitle>
             <Button
               onClick={(e) => {
                 e.stopPropagation();
                 cancelMap.has(item) && cancelMap.get(item)();
               }}
             >
+              <MessageText>{item.message}</MessageText>
               <Close />
             </Button>
           </Content>

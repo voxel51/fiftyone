@@ -1,5 +1,6 @@
-import React, { useRef } from "react";
-import styled from "styled-components";
+import { ThemeProvider } from "@material-ui/core";
+import React, { useContext, useRef } from "react";
+import styled, { ThemeContext } from "styled-components";
 
 import NotificationHub from "./NotificationHub";
 
@@ -17,13 +18,24 @@ const Main = styled("div")`
   display: flex;
   justify-content: center;
   align-items: center;
-  color: #676767;
+  font-weight: bold;
+  color: ${({ theme }) => theme.font};
 `;
 
-export const standard = () => {
+export const error = () => {
+  const theme = useContext(ThemeContext);
   const ref = useRef(null);
   return (
-    <Main onClick={() => ref.current("message")}>
+    <Main
+      onClick={() =>
+        ref.current({
+          title: "Title",
+          titleColor: "hsl(0, 87%, 53%)",
+          message: "message",
+          die: false,
+        })
+      }
+    >
       Click here to create notifications
       <NotificationHub children={(add) => (ref.current = add)} />
     </Main>
