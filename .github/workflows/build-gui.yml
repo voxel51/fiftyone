@@ -50,9 +50,6 @@ jobs:
       - name: Install dependencies
         working-directory: electron
         run: yarn
-      - name: Build GUI
-        working-directory: electron
-        run: yarn build
       - name: Package GUI (Linux)
         working-directory: electron
         run: yarn package-linux --publish never
