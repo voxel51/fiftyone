@@ -92,12 +92,11 @@ def get_stages():
 def _catch_errors(func):
     def wrapper(self, *args, **kwargs):
         try:
-            raise ValueError("hello")
+            self.prev_state = self.state
             return func(self, *args, **kwargs)
         except Exception as error:
             self.state = self.prev_state
             emit("server_error", str(error), broadcast=True, include_self=True)
-            emit("update", self.state, broadcast=True, include_self=True)
 
     return wrapper
 
@@ -240,6 +239,7 @@ class StateController(Namespace):
             the updated
                 :class:`fiftyone.core.state.StateDescriptionWithDerivables`
         """
+        raise ValueError("Page Error")
         state.selected = []
         return state
 

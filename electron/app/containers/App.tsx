@@ -1,10 +1,10 @@
 import { remote, ipcRenderer } from "electron";
 import React, { ReactNode, useState, useEffect, useRef } from "react";
 import ReactGA from "react-ga";
-import { Button, Modal, Label } from "semantic-ui-react";
+import { Button, Modal } from "semantic-ui-react";
 import { useSetRecoilState } from "recoil";
 import { ErrorBoundary } from "react-error-boundary";
-import { GlobalStyle, ThemeProvider } from "styled-components";
+import NotificationHub from "../components/NotificationHub";
 
 import Header from "../components/Header";
 import PortForm from "../components/PortForm";
@@ -16,7 +16,6 @@ import connect from "../utils/connect";
 import { stateDescription, selectedSamples } from "../recoil/atoms";
 import gaConfig from "../constants/ga.json";
 import Error from "./Error";
-import { darkTheme } from "../shared/colors";
 
 type Props = {
   children: ReactNode;
@@ -24,6 +23,7 @@ type Props = {
 
 function App(props: Props) {
   const [showInfo, setShowInfo] = useState(true);
+  const addNotification = useRef(null);
   const [reset, setReset] = useState(false);
   const { loading, children, dispatch, connected, port } = props;
   const portRef = useRef();
@@ -98,6 +98,15 @@ function App(props: Props) {
     handleStateUpdate(data);
   });
 
+  useSubscribe(socket, "server_error", (data) => {
+    addNotification.current({
+      title: "Title",
+      titleColor: "hsl(0, 87%, 53%)",
+      message: data,
+      die: false,
+    });
+  });
+
   useEffect(() => {
     if (reset) {
       socket.emit("get_current_state", "", (data) => {
@@ -149,6 +158,7 @@ function App(props: Props) {
           </Modal.Content>
         </Modal>
       </div>
+      <NotificationHub children={(add) => (addNotification.current = add)} />
     </ErrorBoundary>
   );
 }
