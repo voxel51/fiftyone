@@ -1,3 +1,4 @@
+import mime from "mime-types";
 import React, { useState, useEffect } from "react";
 import uuid from "react-uuid";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -100,13 +101,17 @@ export default ({
   const [overlay, playerColorMap] = loadOverlay(sample, colorMap, fieldSchema);
   const [initLoad, setInitLoad] = useState(false);
   const id = uuid();
+  const mimetype =
+    (sample.metadata && sample.metadata.mime_type) ||
+    mime.lookup(sample.filepath) ||
+    "image/jpg";
   const [player] = useState(
     new Player51({
       media: {
-        src: src,
-        type: "image/jpg",
+        src,
+        type: mimetype,
       },
-      overlay: overlay,
+      overlay,
       colorMap: playerColorMap,
       activeLabels,
       filter,
