@@ -110,9 +110,11 @@ const classFilterMachine = Machine({
             assign({
               inputValue: (_, { value }) => value,
               results: ({ classes }, { value }) =>
-                classes.filter((c) =>
-                  c.toLowerCase().includes(value.toLowerCase())
-                ),
+                classes
+                  ? classes.filter((c) =>
+                      c.toLowerCase().includes(value.toLowerCase())
+                    )
+                  : [],
             }),
           ],
         },
@@ -142,9 +144,11 @@ const classFilterMachine = Machine({
         assign({
           classes: (_, { classes }) => classes,
           results: ({ inputValue }, { classes }) =>
-            classes.filter((c) =>
-              c.toLowerCase().includes(inputValue.toLowerCase())
-            ),
+            classes
+              ? classes.filter((c) =>
+                  c.toLowerCase().includes(inputValue.toLowerCase())
+                )
+              : [],
         }),
       ],
     },
