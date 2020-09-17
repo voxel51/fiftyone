@@ -129,7 +129,7 @@ class InteractiveSubprocess(object):
 
     @retrying.retry(
         stop_max_delay=2000,
-        retry_on_exception=lambda e: isinstance(e, IOError),
+        retry_on_exception=lambda e: isinstance(e, (IOError, psutil.Error)),
     )
     def run_code(self, code):
         return fosu.send_ipc_message(

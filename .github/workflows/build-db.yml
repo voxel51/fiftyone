@@ -11,7 +11,7 @@ on:
     tags:
       - db-v*
     paths:
-      - package/db/
+      - package/db/**
       - .github/workflows/build-db.yml
   pull_request:
     branches:
@@ -19,7 +19,7 @@ on:
       - rel-*
       - release-*
     paths:
-      - package/db/
+      - package/db/**
       - .github/workflows/build-db.yml
 
 jobs:

@@ -4,7 +4,7 @@ import copy from "copy-to-clipboard";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
 import { useRecoilValue } from "recoil";
 
-import { Button, ModalFooter } from "./utils";
+import { Button, ModalFooter, scrollbarStyles } from "./utils";
 import * as selectors from "../recoil/selectors";
 
 type Props = {
@@ -24,15 +24,7 @@ const Body = styled.div`
     padding: 2em;
     flex-grow: 1;
     overflow-y: auto;
-  }
-  pre::-webkit-scrollbar {
-    width: 0px;
-    background: transparent;
-    display: none;
-  }
-  pre::-webkit-scrollbar-thumb {
-    width: 0px;
-    display: none;
+    ${scrollbarStyles};
   }
 
   ${ModalFooter} {

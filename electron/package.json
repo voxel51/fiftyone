@@ -1,7 +1,8 @@
 {
   "name": "fiftyone",
   "productName": "FiftyOne",
-  "version": "0.0.1",
+  "version": "0.5.5",
+  "license": "Apache-2.0",
   "description": "FiftyOne by Voxel51",
   "scripts": {
     "build": "concurrently \"yarn build-main\" \"yarn build-renderer\"",
@@ -318,6 +319,7 @@
     "react-router": "^5.1.2",
     "react-router-dom": "^5.1.2",
     "react-spring": "8.0.1",
+    "react-use-measure": "^2.0.1",
     "react-uuid": "^1.0.2",
     "recharts": "^1.8.5",
     "recoil": "^0.0.10",

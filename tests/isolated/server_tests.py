@@ -125,11 +125,10 @@ class ServerServiceTests(unittest.TestCase):
             _normalize_session(session), _normalize_session(client)
         )
         self.assertEqual(
-            sorted(client["derivables"]["tags"]),
-            sorted(self.dataset.get_tags()),
+            sorted(client["tags"]), sorted(self.dataset.get_tags()),
         )
-        self.assertEqual(client["count"], len(self.session.view))
-        self.assertNotEqual(client["count"], len(self.dataset))
+        self.assertEqual(client["view_count"], len(self.session.view))
+        self.assertNotEqual(client["view_count"], len(self.dataset))
 
     def step_selection(self):
         self.client.emit("add_selection", self.sample1.id)
@@ -200,6 +199,13 @@ class ServerServiceTests(unittest.TestCase):
         session_one.__del__()
         self.assertEqual(len(_subscribed_sessions[port]), 0)
         self.assertEqual(len(_server_services), 1)
+
+    def step_empty_derivables(self):
+        self.session.dataset = fo.Dataset()
+        response = self.wait_for_response()
+        self.assertEqual(
+            _serialize(self.session.state), _serialize(self.client.data)
+        )
 
     def test_steps(self):
         for name, step in self.steps():

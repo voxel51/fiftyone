@@ -14,7 +14,7 @@ import CellHeader from "./CellHeader";
 import CheckboxGrid from "./CheckboxGrid";
 import DropdownCell from "./DropdownCell";
 import SelectionTag from "./Tags/SelectionTag";
-import { Button } from "./utils";
+import { Button, scrollbarStyles } from "./utils";
 import * as atoms from "../recoil/atoms";
 import { refreshColorMap as refreshColorMapSelector } from "../recoil/selectors";
 
@@ -36,16 +36,8 @@ type Props = {
 const Container = styled.div`
   margin-bottom: 2px;
   height: 100%;
-  &::-webkit-scrollbar {
-    width: 0px;
-    background: transparent;
-    display: none;
-  }
-  &::-webkit-scrollbar-thumb {
-    width: 0px;
-    display: none;
-  }
   padding-bottom: 1em;
+  ${scrollbarStyles};
 
   .MuiCheckbox-root {
     padding: 4px 8px 4px 4px;
@@ -124,8 +116,9 @@ const Cell = ({ label, icon, entries, onSelect, colorMap, title, modal }) => {
             name: e.name,
             selected: e.selected,
             type: e.type,
-            data: e.icon ? e.icon : [(e.count || 0).toLocaleString()],
-            count: e.count,
+            data: e.icon ? e.icon : [makeData(e.filteredCount, e.totalCount)],
+            totalCount: e.totalCount,
+            filteredCount: e.filteredCount,
             color: colorMap[e.name],
             hideCheckbox: e.hideCheckbox,
             disabled: Boolean(e.disabled),
@@ -138,6 +131,17 @@ const Cell = ({ label, icon, entries, onSelect, colorMap, title, modal }) => {
       )}
     </DropdownCell>
   );
+};
+
+const makeCount = (count) => {
+  return (count || 0).toLocaleString();
+};
+
+const makeData = (filteredCount, totalCount) => {
+  if (typeof filteredCount === "number" && filteredCount !== totalCount) {
+    return `${makeCount(filteredCount)} of ${makeCount(totalCount)}`;
+  }
+  return makeCount(totalCount);
 };
 
 const DisplayOptionsSidebar = React.forwardRef(
