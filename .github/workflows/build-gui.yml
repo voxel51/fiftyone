@@ -97,6 +97,10 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
+      - name: Clone fiftyone
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
       - name: Check tag
         if: startsWith(github.ref, 'refs/tags/gui-v')
         run: |
