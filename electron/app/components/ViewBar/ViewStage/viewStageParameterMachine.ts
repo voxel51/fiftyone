@@ -256,6 +256,9 @@ export default Machine(
           cond: ({ submitted }) => submitted,
         },
       ],
+      FOCUS: {
+        actions: "focusInput",
+      },
       CLEAR_ERROR: {
         actions: [
           assign({

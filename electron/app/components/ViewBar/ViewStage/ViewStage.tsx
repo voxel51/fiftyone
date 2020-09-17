@@ -352,19 +352,19 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
             style={{ fontSize: "1rem" }}
             ref={inputRef}
           />
-          <BestMatchDiv>
-            {state.matches("input.editing") ? bestMatch.placeholder : ""}
-          </BestMatchDiv>
+          {state.matches("input.editing") ? (
+            <BestMatchDiv>{bestMatch.placeholder}</BestMatchDiv>
+          ) : null}
           {isCompleted && (
             <ExternalLink
               href={`https://voxel51.com/docs/fiftyone/api/fiftyone.core.stages.html#fiftyone.core.stages.${stage}`}
+              style={{ lineHeight: "0.8rem" }}
             >
               <Help
                 style={{
-                  cursor: "pointer",
                   width: "1rem",
                   height: "1rem",
-                  margin: "0.5rem 0.5rem 0.5rem 0",
+                  margin: "0.5rem",
                 }}
               />
             </ExternalLink>

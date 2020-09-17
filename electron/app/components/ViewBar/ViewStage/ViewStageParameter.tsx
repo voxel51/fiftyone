@@ -292,25 +292,6 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
   const inputRef = useRef();
   const [containerRef, setContainerRef] = useState({});
 
-  const actionsMap = useMemo(
-    () => ({
-      focusInput: () => inputRef.current && inputRef.current.select(),
-      blurInput: () => inputRef.current && inputRef.current.blur(),
-    }),
-    []
-  );
-
-  useEffect(() => {
-    const listener = (state) => {
-      state.actions.forEach((action) => {
-        if (action.type in actionsMap) actionsMap[action.type]();
-      });
-    };
-    parameterRef.onTransition(listener);
-
-    return () => parameterRef.listeners.delete(listener);
-  }, []);
-
   const { tail, type, value, active } = state.context;
   const hasObjectType = typeof type === "string" && type.includes("dict");
 
@@ -336,6 +317,10 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
   });
 
   const isEditing = state.matches("editing");
+  useEffect(() => {
+    isEditing && inputRef.current && inputRef.current.focus();
+    !isEditing && inputRef.current && inputRef.current.blur();
+  }, [isEditing, inputRef.current]);
   return (
     <ViewStageParameterContainer
       ref={(node) =>
