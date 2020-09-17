@@ -54,7 +54,7 @@ jobs:
             pip-
       - name: Install dependencies
         env:
-          PIP_INDEX_URL: https://voxel51-ci:${{ secrets.FIFTYONE_GITHUB_TOKEN }}@pypi.voxel51.com
+          PIP_INDEX_URL: https://voxel51-ci@pypi.voxel51.com
           PIP_CACHE_DIR: pip-cache
         run: |
           sudo apt-get install pandoc

@@ -108,7 +108,7 @@ jobs:
           pip install dist/*.whl
       - name: Install fiftyone dependencies
         env:
-          PIP_INDEX_URL: https://voxel51-ci:${{ secrets.FIFTYONE_GITHUB_TOKEN }}@pypi.voxel51.com
+          PIP_INDEX_URL: https://voxel51-ci@pypi.voxel51.com
         run: |
           pip install --cache-dir pip-cache -e package/gui/
           pip install --cache-dir pip-cache fiftyone-brain voxel51-eta
