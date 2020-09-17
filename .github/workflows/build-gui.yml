@@ -94,6 +94,13 @@ jobs:
         with:
           name: wheel-windows
           path: package/gui/dist/*win*.whl
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check tag
+        if: startsWith(github.ref, 'refs/tags/gui-v')
+        run: |
+          python .github/tools/check-setup-version.py package/gui/setup.py $(echo ${{ github.ref }} | sed 's/refs\/tags\/gui-v//')
 
   publish:
     runs-on: ubuntu-18.04

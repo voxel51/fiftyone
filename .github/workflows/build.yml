@@ -38,11 +38,18 @@ jobs:
         with:
           name: wheel
           path: dist/*.whl
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          python .github/tools/check-setup-version.py setup.py $(echo ${{ github.ref }} | sed 's/refs\/tags\/v//')
 
   test:
     runs-on: ${{ matrix.os }}
     if: github.event.pull_request.draft == false
-    needs: build
+    needs: [build, check]
     strategy:
       fail-fast: false
       matrix:
@@ -122,7 +129,7 @@ jobs:
           find tests/isolated/ -name '*.py' -print0 | xargs -0 --verbose -n1 python tests/utils/pytest_wrapper.py --verbose
 
   publish:
-    needs: [build, test]
+    needs: [build, check, test]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-18.04
     steps:
