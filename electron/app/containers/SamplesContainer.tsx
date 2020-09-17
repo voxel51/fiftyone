@@ -155,8 +155,8 @@ const SamplesContainer = (props) => {
       );
     }
   };
-  useResizeHandler(updateSidebarHeight, [sidebarRef.current]);
-  useScrollHandler(updateSidebarHeight, [sidebarRef.current]);
+  useResizeHandler(updateSidebarHeight);
+  useScrollHandler(updateSidebarHeight);
   useLayoutEffect(updateSidebarHeight, []);
 
   return (

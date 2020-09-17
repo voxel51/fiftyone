@@ -1,30 +1,54 @@
-import { useState, useEffect, useLayoutEffect, useCallback } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
-export const useResizeHandler = (handler, deps = []) => {
-  useLayoutEffect(() => {
-    window.addEventListener("resize", handler);
-    return () => {
-      window.removeEventListener("resize", handler);
-    };
-  }, deps);
-};
-
-export const useScrollHandler = (handler, deps = []) => {
-  useLayoutEffect(() => {
-    window.addEventListener("scroll", handler);
-    return () => {
-      window.removeEventListener("scroll", handler);
-    };
-  }, deps);
-};
-
-export const useKeydownHandler = (handler, deps = []) => {
+export const useResizeHandler = (handler) => {
+  const handlerRef = useRef(handler);
   useEffect(() => {
-    document.body.addEventListener("keydown", handler);
+    handlerRef.current = handler;
+  });
+
+  useLayoutEffect(() => {
+    const wrapper = (e) => handlerRef.current(e);
+    window.addEventListener("resize", wrapper);
     return () => {
-      document.body.removeEventListener("keydown", handler);
+      window.removeEventListener("resize", wrapper);
     };
-  }, deps);
+  }, []);
+};
+
+export const useScrollHandler = (handler) => {
+  const handlerRef = useRef(handler);
+  useEffect(() => {
+    handlerRef.current = handler;
+  });
+
+  useLayoutEffect(() => {
+    const wrapper = (e) => handlerRef.current(e);
+    window.addEventListener("scroll", wrapper);
+    return () => {
+      window.removeEventListener("scroll", wrapper);
+    };
+  }, []);
+};
+
+export const useKeydownHandler = (handler) => {
+  const handlerRef = useRef(handler);
+  useEffect(() => {
+    handlerRef.current = handler;
+  });
+
+  useEffect(() => {
+    const wrapper = (e) => handlerRef.current(e);
+    document.body.addEventListener("keydown", wrapper);
+    return () => {
+      document.body.removeEventListener("keydown", wrapper);
+    };
+  }, []);
 };
 
 export const useOutsideClick = (ref, callback) => {
