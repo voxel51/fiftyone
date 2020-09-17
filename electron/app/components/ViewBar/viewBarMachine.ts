@@ -78,11 +78,15 @@ function makeEmptyView(stageInfo) {
   ];
 }
 
+const cmpMap = (s) => s.kwargs;
+
 function setStages(ctx, stageInfo) {
-  const viewStr = ctx.stateDescription.view.view;
-  const view = JSON.parse(viewStr);
+  const view = ctx.stateDescription.view.view;
   const stageMap = Object.fromEntries(stageInfo.map((s) => [s.name, s.params]));
-  if (viewStr === JSON.stringify(serializeView(ctx.stages, stageMap))) {
+  if (
+    JSON.stringify(view.map(cmpMap)) ===
+    JSON.stringify(serializeView(ctx.stages, stageMap).map(cmpMap))
+  ) {
     return ctx.stages;
   } else if (view.length === 0) {
     return makeEmptyView(stageInfo);
@@ -170,7 +174,7 @@ const viewBarMachine = Machine(
             actions: assign({
               stageInfo: (ctx, e) => e.data.stages,
               stages: (ctx, e) => {
-                const view = JSON.parse(ctx.stateDescription.view.view);
+                const view = ctx.stateDescription.view.view;
                 if (view.length === 0) return makeEmptyView(e.data.stages);
                 return setStages(ctx, e.data.stages);
               },
@@ -486,18 +490,16 @@ const viewBarMachine = Machine(
         const stageMap = Object.fromEntries(
           stageInfo.map((s) => [s.name, s.params])
         );
-        const result = JSON.stringify(serializeView(stages, stageMap));
+        const result = serializeView(stages, stageMap);
         const {
           view: { dataset },
         } = stateDescription;
-        if (result === JSON.stringify(JSON.parse(stateDescription.view.view)))
-          return;
         const newState = {
           ...stateDescription,
           filter_stages: {},
           view: {
             dataset,
-            view: result,
+            view: resultStr,
           },
         };
         socket.emit("update", { data: newState, include_self: true });

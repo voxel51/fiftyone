@@ -336,7 +336,6 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
   });
 
   const isEditing = state.matches("editing");
-
   return (
     <ViewStageParameterContainer
       ref={(node) =>
