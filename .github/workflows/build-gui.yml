@@ -42,8 +42,11 @@ jobs:
       - name: Fetch dependency cache
         uses: actions/cache@v2
         with:
-          key: electron-cache
           path: electron/node_modules
+          key: npm-${{ hashFiles('electron/package.json') }}
+          restore-keys: |
+            npm-${{ hashFiles('electron/package.json') }}
+            npm-
       - name: Install dependencies
         working-directory: electron
         run: yarn
