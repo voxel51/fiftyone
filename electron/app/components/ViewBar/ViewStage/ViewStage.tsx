@@ -180,7 +180,6 @@ const ViewStageDeleteDiv = animated(styled.div`
   position: relative;
   border-top-right-radius: 3px;
   border-bottom-right-radius: 3px;
-  border-left-width: 0;
   cursor: pointer;
 `);
 

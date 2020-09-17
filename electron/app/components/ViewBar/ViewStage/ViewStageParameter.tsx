@@ -326,9 +326,9 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
       active && stageState.matches("focusedViewBar.yes")
         ? theme.brand
         : theme.fontDarkest,
-    borderRightWidth: tail && !hasObjectType ? 1 : 0,
     height: hasObjectType && state.matches("editing") ? 200 : 34,
     borderWidth: hasObjectType ? 0 : 1,
+    borderRightWidth: 0,
     opacity: 1,
     from: {
       opacity: 0,
