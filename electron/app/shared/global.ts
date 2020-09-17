@@ -1,5 +1,4 @@
 import { createGlobalStyle, css } from "styled-components";
-import { color, typography } from "./styles";
 import { scrollbarStyles } from "../components/utils";
 
 export const styles = css`
