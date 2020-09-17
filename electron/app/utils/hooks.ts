@@ -6,37 +6,7 @@ import {
   useState,
 } from "react";
 
-export const useResizeHandler = (handler) => {
-  const handlerRef = useRef(handler);
-  useEffect(() => {
-    handlerRef.current = handler;
-  });
-
-  useLayoutEffect(() => {
-    const wrapper = (e) => handlerRef.current(e);
-    window.addEventListener("resize", wrapper);
-    return () => {
-      window.removeEventListener("resize", wrapper);
-    };
-  }, []);
-};
-
-export const useScrollHandler = (handler) => {
-  const handlerRef = useRef(handler);
-  useEffect(() => {
-    handlerRef.current = handler;
-  });
-
-  useLayoutEffect(() => {
-    const wrapper = (e) => handlerRef.current(e);
-    window.addEventListener("scroll", wrapper);
-    return () => {
-      window.removeEventListener("scroll", wrapper);
-    };
-  }, []);
-};
-
-export const useKeydownHandler = (handler) => {
+export const useEventHandler = (target, eventType, handler) => {
   const handlerRef = useRef(handler);
   useEffect(() => {
     handlerRef.current = handler;
@@ -44,12 +14,21 @@ export const useKeydownHandler = (handler) => {
 
   useEffect(() => {
     const wrapper = (e) => handlerRef.current(e);
-    document.body.addEventListener("keydown", wrapper);
+    target.addEventListener(eventType, wrapper);
     return () => {
-      document.body.removeEventListener("keydown", wrapper);
+      target.removeEventListener(eventType, wrapper);
     };
-  }, []);
+  }, [target, eventType]);
 };
+
+export const useResizeHandler = (handler) =>
+  useEventHandler(window, "resize", handler);
+
+export const useScrollHandler = (handler) =>
+  useEventHandler(window, "scroll", handler);
+
+export const useKeydownHandler = (handler) =>
+  useEventHandler(document.body, "keydown", handler);
 
 export const useOutsideClick = (ref, callback) => {
   useEffect(() => {
