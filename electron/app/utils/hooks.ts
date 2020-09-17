@@ -30,19 +30,14 @@ export const useScrollHandler = (handler) =>
 export const useKeydownHandler = (handler) =>
   useEventHandler(document.body, "keydown", handler);
 
-export const useOutsideClick = (ref, callback) => {
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (ref.current && !ref.current.contains(event.target)) {
-        callback(event);
-      }
+export const useOutsideClick = (ref, handler) => {
+  const handleClickOutside = (event) => {
+    if (ref.current && !ref.current.contains(event.target)) {
+      handler(event);
     }
+  };
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [ref, callback]);
+  useEventHandler(document, "mousedown", handleClickOutside);
 };
 
 export const useFollow = (leaderRef, followerRef, set, deps = []) => {
