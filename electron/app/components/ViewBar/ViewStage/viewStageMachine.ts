@@ -151,6 +151,10 @@ const viewStageMachine = Machine(
             on: {
               EDIT: {
                 target: "editing",
+                actions: sendParent(({ index }) => ({
+                  type: "STAGE.EDIT",
+                  index,
+                })),
               },
               DELETE: {
                 target: "deleted",
