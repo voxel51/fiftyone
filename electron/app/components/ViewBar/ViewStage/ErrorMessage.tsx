@@ -59,7 +59,7 @@ const ErrorMessage = React.memo(({ barRef, followRef, serviceRef, style }) => {
 
   useOutsideClick(ref, () => send("CLEAR_ERROR_ID"));
 
-  barRef && followRef && useFollow(barRef, followRef, set, errorId);
+  useFollow(barRef, followRef, set, errorId);
 
   return (
     <ErrorMessageDiv
