@@ -43,6 +43,11 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.8
+      - name: Install pip dependencies
+        run: |
+          pip install --upgrade pip setuptools wheel
+          mkdir -p pip-cache
+          echo ::set-env name=PIP_CACHE_DIR::pip-cache
       - name: Fetch pip cache
         uses: actions/cache@v2
         with:
@@ -55,7 +60,6 @@ jobs:
       - name: Install dependencies
         env:
           PIP_INDEX_URL: https://voxel51-ci@pypi.voxel51.com
-          PIP_CACHE_DIR: pip-cache
         run: |
           sudo apt-get install pandoc
           pip install -e .

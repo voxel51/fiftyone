@@ -82,6 +82,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip setuptools wheel
           mkdir -p pip-cache
+          echo ::set-env name=PIP_CACHE_DIR::pip-cache
       - name: Fetch pip cache
         uses: actions/cache@v2
         with:
@@ -110,20 +111,20 @@ jobs:
         env:
           PIP_INDEX_URL: https://voxel51-ci@pypi.voxel51.com
         run: |
-          pip install --cache-dir pip-cache -e package/gui/
-          pip install --cache-dir pip-cache fiftyone-brain voxel51-eta
+          pip install -e package/gui/
+          pip install fiftyone-brain voxel51-eta
       - name: Install fiftyone
         run: |
-          pip install --cache-dir pip-cache -e .
+          pip install -e .
       - name: Install test dependencies (non-Windows)
         if: ${{ !startsWith(matrix.os, 'windows') }}
         run: |
-          pip install --cache-dir pip-cache pytest tensorflow tensorflow-datasets torch torchvision
+          pip install pytest tensorflow tensorflow-datasets torch torchvision
       - name: Install test dependencies (Windows)
         if: ${{ startsWith(matrix.os, 'windows') }}
         run: |
-          pip install --cache-dir pip-cache pytest tensorflow tensorflow-datasets
-          pip install --cache-dir pip-cache torch==1.6.0+cpu torchvision==0.7.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          pip install pytest tensorflow tensorflow-datasets
+          pip install torch==1.6.0+cpu torchvision==0.7.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
       - name: Run tests
         run: |
           python tests/utils/pytest_wrapper.py tests/ --verbose --ignore tests/benchmarking/ --ignore tests/isolated/ --ignore tests/utils/
