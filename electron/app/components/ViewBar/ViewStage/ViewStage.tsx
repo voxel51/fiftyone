@@ -273,29 +273,16 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
     },
   });
 
-  const actionsMap = useMemo(
-    () => ({
-      focusInput: () => inputRef.current && inputRef.current.select(),
-      blurInput: () => inputRef.current && inputRef.current.blur(),
-    }),
-    [inputRef.current]
-  );
-
-  useEffect(() => {
-    const listener = (state) => {
-      state.actions.forEach((action) => {
-        if (action.type in actionsMap) actionsMap[action.type]();
-      });
-      <ErrorMessage serviceRef={stageRef} />;
-    };
-    stageRef.onTransition(listener);
-    return () => stageRef.listeners.delete(listener);
-  }, []);
-
   const containerProps = useSpring({
     top: state.matches("focusedViewBar.yes") && state.context.active ? -3 : 0,
     config: config.stiff,
   });
+
+  const isEditing = state.matches("input.editing");
+  useEffect(() => {
+    isEditing && inputRef.current && inputRef.current.focus();
+    !isEditing && inputRef.current && inputRef.current.blur();
+  }, [isEditing, inputRef.current]);
 
   return (
     <>
@@ -312,7 +299,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
             placeholder={stage.length === 0 ? "+ add stage" : ""}
             value={stage}
             autoFocus={focusOnInit}
-            onFocus={() => !state.matches("input.editing") && send("EDIT")}
+            onFocus={() => !isEditing && send("EDIT")}
             onBlur={(e) => {
               state.matches("input.editing.searchResults.notHovering") &&
                 send("BLUR");
@@ -352,8 +339,10 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
             style={{ fontSize: "1rem" }}
             ref={inputRef}
           />
-          {state.matches("input.editing") ? (
-            <BestMatchDiv>{bestMatch.placeholder}</BestMatchDiv>
+          {state.matches("input.editing") || !isCompleted ? (
+            <BestMatchDiv>
+              {bestMatch ? bestMatch.placeholder : ""}
+            </BestMatchDiv>
           ) : null}
           {isCompleted && (
             <ExternalLink

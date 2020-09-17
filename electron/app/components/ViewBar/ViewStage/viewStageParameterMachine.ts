@@ -1,3 +1,4 @@
+import { filter } from "lodash";
 import uuid from "uuid-v4";
 import { Machine, actions, sendParent } from "xstate";
 const { assign } = actions;
@@ -108,6 +109,14 @@ export const PARSER = {
     castTo: (value) => value,
     parse: (value) => value,
     validate: () => true,
+  },
+  field: {
+    castFrom: (value) => value,
+    castTo: (value) => value,
+    parse: (value, fields) =>
+      fields.filter((f) => f.toLowerCase() === value.toLowerCase())[0],
+    validate: (value, fields) =>
+      typeof value === "string" && fields.includes(value.toLowerCase()),
   },
   dict: {
     castFrom: (value) => JSON.stringify(value, null, 2),
