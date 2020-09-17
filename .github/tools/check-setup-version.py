@@ -5,7 +5,6 @@ Scans a setup.py file for a version number
 import argparse
 import os
 import re
-import sys
 
 parser = argparse.ArgumentParser()
 parser.add_argument("filename")
@@ -15,7 +14,7 @@ args = parser.parse_args()
 if os.path.basename(args.filename) != "setup.py":
     raise ValueError("Invalid setup.py: %r" % args.filename)
 
-with open(sys.argv[1]) as f:
+with open(args.filename) as f:
     version = re.search(r'version="(.+?)"', f.read()).group(1)
 
 if version == args.expected_version:
