@@ -89,6 +89,19 @@ def get_stages():
     }
 
 
+def _catch_errors(func):
+    def wrapper(self, *args, **kwargs):
+        try:
+            raise ValueError("hello")
+            return func(self, *args, **kwargs)
+        except Exception as error:
+            self.state = self.prev_state
+            emit("server_error", str(error), broadcast=True, include_self=True)
+            emit("update", self.state, broadcast=True, include_self=True)
+
+    return wrapper
+
+
 def _load_state(trigger_update=False):
     def decorator(func):
         def wrapper(self, *args, **kwargs):
@@ -129,6 +142,7 @@ class StateController(Namespace):
 
     def __init__(self, *args, **kwargs):
         self.state = fos.StateDescriptionWithDerivables().serialize()
+        self.prev_state = self.state
         super().__init__(*args, **kwargs)
 
     def on_connect(self):
@@ -139,6 +153,7 @@ class StateController(Namespace):
         """Handles disconnection from the server."""
         pass
 
+    @_catch_errors
     def on_update(self, data):
         """Updates the state.
 
@@ -157,6 +172,7 @@ class StateController(Namespace):
         )
         return self.state
 
+    @_catch_errors
     def on_get_fiftyone_info(self):
         """Retrieves information about the FiftyOne installation."""
         return {
@@ -164,6 +180,7 @@ class StateController(Namespace):
             "user_id": get_user_id(),
         }
 
+    @_catch_errors
     def on_get_current_state(self, _):
         """Gets the current state.
 
@@ -172,6 +189,7 @@ class StateController(Namespace):
         """
         return self.state
 
+    @_catch_errors
     @_load_state()
     def on_add_selection(self, state, _id):
         """Adds a sample to the selected samples list.
@@ -190,6 +208,7 @@ class StateController(Namespace):
         state.selected = list(selected)
         return state
 
+    @_catch_errors
     @_load_state()
     def on_remove_selection(self, state, _id):
         """Remove a sample from the selected samples list
@@ -208,6 +227,7 @@ class StateController(Namespace):
         state.selected = list(selected)
         return state
 
+    @_catch_errors
     @_load_state()
     def on_clear_selection(self, state):
         """Remove all samples from the selected samples list
@@ -223,6 +243,7 @@ class StateController(Namespace):
         state.selected = []
         return state
 
+    @_catch_errors
     def on_page(self, page, page_length=20):
         """Gets the requested page of samples.
 
@@ -267,6 +288,7 @@ class StateController(Namespace):
 
         return {"results": results, "more": more}
 
+    @_catch_errors
     def on_get_distributions(self, group):
         """Gets the distributions for the current state with respect to a
         group.
