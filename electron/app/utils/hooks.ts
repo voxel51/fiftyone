@@ -7,12 +7,16 @@ import {
 } from "react";
 
 export const useEventHandler = (target, eventType, handler) => {
+  // Adapted from https://reactjs.org/docs/hooks-faq.html#what-can-i-do-if-my-effect-dependencies-change-too-often
   const handlerRef = useRef(handler);
   useEffect(() => {
     handlerRef.current = handler;
   });
 
   useEffect(() => {
+    if (!target) {
+      return;
+    }
     const wrapper = (e) => handlerRef.current(e);
     target.addEventListener(eventType, wrapper);
     return () => {
@@ -58,6 +62,7 @@ export const useFollow = (leaderRef, followerRef, set) => {
   };
 
   useEventHandler(window, "scroll", follow);
+  useEventHandler(leaderRef.current, "scroll", follow);
 };
 
 // allows re-rendering before recoil's Batcher updates
