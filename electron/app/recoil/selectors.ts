@@ -297,17 +297,10 @@ export const fieldIsFiltered = selectorFamily({
   },
 });
 
-export const viewStats = selector({
-  key: "viewStats",
-  get: ({ get }) => {
-    return get(atoms.stateDescription).view_stats || {};
-  },
-});
-
 export const labelConfidenceBounds = selectorFamily({
   key: "labelConfidenceBounds",
   get: (label) => ({ get }) => {
-    const labels = get(viewStats).labels;
+    const labels = get(datasetStats).labels;
     return labels && labels[label]
       ? labels[label].confidence_bounds
       : [null, null];
@@ -317,7 +310,7 @@ export const labelConfidenceBounds = selectorFamily({
 export const numericFieldBounds = selectorFamily({
   key: "numericFieldBounds",
   get: (label) => ({ get }) => {
-    const bounds = get(viewStats).numeric_field_bounds;
+    const bounds = get(datasetStats).numeric_field_bounds;
     return bounds && bounds[label] ? bounds[label] : [null, null];
   },
 });
