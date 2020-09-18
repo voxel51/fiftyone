@@ -77,10 +77,10 @@ const SearchResultsDiv = animated(styled.div`
   }
 `);
 
-interface SearchResultsProps {
+type SearchResultsProps = {
   results: Array<string>;
   send: any;
-}
+};
 
 const SearchResults = React.memo(
   ({ results, send, currentResult, barRef, followRef, bestMatch, ...rest }) => {

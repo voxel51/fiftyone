@@ -9,9 +9,7 @@ import { animated, useSpring } from "react-spring";
 import styled, { ThemeContext } from "styled-components";
 import { useService } from "@xstate/react";
 import AutosizeInput from "react-input-autosize";
-import { useRecoilValue } from "recoil";
 
-import * as selectors from "../../../recoil/selectors";
 import { PARSER } from "./viewStageParameterMachine";
 import { useOutsideClick } from "../../../utils/hooks";
 import ErrorMessage from "./ErrorMessage";
@@ -294,7 +292,7 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
   const inputRef = useRef();
   const [containerRef, setContainerRef] = useState({});
 
-  const { tail, type, value, active } = state.context;
+  const { tail, type, value, active, fieldNames } = state.context;
   const hasObjectType = typeof type === "string" && type.includes("dict");
 
   const props = useSpring({
@@ -323,6 +321,14 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
     isEditing && inputRef.current && inputRef.current.focus();
     !isEditing && inputRef.current && inputRef.current.blur();
   }, [isEditing, inputRef.current]);
+
+  let results = [];
+  if (type === "field") {
+    results = fieldNames.filter((f) =>
+      f.toLowerCase().startsWith(value.toLowerCase())
+    );
+  }
+  const currentResult = results[0];
   return (
     <ViewStageParameterContainer
       ref={(node) =>
@@ -373,7 +379,7 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
                 results={results}
                 send={send}
                 currentResult={currentResult}
-                bestMatch={bestMatch.value}
+                bestMatch={currentResult}
                 followRef={containerRef}
                 barRef={barRef}
               />
