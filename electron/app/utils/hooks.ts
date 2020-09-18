@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRecoilTransactionObserver_UNSTABLE } from "recoil";
 import ResizeObserver from "resize-observer-polyfill";
 
 export const useEventHandler = (target, eventType, handler) => {
@@ -58,9 +57,17 @@ export const useOutsideClick = (ref, handler) => {
   useEventHandler(document, "mousedown", handleClickOutside);
 };
 
-export const useFollow = (leaderRef, follower, set) => {
+export const useFollow = (leaderRef, followerRef, set) => {
   const follow = () => {
-    const { x, y } = follower.current.getBoundingClientRect();
+    if (
+      !leaderRef ||
+      !leaderRef.current ||
+      !followerRef ||
+      !followerRef.current
+    ) {
+      return;
+    }
+    const { x, y } = followerRef.current.getBoundingClientRect();
     const {
       x: leaderX,
       width: leaderWidth,
@@ -73,8 +80,7 @@ export const useFollow = (leaderRef, follower, set) => {
     });
   };
 
-  useObserve(follower.current, follow);
-
+  useObserve(followerRef.current, follow);
   useEventHandler(window, "scroll", follow);
   useEventHandler(leaderRef ? leaderRef.current : null, "scroll", follow);
 };
