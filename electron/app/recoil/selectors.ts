@@ -34,7 +34,7 @@ export const datasetStats = selector({
   key: "datasetStats",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
-    return stateDescription.view_stats ? stateDescription.view_stats : {};
+    return stateDescription.view_stats || {};
   },
 });
 
@@ -42,9 +42,7 @@ export const extendedDatasetStats = selector({
   key: "extendedDatasetStats",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
-    return stateDescription.extended_view_stats
-      ? stateDescription.extended_view_stats
-      : {};
+    return stateDescription.extended_view_stats || {};
   },
 });
 
@@ -80,14 +78,14 @@ export const tagNames = selector({
 export const tagSampleCounts = selector({
   key: "tagSampleCounts",
   get: ({ get }) => {
-    return get(atoms.stateDescription).view_stats.tags || {};
+    return get(datasetStats).tags || {};
   },
 });
 
 export const filteredTagSampleCounts = selector({
   key: "filteredTagSampleCounts",
   get: ({ get }) => {
-    return get(atoms.stateDescription).extended_view_stats.tags || {};
+    return get(extendedDatasetStats).tags || {};
   },
 });
 
@@ -310,7 +308,9 @@ export const labelConfidenceBounds = selectorFamily({
   key: "labelConfidenceBounds",
   get: (label) => ({ get }) => {
     const labels = get(viewStats).labels;
-    return labels[label] ? labels[label].confidence_bounds : [null, null];
+    return labels && labels[label]
+      ? labels[label].confidence_bounds
+      : [null, null];
   },
 });
 
