@@ -9,6 +9,7 @@ import argparse
 import json
 import logging
 import os
+import traceback
 import uuid
 
 from bson import json_util
@@ -96,7 +97,12 @@ def _catch_errors(func):
             return func(self, *args, **kwargs)
         except Exception as error:
             self.state = self.prev_state
-            emit("server_error", str(error), broadcast=True, include_self=True)
+            error = {
+                "kind": "Server Error",
+                "message": "An exception has been raised by the server. Your session has been reverted to its previous state.",
+                "items": [traceback.format_exc()],
+            }
+            emit("notification", error, broadcast=True, include_self=True)
 
     return wrapper
 

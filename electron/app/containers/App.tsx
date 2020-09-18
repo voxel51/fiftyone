@@ -98,13 +98,8 @@ function App(props: Props) {
     handleStateUpdate(data);
   });
 
-  useSubscribe(socket, "server_error", (data) => {
-    addNotification.current({
-      title: "Title",
-      titleColor: "hsl(0, 87%, 53%)",
-      message: data,
-      die: false,
-    });
+  useSubscribe(socket, "notification", (data) => {
+    addNotification.current(data);
   });
 
   useEffect(() => {

@@ -97,11 +97,15 @@ const Life = animated(styled.div`
 
 let id = 0;
 
+const dieMap = {
+  "Server Error": false,
+};
+
 type Notification = {
-  title: string;
+  id?: number;
+  kind: string;
   message: string;
-  die: boolean;
-  titleColor: string;
+  items: string[];
 };
 
 const NotificationHub = ({

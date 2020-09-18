@@ -63,13 +63,19 @@ class BaseClient(socketio.ClientNamespace):
         self.updated = True
         self.data = self.data_cls.from_dict(data)
 
-    def on_server_error(self, data):
+    def on_notification(self, data):
         """Receives a server error.
 
         Args:
             data: the error message
         """
-        print(data)
+        print(data["kind"])
+        print()
+        print(data["message"])
+        print()
+        for key, value in data["items"].items():
+            print("%s:" % key)
+            print(value)
 
     def update(self, data):
         """Sends an update.
