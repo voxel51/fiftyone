@@ -8,20 +8,6 @@ import {
   makeLabelNameGroups,
 } from "../utils/labels";
 
-export const viewStages = selector({
-  key: "viewStages",
-  get: ({ get }) => {
-    return get(atoms.stateDescription).viewStages;
-  },
-});
-
-export const numViewStages = selector({
-  key: "numStages",
-  get: ({ get }) => {
-    return get(viewStages).length;
-  },
-});
-
 export const datasetName = selector({
   key: "datasetName",
   get: ({ get }) => {
