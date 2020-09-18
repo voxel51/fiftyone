@@ -369,7 +369,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
               stageRef={stageRef}
             />
           ))}
-        {state.matches("delible.yes") && parameters.length ? (
+        {state.matches("delible.yes") || parameters.length ? (
           <ViewStageDelete spring={deleteProps} send={send} />
         ) : null}
         {state.matches("input.editing") &&
