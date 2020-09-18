@@ -27,7 +27,7 @@ from fiftyone.core.stages import _STAGES
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
 
-from util import get_image_size
+from util import get_file_dimensions
 from pipelines import DISTRIBUTION_PIPELINES, LABELS, SCALARS
 
 
@@ -261,7 +261,7 @@ class StateController(Namespace):
 
         results = [{"sample": s} for s in samples]
         for r in results:
-            w, h = get_image_size(r["sample"]["filepath"])
+            w, h = get_file_dimensions(r["sample"]["filepath"])
             r["width"] = w
             r["height"] = h
 

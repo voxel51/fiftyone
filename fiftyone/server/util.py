@@ -11,6 +11,7 @@ TODO (BEN): clean up, document, and fit into fiftyone.core
 """
 import collections
 import json
+import mimetypes
 import os
 import io
 import struct
@@ -21,8 +22,33 @@ import PIL.Image
 FILE_UNKNOWN = "Sorry, don't know how to get size for this file."
 
 
-class UnknownImageFormat(Exception):
+class UnknownFileFormat(Exception):
     pass
+
+
+class UnknownImageFormat(UnknownFileFormat):
+    pass
+
+
+def get_file_dimensions(file_path):
+    """
+    Calculates the dimensions of the specified file.
+
+    Args:
+        file_path (str): path to the file
+
+    Returns:
+        tuple: (width, height) as integers
+    """
+    mime_type, _ = mimetypes.guess_type(file_path)
+    if mime_type is None:
+        raise UnknownFileFormat(
+            "Cannot identify mime type from %r" % file_path
+        )
+    category = mime_type.split("/")[0]
+    if category == "image":
+        return get_image_size(file_path)
+    raise UnknownFileFormat("Unhandled mime type: %r" % mime_type)
 
 
 types = collections.OrderedDict()
