@@ -15,6 +15,8 @@ import os
 import io
 import struct
 
+import PIL.Image
+
 
 FILE_UNKNOWN = "Sorry, don't know how to get size for this file."
 
@@ -63,8 +65,11 @@ def get_image_size(file_path):
     Return (width, height) for a given img file content - no external
     dependencies except the os and struct builtin modules
     """
-    img = get_image_metadata(file_path)
-    return (img.width, img.height)
+    try:
+        img = get_image_metadata(file_path)
+        return (img.width, img.height)
+    except UnknownImageFormat:
+        return _get_image_size_pil(file_path)
 
 
 def get_image_size_from_bytesio(input, size):
@@ -75,8 +80,19 @@ def get_image_size_from_bytesio(input, size):
         input (io.IOBase): io object support read & seek
         size (int): size of buffer in byte
     """
-    img = get_image_metadata_from_bytesio(input, size)
-    return (img.width, img.height)
+    try:
+        img = get_image_metadata_from_bytesio(input, size)
+        return (img.width, img.height)
+    except UnknownImageFormat:
+        return _get_image_size_pil(input)
+
+
+def _get_image_size_pil(file):
+    try:
+        with PIL.Image.open(file) as image:
+            return image.size
+    except IOError as e:
+        raise UnknownImageFormat(e)
 
 
 def get_image_metadata(file_path):
@@ -244,7 +260,8 @@ def get_image_metadata_from_bytesio(input, size, file_path=None):
         if 0 != struct.unpack("<H", reserved)[0]:
             raise UnknownImageFormat(FILE_UNKNOWN)
         format = input.read(2)
-        assert 1 == struct.unpack("<H", format)[0]
+        if 1 != struct.unpack("<H", format)[0]:
+            raise UnknownImageFormat(FILE_UNKNOWN)
         num = input.read(2)
         num = struct.unpack("<H", num)[0]
         if num > 1:
