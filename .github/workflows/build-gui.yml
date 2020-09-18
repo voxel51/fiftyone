@@ -30,28 +30,26 @@ jobs:
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v1
+        with:
+          submodules: true
       - name: Set up Python 3.8
         uses: actions/setup-python@v2
         with:
           python-version: 3.8
       - name: Install Python dependencies
         run: |
-          pip install --upgrade pip setuptools "wheel<0.35"
+          pip install --upgrade pip setuptools wheel
       - name: Fetch dependency cache
         uses: actions/cache@v2
         with:
-          key: electron-cache
           path: electron/node_modules
-      - name: Clone submodules
-        run: |
-          git submodule set-url electron/app/player51 https://${{ secrets.FIFTYONE_GITHUB_TOKEN }}@github.com/voxel51/player51
-          git submodule update --init
+          key: npm-${{ hashFiles('electron/package.json') }}
+          restore-keys: |
+            npm-${{ hashFiles('electron/package.json') }}
+            npm-
       - name: Install dependencies
         working-directory: electron
         run: yarn
-      - name: Build GUI
-        working-directory: electron
-        run: yarn build
       - name: Package GUI (Linux)
         working-directory: electron
         run: yarn package-linux --publish never
@@ -96,6 +94,17 @@ jobs:
         with:
           name: wheel-windows
           path: package/gui/dist/*win*.whl
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone fiftyone
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+      - name: Check tag
+        if: startsWith(github.ref, 'refs/tags/gui-v')
+        run: |
+          python .github/tools/check-setup-version.py package/gui/setup.py $(echo ${{ github.ref }} | sed 's/refs\/tags\/gui-v//')
 
   publish:
     runs-on: ubuntu-18.04
