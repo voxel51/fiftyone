@@ -130,7 +130,7 @@ export const labelTypes = selector({
 export const labelClasses = selectorFamily({
   key: "labelClasses",
   get: (label) => ({ get }) => {
-    return get(atoms.stateDescription).view_stats.labels[label].classes;
+    return get(atoms.stateDescription).view_stats.labels[label].classes || [];
   },
 });
 
