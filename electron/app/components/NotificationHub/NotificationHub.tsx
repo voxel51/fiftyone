@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { animated, useTransition } from "react-spring";
-import styled from "styled-components";
+import styled, { ThemeContext } from "styled-components";
 import { Close } from "@material-ui/icons";
 
 const Container = styled("div")`
@@ -97,8 +97,12 @@ const Life = animated(styled.div`
 
 let id = 0;
 
-const dieMap = {
+const DIE = {
   "Server Error": false,
+};
+
+const COLOR = {
+  "Server Error": "error",
 };
 
 type Notification = {
@@ -110,16 +114,17 @@ type Notification = {
 
 const NotificationHub = ({
   config = { tension: 125, friction: 20, precision: 0.1 },
-  timeout = 3000,
   children,
 }) => {
+  const theme = useContext(ThemeContext);
   const [refMap] = useState(() => new WeakMap());
   const [cancelMap] = useState(() => new WeakMap());
   const [items, setItems] = useState([]);
   const transitions = useTransition(items, (item) => item.key, {
     from: { opacity: 0, height: 0, life: "100%" },
-    enter: (item) => async (next) =>
-      await next({ opacity: 1, height: refMap.get(item).offsetHeight }),
+    enter: (item) => async (next) => {
+      await next({ opacity: 1, height: refMap.get(item).offsetHeight });
+    },
     leave: (item) => async (next, cancel) => {
       cancelMap.set(item, cancel);
       await next({ life: "0%" });
@@ -128,8 +133,8 @@ const NotificationHub = ({
     },
     onRest: (item) =>
       setItems((state) => state.filter((i) => i.key !== item.key)),
-    config: (_, state) =>
-      state === "leave" ? [{ duration: timeout }, config, config] : config,
+    config: (state) =>
+      state === "leave" ? [{ duration: 10000 }, config, config] : config,
   });
 
   useEffect(
@@ -139,14 +144,15 @@ const NotificationHub = ({
       ),
     []
   );
+
   return (
     <Container>
       {transitions.map(({ key, item, props: { life, ...style } }) => (
         <Message key={key} style={style}>
           <Content ref={(ref) => ref && refMap.set(item, ref)}>
             {true ? <Life style={{ right: life }} /> : null}
-            <MessageTitle style={{ color: item.titleColor }}>
-              {item.title}
+            <MessageTitle style={{ color: theme[COLOR[item.kind]] }}>
+              {item.kind}
             </MessageTitle>
             <Button
               onClick={(e) => {
@@ -154,9 +160,9 @@ const NotificationHub = ({
                 cancelMap.has(item) && cancelMap.get(item)();
               }}
             >
-              <MessageText>{item.message}</MessageText>
               <Close />
             </Button>
+            <MessageText>{item.message}</MessageText>
           </Content>
         </Message>
       ))}
