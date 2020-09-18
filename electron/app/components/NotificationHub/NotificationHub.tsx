@@ -5,7 +5,7 @@ import { Close } from "@material-ui/icons";
 
 const Container = styled("div")`
   position: fixed;
-  z-index: 1000;
+  z-index: 10000;
   width: 0 auto;
   top: ${(props) => (props.top ? "2em" : "unset")};
   bottom: ${(props) => (props.top ? "unset" : "2em")};
@@ -15,7 +15,6 @@ const Container = styled("div")`
   font-weight: bold;
   display: flex;
   flex-direction: ${(props) => (props.top ? "column-reverse" : "column")};
-  pointer-events: none;
   align-items: ${(props) =>
     props.position === "center" ? "center" : `flex-${props.position || "end"}`};
   @media (max-width: 680px) {
@@ -35,7 +34,6 @@ const Message = styled(animated.div)`
 `;
 
 const MessageText = styled.p`
-  margin-top: 1em;
   margin-bottom: 1.5em;
   color: ${({ theme }) => theme.fontDark};
 `;
@@ -49,13 +47,9 @@ const Content = styled.div`
   color: ${({ theme }) => theme.font};
   background: ${({ theme }) => theme.backgroundDark};
   border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
-  box-shadow: 0 2px 20px ${({ theme }) => theme.backgroundDark};
+  box-shadow: 0 2px 40px ${({ theme }) => theme.backgroundDark};
   padding: 1em 2em 0 2em;
   font-size: 1em;
-  display: grid;
-  grid-template-columns: ${(props) =>
-    props.canClose === false ? "1fr" : "1fr auto"};
-  grid-gap: 2em;
   overflow: hidden;
   height: auto;
   border-radius: 3px;
@@ -63,7 +57,6 @@ const Content = styled.div`
 
 const Button = styled.button`
   cursor: pointer;
-  pointer-events: all;
   outline: 0;
   border: none;
   background: transparent;
@@ -78,6 +71,11 @@ const Button = styled.button`
   :hover {
     color: ${({ theme }) => theme.font};
   }
+`;
+
+const Header = styled.div`
+  display: flex;
+  justify-content: space-between;
 `;
 
 const Life = animated(styled.div`
@@ -134,7 +132,7 @@ const NotificationHub = ({
     onRest: (item) =>
       setItems((state) => state.filter((i) => i.key !== item.key)),
     config: (state) =>
-      state === "leave" ? [{ duration: 10000 }, config, config] : config,
+      state === "leave" ? [{ duration: 3000 }, config, config] : config,
   });
 
   useEffect(
@@ -151,17 +149,19 @@ const NotificationHub = ({
         <Message key={key} style={style}>
           <Content ref={(ref) => ref && refMap.set(item, ref)}>
             {true ? <Life style={{ right: life }} /> : null}
-            <MessageTitle style={{ color: theme[COLOR[item.kind]] }}>
-              {item.kind}
-            </MessageTitle>
-            <Button
-              onClick={(e) => {
-                e.stopPropagation();
-                cancelMap.has(item) && cancelMap.get(item)();
-              }}
-            >
-              <Close />
-            </Button>
+            <Header>
+              <MessageTitle style={{ color: theme[COLOR[item.kind]] }}>
+                {item.kind}
+              </MessageTitle>
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  cancelMap.has(item) && cancelMap.get(item)();
+                }}
+              >
+                <Close />
+              </Button>
+            </Header>
             <MessageText>{item.message}</MessageText>
           </Content>
         </Message>
