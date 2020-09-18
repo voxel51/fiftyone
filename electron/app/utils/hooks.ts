@@ -46,7 +46,12 @@ export const useOutsideClick = (ref, handler) => {
 
 export const useFollow = (leaderRef, followerRef, set) => {
   const follow = () => {
-    if (!leaderRef.current || !followerRef.current) {
+    if (
+      !leaderRef ||
+      !leaderRef.current ||
+      !followerRef ||
+      !followerRef.current
+    ) {
       return;
     }
     const { x, y } = followerRef.current.getBoundingClientRect();
@@ -62,7 +67,7 @@ export const useFollow = (leaderRef, followerRef, set) => {
   };
 
   useEventHandler(window, "scroll", follow);
-  useEventHandler(leaderRef.current, "scroll", follow);
+  useEventHandler(leaderRef ? leaderRef.current : null, "scroll", follow);
 };
 
 // allows re-rendering before recoil's Batcher updates
