@@ -56,7 +56,8 @@ export const totalCount = selector({
 export const filterStage = selectorFamily({
   key: "filterStage",
   get: (fieldName: string) => ({ get }) => {
-    return get(atoms.stateDescription).filter_stages[fieldName];
+    const state = get(atoms.stateDescription);
+    return state.filter_stages ? state.filter_stages[fieldName] : null;
   },
 });
 
@@ -70,8 +71,7 @@ export const filteredCount = selector({
 export const tagNames = selector({
   key: "tagNames",
   get: ({ get }) => {
-    const stateDescription = get(atoms.stateDescription);
-    return stateDescription.tags || [];
+    return get(atoms.stateDescription).tags || [];
   },
 });
 
@@ -128,7 +128,8 @@ export const labelTypes = selector({
 export const labelClasses = selectorFamily({
   key: "labelClasses",
   get: (label) => ({ get }) => {
-    return get(atoms.stateDescription).view_stats.labels[label].classes || [];
+    const stats = get(datasetStats);
+    return stats.labels ? stats.labels[label].classes : [];
   },
 });
 
