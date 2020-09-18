@@ -29,7 +29,7 @@ jobs:
           python-version: 3.8
       - name: Install dependencies
         run: |
-          pip install --upgrade pip setuptools "wheel<0.35"
+          pip install --upgrade pip setuptools wheel
       - name: Build wheel
         run: |
           python setup.py bdist_wheel
@@ -38,11 +38,22 @@ jobs:
         with:
           name: wheel
           path: dist/*.whl
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone fiftyone
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+      - name: Check tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          python .github/tools/check-setup-version.py setup.py $(echo ${{ github.ref }} | sed 's/refs\/tags\/v//')
 
   test:
     runs-on: ${{ matrix.os }}
     if: github.event.pull_request.draft == false
-    needs: build
+    needs: [build, check]
     strategy:
       fail-fast: false
       matrix:
@@ -65,16 +76,32 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
+      - name: Install pip dependencies
         # use `python -m pip` to work around Windows permission issues when
         # upgrading pip
         run: |
           python -m pip install --upgrade pip setuptools wheel
+          mkdir -p pip-cache
+          echo ::set-env name=PIP_CACHE_DIR::pip-cache
+      - name: Fetch pip cache
+        uses: actions/cache@v2
+        with:
+          path: pip-cache
+          key: pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements/*.txt') }}
+          restore-keys: |
+            pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements/*.txt') }}
+            pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('setup.py') }}-
+            pip-${{ runner.os }}-${{ matrix.python-version }}-
       - name: Download fiftyone wheel
         uses: actions/download-artifact@v2
         with:
           name: wheel
           path: downloads
+      - name: Fetch DB cache
+        uses: actions/cache@v2
+        with:
+          key: db-${{ runner.os }}-${{ hashFiles('package/db/setup.py') }}
+          path: package/db/cache/
       - name: Install fiftyone-db
         working-directory: package/db
         run: |
@@ -82,7 +109,7 @@ jobs:
           pip install dist/*.whl
       - name: Install fiftyone dependencies
         env:
-          PIP_INDEX_URL: https://voxel51-ci:${{ secrets.FIFTYONE_GITHUB_TOKEN }}@pypi.voxel51.com
+          PIP_INDEX_URL: https://voxel51-ci@pypi.voxel51.com
         run: |
           pip install -e package/gui/
           pip install fiftyone-brain voxel51-eta
@@ -107,7 +134,7 @@ jobs:
           find tests/isolated/ -name '*.py' -print0 | xargs -0 --verbose -n1 python tests/utils/pytest_wrapper.py --verbose
 
   publish:
-    needs: [build, test]
+    needs: [build, check, test]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-18.04
     steps:
