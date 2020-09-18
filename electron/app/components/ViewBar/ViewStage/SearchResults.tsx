@@ -63,7 +63,7 @@ const SearchResultsDiv = animated(styled.div`
   margin-top: 2.5rem;
   position: fixed;
   width: auto;
-  z-index: 10000;
+  z-index: 801;
   padding: 0.5rem 0;
 
   &::-webkit-scrollbar {

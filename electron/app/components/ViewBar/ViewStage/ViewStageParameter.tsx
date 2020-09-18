@@ -18,7 +18,7 @@ import SearchResults from "./SearchResults";
 const ViewStageParameterContainer = styled.div`
   display: flex;
   overflow: visible;
-  z-index: 1000;
+  z-index: 800;
 `;
 
 const ViewStageParameterDiv = animated(styled.div`
@@ -373,14 +373,6 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
               }}
               ref={inputRef}
             />
-            {containerRef.current && (
-              <ErrorMessage
-                key="error"
-                serviceRef={parameterRef}
-                barRef={barRef}
-                followRef={containerRef}
-              />
-            )}
           </ViewStageParameterDiv>
         )}
       </ViewStageParameterContainer>
@@ -392,6 +384,14 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
           bestMatch={currentResult}
           followRef={containerRef}
           barRef={barRef}
+        />
+      )}
+      {containerRef.current && (
+        <ErrorMessage
+          key="error"
+          serviceRef={parameterRef}
+          barRef={barRef}
+          followRef={containerRef}
         />
       )}
     </>

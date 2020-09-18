@@ -44,12 +44,17 @@ function getStageInfo(context) {
   );
 }
 
-function serializeStage(stage, stageMap) {
+function serializeStage(stage, stageMap, fieldNames) {
   return {
     kwargs: stage.parameters.map((param, i) => {
       return [
         param.parameter,
-        operate(stageMap[stage.stage][i].type, "castTo", param.value),
+        operate(
+          stageMap[stage.stage][i].type,
+          "castTo",
+          param.value,
+          fieldNames
+        ),
       ];
     }),
     _uuid: stage.id,
@@ -57,19 +62,22 @@ function serializeStage(stage, stageMap) {
   };
 }
 
-function operate(type, operator, value, isString = true) {
+function operate(type, operator, value, isString = true, fieldNames) {
   return type.split("|").reduce((acc, t) => {
     if (acc !== undefined) return acc;
     const parser = PARAM_PARSER[t];
-    return parser.validate(!isString ? parser.castFrom(value) : value)
-      ? parser[operator](value)
+    return parser.validate(
+      !isString ? parser.castFrom(value, fieldNames) : value,
+      fieldNames
+    )
+      ? parser[operator](value, fieldNames)
       : acc;
   }, undefined);
 }
 
-function serializeView(stages, stageMap) {
+function serializeView(stages, stageMap, fieldNames) {
   if (stages.length === 1 && stages[0].stage === "") return [];
-  return stages.map((stage) => serializeStage(stage, stageMap));
+  return stages.map((stage) => serializeStage(stage, stageMap, fieldNames));
 }
 
 function makeEmptyView(fieldNames, stageInfo) {
@@ -105,7 +113,9 @@ const viewsAreEqual = (viewOne, viewTwo) => {
 function setStages(ctx, stageInfo) {
   const view = ctx.stateDescription.view.view;
   const stageMap = Object.fromEntries(stageInfo.map((s) => [s.name, s.params]));
-  if (viewsAreEqual(view, serializeView(ctx.stages, stageMap))) {
+  if (
+    viewsAreEqual(view, serializeView(ctx.stages, stageMap, ctx.fieldNames))
+  ) {
     return ctx.stages;
   } else if (view.length === 0) {
     return makeEmptyView(ctx.fieldNames, stageInfo);
@@ -132,7 +142,13 @@ function setStages(ctx, stageInfo) {
             p[0],
             stageInfoResult.params[j].type,
             stageInfoResult.params[j].default,
-            operate(stageInfoResult.params[j].type, "castFrom", p[1], false),
+            operate(
+              stageInfoResult.params[j].type,
+              "castFrom",
+              p[1],
+              false,
+              ctx.fieldNames
+            ),
             true,
             false,
             j === stageInfoResult.params.length - 1,
@@ -517,11 +533,11 @@ const viewBarMachine = Machine(
           })
         );
       },
-      submit: ({ socket, stateDescription, stages, stageInfo }) => {
+      submit: ({ socket, stateDescription, stages, stageInfo, fieldNames }) => {
         const stageMap = Object.fromEntries(
           stageInfo.map((s) => [s.name, s.params])
         );
-        const newView = serializeView(stages, stageMap);
+        const newView = serializeView(stages, stageMap, fieldNames);
         const {
           view: { dataset },
         } = stateDescription;

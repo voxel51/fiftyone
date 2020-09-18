@@ -201,14 +201,14 @@ export default Machine(
               actions: [
                 assign({
                   submitted: true,
-                  value: ({ type, value, defaultValue }) =>
+                  value: ({ type, value, defaultValue, fieldNames }) =>
                     value === "" && defaultValue
                       ? defaultValue
                       : type.split("|").reduce((acc, t) => {
                           if (acc !== undefined) return acc;
                           const parser = PARSER[t];
-                          return parser.validate(value)
-                            ? parser.parse(value)
+                          return parser.validate(value, fieldNames)
+                            ? parser.parse(value, fieldNames)
                             : acc;
                         }, undefined),
                   errorId: undefined,
@@ -219,10 +219,12 @@ export default Machine(
                   parameter: ctx,
                 })),
               ],
-              cond: ({ type, value, defaultValue }) => {
+              cond: ({ type, value, defaultValue, fieldNames }) => {
                 return (
                   (value === "" && defaultValue) ||
-                  type.split("|").some((t) => PARSER[t].validate(value))
+                  type
+                    .split("|")
+                    .some((t) => PARSER[t].validate(value, fieldNames))
                 );
               },
             },
