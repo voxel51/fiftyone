@@ -1,6 +1,5 @@
 import React, {
   useContext,
-  useMemo,
   useEffect,
   useRef,
   useState,
@@ -10,10 +9,13 @@ import { animated, useSpring } from "react-spring";
 import styled, { ThemeContext } from "styled-components";
 import { useService } from "@xstate/react";
 import AutosizeInput from "react-input-autosize";
+import { useRecoilValue } from "recoil";
 
+import * as selectors from "../../../recoil/selectors";
 import { PARSER } from "./viewStageParameterMachine";
 import { useOutsideClick } from "../../../utils/hooks";
 import ErrorMessage from "./ErrorMessage";
+import SearchResults from "./SearchResults";
 
 const ViewStageParameterContainer = styled.div`
   display: flex;
@@ -147,7 +149,7 @@ const ObjectEditor = ({
   const theme = useContext(ThemeContext);
   const containerRef = useRef(null);
 
-  const { active, parameter, defaultValue, value, type } = state.context;
+  const { active, value } = state.context;
 
   const [containerProps, containerSet] = useSpring(() => ({
     height: state.matches("editing") ? 200 : 36,
@@ -364,6 +366,18 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
             }}
             ref={inputRef}
           />
+          {state.matches("editing") &&
+            barRef.current &&
+            containerRef.current && (
+              <SearchResults
+                results={results}
+                send={send}
+                currentResult={currentResult}
+                bestMatch={bestMatch.value}
+                followRef={containerRef}
+                barRef={barRef}
+              />
+            )}
           {containerRef.current && (
             <ErrorMessage
               key="error"

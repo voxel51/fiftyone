@@ -6,6 +6,7 @@ import viewStageParameterMachine from "./viewStageParameterMachine";
 const { choose } = actions;
 
 export const createParameter = (
+  fieldNames,
   stage,
   parameter,
   type,
@@ -31,6 +32,7 @@ export const createParameter = (
   results: [],
   active,
   placeholder,
+  fieldNames,
 });
 
 const isValidStage = (stageInfo, stage) => {
@@ -75,6 +77,7 @@ const viewStageMachine = Machine(
       focusOnInit: undefined,
       length: undefined,
       inputRef: {},
+      fieldNames: [],
     },
     type: "parallel",
     states: {
@@ -244,6 +247,7 @@ const viewStageMachine = Machine(
                         )[0].params;
                         const parameters = result.map((parameter, i) =>
                           createParameter(
+                            ctx.fieldNames,
                             value,
                             parameter.name,
                             parameter.type,
@@ -418,6 +422,7 @@ const viewStageMachine = Machine(
             index: (_, { index }) => index,
             length: (_, { length }) => length,
             active: (_, { active }) => active,
+            fieldNames: (_, { fieldNames }) => fieldNames,
           }),
           (ctx, { active }) => {
             ctx.parameters.forEach((parameter) =>

@@ -1,5 +1,7 @@
 import { Machine, actions, assign, spawn, send } from "xstate";
 import uuid from "uuid-v4";
+
+import { RESERVED_FIELDS } from "../../utils/labels";
 import viewStageMachine, {
   createParameter,
 } from "./ViewStage/viewStageMachine";
@@ -8,6 +10,7 @@ import { PARSER as PARAM_PARSER } from "./ViewStage/viewStageParameterMachine";
 const { choose } = actions;
 
 export const createStage = (
+  fieldNames,
   id,
   stage,
   index,
@@ -30,6 +33,7 @@ export const createStage = (
   inputRef: {},
   submitted,
   loaded,
+  fieldNames,
 });
 
 import { getSocket } from "../../utils/socket";
@@ -68,8 +72,19 @@ function serializeView(stages, stageMap) {
   return stages.map((stage) => serializeStage(stage, stageMap));
 }
 
-function makeEmptyView(stageInfo) {
-  const stage = createStage(null, "", 0, stageInfo, false, 1, true, [], false);
+function makeEmptyView(fieldNames, stageInfo) {
+  const stage = createStage(
+    fieldNames,
+    null,
+    "",
+    0,
+    stageInfo,
+    false,
+    1,
+    true,
+    [],
+    false
+  );
   return [
     {
       ...stage,
@@ -93,12 +108,13 @@ function setStages(ctx, stageInfo) {
   if (viewsAreEqual(view, serializeView(ctx.stages, stageMap))) {
     return ctx.stages;
   } else if (view.length === 0) {
-    return makeEmptyView(stageInfo);
+    return makeEmptyView(ctx.fieldNames, stageInfo);
   } else {
     return view.map((stage, i) => {
       let stageName = stage._cls.split(".");
       stageName = stageName[stageName.length - 1];
       const newStage = createStage(
+        ctx.fieldNames,
         stage._uuid,
         stageName,
         i,
@@ -111,6 +127,7 @@ function setStages(ctx, stageInfo) {
             (s) => s.name === stageName
           )[0];
           return createParameter(
+            ctx.fieldNames,
             stageName,
             p[0],
             stageInfoResult.params[j].type,
@@ -145,6 +162,7 @@ const viewBarMachine = Machine(
       setStateDescription: undefined,
       stateDescription: undefined,
       port: undefined,
+      fieldNames: [],
     },
     initial: "initializing",
     states: {
@@ -174,7 +192,8 @@ const viewBarMachine = Machine(
               stageInfo: (ctx, e) => e.data.stages,
               stages: (ctx, e) => {
                 const view = ctx.stateDescription.view.view;
-                if (view.length === 0) return makeEmptyView(e.data.stages);
+                if (view.length === 0)
+                  return makeEmptyView(ctx.fieldNames, e.data.stages);
                 return setStages(ctx, e.data.stages);
               },
             }),
@@ -346,6 +365,7 @@ const viewBarMachine = Machine(
             activeStage: (_, { index }) => index,
             stages: (ctx, { index }) => {
               const newStage = createStage(
+                ctx.fieldNames,
                 null,
                 "",
                 index,
@@ -395,6 +415,7 @@ const viewBarMachine = Machine(
           assign({
             stages: (ctx) => {
               const stage = createStage(
+                ctx.fieldNames,
                 null,
                 "",
                 0,
@@ -423,6 +444,7 @@ const viewBarMachine = Machine(
             stages: ({ stages, stageInfo }, e) => {
               if (stages.length === 1 && stages[0].id === e.stage.id) {
                 const stage = createStage(
+                  ctx.fieldNames,
                   null,
                   "",
                   0,
@@ -466,6 +488,15 @@ const viewBarMachine = Machine(
               return e.stateDescription;
             },
             setStateDescription: (_, e) => e.setStateDescription,
+            fieldNames: (_, e) => {
+              const fieldSchema = (e.stateDescription || {}).field_schema;
+              if (fieldSchema) {
+                return Object.keys(fieldSchema).filter(
+                  (f) => !RESERVED_FIELDS.includes(f)
+                );
+              }
+              return [];
+            },
           }),
           "sendStagesUpdate",
         ],
@@ -482,6 +513,7 @@ const viewBarMachine = Machine(
             length: ctx.stages.length,
             active: stage.index === ctx.activeStage,
             stage: stage.stage,
+            fieldNames: ctx.fieldNames,
           })
         );
       },

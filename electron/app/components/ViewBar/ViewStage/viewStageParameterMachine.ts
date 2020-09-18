@@ -148,6 +148,7 @@ export default Machine(
       tail: undefined,
       focusOnInit: undefined,
       error: undefined,
+      fieldNames: [],
     },
     states: {
       decide: {
