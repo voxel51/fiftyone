@@ -22,11 +22,7 @@ export const useEventHandler = (target, eventType, handler) => {
 
 export const useObserve = (target, handler) => {
   const handlerRef = useRef(handler);
-  const observerRef = useRef(
-    new ResizeObserver((entries) => {
-      entries.forEach((entry) => handlerRef.current(entry));
-    })
-  );
+  const observerRef = useRef(new ResizeObserver(() => handlerRef.current()));
 
   useEffect(() => {
     handlerRef.current = handler;
