@@ -1,10 +1,6 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRecoilTransactionObserver_UNSTABLE } from "recoil";
+import ResizeObserver from "resize-observer-polyfill";
 
 export const useEventHandler = (target, eventType, handler) => {
   // Adapted from https://reactjs.org/docs/hooks-faq.html#what-can-i-do-if-my-effect-dependencies-change-too-often
@@ -23,6 +19,24 @@ export const useEventHandler = (target, eventType, handler) => {
       target.removeEventListener(eventType, wrapper);
     };
   }, [target, eventType]);
+};
+
+export const useObserve = (target, handler) => {
+  const handlerRef = useRef(handler);
+  const observerRef = useRef(
+    new ResizeObserver((entries) => {
+      entries.forEach((entry) => handlerRef.current(entry));
+    })
+  );
+
+  useEffect(() => {
+    handlerRef.current = handler;
+  });
+
+  useEffect(() => {
+    observerRef.current.observe(target);
+    return () => observerRef.current.unobserve(target);
+  }, [target]);
 };
 
 export const useResizeHandler = (handler) =>
@@ -44,27 +58,22 @@ export const useOutsideClick = (ref, handler) => {
   useEventHandler(document, "mousedown", handleClickOutside);
 };
 
-export const useFollow = (leaderRef, followerRef, set) => {
+export const useFollow = (leaderRef, follower, set) => {
   const follow = () => {
-    if (
-      !leaderRef ||
-      !leaderRef.current ||
-      !followerRef ||
-      !followerRef.current
-    ) {
-      return;
-    }
-    const { x, y } = followerRef.current.getBoundingClientRect();
+    const { x, y } = follower.current.getBoundingClientRect();
     const {
       x: leaderX,
       width: leaderWidth,
     } = leaderRef.current.getBoundingClientRect();
+
     set({
       left: x,
       top: y,
       opacity: x - leaderX < 0 || x > leaderX + leaderWidth ? 0 : 1,
     });
   };
+
+  useObserve(follower.current, follow);
 
   useEventHandler(window, "scroll", follow);
   useEventHandler(leaderRef ? leaderRef.current : null, "scroll", follow);
