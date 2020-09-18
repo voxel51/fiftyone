@@ -17,15 +17,15 @@ import SearchResults from "./SearchResults";
 
 const ViewStageParameterContainer = styled.div`
   display: flex;
+  overflow: visible;
+  z-index: 1000;
 `;
 
 const ViewStageParameterDiv = animated(styled.div`
   box-sizing: border-box;
   border: 1px solid ${({ theme }) => theme.brand};
-  position: relative;
   display: flex;
-  z-index: 801;
-  overflow: hidden;
+  overflow: visible;
 `);
 
 const ViewStageParameterInput = animated(styled(AutosizeInput)`
@@ -330,71 +330,71 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
   }
   const currentResult = results[0];
   return (
-    <ViewStageParameterContainer
-      ref={(node) =>
-        node &&
-        node !== containerRef.current &&
-        setContainerRef({ current: node })
-      }
-    >
-      {hasObjectType ? (
-        <ObjectEditor
-          parameterRef={parameterRef}
-          barRef={barRef}
-          followRef={containerRef}
-          inputRef={inputRef}
-          stageRef={stageRef}
-        />
-      ) : (
-        <ViewStageParameterDiv style={props}>
-          <ViewStageParameterInput
-            placeholder={makePlaceholder(state.context)}
-            autoFocus={state.matches("editing")}
-            value={
-              state.matches("reading") && value.length > 24
-                ? value.slice(0, 25) + "..."
-                : value
-            }
-            onFocus={() => !isEditing && send({ type: "EDIT" })}
-            onBlur={() => isEditing && send({ type: "COMMIT" })}
-            onChange={(e) => {
-              send({ type: "CHANGE", value: e.target.value });
-            }}
-            onKeyPress={(e) => {
-              if (e.key === "Enter") {
-                isEditing && send({ type: "COMMIT" });
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                send({ type: "COMMIT" });
-              }
-            }}
-            ref={inputRef}
+    <>
+      <ViewStageParameterContainer
+        ref={(node) =>
+          node &&
+          node !== containerRef.current &&
+          setContainerRef({ current: node })
+        }
+      >
+        {hasObjectType ? (
+          <ObjectEditor
+            parameterRef={parameterRef}
+            barRef={barRef}
+            followRef={containerRef}
+            inputRef={inputRef}
+            stageRef={stageRef}
           />
-          {state.matches("editing") &&
-            barRef.current &&
-            containerRef.current && (
-              <SearchResults
-                results={results}
-                send={send}
-                currentResult={currentResult}
-                bestMatch={currentResult}
-                followRef={containerRef}
+        ) : (
+          <ViewStageParameterDiv style={props}>
+            <ViewStageParameterInput
+              placeholder={makePlaceholder(state.context)}
+              autoFocus={state.matches("editing")}
+              value={
+                state.matches("reading") && value.length > 24
+                  ? value.slice(0, 25) + "..."
+                  : value
+              }
+              onFocus={() => !isEditing && send({ type: "EDIT" })}
+              onBlur={() => isEditing && send({ type: "COMMIT" })}
+              onChange={(e) => {
+                send({ type: "CHANGE", value: e.target.value });
+              }}
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  isEditing && send({ type: "COMMIT" });
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  send({ type: "COMMIT" });
+                }
+              }}
+              ref={inputRef}
+            />
+            {containerRef.current && (
+              <ErrorMessage
+                key="error"
+                serviceRef={parameterRef}
                 barRef={barRef}
+                followRef={containerRef}
               />
             )}
-          {containerRef.current && (
-            <ErrorMessage
-              key="error"
-              serviceRef={parameterRef}
-              barRef={barRef}
-              followRef={containerRef}
-            />
-          )}
-        </ViewStageParameterDiv>
+          </ViewStageParameterDiv>
+        )}
+      </ViewStageParameterContainer>
+      {state.matches("editing") && barRef.current && containerRef.current && (
+        <SearchResults
+          results={results}
+          send={send}
+          currentResult={currentResult}
+          bestMatch={currentResult}
+          followRef={containerRef}
+          barRef={barRef}
+        />
       )}
-    </ViewStageParameterContainer>
+    </>
   );
 });
 

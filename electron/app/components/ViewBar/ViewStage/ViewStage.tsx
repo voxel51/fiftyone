@@ -339,7 +339,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
             style={{ fontSize: "1rem" }}
             ref={inputRef}
           />
-          {state.matches("input.editing") || !isCompleted ? (
+          {state.matches("input.editing") || stage === "" ? (
             <BestMatchDiv>
               {bestMatch ? bestMatch.placeholder : ""}
             </BestMatchDiv>

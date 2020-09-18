@@ -441,10 +441,10 @@ const viewBarMachine = Machine(
         actions: [
           assign({
             activeStage: ({ activeStage }) => Math.max(activeStage - 1, 0),
-            stages: ({ stages, stageInfo }, e) => {
+            stages: ({ fieldNames, stages, stageInfo }, e) => {
               if (stages.length === 1 && stages[0].id === e.stage.id) {
                 const stage = createStage(
-                  ctx.fieldNames,
+                  fieldNames,
                   null,
                   "",
                   0,
