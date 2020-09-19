@@ -1801,7 +1801,7 @@ class SampleFieldTests(unittest.TestCase):
 
         # set field (new)
         with self.assertRaises(ValueError):
-            sample.set_field("field_1", 51)
+            sample.set_field("field_1", 51, create=False)
 
         sample.set_field("field_1", 51, create=True)
         self.assertIn("field_1", sample.field_names)
