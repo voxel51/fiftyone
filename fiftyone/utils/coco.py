@@ -187,7 +187,7 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         self._supercategory_map = supercategory_map
         self._images_map = {i["file_name"]: i for i in images.values()}
         self._annotations = annotations
-        self._filenames = etau.list_files(self._data_dir, abs_paths=False)
+        self._filenames = self._images_map.keys()
 
     def get_dataset_info(self):
         return self._info
