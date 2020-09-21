@@ -15,7 +15,7 @@ on:
       - rel-*
       - release-*
     paths:
-      - electron/
+      - electron/**
       - .github/workflows/chromatic.yml
 
 jobs:
@@ -25,15 +25,13 @@ jobs:
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v1
+        with:
+          submodules: true
       - name: Fetch dependency cache
         uses: actions/cache@v2
         with:
           key: electron-cache
           path: electron/node_modules
-      - name: Clone submodules
-        run: |
-          git submodule set-url electron/app/player51 https://${{ secrets.FIFTYONE_GITHUB_TOKEN }}@github.com/voxel51/player51
-          git submodule update --init
       - name: Install dependencies
         working-directory: electron
         run: yarn

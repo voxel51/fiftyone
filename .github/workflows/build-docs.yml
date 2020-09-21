@@ -13,9 +13,9 @@ on:
       - docs-publish
     paths:
       - .github/workflows/build-docs.yml
-      - docs/
-      - examples/
-      - fiftyone/
+      - docs/**
+      - examples/**
+      - fiftyone/**
       - "**.py"
       - "**.md"
       - "**.rst"
@@ -26,9 +26,9 @@ on:
       - release-*
     paths:
       - .github/workflows/build-docs.yml
-      - docs/
-      - examples/
-      - fiftyone/
+      - docs/**
+      - examples/**
+      - fiftyone/**
       - "**.py"
       - "**.md"
       - "**.rst"
@@ -43,9 +43,23 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.8
+      - name: Install pip dependencies
+        run: |
+          pip install --upgrade pip setuptools wheel
+          mkdir -p pip-cache
+          echo ::set-env name=PIP_CACHE_DIR::pip-cache
+      - name: Fetch pip cache
+        uses: actions/cache@v2
+        with:
+          path: pip-cache
+          key: pip-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements/*.txt') }}
+          restore-keys: |
+            pip-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements/*.txt') }}
+            pip-${{ hashFiles('setup.py') }}-
+            pip-
       - name: Install dependencies
         env:
-          PIP_INDEX_URL: https://voxel51-ci:${{ secrets.FIFTYONE_GITHUB_TOKEN }}@pypi.voxel51.com
+          PIP_INDEX_URL: https://voxel51-ci@pypi.voxel51.com
         run: |
           sudo apt-get install pandoc
           pip install -e .
@@ -65,8 +79,20 @@ jobs:
           name: docs
           path: docs/build/html/
 
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone fiftyone
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+      - name: Check tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          python .github/tools/check-setup-version.py setup.py $(echo ${{ github.ref }} | sed 's/refs\/tags\/v//')
+
   publish:
-    needs: build
+    needs: [build, check]
     if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/tags/docs-publish'
     runs-on: ubuntu-18.04
     steps:
@@ -101,4 +127,5 @@ jobs:
           token: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
           author: voxel51-bot <bot@voxel51.com>
           labels: documentation
-          reviewers: voxel51/developers
+          reviewers: jasoncorso, brimoor
+          team-reviewers: developers

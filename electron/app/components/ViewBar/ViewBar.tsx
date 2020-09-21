@@ -58,7 +58,7 @@ const viewBarKeyMap = {
   VIEW_BAR_ENTER: "enter",
 };
 
-const ViewBar = () => {
+const ViewBar = React.memo(() => {
   const [state, send] = useMachine(viewBarMachine);
   const [stateDescriptionValue, setStateDescription] = useRecoilState(
     stateDescription
@@ -154,6 +154,6 @@ const ViewBar = () => {
       </IconsContainer>
     </ViewBarContainer>
   );
-};
+});
 
 export default ViewBar;

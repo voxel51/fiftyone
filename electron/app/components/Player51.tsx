@@ -3,7 +3,6 @@ import uuid from "react-uuid";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 
 import Player51 from "../player51/build/cjs/player51.min.js";
-import clickHandler from "../utils/click.ts";
 import {
   RESERVED_FIELDS,
   VALID_SCALAR_TYPES,
@@ -36,10 +35,15 @@ const PARSERS = {
         name,
         label: `${obj.label}`,
         confidence: obj.confidence,
-        bounding_box: {
-          top_left: { x: bb[0], y: bb[1] },
-          bottom_right: { x: bb[0] + bb[2], y: bb[1] + bb[3] },
-        },
+        bounding_box: bb
+          ? {
+              top_left: { x: bb[0], y: bb[1] },
+              bottom_right: { x: bb[0] + bb[2], y: bb[1] + bb[3] },
+            }
+          : {
+              top_left: { x: 0, y: 0 },
+              bottom_right: { x: 0, y: 0 },
+            },
         attrs: { attrs },
       };
     },
@@ -94,7 +98,6 @@ export default ({
   const filter = useRecoilValue(filterSelector);
   const colorMap = useRecoilValue(atoms.colorMap);
   const [overlay, playerColorMap] = loadOverlay(sample, colorMap, fieldSchema);
-  const [handleClick, handleDoubleClick] = clickHandler(onClick, onDoubleClick);
   const [initLoad, setInitLoad] = useState(false);
   const id = uuid();
   const [player] = useState(
@@ -122,9 +125,7 @@ export default ({
   if (playerRef) {
     playerRef.current = player;
   }
-  const props = thumbnail
-    ? { onClick: handleClick, onDoubleClick: handleDoubleClick }
-    : {};
+  const props = thumbnail ? { onClick, onDoubleClick } : {};
   useEffect(() => {
     if (!initLoad) {
       if (thumbnail) {

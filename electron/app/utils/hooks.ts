@@ -1,72 +1,80 @@
-import { useEffect, useLayoutEffect } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
-export const useResizeHandler = (handler, deps = []) => {
+export const useEventHandler = (target, eventType, handler) => {
+  // Adapted from https://reactjs.org/docs/hooks-faq.html#what-can-i-do-if-my-effect-dependencies-change-too-often
+  const handlerRef = useRef(handler);
   useEffect(() => {
-    window.addEventListener("resize", handler);
-    return () => {
-      window.removeEventListener("resize", handler);
-    };
-  }, deps);
-};
+    handlerRef.current = handler;
+  });
 
-export const useScrollHandler = (handler, deps = []) => {
   useEffect(() => {
-    window.addEventListener("scroll", handler);
-    return () => {
-      window.removeEventListener("scroll", handler);
-    };
-  }, deps);
-};
-
-export const useKeydownHandler = (handler, deps = []) => {
-  useEffect(() => {
-    document.body.addEventListener("keydown", handler);
-    return () => {
-      document.body.removeEventListener("keydown", handler);
-    };
-  }, deps);
-};
-
-export const useOutsideClick = (ref, callback) => {
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (ref.current && !ref.current.contains(event.target)) {
-        callback(event);
-      }
+    if (!target) {
+      return;
     }
-
-    document.addEventListener("mousedown", handleClickOutside);
+    const wrapper = (e) => handlerRef.current(e);
+    target.addEventListener(eventType, wrapper);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      target.removeEventListener(eventType, wrapper);
     };
-  }, [ref, callback]);
+  }, [target, eventType]);
 };
 
-export const useFollow = (leaderRef, followerRef, set, deps = []) => {
-  useLayoutEffect(() => {
-    const follow = () => {
-      const { x, y } = followerRef.current.getBoundingClientRect();
-      const {
-        x: leaderX,
-        width: leaderWidth,
-      } = leaderRef.current.getBoundingClientRect();
-      set({
-        left: x,
-        top: y,
-        opacity: x - leaderX < 0 || x > leaderX + leaderWidth ? 0 : 1,
-      });
-    };
-    leaderRef.current &&
-      followerRef.current &&
-      (() => {
-        leaderRef.current.addEventListener("scroll", follow);
-        window.addEventListener("scroll", follow);
-      })();
-    return () =>
-      leaderRef.current &&
-      (() => {
-        leaderRef.current.removeEventListener("scroll", follow);
-        window.removeEventListener("scroll", follow);
-      })();
-  }, [leaderRef.current, followerRef.current, ...deps]);
+export const useResizeHandler = (handler) =>
+  useEventHandler(window, "resize", handler);
+
+export const useScrollHandler = (handler) =>
+  useEventHandler(window, "scroll", handler);
+
+export const useKeydownHandler = (handler) =>
+  useEventHandler(document.body, "keydown", handler);
+
+export const useOutsideClick = (ref, handler) => {
+  const handleClickOutside = (event) => {
+    if (ref.current && !ref.current.contains(event.target)) {
+      handler(event);
+    }
+  };
+
+  useEventHandler(document, "mousedown", handleClickOutside);
+};
+
+export const useFollow = (leaderRef, followerRef, set) => {
+  const follow = () => {
+    if (
+      !leaderRef ||
+      !leaderRef.current ||
+      !followerRef ||
+      !followerRef.current
+    ) {
+      return;
+    }
+    const { x, y } = followerRef.current.getBoundingClientRect();
+    const {
+      x: leaderX,
+      width: leaderWidth,
+    } = leaderRef.current.getBoundingClientRect();
+    set({
+      left: x,
+      top: y,
+      opacity: x - leaderX < 0 || x > leaderX + leaderWidth ? 0 : 1,
+    });
+  };
+
+  useEventHandler(window, "scroll", follow);
+  useEventHandler(leaderRef ? leaderRef.current : null, "scroll", follow);
+};
+
+// allows re-rendering before recoil's Batcher updates
+export const useFastRerender = () => {
+  const [counter, setCounter] = useState(0);
+  const rerender = useCallback(() => {
+    setCounter((prev) => prev + 1);
+  }, []);
+  return rerender;
 };

@@ -111,7 +111,6 @@ function App(props: Props) {
     portRef.current.ref.current.click();
   });
   const bodyStyle = {
-    height: "100%",
     padding: "0 2rem 2rem 2rem",
   };
 
