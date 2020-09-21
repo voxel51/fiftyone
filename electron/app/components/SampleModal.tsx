@@ -271,32 +271,29 @@ const SampleModal = ({
     }
   };
 
-  useResizeHandler(handleResize, [showJSON]);
+  useResizeHandler(handleResize);
   useEffect(handleResize, [showJSON, fullscreen]);
 
-  useKeydownHandler(
-    (e) => {
-      if (
-        document.activeElement &&
-        ((document.activeElement.tagName.toLowerCase() === "input" &&
-          !["checkbox", "radio"].includes(document.activeElement.type)) ||
-          document.activeElement.getAttribute("role") === "slider")
-      ) {
-        return;
-      } else if (e.key == "Escape") {
-        if (fullscreen) {
-          setFullscreen(false);
-        } else if (onClose) {
-          onClose();
-        }
-      } else if (e.key == "ArrowLeft" && onPrevious) {
-        onPrevious();
-      } else if (e.key == "ArrowRight" && onNext) {
-        onNext();
+  useKeydownHandler((e) => {
+    if (
+      document.activeElement &&
+      ((document.activeElement.tagName.toLowerCase() === "input" &&
+        !["checkbox", "radio"].includes(document.activeElement.type)) ||
+        document.activeElement.getAttribute("role") === "slider")
+    ) {
+      return;
+    } else if (e.key == "Escape") {
+      if (fullscreen) {
+        setFullscreen(false);
+      } else if (onClose) {
+        onClose();
       }
-    },
-    [onClose, onPrevious, onNext, fullscreen]
-  );
+    } else if (e.key == "ArrowLeft" && onPrevious) {
+      onPrevious();
+    } else if (e.key == "ArrowRight" && onNext) {
+      onNext();
+    }
+  });
 
   const getDisplayOptions = (
     values,
