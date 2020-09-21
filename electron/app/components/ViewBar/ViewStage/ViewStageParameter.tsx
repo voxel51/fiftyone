@@ -270,7 +270,7 @@ const ObjectEditor = ({
         <ErrorMessage
           key="error"
           serviceRef={parameterRef}
-          style={{ marginTop: "12rem", marginLeft: -10 }}
+          style={{ marginTop: "12.5rem", marginLeft: 0 }}
         />
       </ObjectEditorContainer>
     </>
@@ -378,7 +378,7 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
           barRef={barRef}
         />
       )}
-      {containerRef.current && (
+      {!hasObjectType && containerRef.current && (
         <ErrorMessage
           key="error"
           serviceRef={parameterRef}
