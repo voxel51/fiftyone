@@ -26,36 +26,9 @@ class SerializableDocument(object):
         return self.__repr__()
 
     def __repr__(self):
-        return self.fancy_repr()
-
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-
-        return self.to_dict() == other.to_dict()
-
-    def fancy_repr(
-        self, class_name=None, select_fields=None, exclude_fields=None
-    ):
-        """Generates a customizable string representation of the document.
-
-        Args:
-            class_name (None): optional class name to use
-            select_fields (None): iterable of field names to restrict to
-            exclude_fields (None): iterable of field names to exclude
-
-        Returns:
-            a string representation of the document
-        """
         d = {}
         for f in self._get_repr_fields():
-            if f.startswith("_") or (
-                f != "id"
-                and (
-                    (select_fields is not None and f not in select_fields)
-                    or (exclude_fields is not None and f in exclude_fields)
-                )
-            ):
+            if f.startswith("_"):
                 continue
 
             value = getattr(self, f)
@@ -65,9 +38,14 @@ class SerializableDocument(object):
             else:
                 d[f] = value
 
-        doc_name = class_name or self.__class__.__name__
         doc_str = fou.pformat(d)
-        return "<%s: %s>" % (doc_name, doc_str)
+        return "<%s: %s>" % (self.__class__.__name__, doc_str)
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+
+        return self.to_dict() == other.to_dict()
 
     def _get_repr_fields(self):
         """Returns an ordered tuple of field names that should be included in
@@ -177,7 +155,7 @@ class MongoEngineBaseDocument(SerializableDocument):
         return cls._from_son(bson_data)
 
     def _to_json(self):
-        # @todo(Tyler) mongoengine snippet, to be replaced
+        # @todo mongoengine snippet, to be replaced
         # pylint: disable=no-member
         return json_util.dumps(self.to_mongo(use_db_field=True))
 
@@ -244,123 +222,6 @@ class Document(BaseDocument, mongoengine.Document):
     """
 
     meta = {"abstract": True}
-
-    def save(self, validate=True, clean=True, **kwargs):
-        """Save the :class:`Document` to the database.
-
-        If the document already exists, it will be updated, otherwise it will
-        be created.
-
-        Args:
-            validate (True): validates the document
-            clean (True): call the document's clean method; requires
-                ``validate`` to be True
-
-        Returns:
-            self
-        """
-        # pylint: disable=no-member
-        if self._meta.get("abstract"):
-            raise mongoengine.InvalidDocumentError(
-                "Cannot save an abstract document."
-            )
-
-        if validate:
-            self.validate(clean=clean)
-
-        doc_id = self.to_mongo(fields=[self._meta["id_field"]])
-        created = "_id" not in doc_id or self._created
-
-        # It might be refreshed by the pre_save_post_validation hook, e.g., for
-        # etag generation
-        doc = self.to_mongo()
-
-        if self._meta.get("auto_create_index", True):
-            self.ensure_indexes()
-
-        try:
-            # Save a new document or update an existing one
-            if created:
-                # Save new document
-
-                # insert_one will provoke UniqueError alongside save does not
-                # therefore, it need to catch and call replace_one.
-                collection = self._get_collection()
-
-                object_id = None
-
-                if "_id" in doc:
-                    raw_object = collection.find_one_and_replace(
-                        {"_id": doc["_id"]}, doc
-                    )
-                    if raw_object:
-                        object_id = doc["_id"]
-
-                if not object_id:
-                    object_id = collection.insert_one(doc).inserted_id
-            else:
-                # Update existing document
-                object_id = doc["_id"]
-                created = False
-
-                updates, removals = self._delta()
-
-                update_doc = {}
-                if updates:
-                    update_doc["$set"] = updates
-                if removals:
-                    update_doc["$unset"] = removals
-
-                if update_doc:
-                    updated_existing = self._update(
-                        object_id, update_doc, **kwargs
-                    )
-
-                    if updated_existing is False:
-                        created = True
-                        # !!! This is bad, means we accidentally created a
-                        # new, potentially corrupted document. See
-                        # https://github.com/MongoEngine/mongoengine/issues/564
-
-        except pymongo.errors.DuplicateKeyError as err:
-            message = "Tried to save duplicate unique keys (%s)"
-            raise mongoengine.NotUniqueError(message % err)
-        except pymongo.errors.OperationFailure as err:
-            message = "Could not save document (%s)"
-            if re.match("^E1100[01] duplicate key", str(err)):
-                # E11000 - duplicate key error index
-                # E11001 - duplicate key on update
-                message = "Tried to save duplicate unique keys (%s)"
-                raise mongoengine.NotUniqueError(message % err)
-            raise mongoengine.OperationError(message % err)
-
-        # Make sure we store the PK on this document now that it's saved
-        id_field = self._meta["id_field"]
-        if created or id_field not in self._meta.get("shard_key", []):
-            self[id_field] = self._fields[id_field].to_python(object_id)
-
-        self._clear_changed_fields()
-        self._created = False
-
-        return self
-
-    def _update(self, object_id, update_doc, **kwargs):
-        """Updates an existing document.
-
-        Helper method; should only be used by :meth:`Document.save`.
-        """
-        result = (
-            self._get_collection()
-            .update_one({"_id": object_id}, update_doc, upsert=True)
-            .raw_result
-        )
-
-        if result is not None:
-            updated_existing = result.get("updatedExisting")
-        else:
-            updated_existing = None
-
-        return updated_existing
 
 
 class DynamicDocument(BaseDocument, mongoengine.DynamicDocument):

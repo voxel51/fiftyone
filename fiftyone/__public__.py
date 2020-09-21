@@ -52,6 +52,7 @@ from .core.metadata import (
     ImageMetadata,
 )
 from .core.sample import Sample
+from .core.schema import DatasetSchema
 from .core.session import (
     close_app,
     launch_app,

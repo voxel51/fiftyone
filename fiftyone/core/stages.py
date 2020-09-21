@@ -15,7 +15,8 @@ from pymongo import ASCENDING, DESCENDING
 from fiftyone.core.expressions import ViewExpression, ViewField
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-from fiftyone.core.odm.sample import default_sample_fields
+from fiftyone.core.expressions import ViewExpression
+from fiftyone.core.schema import DatasetSchema
 
 import eta.core.utils as etau
 
@@ -291,7 +292,7 @@ class ExcludeFields(ViewStage):
         ]
 
     def _validate_params(self):
-        default_fields = set(default_sample_fields())
+        default_fields = set(DatasetSchema.default_sample_fields())
         for field_name in self._field_names:
             if field_name.startswith("_"):
                 raise ValueError(
@@ -1069,7 +1070,7 @@ class SelectFields(ViewStage):
         return self._field_names or []
 
     def get_selected_fields(self):
-        default_fields = default_sample_fields()
+        default_fields = DatasetSchema.default_sample_fields()
         return list(set(self.field_names) | set(default_fields))
 
     def to_mongo(self):
@@ -1078,7 +1079,9 @@ class SelectFields(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        default_fields = default_sample_fields(include_private=True)
+        default_fields = DatasetSchema.default_sample_fields(
+            include_private=True
+        )
         selected_fields = list(set(self.field_names) | set(default_fields))
         return [{"$project": {fn: True for fn in selected_fields}}]
 

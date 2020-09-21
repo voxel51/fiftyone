@@ -8,20 +8,6 @@ import {
   makeLabelNameGroups,
 } from "../utils/labels";
 
-export const viewStages = selector({
-  key: "viewStages",
-  get: ({ get }) => {
-    return get(atoms.stateDescription).viewStages;
-  },
-});
-
-export const numViewStages = selector({
-  key: "numStages",
-  get: ({ get }) => {
-    return get(viewStages).length;
-  },
-});
-
 export const datasetName = selector({
   key: "datasetName",
   get: ({ get }) => {
@@ -34,7 +20,7 @@ export const datasetStats = selector({
   key: "datasetStats",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
-    return stateDescription.view_stats ? stateDescription.view_stats : {};
+    return stateDescription.view_stats || {};
   },
 });
 
@@ -42,9 +28,7 @@ export const extendedDatasetStats = selector({
   key: "extendedDatasetStats",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
-    return stateDescription.extended_view_stats
-      ? stateDescription.extended_view_stats
-      : {};
+    return stateDescription.extended_view_stats || {};
   },
 });
 
@@ -58,7 +42,8 @@ export const totalCount = selector({
 export const filterStage = selectorFamily({
   key: "filterStage",
   get: (fieldName: string) => ({ get }) => {
-    return get(atoms.stateDescription).filter_stages[fieldName];
+    const state = get(atoms.stateDescription);
+    return state.filter_stages ? state.filter_stages[fieldName] : null;
   },
 });
 
@@ -72,22 +57,21 @@ export const filteredCount = selector({
 export const tagNames = selector({
   key: "tagNames",
   get: ({ get }) => {
-    const stateDescription = get(atoms.stateDescription);
-    return stateDescription.tags || [];
+    return get(atoms.stateDescription).tags || [];
   },
 });
 
 export const tagSampleCounts = selector({
   key: "tagSampleCounts",
   get: ({ get }) => {
-    return get(atoms.stateDescription).view_stats.tags || {};
+    return get(datasetStats).tags || {};
   },
 });
 
 export const filteredTagSampleCounts = selector({
   key: "filteredTagSampleCounts",
   get: ({ get }) => {
-    return get(atoms.stateDescription).extended_view_stats.tags || {};
+    return get(extendedDatasetStats).tags || {};
   },
 });
 
@@ -130,7 +114,8 @@ export const labelTypes = selector({
 export const labelClasses = selectorFamily({
   key: "labelClasses",
   get: (label) => ({ get }) => {
-    return get(atoms.stateDescription).view_stats.labels[label].classes;
+    const stats = get(datasetStats);
+    return stats.labels ? stats.labels[label].classes : [];
   },
 });
 
@@ -299,25 +284,20 @@ export const fieldIsFiltered = selectorFamily({
   },
 });
 
-export const viewStats = selector({
-  key: "viewStats",
-  get: ({ get }) => {
-    return get(atoms.stateDescription).view_stats || {};
-  },
-});
-
 export const labelConfidenceBounds = selectorFamily({
   key: "labelConfidenceBounds",
   get: (label) => ({ get }) => {
-    const labels = get(viewStats).labels;
-    return labels[label] ? labels[label].confidence_bounds : [null, null];
+    const labels = get(datasetStats).labels;
+    return labels && labels[label]
+      ? labels[label].confidence_bounds
+      : [null, null];
   },
 });
 
 export const numericFieldBounds = selectorFamily({
   key: "numericFieldBounds",
   get: (label) => ({ get }) => {
-    const bounds = get(viewStats).numeric_field_bounds;
+    const bounds = get(datasetStats).numeric_field_bounds;
     return bounds && bounds[label] ? bounds[label] : [null, null];
   },
 });
