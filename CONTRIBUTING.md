@@ -171,10 +171,7 @@ After installing the App development environment (see the App
 [README.md](README.md)) you can run `yarn storybook`.
 
 Chromatic homepage: Our Chromatic homepage can be found
-[here](https://www.chromatic.com/builds?appId=5f1875aa9080b80022532573). The
-Chromatic workflow has been temporarily disabled until electron import issues
-in Storybook are resolved, and therefore Storybook can be built and the
-Chromatic workflow is working again.
+[here](https://www.chromatic.com/builds?appId=5f1875aa9080b80022532573)
 
 [//]: # "TODOS"
 [//]: # "-   ESLint configuration"
