@@ -345,7 +345,10 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
                   : value
               }
               onFocus={() => !isEditing && send({ type: "EDIT" })}
-              onBlur={() => isEditing && send({ type: "COMMIT" })}
+              onBlur={() =>
+                state.matches("editing.searchResults.notHovering") &&
+                send({ type: "COMMIT" })
+              }
               onChange={(e) => {
                 send({ type: "CHANGE", value: e.target.value });
               }}

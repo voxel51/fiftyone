@@ -197,6 +197,19 @@ export default Machine(
           }),
           "focusInput",
         ],
+        initial: "notHovering",
+        states: {
+          hovering: {
+            on: {
+              MOUSELEAVE_RESULTS: "notHovering",
+            },
+          },
+          notHovering: {
+            on: {
+              MOUSEENTER_RESULTS: "hovering",
+            },
+          },
+        },
         on: {
           CHANGE: {
             actions: [
@@ -221,20 +234,19 @@ export default Machine(
               actions: [
                 assign({
                   submitted: true,
-                  value: ({
-                    type,
-                    value,
-                    defaultValue,
-                    fieldNames,
-                    bestMatch,
-                  }) => {
+                  value: (
+                    { type, value, defaultValue, fieldNames, bestMatch },
+                    { value: eventValue }
+                  ) => {
                     const match =
                       type === "field" ? getMatch(fieldNames, value) : null;
+                    value = eventValue ? eventValue : value;
                     value = match
                       ? match
                       : bestMatch.value
                       ? bestMatch.value
                       : value;
+                    console.log(value, fieldNames);
                     return value === "" && defaultValue
                       ? defaultValue
                       : type.split("|").reduce((acc, t) => {
@@ -254,7 +266,11 @@ export default Machine(
                   parameter: ctx,
                 })),
               ],
-              cond: ({ type, fieldNames, value, defaultValue, bestMatch }) => {
+              cond: (
+                { type, fieldNames, value, defaultValue, bestMatch },
+                { value: eventValue }
+              ) => {
+                value = eventValue ? eventValue : value;
                 const match =
                   type === "field" ? getMatch(fieldNames, value) : null;
                 value = match

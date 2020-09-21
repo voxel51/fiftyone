@@ -53,6 +53,7 @@ function serializeStage(stage, stageMap, fieldNames) {
           stageMap[stage.stage][i].type,
           "castTo",
           param.value,
+          false,
           fieldNames
         ),
       ];
