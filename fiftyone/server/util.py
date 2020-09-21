@@ -16,6 +16,7 @@ import os
 import io
 import struct
 
+import eta.core.video as etav
 import PIL.Image
 
 
@@ -48,6 +49,8 @@ def get_file_dimensions(file_path):
     category = mime_type.split("/")[0]
     if category == "image":
         return get_image_size(file_path)
+    elif category == "video":
+        return etav.get_frame_size(file_path)
     raise UnknownFileFormat("Unhandled mime type: %r" % mime_type)
 
 
