@@ -252,7 +252,7 @@ const SampleModal = ({
   const onNext = wrapNavigationFunc(rest.onNext);
 
   const handleResize = () => {
-    if (!playerContainerRef.current || showJSON) {
+    if (!playerRef.current || !playerContainerRef.current || showJSON) {
       return;
     }
     const container = playerContainerRef.current;
@@ -281,7 +281,7 @@ const SampleModal = ({
   };
 
   useResizeHandler(handleResize);
-  useEffect(handleResize, [showJSON, fullscreen]);
+  useEffect(handleResize, [sampleUrl, showJSON, fullscreen]);
 
   useKeydownHandler((e) => {
     if (
