@@ -4,6 +4,7 @@ import uuid from "react-uuid";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 
 import Player51 from "../player51/build/cjs/player51.min.js";
+import { useEventHandler } from "../utils/hooks";
 import {
   RESERVED_FIELDS,
   VALID_SCALAR_TYPES,
@@ -138,7 +139,6 @@ export default ({
       }
       player.render(id);
       setInitLoad(true);
-      onLoad();
     } else {
       player.updateOptions({
         activeLabels,
@@ -147,6 +147,8 @@ export default ({
       });
     }
   }, [filter, overlay, activeLabels, colorMap]);
+
+  useEventHandler(player, "load", onLoad);
 
   return <div id={id} style={style} {...props} />;
 };
