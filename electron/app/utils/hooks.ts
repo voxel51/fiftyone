@@ -29,6 +29,9 @@ export const useObserve = (target, handler) => {
   });
 
   useEffect(() => {
+    if (!target) {
+      return;
+    }
     observerRef.current.observe(target);
     return () => observerRef.current.unobserve(target);
   }, [target]);
@@ -76,9 +79,9 @@ export const useFollow = (leaderRef, followerRef, set) => {
     });
   };
 
-  useObserve(followerRef.current, follow);
   useEventHandler(window, "scroll", follow);
   useEventHandler(leaderRef ? leaderRef.current : null, "scroll", follow);
+  useObserve(followerRef ? followerRef.current : null, follow);
 };
 
 // allows re-rendering before recoil's Batcher updates

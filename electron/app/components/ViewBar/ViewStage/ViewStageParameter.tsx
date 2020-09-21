@@ -11,7 +11,11 @@ import { useService } from "@xstate/react";
 import AutosizeInput from "react-input-autosize";
 
 import { PARSER } from "./viewStageParameterMachine";
-import { useOutsideClick } from "../../../utils/hooks";
+import {
+  useEventHandler,
+  useObserve,
+  useOutsideClick,
+} from "../../../utils/hooks";
 import ErrorMessage from "./ErrorMessage";
 import SearchResults from "./SearchResults";
 
@@ -135,6 +139,8 @@ const makePlaceholder = ({ placeholder, parameter }) => {
   return parameter;
 };
 
+let request;
+
 const ObjectEditor = ({
   barRef,
   parameterRef,
@@ -197,46 +203,32 @@ const ObjectEditor = ({
     stageState.matches("focusedViewBar.yes"),
   ]);
 
-  useLayoutEffect(() => {
-    let request = null;
-    const attach = () => {
-      request = window.requestAnimationFrame(() => {
-        const { x, y } = state.matches("editing")
-          ? followRef.current.getBoundingClientRect()
-          : { x: 0, y: 0 };
-        containerRef.current.style.top = state.matches("editing")
-          ? `${y}px`
-          : "unset";
-        containerRef.current.style.left = state.matches("editing")
-          ? `${x}px`
-          : "unset";
-        const {
-          x: barX,
-          width: barWidth,
-        } = barRef.current.getBoundingClientRect();
-        const barRight = barX + barWidth;
-        containerRef.current.style.width = state.matches("editing")
-          ? `${Math.min(barRight - x, 400)}px`
-          : "auto";
-        request = null;
-      });
-    };
+  const attach = () => {
+    request && window.cancelAnimationFrame(request);
+    request = window.requestAnimationFrame(() => {
+      const { x, y } = state.matches("editing")
+        ? followRef.current.getBoundingClientRect()
+        : { x: 0, y: 0 };
+      containerRef.current.style.top = state.matches("editing")
+        ? `${y}px`
+        : "unset";
+      containerRef.current.style.left = state.matches("editing")
+        ? `${x}px`
+        : "unset";
+      const {
+        x: barX,
+        width: barWidth,
+      } = barRef.current.getBoundingClientRect();
+      const barRight = barX + barWidth;
+      containerRef.current.style.width = state.matches("editing")
+        ? `${Math.min(barRight - x, 400)}px`
+        : "auto";
+    });
+  };
 
-    barRef.current.addEventListener("scroll", attach);
-    window.addEventListener("scroll", attach);
-    followRef.current && attach();
-
-    return () => {
-      barRef.current.removeEventListener("scroll", attach);
-      window.removeEventListener("scroll", attach);
-      request && window.cancelAnimationFrame(request);
-    };
-  }, [
-    followRef.current,
-    containerRef.current,
-    active,
-    state.matches("editing"),
-  ]);
+  useEventHandler(barRef.current ? barRef.current : null, "scroll", attach);
+  useEventHandler(window, "scroll", attach);
+  useObserve(containerRef ? containerRef.current : null, attach);
 
   return (
     <>
