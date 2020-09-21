@@ -36,10 +36,12 @@ const grey60 = "hsl(230, 3%, 60%)";
 const grey68 = "hsl(220, 2%, 68%)";
 
 const orange49 = "hsl(27, 95%, 49%)";
+const orange49a0 = "hsla(27, 95%, 49%, 0)";
 const orange49a10 = "hsla(27, 95%, 49%, 0.1)";
 const orange49a40 = "hsla(27, 95%, 49%, 0.4)";
 
 const blue53 = "hsl(213, 100%, 53%)";
+const blue92 = "hsl(211, 85%, 92%)";
 
 const red = "hsl(0, 87%, 53%)";
 
@@ -48,7 +50,7 @@ export const darkTheme = {
   backgroundDark: grey15,
   backgroundDarker: grey11,
   backgroundLight: grey24,
-  backgroundLightBorder: grey15, // e.g. for components with the light background color
+  backgroundLightBorder: grey15, // i.e. for components with the light background color
   backgroundDarkBorder: grey11,
   backgroundTransparent: grey19a50,
   border: grey37,
@@ -65,12 +67,14 @@ export const darkTheme = {
   brand: orange49,
   brandTransparent: orange49a40,
   brandMoreTransparent: orange49a10,
+  brandFullyTransparent: orange49a0,
 
   font: white100,
   fontDark: grey68,
   fontDarkest: grey60,
 
   secondary: blue53,
+  secondaryLight: blue92,
 
   error: red,
 };

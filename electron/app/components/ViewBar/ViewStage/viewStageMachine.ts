@@ -14,7 +14,8 @@ export const createParameter = (
   submitted,
   focusOnInit,
   tail,
-  active
+  active,
+  placeholder
 ) => ({
   id: uuid(),
   defaultValue,
@@ -29,6 +30,7 @@ export const createParameter = (
   currentResult: null,
   results: [],
   active,
+  placeholder,
 });
 
 const isValidStage = (stageInfo, stage) => {
@@ -242,11 +244,14 @@ const viewStageMachine = Machine(
                             parameter.name,
                             parameter.type,
                             parameter.default,
-                            "",
-                            false,
+                            parameter.name.startsWith("_")
+                              ? parameter.default
+                              : "",
+                            parameter.name.startsWith("_"),
                             i === 0,
                             i === result.length - 1,
-                            ctx.active
+                            ctx.active,
+                            parameter.placeholder
                           )
                         );
                         return parameters.map((parameter) => ({
@@ -259,6 +264,7 @@ const viewStageMachine = Machine(
                       errorId: undefined,
                     }),
                     send("UPDATE_DELIBLE"),
+                    "blurInput",
                   ],
                   cond: ({ stageInfo }, { value }) =>
                     getMatch(stageInfo, value),

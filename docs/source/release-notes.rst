@@ -3,6 +3,30 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne 0.5.5
+--------------
+*Released September 15, 2020*
+
+App
+^^^
+- Added support for filtering samples by numeric fields in the sidebar
+- Confidence bounds are now computed for the confidence slider in the label
+  filter - a `[0, 1]` range is no longer assumed
+- Fixed an issue that would cause certain stages to be reevaluated when the view
+  bar was edited
+- Improved responsiveness when adding stages in the view bar, filtering, and
+  selecting samples
+- Simplified placeholders in the view bar
+- Added support for filtering sample JSON in the expanded sample view to match
+  the objects displayed in the media viewer
+- Updated the instructions that appear when starting the App before connecting
+  to a session
+
+Core
+^^^^
+- Added support for :meth:`Session.wait() <fiftyone.core.session.Session.wait>`
+  for remote sessions, to make starting a remote session from a script easier
+
 FiftyOne 0.5.4
 --------------
 *Released September 9, 2020*

@@ -9,18 +9,22 @@ import Tag from "./Tags/Tag";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { getLabelText, stringify } from "../utils/labels";
+import { useFastRerender } from "../utils/hooks";
 
 const Sample = ({ displayProps, dispatch, sample, port, setView }) => {
   const host = `http://127.0.0.1:${port}`;
   const id = sample._id.$oid;
   const src = `${host}?path=${sample.filepath}&id=${id}`;
   const socket = getSocket(port, "state");
-  const { activeLabels, activeTags, activeOther } = displayProps;
   const filter = useRecoilValue(selectors.labelFilters);
   const colorMap = useRecoilValue(atoms.colorMap);
+  const activeLabels = useRecoilValue(atoms.activeLabels);
+  const activeTags = useRecoilValue(atoms.activeTags);
+  const activeOther = useRecoilValue(atoms.activeOther);
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     atoms.selectedSamples
   );
+  const rerender = useFastRerender();
 
   const handleClick = () => {
     const newSelected = new Set(selectedSamples);
@@ -33,6 +37,7 @@ const Sample = ({ displayProps, dispatch, sample, port, setView }) => {
       event = "add_selection";
     }
     setSelectedSamples(newSelected);
+    rerender();
     socket.emit(event, id, (data) => {
       dispatch(updateState(data));
     });

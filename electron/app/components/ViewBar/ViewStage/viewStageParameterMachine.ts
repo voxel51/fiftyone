@@ -1,6 +1,6 @@
 import uuid from "uuid-v4";
 import { Machine, actions, sendParent } from "xstate";
-const { assign, cancel, send } = actions;
+const { assign } = actions;
 
 const convert = (v) => (typeof v !== "string" ? String(v) : v);
 
@@ -203,6 +203,7 @@ export default Machine(
                         }, undefined),
                   errorId: undefined,
                 }),
+                "blurInput",
                 sendParent((ctx) => ({
                   type: "PARAMETER.COMMIT",
                   parameter: ctx,

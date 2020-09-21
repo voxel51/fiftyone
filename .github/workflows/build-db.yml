@@ -11,7 +11,7 @@ on:
     tags:
       - db-v*
     paths:
-      - package/db/
+      - package/db/**
       - .github/workflows/build-db.yml
   pull_request:
     branches:
@@ -19,7 +19,7 @@ on:
       - rel-*
       - release-*
     paths:
-      - package/db/
+      - package/db/**
       - .github/workflows/build-db.yml
 
 jobs:
@@ -34,7 +34,7 @@ jobs:
           python-version: 3.8
       - name: Install dependencies
         run: |
-          pip install --upgrade pip setuptools "wheel<0.35"
+          pip install --upgrade pip setuptools wheel
       - name: Build wheel (Linux)
         run: |
           cd package/db
@@ -85,6 +85,18 @@ jobs:
           name: wheel-windows
           path: package/db/dist/*win*.whl
 
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone fiftyone
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+      - name: Check tag
+        if: startsWith(github.ref, 'refs/tags/db-v')
+        run: |
+          python .github/tools/check-setup-version.py package/db/setup.py $(echo ${{ github.ref }} | sed 's/refs\/tags\/db-v//')
+
   test:
     runs-on: ubuntu-18.04
     needs: build
@@ -109,7 +121,7 @@ jobs:
 
   publish:
     runs-on: ubuntu-18.04
-    needs: [build, test]
+    needs: [build, check, test]
     if: startsWith(github.ref, 'refs/tags/db-v')
     steps:
       - name: Download wheels
