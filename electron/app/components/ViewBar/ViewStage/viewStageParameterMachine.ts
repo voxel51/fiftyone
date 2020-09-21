@@ -188,6 +188,10 @@ export default Machine(
             currentResult: null,
             prevValue: ({ value }) => value,
             focusOnInit: false,
+            results: ({ fieldNames, value }) =>
+              fieldNames.filter((f) =>
+                f.toLowerCase().startsWith(value.toLowerCase())
+              ),
           }),
           "focusInput",
         ],
@@ -200,6 +204,10 @@ export default Machine(
                 currentResult: null,
                 value: (_, { value }) => value,
                 errorId: undefined,
+                results: ({ fieldNames, value }) =>
+                  fieldNames.filter((f) =>
+                    f.toLowerCase().startsWith(value.toLowerCase())
+                  ),
               }),
             ],
           },
@@ -256,6 +264,33 @@ export default Machine(
                 errorId: undefined,
               }),
             ],
+          },
+          NEXT_RESULT: {
+            actions: assign({
+              currentResult: ({ currentResult, results }) => {
+                if (currentResult === null) return 0;
+                return Math.min(currentResult + 1, results.length - 1);
+              },
+              stage: ({ currentResult, results }) => {
+                if (currentResult === null) return results[0];
+                return results[Math.min(currentResult + 1, results.length - 1)];
+              },
+              bestMatch: {},
+            }),
+          },
+          PREVIOUS_RESULT: {
+            actions: assign({
+              currentResult: ({ currentResult }) => {
+                if (currentResult === 0 || currentResult === null) return null;
+                return currentResult - 1;
+              },
+              stage: ({ currentResult, prevValue, results }) => {
+                if (currentResult === 0 || currentResult === null)
+                  return prevValue;
+                return results[currentResult - 1];
+              },
+              bestMatch: {},
+            }),
           },
         },
       },

@@ -42,16 +42,6 @@ const isValidStage = (stageInfo, stage) => {
     .some((n) => n.toLowerCase() === stage.toLowerCase());
 };
 
-export const getMatch = (stageInfo, value) => {
-  const results = stageInfo.filter(
-    (s) => s.name.toLowerCase() === value.toLowerCase()
-  );
-  if (results.length === 1) {
-    return results[0].name;
-  }
-  return null;
-};
-
 const viewStageMachine = Machine(
   {
     id: "viewStage",
@@ -269,7 +259,10 @@ const viewStageMachine = Machine(
                     "blurInput",
                   ],
                   cond: ({ stageInfo }, { value }) =>
-                    getMatch(stageInfo, value),
+                    getMatch(
+                      stageInfo.map((s) => s.name),
+                      value
+                    ),
                 },
                 {
                   actions: [

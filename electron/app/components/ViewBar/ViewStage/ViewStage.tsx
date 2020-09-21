@@ -10,7 +10,7 @@ import ErrorMessage from "./ErrorMessage";
 import ExternalLink from "../../ExternalLink";
 import SearchResults from "./SearchResults";
 import ViewStageParameter from "./ViewStageParameter";
-import { getMatch } from "./viewStageMachine";
+import { getMatch } from "./utils";
 
 const ViewStageContainer = animated(styled.div`
   margin: 0.5rem 0.25rem;
@@ -291,7 +291,10 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
             onChange={(e) => send({ type: "CHANGE", value: e.target.value })}
             onKeyPress={(e) => {
               if (e.key === "Enter") {
-                const match = getMatch(stageInfo, e.target.value);
+                const match = getMatch(
+                  stageInfo.map((s) => s.name),
+                  e.target.value
+                );
                 send({
                   type: "COMMIT",
                   value: match

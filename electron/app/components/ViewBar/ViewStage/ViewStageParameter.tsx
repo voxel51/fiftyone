@@ -1,15 +1,10 @@
-import React, {
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  useLayoutEffect,
-} from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { animated, useSpring } from "react-spring";
 import styled, { ThemeContext } from "styled-components";
 import { useService } from "@xstate/react";
 import AutosizeInput from "react-input-autosize";
 
+import { BestMatchDiv } from "./BestMatch";
 import { PARSER } from "./viewStageParameterMachine";
 import {
   useEventHandler,
@@ -36,7 +31,7 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
   & > input {
     background-color: transparent;
     border: none;
-    margin: 0.5rem;
+    margin: 0.5rem 0 0.5rem 0.5rem;
     color: ${({ theme }) => theme.font};
     line-height: 1rem;
     font-weight: bold;
@@ -284,7 +279,15 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
   const inputRef = useRef();
   const [containerRef, setContainerRef] = useState({});
 
-  const { tail, type, value, active, fieldNames } = state.context;
+  const {
+    tail,
+    type,
+    value,
+    active,
+    currentResult,
+    results,
+    bestMatch,
+  } = state.context;
   const hasObjectType = typeof type === "string" && type.includes("dict");
 
   const props = useSpring({
@@ -314,13 +317,6 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
     !isEditing && inputRef.current && inputRef.current.blur();
   }, [isEditing, inputRef.current]);
 
-  let results = [];
-  if (type === "field") {
-    results = fieldNames.filter((f) =>
-      f.toLowerCase().startsWith(value.toLowerCase())
-    );
-  }
-  const currentResult = results[0];
   return (
     <>
       <ViewStageParameterContainer
@@ -359,12 +355,30 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
                 }
               }}
               onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  send({ type: "COMMIT" });
+                switch (e.key) {
+                  case "Escape":
+                    send("BLUR");
+                    break;
+                  case "ArrowDown":
+                    send("NEXT_RESULT");
+                    break;
+                  case "ArrowUp":
+                    send("PREVIOUS_RESULT");
+                    break;
+                  case "ArrowRight":
+                    e.target.selectionStart === e.target.value.length &&
+                      bestMatch.value &&
+                      send({ type: "CHANGE", value: bestMatch.value });
+                    break;
                 }
               }}
               ref={inputRef}
             />
+            {state.matches("editing") || value === "" ? (
+              <BestMatchDiv>
+                {bestMatch ? bestMatch.placeholder : ""}
+              </BestMatchDiv>
+            ) : null}
           </ViewStageParameterDiv>
         )}
       </ViewStageParameterContainer>
@@ -373,7 +387,7 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
           results={results}
           send={send}
           currentResult={currentResult}
-          bestMatch={currentResult}
+          bestMatch={bestMatch.value}
           followRef={containerRef}
           barRef={barRef}
         />
