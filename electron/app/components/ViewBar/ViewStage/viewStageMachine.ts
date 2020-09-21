@@ -2,6 +2,7 @@ import { Machine, actions, assign, send, spawn, sendParent } from "xstate";
 import uuid from "uuid-v4";
 
 import viewStageParameterMachine from "./viewStageParameterMachine";
+import { computeBestMatchString } from "./utils";
 
 const { choose } = actions;
 
@@ -39,19 +40,6 @@ const isValidStage = (stageInfo, stage) => {
   return stageInfo
     .map((s) => s.name)
     .some((n) => n.toLowerCase() === stage.toLowerCase());
-};
-
-const computeBestMatchString = (stageInfo, value) => {
-  const match = stageInfo
-    .map((s) => s.name)
-    .filter((n) => n.toLowerCase().startsWith(value.toLowerCase()))[0];
-  if (match && value.length) {
-    return {
-      placeholder: match.slice(value.length),
-      value: match,
-    };
-  }
-  return { placeholder: "", value: null };
 };
 
 export const getMatch = (stageInfo, value) => {
@@ -178,7 +166,10 @@ const viewStageMachine = Machine(
                 currentResult: null,
                 focusOnInit: true,
                 bestMatch: ({ stageInfo, stage }) =>
-                  computeBestMatchString(stageInfo, stage),
+                  computeBestMatchString(
+                    stageInfo.map((s) => s.name),
+                    stage
+                  ),
               }),
             ],
             type: "parallel",
@@ -228,7 +219,10 @@ const viewStageMachine = Machine(
                   currentResult: null,
                   errorId: undefined,
                   bestMatch: ({ stageInfo }, { value }) =>
-                    computeBestMatchString(stageInfo, value),
+                    computeBestMatchString(
+                      stageInfo.map((s) => s.name),
+                      value
+                    ),
                 }),
               },
               COMMIT: [

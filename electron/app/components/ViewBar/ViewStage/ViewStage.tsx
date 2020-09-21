@@ -1,17 +1,11 @@
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useMemo,
-  useState,
-} from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
 import { animated, useSpring, config } from "react-spring";
 import { useService } from "@xstate/react";
 import AuosizeInput from "react-input-autosize";
 import { Add, KeyboardReturn as Arrow, Close, Help } from "@material-ui/icons";
 
+import { BestMatchDiv } from "./BestMatch";
 import ErrorMessage from "./ErrorMessage";
 import ExternalLink from "../../ExternalLink";
 import SearchResults from "./SearchResults";
@@ -200,16 +194,6 @@ const ViewStageDeleteButton = animated(styled.button`
   }
 `);
 
-const BestMatchDiv = styled.div`
-  background-color: transparent;
-  border: none;
-  margin: 0.5rem 0.5rem 0.5rem 0;
-  color: ${({ theme }) => theme.brand};
-  line-height: 1rem;
-  border: none;
-  font-weight: bold;
-`;
-
 const ViewStageDelete = React.memo(({ send, spring }) => {
   return (
     <ViewStageDeleteDiv style={spring} onClick={() => send("STAGE.DELETE")}>
@@ -369,7 +353,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
               stageRef={stageRef}
             />
           ))}
-        {state.matches("delible.yes") || parameters.length ? (
+        {parameters.length ? (
           <ViewStageDelete spring={deleteProps} send={send} />
         ) : null}
         {state.matches("input.editing") &&

@@ -1,6 +1,8 @@
-import { filter } from "lodash";
 import uuid from "uuid-v4";
 import { Machine, actions, sendParent } from "xstate";
+
+import { computeBestMatchString } from "./utils";
+
 const { assign } = actions;
 
 const convert = (v) => (typeof v !== "string" ? String(v) : v);
@@ -181,6 +183,9 @@ export default Machine(
         entry: [
           sendParent("PARAMETER.EDIT"),
           assign({
+            bestMatch: ({ fieldNames, value }) =>
+              computeBestMatchString(fieldNames, value),
+            currentResult: null,
             prevValue: ({ value }) => value,
             focusOnInit: false,
           }),
@@ -190,6 +195,9 @@ export default Machine(
           CHANGE: {
             actions: [
               assign({
+                bestMatch: ({ fieldNames, value }) =>
+                  computeBestMatchString(fieldNames, value),
+                currentResult: null,
                 value: (_, { value }) => value,
                 errorId: undefined,
               }),
