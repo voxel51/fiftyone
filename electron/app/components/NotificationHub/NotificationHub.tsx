@@ -131,8 +131,15 @@ const NotificationHub = ({
     },
     onRest: (item) =>
       setItems((state) => state.filter((i) => i.key !== item.key)),
-    config: (state) =>
-      state === "leave" ? [{ duration: 3000 }, config, config] : config,
+    config: (item, state) => {
+      return state === "leave"
+        ? [
+            { duration: item.die ? 3000 : Number.POSITIVE_INFINITY },
+            config,
+            config,
+          ]
+        : config;
+    },
   });
 
   useEffect(
