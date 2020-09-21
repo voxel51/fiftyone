@@ -97,10 +97,12 @@ let id = 0;
 
 const DIE = {
   "Server Error": false,
+  "Dataset Created": true,
 };
 
 const COLOR = {
   "Server Error": "error",
+  "Dataset Created": "font", // Not supported, for storybook only at the moment
 };
 
 type Notification = {
@@ -132,9 +134,10 @@ const NotificationHub = ({
     onRest: (item) =>
       setItems((state) => state.filter((i) => i.key !== item.key)),
     config: (item, state) => {
+      console.log(item.die);
       return state === "leave"
         ? [
-            { duration: item.die ? 3000 : Number.POSITIVE_INFINITY },
+            { duration: DIE[item.kind] ? 3000 : Number.POSITIVE_INFINITY },
             config,
             config,
           ]

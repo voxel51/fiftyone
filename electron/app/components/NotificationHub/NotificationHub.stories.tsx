@@ -1,12 +1,13 @@
-import { ThemeProvider } from "@material-ui/core";
-import React, { useContext, useRef } from "react";
-import styled, { ThemeContext } from "styled-components";
+import React, { useRef } from "react";
+import styled from "styled-components";
+import { withKnobs, select } from "@storybook/addon-knobs";
 
 import NotificationHub from "./NotificationHub";
 
 export default {
   component: NotificationHub,
   title: "NotificationHub",
+  decorators: [withKnobs],
 };
 
 const Main = styled("div")`
@@ -22,20 +23,28 @@ const Main = styled("div")`
   color: ${({ theme }) => theme.font};
 `;
 
+const label = "Notification Type";
+const options = {
+  "Server Error": {
+    kind: "Server Error",
+    message: ["Some specific error message"],
+    items: ["A traceback, not used"],
+  },
+  "Dataset Created": {
+    kind: "Dataset Created",
+    message: "A dataset has been created",
+    items: [],
+  },
+};
+const defaultValue = "Server Error";
+const groupId = "Notificiation-Group";
+
 export const error = () => {
-  const theme = useContext(ThemeContext);
   const ref = useRef(null);
+  const value = select(label, options, defaultValue, groupId);
+  console.log(value);
   return (
-    <Main
-      onClick={() =>
-        ref.current({
-          title: "Title",
-          titleColor: "hsl(0, 87%, 53%)",
-          message: "message",
-          die: false,
-        })
-      }
-    >
+    <Main onClick={() => ref.current(value)}>
       Click here to create notifications
       <NotificationHub children={(add) => (ref.current = add)} />
     </Main>
