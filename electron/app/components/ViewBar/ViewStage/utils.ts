@@ -13,7 +13,7 @@ export const computeBestMatchString = (options, value) => {
 
 export const getMatch = (options, value) => {
   const results = options.filter(
-    (s) => s.toLowerCase() === value.toLowerCase()
+    (o) => o.toLowerCase() === value.toLowerCase()
   );
   if (results.length === 1) {
     return results[0];

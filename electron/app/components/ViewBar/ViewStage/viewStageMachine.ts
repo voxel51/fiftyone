@@ -2,7 +2,7 @@ import { Machine, actions, assign, send, spawn, sendParent } from "xstate";
 import uuid from "uuid-v4";
 
 import viewStageParameterMachine from "./viewStageParameterMachine";
-import { computeBestMatchString } from "./utils";
+import { computeBestMatchString, getMatch } from "./utils";
 
 const { choose } = actions;
 

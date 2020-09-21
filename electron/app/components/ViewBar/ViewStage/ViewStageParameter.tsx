@@ -374,11 +374,9 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
               }}
               ref={inputRef}
             />
-            {state.matches("editing") || value === "" ? (
-              <BestMatchDiv>
-                {bestMatch ? bestMatch.placeholder : ""}
-              </BestMatchDiv>
-            ) : null}
+            <BestMatchDiv>
+              {bestMatch ? bestMatch.placeholder : ""}
+            </BestMatchDiv>
           </ViewStageParameterDiv>
         )}
       </ViewStageParameterContainer>

@@ -1,7 +1,7 @@
 import uuid from "uuid-v4";
 import { Machine, actions, sendParent } from "xstate";
 
-import { computeBestMatchString } from "./utils";
+import { computeBestMatchString, getMatch } from "./utils";
 
 const { assign } = actions;
 
@@ -188,10 +188,12 @@ export default Machine(
             currentResult: null,
             prevValue: ({ value }) => value,
             focusOnInit: false,
-            results: ({ fieldNames, value }) =>
-              fieldNames.filter((f) =>
-                f.toLowerCase().startsWith(value.toLowerCase())
-              ),
+            results: ({ type, fieldNames, value }) =>
+              type === "field"
+                ? fieldNames.filter((f) =>
+                    f.toLowerCase().startsWith(value.toLowerCase())
+                  )
+                : [],
           }),
           "focusInput",
         ],
@@ -199,15 +201,17 @@ export default Machine(
           CHANGE: {
             actions: [
               assign({
-                bestMatch: ({ fieldNames, value }) =>
+                bestMatch: ({ fieldNames }, { value }) =>
                   computeBestMatchString(fieldNames, value),
                 currentResult: null,
                 value: (_, { value }) => value,
                 errorId: undefined,
-                results: ({ fieldNames, value }) =>
-                  fieldNames.filter((f) =>
-                    f.toLowerCase().startsWith(value.toLowerCase())
-                  ),
+                results: ({ type, fieldNames }, { value }) =>
+                  type === "field"
+                    ? fieldNames.filter((f) =>
+                        f.toLowerCase().startsWith(value.toLowerCase())
+                      )
+                    : [],
               }),
             ],
           },
@@ -217,8 +221,21 @@ export default Machine(
               actions: [
                 assign({
                   submitted: true,
-                  value: ({ type, value, defaultValue, fieldNames }) =>
-                    value === "" && defaultValue
+                  value: ({
+                    type,
+                    value,
+                    defaultValue,
+                    fieldNames,
+                    bestMatch,
+                  }) => {
+                    const match =
+                      type === "field" ? getMatch(fieldNames, value) : null;
+                    value = match
+                      ? match
+                      : bestMatch.value
+                      ? bestMatch.value
+                      : value;
+                    return value === "" && defaultValue
                       ? defaultValue
                       : type.split("|").reduce((acc, t) => {
                           if (acc !== undefined) return acc;
@@ -226,8 +243,10 @@ export default Machine(
                           return parser.validate(value, fieldNames)
                             ? parser.parse(value, fieldNames)
                             : acc;
-                        }, undefined),
+                        }, undefined);
+                  },
                   errorId: undefined,
+                  bestMatch: {},
                 }),
                 "blurInput",
                 sendParent((ctx) => ({
@@ -235,7 +254,14 @@ export default Machine(
                   parameter: ctx,
                 })),
               ],
-              cond: ({ type, value, defaultValue, fieldNames }) => {
+              cond: ({ type, fieldNames, value, defaultValue, bestMatch }) => {
+                const match =
+                  type === "field" ? getMatch(fieldNames, value) : null;
+                value = match
+                  ? match
+                  : bestMatch.value
+                  ? bestMatch.value
+                  : value;
                 return (
                   (value === "" && defaultValue) ||
                   type
