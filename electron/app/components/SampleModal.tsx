@@ -256,20 +256,26 @@ const SampleModal = ({
       return;
     }
     const container = playerContainerRef.current;
-    const image = playerContainerRef.current.querySelector(
-      "img.p51-contained-image"
-    );
     const containerRatio = container.clientWidth / container.clientHeight;
-    const imageRatio = image.clientWidth / image.clientHeight;
-    if (containerRatio < imageRatio) {
+    const contentDimensions = playerRef.current.getContentDimensions();
+    if (
+      !contentDimensions ||
+      contentDimensions.width === 0 ||
+      contentDimensions.height === 0
+    ) {
+      // content may not have loaded yet
+      return;
+    }
+    const contentRatio = contentDimensions.width / contentDimensions.height;
+    if (containerRatio < contentRatio) {
       setPlayerStyle({
         width: container.clientWidth,
-        height: container.clientWidth / imageRatio,
+        height: container.clientWidth / contentRatio,
       });
     } else {
       setPlayerStyle({
         height: container.clientHeight,
-        width: container.clientHeight * imageRatio,
+        width: container.clientHeight * contentRatio,
       });
     }
   };
