@@ -209,7 +209,10 @@ const SampleModal = ({
   ...rest
 }: Props) => {
   const playerContainerRef = useRef();
-  const [playerStyle, setPlayerStyle] = useState({ height: "100%" });
+  const [playerStyle, setPlayerStyle] = useState({
+    height: "100%",
+    width: "100%",
+  });
   const [showJSON, setShowJSON] = useState(false);
   const [enableJSONFilter, setEnableJSONFilter] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
