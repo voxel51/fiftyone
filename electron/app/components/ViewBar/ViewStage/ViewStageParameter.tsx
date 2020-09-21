@@ -257,7 +257,7 @@ const ObjectEditor = ({
                 });
               }}
               onKeyDown={(e) => {
-                if (e.key === "Escape") {
+                if (["Escape", "Tab"].includes(e.key)) {
                   send("COMMIT");
                 }
               }}
