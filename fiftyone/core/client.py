@@ -73,8 +73,7 @@ class BaseClient(socketio.ClientNamespace):
         print()
         print(data["message"])
         print()
-        for title, value in data["items"]:
-            print("%s:" % title)
+        for value in data["items"]:
             print(value)
 
     def update(self, data):

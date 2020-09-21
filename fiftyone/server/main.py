@@ -100,7 +100,7 @@ def _catch_errors(func):
             error = {
                 "kind": "Server Error",
                 "message": "An exception has been raised by the server. Your session has been reverted to its previous state.",
-                "items": [("traceback", traceback.format_exc())],
+                "items": [traceback.format_exc()],
             }
             emit("notification", error, broadcast=True, include_self=True)
 
