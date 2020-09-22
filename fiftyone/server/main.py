@@ -12,7 +12,6 @@ import os
 import traceback
 import uuid
 
-from bson import json_util
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 from flask_socketio import emit, Namespace, SocketIO
@@ -28,6 +27,7 @@ from fiftyone.core.stages import _STAGES
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
 
+from json_util import FiftyOneJSONEncoder
 from util import get_image_size
 from pipelines import DISTRIBUTION_PIPELINES, LABELS, SCALARS
 
@@ -37,13 +37,18 @@ logger = logging.getLogger(__name__)
 # connect to the existing DB service to initialize global port information
 db = DatabaseService()
 db.start()
-
 app = Flask(__name__)
+app.json_encoder = FiftyOneJSONEncoder
 CORS(app)
 
 app.config["SECRET_KEY"] = "fiftyone"
 
-socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")
+socketio = SocketIO(
+    app,
+    async_mode="eventlet",
+    cors_allowed_origins="*",
+    json=FiftyOneJSONEncoder,
+)
 
 
 def get_user_id():
@@ -277,12 +282,7 @@ class StateController(Namespace):
             view = view.add_stage(stage)
 
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
-        samples = [
-            json.loads(
-                json_util.dumps(s.to_mongo_dict()), parse_constant=lambda c: c
-            )
-            for s in view
-        ]
+        samples = [s for s in view]
         more = False
         if len(samples) > page_length:
             samples = samples[:page_length]

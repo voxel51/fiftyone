@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import uuid from "react-uuid";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilValue } from "recoil";
 
 import Player51 from "../player51/build/cjs/player51.min.js";
 import {

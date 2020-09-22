@@ -1,16 +1,21 @@
 import React from "react";
-import RangeSlider, { Range } from "./RangeSlider";
+import RangeSlider, { NamedRangeSlider, Range } from "./RangeSlider";
 
 import { atom } from "recoil";
 
-const rangeAtomStory = atom<Range>({
-  key: "rangeAtomStory",
+const boundsAtom = atom<Range>({
+  key: "boundsAtom",
   default: [0, 1],
 });
 
-const boundsAtomStory = atom<Range>({
-  key: "rangeAtomStory",
-  default: [null, null],
+const rangeAtom = atom<Range>({
+  key: "rangeAtom",
+  default: [0, 1],
+});
+
+const includeNoneAtom = atom<boolean>({
+  key: "includeNoneAtom",
+  default: true,
 });
 
 export default {
@@ -18,6 +23,16 @@ export default {
   title: "RangeSlider",
 };
 
-export const standard = () => (
-  <RangeSlider rangeAtom={rangeAtomStory} boundsAtom={boundsAtomStory} />
-);
+export const standard = () => <RangeSlider {...{ rangeAtom, boundsAtom }} />;
+
+export const named = () => {
+  const props = {
+    boundsAtom,
+    rangeAtom,
+    includeNoneAtom,
+    color: "pink",
+    name: "Name",
+    valueName: "Value Name",
+  };
+  return <NamedRangeSlider {...props} />;
+};
