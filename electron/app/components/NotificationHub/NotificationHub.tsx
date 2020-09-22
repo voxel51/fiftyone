@@ -134,7 +134,6 @@ const NotificationHub = ({
     onRest: (item) =>
       setItems((state) => state.filter((i) => i.key !== item.key)),
     config: (item, state) => {
-      console.log(item.die);
       return state === "leave"
         ? [
             { duration: DIE[item.kind] ? 3000 : Number.POSITIVE_INFINITY },

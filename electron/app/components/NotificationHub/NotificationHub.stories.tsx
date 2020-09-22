@@ -28,21 +28,21 @@ const options = {
   "Server Error": {
     kind: "Server Error",
     message: ["Some specific error message"],
-    app_items: ["A traceback, not used"],
+    app_items: ["App item note"],
   },
   "Dataset Created": {
     kind: "Dataset Created",
     message: "A dataset has been created",
-    app_items: [],
+    app_items: ["App item note"],
   },
 };
-const defaultValue = "Server Error";
+const defaultValue = options["Server Error"];
 const groupId = "Notificiation-Group";
 
 export const error = () => {
   const ref = useRef(null);
   const value = select(label, options, defaultValue, groupId);
-  console.log(value);
+
   return (
     <Main onClick={() => ref.current(value)}>
       Click here to create notifications
