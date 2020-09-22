@@ -248,7 +248,6 @@ class StateController(Namespace):
             the updated
                 :class:`fiftyone.core.state.StateDescriptionWithDerivables`
         """
-        raise ValueError("Page Error")
         state.selected = []
         return state
 
