@@ -359,6 +359,8 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
               }}
               onKeyDown={(e) => {
                 switch (e.key) {
+                  case "Tab":
+                    send("COMMIT");
                   case "Escape":
                     send("BLUR");
                     break;
