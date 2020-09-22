@@ -149,6 +149,7 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
 
     Args:
         dataset_dir: the dataset directory
+        skip_unlabeled (False): whether to skip unlabeled images when importing
         expand (True): whether to expand the image labels into a dictionary of
             :class:`fiftyone.core.labels.Label` instances
         prefix (None): a string prefix to prepend to each label name in the
@@ -167,13 +168,14 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
     def __init__(
         self,
         dataset_dir,
+        skip_unlabeled=False,
         expand=True,
         prefix=None,
         labels_dict=None,
         multilabel=False,
         skip_non_categorical=False,
     ):
-        super().__init__(dataset_dir)
+        super().__init__(dataset_dir, skip_unlabeled=skip_unlabeled)
         self.expand = expand
         self.prefix = prefix
         self.labels_dict = labels_dict
@@ -205,6 +207,7 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
             frame_size = (image_metadata.width, image_metadata.height)
             label = _parse_bdd_annotation(anno_dict, frame_size)
         else:
+            # Unlabeled image
             label = None
 
         if label is not None and self.expand:
@@ -238,6 +241,11 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
             self._anno_dict_map = {}
 
         self._filenames = etau.list_files(self._data_dir, abs_paths=False)
+
+        if self.skip_unlabeled:
+            self._filenames = [
+                f for f in self._filenames if f in self._anno_dict_map
+            ]
 
 
 class BDDDatasetExporter(foud.LabeledImageDatasetExporter):

@@ -124,10 +124,11 @@ class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
 
     Args:
         dataset_dir: the dataset directory
+        skip_unlabeled (False): whether to skip unlabeled images when importing
     """
 
-    def __init__(self, dataset_dir):
-        super().__init__(dataset_dir)
+    def __init__(self, dataset_dir, skip_unlabeled=False):
+        super().__init__(dataset_dir, skip_unlabeled=skip_unlabeled)
         self._data_dir = None
         self._labels_path = None
         self._info = None
@@ -189,6 +190,11 @@ class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
         self._images_map = {i.name: i for i in cvat_images}
 
         self._filenames = etau.list_files(self._data_dir, abs_paths=False)
+
+        if self.skip_unlabeled:
+            self._filenames = [
+                f for f in self._filenames if f in self._images_map
+            ]
 
     def get_dataset_info(self):
         return self._info

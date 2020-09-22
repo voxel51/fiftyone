@@ -98,12 +98,13 @@ class VOCDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
 
     Args:
         dataset_dir: the dataset directory
+        skip_unlabeled (False): whether to skip unlabeled images when importing
     """
 
-    def __init__(self, dataset_dir):
-        super().__init__(dataset_dir)
+    def __init__(self, dataset_dir, skip_unlabeled=False):
+        super().__init__(dataset_dir, skip_unlabeled=skip_unlabeled)
         self._uuids_to_image_paths = None
-        self._uuids_to_anno_paths = None
+        self._uuids_to_labels_paths = None
         self._uuids = None
         self._iter_uuids = None
 
@@ -117,11 +118,11 @@ class VOCDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
     def __next__(self):
         uuid = next(self._iter_uuids)
 
-        anno_path = self._uuids_to_anno_paths.get(uuid, None)
-        if anno_path:
+        labels_path = self._uuids_to_labels_paths.get(uuid, None)
+        if labels_path:
             # Labeled image
 
-            annotation = load_voc_detection_annotations(anno_path)
+            annotation = load_voc_detection_annotations(labels_path)
 
             # Use image filename from annotation file if possible
             if annotation.filename:
@@ -134,7 +135,10 @@ class VOCDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
             if _uuid not in self._uuids_to_image_paths:
                 _uuid = uuid
 
-            image_path = self._uuids_to_image_paths[_uuid]
+            try:
+                image_path = self._uuids_to_image_paths[_uuid]
+            except KeyError:
+                raise ValueError("No image found for sample '%s'" % _uuid)
 
             if annotation.metadata is None:
                 annotation.metadata = fom.ImageMetadata.build_for(image_path)
@@ -163,28 +167,33 @@ class VOCDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         return fol.Detections
 
     def setup(self):
+        to_uuid = lambda p: os.path.splitext(os.path.basename(p))[0]
+
         data_dir = os.path.join(self.dataset_dir, "data")
         if os.path.isdir(data_dir):
             self._uuids_to_image_paths = {
-                os.path.splitext(f)[0]: os.path.join(data_dir, f)
-                for f in etau.list_files(data_dir, abs_paths=False)
+                to_uuid(p) for p in etau.list_files(data_dir, abs_paths=True)
             }
         else:
             self._uuids_to_image_paths = {}
 
         labels_dir = os.path.join(self.dataset_dir, "labels")
         if os.path.isdir(labels_dir):
-            self._uuids_to_anno_paths = {
-                os.path.splitext(f)[0]: os.path.join(labels_dir, f)
-                for f in etau.list_files(labels_dir, abs_paths=False)
+            self._uuids_to_labels_paths = {
+                to_uuid(p) for p in etau.list_files(labels_dir, abs_paths=True)
             }
         else:
-            self._uuids_to_anno_paths = {}
+            self._uuids_to_labels_paths = {}
 
-        self._uuids = sorted(
-            set(self._uuids_to_image_paths.keys())
-            | set(self._uuids_to_anno_paths.keys())
-        )
+        if self.skip_unlabeled:
+            self._uuids = sorted(self._uuids_to_labels_paths.keys())
+        else:
+            # Allow uuid to missing from `_uuids_to_image_paths` since we will
+            # try to use filepath from labels, if present
+            self._uuids = sorted(
+                set(self._uuids_to_image_paths.keys())
+                | set(self._uuids_to_labels_paths.keys())
+            )
 
 
 class VOCDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
