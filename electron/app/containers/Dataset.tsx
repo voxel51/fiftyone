@@ -96,7 +96,7 @@ function Dataset(props) {
   let modalProps = {};
   if (modal.visible && modal.sample) {
     const currentSampleIndex = currentSamples.findIndex(
-      (sample) => sample._id.$oid == modal.sample._id.$oid
+      (sample) => sample._id == modal.sample._id
     );
     const previousSample = currentSamples[currentSampleIndex - 1];
     if (previousSample) {
