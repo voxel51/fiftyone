@@ -5,6 +5,7 @@ Web socket client mixins.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import defaultdict
 import logging
 import signal
 import threading
@@ -16,6 +17,10 @@ import fiftyone.constants as foc
 
 logging.getLogger("socketio").setLevel(logging.ERROR)
 logging.getLogger("engineio").setLevel(logging.ERROR)
+
+
+# We only want one session to print notifications per namespace and per process
+_printer = defaultdict(lambda: None)
 
 
 class BaseClient(socketio.ClientNamespace):
@@ -41,10 +46,14 @@ class BaseClient(socketio.ClientNamespace):
         self.data = data_cls()
         self.connected = False
         self.updated = False
+        self.namespace = namespace
         super().__init__(namespace)
         # disable socketio's interrupt handler because it closes the connection
         # on ctrl-c in interactive sessions
         signal.signal(signal.SIGINT, signal.default_int_handler)
+
+    def __del__(self):
+        _printer[self.namespace] = None
 
     def on_connect(self):
         """Receives the "connect" event."""
@@ -62,6 +71,25 @@ class BaseClient(socketio.ClientNamespace):
         """
         self.updated = True
         self.data = self.data_cls.from_dict(data)
+
+    def on_notification(self, data):
+        """Receives a server error.
+
+        Args:
+            data: the error message
+        """
+        if _printer[self.namespace] is None:
+            _printer[self.namespace] = self
+
+        if _printer[self.namespace] != self:
+            return
+
+        print(data["kind"])
+        print()
+        print(data["message"])
+        print()
+        for value in data["session_items"]:
+            print(value)
 
     def update(self, data):
         """Sends an update.
