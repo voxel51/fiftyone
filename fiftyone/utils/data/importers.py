@@ -384,7 +384,12 @@ class LabeledImageDatasetImporter(DatasetImporter):
 
     Args:
         dataset_dir: the dataset directory
+        skip_unlabeled (False): whether to skip unlabeled images when importing
     """
+
+    def __init__(self, dataset_dir, skip_unlabeled=False):
+        super().__init__(dataset_dir)
+        self.skip_unlabeled = skip_unlabeled
 
     def __next__(self):
         """Returns information about the next sample in the dataset.
@@ -564,13 +569,16 @@ class FiftyOneImageClassificationDatasetImporter(LabeledImageDatasetImporter):
 
     Args:
         dataset_dir: the dataset directory
+        skip_unlabeled (False): whether to skip unlabeled images when importing
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.ImageMetadata` instances for each
             image when importing
     """
 
-    def __init__(self, dataset_dir, compute_metadata=False):
-        super().__init__(dataset_dir)
+    def __init__(
+        self, dataset_dir, skip_unlabeled=False, compute_metadata=False
+    ):
+        super().__init__(dataset_dir, skip_unlabeled=skip_unlabeled)
         self.compute_metadata = compute_metadata
         self._classes = None
         self._sample_parser = None
@@ -631,6 +639,11 @@ class FiftyOneImageClassificationDatasetImporter(LabeledImageDatasetImporter):
         self._sample_parser.classes = self._classes
 
         self._labels = labels.get("labels", {})
+        if self.skip_unlabeled:
+            self._labels = {
+                k: v for k, v in self._labels.items() if v is not None
+            }
+
         self._num_samples = len(self._labels)
 
     def get_dataset_info(self):
@@ -725,13 +738,16 @@ class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
 
     Args:
         dataset_dir: the dataset directory
+        skip_unlabeled (False): whether to skip unlabeled images when importing
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.ImageMetadata` instances for each
             image when importing
     """
 
-    def __init__(self, dataset_dir, compute_metadata=False):
-        super().__init__(dataset_dir)
+    def __init__(
+        self, dataset_dir, skip_unlabeled=False, compute_metadata=False
+    ):
+        super().__init__(dataset_dir, skip_unlabeled=skip_unlabeled)
         self.compute_metadata = compute_metadata
         self._classes = None
         self._sample_parser = None
@@ -796,6 +812,11 @@ class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
         self._sample_parser.classes = self._classes
 
         self._labels = labels.get("labels", {})
+        if self.skip_unlabeled:
+            self._labels = {
+                k: v for k, v in self._labels.items() if v is not None
+            }
+
         self._has_labels = any(self._labels.values())
         self._num_samples = len(self._labels)
 
@@ -812,6 +833,7 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
 
     Args:
         dataset_dir: the dataset directory
+        skip_unlabeled (False): whether to skip unlabeled images when importing
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.ImageMetadata` instances for each
             image when importing
@@ -833,6 +855,7 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
     def __init__(
         self,
         dataset_dir,
+        skip_unlabeled=False,
         compute_metadata=False,
         expand=True,
         prefix=None,
@@ -840,7 +863,7 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         multilabel=False,
         skip_non_categorical=False,
     ):
-        super().__init__(dataset_dir)
+        super().__init__(dataset_dir, skip_unlabeled=skip_unlabeled)
         self.compute_metadata = compute_metadata
         self.expand = expand
         self.prefix = prefix
@@ -863,11 +886,11 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         return len(self._labeled_dataset)
 
     def __next__(self):
-        sample = next(self._iter_labeled_dataset)
+        image_path, label = self._parse_next_sample()
 
-        self._sample_parser.with_sample(sample)
-        image_path = self._sample_parser.get_image_path()
-        label = self._sample_parser.get_label()
+        if self.skip_unlabeled:
+            while label is None or not label.labels:
+                image_path, label = self._parse_next_sample()
 
         if self.compute_metadata:
             image_metadata = fom.ImageMetadata.build_for(image_path)
@@ -875,6 +898,15 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
             image_metadata = None
 
         return image_path, image_metadata, label
+
+    def _parse_next_sample(self):
+        sample = next(self._iter_labeled_dataset)
+
+        self._sample_parser.with_sample(sample)
+        image_path = self._sample_parser.get_image_path()
+        label = self._sample_parser.get_label()
+
+        return image_path, label
 
     @property
     def has_dataset_info(self):

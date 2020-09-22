@@ -68,10 +68,11 @@ class KITTIDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
 
     Args:
         dataset_dir: the dataset directory
+        skip_unlabeled (False): whether to skip unlabeled images when importing
     """
 
-    def __init__(self, dataset_dir):
-        super().__init__(dataset_dir)
+    def __init__(self, dataset_dir, skip_unlabeled=False):
+        super().__init__(dataset_dir, skip_unlabeled=skip_unlabeled)
         self._anno_uuids_to_paths = None
         self._image_paths = None
         self._iter_image_paths = None
@@ -129,6 +130,12 @@ class KITTIDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
             }
         else:
             self._anno_uuids_to_paths = {}
+
+        if self.skip_unlabeled:
+            # @todo complete this
+            self._image_paths = [
+                p for p in self._image_paths if p in self._anno_uuids_to_paths
+            ]
 
 
 class KITTIDetectionDatasetExporter(foud.LabeledImageDatasetExporter):

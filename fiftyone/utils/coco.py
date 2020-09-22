@@ -95,10 +95,11 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
 
     Args:
         dataset_dir: the dataset directory
+        skip_unlabeled (False): whether to skip unlabeled images when importing
     """
 
-    def __init__(self, dataset_dir):
-        super().__init__(dataset_dir)
+    def __init__(self, dataset_dir, skip_unlabeled=False):
+        super().__init__(dataset_dir, skip_unlabeled=skip_unlabeled)
         self._data_dir = None
         self._info = None
         self._classes = None
@@ -187,7 +188,11 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         self._supercategory_map = supercategory_map
         self._images_map = {i["file_name"]: i for i in images.values()}
         self._annotations = annotations
-        self._filenames = self._images_map.keys()
+
+        if self.skip_unlabeled:
+            self._filenames = self._images_map.keys()
+        else:
+            self._filenames = etau.list_files(self._data_dir, abs_paths=False)
 
     def get_dataset_info(self):
         return self._info
