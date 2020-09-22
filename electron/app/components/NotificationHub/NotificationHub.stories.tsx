@@ -28,12 +28,12 @@ const options = {
   "Server Error": {
     kind: "Server Error",
     message: ["Some specific error message"],
-    items: ["A traceback, not used"],
+    app_items: ["A traceback, not used"],
   },
   "Dataset Created": {
     kind: "Dataset Created",
     message: "A dataset has been created",
-    items: [],
+    app_items: [],
   },
 };
 const defaultValue = "Server Error";

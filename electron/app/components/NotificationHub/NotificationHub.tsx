@@ -173,6 +173,9 @@ const NotificationHub = ({
               </Button>
             </Header>
             <MessageText>{item.message}</MessageText>
+            {item.app_items.map((i, key) => (
+              <MessageText key={key}>{i}</MessageText>
+            ))}
           </Content>
         </Message>
       ))}
