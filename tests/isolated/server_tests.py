@@ -17,6 +17,7 @@ import time
 import unittest
 import urllib
 
+from bson import ObjectId
 import socketio
 
 import eta.core.utils as etau
@@ -30,6 +31,7 @@ from fiftyone.core.session import (
     _subscribed_sessions,
 )
 from fiftyone.core.state import StateDescriptionWithDerivables
+from fiftyone.server.json_util import FiftyOneJSONEncoder
 
 
 class AppClient(foc.BaseClient):
@@ -203,6 +205,13 @@ class ServerServiceTests(unittest.TestCase):
         self.assertEqual(
             _serialize(self.session.state), _serialize(self.client.data)
         )
+
+    def step_json_encoder(self):
+        enc = FiftyOneJSONEncoder
+        oid = "aaaaaaaaaaaaaaaaaaaaaaaa"
+        self.assertEqual(enc.dumps(ObjectId(oid)), '{"$oid": "%s"}' % oid)
+        self.assertEqual(enc.dumps(float("nan")), "NaN")
+        self.assertEqual(enc.dumps(float("inf")), "Infinity")
 
     def test_steps(self):
         for name, step in self.steps():
