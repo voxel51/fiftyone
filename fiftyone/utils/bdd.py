@@ -149,7 +149,6 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
 
     Args:
         dataset_dir: the dataset directory
-        skip_unlabeled (False): whether to skip unlabeled images when importing
         expand (True): whether to expand the image labels into a dictionary of
             :class:`fiftyone.core.labels.Label` instances
         prefix (None): a string prefix to prepend to each label name in the
@@ -163,19 +162,34 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
         skip_non_categorical (False): whether to skip non-categorical frame
             attributes (True) or cast them to strings (False). Only applicable
             when ``expand`` is True
+        skip_unlabeled (False): whether to skip unlabeled images when importing
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
     """
 
     def __init__(
         self,
         dataset_dir,
-        skip_unlabeled=False,
         expand=True,
         prefix=None,
         labels_dict=None,
         multilabel=False,
         skip_non_categorical=False,
+        skip_unlabeled=False,
+        shuffle=False,
+        seed=None,
+        max_samples=None,
     ):
-        super().__init__(dataset_dir, skip_unlabeled=skip_unlabeled)
+        super().__init__(
+            dataset_dir,
+            skip_unlabeled=skip_unlabeled,
+            shuffle=shuffle,
+            seed=seed,
+            max_samples=max_samples,
+        )
         self.expand = expand
         self.prefix = prefix
         self.labels_dict = labels_dict
@@ -186,13 +200,14 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
         self._anno_dict_map = None
         self._filenames = None
         self._iter_filenames = None
+        self._num_samples = None
 
     def __iter__(self):
         self._iter_filenames = iter(self._filenames)
         return self
 
     def __len__(self):
-        return len(self._filenames)
+        return self._num_samples
 
     def __next__(self):
         filename = next(self._iter_filenames)
@@ -240,12 +255,15 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
         else:
             self._anno_dict_map = {}
 
-        self._filenames = etau.list_files(self._data_dir, abs_paths=False)
+        filenames = etau.list_files(self._data_dir, abs_paths=False)
 
         if self.skip_unlabeled:
-            self._filenames = [
+            filenames = [
                 f for f in self._filenames if f in self._anno_dict_map
             ]
+
+        self._filenames = self._preprocess_list(filenames)
+        self._num_samples = len(self._filenames)
 
 
 class BDDDatasetExporter(foud.LabeledImageDatasetExporter):

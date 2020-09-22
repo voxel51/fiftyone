@@ -6,6 +6,7 @@ TensorFlow utilities.
 |
 """
 import contextlib
+import logging
 import multiprocessing
 import os
 
@@ -18,6 +19,9 @@ import fiftyone.utils.data as foud
 
 fou.ensure_tf()
 import tensorflow as tf
+
+
+logger = logging.getLogger(__name__)
 
 
 def from_images_dir(images_dir, recursive=True, num_parallel_calls=None):
@@ -442,15 +446,28 @@ class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
     Args:
         dataset_dir: the dataset directory
         images_dir: the directory in which the images will be written
-        skip_unlabeled (False): whether to skip unlabeled images when importing
         image_format (None): the image format to use to write the images to
             disk. By default, ``fiftyone.config.default_image_ext`` is used
+        skip_unlabeled (False): whether to skip unlabeled images when importing
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
     """
 
     def __init__(
-        self, dataset_dir, images_dir, image_format=None, skip_unlabeled=False
+        self,
+        dataset_dir,
+        images_dir,
+        image_format=None,
+        skip_unlabeled=False,
+        max_samples=None,
+        **kwargs
     ):
-        super().__init__(dataset_dir, skip_unlabeled=skip_unlabeled)
+        for arg in kwargs:
+            logger.warning("Ignoring unsupported parameter '%s'", arg)
+
+        super().__init__(
+            dataset_dir, skip_unlabeled=skip_unlabeled, max_samples=max_samples
+        )
         self.images_dir = images_dir
         self.image_format = image_format
 
@@ -481,8 +498,9 @@ class TFRecordsLabeledImageDatasetImporter(foud.LabeledImageDatasetImporter):
             self.images_dir,
             tf_dataset,
             self._sample_parser,
-            skip_unlabeled=self.skip_unlabeled,
             image_format=self.image_format,
+            skip_unlabeled=self.skip_unlabeled,
+            max_samples=self.max_samples,
         )
         self._dataset_ingestor.setup()
 
@@ -515,6 +533,9 @@ class TFImageClassificationDatasetImporter(
         images_dir: the directory in which the images will be written
         image_format (None): the image format to use to write the images to
             disk. By default, ``fiftyone.config.default_image_ext`` is used
+        skip_unlabeled (False): whether to skip unlabeled images when importing
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
     """
 
     @property
@@ -540,6 +561,9 @@ class TFObjectDetectionDatasetImporter(TFRecordsLabeledImageDatasetImporter):
         images_dir: the directory in which the images will be written
         image_format (None): the image format to use to write the images to
             disk. By default, ``fiftyone.config.default_image_ext`` is used
+        skip_unlabeled (False): whether to skip unlabeled images when importing
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
     """
 
     @property

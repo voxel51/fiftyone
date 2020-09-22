@@ -69,21 +69,40 @@ class KITTIDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
     Args:
         dataset_dir: the dataset directory
         skip_unlabeled (False): whether to skip unlabeled images when importing
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
     """
 
-    def __init__(self, dataset_dir, skip_unlabeled=False):
-        super().__init__(dataset_dir, skip_unlabeled=skip_unlabeled)
+    def __init__(
+        self,
+        dataset_dir,
+        skip_unlabeled=False,
+        shuffle=False,
+        seed=None,
+        max_samples=None,
+    ):
+        super().__init__(
+            dataset_dir,
+            skip_unlabeled=skip_unlabeled,
+            shuffle=shuffle,
+            seed=seed,
+            max_samples=max_samples,
+        )
         self._uuids_to_image_paths = None
         self._uuids_to_labels_paths = None
         self._uuids = None
         self._iter_uuids = None
+        self._num_samples = len(self._uuids)
 
     def __iter__(self):
         self._iter_uuids = iter(self._uuids)
         return self
 
     def __len__(self):
-        return len(self._uuids)
+        return self._num_samples
 
     def __next__(self):
         uuid = next(self._iter_uuids)
@@ -142,9 +161,12 @@ class KITTIDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
             self._uuids_to_labels_paths = {}
 
         if self.skip_unlabeled:
-            self._uuids = sorted(self._uuids_to_labels_paths.keys())
+            uuids = sorted(self._uuids_to_labels_paths.keys())
         else:
-            self._uuids = sorted(self._uuids_to_image_paths.keys())
+            uuids = sorted(self._uuids_to_image_paths.keys())
+
+        self._uuids = self._preprocess_list(uuids)
+        self._num_samples = len(self._uuids)
 
 
 class KITTIDetectionDatasetExporter(foud.LabeledImageDatasetExporter):

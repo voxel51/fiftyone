@@ -96,10 +96,28 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
     Args:
         dataset_dir: the dataset directory
         skip_unlabeled (False): whether to skip unlabeled images when importing
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
     """
 
-    def __init__(self, dataset_dir, skip_unlabeled=False):
-        super().__init__(dataset_dir, skip_unlabeled=skip_unlabeled)
+    def __init__(
+        self,
+        dataset_dir,
+        skip_unlabeled=False,
+        shuffle=False,
+        seed=None,
+        max_samples=None,
+    ):
+        super().__init__(
+            dataset_dir,
+            skip_unlabeled=skip_unlabeled,
+            shuffle=shuffle,
+            seed=seed,
+            max_samples=max_samples,
+        )
         self._data_dir = None
         self._info = None
         self._classes = None
@@ -190,9 +208,11 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         self._annotations = annotations
 
         if self.skip_unlabeled:
-            self._filenames = self._images_map.keys()
+            filenames = self._images_map.keys()
         else:
-            self._filenames = etau.list_files(self._data_dir, abs_paths=False)
+            filenames = etau.list_files(self._data_dir, abs_paths=False)
+
+        self._filenames = self._preprocess_list(filenames)
 
     def get_dataset_info(self):
         return self._info
