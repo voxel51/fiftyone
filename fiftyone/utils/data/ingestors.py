@@ -171,13 +171,23 @@ class LabeledImageDatasetIngestor(LabeledImageDatasetImporter, ImageIngestor):
         sample_parser: an
             :class:`fiftyone.utils.data.parsers.LabeledImageSampleParser` to
             use to parse the samples
+        skip_unlabeled (False): whether to skip unlabeled images when importing
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
     """
 
-    def __init__(self, dataset_dir, samples, sample_parser, image_format=None):
-        LabeledImageDatasetImporter.__init__(self, dataset_dir)
+    def __init__(
+        self,
+        dataset_dir,
+        samples,
+        sample_parser,
+        skip_unlabeled=False,
+        image_format=None,
+    ):
+        LabeledImageDatasetImporter.__init__(
+            self, dataset_dir, skip_unlabeled=skip_unlabeled
+        )
         ImageIngestor.__init__(self, dataset_dir, image_format=image_format)
         self.samples = samples
         self.sample_parser = sample_parser
@@ -191,6 +201,15 @@ class LabeledImageDatasetIngestor(LabeledImageDatasetImporter, ImageIngestor):
         return len(self.samples)
 
     def __next__(self):
+        image_path, image_metadata, label = self._parse_next_sample()
+
+        if self.skip_unlabeled:
+            while label is None:
+                image_path, image_metadata, label = self._parse_next_sample()
+
+        return image_path, image_metadata, label
+
+    def _parse_next_sample(self):
         sample = next(self._iter_samples)
 
         self.sample_parser.with_sample(sample)
