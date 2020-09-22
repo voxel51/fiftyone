@@ -12,7 +12,11 @@ import { Button, ModalFooter } from "./utils";
 import * as selectors from "../recoil/selectors";
 import * as atoms from "../recoil/atoms";
 
-import { useKeydownHandler, useResizeHandler } from "../utils/hooks";
+import {
+  useEventHandler,
+  useKeydownHandler,
+  useResizeHandler,
+} from "../utils/hooks";
 import {
   formatMetadata,
   makeLabelNameGroups,
@@ -273,6 +277,11 @@ const SampleModal = ({
 
   useResizeHandler(handleResize);
   useEffect(handleResize, [showJSON, fullscreen]);
+  useEventHandler(
+    playerContainerRef.current?.querySelector("img.p51-contained-image"),
+    "load",
+    handleResize
+  );
 
   useKeydownHandler((e) => {
     if (
