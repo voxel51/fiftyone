@@ -107,15 +107,12 @@ jobs:
         run: |
           python setup.py bdist_wheel
           pip install dist/*.whl
-      - name: Install fiftyone dependencies
+      - name: Install fiftyone
         env:
           PIP_INDEX_URL: https://voxel51-ci@pypi.voxel51.com
         run: |
           pip install -e package/gui/
-          pip install fiftyone-brain voxel51-eta
-      - name: Install fiftyone
-        run: |
-          pip install -e .
+          pip install -e . fiftyone-brain
       - name: Install test dependencies (non-Windows)
         if: ${{ !startsWith(matrix.os, 'windows') }}
         run: |
