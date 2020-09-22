@@ -41,9 +41,13 @@ class FiftyOneJSONEncoder(JSONEncoder):
     @staticmethod
     def dumps(*args, **kwargs):
         """Defined for overriding the default SocketIO `json` interface"""
-        if "cls" not in kwargs:
-            kwargs["cls"] = FiftyOneJSONEncoder
-        return json_util.dumps(*args, **kwargs)
+        kwargs["cls"] = FiftyOneJSONEncoder
+        return json_util.dumps(
+            json_util.loads(
+                json_util.dumps(*args, **kwargs), parse_constant=lambda c: c
+            ),
+            **kwargs
+        )
 
     @staticmethod
     def loads(*args, **kwargs):
