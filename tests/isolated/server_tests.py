@@ -210,8 +210,8 @@ class ServerServiceTests(unittest.TestCase):
         enc = FiftyOneJSONEncoder
         oid = "aaaaaaaaaaaaaaaaaaaaaaaa"
         self.assertEqual(enc.dumps(ObjectId(oid)), '{"$oid": "%s"}' % oid)
-        self.assertEqual(enc.dumps(float("nan")), "NaN")
-        self.assertEqual(enc.dumps(float("inf")), "Infinity")
+        self.assertEqual(enc.dumps(float("nan")), '"NaN"')
+        self.assertEqual(enc.dumps(float("inf")), '"Infinity"')
 
     def test_steps(self):
         for name, step in self.steps():
