@@ -50,6 +50,7 @@ setup(
         "Jinja2",
         "mongoengine",
         "numpy",
+        "opencv-python-headless<=4.4.0.42",
         "packaging",
         "Pillow<7,>=6.2",
         "pprintpp",
