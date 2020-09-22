@@ -199,7 +199,7 @@ export const NamedRangeSlider = React.forwardRef(
             <a
               style={{ cursor: "pointer", textDecoration: "underline" }}
               onClick={() => {
-                setRange([null, null]);
+                setRange([...bounds]);
                 setIncludeNone(true);
               }}
             >
