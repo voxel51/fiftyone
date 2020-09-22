@@ -3,6 +3,26 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne 0.5.6
+--------------
+*Released September 22, 2020*
+
+App
+^^^
+- Added autocompletion to view bar stage fields that accept field names (for
+  example, :class:`fiftyone.core.stages.Exists`)
+- Fixed an issue that would prevent datasets with no numeric labels or scalars
+  from loading in the App
+- Fixed an error that could occur when a view included no samples
+- Added notifications in the App that are displayed if errors occur on the
+  backend
+- Improved keyboard navigation between view bar stages
+
+Core
+^^^^
+- Changed COCO importer to use filenames specified in `labels.json` instead of
+  files in the `data` directory
+
 FiftyOne 0.5.5
 --------------
 *Released September 15, 2020*
