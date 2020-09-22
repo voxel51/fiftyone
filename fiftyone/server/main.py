@@ -41,7 +41,21 @@ db.start()
 
 
 class FiftyOneJSONEncoder(JSONEncoder):
+    """JSON encoder for the FiftyOne server.
+
+    Any classes with non-standard serialization methods should
+    be accounted for in the `default()` method.
+    """
+
     def default(self, o):  # pylint: disable=E0202
+        """Returns the serialized representation of the objects
+
+        Args:
+            o: the object
+
+        Returns:
+            str
+        """
         if isinstance(o, (Sample, SampleView)):
             return o.to_mongo_dict()
         if issubclass(type(o), fosg.ViewStage):
@@ -52,12 +66,14 @@ class FiftyOneJSONEncoder(JSONEncoder):
 
     @staticmethod
     def dumps(*args, **kwargs):
+        """Defined for overriding the default SocketIO `json` interface"""
         if "cls" not in kwargs:
             kwargs["cls"] = FiftyOneJSONEncoder
         return json_util.dumps(*args, **kwargs)
 
     @staticmethod
     def loads(*args, **kwargs):
+        """Defined for overriding the default SocketIO `json` interface"""
         return json_util.loads(*args, **kwargs)
 
 
