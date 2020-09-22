@@ -246,7 +246,6 @@ export default Machine(
                       : bestMatch.value
                       ? bestMatch.value
                       : value;
-                    console.log(value, fieldNames);
                     return value === "" && defaultValue
                       ? defaultValue
                       : type.split("|").reduce((acc, t) => {
