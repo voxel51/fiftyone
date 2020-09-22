@@ -147,9 +147,6 @@ class ServerServiceTests(unittest.TestCase):
         client = self.wait_for_response()
         results = client["results"]
         self.assertIs(len(results), 2)
-        # this will raise an error if special floats exist that are not JSON
-        # compliant
-        json.dumps(results, allow_nan=False)
 
     def step_get_distributions(self):
         self.session.dataset = self.dataset

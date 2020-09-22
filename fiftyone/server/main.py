@@ -11,10 +11,8 @@ import logging
 import os
 import uuid
 
-from bson import ObjectId, json_util
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
-from flask.json import JSONEncoder
 from flask_socketio import emit, Namespace, SocketIO
 
 import eta.core.utils as etau
@@ -25,10 +23,10 @@ import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 from fiftyone.core.service import DatabaseService
 from fiftyone.core.stages import _STAGES
-from fiftyone.core.sample import Sample, SampleView
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
 
+from json_util import FiftyOneJSONEncoder
 from util import get_image_size
 from pipelines import DISTRIBUTION_PIPELINES, LABELS, SCALARS
 
@@ -38,45 +36,6 @@ logger = logging.getLogger(__name__)
 # connect to the existing DB service to initialize global port information
 db = DatabaseService()
 db.start()
-
-
-class FiftyOneJSONEncoder(JSONEncoder):
-    """JSON encoder for the FiftyOne server.
-
-    Any classes with non-standard serialization methods should
-    be accounted for in the `default()` method.
-    """
-
-    def default(self, o):  # pylint: disable=E0202
-        """Returns the serialized representation of the objects
-
-        Args:
-            o: the object
-
-        Returns:
-            str
-        """
-        if isinstance(o, (Sample, SampleView)):
-            return o.to_mongo_dict()
-        if issubclass(type(o), fosg.ViewStage):
-            return o._serialize()
-        if isinstance(o, ObjectId):
-            return str(o)
-        return super().default(o)
-
-    @staticmethod
-    def dumps(*args, **kwargs):
-        """Defined for overriding the default SocketIO `json` interface"""
-        if "cls" not in kwargs:
-            kwargs["cls"] = FiftyOneJSONEncoder
-        return json_util.dumps(*args, **kwargs)
-
-    @staticmethod
-    def loads(*args, **kwargs):
-        """Defined for overriding the default SocketIO `json` interface"""
-        return json_util.loads(*args, **kwargs)
-
-
 app = Flask(__name__)
 app.json_encoder = FiftyOneJSONEncoder
 CORS(app)
