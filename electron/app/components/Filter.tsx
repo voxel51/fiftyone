@@ -140,11 +140,13 @@ const classFilterMachine = Machine({
       target: "reading",
       actions: [
         assign({
-          classes: (_, { classes }) => classes,
+          classes: (_, { classes }) => (classes ? classes : []),
           results: ({ inputValue }, { classes }) =>
-            classes.filter((c) =>
-              c.toLowerCase().includes(inputValue.toLowerCase())
-            ),
+            classes
+              ? classes.filter((c) =>
+                  c.toLowerCase().includes(inputValue.toLowerCase())
+                )
+              : [],
         }),
       ],
     },

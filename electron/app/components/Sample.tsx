@@ -11,9 +11,9 @@ import * as selectors from "../recoil/selectors";
 import { getLabelText, stringify } from "../utils/labels";
 import { useFastRerender } from "../utils/hooks";
 
-const Sample = ({ displayProps, dispatch, sample, port, setView }) => {
+const Sample = ({ dispatch, sample, port, setView }) => {
   const host = `http://127.0.0.1:${port}`;
-  const id = sample._id.$oid;
+  const id = sample._id;
   const src = `${host}?path=${sample.filepath}&id=${id}`;
   const socket = getSocket(port, "state");
   const filter = useRecoilValue(selectors.labelFilters);

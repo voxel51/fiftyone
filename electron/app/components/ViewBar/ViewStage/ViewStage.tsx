@@ -1,22 +1,16 @@
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useMemo,
-  useState,
-} from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
 import { animated, useSpring, config } from "react-spring";
 import { useService } from "@xstate/react";
 import AuosizeInput from "react-input-autosize";
 import { Add, KeyboardReturn as Arrow, Close, Help } from "@material-ui/icons";
 
+import { BestMatchDiv } from "./BestMatch";
 import ErrorMessage from "./ErrorMessage";
 import ExternalLink from "../../ExternalLink";
 import SearchResults from "./SearchResults";
 import ViewStageParameter from "./ViewStageParameter";
-import { getMatch } from "./viewStageMachine";
+import { getMatch } from "./utils";
 
 const ViewStageContainer = animated(styled.div`
   margin: 0.5rem 0.25rem;
@@ -180,7 +174,6 @@ const ViewStageDeleteDiv = animated(styled.div`
   position: relative;
   border-top-right-radius: 3px;
   border-bottom-right-radius: 3px;
-  border-left-width: 0;
   cursor: pointer;
 `);
 
@@ -200,16 +193,6 @@ const ViewStageDeleteButton = animated(styled.button`
     outline: none;
   }
 `);
-
-const BestMatchDiv = styled.div`
-  background-color: transparent;
-  border: none;
-  margin: 0.5rem 0.5rem 0.5rem 0;
-  color: ${({ theme }) => theme.brand};
-  line-height: 1rem;
-  border: none;
-  font-weight: bold;
-`;
 
 const ViewStageDelete = React.memo(({ send, spring }) => {
   return (
@@ -274,29 +257,16 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
     },
   });
 
-  const actionsMap = useMemo(
-    () => ({
-      focusInput: () => inputRef.current && inputRef.current.select(),
-      blurInput: () => inputRef.current && inputRef.current.blur(),
-    }),
-    [inputRef.current]
-  );
-
-  useEffect(() => {
-    const listener = (state) => {
-      state.actions.forEach((action) => {
-        if (action.type in actionsMap) actionsMap[action.type]();
-      });
-      <ErrorMessage serviceRef={stageRef} />;
-    };
-    stageRef.onTransition(listener);
-    return () => stageRef.listeners.delete(listener);
-  }, []);
-
   const containerProps = useSpring({
     top: state.matches("focusedViewBar.yes") && state.context.active ? -3 : 0,
     config: config.stiff,
   });
+
+  const isEditing = state.matches("input.editing");
+  useEffect(() => {
+    isEditing && inputRef.current && inputRef.current.focus();
+    !isEditing && inputRef.current && inputRef.current.blur();
+  }, [isEditing, inputRef.current]);
 
   return (
     <>
@@ -313,7 +283,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
             placeholder={stage.length === 0 ? "+ add stage" : ""}
             value={stage}
             autoFocus={focusOnInit}
-            onFocus={() => !state.matches("input.editing") && send("EDIT")}
+            onFocus={() => !isEditing && send("EDIT")}
             onBlur={(e) => {
               state.matches("input.editing.searchResults.notHovering") &&
                 send("BLUR");
@@ -321,7 +291,10 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
             onChange={(e) => send({ type: "CHANGE", value: e.target.value })}
             onKeyPress={(e) => {
               if (e.key === "Enter") {
-                const match = getMatch(stageInfo, e.target.value);
+                const match = getMatch(
+                  stageInfo.map((s) => s.name),
+                  e.target.value
+                );
                 send({
                   type: "COMMIT",
                   value: match
@@ -353,19 +326,21 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
             style={{ fontSize: "1rem" }}
             ref={inputRef}
           />
-          <BestMatchDiv>
-            {state.matches("input.editing") ? bestMatch.placeholder : ""}
-          </BestMatchDiv>
+          {state.matches("input.editing") || stage === "" ? (
+            <BestMatchDiv>
+              {bestMatch ? bestMatch.placeholder : ""}
+            </BestMatchDiv>
+          ) : null}
           {isCompleted && (
             <ExternalLink
               href={`https://voxel51.com/docs/fiftyone/api/fiftyone.core.stages.html#fiftyone.core.stages.${stage}`}
+              style={{ lineHeight: "0.8rem" }}
             >
               <Help
                 style={{
-                  cursor: "pointer",
                   width: "1rem",
                   height: "1rem",
-                  margin: "0.5rem 0.5rem 0.5rem 0",
+                  margin: "0.5rem",
                 }}
               />
             </ExternalLink>
@@ -381,7 +356,7 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
               stageRef={stageRef}
             />
           ))}
-        {state.matches("delible.yes") && parameters.length ? (
+        {parameters.length ? (
           <ViewStageDelete spring={deleteProps} send={send} />
         ) : null}
         {state.matches("input.editing") &&
