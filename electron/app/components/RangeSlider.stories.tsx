@@ -14,7 +14,7 @@ const rangeAtom = atom<Range>({
 });
 
 const includeNoneAtom = atom<boolean>({
-  key: "inclideNoneAtom",
+  key: "includeNoneAtom",
   default: true,
 });
 
