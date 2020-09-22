@@ -97,11 +97,25 @@ jobs:
         with:
           name: wheel
           path: downloads
-      - name: Install fiftyone
+      - name: Fetch DB cache
+        uses: actions/cache@v2
+        with:
+          key: db-${{ runner.os }}-${{ hashFiles('package/db/setup.py') }}
+          path: package/db/cache/
+      - name: Install fiftyone-db
+        working-directory: package/db
+        run: |
+          python setup.py bdist_wheel
+          pip install dist/*.whl
+      - name: Install fiftyone dependencies
         env:
           PIP_INDEX_URL: https://voxel51-ci@pypi.voxel51.com
         run: |
-          pip install downloads/*.whl
+          pip install -e package/gui/
+          pip install fiftyone-brain voxel51-eta
+      - name: Install fiftyone
+        run: |
+          pip install -e .
       - name: Install test dependencies (non-Windows)
         if: ${{ !startsWith(matrix.os, 'windows') }}
         run: |
