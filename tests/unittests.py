@@ -757,9 +757,9 @@ class DatasetTests(unittest.TestCase):
         dataset1 = fo.Dataset()
         dataset2 = fo.Dataset()
 
-        common_filepath = "/path/to/image.png"
-        filepath1 = "/path/to/image1.png"
-        filepath2 = "/path/to/image2.png"
+        common_filepath = os.path.normpath("/path/to/image.png")
+        filepath1 = os.path.normpath("/path/to/image1.png")
+        filepath2 = os.path.normpath("/path/to/image2.png")
 
         common1 = fo.Sample(filepath=common_filepath, field=1)
         common2 = fo.Sample(filepath=common_filepath, field=2)
