@@ -689,6 +689,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return num_cloned, num_skipped
 
+    def rename_field(self, field_name, new_field_name):
+        """Renames the sample field to the given new name.
+
+        Args:
+            field_name: the field name
+            new_field_name: the new field name
+        """
+        # @todo optimize this
+        with fou.ProgressBar() as pb:
+            for sample in pb(self.select_fields(field_name)):
+                sample[new_field_name] = sample[field_name]
+                sample.save()
+
+        self.delete_sample_field(field_name)
+
     def save(self):
         """Saves dataset-level information such as its ``info`` to the
         database.
