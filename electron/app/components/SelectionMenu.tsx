@@ -31,12 +31,12 @@ const SelectionMenu = ({ port, dispatch }) => {
 
   const addStage = (name, callback = () => {}) => {
     const newState = JSON.parse(JSON.stringify(stateDescription));
-    const newView = JSON.parse(newState.view.view);
+    const newView = newState.view.view;
     newView.push({
       _cls: `fiftyone.core.stages.${name}`,
       kwargs: [["sample_ids", Array.from(selectedSamples)]],
     });
-    newState.view.view = JSON.stringify(newView);
+    newState.view.view = newView;
     socket.emit("update", { data: newState, include_self: true }, () => {
       callback();
     });

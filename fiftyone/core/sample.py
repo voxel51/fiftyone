@@ -215,8 +215,11 @@ class _Sample(SerializableDocument):
         return self.set_field(field_name, None, create=False)
 
     def iter_fields(self):
-        """Returns an iterator over the field (name, value) pairs of the
-        sample.
+        """Returns an iterator over the ``(name, value)`` pairs of the fields
+        of the sample.
+
+        Returns:
+            an iterator that emits ``(name, value)`` tuples
         """
         for field_name in self.field_names:
             yield field_name, self.get_field(field_name)

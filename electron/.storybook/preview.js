@@ -8,7 +8,6 @@ import { ThemeProvider } from "styled-components";
 
 import { GlobalStyle } from "../app/shared/global";
 import { lightTheme, darkTheme } from "../app/shared/colors";
-import { viewBarKeyMap } from "../app/components/ViewBar/ViewBar";
 import { configureStore } from "../app/store/configureStore";
 
 addDecorator((story, context) => <>{withConsole()(story)(context)}</>);

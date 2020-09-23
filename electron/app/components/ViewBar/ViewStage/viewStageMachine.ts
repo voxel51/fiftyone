@@ -2,10 +2,12 @@ import { Machine, actions, assign, send, spawn, sendParent } from "xstate";
 import uuid from "uuid-v4";
 
 import viewStageParameterMachine from "./viewStageParameterMachine";
+import { computeBestMatchString, getMatch } from "./utils";
 
 const { choose } = actions;
 
 export const createParameter = (
+  fieldNames,
   stage,
   parameter,
   type,
@@ -31,35 +33,13 @@ export const createParameter = (
   results: [],
   active,
   placeholder,
+  fieldNames,
 });
 
 const isValidStage = (stageInfo, stage) => {
   return stageInfo
     .map((s) => s.name)
     .some((n) => n.toLowerCase() === stage.toLowerCase());
-};
-
-const computeBestMatchString = (stageInfo, value) => {
-  const match = stageInfo
-    .map((s) => s.name)
-    .filter((n) => n.toLowerCase().startsWith(value.toLowerCase()))[0];
-  if (match && value.length) {
-    return {
-      placeholder: match.slice(value.length),
-      value: match,
-    };
-  }
-  return { placeholder: "", value: null };
-};
-
-export const getMatch = (stageInfo, value) => {
-  const results = stageInfo.filter(
-    (s) => s.name.toLowerCase() === value.toLowerCase()
-  );
-  if (results.length === 1) {
-    return results[0].name;
-  }
-  return null;
 };
 
 const viewStageMachine = Machine(
@@ -75,6 +55,7 @@ const viewStageMachine = Machine(
       focusOnInit: undefined,
       length: undefined,
       inputRef: {},
+      fieldNames: [],
     },
     type: "parallel",
     states: {
@@ -151,6 +132,10 @@ const viewStageMachine = Machine(
             on: {
               EDIT: {
                 target: "editing",
+                actions: sendParent(({ index }) => ({
+                  type: "STAGE.EDIT",
+                  index,
+                })),
               },
               DELETE: {
                 target: "deleted",
@@ -171,7 +156,10 @@ const viewStageMachine = Machine(
                 currentResult: null,
                 focusOnInit: true,
                 bestMatch: ({ stageInfo, stage }) =>
-                  computeBestMatchString(stageInfo, stage),
+                  computeBestMatchString(
+                    stageInfo.map((s) => s.name),
+                    stage
+                  ),
               }),
             ],
             type: "parallel",
@@ -221,7 +209,10 @@ const viewStageMachine = Machine(
                   currentResult: null,
                   errorId: undefined,
                   bestMatch: ({ stageInfo }, { value }) =>
-                    computeBestMatchString(stageInfo, value),
+                    computeBestMatchString(
+                      stageInfo.map((s) => s.name),
+                      value
+                    ),
                 }),
               },
               COMMIT: [
@@ -240,6 +231,7 @@ const viewStageMachine = Machine(
                         )[0].params;
                         const parameters = result.map((parameter, i) =>
                           createParameter(
+                            ctx.fieldNames,
                             value,
                             parameter.name,
                             parameter.type,
@@ -267,7 +259,10 @@ const viewStageMachine = Machine(
                     "blurInput",
                   ],
                   cond: ({ stageInfo }, { value }) =>
-                    getMatch(stageInfo, value),
+                    getMatch(
+                      stageInfo.map((s) => s.name),
+                      value
+                    ),
                 },
                 {
                   actions: [
@@ -414,6 +409,7 @@ const viewStageMachine = Machine(
             index: (_, { index }) => index,
             length: (_, { length }) => length,
             active: (_, { active }) => active,
+            fieldNames: (_, { fieldNames }) => fieldNames,
           }),
           (ctx, { active }) => {
             ctx.parameters.forEach((parameter) =>

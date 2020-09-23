@@ -20,6 +20,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.utils.data as foud
+import fiftyone.zoo as foz
 
 
 @pytest.fixture
@@ -236,6 +237,36 @@ def _make_multilabel_dataset(img, images_dir):
     dataset = fo.Dataset()
     dataset.add_sample(sample)
     return dataset
+
+
+def _run_custom_imports(
+    sample_collection,
+    export_dir,
+    dataset_type,
+    num_unlabeled=None,
+    max_samples=None,
+    **kwargs
+):
+    # Generate a temporary export
+    sample_collection.export(
+        export_dir=export_dir, dataset_type=dataset_type, **kwargs
+    )
+
+    # Test `skip_unlabeled` when importing
+    if num_unlabeled is not None:
+        _dataset = fo.Dataset.from_dir(
+            export_dir, dataset_type, skip_unlabeled=True
+        )
+        assert len(_dataset) == len(sample_collection) - num_unlabeled
+
+    # Test `shuffle` and `max_samples` when importing
+    if max_samples is not None:
+        _dataset = fo.Dataset.from_dir(
+            export_dir, dataset_type, shuffle=True, max_samples=max_samples
+        )
+        assert len(_dataset) == max_samples
+        for s in _dataset:
+            print(s.filepath)
 
 
 def test_classification_datasets(basedir, img):
@@ -552,6 +583,169 @@ def test_labeled_datasets_with_no_labels(basedir, img):
     dataset_type = fo.types.FiftyOneDataset
     dataset.export(export_dir, dataset_type=dataset_type)
     d12 = fo.Dataset.from_dir(export_dir, dataset_type)
+
+
+def test_custom_unlabeled_image_dataset_imports(basedir):
+    # Types of unlabeled image datasets to test
+    dataset_types = [
+        fo.types.ImageDirectory,
+    ]
+
+    # Load a small unlabeled image dataset
+    udataset = foz.load_zoo_dataset(
+        "cifar10",
+        split="test",
+        dataset_name="unlabeled-dataset",
+        shuffle=True,
+        max_samples=100,
+    )
+    udataset.delete_sample_field("ground_truth")
+
+    # Test custom imports
+    for dataset_type in dataset_types:
+        print(dataset_type.__name__)
+        export_dir = os.path.join(
+            basedir, "custom-imports", dataset_type.__name__
+        )
+        _run_custom_imports(udataset, export_dir, dataset_type, max_samples=3)
+
+
+def test_custom_classification_dataset_imports(basedir):
+    # Types of classification datasets to test
+    dataset_types = [
+        fo.types.FiftyOneImageClassificationDataset,
+        fo.types.ImageClassificationDirectoryTree,
+        fo.types.TFImageClassificationDataset,
+    ]
+
+    # Load a small classification dataset
+    cdataset = foz.load_zoo_dataset(
+        "cifar10",
+        split="test",
+        dataset_name="classification-dataset",
+        shuffle=True,
+        max_samples=100,
+    )
+
+    # Remove labeles from some samples
+    for s in cdataset.take(10):
+        s.ground_truth = None
+        s.save()
+
+    # Test custom imports
+    for dataset_type in dataset_types:
+        print(dataset_type.__name__)
+        export_dir = os.path.join(
+            basedir, "custom-imports", dataset_type.__name__
+        )
+        _run_custom_imports(
+            cdataset, export_dir, dataset_type, num_unlabeled=10, max_samples=3
+        )
+
+
+def test_custom_detection_dataset_imports(basedir):
+    # Types of detection datasets to test
+    dataset_types = [
+        fo.types.FiftyOneImageDetectionDataset,
+        fo.types.COCODetectionDataset,
+        fo.types.VOCDetectionDataset,
+        fo.types.KITTIDetectionDataset,
+        fo.types.TFObjectDetectionDataset,
+        fo.types.CVATImageDataset,
+    ]
+
+    # Load a small detection dataset
+    ddataset = foz.load_zoo_dataset(
+        "coco-2017",
+        split="validation",
+        dataset_name="detection-dataset",
+        shuffle=True,
+        max_samples=100,
+    )
+
+    # Remove labeles from some samples
+    for s in ddataset.take(10):
+        s.ground_truth = None
+        s.save()
+
+    # Test custom imports
+    for dataset_type in dataset_types:
+        print(dataset_type.__name__)
+
+        # COCODetectionDataset and TFObjectDetectionDataset formats cannot
+        # distinguish between an unlabeled image and a labeled image with zero
+        # detections
+        num_unlabeled = 10
+        if dataset_type in (
+            fo.types.COCODetectionDataset,
+            fo.types.TFObjectDetectionDataset,
+        ):
+            num_unlabeled = None
+
+        export_dir = os.path.join(
+            basedir, "custom-imports", dataset_type.__name__
+        )
+        _run_custom_imports(
+            ddataset,
+            export_dir,
+            dataset_type,
+            num_unlabeled=num_unlabeled,
+            max_samples=3,
+        )
+
+
+def test_custom_multitask_image_dataset_imports(basedir):
+    # Types of multitask datasets to test
+    dataset_types = [
+        fo.types.FiftyOneImageLabelsDataset,
+        fo.types.BDDDataset,
+    ]
+
+    # Load a small multitask image dataset
+    idataset = foz.load_zoo_dataset(
+        "coco-2017",
+        split="validation",
+        dataset_name="image-labels-dataset",
+        shuffle=True,
+        max_samples=100,
+    )
+
+    # Remove labeles from some samples
+    for s in idataset.take(10):
+        s.ground_truth = None
+        s.save()
+
+    # Test custom imports
+    for dataset_type in dataset_types:
+        print(dataset_type.__name__)
+        export_dir = os.path.join(
+            basedir, "custom-imports", dataset_type.__name__
+        )
+        _run_custom_imports(
+            idataset, export_dir, dataset_type, max_samples=3, label_prefix="",
+        )
+
+
+def test_custom_generic_dataset_imports(basedir):
+    # Types of generic datasets to test
+    dataset_types = [
+        fo.types.FiftyOneDataset,
+    ]
+
+    # Load a small generic dataset
+    gdataset = foz.load_zoo_dataset(
+        "quickstart",
+        dataset_name="generic-dataset",
+        shuffle=True,
+        max_samples=100,
+    )
+
+    for dataset_type in dataset_types:
+        print(dataset_type.__name__)
+        export_dir = os.path.join(
+            basedir, "custom-imports", dataset_type.__name__
+        )
+        _run_custom_imports(gdataset, export_dir, dataset_type, max_samples=3)
 
 
 if __name__ == "__main__":
