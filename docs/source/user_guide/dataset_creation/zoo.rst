@@ -387,6 +387,22 @@ Loading zoo datasets
         # Print the first few samples in the dataset
         print(dataset.head())
 
+    You can also provide additional arguments to
+    :meth:`load_zoo_dataset() <fiftyone.zoo.load_zoo_dataset>` to customize the
+    import behavior:
+
+        # Import a random subset of 10 samples from the zoo dataset
+        dataset = foz.load_zoo_dataset(
+            "cifar10",
+            split="test",
+            dataset_name="cifar10-test-sample",
+            shuffle=True,
+            max_samples=10,
+        )
+
+    The additional arguments are passed directly to the |DatasetImporter| that
+    performs the actual import.
+
   .. group-tab:: CLI
 
     After a zoo dataset has been downloaded from the web, you can load it as
@@ -403,6 +419,20 @@ Loading zoo datasets
         Split 'test' already downloaded
         Loading 'cifar10' split 'test'
          100% |██████████████████████████████████████████████| 10000/10000 [3.6s elapsed, 0s remaining, 2.9K samples/s]
+        Dataset 'cifar10-test' created
+
+    You can also provide additional arguments to customize the import behavior.
+    For example, you can load a random subset of 10 samples from the zoo
+    dataset:
+
+    .. code-block:: text
+
+        $ fiftyone zoo load cifar10 --splits test \
+            --dataset-name cifar10-test-sample --shuffle --max-samples 10
+
+        Split 'test' already downloaded
+        Loading 'cifar10' split 'test'
+         100% |██████████████████████████████████████████████| 10/10 [3.2ms elapsed, 0s remaining, 2.9K samples/s]
         Dataset 'cifar10-test' created
 
 Controlling where zoo datasets are downloaded

@@ -45,6 +45,18 @@ that you're loading.
         # Import the dataset!
         dataset = fo.Dataset.from_dir(dataset_dir, dataset_type, name=name)
 
+    You can also provide additional arguments to
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import behavior:
+
+        # Import a random subset of 10 samples from the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_dir, dataset_type, shuffle=True, max_samples=10
+        )
+
+    The additional arguments are passed directly to the |DatasetImporter| that
+    performs the actual import.
+
   .. group-tab:: CLI
 
     You can import a dataset from disk into FiftyOne
@@ -64,6 +76,13 @@ that you're loading.
 
         # Import the dataset!
         fiftyone datasets create --name $NAME --dataset-dir $DATASET_DIR --type $TYPE
+
+    You can also provide additional arguments to customize the import behavior:
+
+        # Import a random subset of 10 samples from the dataset
+        fiftyone datasets create \
+            --name $NAME --dataset-dir $DATASET_DIR --type $TYPE \
+            --shuffle --max-samples 10
 
 .. _supported-import-formats:
 
