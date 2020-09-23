@@ -391,6 +391,9 @@ Loading zoo datasets
     :meth:`load_zoo_dataset() <fiftyone.zoo.load_zoo_dataset>` to customize the
     import behavior:
 
+    .. code-block:: python
+        :linenos:
+
         # Import a random subset of 10 samples from the zoo dataset
         dataset = foz.load_zoo_dataset(
             "cifar10",

@@ -49,6 +49,9 @@ that you're loading.
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
     customize the import behavior:
 
+    .. code-block:: python
+        :linenos:
+
         # Import a random subset of 10 samples from the dataset
         dataset = fo.Dataset.from_dir(
             dataset_dir, dataset_type, shuffle=True, max_samples=10
@@ -78,6 +81,8 @@ that you're loading.
         fiftyone datasets create --name $NAME --dataset-dir $DATASET_DIR --type $TYPE
 
     You can also provide additional arguments to customize the import behavior:
+
+    .. code-block:: shell
 
         # Import a random subset of 10 samples from the dataset
         fiftyone datasets create \
