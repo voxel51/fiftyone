@@ -757,6 +757,7 @@ class DatasetTests(unittest.TestCase):
         dataset1 = fo.Dataset()
         dataset2 = fo.Dataset()
 
+        # Must use `normpath()` here to compare equality on Windows systems
         common_filepath = os.path.normpath("/path/to/image.png")
         filepath1 = os.path.normpath("/path/to/image1.png")
         filepath2 = os.path.normpath("/path/to/image2.png")
