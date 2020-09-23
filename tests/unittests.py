@@ -757,10 +757,9 @@ class DatasetTests(unittest.TestCase):
         dataset1 = fo.Dataset()
         dataset2 = fo.Dataset()
 
-        # Must use `normpath()` here to compare equality on Windows systems
-        common_filepath = os.path.normpath("/path/to/image.png")
-        filepath1 = os.path.normpath("/path/to/image1.png")
-        filepath2 = os.path.normpath("/path/to/image2.png")
+        common_filepath = "/path/to/image.png"
+        filepath1 = "/path/to/image1.png"
+        filepath2 = "/path/to/image2.png"
 
         common1 = fo.Sample(filepath=common_filepath, field=1)
         common2 = fo.Sample(filepath=common_filepath, field=2)
@@ -779,7 +778,7 @@ class DatasetTests(unittest.TestCase):
         dataset12.merge_samples(dataset2, overwrite=False)
         self.assertEqual(len(dataset12), 3)
 
-        common12_view = dataset12.match(F("filepath") == common_filepath)
+        common12_view = dataset12.match(F("filepath") == common1.filepath)
         self.assertEqual(len(common12_view), 1)
 
         common12 = common12_view.first()
@@ -793,7 +792,7 @@ class DatasetTests(unittest.TestCase):
         dataset21.merge_samples(dataset2, overwrite=True)
         self.assertEqual(len(dataset21), 3)
 
-        common21_view = dataset21.match(F("filepath") == common_filepath)
+        common21_view = dataset21.match(F("filepath") == common1.filepath)
         self.assertEqual(len(common21_view), 1)
 
         common21 = common21_view.first()
