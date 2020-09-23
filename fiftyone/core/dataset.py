@@ -696,6 +696,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field_name: the field name
             new_field_name: the new field name
         """
+        default_fields = foos.default_sample_fields(
+            include_private=True, include_id=True
+        )
+        if field_name in default_fields:
+            raise ValueError("Cannot rename default field '%s'" % field_name)
+
         # @todo optimize this
         with fou.ProgressBar() as pb:
             for sample in pb(self.select_fields(field_name)):
