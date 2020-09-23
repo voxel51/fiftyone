@@ -163,13 +163,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     # Batch size used when commiting samples to the database
     _BATCH_SIZE = 128
 
-    def __init__(self, name=None, persistent=False, _create=True):
+    def __init__(self, name=None, persistent=False, mtype=None, _create=True):
         if name is None and _create:
             name = get_default_dataset_name()
 
         if _create:
             self._doc, self._schema = _create_dataset(
-                name, persistent=persistent
+                name, persistent=persistent, mtype=mtype
             )
         else:
             self._doc, self._schema = _load_dataset(name)
@@ -214,6 +214,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise DoesNotExistError("Dataset '%s' is deleted" % self.name)
 
         return super().__getattribute__(name)
+
+    @property
+    def mtype(self):
+        """The media type of the dataset."""
+        return self._doc.mtype
+
+    @mtype.setter
+    def mtype(self, mtype):
+        if len(self) != 0:
+            raise ValueError(
+                "Cannot set mtype (media type) of non-empty dataset"
+            )
+        if mtype not in ["image", "video"]:
+            raise ValueError(
+                'mtype (media type) can only be one of "image" or "video". Received "%s"'
+                % mtype
+            )
+        self._doc.mtype = mtype
 
     @property
     def name(self):
@@ -1382,7 +1400,7 @@ _info_repr.maxstring = 63
 _info_repr.maxother = 63
 
 
-def _create_dataset(name, persistent=False):
+def _create_dataset(name, persistent=False, mtype=None):
     # Ensure dataset with given `name` does not already exist
     if dataset_exists(name):
         raise ValueError(
@@ -1402,6 +1420,7 @@ def _create_dataset(name, persistent=False):
 
     # Create DatasetDocument for this dataset
     dataset_doc = foo.DatasetDocument(
+        mtype=mtype,
         name=name,
         sample_collection_name=sample_collection_name,
         persistent=persistent,

@@ -103,3 +103,4 @@ class DatasetDocument(Document):
     sample_fields = EmbeddedDocumentListField(
         document_type=SampleFieldDocument
     )
+    mtype = StringField()
