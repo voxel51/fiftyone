@@ -46,6 +46,7 @@ from .core.labels import (
     Detection,
     Detections,
     ImageLabels,
+    VideoLabels,
 )
 from .core.metadata import (
     Metadata,
