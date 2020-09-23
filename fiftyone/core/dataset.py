@@ -590,8 +590,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     ):
                         continue
 
-                    # @todo merge list-like fields such as `tags`?
-
                     existing_sample[name] = value
 
                 existing_sample.save()
