@@ -424,9 +424,9 @@ Loading zoo datasets
          100% |██████████████████████████████████████████████| 10000/10000 [3.6s elapsed, 0s remaining, 2.9K samples/s]
         Dataset 'cifar10-test' created
 
-    You can also provide additional arguments to customize the import behavior.
-    For example, you can load a random subset of 10 samples from the zoo
-    dataset:
+    You can also provide :ref:`additional arguments <cli-fiftyone-zoo-load>`
+    to customize the import behavior. For example, you can load a random subset
+    of 10 samples from the zoo dataset:
 
     .. code-block:: text
 

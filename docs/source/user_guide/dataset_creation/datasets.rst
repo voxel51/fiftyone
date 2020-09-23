@@ -63,7 +63,7 @@ that you're loading.
   .. group-tab:: CLI
 
     You can import a dataset from disk into FiftyOne
-    :doc:`via the CLI </cli/index>`:
+    :ref:`via the CLI <cli-fiftyone-datasets-create>`:
 
     .. code-block:: shell
 
@@ -80,7 +80,9 @@ that you're loading.
         # Import the dataset!
         fiftyone datasets create --name $NAME --dataset-dir $DATASET_DIR --type $TYPE
 
-    You can also provide additional arguments to customize the import behavior:
+    You can also provide
+    :ref:`additional arguments <cli-fiftyone-datasets-create>` to customize the
+    import behavior:
 
     .. code-block:: shell
 
