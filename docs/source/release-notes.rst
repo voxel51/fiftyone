@@ -3,6 +3,35 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne 0.5.6
+--------------
+*Released September 23, 2020*
+
+App
+^^^
+- Added autocompletion to view bar stage fields that accept field names (for
+  example, :class:`Exists <fiftyone.core.stages.Exists>`)
+- Fixed an issue that would prevent datasets with no numeric labels or scalars
+  from loading in the App
+- Fixed an error that could occur when a view included no samples
+- Added notifications in the App that are displayed if errors occur on the
+  backend
+- Improved keyboard navigation between view bar stages
+
+Core
+^^^^
+- Added support for loading (possibly-randomized) subsets of datasets when
+  importing them via |DatasetImporter| instances, or via factory methods such
+  as :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`
+- Added support for optionally skipping unlabeled images when importing image
+  datasets via |LabeledImageDatasetImporter| instances
+- Added a
+  :meth:`Dataset.merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>`
+  method for merging samples in datasets via joining by ``filepath``
+- Added a
+  :meth:`Dataset.rename_field() <fiftyone.core.dataset.Dataset.rename_field>`
+  method for renaming sample fields of datasets
+
 FiftyOne 0.5.5
 --------------
 *Released September 15, 2020*

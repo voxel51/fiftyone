@@ -778,7 +778,7 @@ class DatasetTests(unittest.TestCase):
         dataset12.merge_samples(dataset2, overwrite=False)
         self.assertEqual(len(dataset12), 3)
 
-        common12_view = dataset12.match(F("filepath") == common_filepath)
+        common12_view = dataset12.match(F("filepath") == common1.filepath)
         self.assertEqual(len(common12_view), 1)
 
         common12 = common12_view.first()
@@ -792,7 +792,7 @@ class DatasetTests(unittest.TestCase):
         dataset21.merge_samples(dataset2, overwrite=True)
         self.assertEqual(len(dataset21), 3)
 
-        common21_view = dataset21.match(F("filepath") == common_filepath)
+        common21_view = dataset21.match(F("filepath") == common1.filepath)
         self.assertEqual(len(common21_view), 1)
 
         common21 = common21_view.first()
