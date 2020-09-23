@@ -13,8 +13,9 @@ import eta.core.geometry as etag
 import eta.core.image as etai
 import eta.core.objects as etao
 import eta.core.utils as etau
+import eta.core.video as etav
 
-from fiftyone.core.odm.document import DynamicEmbeddedDocument
+from fiftyone.core.odm.document import BaseDocument, DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 
 
@@ -23,6 +24,11 @@ class _NoDefault(object):
 
 
 no_default = _NoDefault()
+
+
+class VideoLabels(etav.VideoLabels):
+
+    pass
 
 
 class Label(DynamicEmbeddedDocument):

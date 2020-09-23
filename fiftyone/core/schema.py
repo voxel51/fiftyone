@@ -14,6 +14,7 @@ import numpy as np
 import six
 
 import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
 import fiftyone.core.odm.document as food
 import fiftyone.core.odm.sample as foos
@@ -150,6 +151,7 @@ class DatasetSchema(object):
 
     def add_field(
         self,
+        mtype,
         field_name,
         ftype,
         embedded_doc_type=None,
@@ -159,6 +161,7 @@ class DatasetSchema(object):
         """Adds a new field to the sample.
 
         Args:
+            mtype: the media typ
             field_name: the field name
             ftype: the field type to create. Must be a subclass of
                 :class:`fiftyone.core.fields.Field`
@@ -176,6 +179,24 @@ class DatasetSchema(object):
 
         if field_name in self.fields:
             raise ValueError("Field '%s' already exists" % field_name)
+
+        is_image_field = is_video_field = False
+
+        if issubclass(ftype, fof.ImageLabelsField):
+            is_image_field = True
+
+        if embedded_doc_type is not None and issubclass(
+            embedded_doc_type, fol.ImageLabel
+        ):
+            image_field = True
+
+        if issubclass(ftype, fof.VideoLabelsField):
+            is_video_field = True
+
+        if is_image_field and mtype != "image":
+            raise TypeError("Cannot add image based field")
+        elif is_video_field and mtype != "video":
+            raise TypeError("Cannot add video based field")
 
         field = _create_field(
             field_name,
@@ -198,18 +219,19 @@ class DatasetSchema(object):
             dataset_doc.sample_fields.append(sample_field)
             dataset_doc.save()
 
-    def add_implied_field(self, field_name, value):
+    def add_implied_field(self, mtype, field_name, value):
         """Adds the field to the sample, inferring the field type from the
         provided value.
 
         Args:
+            mtype: the media type
             field_name: the field name
             value: the field value
         """
         if field_name in self.fields:
             raise ValueError("Field '%s' already exists" % field_name)
 
-        self.add_field(field_name, **_get_implied_field_kwargs(value))
+        self.add_field(mtype, field_name, **_get_implied_field_kwargs(value))
 
     @no_delete_default_field
     def delete_field(self, field_name):
@@ -311,6 +333,11 @@ class DatasetSchema(object):
 
 
 def _get_implied_field_kwargs(value):
+    if isinstance(value, fol.VideoLabels):
+        return {
+            "ftype": fof.VideoLabelsField,
+        }
+
     if isinstance(value, food.BaseEmbeddedDocument):
         return {
             "ftype": fof.EmbeddedDocumentField,
@@ -345,6 +372,7 @@ def _get_implied_field_kwargs(value):
 
 
 def _create_field(field_name, ftype, embedded_doc_type=None, subfield=None):
+
     if not issubclass(ftype, fof.Field):
         raise ValueError(
             "Invalid field type '%s'; must be a subclass of '%s'"

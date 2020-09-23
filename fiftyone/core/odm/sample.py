@@ -57,6 +57,8 @@ class DatasetSampleDocument(Document):
     # Metadata about the sample media
     metadata = fof.EmbeddedDocumentField(fom.Metadata, null=True)
 
+    mtype = fof.StringField()
+
     # Random float used for random dataset operations (e.g. shuffle)
     _rand = fof.FloatField(default=_generate_rand)
 

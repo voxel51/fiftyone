@@ -217,7 +217,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def mtype(self):
-        """The media type of the dataset."""
+        """The mtype (media type) of the dataset."""
         return self._doc.mtype
 
     @mtype.setter
@@ -288,6 +288,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return "\n".join(
             [
                 "Name:           %s" % self.name,
+                "Media Type      %s" % self.mtype,
                 "Num samples:    %d" % len(self),
                 "Persistent:     %s" % self.persistent,
                 "Info:           %s" % _info_repr.repr(self.info),
@@ -419,6 +420,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.fields.DictField`
         """
         self._schema.add_field(
+            self.mtype,
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
@@ -1364,7 +1366,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
                 if field_name not in fields:
                     self._schema.add_implied_field(
-                        field_name, sample[field_name]
+                        self.mtype, field_name, sample[field_name]
                     )
                     fields = self.get_field_schema(include_private=True)
 
@@ -1484,6 +1486,7 @@ def _load_dataset(name):
         )
 
         schema.add_field(
+            dataset_doc.mtype,
             sample_field.name,
             etau.get_class(sample_field.ftype),
             subfield=subfield,

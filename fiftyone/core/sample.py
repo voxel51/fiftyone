@@ -19,6 +19,7 @@ import six
 
 import eta.core.serial as etas
 import eta.core.utils as etau
+import eta.core.video as etav
 
 import fiftyone as fo
 import fiftyone.core.metadata as fom
@@ -170,6 +171,15 @@ class _Sample(SerializableDocument):
                 % field_name
             )
 
+        if field_name == "mtype":
+            raise ValueError(
+                "mtype (media type) cannot be modified. It is derived from the file type"
+            )
+
+        if field_name == "filepath":
+            value = os.path.abspath(os.path.expanduser(value))
+            self._data["mtype"] = _get_media_type(value)
+
         if hasattr(self, field_name) and field_name not in self.field_names:
             raise ValueError("Cannot use reserved keyword '%s'" % field_name)
 
@@ -187,7 +197,9 @@ class _Sample(SerializableDocument):
             raise ValueError(msg)
 
         if self.in_dataset and not field_exists:
-            self.dataset._schema.add_implied_field(field_name, value)
+            self.dataset._schema.add_implied_field(
+                self.mtype, field_name, value
+            )
 
         if value is None:
             # If setting to None and there is a default value provided for this
@@ -353,9 +365,15 @@ class Sample(_Sample):
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
         super().__init__()
 
-        kwargs["filepath"] = filepath
+        if "mtype" in kwargs:
+            raise ValueError(
+                "mtype (media type) cannot be set. It is derived the from the file type"
+            )
+
+        kwargs["filepath"] = os.path.abspath(os.path.expanduser(filepath))
         kwargs["tags"] = tags
         kwargs["metadata"] = metadata
+        kwargs["mtype"] = _get_media_type(kwargs["filepath"])
 
         default_fields = fos.DatasetSchema.default_sample_fields(
             include_private=True
@@ -370,9 +388,6 @@ class Sample(_Sample):
             if value is None:
                 field = fos.DatasetSchema.default_fields[field_name]
                 value = field.get_default()
-
-            if field_name == "filepath":
-                value = os.path.abspath(os.path.expanduser(value))
 
             kwargs[field_name] = value
 
@@ -781,6 +796,7 @@ def serialize_dict(d, extended=False):
     """
     sd = {}
     for k, v in d.items():
+        print(k, type(v))
         if hasattr(v, "to_dict"):
             # Embedded document
             sd[k] = v.to_dict(extended=extended)
@@ -837,3 +853,10 @@ def deserialize_dict(d):
             dd[k] = v
 
     return dd
+
+
+def _get_media_type(filepath):
+    if etav.is_supported_video_file(filepath):
+        return "video"
+
+    return "image"
