@@ -798,6 +798,25 @@ class DatasetTests(unittest.TestCase):
         common21 = common21_view.first()
         self.assertEqual(common21.field, common2.field)
 
+    @drop_datasets
+    def test_rename_field(self):
+        dataset = fo.Dataset()
+
+        value = 1
+        sample = fo.Sample(filepath="/path/to/image.jpg", field=value)
+
+        dataset.add_sample(sample)
+
+        dataset.rename_field("field", "new_field")
+
+        self.assertFalse("field" in dataset.get_field_schema())
+        self.assertTrue("new_field" in dataset.get_field_schema())
+
+        with self.assertRaises(KeyError):
+            sample["field"]
+
+        self.assertEqual(sample["new_field"], value)
+
 
 class SampleTests(unittest.TestCase):
     @drop_datasets
