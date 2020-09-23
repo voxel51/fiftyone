@@ -1,10 +1,5 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import ResizeObserver from "resize-observer-polyfill";
 
 export const useEventHandler = (target, eventType, handler) => {
   // Adapted from https://reactjs.org/docs/hooks-faq.html#what-can-i-do-if-my-effect-dependencies-change-too-often
@@ -23,6 +18,23 @@ export const useEventHandler = (target, eventType, handler) => {
       target.removeEventListener(eventType, wrapper);
     };
   }, [target, eventType]);
+};
+
+export const useObserve = (target, handler) => {
+  const handlerRef = useRef(handler);
+  const observerRef = useRef(new ResizeObserver(() => handlerRef.current()));
+
+  useEffect(() => {
+    handlerRef.current = handler;
+  });
+
+  useEffect(() => {
+    if (!target) {
+      return;
+    }
+    observerRef.current.observe(target);
+    return () => observerRef.current.unobserve(target);
+  }, [target]);
 };
 
 export const useResizeHandler = (handler) =>
@@ -59,6 +71,7 @@ export const useFollow = (leaderRef, followerRef, set) => {
       x: leaderX,
       width: leaderWidth,
     } = leaderRef.current.getBoundingClientRect();
+
     set({
       left: x,
       top: y,
@@ -68,6 +81,7 @@ export const useFollow = (leaderRef, followerRef, set) => {
 
   useEventHandler(window, "scroll", follow);
   useEventHandler(leaderRef ? leaderRef.current : null, "scroll", follow);
+  useObserve(followerRef ? followerRef.current : null, follow);
 };
 
 // allows re-rendering before recoil's Batcher updates

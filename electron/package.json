@@ -1,7 +1,7 @@
 {
   "name": "fiftyone",
   "productName": "FiftyOne",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "license": "Apache-2.0",
   "description": "FiftyOne by Voxel51",
   "scripts": {
@@ -325,6 +325,7 @@
     "recoil": "^0.0.10",
     "redux": "^4.0.5",
     "redux-thunk": "^2.3.0",
+    "resize-observer-polyfill": "^1.5.1",
     "semantic-ui-css": "^2.4.1",
     "semantic-ui-react": "^0.88.2",
     "source-map-support": "^0.5.16",
