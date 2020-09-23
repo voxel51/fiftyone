@@ -178,7 +178,10 @@ class _Sample(SerializableDocument):
 
         if field_name == "filepath":
             value = os.path.abspath(os.path.expanduser(value))
-            self._data["mtype"] = _get_media_type(value)
+            if self.mtype != _get_media_type(value):
+                raise fos.MediaTypeError(
+                    "A sample's filepath can be changed, but its mtype cannot"
+                )
 
         if hasattr(self, field_name) and field_name not in self.field_names:
             raise ValueError("Cannot use reserved keyword '%s'" % field_name)
