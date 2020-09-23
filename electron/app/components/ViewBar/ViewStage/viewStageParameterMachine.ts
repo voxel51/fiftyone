@@ -1,5 +1,8 @@
 import uuid from "uuid-v4";
 import { Machine, actions, sendParent } from "xstate";
+
+import { computeBestMatchString, getMatch } from "./utils";
+
 const { assign } = actions;
 
 const convert = (v) => (typeof v !== "string" ? String(v) : v);
@@ -109,6 +112,14 @@ export const PARSER = {
     parse: (value) => value,
     validate: () => true,
   },
+  field: {
+    castFrom: (value) => value,
+    castTo: (value) => value,
+    parse: (value, fields) =>
+      fields.filter((f) => f.toLowerCase() === value.toLowerCase())[0],
+    validate: (value, fields) =>
+      typeof value === "string" && fields.includes(value.toLowerCase()),
+  },
   dict: {
     castFrom: (value) => JSON.stringify(value, null, 2),
     castTo: (value) => (typeof value === "string" ? JSON.parse(value) : value),
@@ -139,6 +150,7 @@ export default Machine(
       tail: undefined,
       focusOnInit: undefined,
       error: undefined,
+      fieldNames: [],
     },
     states: {
       decide: {
@@ -171,17 +183,48 @@ export default Machine(
         entry: [
           sendParent("PARAMETER.EDIT"),
           assign({
+            bestMatch: ({ fieldNames, value }) =>
+              computeBestMatchString(fieldNames, value),
+            currentResult: null,
             prevValue: ({ value }) => value,
             focusOnInit: false,
+            results: ({ type, fieldNames, value }) =>
+              type === "field"
+                ? fieldNames.filter((f) =>
+                    f.toLowerCase().startsWith(value.toLowerCase())
+                  )
+                : [],
           }),
           "focusInput",
         ],
+        initial: "notHovering",
+        states: {
+          hovering: {
+            on: {
+              MOUSELEAVE_RESULTS: "notHovering",
+            },
+          },
+          notHovering: {
+            on: {
+              MOUSEENTER_RESULTS: "hovering",
+            },
+          },
+        },
         on: {
           CHANGE: {
             actions: [
               assign({
+                bestMatch: ({ fieldNames }, { value }) =>
+                  computeBestMatchString(fieldNames, value),
+                currentResult: null,
                 value: (_, { value }) => value,
                 errorId: undefined,
+                results: ({ type, fieldNames }, { value }) =>
+                  type === "field"
+                    ? fieldNames.filter((f) =>
+                        f.toLowerCase().startsWith(value.toLowerCase())
+                      )
+                    : [],
               }),
             ],
           },
@@ -191,17 +234,30 @@ export default Machine(
               actions: [
                 assign({
                   submitted: true,
-                  value: ({ type, value, defaultValue }) =>
-                    value === "" && defaultValue
+                  value: (
+                    { type, value, defaultValue, fieldNames, bestMatch },
+                    { value: eventValue }
+                  ) => {
+                    const match =
+                      type === "field" ? getMatch(fieldNames, value) : null;
+                    value = eventValue ? eventValue : value;
+                    value = match
+                      ? match
+                      : bestMatch.value
+                      ? bestMatch.value
+                      : value;
+                    return value === "" && defaultValue
                       ? defaultValue
                       : type.split("|").reduce((acc, t) => {
                           if (acc !== undefined) return acc;
                           const parser = PARSER[t];
-                          return parser.validate(value)
-                            ? parser.parse(value)
+                          return parser.validate(value, fieldNames)
+                            ? parser.parse(value, fieldNames)
                             : acc;
-                        }, undefined),
+                        }, undefined);
+                  },
                   errorId: undefined,
+                  bestMatch: {},
                 }),
                 "blurInput",
                 sendParent((ctx) => ({
@@ -209,10 +265,23 @@ export default Machine(
                   parameter: ctx,
                 })),
               ],
-              cond: ({ type, value, defaultValue }) => {
+              cond: (
+                { type, fieldNames, value, defaultValue, bestMatch },
+                { value: eventValue }
+              ) => {
+                value = eventValue ? eventValue : value;
+                const match =
+                  type === "field" ? getMatch(fieldNames, value) : null;
+                value = match
+                  ? match
+                  : bestMatch.value
+                  ? bestMatch.value
+                  : value;
                 return (
                   (value === "" && defaultValue) ||
-                  type.split("|").some((t) => PARSER[t].validate(value))
+                  type
+                    .split("|")
+                    .some((t) => PARSER[t].validate(value, fieldNames))
                 );
               },
             },
@@ -237,6 +306,33 @@ export default Machine(
               }),
             ],
           },
+          NEXT_RESULT: {
+            actions: assign({
+              currentResult: ({ currentResult, results }) => {
+                if (currentResult === null) return 0;
+                return Math.min(currentResult + 1, results.length - 1);
+              },
+              stage: ({ currentResult, results }) => {
+                if (currentResult === null) return results[0];
+                return results[Math.min(currentResult + 1, results.length - 1)];
+              },
+              bestMatch: {},
+            }),
+          },
+          PREVIOUS_RESULT: {
+            actions: assign({
+              currentResult: ({ currentResult }) => {
+                if (currentResult === 0 || currentResult === null) return null;
+                return currentResult - 1;
+              },
+              stage: ({ currentResult, prevValue, results }) => {
+                if (currentResult === 0 || currentResult === null)
+                  return prevValue;
+                return results[currentResult - 1];
+              },
+              bestMatch: {},
+            }),
+          },
         },
       },
     },
@@ -256,6 +352,9 @@ export default Machine(
           cond: ({ submitted }) => submitted,
         },
       ],
+      FOCUS: {
+        actions: "focusInput",
+      },
       CLEAR_ERROR: {
         actions: [
           assign({

@@ -19,7 +19,7 @@ const ErrorMessageDiv = animated(styled.div`
   font-weight: bold;
   position: fixed;
   width: auto;
-  z-index: 800;
+  z-index: 802;
 `);
 
 const ErrorHeader = styled.div`
