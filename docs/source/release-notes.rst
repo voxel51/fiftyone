@@ -20,8 +20,17 @@ App
 
 Core
 ^^^^
-- Changed COCO importer to use filenames specified in `labels.json` instead of
-  files in the `data` directory
+- Added support for loading (possibly-randomized) subsets of datasets when
+  importing them via |DatasetImporter| instances, or via factory methods such
+  as :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`
+- Added support for optionally skipping unlabeled images when importing image
+  datasets via |LabeledImageDatasetImporter| instances
+- Added a
+  :meth:`Dataset.merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>`
+  method for merging samples in datasets via joining by ``filepath``
+- Added a
+  :meth:`Dataset.rename_field() <fiftyone.core.dataset.Dataset.rename_field>`
+  method for renaming sample fields of datasets
 
 FiftyOne 0.5.5
 --------------
