@@ -12,7 +12,6 @@ import json
 import os
 import subprocess
 import sys
-import time
 
 import argcomplete
 from tabulate import tabulate
@@ -344,6 +343,11 @@ class DatasetsCreateCommand(Command):
         fiftyone datasets create \\
             --name <name> --dataset-dir <dataset-dir> --type <type>
 
+        # Create a dataset from a random subset of the data on disk
+        fiftyone datasets create \\
+            --name <name> --dataset-dir <dataset-dir> --type <type> \\
+            --shuffle --max-samples <max-samples>
+
         # Create a dataset from the given samples JSON file
         fiftyone datasets create --json-path <json-path>
     """
@@ -371,6 +375,29 @@ class DatasetsCreateCommand(Command):
             metavar="TYPE",
             help="the fiftyone.types.Dataset type of the dataset",
         )
+        parser.add_argument(
+            "--shuffle",
+            action="store_true",
+            help=(
+                "whether to randomly shuffle the order in which the samples "
+                "are imported"
+            ),
+        )
+        parser.add_argument(
+            "--seed",
+            metavar="SEED",
+            type=int,
+            help="a random seed to use when shuffling",
+        )
+        parser.add_argument(
+            "--max-samples",
+            metavar="MAX_SAMPLES",
+            type=int,
+            help=(
+                "a maximum number of samples to import. By default, all "
+                "samples are imported"
+            ),
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -380,8 +407,9 @@ class DatasetsCreateCommand(Command):
         dataset_type = etau.get_class(args.type) if args.type else None
 
         if dataset_dir:
+            kwargs = _parse_dataset_import_kwargs(args)
             dataset = fod.Dataset.from_dir(
-                dataset_dir, dataset_type, name=name
+                dataset_dir, dataset_type, name=name, **kwargs
             )
         elif json_path:
             dataset = fod.Dataset.from_json(json_path, name=name)
@@ -754,6 +782,9 @@ class AppViewCommand(Command):
         # View a dataset stored in JSON format on disk in the app
         fiftyone app view --json-path <json-path>
 
+        # View a random subset of the data stored on disk in the app
+        fiftyone app view ... --shuffle --max-samples <max-samples>
+
         # View the dataset in a remote app session
         fiftyone app view ... --remote
     """
@@ -805,6 +836,29 @@ class AppViewCommand(Command):
             help="the path to a samples JSON file to view",
         )
         parser.add_argument(
+            "--shuffle",
+            action="store_true",
+            help=(
+                "whether to randomly shuffle the order in which the samples "
+                "are imported"
+            ),
+        )
+        parser.add_argument(
+            "--seed",
+            metavar="SEED",
+            type=int,
+            help="a random seed to use when shuffling",
+        )
+        parser.add_argument(
+            "--max-samples",
+            metavar="MAX_SAMPLES",
+            type=int,
+            help=(
+                "a maximum number of samples to import. By default, all "
+                "samples are imported"
+            ),
+        )
+        parser.add_argument(
             "-p",
             "--port",
             metavar="PORT",
@@ -826,16 +880,20 @@ class AppViewCommand(Command):
             name = args.zoo_dataset
             splits = args.splits
             dataset_dir = args.dataset_dir
+            kwargs = _parse_dataset_import_kwargs(args)
+
             dataset = foz.load_zoo_dataset(
-                name, splits=splits, dataset_dir=dataset_dir
+                name, splits=splits, dataset_dir=dataset_dir, **kwargs
             )
         elif args.dataset_dir:
             # View a dataset from a directory
             name = args.name
             dataset_dir = args.dataset_dir
             dataset_type = etau.get_class(args.type)
+            kwargs = _parse_dataset_import_kwargs(args)
+
             dataset = fod.Dataset.from_dir(
-                dataset_dir, dataset_type, name=name
+                dataset_dir, dataset_type, name=name, **kwargs
             )
         elif args.images_dir:
             # View a directory of images
@@ -1217,6 +1275,9 @@ class ZooLoadCommand(Command):
 
         # Load the zoo dataset from a custom directory
         fiftyone zoo load <name> --dataset-dir <dataset-dir>
+
+        # Load a random subset of the zoo dataset
+        fiftyone zoo load <name> --shuffle --max-samples <max-samples>
     """
 
     @staticmethod
@@ -1243,6 +1304,29 @@ class ZooLoadCommand(Command):
             metavar="DATASET_DIR",
             help="a custom directory in which the dataset is downloaded",
         )
+        parser.add_argument(
+            "--shuffle",
+            action="store_true",
+            help=(
+                "whether to randomly shuffle the order in which the samples "
+                "are imported"
+            ),
+        )
+        parser.add_argument(
+            "--seed",
+            metavar="SEED",
+            type=int,
+            help="a random seed to use when shuffling",
+        )
+        parser.add_argument(
+            "--max-samples",
+            metavar="MAX_SAMPLES",
+            type=int,
+            help=(
+                "a maximum number of samples to import. By default, all "
+                "samples are imported"
+            ),
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -1250,14 +1334,33 @@ class ZooLoadCommand(Command):
         splits = args.splits
         dataset_name = args.dataset_name
         dataset_dir = args.dataset_dir
+        kwargs = _parse_dataset_import_kwargs(args)
+
         dataset = foz.load_zoo_dataset(
             name,
             splits=splits,
             dataset_name=dataset_name,
             dataset_dir=dataset_dir,
+            **kwargs
         )
+
         dataset.persistent = True
         print("Dataset '%s' created" % dataset.name)
+
+
+def _parse_dataset_import_kwargs(args):
+    kwargs = {}
+
+    if args.shuffle:
+        kwargs["shuffle"] = args.shuffle
+
+    if args.seed is not None:
+        kwargs["seed"] = args.seed
+
+    if args.max_samples is not None:
+        kwargs["max_samples"] = args.max_samples
+
+    return kwargs
 
 
 def _print_dict_as_json(d):
