@@ -64,6 +64,13 @@ workflows.
     :tags: Basics,Visualization
 
 .. customcarditem::
+    :header: Merge datasets
+    :description: Easily merge datasets on disk or in-memory using FiftyOne; e.g., to add a new set of model predictions to a dataset.
+    :link: merging_datasets.html
+    :image: ../_static/images/recipes/merge_datasets.png
+    :tags: Basics,I/O
+
+.. customcarditem::
     :header: Import datasets in custom formats
     :description: Write your own custom DatasetImporter and use it to import datasets in your custom format into FiftyOne.
     :link: custom_importer.html
