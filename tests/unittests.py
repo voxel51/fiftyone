@@ -752,6 +752,71 @@ class DatasetTests(unittest.TestCase):
         dataset1c = fo.load_dataset(dataset_name)
         self.assertIs(dataset1c, dataset1)
 
+    @drop_datasets
+    def test_merge_samples(self):
+        dataset1 = fo.Dataset()
+        dataset2 = fo.Dataset()
+
+        common_filepath = "/path/to/image.png"
+        filepath1 = "/path/to/image1.png"
+        filepath2 = "/path/to/image2.png"
+
+        common1 = fo.Sample(filepath=common_filepath, field=1)
+        common2 = fo.Sample(filepath=common_filepath, field=2)
+
+        dataset1.add_sample(fo.Sample(filepath=filepath1, field=1))
+        dataset1.add_sample(common1)
+
+        dataset2.add_sample(fo.Sample(filepath=filepath2, field=2))
+        dataset2.add_sample(common2)
+
+        #
+        # Non-overwriting
+        #
+
+        dataset12 = dataset1.clone()
+        dataset12.merge_samples(dataset2, overwrite=False)
+        self.assertEqual(len(dataset12), 3)
+
+        common12_view = dataset12.match(F("filepath") == common_filepath)
+        self.assertEqual(len(common12_view), 1)
+
+        common12 = common12_view.first()
+        self.assertEqual(common12.field, common1.field)
+
+        #
+        # Overwriting
+        #
+
+        dataset21 = dataset1.clone()
+        dataset21.merge_samples(dataset2, overwrite=True)
+        self.assertEqual(len(dataset21), 3)
+
+        common21_view = dataset21.match(F("filepath") == common_filepath)
+        self.assertEqual(len(common21_view), 1)
+
+        common21 = common21_view.first()
+        self.assertEqual(common21.field, common2.field)
+
+    @drop_datasets
+    def test_rename_field(self):
+        dataset = fo.Dataset()
+
+        value = 1
+        sample = fo.Sample(filepath="/path/to/image.jpg", field=value)
+
+        dataset.add_sample(sample)
+
+        dataset.rename_field("field", "new_field")
+
+        self.assertFalse("field" in dataset.get_field_schema())
+        self.assertTrue("new_field" in dataset.get_field_schema())
+
+        with self.assertRaises(KeyError):
+            sample["field"]
+
+        self.assertEqual(sample["new_field"], value)
+
 
 class SampleTests(unittest.TestCase):
     @drop_datasets
