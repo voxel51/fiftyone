@@ -696,6 +696,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field_name: the field name
             new_field_name: the new field name
         """
+
+        """
         default_fields = foos.default_sample_fields(
             include_private=True, include_id=True
         )
@@ -709,6 +711,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 sample.save()
 
         self.delete_sample_field(field_name)
+        """
+
+        self._sample_doc_cls.rename_field(field_name, new_field_name)
+        fos.Sample._purge_field(self._sample_collection_name, field_name)
 
     def save(self):
         """Saves dataset-level information such as its ``info`` to the
