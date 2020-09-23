@@ -559,6 +559,43 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return [str(d["_id"]) for d in dicts]
 
+    def merge_samples(self, samples, overwrite=False):
+        """Merges the contents of the given samples into the dataset.
+
+        Input samples whose ``filepath`` matches an existing ``filepath`` are
+        merged, and samples with new ``filepath`` values are added.
+
+        Args:
+            samples: an iterable of :class:`fiftyone.core.sample.Sample`
+                instances. For example, ``samples`` may be a :class:`Dataset`
+                or a :class:`fiftyone.core.views.DatasetView`
+            overwrite (False): whether to overwrite (True) or skip (False)
+                existing sample fields
+        """
+        existing_schema = self.get_field_schema()
+        filepath_map = {s.filepath: s.id for s in self.select_fields()}
+
+        for new_sample in samples:
+            if new_sample.filepath in filepath_map:
+                existing_sample = self[filepath_map[new_sample.filepath]]
+
+                for name, value in new_sample.iter_fields():
+                    if name == "filepath":
+                        continue
+
+                    if (
+                        not overwrite
+                        and name in existing_schema
+                        and existing_sample[name] is not None
+                    ):
+                        continue
+
+                    existing_sample[name] = value
+
+                existing_sample.save()
+            else:
+                self.add_sample(new_sample)
+
     def remove_sample(self, sample_or_id):
         """Removes the given sample from the dataset.
 
@@ -649,6 +686,27 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 num_cloned += 1
 
         return num_cloned, num_skipped
+
+    def rename_field(self, field_name, new_field_name):
+        """Renames the sample field to the given new name.
+
+        Args:
+            field_name: the field name
+            new_field_name: the new field name
+        """
+        default_fields = foos.default_sample_fields(
+            include_private=True, include_id=True
+        )
+        if field_name in default_fields:
+            raise ValueError("Cannot rename default field '%s'" % field_name)
+
+        # @todo optimize this
+        with fou.ProgressBar() as pb:
+            for sample in pb(self.select_fields(field_name)):
+                sample[new_field_name] = sample[field_name]
+                sample.save()
+
+        self.delete_sample_field(field_name)
 
     def save(self):
         """Saves dataset-level information such as its ``info`` to the
