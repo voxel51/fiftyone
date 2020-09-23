@@ -991,7 +991,8 @@ def _parse_image_labels(label):
     if isinstance(label, dict):
         image_labels = etai.ImageLabels()
         for name, _label in label.items():
-            image_labels.merge_labels(_label.to_image_labels(name=name))
+            if _label is not None:
+                image_labels.merge_labels(_label.to_image_labels(name=name))
 
         return image_labels
 

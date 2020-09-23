@@ -8,17 +8,17 @@ export default {
 };
 
 const sample = {
-  _id: { $oid: "5f2f59cd874cb94d62333bc0" },
+  _id: "5f2f59cd874cb94d62333bc0",
   filepath: "/image.png",
   tags: ["test"],
   metadata: null,
   gt_weather: {
-    _id: { $oid: "5f2f59cd874cb94d62333bb9" },
+    _id: "5f2f59cd874cb94d62333bb9",
     _cls: "Classification",
     label: "sunny",
   },
   pred_weather: {
-    _id: { $oid: "5f2f59cd874cb94d62333bba" },
+    _id: "5f2f59cd874cb94d62333bba",
     _cls: "Classification",
     label: "partly-sunny",
     confidence: 0.95,
@@ -34,14 +34,14 @@ const sample = {
     _cls: "Detections",
     detections: [
       {
-        _id: { $oid: "5f2f59cd874cb94d62333bbb" },
+        _id: "5f2f59cd874cb94d62333bbb",
         _cls: "Detection",
         label: "cat",
         bounding_box: [0.3, 0.3, 0.2, 0.2],
         attributes: {},
       },
       {
-        _id: { $oid: "5f2f59cd874cb94d62333bbc" },
+        _id: "5f2f59cd874cb94d62333bbc",
         _cls: "Detection",
         label: "dog",
         bounding_box: [0.6, 0.6, 0.2, 0.2],
@@ -53,7 +53,7 @@ const sample = {
     _cls: "Detections",
     detections: [
       {
-        _id: { $oid: "5f2f59cd874cb94d62333bbd" },
+        _id: "5f2f59cd874cb94d62333bbd",
         _cls: "Detection",
         label: "cat",
         bounding_box: [0.33, 0.33, 0.2, 0.2],
@@ -61,7 +61,7 @@ const sample = {
         attributes: {},
       },
       {
-        _id: { $oid: "5f2f59cd874cb94d62333bbe" },
+        _id: "5f2f59cd874cb94d62333bbe",
         _cls: "Detection",
         label: "dog",
         bounding_box: [0.65, 0.65, 0.2, 0.2],

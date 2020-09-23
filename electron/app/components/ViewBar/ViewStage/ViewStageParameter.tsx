@@ -1,38 +1,37 @@
-import React, {
-  useContext,
-  useMemo,
-  useEffect,
-  useRef,
-  useState,
-  useLayoutEffect,
-} from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { animated, useSpring } from "react-spring";
 import styled, { ThemeContext } from "styled-components";
 import { useService } from "@xstate/react";
 import AutosizeInput from "react-input-autosize";
 
+import { BestMatchDiv } from "./BestMatch";
 import { PARSER } from "./viewStageParameterMachine";
-import { useOutsideClick } from "../../../utils/hooks";
+import {
+  useEventHandler,
+  useObserve,
+  useOutsideClick,
+} from "../../../utils/hooks";
 import ErrorMessage from "./ErrorMessage";
+import SearchResults from "./SearchResults";
 
 const ViewStageParameterContainer = styled.div`
   display: flex;
+  overflow: visible;
+  z-index: 800;
 `;
 
 const ViewStageParameterDiv = animated(styled.div`
   box-sizing: border-box;
   border: 1px solid ${({ theme }) => theme.brand};
-  position: relative;
   display: flex;
-  z-index: 801;
-  overflow: hidden;
+  overflow: visible;
 `);
 
 const ViewStageParameterInput = animated(styled(AutosizeInput)`
   & > input {
     background-color: transparent;
     border: none;
-    margin: 0.5rem;
+    margin: 0.5rem 0 0.5rem 0.5rem;
     color: ${({ theme }) => theme.font};
     line-height: 1rem;
     font-weight: bold;
@@ -135,6 +134,8 @@ const makePlaceholder = ({ placeholder, parameter }) => {
   return parameter;
 };
 
+let request;
+
 const ObjectEditor = ({
   barRef,
   parameterRef,
@@ -147,7 +148,7 @@ const ObjectEditor = ({
   const theme = useContext(ThemeContext);
   const containerRef = useRef(null);
 
-  const { active, parameter, defaultValue, value, type } = state.context;
+  const { active, value } = state.context;
 
   const [containerProps, containerSet] = useSpring(() => ({
     height: state.matches("editing") ? 200 : 36,
@@ -197,46 +198,32 @@ const ObjectEditor = ({
     stageState.matches("focusedViewBar.yes"),
   ]);
 
-  useLayoutEffect(() => {
-    let request = null;
-    const attach = () => {
-      request = window.requestAnimationFrame(() => {
-        const { x, y } = state.matches("editing")
-          ? followRef.current.getBoundingClientRect()
-          : { x: 0, y: 0 };
-        containerRef.current.style.top = state.matches("editing")
-          ? `${y}px`
-          : "unset";
-        containerRef.current.style.left = state.matches("editing")
-          ? `${x}px`
-          : "unset";
-        const {
-          x: barX,
-          width: barWidth,
-        } = barRef.current.getBoundingClientRect();
-        const barRight = barX + barWidth;
-        containerRef.current.style.width = state.matches("editing")
-          ? `${Math.min(barRight - x, 400)}px`
-          : "auto";
-        request = null;
-      });
-    };
+  const attach = () => {
+    request && window.cancelAnimationFrame(request);
+    request = window.requestAnimationFrame(() => {
+      const { x, y } = state.matches("editing")
+        ? followRef.current.getBoundingClientRect()
+        : { x: 0, y: 0 };
+      containerRef.current.style.top = state.matches("editing")
+        ? `${y}px`
+        : "unset";
+      containerRef.current.style.left = state.matches("editing")
+        ? `${x}px`
+        : "unset";
+      const {
+        x: barX,
+        width: barWidth,
+      } = barRef.current.getBoundingClientRect();
+      const barRight = barX + barWidth;
+      containerRef.current.style.width = state.matches("editing")
+        ? `${Math.min(barRight - x, 400)}px`
+        : "auto";
+    });
+  };
 
-    barRef.current.addEventListener("scroll", attach);
-    window.addEventListener("scroll", attach);
-    followRef.current && attach();
-
-    return () => {
-      barRef.current.removeEventListener("scroll", attach);
-      window.removeEventListener("scroll", attach);
-      request && window.cancelAnimationFrame(request);
-    };
-  }, [
-    followRef.current,
-    containerRef.current,
-    active,
-    state.matches("editing"),
-  ]);
+  useEventHandler(barRef.current ? barRef.current : null, "scroll", attach);
+  useEventHandler(window, "scroll", attach);
+  useObserve(containerRef ? containerRef.current : null, attach);
 
   return (
     <>
@@ -265,7 +252,7 @@ const ObjectEditor = ({
                 });
               }}
               onKeyDown={(e) => {
-                if (e.key === "Escape") {
+                if (["Escape", "Tab"].includes(e.key)) {
                   send("COMMIT");
                 }
               }}
@@ -278,7 +265,7 @@ const ObjectEditor = ({
         <ErrorMessage
           key="error"
           serviceRef={parameterRef}
-          style={{ marginTop: "12rem", marginLeft: -10 }}
+          style={{ marginTop: "12.5rem", marginLeft: 0 }}
         />
       </ObjectEditorContainer>
     </>
@@ -292,26 +279,15 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
   const inputRef = useRef();
   const [containerRef, setContainerRef] = useState({});
 
-  const actionsMap = useMemo(
-    () => ({
-      focusInput: () => inputRef.current && inputRef.current.select(),
-      blurInput: () => inputRef.current && inputRef.current.blur(),
-    }),
-    []
-  );
-
-  useEffect(() => {
-    const listener = (state) => {
-      state.actions.forEach((action) => {
-        if (action.type in actionsMap) actionsMap[action.type]();
-      });
-    };
-    parameterRef.onTransition(listener);
-
-    return () => parameterRef.listeners.delete(listener);
-  }, []);
-
-  const { tail, type, value, active } = state.context;
+  const {
+    tail,
+    type,
+    value,
+    active,
+    currentResult,
+    results,
+    bestMatch,
+  } = state.context;
   const hasObjectType = typeof type === "string" && type.includes("dict");
 
   const props = useSpring({
@@ -326,9 +302,9 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
       active && stageState.matches("focusedViewBar.yes")
         ? theme.brand
         : theme.fontDarkest,
-    borderRightWidth: tail && !hasObjectType ? 1 : 0,
     height: hasObjectType && state.matches("editing") ? 200 : 34,
     borderWidth: hasObjectType ? 0 : 1,
+    borderRightWidth: 0,
     opacity: 1,
     from: {
       opacity: 0,
@@ -336,61 +312,98 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
   });
 
   const isEditing = state.matches("editing");
+  useEffect(() => {
+    isEditing && inputRef.current && inputRef.current.focus();
+    !isEditing && inputRef.current && inputRef.current.blur();
+  }, [isEditing, inputRef.current]);
 
   return (
-    <ViewStageParameterContainer
-      ref={(node) =>
-        node &&
-        node !== containerRef.current &&
-        setContainerRef({ current: node })
-      }
-    >
-      {hasObjectType ? (
-        <ObjectEditor
-          parameterRef={parameterRef}
+    <>
+      <ViewStageParameterContainer
+        ref={(node) =>
+          node &&
+          node !== containerRef.current &&
+          setContainerRef({ current: node })
+        }
+      >
+        {hasObjectType ? (
+          <ObjectEditor
+            parameterRef={parameterRef}
+            barRef={barRef}
+            followRef={containerRef}
+            inputRef={inputRef}
+            stageRef={stageRef}
+          />
+        ) : (
+          <ViewStageParameterDiv style={props}>
+            <ViewStageParameterInput
+              placeholder={makePlaceholder(state.context)}
+              autoFocus={state.matches("editing")}
+              value={
+                state.matches("reading") && value.length > 24
+                  ? value.slice(0, 25) + "..."
+                  : value
+              }
+              onFocus={() => !isEditing && send({ type: "EDIT" })}
+              onBlur={() =>
+                state.matches("editing.searchResults.notHovering") &&
+                send({ type: "COMMIT" })
+              }
+              onChange={(e) => {
+                send({ type: "CHANGE", value: e.target.value });
+              }}
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  isEditing && send({ type: "COMMIT" });
+                }
+              }}
+              onKeyDown={(e) => {
+                switch (e.key) {
+                  case "Tab":
+                    send("COMMIT");
+                  case "Escape":
+                    send("BLUR");
+                    break;
+                  case "ArrowDown":
+                    send("NEXT_RESULT");
+                    break;
+                  case "ArrowUp":
+                    send("PREVIOUS_RESULT");
+                    break;
+                  case "ArrowRight":
+                    e.target.selectionStart === e.target.value.length &&
+                      bestMatch.value &&
+                      send({ type: "CHANGE", value: bestMatch.value });
+                    break;
+                }
+              }}
+              ref={inputRef}
+            />
+            <BestMatchDiv>
+              {bestMatch ? bestMatch.placeholder : ""}
+            </BestMatchDiv>
+          </ViewStageParameterDiv>
+        )}
+      </ViewStageParameterContainer>
+      {state.matches("editing") && barRef.current && containerRef.current && (
+        <SearchResults
+          results={results}
+          send={send}
+          currentResult={currentResult}
+          bestMatch={bestMatch.value}
+          followRef={containerRef}
+          barRef={barRef}
+        />
+      )}
+      {!hasObjectType && containerRef.current && (
+        <ErrorMessage
+          key="error"
+          serviceRef={parameterRef}
           barRef={barRef}
           followRef={containerRef}
-          inputRef={inputRef}
-          stageRef={stageRef}
         />
-      ) : (
-        <ViewStageParameterDiv style={props}>
-          <ViewStageParameterInput
-            placeholder={makePlaceholder(state.context)}
-            autoFocus={state.matches("editing")}
-            value={
-              state.matches("reading") && value.length > 24
-                ? value.slice(0, 25) + "..."
-                : value
-            }
-            onFocus={() => !isEditing && send({ type: "EDIT" })}
-            onBlur={() => isEditing && send({ type: "COMMIT" })}
-            onChange={(e) => {
-              send({ type: "CHANGE", value: e.target.value });
-            }}
-            onKeyPress={(e) => {
-              if (e.key === "Enter") {
-                isEditing && send({ type: "COMMIT" });
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                send({ type: "COMMIT" });
-              }
-            }}
-            ref={inputRef}
-          />
-          {containerRef.current && (
-            <ErrorMessage
-              key="error"
-              serviceRef={parameterRef}
-              barRef={barRef}
-              followRef={containerRef}
-            />
-          )}
-        </ViewStageParameterDiv>
       )}
-    </ViewStageParameterContainer>
+    </>
   );
 });
 
