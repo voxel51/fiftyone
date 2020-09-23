@@ -1079,7 +1079,7 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         image_path, label = self._parse_next_sample()
 
         if self.skip_unlabeled:
-            while label is None or not label.labels:
+            while label is None:
                 image_path, label = self._parse_next_sample()
 
         if self.compute_metadata:

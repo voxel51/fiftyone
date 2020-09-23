@@ -211,7 +211,7 @@ class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
         filenames = etau.list_files(self._data_dir, abs_paths=False)
 
         if self.skip_unlabeled:
-            filenames = [f for f in self._filenames if f in self._images_map]
+            filenames = [f for f in filenames if f in self._images_map]
 
         self._filenames = self._preprocess_list(filenames)
         self._num_samples = len(self._filenames)

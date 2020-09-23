@@ -95,7 +95,7 @@ class KITTIDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         self._uuids_to_labels_paths = None
         self._uuids = None
         self._iter_uuids = None
-        self._num_samples = len(self._uuids)
+        self._num_samples = None
 
     def __iter__(self):
         self._iter_uuids = iter(self._uuids)
@@ -331,7 +331,7 @@ def _parse_kitti_detection_row(row, frame_size):
 
 def _make_kitti_detection_row(detection, frame_size):
     cols = [
-        detection.label,
+        detection.label.replace(" ", "_"),
         detection.get_attribute_value("truncated", 0),
         detection.get_attribute_value("occluded", 0),
         detection.get_attribute_value("alpha", 0),

@@ -258,9 +258,7 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
         filenames = etau.list_files(self._data_dir, abs_paths=False)
 
         if self.skip_unlabeled:
-            filenames = [
-                f for f in self._filenames if f in self._anno_dict_map
-            ]
+            filenames = [f for f in filenames if f in self._anno_dict_map]
 
         self._filenames = self._preprocess_list(filenames)
         self._num_samples = len(self._filenames)
@@ -383,7 +381,8 @@ def _make_bdd_annotation(image_labels_or_dict, metadata, filename):
     if isinstance(image_labels_or_dict, dict):
         image_labels = etai.ImageLabels()
         for name, label in image_labels_or_dict.items():
-            image_labels.merge_labels(label.to_image_labels(name=name))
+            if label is not None:
+                image_labels.merge_labels(label.to_image_labels(name=name))
     else:
         image_labels = image_labels_or_dict.labels
 
