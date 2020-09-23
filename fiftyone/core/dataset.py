@@ -590,8 +590,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     ):
                         continue
 
-                    # @todo merge list-like fields such as `tags`?
-
                     existing_sample[name] = value
 
                 existing_sample.save()
@@ -1044,6 +1042,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         tags=None,
         expand_schema=True,
         dataset_dir=None,
+        skip_unlabeled=False,
         image_format=None,
     ):
         """Ingests the given iterable of labeled image samples into the
@@ -1068,6 +1067,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if the sample's schema is not a subset of the dataset schema
             dataset_dir (None): the directory in which the images will be
                 written. By default, :func:`get_default_dataset_dir` is used
+            skip_unlabeled (False): whether to skip unlabeled images when
+                importing
             image_format (None): the image format to use to write the images to
                 disk. By default, ``fiftyone.config.default_image_ext`` is used
 
@@ -1078,7 +1079,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_dir = get_default_dataset_dir(self.name)
 
         dataset_ingestor = foud.LabeledImageDatasetIngestor(
-            dataset_dir, samples, sample_parser, image_format=image_format,
+            dataset_dir,
+            samples,
+            sample_parser,
+            skip_unlabeled=skip_unlabeled,
+            image_format=image_format,
         )
 
         return self.add_importer(
@@ -1126,7 +1131,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_type,
             label_field=label_field,
             tags=tags,
-            **kwargs,
+            **kwargs
         )
         return dataset
 

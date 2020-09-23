@@ -45,10 +45,25 @@ that you're loading.
         # Import the dataset!
         dataset = fo.Dataset.from_dir(dataset_dir, dataset_type, name=name)
 
+    You can also provide additional arguments to
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import behavior:
+
+    .. code-block:: python
+        :linenos:
+
+        # Import a random subset of 10 samples from the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_dir, dataset_type, shuffle=True, max_samples=10
+        )
+
+    The additional arguments are passed directly to the |DatasetImporter| that
+    performs the actual import.
+
   .. group-tab:: CLI
 
     You can import a dataset from disk into FiftyOne
-    :doc:`via the CLI </cli/index>`:
+    :ref:`via the CLI <cli-fiftyone-datasets-create>`:
 
     .. code-block:: shell
 
@@ -64,6 +79,17 @@ that you're loading.
 
         # Import the dataset!
         fiftyone datasets create --name $NAME --dataset-dir $DATASET_DIR --type $TYPE
+
+    You can also provide
+    :ref:`additional arguments <cli-fiftyone-datasets-create>` to customize the
+    import behavior:
+
+    .. code-block:: shell
+
+        # Import a random subset of 10 samples from the dataset
+        fiftyone datasets create \
+            --name $NAME --dataset-dir $DATASET_DIR --type $TYPE \
+            --shuffle --max-samples 10
 
 .. _supported-import-formats:
 
@@ -1650,12 +1676,20 @@ should implement is determined by the type of dataset that you are importing.
 
             Args:
                 dataset_dir: the dataset directory
-                *args: additional positional arguments for your importer
+                shuffle (False): whether to randomly shuffle the order in which the
+                    samples are imported
+                seed (None): a random seed to use when shuffling
+                max_samples (None): a maximum number of samples to import. By default,
+                    all samples are imported
                 **kwargs: additional keyword arguments for your importer
             """
 
-            def __init__(self, dataset_dir, *args, **kwargs):
-                super().__init__(dataset_dir)
+            def __init__(
+                self, dataset_dir, shuffle=False, seed=None, max_samples=None, **kwargs
+            ):
+                super().__init__(
+                    dataset_dir, shuffle=shuffle, seed=seed, max_samples=max_samples
+                )
                 # Your initialization here
 
             def __len__(self):
@@ -1798,12 +1832,31 @@ should implement is determined by the type of dataset that you are importing.
 
             Args:
                 dataset_dir: the dataset directory
-                *args: additional positional arguments for your importer
+                skip_unlabeled (False): whether to skip unlabeled images when importing
+                shuffle (False): whether to randomly shuffle the order in which the
+                    samples are imported
+                seed (None): a random seed to use when shuffling
+                max_samples (None): a maximum number of samples to import. By default,
+                    all samples are imported
                 **kwargs: additional keyword arguments for your importer
             """
 
-            def __init__(self, dataset_dir, *args, **kwargs):
-                super().__init__(dataset_dir)
+            def __init__(
+                self,
+                dataset_dir,
+                skip_unlabeled=False,
+                shuffle=False,
+                seed=None,
+                max_samples=None,
+                **kwargs,
+            ):
+                super().__init__(
+                    dataset_dir,
+                    skip_unlabeled=skip_unlabeled,
+                    shuffle=shuffle,
+                    seed=seed,
+                    max_samples=max_samples,
+                )
                 # Your initialization here
 
             def __len__(self):
