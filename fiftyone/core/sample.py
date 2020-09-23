@@ -796,7 +796,6 @@ def serialize_dict(d, extended=False):
     """
     sd = {}
     for k, v in d.items():
-        print(k, type(v))
         if hasattr(v, "to_dict"):
             # Embedded document
             sd[k] = v.to_dict(extended=extended)

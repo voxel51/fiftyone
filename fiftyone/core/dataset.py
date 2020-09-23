@@ -232,6 +232,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 % mtype
             )
         self._doc.mtype = mtype
+        self._doc.save()
 
     @property
     def name(self):
@@ -288,7 +289,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return "\n".join(
             [
                 "Name:           %s" % self.name,
-                "Media Type      %s" % self.mtype,
+                "Media type      %s" % self.mtype,
                 "Num samples:    %d" % len(self),
                 "Persistent:     %s" % self.persistent,
                 "Info:           %s" % _info_repr.repr(self.info),
@@ -492,6 +493,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample has a type that is inconsistent with the dataset schema, or
             if ``expand_schema == False`` and a new field is encountered
         """
+        if self.mtype is None:
+            self.mtype = sample.mtype
+
         if expand_schema:
             self._expand_schema([sample])
 

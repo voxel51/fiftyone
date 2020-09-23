@@ -180,23 +180,7 @@ class DatasetSchema(object):
         if field_name in self.fields:
             raise ValueError("Field '%s' already exists" % field_name)
 
-        is_image_field = is_video_field = False
-
-        if issubclass(ftype, fof.ImageLabelsField):
-            is_image_field = True
-
-        if embedded_doc_type is not None and issubclass(
-            embedded_doc_type, fol.ImageLabel
-        ):
-            image_field = True
-
-        if issubclass(ftype, fof.VideoLabelsField):
-            is_video_field = True
-
-        if is_image_field and mtype != "image":
-            raise TypeError("Cannot add image based field")
-        elif is_video_field and mtype != "video":
-            raise TypeError("Cannot add video based field")
+        _validate_field_against_mtype(mtype, ftype, embedded_doc_type)
 
         field = _create_field(
             field_name,
@@ -307,6 +291,9 @@ class DatasetSchema(object):
             fn for fn in sample.field_names if fn not in fields
         }
 
+        if self._get_dataset_doc().mtype != sample.mtype:
+            raise MediaTypeError("Dataset mtype and sample mtype do not match")
+
         if non_existest_fields:
             msg = "The fields %s do not exist on the dataset '%s'" % (
                 non_existest_fields,
@@ -394,3 +381,28 @@ def _create_field(field_name, ftype, embedded_doc_type=None, subfield=None):
     field.name = field_name
 
     return field
+
+
+def _validate_field_against_mtype(mtype, ftype, embedded_doc_type=None):
+    is_image_field = is_video_field = False
+
+    if issubclass(ftype, fof.ImageLabelsField):
+        is_image_field = True
+
+    if embedded_doc_type is not None and issubclass(
+        embedded_doc_type, fol.ImageLabel
+    ):
+        image_field = True
+
+    if issubclass(ftype, fof.VideoLabelsField):
+        is_video_field = True
+
+    if is_image_field and mtype != "image":
+        raise MediaTypeError("Cannot add image based field")
+    elif is_video_field and mtype != "video":
+        raise MediaTypeError("Cannot add video based field")
+
+
+class MediaTypeError(TypeError):
+
+    pass

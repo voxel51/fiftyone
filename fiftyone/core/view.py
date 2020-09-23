@@ -134,7 +134,7 @@ class DatasetView(foc.SampleCollection):
         return "\n".join(
             [
                 "Dataset:        %s" % self.dataset_name,
-                "Media Type:     %s" % self.mtype,
+                "Media type:     %s" % self.mtype,
                 "Num samples:    %d" % len(self),
                 "Tags:           %s" % self.get_tags(),
                 "Sample fields:",
