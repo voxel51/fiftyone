@@ -68,33 +68,58 @@ class KITTIDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
 
     Args:
         dataset_dir: the dataset directory
+        skip_unlabeled (False): whether to skip unlabeled images when importing
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
     """
 
-    def __init__(self, dataset_dir):
-        super().__init__(dataset_dir)
-        self._anno_uuids_to_paths = None
-        self._image_paths = None
-        self._iter_image_paths = None
+    def __init__(
+        self,
+        dataset_dir,
+        skip_unlabeled=False,
+        shuffle=False,
+        seed=None,
+        max_samples=None,
+    ):
+        super().__init__(
+            dataset_dir,
+            skip_unlabeled=skip_unlabeled,
+            shuffle=shuffle,
+            seed=seed,
+            max_samples=max_samples,
+        )
+        self._uuids_to_image_paths = None
+        self._uuids_to_labels_paths = None
+        self._uuids = None
+        self._iter_uuids = None
+        self._num_samples = None
 
     def __iter__(self):
-        self._iter_image_paths = iter(self._image_paths)
+        self._iter_uuids = iter(self._uuids)
         return self
 
     def __len__(self):
-        return len(self._image_paths)
+        return self._num_samples
 
     def __next__(self):
-        image_path = next(self._iter_image_paths)
-        uuid = os.path.splitext(os.path.basename(image_path))[0]
+        uuid = next(self._iter_uuids)
+
+        try:
+            image_path = self._uuids_to_image_paths[uuid]
+        except KeyError:
+            raise ValueError("No image found for sample '%s'" % uuid)
 
         image_metadata = fom.ImageMetadata.build_for(image_path)
 
-        anno_path = self._anno_uuids_to_paths.get(uuid, None)
-        if anno_path:
+        labels_path = self._uuids_to_labels_paths.get(uuid, None)
+        if labels_path:
             # Labeled image
             frame_size = (image_metadata.width, image_metadata.height)
             detections = load_kitti_detection_annotations(
-                anno_path, frame_size
+                labels_path, frame_size
             )
         else:
             # Unlabeled image
@@ -115,20 +140,33 @@ class KITTIDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         return fol.Detections
 
     def setup(self):
+        to_uuid = lambda p: os.path.splitext(os.path.basename(p))[0]
+
         data_dir = os.path.join(self.dataset_dir, "data")
         if os.path.isdir(data_dir):
-            self._image_paths = etau.list_files(data_dir, abs_paths=True)
+            self._uuids_to_image_paths = {
+                to_uuid(p): p
+                for p in etau.list_files(data_dir, abs_paths=True)
+            }
         else:
-            self._image_paths = []
+            self._uuids_to_image_paths = {}
 
         labels_dir = os.path.join(self.dataset_dir, "labels")
         if os.path.isdir(labels_dir):
-            self._anno_uuids_to_paths = {
-                os.path.splitext(f)[0]: os.path.join(labels_dir, f)
-                for f in etau.list_files(labels_dir, abs_paths=False)
+            self._uuids_to_labels_paths = {
+                to_uuid(p): p
+                for p in etau.list_files(labels_dir, abs_paths=True)
             }
         else:
-            self._anno_uuids_to_paths = {}
+            self._uuids_to_labels_paths = {}
+
+        if self.skip_unlabeled:
+            uuids = sorted(self._uuids_to_labels_paths.keys())
+        else:
+            uuids = sorted(self._uuids_to_image_paths.keys())
+
+        self._uuids = self._preprocess_list(uuids)
+        self._num_samples = len(self._uuids)
 
 
 class KITTIDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
@@ -293,7 +331,7 @@ def _parse_kitti_detection_row(row, frame_size):
 
 def _make_kitti_detection_row(detection, frame_size):
     cols = [
-        detection.label,
+        detection.label.replace(" ", "_"),
         detection.get_attribute_value("truncated", 0),
         detection.get_attribute_value("occluded", 0),
         detection.get_attribute_value("alpha", 0),
