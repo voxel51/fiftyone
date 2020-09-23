@@ -5,12 +5,12 @@ FiftyOne Release Notes
 
 FiftyOne 0.5.6
 --------------
-*Released September 22, 2020*
+*Released September 23, 2020*
 
 App
 ^^^
 - Added autocompletion to view bar stage fields that accept field names (for
-  example, :class:`fiftyone.core.stages.Exists`)
+  example, :class:`Exists <fiftyone.core.stages.Exists>`)
 - Fixed an issue that would prevent datasets with no numeric labels or scalars
   from loading in the App
 - Fixed an error that could occur when a view included no samples
