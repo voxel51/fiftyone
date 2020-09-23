@@ -156,7 +156,7 @@ class TensorflowObjectDetectionAPIEvaluator:
                     else:
                         false_positive_idxs.append(match_idxs[0])
                 else:
-                    # @todo(Tyler) this is an unaccounted-for match. It is
+                    # @todo this is an unaccounted-for match. It is
                     #   unclear what box it refers to because multiple boxes
                     #   have the same class label and score
                     pass

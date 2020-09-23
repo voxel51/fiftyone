@@ -101,7 +101,7 @@ const SearchResults = React.memo(
       };
     });
 
-    barRef && followRef && useFollow(barRef, followRef, (obj) => set(obj));
+    useFollow(barRef, followRef, set);
 
     if (!results.length) return null;
 

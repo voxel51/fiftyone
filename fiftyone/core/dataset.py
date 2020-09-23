@@ -14,7 +14,8 @@ import os
 import reprlib
 
 from bson import ObjectId
-from mongoengine.errors import DoesNotExist, FieldDoesNotExist
+from mongoengine.errors import DoesNotExist
+from pymongo.errors import BulkWriteError, DuplicateKeyError
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -23,8 +24,8 @@ import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
-import fiftyone.core.odm.sample as foos
 import fiftyone.core.sample as fos
+import fiftyone.core.schema as fosc
 from fiftyone.core.singleton import DatasetSingleton
 import fiftyone.core.view as fov
 import fiftyone.core.utils as fou
@@ -167,11 +168,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name = get_default_dataset_name()
 
         if _create:
-            self._doc, self._sample_doc_cls = _create_dataset(
+            self._doc, self._schema = _create_dataset(
                 name, persistent=persistent
             )
         else:
-            self._doc, self._sample_doc_cls = _load_dataset(name)
+            self._doc, self._schema = _load_dataset(name)
 
         self._deleted = False
 
@@ -195,9 +196,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if d is None:
             raise KeyError("No sample found with ID '%s'" % sample_id_or_slice)
 
-        doc = self._sample_dict_to_doc(d)
-
-        return fos.Sample.from_doc(doc, dataset=self)
+        return fos.Sample.from_support(d, dataset=self)
 
     def __delitem__(self, sample_id):
         self.remove_sample(sample_id)
@@ -305,7 +304,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         except ValueError:
             raise ValueError("%s is empty" % self.__class__.__name__)
 
-        return fos.Sample.from_doc(sample_view._doc, dataset=self)
+        return fos.Sample.from_sample_view(sample_view)
 
     def head(self, num_samples=3):
         """Returns a list of the first few samples in the dataset.
@@ -319,10 +318,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of :class:`fiftyone.core.sample.Sample` objects
         """
-        return [
-            fos.Sample.from_doc(sv._doc, dataset=self)
-            for sv in self[:num_samples]
-        ]
+        return [fos.Sample.from_sample_view(sv) for sv in self[:num_samples]]
 
     def tail(self, num_samples=3):
         """Returns a list of the last few samples in the dataset.
@@ -336,10 +332,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of :class:`fiftyone.core.sample.Sample` objects
         """
-        return [
-            fos.Sample.from_doc(sv._doc, dataset=self)
-            for sv in self[-num_samples:]
-        ]
+        return [fos.Sample.from_sample_view(sv) for sv in self[-num_samples:]]
 
     def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
@@ -361,7 +354,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a tuple of field names
         """
-        return foos.default_sample_fields(include_private=include_private)
+        return fosc.DatasetSchema.default_sample_fields(
+            include_private=include_private
+        )
 
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
@@ -382,7 +377,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
              an ``OrderedDict`` mapping field names to field types
         """
-        return self._sample_doc_cls.get_field_schema(
+        return self._schema.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             include_private=include_private,
@@ -405,7 +400,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 ``ftype`` is a :class:`fiftyone.core.fields.ListField` or
                 :class:`fiftyone.core.fields.DictField`
         """
-        self._sample_doc_cls.add_field(
+        self._schema.add_field(
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
@@ -421,7 +416,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Raises:
             AttributeError: if the field does not exist
         """
-        self._sample_doc_cls.delete_field(field_name)
+        self._schema.delete_field(field_name)
         fos.Sample._purge_field(self._sample_collection_name, field_name)
 
     def get_tags(self):
@@ -454,8 +449,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         for d in self._sample_collection.find():
-            doc = self._sample_dict_to_doc(d)
-            yield fos.Sample.from_doc(doc, dataset=self)
+            yield fos.Sample.from_support(d, dataset=self)
 
     def add_sample(self, sample, expand_schema=True):
         """Adds the given sample to the dataset.
@@ -481,18 +475,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expand_schema:
             self._expand_schema([sample])
 
-        if sample._in_db:
-            sample = sample.copy()
-
-        self._validate_sample(sample)
+        self._schema.validate(sample)
 
         d = sample.to_mongo_dict()
         d.pop("_id", None)  # remove the ID if in DB
         self._sample_collection.insert_one(d)  # adds `_id` to `d`
 
-        if not sample._in_db:
-            doc = self._sample_doc_cls.from_dict(d, extended=False)
-            sample._set_backing_doc(doc, dataset=self)
+        if not sample.in_dataset:
+            sample._set_support(d, self)
 
         return str(d["_id"])
 
@@ -544,18 +534,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._expand_schema(samples)
 
         for sample in samples:
-            self._validate_sample(sample)
+            self._schema.validate(sample)
 
         dicts = [sample.to_mongo_dict() for sample in samples]
         for d in dicts:
             d.pop("_id", None)  # remove the ID if in DB
 
-        self._sample_collection.insert_many(dicts)  # adds `_id` to each dict
+        try:
+            # adds `_id` to each dict
+            self._sample_collection.insert_many(dicts)
+        except BulkWriteError as err:
+            writeError = err.details["writeErrors"][0]
+            if writeError["code"] == 11000:
+                raise DuplicateKeyError(writeError["errmsg"])
+            raise
 
         for sample, d in zip(samples, dicts):
-            if not sample._in_db:
-                doc = self._sample_doc_cls.from_dict(d, extended=False)
-                sample._set_backing_doc(doc, dataset=self)
+            if not sample.in_dataset:
+                sample._set_support(d, self)
 
         return [str(d["_id"]) for d in dicts]
 
@@ -569,17 +565,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample_or_id: the :class:`fiftyone.core.sample.Sample` or sample
                 ID to remove
         """
-        if not isinstance(sample_or_id, fos.Sample):
+        if not isinstance(sample_or_id, fos._Sample):
             sample_id = sample_or_id
         else:
             sample_id = sample_or_id.id
-
-        self._sample_collection.delete_one({"_id": ObjectId(sample_id)})
 
         fos.Sample._reset_backing_docs(
             collection_name=self._sample_collection_name,
             sample_ids=[sample_id],
         )
+
+        self._sample_collection.delete_one({"_id": ObjectId(sample_id)})
 
     def remove_samples(self, samples_or_ids):
         """Removes the given samples from the dataset.
@@ -594,7 +590,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         sample_ids = [
             sample_or_id.id
-            if isinstance(sample_or_id, fos.Sample)
+            if isinstance(sample_or_id, fos._Sample)
             else sample_or_id
             for sample_or_id in samples_or_ids
         ]
@@ -698,7 +694,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         If reference to a sample exists in memory, the sample object will be
         updated such that ``sample.in_dataset == False``.
         """
-        self._sample_doc_cls.drop_collection()
+        self._schema.drop_collection()
         fos.Sample._reset_all_backing_docs(self._sample_collection_name)
 
     def delete(self):
@@ -1303,7 +1299,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def _sample_collection_name(self):
-        return self._sample_doc_cls._meta["collection"]
+        return self._schema.sample_collection_name
 
     @property
     def _sample_collection(self):
@@ -1349,13 +1345,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     continue
 
                 if field_name not in fields:
-                    self._sample_doc_cls.add_implied_field(
+                    self._schema.add_implied_field(
                         field_name, sample[field_name]
                     )
                     fields = self.get_field_schema(include_private=True)
-
-    def _sample_dict_to_doc(self, d):
-        return self._sample_doc_cls.from_dict(d, extended=False)
 
     def _to_fields_str(self, field_schema):
         max_len = max([len(field_name) for field_name in field_schema]) + 1
@@ -1363,27 +1356,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             "    %s %s" % ((field_name + ":").ljust(max_len), str(field))
             for field_name, field in field_schema.items()
         )
-
-    def _validate_sample(self, sample):
-        fields = self.get_field_schema(include_private=True)
-
-        non_existest_fields = {
-            fn for fn in sample.field_names if fn not in fields
-        }
-
-        if non_existest_fields:
-            msg = "The fields %s do not exist on the dataset '%s'" % (
-                non_existest_fields,
-                self.name,
-            )
-            raise FieldDoesNotExist(msg)
-
-        for field_name, value in sample.iter_fields():
-            field = fields[field_name]
-            if value is None and field.null:
-                continue
-
-            field.validate(value)
 
 
 class DoesNotExistError(Exception):
@@ -1426,6 +1398,7 @@ def _create_dataset(name, persistent=False):
 
     # Create SampleDocument class for this dataset
     sample_doc_cls = _create_sample_document_cls(sample_collection_name)
+    schema = fosc.DatasetSchema(sample_doc_cls)
 
     # Create DatasetDocument for this dataset
     dataset_doc = foo.DatasetDocument(
@@ -1433,7 +1406,7 @@ def _create_dataset(name, persistent=False):
         sample_collection_name=sample_collection_name,
         persistent=persistent,
         sample_fields=foo.SampleFieldDocument.list_from_field_schema(
-            sample_doc_cls.get_field_schema(include_private=True)
+            schema.get_field_schema(include_private=True)
         ),
     )
     dataset_doc.save()
@@ -1443,7 +1416,7 @@ def _create_dataset(name, persistent=False):
     collection = conn[sample_collection_name]
     collection.create_index("filepath", unique=True)
 
-    return dataset_doc, sample_doc_cls
+    return dataset_doc, schema
 
 
 def _make_sample_collection_name():
@@ -1472,6 +1445,7 @@ def _load_dataset(name):
     sample_doc_cls = _create_sample_document_cls(
         dataset_doc.sample_collection_name
     )
+    schema = fosc.DatasetSchema(sample_doc_cls)
 
     # Populate sample field schema
     default_fields = Dataset.get_default_sample_fields(include_private=True)
@@ -1490,7 +1464,7 @@ def _load_dataset(name):
             else None
         )
 
-        sample_doc_cls.add_field(
+        schema.add_field(
             sample_field.name,
             etau.get_class(sample_field.ftype),
             subfield=subfield,
@@ -1498,4 +1472,4 @@ def _load_dataset(name):
             save=False,
         )
 
-    return dataset_doc, sample_doc_cls
+    return dataset_doc, schema
