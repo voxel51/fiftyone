@@ -114,7 +114,7 @@ class UnlabeledImageDatasetIngestor(
         sample_parser,
         image_format=None,
         max_samples=None,
-        **kwargs,
+        **kwargs
     ):
         for arg in kwargs:
             logger.warning("Ignoring unsupported parameter '%s'", arg)
@@ -224,7 +224,7 @@ class LabeledImageDatasetIngestor(LabeledImageDatasetImporter, ImageIngestor):
         image_format=None,
         skip_unlabeled=False,
         max_samples=None,
-        **kwargs,
+        **kwargs
     ):
         for arg in kwargs:
             logger.warning("Ignoring unsupported parameter '%s'", arg)

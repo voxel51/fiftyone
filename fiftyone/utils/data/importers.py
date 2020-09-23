@@ -1037,7 +1037,7 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         skip_non_categorical=False,
         skip_unlabeled=False,
         max_samples=None,
-        **kwargs,
+        **kwargs
     ):
         for arg in kwargs:
             logger.warning("Ignoring unsupported parameter '%s'", arg)

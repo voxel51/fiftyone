@@ -1067,7 +1067,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_type,
             label_field=label_field,
             tags=tags,
-            **kwargs,
+            **kwargs
         )
         return dataset
 
