@@ -559,11 +559,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return [str(d["_id"]) for d in dicts]
 
-    def merge_samples(self, samples, overwrite=False):
+    def merge_samples(
+        self, samples, overwrite=False, key_field="filepath", base_only=False
+    ):
         """Merges the contents of the given samples into the dataset.
 
-        Input samples whose ``filepath`` matches an existing ``filepath`` are
-        merged, and samples with new ``filepath`` values are added.
+        By default, samples with the same ``filepath`` are merged. Use the
+        ``key_field`` parameter to specify a different sample field to join on.
 
         Args:
             samples: an iterable of :class:`fiftyone.core.sample.Sample`
@@ -571,13 +573,28 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 or a :class:`fiftyone.core.views.DatasetView`
             overwrite (False): whether to overwrite (True) or skip (False)
                 existing sample fields
+            key_field ("filepath"): the sample field to use to decide whether
+                to join with an existing sample
+            base_only (False): whether to join based on
+                ``os.path.splitext(os.path.normpath(filepath))[0]`` rather than
+                the absolute filepath. Only applicable when ``key_field`` is
+                ``"filepath"``
         """
         existing_schema = self.get_field_schema()
-        filepath_map = {s.filepath: s.id for s in self.select_fields()}
+
+        id_map = {}
+        if key_field:
+            use_uuids = (key_field == "filepath") and base_only
+            for sample in self.select_fields(key_field):
+                key = sample[key_field]
+                if use_uuids:
+                    key = os.path.splitext(os.path.normpath(key))[0]
+
+                id_map[key] = sample.id
 
         for new_sample in samples:
-            if new_sample.filepath in filepath_map:
-                existing_sample = self[filepath_map[new_sample.filepath]]
+            if new_sample.filepath in id_map:
+                existing_sample = self[id_map[new_sample.filepath]]
 
                 for name, value in new_sample.iter_fields():
                     if name == "filepath":
