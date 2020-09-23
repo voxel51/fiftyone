@@ -922,7 +922,7 @@ class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
         self._has_labels = False
 
     def __iter__(self):
-        self._iter_uuids = iter(self._uuids.items())
+        self._iter_uuids = iter(self._uuids)
         return self
 
     def __len__(self):

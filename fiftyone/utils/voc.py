@@ -191,7 +191,8 @@ class VOCDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         data_dir = os.path.join(self.dataset_dir, "data")
         if os.path.isdir(data_dir):
             self._uuids_to_image_paths = {
-                to_uuid(p) for p in etau.list_files(data_dir, abs_paths=True)
+                to_uuid(p): p
+                for p in etau.list_files(data_dir, abs_paths=True)
             }
         else:
             self._uuids_to_image_paths = {}
@@ -199,7 +200,8 @@ class VOCDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         labels_dir = os.path.join(self.dataset_dir, "labels")
         if os.path.isdir(labels_dir):
             self._uuids_to_labels_paths = {
-                to_uuid(p) for p in etau.list_files(labels_dir, abs_paths=True)
+                to_uuid(p): p
+                for p in etau.list_files(labels_dir, abs_paths=True)
             }
         else:
             self._uuids_to_labels_paths = {}

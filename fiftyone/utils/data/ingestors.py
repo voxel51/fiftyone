@@ -135,7 +135,10 @@ class UnlabeledImageDatasetIngestor(
         return self
 
     def __len__(self):
-        return self._num_samples
+        if self._num_samples is not None:
+            return self._num_samples
+
+        return len(self.samples)
 
     def __next__(self):
         if (
@@ -169,9 +172,12 @@ class UnlabeledImageDatasetIngestor(
     def setup(self):
         self._setup()
 
-        self._num_samples = len(self.samples)
-        if self.max_samples is not None:
-            self._num_samples = min(self._num_samples, self.max_samples)
+        try:
+            self._num_samples = len(self.samples)
+            if self.max_samples is not None:
+                self._num_samples = min(self._num_samples, self.max_samples)
+        except:
+            pass
 
 
 class LabeledImageDatasetIngestor(LabeledImageDatasetImporter, ImageIngestor):
@@ -242,7 +248,10 @@ class LabeledImageDatasetIngestor(LabeledImageDatasetImporter, ImageIngestor):
         return self
 
     def __len__(self):
-        return self._num_samples
+        if self._num_samples is not None:
+            return self._num_samples
+
+        return len(self.samples)
 
     def __next__(self):
         if (
@@ -291,6 +300,9 @@ class LabeledImageDatasetIngestor(LabeledImageDatasetImporter, ImageIngestor):
     def setup(self):
         self._setup()
 
-        self._num_samples = len(self.samples)
-        if self.max_samples is not None:
-            self._num_samples = min(self._num_samples, self.max_samples)
+        try:
+            self._num_samples = len(self.samples)
+            if self.max_samples is not None:
+                self._num_samples = min(self._num_samples, self.max_samples)
+        except:
+            pass
