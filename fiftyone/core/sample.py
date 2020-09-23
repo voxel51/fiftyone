@@ -203,6 +203,10 @@ class _Sample(SerializableDocument):
             self.dataset._schema.add_implied_field(
                 self.mtype, field_name, value
             )
+        elif value is not None and not field_exists:
+            fos.validate_field_against_mtype(
+                self.mtype, **fos.get_implied_field_kwargs(value)
+            )
 
         if value is None:
             # If setting to None and there is a default value provided for this

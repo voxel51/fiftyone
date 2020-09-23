@@ -180,7 +180,7 @@ class DatasetSchema(object):
         if field_name in self.fields:
             raise ValueError("Field '%s' already exists" % field_name)
 
-        _validate_field_against_mtype(mtype, ftype, embedded_doc_type)
+        validate_field_against_mtype(mtype, ftype, embedded_doc_type)
 
         field = _create_field(
             field_name,
@@ -215,7 +215,7 @@ class DatasetSchema(object):
         if field_name in self.fields:
             raise ValueError("Field '%s' already exists" % field_name)
 
-        self.add_field(mtype, field_name, **_get_implied_field_kwargs(value))
+        self.add_field(mtype, field_name, **get_implied_field_kwargs(value))
 
     @no_delete_default_field
     def delete_field(self, field_name):
@@ -319,7 +319,7 @@ class DatasetSchema(object):
         )
 
 
-def _get_implied_field_kwargs(value):
+def get_implied_field_kwargs(value):
     if isinstance(value, fol.VideoLabels):
         return {
             "ftype": fof.VideoLabelsField,
@@ -383,7 +383,7 @@ def _create_field(field_name, ftype, embedded_doc_type=None, subfield=None):
     return field
 
 
-def _validate_field_against_mtype(mtype, ftype, embedded_doc_type=None):
+def validate_field_against_mtype(mtype, ftype, embedded_doc_type=None):
     is_image_field = is_video_field = False
 
     if issubclass(ftype, fof.ImageLabelsField):
