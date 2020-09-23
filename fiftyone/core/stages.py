@@ -381,7 +381,7 @@ class Exists(ViewStage):
     @classmethod
     def _params(cls):
         return [
-            {"name": "field", "type": "str"},
+            {"name": "field", "type": "field"},
             {
                 "name": "bool",
                 "type": "bool",
@@ -475,7 +475,7 @@ class FilterField(ViewStage):
     @classmethod
     def _params(self):
         return [
-            {"name": "field", "type": "str"},
+            {"name": "field", "type": "field"},
             {"name": "filter", "type": "dict", "placeholder": ""},
         ]
 
@@ -1316,7 +1316,7 @@ class SortBy(ViewStage):
     @classmethod
     def _params(cls):
         return [
-            {"name": "field_or_expr", "type": "dict|str"},
+            {"name": "field_or_expr", "type": "dict|field"},
             {
                 "name": "reverse",
                 "type": "bool",

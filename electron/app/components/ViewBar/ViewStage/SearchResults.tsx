@@ -63,7 +63,7 @@ const SearchResultsDiv = animated(styled.div`
   margin-top: 2.5rem;
   position: fixed;
   width: auto;
-  z-index: 800;
+  z-index: 801;
   padding: 0.5rem 0;
 
   &::-webkit-scrollbar {
@@ -77,10 +77,10 @@ const SearchResultsDiv = animated(styled.div`
   }
 `);
 
-interface SearchResultsProps {
+type SearchResultsProps = {
   results: Array<string>;
   send: any;
-}
+};
 
 const SearchResults = React.memo(
   ({ results, send, currentResult, barRef, followRef, bestMatch, ...rest }) => {
