@@ -22,9 +22,6 @@ import fiftyone.core.odm as foo
 class _Sample(object):
     """Base class for :class:`Sample` and :class:`SampleView`."""
 
-    def __init__(self, dataset=None):
-        self._dataset = dataset
-
     def __dir__(self):
         return super().__dir__() + list(self.field_names)
 
@@ -52,7 +49,9 @@ class _Sample(object):
         try:
             return self.get_field(field_name)
         except AttributeError:
-            raise KeyError("Sample has no field '%s'" % field_name)
+            raise KeyError(
+                "%s has no field '%s'" % (self.__class__.__name__, field_name)
+            )
 
     def __setitem__(self, field_name, value):
         self.set_field(field_name, value=value)
@@ -73,11 +72,6 @@ class _Sample(object):
         return self._doc == other._doc
 
     @property
-    def filename(self):
-        """The basename of the data filepath."""
-        return os.path.basename(self.filepath)
-
-    @property
     def id(self):
         """The ID of the document, or ``None`` if it has not been added to the
         database.
@@ -90,18 +84,6 @@ class _Sample(object):
         has not been added to the database.
         """
         return self._doc.ingest_time
-
-    @property
-    def in_dataset(self):
-        """Whether the sample has been added to a dataset."""
-        return self.dataset is not None
-
-    @property
-    def dataset(self):
-        """The dataset to which this sample belongs, or ``None`` if it has not
-        been added to a dataset.
-        """
-        return self._dataset
 
     @property
     def field_names(self):
@@ -180,16 +162,6 @@ class _Sample(object):
         for field_name in self.field_names:
             yield field_name, self.get_field(field_name)
 
-    def compute_metadata(self):
-        """Populates the ``metadata`` field of the sample."""
-        mime_type = etau.guess_mime_type(self.filepath)
-        if mime_type.startswith("image"):
-            self.metadata = fom.ImageMetadata.build_for(self.filepath)
-        else:
-            self.metadata = fom.Metadata.build_for(self.filepath)
-
-        self.save()
-
     def copy(self):
         """Returns a deep copy of the sample that has not been added to the
         database.
@@ -247,7 +219,39 @@ class _Sample(object):
         self._doc.delete()
 
 
-class Sample(_Sample):
+class _DatasetSample(_Sample):
+    def __init__(self, dataset=None):
+        self._dataset = dataset
+
+    @property
+    def filename(self):
+        """The basename of the data filepath."""
+        return os.path.basename(self.filepath)
+
+    @property
+    def in_dataset(self):
+        """Whether the sample has been added to a dataset."""
+        return self.dataset is not None
+
+    @property
+    def dataset(self):
+        """The dataset to which this sample belongs, or ``None`` if it has not
+        been added to a dataset.
+        """
+        return self._dataset
+
+    def compute_metadata(self):
+        """Populates the ``metadata`` field of the sample."""
+        mime_type = etau.guess_mime_type(self.filepath)
+        if mime_type.startswith("image"):
+            self.metadata = fom.ImageMetadata.build_for(self.filepath)
+        else:
+            self.metadata = fom.Metadata.build_for(self.filepath)
+
+        self.save()
+
+
+class Sample(_DatasetSample):
     """A sample in a :class:`fiftyone.core.dataset.Dataset`.
 
     Samples store all information associated with a particular piece of data in
@@ -478,7 +482,7 @@ class Sample(_Sample):
         self._dataset = None
 
 
-class SampleView(_Sample):
+class SampleView(_DatasetSample):
     """A view of a sample returned by a:class:`fiftyone.core.view.DatasetView`.
 
     SampleViews should never be created manually, only returned by dataset

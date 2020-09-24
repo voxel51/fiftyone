@@ -317,6 +317,7 @@ class DatasetSampleDocument(Document, SampleDocument):
     @classmethod
     def add_field(
         cls,
+        mtype,
         field_name,
         ftype,
         embedded_doc_type=None,

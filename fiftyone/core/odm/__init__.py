@@ -9,6 +9,7 @@ from .database import get_db_conn, drop_database
 from .dataset import SampleFieldDocument, DatasetDocument
 from .document import (
     Document,
+    DynamicDocument,
     EmbeddedDocument,
     DynamicEmbeddedDocument,
 )

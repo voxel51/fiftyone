@@ -248,6 +248,13 @@ class ImageLabelsField(Field):
             )
 
 
+class VideoLabelsField(mongoengine.fields.MapField, Field):
+    def __init__(self, *args, **kwargs):
+        from fiftyone.core.frame import FrameLabels
+
+        super().__init__(mongoengine.fields.ReferenceField(FrameLabels))
+
+
 class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
     """A field that stores instances of a given type of
     :class:`fiftyone.core.odm.BaseEmbeddedDocument` object.
@@ -278,8 +285,3 @@ class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
             etau.get_class_name(self),
             etau.get_class_name(self.document_type),
         )
-
-
-class VideoLabelsField(Field):
-
-    pass  # todo
