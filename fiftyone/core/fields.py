@@ -285,12 +285,6 @@ class VideoLabelsField(mongoengine.FileField, Field):
     for larger documents.
     """
 
-    def to_mongo(self, value):
-        if value is None:
-            return None
-
-        return value.serialize()
-
     def to_python(self, value):
         if value is None or isinstance(value, etav.VideoLabels):
             return value
@@ -301,7 +295,7 @@ class VideoLabelsField(mongoengine.FileField, Field):
         if not isinstance(value, (dict, etav.VideoLabels)):
             self.error(
                 "Only dicts and `eta.core.video.VideoLabels` instances may be "
-                "used in an ImageLabels field"
+                "used in an VideoLabels field"
             )
 
 

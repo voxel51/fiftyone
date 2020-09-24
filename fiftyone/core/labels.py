@@ -6,6 +6,7 @@ Labels stored in dataset samples.
 |
 """
 from bson.objectid import ObjectId
+from gridfs import GridFS
 from collections import defaultdict
 
 import eta.core.data as etad
@@ -16,6 +17,7 @@ import eta.core.utils as etau
 import eta.core.video as etav
 
 from fiftyone.core.odm.document import BaseDocument, DynamicEmbeddedDocument
+from fiftyone.core.odm.database import get_db_conn
 import fiftyone.core.fields as fof
 
 
@@ -28,7 +30,29 @@ no_default = _NoDefault()
 
 class VideoLabels(etav.VideoLabels):
 
-    pass
+    _id = None
+
+    def _delete(self):
+        gfs = self._get_gfs()
+        gfs.delete(self._id)
+
+    def _put(self):
+        gfs = self._get_gfs()
+        if self._id != None:
+            gfs.delete(self._id)
+
+        self._id = gfs.put(self.to_str(pretty_print=False).encode())
+        return self._id
+
+    @classmethod
+    def _get(cls, _id):
+        gfs = cls._get_gfs()
+        labels = cls.from_str(gfs.get(_id).decode())
+        labels._id = _id
+
+    @staticmethod
+    def _get_gfs():
+        return GridFS(get_db_conn())
 
 
 class Label(DynamicEmbeddedDocument):

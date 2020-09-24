@@ -14,6 +14,7 @@ import os
 import reprlib
 
 from bson import ObjectId
+import gridfs
 from mongoengine.errors import DoesNotExist
 from pymongo.errors import BulkWriteError, DuplicateKeyError
 
@@ -23,6 +24,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.schema as fosc
@@ -502,7 +504,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._schema.validate(sample)
 
         d = sample.to_mongo_dict()
-        d.pop("_id", None)  # remove the ID if in DB
+        if not sample.in_dataset:
+            gfs = gridfs.GridFS(foo.get_db_conn())
+            for key, value in d.items():
+                if type(value) == fol.VideoLabels:
+                    d[key] = value._put()
+
+        _id = d.pop("_id", None)  # remove the ID if in DB
         self._sample_collection.insert_one(d)  # adds `_id` to `d`
 
         if not sample.in_dataset:
