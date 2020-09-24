@@ -617,13 +617,6 @@ class SampleView(_Sample):
     def __str__(self):
         return repr(self)
 
-    def __repr__(self):
-        return self._doc.fancy_repr(
-            class_name=self.__class__.__name__,
-            select_fields=self._selected_fields,
-            exclude_fields=self._excluded_fields,
-        )
-
     def __getattr__(self, name):
         if not name.startswith("_"):
             if (
