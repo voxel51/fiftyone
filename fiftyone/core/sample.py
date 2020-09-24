@@ -348,8 +348,8 @@ class Sample(_Sample):
 
     @classmethod
     def _reload_dataset_sample(cls, collection_name, sample_id):
-        """Reloads the fields for the in-memory sample instance with the given
-        the belongs to the given collection.
+        """Reloads the fields for the in-memory sample instance that belong to
+        the specified collection.
 
         If the sample does not exist in-memory, nothing is done.
 
@@ -408,8 +408,6 @@ class Sample(_Sample):
     def _set_backing_doc(self, doc, dataset=None):
         """Sets the backing doc for the sample.
 
-        For use **only** when adding a sample to a dataset.
-
         Args:
             doc: a :class:`fiftyone.core.odm.SampleDocument`
             dataset (None): the :class:`fiftyone.core.dataset.Dataset` to which
@@ -442,8 +440,6 @@ class Sample(_Sample):
         """Resets the samples' backing documents to
         :class:`fiftyone.core.odm.NoDatasetSampleDocument` instances.
 
-        For use **only** when removing samples from a dataset.
-
         Args:
             collection_name: the name of the MongoDB collection
             sample_ids: a list of sample IDs
@@ -458,9 +454,7 @@ class Sample(_Sample):
     def _reset_all_backing_docs(cls, collection_name):
         """Resets the sample's backing document to a
         :class:`fiftyone.core.odm.NoDatasetSampleDocument` instance for all
-        samples in a dataset.
-
-        For use **only** when clearing a dataset.
+        samples in the specified collection.
 
         Args:
             collection_name: the name of the MongoDB collection
