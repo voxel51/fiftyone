@@ -695,7 +695,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             new_field_name: the new field name
         """
         self._sample_doc_cls.rename_field(field_name, new_field_name)
-        fos.Sample._reload_dataset_samples(self._sample_collection_name)
+        fos.Sample._rename_field(
+            self._sample_collection_name, field_name, new_field_name
+        )
 
     def save(self):
         """Saves dataset-level information such as its ``info`` to the

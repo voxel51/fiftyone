@@ -458,6 +458,7 @@ class DatasetSampleDocument(Document, SampleDocument):
         # Rename field on dataset
         # pylint: disable=no-member
         field = cls._fields[field_name]
+        field = _rename_field(field, new_field_name)
         cls._fields[new_field_name] = field
         del cls._fields[field_name]
         cls._fields_ordered = tuple(
@@ -907,4 +908,10 @@ def _create_field(field_name, ftype, embedded_doc_type=None, subfield=None):
     field = ftype(**kwargs)
     field.name = field_name
 
+    return field
+
+
+def _rename_field(field, new_field_name):
+    field.db_field = new_field_name
+    field.name = new_field_name
     return field
