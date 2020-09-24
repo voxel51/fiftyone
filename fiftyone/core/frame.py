@@ -8,6 +8,6 @@ Frame labels.
 from fiftyone.core.odm import DynamicDocument
 
 
-class FrameLabels(DynamicDocument):
+class FrameSample(DynamicDocument):
 
     pass

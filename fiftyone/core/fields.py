@@ -248,11 +248,19 @@ class ImageLabelsField(Field):
             )
 
 
-class VideoLabelsField(mongoengine.fields.MapField, Field):
-    def __init__(self, *args, **kwargs):
-        from fiftyone.core.frame import FrameLabels
+class FramesField(mongoengine.fields.MapField, Field):
+    """A field that stores an ``eta.core.image.ImageLabels`` instance.
 
-        super().__init__(mongoengine.fields.ReferenceField(FrameLabels))
+    :class:`ImageLabelsField` instances accept ``eta.core.image.ImageLabels``
+    instances or serialized dict representations of them. The underlying data
+    is stored as a serialized dictionary in the dataset and always retrieved as
+    an ``eta.core.image.ImageLabels`` instance.
+    """
+
+    def __init__(self, *args, **kwargs):
+        from fiftyone.core.frame import FrameSample
+
+        super().__init__(mongoengine.fields.ReferenceField(FrameSample))
 
 
 class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):

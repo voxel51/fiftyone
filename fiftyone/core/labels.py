@@ -532,11 +532,6 @@ class ImageLabels(ImageLabel):
         )
 
 
-class VideoLabels(Label):
-
-    frames = fof.VideoLabelsField()
-
-
 def _expand_with_prefix(
     image_labels, prefix, multilabel, skip_non_categorical
 ):

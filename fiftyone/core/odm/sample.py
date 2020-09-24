@@ -205,7 +205,7 @@ class DatasetSampleDocument(Document, SampleDocument):
 
     meta = {"abstract": True}
 
-    mtype = fof.StringField()
+    media_type = fof.StringField()
     # The path to the data on disk
     filepath = fof.StringField(unique=True)
 
@@ -397,16 +397,16 @@ class DatasetSampleDocument(Document, SampleDocument):
         if hasattr(self, field_name) and not self.has_field(field_name):
             raise ValueError("Cannot use reserved keyword '%s'" % field_name)
 
-        if field_name == "mtype":
+        if field_name == "media_type":
             raise ValueError(
-                "mtype (media type) cannot be modified. It is derived from the file type"
+                "media_type (media type) cannot be modified. It is derived from the file type"
             )
 
         if field_name == "filepath":
             value = os.path.abspath(os.path.expanduser(value))
-            if self.mtype != fomm.get_media_type(value):
+            if self.media_type != fomm.get_media_type(value):
                 raise fomm.MediaTypeError(
-                    "A sample's filepath can be changed, but its mtype cannot"
+                    "A sample's filepath can be changed, but its media_type cannot"
                 )
 
         if not self.has_field(field_name):
@@ -419,8 +419,8 @@ class DatasetSampleDocument(Document, SampleDocument):
                     msg += " Use `create=True` to create a new field."
                 raise ValueError(msg)
 
-        fomm.validate_field_against_mtype(
-            self._data["mtype"], **_get_implied_field_kwargs(value)
+        fomm.validate_field_against_media_type(
+            self._data["media_type"], **_get_implied_field_kwargs(value)
         )
 
         self.__setattr__(field_name, value)
@@ -711,8 +711,8 @@ class NoDatasetSampleDocument(SampleDocument):
                     msg += " Use `create=True` to create a new field."
                 raise ValueError(msg)
 
-        fomm.validate_field_against_mtype(
-            self._data["mtype"], **_get_implied_field_kwargs(value)
+        fomm.validate_field_against_media_type(
+            self._data["media_type"], **_get_implied_field_kwargs(value)
         )
 
         self.__setattr__(field_name, value)

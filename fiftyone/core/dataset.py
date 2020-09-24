@@ -217,22 +217,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return super().__getattribute__(name)
 
     @property
-    def mtype(self):
-        """The mtype (media type) of the dataset."""
-        return self._doc.mtype
+    def media_type(self):
+        """The media type of the dataset."""
+        return self._doc.media_type
 
-    @mtype.setter
-    def mtype(self, mtype):
+    @media_type.setter
+    def media_type(self, media_type):
         if len(self) != 0:
+            raise ValueError("Cannot set media_type of non-empty dataset")
+        if media_type not in ["image", "video"]:
             raise ValueError(
-                "Cannot set mtype (media type) of non-empty dataset"
+                'media_type can only be one of "image" or "video". Received "%s"'
+                % media_type
             )
-        if mtype not in ["image", "video"]:
-            raise ValueError(
-                'mtype (media type) can only be one of "image" or "video". Received "%s"'
-                % mtype
-            )
-        self._doc.mtype = mtype
+        self._doc.media_type = media_type
+
         self._doc.save()
 
     @property
@@ -290,7 +289,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return "\n".join(
             [
                 "Name:           %s" % self.name,
-                "Media type      %s" % self.mtype,
+                "Media type      %s" % self.media_type,
                 "Num samples:    %d" % len(self),
                 "Persistent:     %s" % self.persistent,
                 "Info:           %s" % _info_repr.repr(self.info),
@@ -426,7 +425,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.fields.DictField`
         """
         self._sample_doc_cls.add_field(
-            self.mtype,
+            self.media_type,
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
@@ -499,8 +498,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample has a type that is inconsistent with the dataset schema, or
             if ``expand_schema == False`` and a new field is encountered
         """
-        if self.mtype is None:
-            self.mtype = sample.mtype
+        if self.media_type is None:
+            self.media_type = sample.media_type
+            self._sample_doc_cls.add_field(
+                self.media_type, "frames", fof.FramesField,
+            )
 
         if expand_schema:
             self._expand_schema([sample])
@@ -1499,7 +1501,7 @@ _info_repr.maxstring = 63
 _info_repr.maxother = 63
 
 
-def _create_dataset(name, persistent=False, mtype=None):
+def _create_dataset(name, persistent=False, media_type=None):
     # Ensure dataset with given `name` does not already exist
     if dataset_exists(name):
         raise ValueError(
@@ -1518,7 +1520,7 @@ def _create_dataset(name, persistent=False, mtype=None):
 
     # Create DatasetDocument for this dataset
     dataset_doc = foo.DatasetDocument(
-        mtype=mtype,
+        media_type=media_type,
         name=name,
         sample_collection_name=sample_collection_name,
         persistent=persistent,

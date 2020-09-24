@@ -32,9 +32,7 @@ from .core.fields import (
     VectorField,
     ArrayField,
     ImageLabelsField,
-    VideoLabelsField,
 )
-from .core.frame import FrameLabels
 from .core.labels import (
     Label,
     ImageLabel,
@@ -48,7 +46,6 @@ from .core.labels import (
     Detection,
     Detections,
     ImageLabels,
-    VideoLabels,
 )
 from .core.metadata import (
     Metadata,

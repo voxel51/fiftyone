@@ -22,6 +22,9 @@ import fiftyone.core.odm as foo
 class _Sample(object):
     """Base class for :class:`Sample` and :class:`SampleView`."""
 
+    def __init__(self, dataset=None):
+        self._dataset = dataset
+
     def __dir__(self):
         return super().__dir__() + list(self.field_names)
 
@@ -46,6 +49,10 @@ class _Sample(object):
             super().__delattr__(name)
 
     def __getitem__(self, field_name):
+        if isinstance(field_name, int):
+            if self.media_type == "video":
+                return self.frames[str(field_name)]
+            raise KeyError("only str's allowed")
         try:
             return self.get_field(field_name)
         except AttributeError:
@@ -54,6 +61,11 @@ class _Sample(object):
             )
 
     def __setitem__(self, field_name, value):
+        if isinstance(field_name, int):
+            if self.media_type == "video":
+                self.frames[str(field_name)] = value
+                return
+            raise KeyError("only str's allowed")
         self.set_field(field_name, value=value)
 
     def __delitem__(self, field_name):
@@ -218,11 +230,6 @@ class _Sample(object):
         """Deletes the document from the database."""
         self._doc.delete()
 
-
-class _DatasetSample(_Sample):
-    def __init__(self, dataset=None):
-        self._dataset = dataset
-
     @property
     def filename(self):
         """The basename of the data filepath."""
@@ -251,7 +258,7 @@ class _DatasetSample(_Sample):
         self.save()
 
 
-class Sample(_DatasetSample):
+class Sample(_Sample):
     """A sample in a :class:`fiftyone.core.dataset.Dataset`.
 
     Samples store all information associated with a particular piece of data in
@@ -272,15 +279,15 @@ class Sample(_DatasetSample):
     _instances = defaultdict(weakref.WeakValueDictionary)
 
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
-        if "mtype" in kwargs:
-            raise fomm.MediaTypeError("mtype cannot be set")
+        if "media_type" in kwargs:
+            raise fomm.MediaTypeError("media_type cannot be set")
 
-        mtype = fomm.get_media_type(filepath)
+        media_type = fomm.get_media_type(filepath)
         self._doc = foo.NoDatasetSampleDocument(
             filepath=filepath,
             tags=tags,
             metadata=metadata,
-            mtype=mtype,
+            media_type=media_type,
             **kwargs
         )
         super().__init__()
@@ -482,7 +489,7 @@ class Sample(_DatasetSample):
         self._dataset = None
 
 
-class SampleView(_DatasetSample):
+class SampleView(_Sample):
     """A view of a sample returned by a:class:`fiftyone.core.view.DatasetView`.
 
     SampleViews should never be created manually, only returned by dataset
