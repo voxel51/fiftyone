@@ -20,6 +20,7 @@
 .. |Classifications| replace:: :class:`Classifications <fiftyone.core.labels.Classifications>`
 .. |Detection| replace:: :class:`Detection <fiftyone.core.labels.Detection>`
 .. |Detections| replace:: :class:`Detections <fiftyone.core.labels.Detections>`
+.. |Segmentation| replace:: :class:`Segmentation <fiftyone.core.labels.Segmentation>`
 .. |ImageLabels| replace:: :class:`ImageLabels <fiftyone.core.labels.ImageLabels>`
 
 .. |Attribute| replace:: :class:`Attribute <fiftyone.core.labels.Attribute>`
