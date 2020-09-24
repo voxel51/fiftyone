@@ -255,6 +255,9 @@ class Detection(ImageLabel):
 
             [<top-left-x>, <top-left-y>, <width>, <height>]
 
+        mask (None): an instance segmentation mask for the detection within
+            its bounding box, which should be a 2D binary or 0/1 integer NumPy
+            array
         confidence (None): a confidence in ``[0, 1]`` for the label
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
@@ -267,6 +270,7 @@ class Detection(ImageLabel):
     )
     label = fof.StringField()
     bounding_box = fof.VectorField()
+    mask = fof.ArrayField()
     confidence = fof.FloatField()
     attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
 
@@ -332,6 +336,7 @@ class Detection(ImageLabel):
         bry = tly + h
         bounding_box = etag.BoundingBox.from_coords(tlx, tly, brx, bry)
 
+        mask = self.mask
         confidence = self.confidence
 
         # pylint: disable=no-member
@@ -350,6 +355,7 @@ class Detection(ImageLabel):
         return etao.DetectedObject(
             label=label,
             bounding_box=bounding_box,
+            mask=mask,
             confidence=confidence,
             name=name,
             attrs=attrs,
@@ -403,6 +409,7 @@ class Detection(ImageLabel):
             label=dobj.label,
             confidence=dobj.confidence,
             bounding_box=bounding_box,
+            mask=dobj.mask,
             attributes=attributes,
         )
 
@@ -457,6 +464,31 @@ class Detections(ImageLabel):
                 Detection.from_detected_object(dobj) for dobj in objects
             ]
         )
+
+
+class Segmentation(ImageLabel):
+    """A semantic segmentation mask for an image.
+
+    Args:
+        mask (None): a semantic segmentation mask, which should be a 2D NumPy
+            array with integer values encoding the semantic labels
+    """
+
+    meta = {"allow_inheritance": True}
+
+    mask = fof.ArrayField()
+
+    def to_image_labels(self, name=None):
+        """Returns an ``eta.core.image.ImageLabels`` representation of this
+        instance.
+
+        Args:
+            name (None): the name of the label field
+
+        Returns:
+            an ``eta.core.image.ImageLabels``
+        """
+        return etai.ImageLabels(mask=self.mask)
 
 
 class ImageLabels(ImageLabel):
