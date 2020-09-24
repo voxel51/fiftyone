@@ -84,6 +84,11 @@ class DatasetView(foc.SampleCollection):
         return view
 
     @property
+    def mtype(self):
+        """The mtype (media type) of the underlying dataset."""
+        return self._dataset.mtype
+
+    @property
     def name(self):
         """The name of the view."""
         return self.dataset_name + "-view"
@@ -129,6 +134,7 @@ class DatasetView(foc.SampleCollection):
         return "\n".join(
             [
                 "Dataset:        %s" % self.dataset_name,
+                "Media type:     %s" % self.mtype,
                 "Num samples:    %d" % len(self),
                 "Tags:           %s" % self.get_tags(),
                 "Sample fields:",

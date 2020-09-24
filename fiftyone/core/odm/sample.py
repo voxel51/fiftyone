@@ -63,6 +63,7 @@ import six
 import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
+import fiftyone.core.media as fomm
 import fiftyone.core.utils as fou
 
 from .dataset import SampleFieldDocument, DatasetDocument
@@ -204,6 +205,7 @@ class DatasetSampleDocument(Document, SampleDocument):
 
     meta = {"abstract": True}
 
+    mtype = fof.StringField()
     # The path to the data on disk
     filepath = fof.StringField(unique=True)
 
@@ -395,6 +397,18 @@ class DatasetSampleDocument(Document, SampleDocument):
         if hasattr(self, field_name) and not self.has_field(field_name):
             raise ValueError("Cannot use reserved keyword '%s'" % field_name)
 
+        if field_name == "mtype":
+            raise ValueError(
+                "mtype (media type) cannot be modified. It is derived from the file type"
+            )
+
+        if field_name == "filepath":
+            value = os.path.abspath(os.path.expanduser(value))
+            if self.mtype != fomm.get_media_type(value):
+                raise fomm.MediaTypeError(
+                    "A sample's filepath can be changed, but its mtype cannot"
+                )
+
         if not self.has_field(field_name):
             if create:
                 self.add_implied_field(field_name, value)
@@ -405,6 +419,9 @@ class DatasetSampleDocument(Document, SampleDocument):
                     msg += " Use `create=True` to create a new field."
                 raise ValueError(msg)
 
+        fomm.validate_field_against_mtype(
+            self.mtype, **_get_implied_field_kwargs(value)
+        )
         self.__setattr__(field_name, value)
 
     def clear_field(self, field_name):

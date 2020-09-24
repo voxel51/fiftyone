@@ -217,6 +217,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return super().__getattribute__(name)
 
     @property
+    def mtype(self):
+        """The mtype (media type) of the dataset."""
+        return self._doc.mtype
+
+    @mtype.setter
+    def mtype(self, mtype):
+        if len(self) != 0:
+            raise ValueError(
+                "Cannot set mtype (media type) of non-empty dataset"
+            )
+        if mtype not in ["image", "video"]:
+            raise ValueError(
+                'mtype (media type) can only be one of "image" or "video". Received "%s"'
+                % mtype
+            )
+        self._doc.mtype = mtype
+        self._doc.save()
+
+    @property
     def name(self):
         """The name of the dataset."""
         return self._doc.name
@@ -271,6 +290,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return "\n".join(
             [
                 "Name:           %s" % self.name,
+                "Media type      %s" % self.mtype,
                 "Num samples:    %d" % len(self),
                 "Persistent:     %s" % self.persistent,
                 "Info:           %s" % _info_repr.repr(self.info),
@@ -406,6 +426,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.fields.DictField`
         """
         self._sample_doc_cls.add_field(
+            self.mtype,
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
@@ -478,6 +499,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample has a type that is inconsistent with the dataset schema, or
             if ``expand_schema == False`` and a new field is encountered
         """
+        if self.mtype is None:
+            self.mtype = sample.mtype
+
         if expand_schema:
             self._expand_schema([sample])
 
@@ -1415,7 +1439,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
                 if field_name not in fields:
                     self._sample_doc_cls.add_implied_field(
-                        field_name, sample[field_name]
+                        self.mtype, field_name, sample[field_name]
                     )
                     fields = self.get_field_schema(include_private=True)
 
@@ -1475,7 +1499,7 @@ _info_repr.maxstring = 63
 _info_repr.maxother = 63
 
 
-def _create_dataset(name, persistent=False):
+def _create_dataset(name, persistent=False, mtype=None):
     # Ensure dataset with given `name` does not already exist
     if dataset_exists(name):
         raise ValueError(
@@ -1494,6 +1518,7 @@ def _create_dataset(name, persistent=False):
 
     # Create DatasetDocument for this dataset
     dataset_doc = foo.DatasetDocument(
+        mtype=mtype,
         name=name,
         sample_collection_name=sample_collection_name,
         persistent=persistent,
@@ -1556,6 +1581,7 @@ def _load_dataset(name):
         )
 
         sample_doc_cls.add_field(
+            dataset_doc.mtype,
             sample_field.name,
             etau.get_class(sample_field.ftype),
             subfield=subfield,

@@ -12,8 +12,10 @@ import weakref
 
 import eta.core.serial as etas
 import eta.core.utils as etau
+import eta.core.video as etav
 
 import fiftyone.core.metadata as fom
+import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
 
 
@@ -139,8 +141,11 @@ class _Sample(object):
             ValueError: if ``field_name`` is not an allowed field name or does
                 not exist and ``create == False``
         """
-        if hasattr(self, field_name) and not self._doc.has_field(field_name):
-            raise ValueError("Cannot use reserved keyword '%s'" % field_name)
+        if field_name.startswith("_"):
+            raise ValueError(
+                "Invalid field name: '%s'. Field names cannot start with '_'"
+                % field_name
+            )
 
         self._doc.set_field(field_name, value, create=create)
 
@@ -263,8 +268,16 @@ class Sample(_Sample):
     _instances = defaultdict(weakref.WeakValueDictionary)
 
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
+        if "mtype" in kwargs:
+            raise fomm.MediaTypeError("mtype cannot be set")
+
+        mtype = fomm.get_media_type(filepath)
         self._doc = foo.NoDatasetSampleDocument(
-            filepath=filepath, tags=tags, metadata=metadata, **kwargs
+            filepath=filepath,
+            tags=tags,
+            metadata=metadata,
+            mtype=mtype,
+            **kwargs
         )
         super().__init__()
 
