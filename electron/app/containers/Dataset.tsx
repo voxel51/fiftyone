@@ -80,7 +80,7 @@ function Dataset(props) {
   let s = null;
   if (modal.sample) {
     const path = modal.sample.filepath;
-    const id = modal.sample._id.$oid;
+    const id = modal.sample._id;
     const host = `http://127.0.0.1:${port}/`;
     src = `${host}?path=${path}&id=${id}`;
     s = modal.sample;
@@ -96,7 +96,7 @@ function Dataset(props) {
   let modalProps = {};
   if (modal.visible && modal.sample) {
     const currentSampleIndex = currentSamples.findIndex(
-      (sample) => sample._id.$oid == modal.sample._id.$oid
+      (sample) => sample._id == modal.sample._id
     );
     const previousSample = currentSamples[currentSampleIndex - 1];
     if (previousSample) {

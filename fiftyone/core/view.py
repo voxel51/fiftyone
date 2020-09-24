@@ -280,7 +280,7 @@ class DatasetView(foc.SampleCollection):
         """
         return {
             "dataset": self._dataset.serialize(),
-            "view": json_util.dumps([s._serialize() for s in self._stages]),
+            "view": [s._serialize() for s in self._stages],
         }
 
     def _slice(self, s):
