@@ -1439,7 +1439,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
                 if field_name not in fields:
                     self._sample_doc_cls.add_implied_field(
-                        self.mtype, field_name, sample[field_name]
+                        field_name, sample[field_name]
                     )
                     fields = self.get_field_schema(include_private=True)
 
@@ -1581,7 +1581,6 @@ def _load_dataset(name):
         )
 
         sample_doc_cls.add_field(
-            dataset_doc.mtype,
             sample_field.name,
             etau.get_class(sample_field.ftype),
             subfield=subfield,

@@ -317,7 +317,6 @@ class DatasetSampleDocument(Document, SampleDocument):
     @classmethod
     def add_field(
         cls,
-        mtype,
         field_name,
         ftype,
         embedded_doc_type=None,
@@ -421,8 +420,9 @@ class DatasetSampleDocument(Document, SampleDocument):
                 raise ValueError(msg)
 
         fomm.validate_field_against_mtype(
-            self.mtype, **_get_implied_field_kwargs(value)
+            self._data["mtype"], **_get_implied_field_kwargs(value)
         )
+
         self.__setattr__(field_name, value)
 
     def clear_field(self, field_name):
@@ -710,6 +710,10 @@ class NoDatasetSampleDocument(SampleDocument):
                     # don't report this when clearing a field.
                     msg += " Use `create=True` to create a new field."
                 raise ValueError(msg)
+
+        fomm.validate_field_against_mtype(
+            self._data["mtype"], **_get_implied_field_kwargs(value)
+        )
 
         self.__setattr__(field_name, value)
 
