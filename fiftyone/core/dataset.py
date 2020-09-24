@@ -426,7 +426,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.fields.DictField`
         """
         self._sample_doc_cls.add_field(
-            self.mtype,
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
@@ -1581,7 +1580,6 @@ def _load_dataset(name):
         )
 
         sample_doc_cls.add_field(
-            dataset_doc.mtype,
             sample_field.name,
             etau.get_class(sample_field.ftype),
             subfield=subfield,

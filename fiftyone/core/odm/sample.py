@@ -599,7 +599,9 @@ class NoDatasetSampleDocument(SampleDocument):
     def __init__(self, **kwargs):
         self._data = OrderedDict()
         filepath = kwargs.get("filepath", None)
-
+        if "media_type" in kwargs:
+            raise fomm.MediaTypeError("media_type cannot be set")
+        kwargs["mtype"] = fomm.get_media_type(filepath)
         for field_name in self.default_fields_ordered:
             value = kwargs.pop(field_name, None)
 
@@ -673,7 +675,7 @@ class NoDatasetSampleDocument(SampleDocument):
                 value = dict(value)
 
             return value
-
+        print(field)
         raise ValueError("Field '%s' has no default" % field)
 
     def has_field(self, field_name):
