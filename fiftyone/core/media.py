@@ -7,11 +7,12 @@ FiftyOne media discrimination utils.
 """
 import eta.core.video as etav
 
-import fiftyone.core.fields as fof
-import fiftyone.core.labels as fol
-
 
 def validate_field_against_mtype(mtype, ftype, embedded_doc_type=None):
+    # temporary method imports
+    import fiftyone.core.fields as fof
+    import fiftyone.core.labels as fol
+
     is_image_field = is_video_field = False
 
     if issubclass(ftype, fof.ImageLabelsField):
