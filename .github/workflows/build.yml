@@ -131,10 +131,11 @@ jobs:
           find tests/isolated/ -name '*.py' -print0 | xargs -0 --verbose -n1 python tests/utils/pytest_wrapper.py --verbose
 
   all-tests:
-    runs-on: ubuntu-latest
     needs: test
+    if: always()
+    runs-on: ubuntu-latest
     steps:
-      - run: "true"
+      - run: sh -c ${{ needs.test.result == 'success' }}
 
   publish:
     needs: [build, check, test]
