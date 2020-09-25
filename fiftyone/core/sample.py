@@ -42,6 +42,7 @@ class _Sample(object):
         ):
             super().__setattr__(name, value)
         else:
+            self._secure_media(name, value)
             self._doc.__setattr__(name, value)
 
     def __delattr__(self, name):
@@ -68,6 +69,7 @@ class _Sample(object):
                 self.frames[field_name] = value
                 return
             raise KeyError("only str's allowed")
+        self._secure_media(field_name, value)
         self.set_field(field_name, value=value)
 
     def __delitem__(self, field_name):
@@ -259,6 +261,25 @@ class _Sample(object):
 
         self.save()
 
+    def _secure_media(self, field_name, value):
+        if field_name == "media_type":
+            raise fomm.MediaTypeError(
+                "media_type cannot be modified. It is derived from the file type"
+            )
+
+        if field_name == "filepath":
+            value = os.path.abspath(os.path.expanduser(value))
+            # pylint: disable=no-member
+            if self.media_type != fomm.get_media_type(value):
+                raise fomm.MediaTypeError(
+                    "A sample's filepath can be changed, but its media_type cannot"
+                )
+        if value is not None:
+            # pylint: disable=no-member
+            fomm.validate_field_against_media_type(
+                self.media_type, **foo.get_implied_field_kwargs(value)
+            )
+
 
 class Sample(_Sample):
     """A sample in a :class:`fiftyone.core.dataset.Dataset`.
@@ -281,13 +302,8 @@ class Sample(_Sample):
     _instances = defaultdict(weakref.WeakValueDictionary)
 
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
-        media_type = fomm.get_media_type(filepath)
         self._doc = foo.NoDatasetSampleDocument(
-            filepath=filepath,
-            tags=tags,
-            metadata=metadata,
-            media_type=media_type,
-            **kwargs
+            filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
         super().__init__()
 

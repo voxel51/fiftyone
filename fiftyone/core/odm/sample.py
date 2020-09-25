@@ -62,6 +62,7 @@ import six
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
+import fiftyone.core.frames as fofr
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.utils as fou
@@ -195,25 +196,6 @@ class SampleDocument(SerializableDocument):
         """
         raise NotImplementedError("Subclass must implement `clear_field()`")
 
-    def _secure_media(self, field_name, value):
-        if field_name == "media_type":
-            raise fomm.MediaTypeError(
-                "media_type cannot be modified. It is derived from the file type"
-            )
-
-        if field_name == "filepath":
-            value = os.path.abspath(os.path.expanduser(value))
-            # pylint: disable=no-member
-            if self.media_type != fomm.get_media_type(value):
-                raise fomm.MediaTypeError(
-                    "A sample's filepath can be changed, but its media_type cannot"
-                )
-
-        # pylint: disable=no-member
-        fomm.validate_field_against_media_type(
-            self.media_type, **_get_implied_field_kwargs(value)
-        )
-
 
 class DatasetSampleDocument(Document, SampleDocument):
     """Base class for sample documents backing samples in datasets.
@@ -250,8 +232,6 @@ class DatasetSampleDocument(Document, SampleDocument):
                 "Adding sample fields using the `sample.field = value` syntax "
                 "is not allowed; use `sample['field'] = value` instead"
             )
-
-        self._secure_media(name, value)
         if value is not None:
             self._fields[name].validate(value)
 
@@ -405,7 +385,7 @@ class DatasetSampleDocument(Document, SampleDocument):
         if field_name in cls._fields:
             raise ValueError("Field '%s' already exists" % field_name)
 
-        cls.add_field(field_name, **_get_implied_field_kwargs(value))
+        cls.add_field(field_name, **get_implied_field_kwargs(value))
 
     def set_field(self, field_name, value, create=False):
         if field_name.startswith("_"):
@@ -602,10 +582,18 @@ class NoDatasetSampleDocument(SampleDocument):
     default_fields_ordered = default_sample_fields(include_private=True)
 
     def __init__(self, **kwargs):
+        if "media_type" in kwargs:
+            raise fomm.MediaTypeError("media_type cannot be set")
+
         self._data = OrderedDict()
-        filepath = kwargs.get("filepath", None)
+        filepath = os.path.abspath(
+            os.path.expanduser(kwargs.get("filepath", None))
+        )
+        kwargs["media_type"] = fomm.get_media_type(filepath)
+        kwargs["frames"] = fofr.NoDatasetFrames()
 
         for field_name in self.default_fields_ordered:
+
             value = kwargs.pop(field_name, None)
 
             if field_name == "_rand":
@@ -646,7 +634,6 @@ class NoDatasetSampleDocument(SampleDocument):
                 "is not allowed; use `sample['field'] = value` instead"
             )
 
-        self._secure_media(name, value)
         self._data[name] = value
 
     @property
@@ -728,7 +715,9 @@ class NoDatasetSampleDocument(SampleDocument):
     def to_dict(self, extended=False):
         d = {}
         for k, v in self._data.items():
-            if hasattr(v, "to_dict"):
+            if k == "frames" and self.media_type == "video":
+                d[k] = {str(fk): fv for fk, fv in v.items()}
+            elif hasattr(v, "to_dict"):
                 # Embedded document
                 d[k] = v.to_dict(extended=extended)
             elif isinstance(v, np.ndarray):
@@ -802,7 +791,7 @@ class NoDatasetSampleDocument(SampleDocument):
         pass
 
 
-def _get_implied_field_kwargs(value):
+def get_implied_field_kwargs(value):
     if isinstance(value, BaseEmbeddedDocument):
         return {
             "ftype": fof.EmbeddedDocumentField,

@@ -500,7 +500,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         if self.media_type is None:
             self.media_type = sample.media_type
-            self._sample_doc_cls.add_field("frames", fof.FramesField)
+            if self.media_type == "video":
+                self._sample_doc_cls.add_field("frames", fof.FramesField)
 
         if expand_schema:
             self._expand_schema([sample])
@@ -511,6 +512,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._validate_sample(sample)
 
         d = sample.to_mongo_dict()
+        d.pop("frames", None)
+        print(d)
         d.pop("_id", None)  # remove the ID if in DB
         self._sample_collection.insert_one(d)  # adds `_id` to `d`
 
@@ -1469,6 +1472,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         for field_name, value in sample.iter_fields():
             field = fields[field_name]
+            if field_name == "frames" and self.media_type == "video":
+                continue
             if value is None and field.null:
                 continue
 
