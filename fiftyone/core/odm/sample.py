@@ -195,6 +195,25 @@ class SampleDocument(SerializableDocument):
         """
         raise NotImplementedError("Subclass must implement `clear_field()`")
 
+    def _secure_media(self, field_name, value):
+        if field_name == "media_type":
+            raise fomm.MediaTypeError(
+                "media_type cannot be modified. It is derived from the file type"
+            )
+
+        if field_name == "filepath":
+            value = os.path.abspath(os.path.expanduser(value))
+            # pylint: disable=no-member
+            if self.media_type != fomm.get_media_type(value):
+                raise fomm.MediaTypeError(
+                    "A sample's filepath can be changed, but its media_type cannot"
+                )
+
+        # pylint: disable=no-member
+        fomm.validate_field_against_media_type(
+            self.media_type, **_get_implied_field_kwargs(value)
+        )
+
 
 class DatasetSampleDocument(Document, SampleDocument):
     """Base class for sample documents backing samples in datasets.
@@ -232,6 +251,7 @@ class DatasetSampleDocument(Document, SampleDocument):
                 "is not allowed; use `sample['field'] = value` instead"
             )
 
+        self._secure_media(name, value)
         if value is not None:
             self._fields[name].validate(value)
 
@@ -397,18 +417,6 @@ class DatasetSampleDocument(Document, SampleDocument):
         if hasattr(self, field_name) and not self.has_field(field_name):
             raise ValueError("Cannot use reserved keyword '%s'" % field_name)
 
-        if field_name == "media_type":
-            raise ValueError(
-                "media_type (media type) cannot be modified. It is derived from the file type"
-            )
-
-        if field_name == "filepath":
-            value = os.path.abspath(os.path.expanduser(value))
-            if self.media_type != fomm.get_media_type(value):
-                raise fomm.MediaTypeError(
-                    "A sample's filepath can be changed, but its media_type cannot"
-                )
-
         if not self.has_field(field_name):
             if create:
                 self.add_implied_field(field_name, value)
@@ -418,10 +426,6 @@ class DatasetSampleDocument(Document, SampleDocument):
                     # don't report this when clearing a field.
                     msg += " Use `create=True` to create a new field."
                 raise ValueError(msg)
-
-        fomm.validate_field_against_media_type(
-            self._data["media_type"], **_get_implied_field_kwargs(value)
-        )
 
         self.__setattr__(field_name, value)
 
@@ -642,6 +646,7 @@ class NoDatasetSampleDocument(SampleDocument):
                 "is not allowed; use `sample['field'] = value` instead"
             )
 
+        self._secure_media(name, value)
         self._data[name] = value
 
     @property
@@ -710,10 +715,6 @@ class NoDatasetSampleDocument(SampleDocument):
                     # don't report this when clearing a field.
                     msg += " Use `create=True` to create a new field."
                 raise ValueError(msg)
-
-        fomm.validate_field_against_media_type(
-            self._data["media_type"], **_get_implied_field_kwargs(value)
-        )
 
         self.__setattr__(field_name, value)
 

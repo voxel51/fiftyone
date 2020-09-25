@@ -12,6 +12,7 @@ from .document import (
     DynamicDocument,
     EmbeddedDocument,
     DynamicEmbeddedDocument,
+    SerializableDocument,
 )
 from .sample import (
     SampleDocument,

@@ -500,9 +500,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         if self.media_type is None:
             self.media_type = sample.media_type
-            self._sample_doc_cls.add_field(
-                self.media_type, "frames", fof.FramesField,
-            )
+            self._sample_doc_cls.add_field("frames", fof.FramesField)
 
         if expand_schema:
             self._expand_schema([sample])

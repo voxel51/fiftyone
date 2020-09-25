@@ -9,21 +9,19 @@ from collections import defaultdict
 
 import six
 
-from fiftyone.core.odm import DynamicDocument
+from fiftyone.core.odm import SerializableDocument, DynamicDocument
 
 
-class Frames(defaultdict):
+class NoDatasetFrames(defaultdict):
     def __init__(self):
         super().__init__(FrameSample)
 
     def __getitem__(self, key):
         if not isinstance(key, six.integer_types):
             raise FrameError("invalid frame key")
-
         return super().__getitem__(key)
 
     def __setitem__(self, key, value):
-        print(type(key), isinstance(key, six.integer_types))
         if not isinstance(key, six.integer_types):
             raise FrameError("invalid frame key")
 

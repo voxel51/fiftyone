@@ -281,9 +281,6 @@ class Sample(_Sample):
     _instances = defaultdict(weakref.WeakValueDictionary)
 
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
-        if "media_type" in kwargs:
-            raise fomm.MediaTypeError("media_type cannot be set")
-
         media_type = fomm.get_media_type(filepath)
         self._doc = foo.NoDatasetSampleDocument(
             filepath=filepath,
@@ -292,8 +289,6 @@ class Sample(_Sample):
             media_type=media_type,
             **kwargs
         )
-        if media_type == "video":
-            self._doc._data["frames"] = fofr.Frames()
         super().__init__()
 
     def __str__(self):
