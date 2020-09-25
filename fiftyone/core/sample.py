@@ -14,6 +14,8 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
 
+import fiftyone.core.fields as fof
+import fiftyone.core.frames as fofr
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
@@ -51,7 +53,7 @@ class _Sample(object):
     def __getitem__(self, field_name):
         if isinstance(field_name, int):
             if self.media_type == "video":
-                return self.frames[str(field_name)]
+                return self.frames[field_name]
             raise KeyError("only str's allowed")
         try:
             return self.get_field(field_name)
@@ -63,7 +65,7 @@ class _Sample(object):
     def __setitem__(self, field_name, value):
         if isinstance(field_name, int):
             if self.media_type == "video":
-                self.frames[str(field_name)] = value
+                self.frames[field_name] = value
                 return
             raise KeyError("only str's allowed")
         self.set_field(field_name, value=value)
@@ -290,6 +292,8 @@ class Sample(_Sample):
             media_type=media_type,
             **kwargs
         )
+        if media_type == "video":
+            self._doc._data["frames"] = fofr.Frames()
         super().__init__()
 
     def __str__(self):

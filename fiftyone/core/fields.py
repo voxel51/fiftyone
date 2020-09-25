@@ -258,7 +258,7 @@ class FramesField(mongoengine.fields.MapField, Field):
     """
 
     def __init__(self, *args, **kwargs):
-        from fiftyone.core.frame import FrameSample
+        from fiftyone.core.frames import FrameSample
 
         super().__init__(mongoengine.fields.ReferenceField(FrameSample))
 
