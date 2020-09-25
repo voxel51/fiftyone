@@ -76,7 +76,8 @@ def get_sample_media():
         bytes
     """
     path = request.args.get("path")
-    return send_file(path)
+    # `conditional`: support partial content
+    return send_file(path, conditional=True)
 
 
 @app.route("/fiftyone")
