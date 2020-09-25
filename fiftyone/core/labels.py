@@ -459,6 +459,58 @@ class Detections(ImageLabel):
         )
 
 
+class Keypoints(ImageLabel):
+    """A collection of keypoints in an image.
+
+    Args:
+        points (None): a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
+    """
+
+    meta = {"allow_inheritance": True}
+
+    points = fof.ListField()
+
+    def to_image_labels(self, name=None):
+        """Returns an ``eta.core.image.ImageLabels`` representation of this
+        instance.
+
+        Args:
+            name (None): the name of the label field
+
+        Returns:
+            an ``eta.core.image.ImageLabels``
+        """
+        # `eta.core.image.ImageLabels` does not currently support keypoints
+        return etai.ImageLabels()
+
+
+class Polylines(ImageLabel):
+    """A collection of polylines describing curves in an image.
+
+    Args:
+        points (None): a list of lists of ``(x, y)`` points in
+            ``[0, 1] x [0, 1]``. Each entry in the outer list describes the
+            keypoints of a curve
+    """
+
+    meta = {"allow_inheritance": True}
+
+    points = fof.ListField(fof.ListField())
+
+    def to_image_labels(self, name=None):
+        """Returns an ``eta.core.image.ImageLabels`` representation of this
+        instance.
+
+        Args:
+            name (None): the name of the label field
+
+        Returns:
+            an ``eta.core.image.ImageLabels``
+        """
+        # `eta.core.image.ImageLabels` does not currently support polylines
+        return etai.ImageLabels()
+
+
 class ImageLabels(ImageLabel):
     """A collection of multitask labels for an image sample in a
     :class:`fiftyone.core.dataset.Dataset`.
