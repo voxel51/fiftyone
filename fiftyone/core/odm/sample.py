@@ -62,7 +62,6 @@ import six
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
-import fiftyone.core.frames as fofr
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.utils as fou
@@ -70,6 +69,7 @@ import fiftyone.core.utils as fou
 from .dataset import SampleFieldDocument, DatasetDocument
 from .document import (
     Document,
+    DynamicDocument,
     BaseEmbeddedDocument,
     SerializableDocument,
 )
@@ -197,6 +197,25 @@ class SampleDocument(SerializableDocument):
         raise NotImplementedError("Subclass must implement `clear_field()`")
 
 
+class Proxy(object):
+
+    doc = None
+
+    def serve(self, doc):
+        self.doc = doc
+        return self
+
+    def __getitem__(self, key):
+        print(key, "AAAa")
+        key = str(key)
+        if key not in self.doc:
+            self.doc.frames[key] = FrameSample()
+        return self.doc.frames[key]
+
+    def __setitem__(self, key, value):
+        self.doc.frames[str(key)] = value
+
+
 class DatasetSampleDocument(Document, SampleDocument):
     """Base class for sample documents backing samples in datasets.
 
@@ -218,6 +237,10 @@ class DatasetSampleDocument(Document, SampleDocument):
 
     # Random float used for random dataset operations (e.g. shuffle)
     _rand = fof.FloatField(default=_generate_rand)
+
+    def __init__(self, *args, **kwargs):
+        self.__proxy = Proxy()
+        super().__init__(*args, **kwargs)
 
     def __setattr__(self, name, value):
         # pylint: disable=no-member
@@ -309,9 +332,10 @@ class DatasetSampleDocument(Document, SampleDocument):
         return field_name in self._fields
 
     def get_field(self, field_name):
+        if field_name == "frames":
+            return self.__proxy.serve(self)
         if not self.has_field(field_name):
             raise AttributeError("Sample has no field '%s'" % field_name)
-
         return getattr(self, field_name)
 
     @classmethod
@@ -582,6 +606,8 @@ class NoDatasetSampleDocument(SampleDocument):
     default_fields_ordered = default_sample_fields(include_private=True)
 
     def __init__(self, **kwargs):
+        from fiftyone.core.frame_utils import NoDatasetFrames
+
         if "media_type" in kwargs:
             raise fomm.MediaTypeError("media_type cannot be set")
 
@@ -590,7 +616,7 @@ class NoDatasetSampleDocument(SampleDocument):
             os.path.expanduser(kwargs.get("filepath", None))
         )
         kwargs["media_type"] = fomm.get_media_type(filepath)
-        kwargs["frames"] = fofr.NoDatasetFrames()
+        kwargs["frames"] = NoDatasetFrames()
 
         for field_name in self.default_fields_ordered:
 
@@ -789,6 +815,11 @@ class NoDatasetSampleDocument(SampleDocument):
         nothing.
         """
         pass
+
+
+class FrameSample(DynamicDocument):
+
+    pass
 
 
 def get_implied_field_kwargs(value):

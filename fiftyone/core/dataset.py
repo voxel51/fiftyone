@@ -513,12 +513,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         d = sample.to_mongo_dict()
         d.pop("frames", None)
-        print(d)
         d.pop("_id", None)  # remove the ID if in DB
         self._sample_collection.insert_one(d)  # adds `_id` to `d`
 
         if not sample._in_db:
             doc = self._sample_doc_cls.from_dict(d, extended=False)
+            print(type(doc))
             sample._set_backing_doc(doc, dataset=self)
 
         return str(d["_id"])

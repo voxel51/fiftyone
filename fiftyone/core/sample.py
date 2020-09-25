@@ -8,6 +8,7 @@ Dataset samples.
 from collections import defaultdict
 from copy import deepcopy
 import os
+import six
 import weakref
 
 import eta.core.serial as etas
@@ -15,7 +16,7 @@ import eta.core.utils as etau
 import eta.core.video as etav
 
 import fiftyone.core.fields as fof
-import fiftyone.core.frames as fofr
+import fiftyone.core.frame_utils as fofu
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
@@ -52,7 +53,7 @@ class _Sample(object):
             super().__delattr__(name)
 
     def __getitem__(self, field_name):
-        if isinstance(field_name, int):
+        if fofu.is_frame_number(field_name):
             if self.media_type == "video":
                 return self.frames[field_name]
             raise KeyError("only str's allowed")
@@ -64,7 +65,7 @@ class _Sample(object):
             )
 
     def __setitem__(self, field_name, value):
-        if isinstance(field_name, int):
+        if fofu.is_frame_number(field_name):
             if self.media_type == "video":
                 self.frames[field_name] = value
                 return

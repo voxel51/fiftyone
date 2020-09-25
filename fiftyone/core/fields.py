@@ -13,6 +13,7 @@ import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone.core.utils as fou
+import fiftyone.core.frame_utils as fofu
 
 
 def parse_field_str(field_str):
@@ -258,9 +259,37 @@ class FramesField(mongoengine.fields.MapField, Field):
     """
 
     def __init__(self, *args, **kwargs):
-        from fiftyone.core.frames import FrameSample
+        from fiftyone.core.odm.sample import FrameSample
 
         super().__init__(mongoengine.fields.ReferenceField(FrameSample))
+
+    def __getitem__(self, frame_number):
+        from fiftyone.core.odm.sample import FrameSample
+
+        if not fofu.is_frame_number(frame_number):
+            raise fofu.FrameError("not a frame number")
+        frame_number = str(frame_number)
+        try:
+            return super().__getitem__(frame_number)
+        except:
+            # pylint: disable=no-member
+            super().__setitem__(frame_number, FrameSample())
+
+        # pylint: disable=no-member
+        return super().__getitem__(frame_number)
+
+    def __setitem__(self, frame_number, value):
+        if not fofu.is_frame_number(frame_number):
+            self.error("not a frame number")
+        frame_number = str(frame_number)
+        # pylint: disable=no-member
+        super().__setitem__(frame_number, value)
+
+    def validate(self, value):
+        from fiftyone.core.odm.sample import FrameSample
+
+        if not isinstance(value, (dict, FrameSample)):
+            self.error("invalid")
 
 
 class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
