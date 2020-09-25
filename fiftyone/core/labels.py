@@ -489,13 +489,22 @@ class Polylines(ImageLabel):
 
     Args:
         points (None): a list of lists of ``(x, y)`` points in
-            ``[0, 1] x [0, 1]``. Each entry in the outer list describes the
-            keypoints of a curve
+            ``[0, 1] x [0, 1]``. Each inner list describes a list of vertexes
+            of a curve
+        is_closed (False): whether each curve is closed, i.e., an edge should
+            be drawn from the last vertex to the first vertex
+        thickness (1): the line thickness, in pixels, to use to draw the
+            curves. If a negative value is provided, the curves will be filled
+        color (None): a hex color string ``#RRGGBB`` specifying a color to use
+            to draw the curves
     """
 
     meta = {"allow_inheritance": True}
 
     points = fof.ListField(fof.ListField())
+    is_closed = fof.BooleanField(default=False)
+    thickness = fof.IntField(default=1)
+    color = fof.StringField()
 
     def to_image_labels(self, name=None):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
