@@ -464,11 +464,16 @@ class Keypoints(ImageLabel):
 
     Args:
         points (None): a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
+        size (12): the size, in pixels, to draw each point
+        color (None): a hex color string ``#RRGGBB`` specifying a color to use
+            to draw the points
     """
 
     meta = {"allow_inheritance": True}
 
     points = fof.ListField()
+    size = fof.IntField(default=12)
+    color = fof.StringField()
 
     def to_image_labels(self, name=None):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
