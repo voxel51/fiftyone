@@ -184,8 +184,8 @@ class Classification(ImageLabel):
 
 
 class Classifications(ImageLabel):
-    """A list of classifications (typically from a multilabel model) for an
-    image sample in a :class:`fiftyone.core.dataset.Dataset`.
+    """A list of classifications (typically from a multilabel model) in an
+    image.
 
     Args:
         classifications (None): a list of :class:`Classification` instances
@@ -399,7 +399,7 @@ class Detection(ImageLabel):
 
             attributes[attr.name] = _attr
 
-        return Detection(
+        return cls(
             label=dobj.label,
             confidence=dobj.confidence,
             bounding_box=bounding_box,
@@ -412,8 +412,7 @@ class Detection(ImageLabel):
 
 
 class Detections(ImageLabel):
-    """A list of object detections for an image sample in a
-    :class:`fiftyone.core.dataset.Dataset`.
+    """A list of object detections in an image.
 
     Args:
         detections (None): a list of :class:`Detection` instances
@@ -452,28 +451,151 @@ class Detections(ImageLabel):
         Returns:
             a :class:`Detections`
         """
-        return Detections(
+        return cls(
             detections=[
                 Detection.from_detected_object(dobj) for dobj in objects
             ]
         )
 
 
+class Polyline(ImageLabel):
+    """A polyline or polygon.
+
+    Args:
+        label (None): a label for the shape
+        points (None): a list of ``(x, y)`` points in ``[0, 1] x [0, 1]``
+            describing the vertexes of a polyline
+        closed (False): whether the polyline is closed, i.e., and edge should
+            be drawn from the last vertex to the first vertex
+        filled (False): whether the polyline represents a shape that can be
+            filled when rendering it
+    """
+
+    meta = {"allow_inheritance": True}
+
+    _id = fof.ObjectIdField(
+        required=True, default=ObjectId, unique=True, primary_key=True
+    )
+    label = fof.StringField()
+    points = fof.ListField(fof.ListField())
+    closed = fof.BooleanField(default=False)
+    filled = fof.BooleanField(default=False)
+
+    @property
+    def id(self):
+        """The ID of the document."""
+        return str(self._id)
+
+    def to_eta_polyline(self, name=None):
+        """Returns an ``eta.core.geometry.Polyline`` representation of this
+        instance.
+
+        Args:
+            name (None): the name of the label field
+
+        Returns:
+            an ``eta.core.geometry.Polyline``
+        """
+        return etag.Polyline(
+            label=self.label,
+            name=name,
+            points=self.points,
+            closed=self.closed,
+            filled=self.filled,
+        )
+
+    def to_image_labels(self, name=None):
+        """Returns an ``eta.core.image.ImageLabels`` representation of this
+        instance.
+
+        Args:
+            name (None): the name of the label field
+
+        Returns:
+            an ``eta.core.image.ImageLabels``
+        """
+        image_labels = etai.ImageLabels()
+        image_labels.add_polyline(self.to_eta_polyline(name=name))
+        return image_labels
+
+    @classmethod
+    def from_eta_polyline(cls, polyline):
+        """Creates a :class:`Polyline` instance from an
+        ``eta.core.geometry.Polyline``.
+
+        Args:
+            polyline: an ``eta.core.geometry.Polyline``
+
+        Returns:
+            a :class:`Polyline`
+        """
+        return cls(
+            label=polyline.label,
+            points=polyline.points,
+            closed=polyline.closed,
+            filled=polyline.filled,
+        )
+
+    def _get_repr_fields(self):
+        # pylint: disable=no-member
+        return ("id",) + self._fields_ordered
+
+
+class Polylines(ImageLabel):
+    """A list of polylines or polygons in an image.
+
+    Args:
+        polylines (None): a list of :class:`Polyline` instances
+    """
+
+    meta = {"allow_inheritance": True}
+
+    polylines = fof.ListField(fof.EmbeddedDocumentField(Polyline))
+
+    def to_image_labels(self, name=None):
+        """Returns an ``eta.core.image.ImageLabels`` representation of this
+        instance.
+
+        Args:
+            name (None): the name of the label field
+
+        Returns:
+            an ``eta.core.image.ImageLabels``
+        """
+        image_labels = etai.ImageLabels()
+
+        # pylint: disable=not-an-iterable
+        for polyline in self.polylines:
+            image_labels.add_polyline(polyline.to_eta_polyline(name=name))
+
+        return image_labels
+
+    @classmethod
+    def from_eta_polylines(cls, polylines):
+        """Creates a :class:`Polylines` instance from an
+        ``eta.core.geometry.PolylineContainer``.
+
+        Args:
+            polylines: an ``eta.core.geometry.PolylineContainer``
+
+        Returns:
+            a :class:`Polylines`
+        """
+        return cls(
+            polylines=[Polyline.from_eta_polyline(p) for p in polylines]
+        )
+
+
 class Keypoints(ImageLabel):
-    """A collection of keypoints in an image.
+    """A list of keypoints in an image.
 
     Args:
         points (None): a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
-        size (12): the size, in pixels, to draw each point
-        color (None): a hex color string ``#RRGGBB`` specifying a color to use
-            to draw the points
     """
 
     meta = {"allow_inheritance": True}
 
     points = fof.ListField()
-    size = fof.IntField(default=12)
-    color = fof.StringField()
 
     def to_image_labels(self, name=None):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
@@ -485,44 +607,8 @@ class Keypoints(ImageLabel):
         Returns:
             an ``eta.core.image.ImageLabels``
         """
-        # `eta.core.image.ImageLabels` does not currently support keypoints
-        return etai.ImageLabels()
-
-
-class Polylines(ImageLabel):
-    """A collection of polylines describing curves in an image.
-
-    Args:
-        points (None): a list of lists of ``(x, y)`` points in
-            ``[0, 1] x [0, 1]``. Each inner list describes a list of vertexes
-            of a curve
-        is_closed (False): whether each curve is closed, i.e., an edge should
-            be drawn from the last vertex to the first vertex
-        thickness (1): the line thickness, in pixels, to use to draw the
-            curves. If a negative value is provided, the curves will be filled
-        color (None): a hex color string ``#RRGGBB`` specifying a color to use
-            to draw the curves
-    """
-
-    meta = {"allow_inheritance": True}
-
-    points = fof.ListField(fof.ListField())
-    is_closed = fof.BooleanField(default=False)
-    thickness = fof.IntField(default=1)
-    color = fof.StringField()
-
-    def to_image_labels(self, name=None):
-        """Returns an ``eta.core.image.ImageLabels`` representation of this
-        instance.
-
-        Args:
-            name (None): the name of the label field
-
-        Returns:
-            an ``eta.core.image.ImageLabels``
-        """
-        # `eta.core.image.ImageLabels` does not currently support polylines
-        return etai.ImageLabels()
+        keypoints = etag.Keypoints(points=self.points)
+        return etai.ImageLabels(keypoints=keypoints)
 
 
 class ImageLabels(ImageLabel):

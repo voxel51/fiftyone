@@ -17,18 +17,20 @@ class AnnotationConfig(etaa.AnnotationConfig):
 
     __doc__ = etaa.AnnotationConfig.__doc__
 
+    def __init__(self, d):
+        #
+        # Assume that the user is likely comparing multiple sets of labels,
+        # e.g.., ground truth vs predicted, and therefore would prefer that
+        # object boxes, polylines, have one color per label field rather than
+        # different colors for each label
+        #
+        if "per_object_label_colors" not in d:
+            d["per_object_label_colors"] = False
 
-_DEFAULT_ANNOTATION_CONFIG = AnnotationConfig(
-    {
-        #
-        # Assume that the user is likely comparing multiple sets of detections,
-        # e.g.., ground truth vs predicted, and therefore would prefer that object
-        # boxes have one color per label field rather than different colors for
-        # each label
-        #
-        "per_object_label_colors": False,
-    }
-)
+        if "per_polyline_label_colors" not in d:
+            d["per_polyline_label_colors"] = False
+
+        super().__init__(d)
 
 
 def draw_labeled_images(
@@ -55,7 +57,7 @@ def draw_labeled_images(
         the list of paths to the labeled images
     """
     if annotation_config is None:
-        annotation_config = _DEFAULT_ANNOTATION_CONFIG
+        annotation_config = AnnotationConfig.default()
 
     filename_maker = fou.UniqueFilenameMaker(output_dir=anno_dir)
     output_ext = fo.config.default_image_ext
@@ -90,7 +92,7 @@ def draw_labeled_image(sample, label_fields, outpath, annotation_config=None):
             to render the annotations
     """
     if annotation_config is None:
-        annotation_config = _DEFAULT_ANNOTATION_CONFIG
+        annotation_config = AnnotationConfig.default()
 
     image_labels = etai.ImageLabels()
     for label_field in label_fields:

@@ -45,8 +45,9 @@ from .core.labels import (
     Classifications,
     Detection,
     Detections,
-    Keypoints,
+    Polyline,
     Polylines,
+    Keypoints,
     ImageLabels,
 )
 from .core.metadata import (
