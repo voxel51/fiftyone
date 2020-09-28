@@ -12,6 +12,10 @@ import fiftyone as fo
 import fiftyone.core.utils as fou
 
 
+#
+# NOTE: The default values for `per_object_label_colors` and
+# `per_polyline_label_colors` in the docstring are incorrect...
+#
 class AnnotationConfig(etaa.AnnotationConfig):
     """.. autoclass:: eta.core.annotations.AnnotationConfig"""
 
