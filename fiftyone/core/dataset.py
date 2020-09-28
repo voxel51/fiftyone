@@ -415,6 +415,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             include_private=include_private,
         )
 
+    def get_frames_field_schema(
+        self, ftype=None, embedded_doc_type=None, include_private=False
+    ):
+        return self._frame_doc_cls.get_field_schema(
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            include_private=include_private,
+        )
+
     def add_sample_field(
         self, field_name, ftype, embedded_doc_type=None, subfield=None
     ):
@@ -433,7 +442,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.core.fields.DictField`
         """
         self._sample_doc_cls.add_field(
-            self.media_type,
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
@@ -632,7 +640,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._add_frame_samples(dicts)
         for d in dicts:
             d.pop("_id", None)  # remove the ID if in DB
-
         self._sample_collection.insert_many(dicts)  # adds `_id` to each dict
 
         for sample, d in zip(samples, dicts):
@@ -1499,6 +1506,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _expand_schema(self, samples):
         fields = self.get_field_schema(include_private=True)
+        frames_fields = self.get_frames_field_schema(include_private=True)
         for sample in samples:
             for field_name in sample.to_mongo_dict():
                 if field_name == "_id":
@@ -1507,9 +1515,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if field_name == "frames":
                     for frame in sample[field_name].values():
                         for frame_field_name in frame.to_mongo_dict():
-                            self._frame_doc_cls.add_implied_field(
-                                frame_field_name, frame[frame_field_name]
-                            )
+                            if frame_field_name not in frames_fields:
+                                self._frame_doc_cls.add_implied_field(
+                                    frame_field_name, frame[frame_field_name]
+                                )
+                                frames_fields = self.get_frames_field_schema(
+                                    include_private=True
+                                )
 
                 if field_name not in fields:
                     self._sample_doc_cls.add_implied_field(
