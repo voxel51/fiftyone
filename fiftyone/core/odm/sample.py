@@ -206,10 +206,7 @@ class Proxy(object):
         return self
 
     def __getitem__(self, key):
-        print(key, "AAAa")
         key = str(key)
-        if key not in self.doc:
-            self.doc.frames[key] = FrameSample()
         return self.doc.frames[key]
 
     def __setitem__(self, key, value):
@@ -817,7 +814,12 @@ class NoDatasetSampleDocument(SampleDocument):
         pass
 
 
-class FrameSample(DynamicDocument):
+class DatasetFrameSampleDocument(Document, SampleDocument):
+
+    pass
+
+
+class NoDatasetFrameSampleDocument(SampleDocument):
 
     pass
 

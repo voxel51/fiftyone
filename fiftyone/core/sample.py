@@ -52,27 +52,6 @@ class _Sample(object):
         except KeyError:
             super().__delattr__(name)
 
-    def __getitem__(self, field_name):
-        if fofu.is_frame_number(field_name):
-            if self.media_type == "video":
-                return self.frames[field_name]
-            raise KeyError("only str's allowed")
-        try:
-            return self.get_field(field_name)
-        except AttributeError:
-            raise KeyError(
-                "%s has no field '%s'" % (self.__class__.__name__, field_name)
-            )
-
-    def __setitem__(self, field_name, value):
-        if fofu.is_frame_number(field_name):
-            if self.media_type == "video":
-                self.frames[field_name] = value
-                return
-            raise KeyError("only str's allowed")
-        self._secure_media(field_name, value)
-        self.set_field(field_name, value=value)
-
     def __delitem__(self, field_name):
         try:
             self.clear_field(field_name)
@@ -236,11 +215,6 @@ class _Sample(object):
         self._doc.delete()
 
     @property
-    def filename(self):
-        """The basename of the data filepath."""
-        return os.path.basename(self.filepath)
-
-    @property
     def in_dataset(self):
         """Whether the sample has been added to a dataset."""
         return self.dataset is not None
@@ -251,6 +225,47 @@ class _Sample(object):
         been added to a dataset.
         """
         return self._dataset
+
+
+class FrameSample(_Sample):
+    def __getitem__(self, field_name):
+        try:
+            return self.get_field(field_name)
+        except AttributeError:
+            raise KeyError(
+                "%s has no field '%s'" % (self.__class__.__name__, field_name)
+            )
+
+    def __setitem__(self, field_name, value):
+        self.set_field(field_name, value=value)
+
+
+class _DatasetSample(_Sample):
+    def __getitem__(self, field_name):
+        if fofu.is_frame_number(field_name):
+            if self.media_type == "video":
+                return self.frames[field_name]
+            raise KeyError("only str's allowed")
+        try:
+            return self.get_field(field_name)
+        except AttributeError:
+            raise KeyError(
+                "%s has no field '%s'" % (self.__class__.__name__, field_name)
+            )
+
+    def __setitem__(self, field_name, value):
+        if fofu.is_frame_number(field_name):
+            if self.media_type == "video":
+                self.frames[field_name] = value
+                return
+            raise KeyError("only str's allowed")
+        self._secure_media(field_name, value)
+        self.set_field(field_name, value=value)
+
+    @property
+    def filename(self):
+        """The basename of the data filepath."""
+        return os.path.basename(self.filepath)
 
     def compute_metadata(self):
         """Populates the ``metadata`` field of the sample."""
@@ -282,7 +297,7 @@ class _Sample(object):
             )
 
 
-class Sample(_Sample):
+class Sample(_DatasetSample):
     """A sample in a :class:`fiftyone.core.dataset.Dataset`.
 
     Samples store all information associated with a particular piece of data in
@@ -505,7 +520,7 @@ class Sample(_Sample):
         self._dataset = None
 
 
-class SampleView(_Sample):
+class SampleView(_DatasetSample):
     """A view of a sample returned by a:class:`fiftyone.core.view.DatasetView`.
 
     SampleViews should never be created manually, only returned by dataset

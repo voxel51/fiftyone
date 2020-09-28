@@ -18,5 +18,6 @@ from .sample import (
     SampleDocument,
     DatasetSampleDocument,
     NoDatasetSampleDocument,
+    DatasetFrameSampleDocument,
     get_implied_field_kwargs,
 )

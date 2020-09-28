@@ -293,6 +293,7 @@ class StateController(Namespace):
             w, h = get_file_dimensions(r["sample"]["filepath"])
             r["width"] = w
             r["height"] = h
+        print(results)
 
         return {"results": results, "more": more}
 

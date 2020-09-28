@@ -167,11 +167,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name = get_default_dataset_name()
 
         if _create:
-            self._doc, self._sample_doc_cls = _create_dataset(
-                name, persistent=persistent
-            )
+            (
+                self._doc,
+                self._sample_doc_cls,
+                self._frame_doc_cls,
+            ) = _create_dataset(name, persistent=persistent)
         else:
-            self._doc, self._sample_doc_cls = _load_dataset(name)
+            (
+                self._doc,
+                self._sample_doc_cls,
+                self._frame_doc_cls,
+            ) = _load_dataset(name)
 
         self._deleted = False
 
@@ -518,7 +524,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if not sample._in_db:
             doc = self._sample_doc_cls.from_dict(d, extended=False)
-            print(type(doc))
             sample._set_backing_doc(doc, dataset=self)
 
         return str(d["_id"])
@@ -1520,6 +1525,9 @@ def _create_dataset(name, persistent=False, media_type=None):
 
     # Create SampleDocument class for this dataset
     sample_doc_cls = _create_sample_document_cls(sample_collection_name)
+    frame_doc_cls = _create_frame_document_cls(
+        "frame." + sample_collection_name
+    )
 
     # Create DatasetDocument for this dataset
     dataset_doc = foo.DatasetDocument(
@@ -1538,7 +1546,7 @@ def _create_dataset(name, persistent=False, media_type=None):
     collection = conn[sample_collection_name]
     collection.create_index("filepath", unique=True)
 
-    return dataset_doc, sample_doc_cls
+    return dataset_doc, sample_doc_cls, frame_doc_cls
 
 
 def _make_sample_collection_name():
@@ -1555,6 +1563,10 @@ def _create_sample_document_cls(sample_collection_name):
     return type(sample_collection_name, (foo.DatasetSampleDocument,), {})
 
 
+def _create_frame_document_cls(frame_collection_name):
+    return type(frame_collection_name, (foo.DatasetFrameSampleDocument,), {})
+
+
 def _load_dataset(name):
     # Load DatasetDocument for dataset
     try:
@@ -1566,6 +1578,10 @@ def _load_dataset(name):
     # Create SampleDocument class for this dataset
     sample_doc_cls = _create_sample_document_cls(
         dataset_doc.sample_collection_name
+    )
+
+    frame_doc_cls = _create_frame_document_cls(
+        "frames." + dataset_doc.sample_collection_name
     )
 
     # Populate sample field schema
@@ -1593,4 +1609,4 @@ def _load_dataset(name):
             save=False,
         )
 
-    return dataset_doc, sample_doc_cls
+    return dataset_doc, sample_doc_cls, frame_doc_cls
