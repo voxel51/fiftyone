@@ -1620,6 +1620,27 @@ def _load_dataset(name):
     # Populate sample field schema
     kwargs = {}
     default_fields = Dataset.get_default_sample_fields(include_private=True)
+
+    if is_video:
+        for frame_field in dataset_doc.frame_fields:
+            subfield = (
+                etau.get_class(frame_field.subfield)
+                if frame_field.subfield
+                else None
+            )
+            embedded_doc_type = (
+                etau.get_class(frame_field.embedded_doc_type)
+                if frame_field.embedded_doc_type
+                else None
+            )
+            frame_doc_cls.add_field(
+                frame_field.name,
+                etau.get_class(frame_field.ftype),
+                subfield=subfield,
+                embedded_doc_type=embedded_doc_type,
+                save=False,
+            )
+
     for sample_field in dataset_doc.sample_fields:
         if sample_field.name in default_fields:
             continue
