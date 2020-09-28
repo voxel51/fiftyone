@@ -18,7 +18,6 @@ import ViewBar from "../components/ViewBar/ViewBar";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { useResizeHandler, useScrollHandler } from "../utils/hooks";
-import { makeLabelNameGroups } from "../utils/labels";
 
 const Root = styled.div`
   .ui.grid > .sidebar-column {

@@ -92,7 +92,11 @@ export const labelNames = selector({
     }
     return stateDescription.labels
       .map((label) => label.field)
-      .filter((name) => stats.custom_fields.hasOwnProperty(name));
+      .filter(
+        (name) =>
+          stats.custom_fields.hasOwnProperty(name) &&
+          !RESERVED_FIELDS.includes(name)
+      );
   },
 });
 

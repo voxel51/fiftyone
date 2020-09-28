@@ -15,7 +15,13 @@ export const VALID_NUMERIC_TYPES = [
   "fiftyone.core.fields.IntField",
 ];
 
-export const RESERVED_FIELDS = ["metadata", "_id", "tags", "filepath"];
+export const RESERVED_FIELDS = [
+  "metadata",
+  "_id",
+  "tags",
+  "filepath",
+  "frames",
+];
 export const RESERVED_DETECTION_FIELDS = [
   "label",
   "bounding_box",
