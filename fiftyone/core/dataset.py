@@ -1173,7 +1173,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_type,
             label_field=label_field,
             tags=tags,
-            **kwargs
+            **kwargs,
         )
         return dataset
 
@@ -1618,6 +1618,7 @@ def _load_dataset(name):
     is_video = dataset_doc.media_type == "video"
 
     # Populate sample field schema
+    kwargs = {}
     default_fields = Dataset.get_default_sample_fields(include_private=True)
     for sample_field in dataset_doc.sample_fields:
         if sample_field.name in default_fields:
@@ -1634,12 +1635,16 @@ def _load_dataset(name):
             else None
         )
 
+        if sample_field.name == "frames":
+            kwargs["frame_doc_cls"] = frame_doc_cls
+
         sample_doc_cls.add_field(
             sample_field.name,
             etau.get_class(sample_field.ftype),
             subfield=subfield,
             embedded_doc_type=embedded_doc_type,
             save=False,
+            **kwargs,
         )
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
