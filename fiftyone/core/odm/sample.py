@@ -665,7 +665,7 @@ class NoDatasetMixin(object):
                 value = dict(value)
 
             return value
-
+        print(field)
         raise ValueError("Field '%s' has no default" % field)
 
     def has_field(self, field_name):

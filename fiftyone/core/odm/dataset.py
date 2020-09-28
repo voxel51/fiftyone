@@ -20,6 +20,7 @@ from .document import Document, EmbeddedDocument
 class SampleFieldDocument(EmbeddedDocument):
     """Backing document for sample fields."""
 
+    media_type = StringField()
     name = StringField()
     ftype = StringField()
     subfield = StringField(null=True)

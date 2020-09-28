@@ -58,7 +58,11 @@ export default function tile(data, newHasMore, state) {
       width: "100%",
       margin: 0,
     };
-    rows.push({ style: rowStyle, samples: row.map((s) => s.sample) });
+    rows.push({
+      style: rowStyle,
+      samples: row.map((s) => s.sample),
+      aspectRatio: refWidth / baseHeight,
+    });
   }
   return {
     hasMore: Boolean(newHasMore),
