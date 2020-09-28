@@ -281,6 +281,12 @@ class FramesField(mongoengine.fields.MapField, Field):
         if not isinstance(value, (dict, self._frame_doc_cls)):
             self.error("invalid")
 
+    def to_mongo(self, value):
+        if value is None:
+            return None
+
+        return value.to_mongo_dict()
+
 
 class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
     """A field that stores instances of a given type of

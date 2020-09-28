@@ -526,16 +526,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._validate_sample(sample)
 
         d = sample.to_mongo_dict()
-        frames = d.pop("frames", None)
-        frame_numbers = list(frames)
-        frames = [frame.to_mongo_dict() for frame in frames.values()]
-        result = self._frames_collection.insert_many(frames)
-        frames = {
-            frame_numbers[idx]: frame_id
-            for idx, frame_id in enumerate(result.inserted_ids)
-        }
+        if self.media_type == "video":
+            self._add_frame_samples([d])
         d.pop("_id", None)  # remove the ID if in DB
-        d["frames"] = frames
         self._sample_collection.insert_one(d)  # adds `_id` to `d`
 
         if not sample._in_db:
@@ -543,6 +536,35 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample._set_backing_doc(doc, dataset=self)
 
         return str(d["_id"])
+
+    def _add_frame_samples(self, sample_dicts):
+        frames = []
+        frames_len = {}
+        frames_keys = {}
+        for idx, d in enumerate(sample_dicts):
+            sample_frames = d.pop("frames", None)
+            frames_keys[idx] = [
+                str(frame_number) for frame_number in sample_frames.keys()
+            ]
+            sample_frames = [
+                frame.to_mongo_dict() for frame in sample_frames.values()
+            ]
+            frames_len[idx] = len(sample_frames)
+            for frame in sample_frames:
+                frame.pop("_id", None)
+            frames += sample_frames
+        result = self._frames_collection.insert_many(frames)
+        sample_idx = 0
+        result_start = 0
+        for sample_idx, num_frames in enumerate(frames_len):
+            result_end = result_start + num_frames
+            sample_dicts[sample_idx]["frames"] = {
+                frames_keys[sample_idx][frame_key]: _id
+                for frame_key, _id in enumerate(
+                    result.inserted_ids[result_start:result_end]
+                )
+            }
+            result_start += result_end
 
     def add_samples(self, samples, expand_schema=True, num_samples=None):
         """Adds the given samples to the dataset.
@@ -577,6 +599,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             except:
                 pass
 
+        if self.media_type is None:
+            self.media_type = samples[0].media_type
+            if self.media_type == "video":
+                self._sample_doc_cls.add_field(
+                    "frames",
+                    fof.FramesField(
+                        frame_doc_cls=self._frame_doc_cls
+                    ).__class__,
+                    frame_doc_cls=self._frame_doc_cls,
+                )
+
         sample_ids = []
         with fou.ProgressBar(total=num_samples) as pb:
             for batch in fou.iter_batches(samples, self._BATCH_SIZE):
@@ -595,6 +628,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._validate_sample(sample)
 
         dicts = [sample.to_mongo_dict() for sample in samples]
+        if self.media_type == "video":
+            self._add_frame_samples(dicts)
         for d in dicts:
             d.pop("_id", None)  # remove the ID if in DB
 
