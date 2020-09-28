@@ -104,3 +104,4 @@ class DatasetDocument(Document):
     sample_fields = EmbeddedDocumentListField(
         document_type=SampleFieldDocument
     )
+    frame_fields = EmbeddedDocumentListField(document_type=SampleFieldDocument)

@@ -1469,6 +1469,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if field_name == "_id":
                     continue
 
+                if field_name == "frames":
+                    for frame in sample[field_name].values():
+                        for frame_field_name in frame.to_mongo_dict():
+                            self._frame_doc_cls.add_implied_field(
+                                frame_field_name, frame[frame_field_name]
+                            )
+
                 if field_name not in fields:
                     self._sample_doc_cls.add_implied_field(
                         field_name, sample[field_name]

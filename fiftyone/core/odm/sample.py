@@ -213,32 +213,7 @@ class Proxy(object):
         self.doc.frames[str(key)] = value
 
 
-class DatasetSampleDocument(Document, SampleDocument):
-    """Base class for sample documents backing samples in datasets.
-
-    All ``fiftyone.core.dataset.Dataset._sample_doc_cls`` classes inherit from
-    this class.
-    """
-
-    meta = {"abstract": True}
-
-    media_type = fof.StringField()
-    # The path to the data on disk
-    filepath = fof.StringField(unique=True)
-
-    # The set of tags associated with the sample
-    tags = fof.ListField(fof.StringField())
-
-    # Metadata about the sample media
-    metadata = fof.EmbeddedDocumentField(fom.Metadata, null=True)
-
-    # Random float used for random dataset operations (e.g. shuffle)
-    _rand = fof.FloatField(default=_generate_rand)
-
-    def __init__(self, *args, **kwargs):
-        self.__proxy = Proxy()
-        super().__init__(*args, **kwargs)
-
+class DatasetMixin(object):
     def __setattr__(self, name, value):
         # pylint: disable=no-member
         has_field = self.has_field(name)
@@ -387,13 +362,21 @@ class DatasetSampleDocument(Document, SampleDocument):
         if save:
             # Update dataset meta class
             dataset_doc = DatasetDocument.objects.get(
-                sample_collection_name=cls.__name__
+                sample_collection_name=cls._sample_collection_name()
             )
 
             field = cls._fields[field_name]
             sample_field = SampleFieldDocument.from_field(field)
-            dataset_doc.sample_fields.append(sample_field)
+            dataset_doc[cls._dataset_doc_fields_col()].append(sample_field)
             dataset_doc.save()
+
+    @classmethod
+    def _sample_collection_name(cls):
+        return cls.__name__
+
+    @classmethod
+    def _dataset_doc_fields_col(cls):
+        return "sample_fields"
 
     @classmethod
     def add_implied_field(cls, field_name, value):
@@ -597,7 +580,34 @@ class DatasetSampleDocument(Document, SampleDocument):
         return tuple(f for f in cls._fields_ordered if not f.startswith("_"))
 
 
-class NoDatasetMixin:
+class DatasetSampleDocument(DatasetMixin, Document, SampleDocument):
+    """Base class for sample documents backing samples in datasets.
+
+    All ``fiftyone.core.dataset.Dataset._sample_doc_cls`` classes inherit from
+    this class.
+    """
+
+    meta = {"abstract": True}
+
+    media_type = fof.StringField()
+    # The path to the data on disk
+    filepath = fof.StringField(unique=True)
+
+    # The set of tags associated with the sample
+    tags = fof.ListField(fof.StringField())
+
+    # Metadata about the sample media
+    metadata = fof.EmbeddedDocumentField(fom.Metadata, null=True)
+
+    # Random float used for random dataset operations (e.g. shuffle)
+    _rand = fof.FloatField(default=_generate_rand)
+
+    def __init__(self, *args, **kwargs):
+        self.__proxy = Proxy()
+        super().__init__(*args, **kwargs)
+
+
+class NoDatasetMixin(object):
     def __getattr__(self, name):
         try:
             return self._data[name]
@@ -816,9 +826,17 @@ class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
         self._data.update(kwargs)
 
 
-class DatasetFrameSampleDocument(Document, SampleDocument):
+class DatasetFrameSampleDocument(DatasetMixin, Document, SampleDocument):
 
     meta = {"abstract": True}
+
+    @classmethod
+    def _sample_collection_name(cls):
+        return ".".join(cls.__name__.split(".")[1:])
+
+    @classmethod
+    def _dataset_doc_fields_col(cls):
+        return "frame_fields"
 
 
 class NoDatasetFrameSampleDocument(NoDatasetMixin, SampleDocument):
