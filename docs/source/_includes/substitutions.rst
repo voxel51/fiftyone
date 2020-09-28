@@ -20,6 +20,9 @@
 .. |Classifications| replace:: :class:`Classifications <fiftyone.core.labels.Classifications>`
 .. |Detection| replace:: :class:`Detection <fiftyone.core.labels.Detection>`
 .. |Detections| replace:: :class:`Detections <fiftyone.core.labels.Detections>`
+.. |Polyline| replace:: :class:`Polyline <fiftyone.core.labels.Polyline>`
+.. |Polylines| replace:: :class:`Polylines <fiftyone.core.labels.Polylines>`
+.. |Keypoints| replace:: :class:`Keypoints <fiftyone.core.labels.Keypoints>`
 .. |ImageLabels| replace:: :class:`ImageLabels <fiftyone.core.labels.ImageLabels>`
 
 .. |Attribute| replace:: :class:`Attribute <fiftyone.core.labels.Attribute>`

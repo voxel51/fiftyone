@@ -973,6 +973,125 @@ schema of the attributes that you're storing.
         }>,
     }>
 
+.. _polylines:
+
+Polylines and polygons
+----------------------
+
+The |Polylines| class represents a list of
+`polylines <https://en.wikipedia.org/wiki/Polygonal_chain>`__ or
+`polygons <https://en.wikipedia.org/wiki/Polygon>`__ in an image. The polylines
+are stored in the
+:attr:`polylines <fiftyone.core.labels.Polylines.polylines>` attribute of the
+|Polylines| object.
+
+Each individual polyline is represented by a |Polyline| object. The
+:attr:`points <fiftyone.core.labels.Polyline.points>` attribute contains a
+list of ``(x, y)`` coordinates defining the vertices of the polyline. If the
+polyline represents a closed curve, you can set the
+:attr:`closed <fiftyone.core.labels.Polyline.closed>` attribute to ``True`` to
+indicate that a line segment should be drawn from the last vertex to the first
+vertex. If the polyline defines a simple region that can be filled, you can set
+the :attr:`filled <fiftyone.core.labels.Polyline.filled>` attribute to
+``True``. Polylines can also have string labels, which are stored in their
+:attr:`label <fiftyone.core.labels.Polyline.label>` attribute.
+
+.. note::
+    FiftyOne stores vertex coordinates as floats in `[0, 1]` relative to the
+    dimensions of the image.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+
+    # A simple polyline
+    polyline1 = fo.Polyline(
+        points=[(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)],
+        closed=False,
+        filled=False
+    )
+
+    # A closed, filled polygon with a label
+    polyline2 = fo.Polyline(
+        label="triangle",
+        points=[(0.1, 0.1), (0.3, 0.1), (0.3, 0.3)],
+        closed=True,
+        filled=True
+    )
+
+    sample["polylines"] = fo.Polylines(polylines=[polyline1, polyline2])
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'polylines': <Polylines: {
+            'polylines': BaseList([
+                <Polyline: {
+                    'id': '5f7219448220788a0ae08878',
+                    'label': None,
+                    'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)]),
+                    'closed': False,
+                    'filled': False,
+                }>,
+                <Polyline: {
+                    'id': '5f7219448220788a0ae08879',
+                    'label': 'triangle',
+                    'points': BaseList([(0.1, 0.1), (0.3, 0.1), (0.3, 0.3)]),
+                    'closed': True,
+                    'filled': True,
+                }>,
+            ]),
+        }>,
+    }>
+
+.. _keypoints:
+
+Keypoints
+---------
+
+The |Keypoints| class represents a list of keypoints in an image.
+
+The points are stored in the
+:attr:`points <fiftyone.core.labels.Keypoints.points>` attribute of the
+|Keypoints| object, which contains a list of ``(x, y)`` coordinates into the
+image.
+
+.. note::
+    FiftyOne stores keypoint coordinates as floats in `[0, 1]` relative to the
+    dimensions of the image.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+
+    sample["keypoints"] = fo.Keypoints(
+        points=[(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)]
+    )
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'keypoints': <Keypoints: {'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)])}>,
+    }>
+
 .. _multitask-predictions:
 
 Multitask predictions

@@ -4,15 +4,15 @@ Drawing Labels on Samples
 .. default-role:: code
 
 FiftyOne provides native support for rendering annotated versions of samples
-with |Label| fields overlaid on the source data (e.g., images).
+with :ref:`label fields <using-labels>` overlaid on the source media.
 
 Basic recipe
 ------------
 
 The interface for drawing labels on samples in conveniently exposed via the
-Python library and the CLI. You can easily annotate one or more |Label| fields
-on entire datasets or arbitrary subsets of your datasets that you have
-identified by constructing a |DatasetView|.
+Python library and the CLI. You can easily annotate one or more
+:ref:`label fields <using-labels>` on entire datasets or arbitrary subsets of
+your datasets that you have identified by constructing a |DatasetView|.
 
 .. tabs::
 
@@ -67,8 +67,8 @@ Drawing labels for individual samples
 You can also annotate individual samples directly by using the various methods
 exposed in the :mod:`fiftyone.utils.annotations` module.
 
-For example, you can draw an annotated version of an image sample with its
-label field(s) overlaid as follows:
+For example, you can draw an annotated version of an image sample with
+|Classification| and |Detections| labels overlaid as follows:
 
 .. code-block:: python
     :linenos:
