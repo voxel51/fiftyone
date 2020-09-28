@@ -556,7 +556,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         result = self._frames_collection.insert_many(frames)
         sample_idx = 0
         result_start = 0
-        for sample_idx, num_frames in enumerate(frames_len):
+        for sample_idx, num_frames in frames_len.items():
             result_end = result_start + num_frames
             sample_dicts[sample_idx]["frames"] = {
                 frames_keys[sample_idx][frame_key]: _id
