@@ -250,22 +250,14 @@ class ImageLabelsField(Field):
 
 
 class FramesField(mongoengine.fields.MapField, Field):
-    """A field that stores an ``eta.core.image.ImageLabels`` instance.
-
-    :class:`ImageLabelsField` instances accept ``eta.core.image.ImageLabels``
-    instances or serialized dict representations of them. The underlying data
-    is stored as a serialized dictionary in the dataset and always retrieved as
-    an ``eta.core.image.ImageLabels`` instance.
-    """
-
     def __init__(self, *args, **kwargs):
-        from fiftyone.core.odm.sample import FrameSample
-
-        super().__init__(mongoengine.fields.ReferenceField(FrameSample))
+        self._frame_doc_cls = kwargs.pop("frame_doc_cls")
+        super().__init__(
+            mongoengine.fields.ReferenceField(self._frame_doc_cls),
+            db_field="frames",
+        )
 
     def __getitem__(self, frame_number):
-        from fiftyone.core.odm.sample import FrameSample
-
         if not fofu.is_frame_number(frame_number):
             raise fofu.FrameError("not a frame number")
         frame_number = str(frame_number)
@@ -273,7 +265,7 @@ class FramesField(mongoengine.fields.MapField, Field):
             return super().__getitem__(frame_number)
         except:
             # pylint: disable=no-member
-            super().__setitem__(frame_number, FrameSample())
+            super().__setitem__(frame_number, self._frame_doc_cls())
 
         # pylint: disable=no-member
         return super().__getitem__(frame_number)
@@ -286,9 +278,7 @@ class FramesField(mongoengine.fields.MapField, Field):
         super().__setitem__(frame_number, value)
 
     def validate(self, value):
-        from fiftyone.core.odm.sample import FrameSample
-
-        if not isinstance(value, (dict, FrameSample)):
+        if not isinstance(value, (dict, self._frame_doc_cls)):
             self.error("invalid")
 
 

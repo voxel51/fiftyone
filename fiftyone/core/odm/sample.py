@@ -343,6 +343,7 @@ class DatasetSampleDocument(Document, SampleDocument):
         embedded_doc_type=None,
         subfield=None,
         save=True,
+        **kwargs,
     ):
         """Adds a new field to the sample.
 
@@ -370,6 +371,7 @@ class DatasetSampleDocument(Document, SampleDocument):
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
+            kwargs=kwargs,
         )
 
         cls._fields[field_name] = field
@@ -595,43 +597,7 @@ class DatasetSampleDocument(Document, SampleDocument):
         return tuple(f for f in cls._fields_ordered if not f.startswith("_"))
 
 
-class NoDatasetSampleDocument(SampleDocument):
-    """Backing document for samples that have not been added to a dataset."""
-
-    # pylint: disable=no-member
-    default_fields = DatasetSampleDocument._fields
-    default_fields_ordered = default_sample_fields(include_private=True)
-
-    def __init__(self, **kwargs):
-        from fiftyone.core.frame_utils import NoDatasetFrames
-
-        if "media_type" in kwargs:
-            raise fomm.MediaTypeError("media_type cannot be set")
-
-        self._data = OrderedDict()
-        filepath = os.path.abspath(
-            os.path.expanduser(kwargs.get("filepath", None))
-        )
-        kwargs["media_type"] = fomm.get_media_type(filepath)
-        kwargs["frames"] = NoDatasetFrames()
-
-        for field_name in self.default_fields_ordered:
-
-            value = kwargs.pop(field_name, None)
-
-            if field_name == "_rand":
-                value = _generate_rand(filepath=filepath)
-
-            if value is None:
-                value = self._get_default(self.default_fields[field_name])
-
-            if field_name == "filepath":
-                value = os.path.abspath(os.path.expanduser(value))
-
-            self._data[field_name] = value
-
-        self._data.update(kwargs)
-
+class NoDatasetMixin:
     def __getattr__(self, name):
         try:
             return self._data[name]
@@ -814,14 +780,51 @@ class NoDatasetSampleDocument(SampleDocument):
         pass
 
 
+class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
+    """Backing document for samples that have not been added to a dataset."""
+
+    # pylint: disable=no-member
+    default_fields = DatasetSampleDocument._fields
+    default_fields_ordered = default_sample_fields(include_private=True)
+
+    def __init__(self, **kwargs):
+        if "media_type" in kwargs:
+            raise fomm.MediaTypeError("media_type cannot be set")
+
+        self._data = OrderedDict()
+        filepath = os.path.abspath(
+            os.path.expanduser(kwargs.get("filepath", None))
+        )
+        kwargs["media_type"] = fomm.get_media_type(filepath)
+        kwargs["frames"] = {}
+
+        for field_name in self.default_fields_ordered:
+
+            value = kwargs.pop(field_name, None)
+
+            if field_name == "_rand":
+                value = _generate_rand(filepath=filepath)
+
+            if value is None:
+                value = self._get_default(self.default_fields[field_name])
+
+            if field_name == "filepath":
+                value = os.path.abspath(os.path.expanduser(value))
+
+            self._data[field_name] = value
+
+        self._data.update(kwargs)
+
+
 class DatasetFrameSampleDocument(Document, SampleDocument):
 
-    pass
+    meta = {"abstract": True}
 
 
-class NoDatasetFrameSampleDocument(SampleDocument):
-
-    pass
+class NoDatasetFrameSampleDocument(NoDatasetMixin, SampleDocument):
+    def __init__(self, **kwargs):
+        self._data = OrderedDict()
+        self._data.update(kwargs)
 
 
 def get_implied_field_kwargs(value):
@@ -858,14 +861,16 @@ def get_implied_field_kwargs(value):
     raise TypeError("Unsupported field value '%s'" % type(value))
 
 
-def _create_field(field_name, ftype, embedded_doc_type=None, subfield=None):
+def _create_field(
+    field_name, ftype, embedded_doc_type=None, subfield=None, kwargs={}
+):
     if not issubclass(ftype, fof.Field):
         raise ValueError(
             "Invalid field type '%s'; must be a subclass of '%s'"
             % (ftype, fof.Field)
         )
 
-    kwargs = {"db_field": field_name}
+    kwargs["db_field"] = field_name
 
     if issubclass(ftype, fof.EmbeddedDocumentField):
         kwargs.update({"document_type": embedded_doc_type})

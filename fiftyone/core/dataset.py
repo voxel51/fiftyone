@@ -376,7 +376,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return fov.DatasetView(self)
 
     @classmethod
-    def get_default_sample_fields(cls, include_private=False):
+    def get_default_sample_fields(
+        cls, include_private=False, with_frames=False
+    ):
         """Get the default fields present on any :class:`Dataset`.
 
         Args:
@@ -507,7 +509,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self.media_type is None:
             self.media_type = sample.media_type
             if self.media_type == "video":
-                self._sample_doc_cls.add_field("frames", fof.FramesField)
+                self._sample_doc_cls.add_field(
+                    "frames",
+                    fof.FramesField(
+                        frame_doc_cls=self._frame_doc_cls
+                    ).__class__,
+                    frame_doc_cls=self._frame_doc_cls,
+                )
 
         if expand_schema:
             self._expand_schema([sample])
@@ -518,8 +526,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._validate_sample(sample)
 
         d = sample.to_mongo_dict()
-        d.pop("frames", None)
+        frames = d.pop("frames", None)
+        frame_numbers = list(frames)
+        frames = [frame.to_mongo_dict() for frame in frames.values()]
+        result = self._frames_collection.insert_many(frames)
+        frames = {
+            frame_numbers[idx]: frame_id
+            for idx, frame_id in enumerate(result.inserted_ids)
+        }
         d.pop("_id", None)  # remove the ID if in DB
+        d["frames"] = frames
         self._sample_collection.insert_one(d)  # adds `_id` to `d`
 
         if not sample._in_db:
@@ -1406,6 +1422,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _sample_collection(self):
         return foo.get_db_conn()[self._sample_collection_name]
 
+    @property
+    def _frames_collection_name(self):
+        return "frames." + self._sample_collection_name
+
+    @property
+    def _frames_collection(self):
+        return foo.get_db_conn()[self._frames_collection_name]
+
     def _apply_field_schema(self, new_fields):
         curr_fields = self.get_field_schema()
         for field_name, field_str in new_fields.items():
@@ -1524,10 +1548,10 @@ def _create_dataset(name, persistent=False, media_type=None):
     sample_collection_name = _make_sample_collection_name()
 
     # Create SampleDocument class for this dataset
-    sample_doc_cls = _create_sample_document_cls(sample_collection_name)
     frame_doc_cls = _create_frame_document_cls(
-        "frame." + sample_collection_name
+        "frames." + sample_collection_name
     )
+    sample_doc_cls = _create_sample_document_cls(sample_collection_name)
 
     # Create DatasetDocument for this dataset
     dataset_doc = foo.DatasetDocument(
@@ -1583,6 +1607,8 @@ def _load_dataset(name):
     frame_doc_cls = _create_frame_document_cls(
         "frames." + dataset_doc.sample_collection_name
     )
+
+    is_video = dataset_doc.media_type == "video"
 
     # Populate sample field schema
     default_fields = Dataset.get_default_sample_fields(include_private=True)
