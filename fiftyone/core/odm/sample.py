@@ -784,15 +784,6 @@ class NoDatasetSampleDocument(SampleDocument):
                 d[k] = v.to_dict(extended=extended)
             elif isinstance(v, np.ndarray):
                 # Must handle arrays separately, since they are non-primitives
-
-                # @todo cannot support serializing 1D arrays as lists because
-                # there is no way for `from_dict` to know that the data should
-                # be converted back to a numpy array
-                #
-                # if v.ndim == 1:
-                #     d[k] = v.tolist()
-                #
-
                 v_binary = fou.serialize_numpy_array(v)
                 if extended:
                     # @todo improve this
