@@ -561,6 +561,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             for frame in sample_frames:
                 frame.pop("_id", None)
             frames += sample_frames
+        if len(frames) == 0:
+            return  # nothing to insert
         result = self._frames_collection.insert_many(frames)
         sample_idx = 0
         result_start = 0
@@ -572,7 +574,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     result.inserted_ids[result_start:result_end]
                 )
             }
-            result_start += result_end
+            result_start = result_end
 
     def add_samples(self, samples, expand_schema=True, num_samples=None):
         """Adds the given samples to the dataset.
