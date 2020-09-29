@@ -17,10 +17,12 @@ from flask_cors import CORS
 from flask_socketio import emit, Namespace, SocketIO
 
 import eta.core.utils as etau
+import eta.core.video as etav
 
 os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone.constants as foc
 import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
 from fiftyone.core.service import DatabaseService
 from fiftyone.core.stages import _STAGES
@@ -140,6 +142,13 @@ _WITHOUT_PAGINATION_EXTENDED_STAGES = {
     fosg.FilterDetections,
     fosg.FilterField,
 }
+
+
+def _make_image_labels(name, label, frame_number):
+    return etav.VideoFrameLabels.from_image_labels(
+        fol.ImageLabel.from_dict(label).to_image_labels(name=name),
+        frame_number,
+    )
 
 
 class StateController(Namespace):
@@ -296,8 +305,20 @@ class StateController(Namespace):
             sample_idx = 0
             for sample in samples:
                 frames = sample["frames"]
+                labels = etav.VideoLabels()
                 for frame_number in frames:
-                    frames[frame_number] = next(cursor)
+                    frame = next(cursor)
+                    frames[frame_number] = frame
+                    frame_labels = etav.VideoFrameLabels(
+                        frame_number=frame_number
+                    )
+                    for k, v in frame.items():
+                        if isinstance(v, dict) and "_cls" in v:
+                            frame_labels.merge_labels(
+                                _make_image_labels(k, v, frame_number)
+                            )
+                    labels.add_frame(frame_labels)
+                sample["_eta_labels"] = labels
 
         convert(samples)
 

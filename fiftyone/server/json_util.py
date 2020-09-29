@@ -26,6 +26,8 @@ def _handle_bytes(o):
 def convert(d):
     if isinstance(d, (dict, OrderedDict)):
         for k, v in d.items():
+            if k == "_eta_labels":
+                continue
             if isinstance(v, ObjectId):
                 d[k] = str(v)
             elif isinstance(v, (dict, OrderedDict, list)):
