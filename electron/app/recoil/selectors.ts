@@ -226,9 +226,13 @@ export const refreshColorMap = selector({
   key: "refreshColorMap",
   get: ({ get }) => get(atoms.colorMap),
   set: ({ get, set }, colorMap) => {
+    const frames = get(mediaType) ? ["frames"] : [];
     set(
       atoms.colorMap,
-      generateColorMap([...get(tagNames), ...get(labelNames)], colorMap)
+      generateColorMap(
+        [...get(tagNames), ...get(labelNames), ...frames],
+        colorMap
+      )
     );
   },
 });

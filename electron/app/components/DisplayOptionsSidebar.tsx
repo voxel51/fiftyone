@@ -16,6 +16,7 @@ import DropdownCell from "./DropdownCell";
 import SelectionTag from "./Tags/SelectionTag";
 import { Button, scrollbarStyles } from "./utils";
 import * as atoms from "../recoil/atoms";
+import * as selectors from "../recoil/selectors";
 import { refreshColorMap as refreshColorMapSelector } from "../recoil/selectors";
 
 export type Entry = {
@@ -162,6 +163,7 @@ const DisplayOptionsSidebar = React.forwardRef(
     ref
   ) => {
     const refreshColorMap = useSetRecoilState(refreshColorMapSelector);
+    const mediaType = useRecoilValue(selectors.mediaType);
     const colorMap = useRecoilValue(atoms.colorMap);
     const cellRest = { modal };
     return (
@@ -174,18 +176,20 @@ const DisplayOptionsSidebar = React.forwardRef(
           onSelect={onSelectTag}
           {...cellRest}
         />
-        <Cell
-          colorMap={colorMap}
-          label="Labels"
-          icon={<Label style={{ transform: "rotate(180deg)" }} />}
-          entries={labels}
-          onSelect={onSelectLabel}
-          {...cellRest}
-        />
-        {frameLabels.length ? (
+        {mediaType !== "video" ? (
           <Cell
             colorMap={colorMap}
-            label="Frames"
+            label="Labels"
+            icon={<Label style={{ transform: "rotate(180deg)" }} />}
+            entries={labels}
+            onSelect={onSelectLabel}
+            {...cellRest}
+          />
+        ) : null}
+        {mediaType === "video" ? (
+          <Cell
+            colorMap={colorMap}
+            label="Labels"
             icon={<Label style={{ transform: "rotate(180deg)" }} />}
             entries={frameLabels}
             onSelect={onSelectFrameLabels}

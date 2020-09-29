@@ -56,6 +56,7 @@ export default ({
       },
     })
   );
+
   if (playerRef) {
     playerRef.current = player;
   }
