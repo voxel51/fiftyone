@@ -118,6 +118,9 @@ format when writing the dataset to disk.
     | :ref:`KITTIDetectionDataset <KITTIDetectionDataset-export>`        | A labeled dataset consisting of images and their associated object detections      |
     |                                                                    | saved in `KITTI format <http://www.cvlibs.net/datasets/kitti/eval\_object.php>`_.  |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`YOLODataset <YOLODataset-export>`                            | A labeled dataset consisting of images and their associated object detections      |
+    |                                                                    | saved in `YOLO format <https://github.com/AlexeyAB/darknet>`_.                     |
+    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`TFObjectDetectionDataset <TFObjectDetectionDataset-export>`  | A labeled dataset consisting of images and their associated object detections      |
     |                                                                    | stored as TFRecords in `TF Object Detection API format \                           |
     |                                                                    | <https://github.com/tensorflow/models/blob/master/research/object\_detection>`_.   |
@@ -841,6 +844,99 @@ format as follows:
             --export-dir $EXPORT_DIR \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.KITTIDetectionDataset
+
+.. _YOLODataset-export:
+
+YOLODataset
+-----------
+
+The :class:`fiftyone.types.YOLODataset <fiftyone.types.dataset_types.YOLODataset>`
+type represents a labeled dataset consisting of images and their associated
+object detections saved in
+`YOLO format <https://github.com/AlexeyAB/darknet>`_.
+
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        obj.names
+        images.txt
+        data/
+            <uuid1>.<ext>
+            <uuid1>.txt
+            <uuid2>.<ext>
+            <uuid2>.txt
+            ...
+
+where `obj.names` contains the object class labels:
+
+.. code-block:: text
+
+    <label-0>
+    <label-1>
+    ...
+
+and `images.txt` contains the list of images in `data/`:
+
+.. code-block:: text
+
+    data/<uuid1>.<ext>
+    data/<uuid2>.<ext>
+    ...
+
+and the TXT files in `data/` are space-delimited files where each row
+corresponds to an object in the image of the same name, in the following
+format:
+
+.. code-block:: text
+
+    <target> <x-center> <y-center> <width> <height>
+
+where `<target>` is the zero-based integer index of the object class
+label from `obj.names` and the bounding box coordinates are expressed as
+relative coordinates in `[0, 1] x [0, 1]`.
+
+Unlabeled images have no corresponding file in `labels/`.
+
+You can export a FiftyOne dataset as a YOLO dataset in the above format as
+follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        export_dir = "/path/for/yolo-dataset"
+        label_field = "ground_truth"  # for example
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.YOLODataset,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/yolo-dataset
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.YOLODataset
 
 .. _TFObjectDetectionDataset-export:
 
