@@ -16,7 +16,7 @@ import fiftyone.core.utils as fou
 def _handle_bytes(o):
     for k, v in o.items():
         if isinstance(v, bytes):
-            o[k] = str(fou.deserialize_numpy_array(v).shape)
+            o[k] = fou.deserialize_numpy_array(v)
         if isinstance(v, dict):
             o[k] = _handle_bytes(v)
     return o
