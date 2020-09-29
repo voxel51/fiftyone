@@ -515,21 +515,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample has a type that is inconsistent with the dataset schema, or
             if ``expand_schema == False`` and a new field is encountered
         """
-        if self.media_type is None:
-            self.media_type = sample.media_type
-            if self.media_type == "video":
-                self._sample_doc_cls.add_field(
-                    "frames",
-                    fof.FramesField(
-                        frame_doc_cls=self._frame_doc_cls
-                    ).__class__,
-                    frame_doc_cls=self._frame_doc_cls,
-                )
-        elif self.media_type != sample.media_type:
-            raise fomm.MediaTypeError(
-                "dataset and sample media types do not match"
-            )
-
         if expand_schema:
             self._expand_schema([sample])
 
@@ -613,17 +598,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 num_samples = len(samples)
             except:
                 pass
-
-        if self.media_type is None:
-            self.media_type = samples[0].media_type
-            if self.media_type == "video":
-                self._sample_doc_cls.add_field(
-                    "frames",
-                    fof.FramesField(
-                        frame_doc_cls=self._frame_doc_cls
-                    ).__class__,
-                    frame_doc_cls=self._frame_doc_cls,
-                )
 
         sample_ids = []
         with fou.ProgressBar(total=num_samples) as pb:
@@ -1543,6 +1517,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         non_existest_fields = {
             fn for fn in sample.field_names if fn not in fields
         }
+
+        if self.media_type is None:
+            self.media_type = sample.media_type
+            if self.media_type == "video":
+                self._sample_doc_cls.add_field(
+                    "frames",
+                    fof.FramesField(
+                        frame_doc_cls=self._frame_doc_cls
+                    ).__class__,
+                    frame_doc_cls=self._frame_doc_cls,
+                )
+        elif self.media_type != sample.media_type:
+            raise fomm.MediaTypeError(
+                "dataset and sample media types do not match"
+            )
 
         if non_existest_fields:
             msg = "The fields %s do not exist on the dataset '%s'" % (
