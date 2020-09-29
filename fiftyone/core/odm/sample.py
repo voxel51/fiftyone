@@ -797,14 +797,14 @@ class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
     default_fields_ordered = default_sample_fields(include_private=True)
 
     def __init__(self, **kwargs):
-        if "media_type" in kwargs:
-            raise fomm.MediaTypeError("media_type cannot be set")
-
         self._data = OrderedDict()
         filepath = os.path.abspath(
             os.path.expanduser(kwargs.get("filepath", None))
         )
-        kwargs["media_type"] = fomm.get_media_type(filepath)
+        media_type = fomm.get_media_type(filepath)
+        if "media_type" in kwargs and kwargs["media_type"] != media_type:
+            raise fomm.MediaTypeError("media_type cannot be set")
+        kwargs["media_type"] = media_type
         kwargs["frames"] = {}
 
         for field_name in self.default_fields_ordered:
