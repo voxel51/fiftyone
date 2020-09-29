@@ -22,6 +22,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
+import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
 import fiftyone.core.odm.sample as foos
 import fiftyone.core.sample as fos
@@ -524,6 +525,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     ).__class__,
                     frame_doc_cls=self._frame_doc_cls,
                 )
+        elif self.media_type != sample.media_type:
+            raise fomm.MediaTypeError(
+                "dataset and sample media types do not match"
+            )
 
         if expand_schema:
             self._expand_schema([sample])
