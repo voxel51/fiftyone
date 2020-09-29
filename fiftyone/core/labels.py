@@ -266,7 +266,7 @@ class Detection(ImageLabel):
         required=True, default=ObjectId, unique=True, primary_key=True
     )
     label = fof.StringField()
-    bounding_box = fof.VectorField()
+    bounding_box = fof.ListField()
     confidence = fof.FloatField()
     attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
 
