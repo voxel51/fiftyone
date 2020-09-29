@@ -52,9 +52,8 @@ const PARSERS = {
   ],
 };
 
-const loadOverlay = (sample, colorMap, fieldSchema) => {
+const loadOverlay = (sample, fieldSchema) => {
   const imgLabels = { attrs: { attrs: [] }, objects: { objects: [] } };
-  const playerColorMap = {};
   const sampleFields = Object.keys(sample).sort();
   for (const sampleField of sampleFields) {
     if (RESERVED_FIELDS.includes(sampleField)) {
@@ -65,12 +64,10 @@ const loadOverlay = (sample, colorMap, fieldSchema) => {
     if (["Classification", "Detection"].includes(field._cls)) {
       const [key, fn] = PARSERS[field._cls];
       imgLabels[key][key].push(fn(sampleField, field));
-      playerColorMap[`${sampleField}`] = colorMap[sampleField];
     } else if (["Classifications", "Detections"].includes(field._cls)) {
       for (const object of field[field._cls.toLowerCase()]) {
         const [key, fn] = PARSERS[object._cls];
         imgLabels[key][key].push(fn(sampleField, object));
-        playerColorMap[`${sampleField}`] = colorMap[sampleField];
       }
       continue;
     } else if (VALID_SCALAR_TYPES.includes(fieldSchema[sampleField])) {
@@ -80,7 +77,7 @@ const loadOverlay = (sample, colorMap, fieldSchema) => {
       });
     }
   }
-  return [imgLabels, playerColorMap];
+  return imgLabels;
 };
 
 export default ({
@@ -99,7 +96,7 @@ export default ({
 }) => {
   const filter = useRecoilValue(filterSelector);
   const colorMap = useRecoilValue(atoms.colorMap);
-  const [overlay, playerColorMap] = loadOverlay(sample, colorMap, fieldSchema);
+  const overlay = loadOverlay(sample, fieldSchema);
   const [initLoad, setInitLoad] = useState(false);
   const id = uuid();
   const mimetype =
@@ -113,7 +110,7 @@ export default ({
         type: mimetype,
       },
       overlay,
-      colorMap: playerColorMap,
+      colorMap,
       activeLabels,
       filter,
       enableOverlayOptions: {
@@ -143,7 +140,7 @@ export default ({
       player.updateOptions({
         activeLabels,
         filter,
-        colorMap: playerColorMap,
+        colorMap,
       });
     }
   }, [filter, overlay, activeLabels, colorMap]);
