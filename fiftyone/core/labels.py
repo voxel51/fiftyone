@@ -88,14 +88,16 @@ class NumericAttribute(Attribute):
     value = fof.FloatField()
 
 
-class VectorAttribute(Attribute):
-    """A vector attribute.
+class ListAttribute(Attribute):
+    """A list attribute.
+
+    The list can store arbitrary JSON-serialiable values.
 
     Args:
         value (None): the attribute value
     """
 
-    value = fof.VectorField()
+    value = fof.ListField()
 
 
 class ImageLabel(Label):
@@ -266,7 +268,7 @@ class Detection(ImageLabel):
         required=True, default=ObjectId, unique=True, primary_key=True
     )
     label = fof.StringField()
-    bounding_box = fof.VectorField()
+    bounding_box = fof.ListField()
     confidence = fof.FloatField()
     attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
 
