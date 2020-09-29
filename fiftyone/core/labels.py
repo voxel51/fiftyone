@@ -88,14 +88,16 @@ class NumericAttribute(Attribute):
     value = fof.FloatField()
 
 
-class VectorAttribute(Attribute):
-    """A vector attribute.
+class ListAttribute(Attribute):
+    """A list attribute.
+
+    The list can store arbitrary JSON-serialiable values.
 
     Args:
         value (None): the attribute value
     """
 
-    value = fof.VectorField()
+    value = fof.ListField()
 
 
 class ImageLabel(Label):

@@ -298,15 +298,15 @@ def _parse_kitti_detection_row(row, frame_size):
     ]
 
     try:
-        attributes["dimensions"] = fol.VectorAttribute(
-            value=np.array(list(map(float, row[8:11])))
+        attributes["dimensions"] = fol.ListAttribute(
+            value=list(map(float, row[8:11]))
         )
     except IndexError:
         pass
 
     try:
-        attributes["location"] = fol.VectorAttribute(
-            value=np.array(list(map(float, row[11:14])))
+        attributes["location"] = fol.ListAttribute(
+            value=list(map(float, row[11:14]))
         )
     except IndexError:
         pass
