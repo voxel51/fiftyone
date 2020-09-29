@@ -103,6 +103,27 @@ def default_sample_fields(include_private=False, include_id=False):
     return fields
 
 
+def no_rename_default_field(func):
+    """Wrapper for :func:`SampleDocument.rename_field` that prevents renaming
+    default fields of :class:`SampleDocument`.
+
+    This is a decorator because the subclasses implement this as either an
+    instance or class method.
+    """
+
+    @wraps(func)
+    def wrapper(cls_or_self, field_name, *args, **kwargs):
+        # pylint: disable=no-member
+        if field_name in default_sample_fields(
+            include_private=True, include_id=True
+        ):
+            raise ValueError("Cannot rename default field '%s'" % field_name)
+
+        return func(cls_or_self, field_name, *args, **kwargs)
+
+    return wrapper
+
+
 def no_delete_default_field(func):
     """Wrapper for :func:`SampleDocument.delete_field` that prevents deleting
     default fields of :class:`SampleDocument`.
@@ -114,7 +135,9 @@ def no_delete_default_field(func):
     @wraps(func)
     def wrapper(cls_or_self, field_name, *args, **kwargs):
         # pylint: disable=no-member
-        if field_name in default_sample_fields():
+        if field_name in default_sample_fields(
+            include_private=True, include_id=True
+        ):
             raise ValueError("Cannot delete default field '%s'" % field_name)
 
         return func(cls_or_self, field_name, *args, **kwargs)
@@ -411,9 +434,60 @@ class DatasetSampleDocument(Document, SampleDocument):
         self.set_field(field_name, None, create=False)
 
     @classmethod
+    @no_rename_default_field
+    def rename_field(cls, field_name, new_field_name):
+        """Renames the field of the sample(s).
+
+        If the sample is in a dataset, the field will be renamed on all samples
+        in the dataset.
+
+        Args:
+            field_name: the field name
+            new_field_name: the new field name
+
+        Raises:
+            AttributeError: if the field does not exist
+        """
+        try:
+            # Rename field on all samples
+            # pylint: disable=no-member
+            cls.objects.update(**{"rename__%s" % field_name: new_field_name})
+        except InvalidQueryError:
+            raise AttributeError("Sample has no field '%s'" % field_name)
+
+        # Rename field on dataset
+        # pylint: disable=no-member
+        field = cls._fields[field_name]
+        field = _rename_field(field, new_field_name)
+        cls._fields[new_field_name] = field
+        del cls._fields[field_name]
+        cls._fields_ordered = tuple(
+            (fn if fn != field_name else new_field_name)
+            for fn in cls._fields_ordered
+        )
+        delattr(cls, field_name)
+        try:
+            if issubclass(cls, DatasetSampleDocument):
+                # Only set the attribute if it is a class
+                setattr(cls, new_field_name, field)
+        except TypeError:
+            # Instance, not class, so do not `setattr`
+            pass
+
+        # Update dataset document
+        dataset_doc = DatasetDocument.objects.get(
+            sample_collection_name=cls.__name__
+        )
+        for sf in dataset_doc.sample_fields:
+            if sf.name == field_name:
+                sf.name = new_field_name
+
+        dataset_doc.save()
+
+    @classmethod
     @no_delete_default_field
     def delete_field(cls, field_name):
-        """Deletes the field from the sample.
+        """Deletes the field from the sample(s).
 
         If the sample is in a dataset, the field will be removed from all
         samples in the dataset.
@@ -439,7 +513,7 @@ class DatasetSampleDocument(Document, SampleDocument):
         )
         delattr(cls, field_name)
 
-        # Update dataset meta class
+        # Update dataset document
         dataset_doc = DatasetDocument.objects.get(
             sample_collection_name=cls.__name__
         )
@@ -710,15 +784,6 @@ class NoDatasetSampleDocument(SampleDocument):
                 d[k] = v.to_dict(extended=extended)
             elif isinstance(v, np.ndarray):
                 # Must handle arrays separately, since they are non-primitives
-
-                # @todo cannot support serializing 1D arrays as lists because
-                # there is no way for `from_dict` to know that the data should
-                # be converted back to a numpy array
-                #
-                # if v.ndim == 1:
-                #     d[k] = v.tolist()
-                #
-
                 v_binary = fou.serialize_numpy_array(v)
                 if extended:
                     # @todo improve this
@@ -834,4 +899,10 @@ def _create_field(field_name, ftype, embedded_doc_type=None, subfield=None):
     field = ftype(**kwargs)
     field.name = field_name
 
+    return field
+
+
+def _rename_field(field, new_field_name):
+    field.db_field = new_field_name
+    field.name = new_field_name
     return field

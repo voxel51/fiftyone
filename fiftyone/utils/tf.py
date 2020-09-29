@@ -426,7 +426,12 @@ class TFObjectDetectionSampleParser(TFRecordSampleParser):
             detections.append(
                 fol.Detection(
                     label=label,
-                    bounding_box=[xmin, ymin, xmax - xmin, ymax - ymin],
+                    bounding_box=[
+                        float(xmin),
+                        float(ymin),
+                        float(xmax - xmin),
+                        float(ymax - ymin),
+                    ],
                 )
             )
 
