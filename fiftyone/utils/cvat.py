@@ -637,7 +637,12 @@ class CVATBox(object):
         label = self.label
 
         bounding_box = etag.BoundingBox.from_abs_coords(
-            self.xtl, self.ytl, self.xbr, self.ybr, frame_size=frame_size
+            self.xtl,
+            self.ytl,
+            self.xbr,
+            self.ybr,
+            frame_size=frame_size,
+            clamp=False,
         )
         attrs = etad.AttributeContainer(
             attrs=[a.to_eta_attribute() for a in self.attributes]
