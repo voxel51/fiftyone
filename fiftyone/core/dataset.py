@@ -1485,6 +1485,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     continue
 
                 if field_name == "frames":
+                    if self.media_type is None:
+                        self.media_type = "video"
                     for frame in sample[field_name].values():
                         for frame_field_name in frame.to_mongo_dict():
                             if frame_field_name not in frames_fields:
@@ -1519,6 +1521,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         }
 
         if self.media_type is None:
+            print(self.media_type)
             self.media_type = sample.media_type
             if self.media_type == "video":
                 self._sample_doc_cls.add_field(

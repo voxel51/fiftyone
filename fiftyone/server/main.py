@@ -288,7 +288,10 @@ class StateController(Namespace):
             frames = []
             frames_coll = state.dataset._frames_collection
             for idx, s in enumerate(samples):
-                frames += list(s["frames"].values())
+                frame_numbers = sorted(
+                    list(s["frames"].keys()), key=lambda k: int(k)
+                )
+                frames += [s["frames"][f] for f in frame_numbers]
             cursor = frames_coll.find({"_id": {"$in": frames}})
             sample_idx = 0
             for sample in samples:
