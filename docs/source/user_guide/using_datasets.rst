@@ -1138,12 +1138,16 @@ schema of the attributes that you're storing.
 Keypoints
 ---------
 
-The |Keypoints| class represents a list of keypoints in an image.
+The |Keypoints| class represents a list of keypoints in an image. The keypoints
+are stored in the
+:attr:`keypoints <fiftyone.core.labels.Keypoints.keypoints>` attribute of the
+|Keypoints| object.
 
-The points are stored in the
-:attr:`points <fiftyone.core.labels.Keypoints.points>` attribute of the
-|Keypoints| object, which contains a list of ``(x, y)`` coordinates into the
-image.
+Each element of this list is a |Keypoint| object whose
+:attr:`points <fiftyone.core.labels.Keypoint.points>` attribute contains a
+list of ``(x, y)`` coordinates defining a set of keypoints in the image. Each
+|Keypoint| object can have a string label, which is stored in its
+:attr:`label <fiftyone.core.labels.Keypoint.label>` attribute.
 
 .. note::
     FiftyOne stores keypoint coordinates as floats in `[0, 1]` relative to the
@@ -1157,7 +1161,12 @@ image.
     sample = fo.Sample(filepath="/path/to/image.png")
 
     sample["keypoints"] = fo.Keypoints(
-        points=[(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)]
+        keypoints=[
+            fo.Keypoint(
+                label="square",
+                points=[(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)]
+            )
+        ]
     )
 
     print(sample)
@@ -1169,7 +1178,90 @@ image.
         'filepath': '/path/to/image.png',
         'tags': [],
         'metadata': None,
-        'keypoints': <Keypoints: {'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)])}>,
+        'keypoints': <Keypoints: {
+            'keypoints': BaseList([
+                <Keypoint: {
+                    'id': '5f737fae2e5f75f7211b5d03',
+                    'attributes': BaseDict({}),
+                    'label': 'square',
+                    'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)]),
+                }>,
+            ]),
+        }>,
+    }>
+
+.. -keypoints-with-attributes:
+
+Keypoints with attributes
+-------------------------
+
+Keypoints stored in |Keypoints| may also be given attributes, which can be
+stored in the
+:attr:`attributes <fiftyone.core.labels.Keypoint.attributes>` attribute of
+each |Keypoint|; this field is a dictionary mapping attribute names to
+|Attribute| instances, which contain the
+:attr:`value <fiftyone.core.labels.Attribute.value>` of the attribute and any
+associated metadata.
+
+There are |Attribute| subclasses for various types of attributes you may want
+to store. Use the appropriate subclass when possible so that FiftyOne knows the
+schema of the attributes that you're storing.
+
+.. table::
+    :widths: 25 25 50
+
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | Attribute class                                                           | Value type | Description                     |
+    +===========================================================================+============+=================================+
+    | :class:`Attribute <fiftyone.core.labels.Attribute>`                       | arbitrary  | A generic attribute of any type |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | :class:`BooleanAttribute <fiftyone.core.labels.BooleanAttribute>`         | `bool`     | A boolean attribute             |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | :class:`CategoricalAttribute <fiftyone.core.labels.CategoricalAttribute>` | `string`   | A categorical attribute         |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | :class:`NumericAttribute <fiftyone.core.labels.NumericAttribute>`         | `float`    | A numeric attribute             |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+
+    keypoint = fo.Keypoint(
+        label="square",
+        points=[(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)],
+        attributes={
+            "corners": fo.NumericAttribute(value=4),
+            "convex": fo.BooleanAttribute(value=True),
+        },
+    )
+
+    sample["keypoints"] = fo.Keypoints(keypoints=[keypoint])
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'keypoints': <Keypoints: {
+            'keypoints': BaseList([
+                <Keypoint: {
+                    'id': '5f73805f2e5f75f7211b5d05',
+                    'attributes': BaseDict({
+                        'corners': <NumericAttribute: {'value': 4}>,
+                        'convex': <BooleanAttribute: {'value': True}>,
+                    }),
+                    'label': 'square',
+                    'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)]),
+                }>,
+            ]),
+        }>,
     }>
 
 .. _multitask-predictions:
@@ -1190,7 +1282,7 @@ object.
 - Semantic segmentation masks
 - Object detections, optionally with attributes and/or instance segmentations
 - Polylines and polygons, optionally with attributes
-- Image keypoints
+- Image keypoints, optionally with attributes
 
 The labels can be ground truth annotations or model predictions; in the
 latter case, additional metadata such as prediction confidences can be store.
