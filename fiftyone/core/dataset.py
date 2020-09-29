@@ -22,6 +22,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
+import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
 import fiftyone.core.odm.sample as foos
 import fiftyone.core.sample as fos
@@ -524,6 +525,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     ).__class__,
                     frame_doc_cls=self._frame_doc_cls,
                 )
+        elif self.media_type != sample.media_type:
+            raise fomm.MediaTypeError(
+                "dataset and sample media types do not match"
+            )
 
         if expand_schema:
             self._expand_schema([sample])
@@ -561,6 +566,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             for frame in sample_frames:
                 frame.pop("_id", None)
             frames += sample_frames
+        if len(frames) == 0:
+            return  # nothing to insert
         result = self._frames_collection.insert_many(frames)
         sample_idx = 0
         result_start = 0
@@ -572,7 +579,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     result.inserted_ids[result_start:result_end]
                 )
             }
-            result_start += result_end
+            result_start = result_end
 
     def add_samples(self, samples, expand_schema=True, num_samples=None):
         """Adds the given samples to the dataset.

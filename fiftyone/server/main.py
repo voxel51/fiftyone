@@ -76,7 +76,8 @@ def get_sample_media():
         bytes
     """
     path = request.args.get("path")
-    return send_file(path)
+    # `conditional`: support partial content
+    return send_file(path, conditional=True)
 
 
 @app.route("/fiftyone")
@@ -282,7 +283,19 @@ class StateController(Namespace):
             view = view.add_stage(stage)
 
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
-        samples = [s for s in view]
+        samples = [s.to_mongo_dict() for s in view]
+        if view.media_type == "video":
+            frames = []
+            frames_coll = state.dataset._frames_collection
+            for idx, s in enumerate(samples):
+                frames += list(s["frames"].values())
+            cursor = frames_coll.find({"_id": {"$in": frames}})
+            sample_idx = 0
+            for sample in samples:
+                frames = sample["frames"]
+                for frame_number in frames:
+                    frames[frame_number] = next(cursor)
+
         more = False
         if len(samples) > page_length:
             samples = samples[:page_length]
@@ -293,7 +306,6 @@ class StateController(Namespace):
             w, h = get_file_dimensions(r["sample"]["filepath"])
             r["width"] = w
             r["height"] = h
-        print(results)
 
         return {"results": results, "more": more}
 

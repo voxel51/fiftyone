@@ -62,6 +62,7 @@ import six
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
+import fiftyone.core.frame_utils as fofu
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.utils as fou
@@ -205,12 +206,26 @@ class Proxy(object):
         self.doc = doc
         return self
 
+    def values(self):
+        return self.doc.frames.values()
+
     def __getitem__(self, key):
-        key = str(key)
-        return self.doc.frames[key]
+        if fofu.is_frame_number(key):
+            key = str(key)
+            return self.doc.frames[key]
 
     def __setitem__(self, key, value):
-        self.doc.frames[str(key)] = value
+        if fofu.is_frame_number(key):
+            self.doc.frames[str(key)] = value
+
+    def __getattr__(self, name):
+        return getattr(self.doc, name)
+
+    def __settattr__(self, name, value):
+        setattr(self.doc, name, value)
+
+    def _get_field_cls(self):
+        return self.doc.frames.__class__
 
 
 class DatasetMixin(object):
@@ -305,7 +320,7 @@ class DatasetMixin(object):
 
     def get_field(self, field_name):
         if field_name == "frames":
-            return self.__proxy.serve(self)
+            return self._proxy.serve(self)
         if not self.has_field(field_name):
             raise AttributeError("Sample has no field '%s'" % field_name)
         return getattr(self, field_name)
@@ -379,6 +394,10 @@ class DatasetMixin(object):
         return "sample_fields"
 
     @classmethod
+    def _frame_collection_name(cls):
+        return "frames." + cls.__name__
+
+    @classmethod
     def add_implied_field(cls, field_name, value):
         """Adds the field to the sample, inferring the field type from the
         provided value.
@@ -391,7 +410,13 @@ class DatasetMixin(object):
         if field_name in cls._fields:
             raise ValueError("Field '%s' already exists" % field_name)
 
-        cls.add_field(field_name, **get_implied_field_kwargs(value))
+        frame_doc_cls = type(
+            cls._frame_collection_name(), (DatasetFrameSampleDocument,), {}
+        )
+
+        cls.add_field(
+            field_name, **get_implied_field_kwargs(frame_doc_cls, value)
+        )
 
     def set_field(self, field_name, value, create=False):
         if field_name.startswith("_"):
@@ -603,7 +628,7 @@ class DatasetSampleDocument(DatasetMixin, Document, SampleDocument):
     _rand = fof.FloatField(default=_generate_rand)
 
     def __init__(self, *args, **kwargs):
-        self.__proxy = Proxy()
+        self._proxy = Proxy()
         super().__init__(*args, **kwargs)
 
 
@@ -739,7 +764,6 @@ class NoDatasetMixin(object):
             else:
                 # JSON primitive
                 d[k] = v
-
         return d
 
     @classmethod
@@ -798,14 +822,14 @@ class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
     default_fields_ordered = default_sample_fields(include_private=True)
 
     def __init__(self, **kwargs):
-        if "media_type" in kwargs:
-            raise fomm.MediaTypeError("media_type cannot be set")
-
         self._data = OrderedDict()
         filepath = os.path.abspath(
             os.path.expanduser(kwargs.get("filepath", None))
         )
-        kwargs["media_type"] = fomm.get_media_type(filepath)
+        media_type = fomm.get_media_type(filepath)
+        if "media_type" in kwargs and kwargs["media_type"] != media_type:
+            raise fomm.MediaTypeError("media_type cannot be set")
+        kwargs["media_type"] = media_type
         kwargs["frames"] = {}
 
         for field_name in self.default_fields_ordered:
@@ -845,7 +869,7 @@ class NoDatasetFrameSampleDocument(NoDatasetMixin, SampleDocument):
         self._data.update(kwargs)
 
 
-def get_implied_field_kwargs(value):
+def get_implied_field_kwargs(frame_doc_cls, value):
     if isinstance(value, BaseEmbeddedDocument):
         return {
             "ftype": fof.EmbeddedDocumentField,
@@ -875,6 +899,9 @@ def get_implied_field_kwargs(value):
 
     if isinstance(value, dict):
         return {"ftype": fof.DictField}
+
+    if isinstance(value, Proxy):
+        return {"ftype": frame_doc_cls}
 
     raise TypeError("Unsupported field value '%s'" % type(value))
 

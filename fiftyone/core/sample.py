@@ -327,7 +327,7 @@ class _DatasetSample(_Sample):
         self.save()
 
     def _secure_media(self, field_name, value):
-        if field_name == "media_type":
+        if field_name == "media_type" and self.media_type != value:
             raise fomm.MediaTypeError(
                 "media_type cannot be modified. It is derived from the file type"
             )
@@ -339,10 +339,16 @@ class _DatasetSample(_Sample):
                 raise fomm.MediaTypeError(
                     "A sample's filepath can be changed, but its media_type cannot"
                 )
+
         if value is not None:
             # pylint: disable=no-member
+            try:
+                frame_doc_cls = self._dataset._frame_doc_cls
+            except:
+                frame_doc_cls = None
             fomm.validate_field_against_media_type(
-                self.media_type, **foo.get_implied_field_kwargs(value)
+                self.media_type,
+                **foo.get_implied_field_kwargs(frame_doc_cls, value)
             )
 
 

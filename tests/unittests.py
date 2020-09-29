@@ -1776,8 +1776,6 @@ class SampleFieldTests(unittest.TestCase):
             sample.invalid_field
 
         # set field (default)
-        sample.filepath = ["invalid", "type"]
-        sample.filepath = None
         sample.tags = "invalid type"
         sample.tags = None
 
