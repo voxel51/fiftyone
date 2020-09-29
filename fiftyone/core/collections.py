@@ -976,7 +976,13 @@ class SampleCollection(object):
         """
         return self._add_view_stage(fos.Take(size, seed=seed))
 
-    def draw_labels(self, anno_dir, label_fields=None, annotation_config=None):
+    def draw_labels(
+        self,
+        anno_dir,
+        label_fields=None,
+        overwrite=False,
+        annotation_config=None,
+    ):
         """Renders annotated versions of the samples in the collection with
         label field(s) overlaid to the given directory.
 
@@ -991,6 +997,8 @@ class SampleCollection(object):
             label_fields (None): a list of :class:`fiftyone.core.labels.Label`
                 fields to render. By default, all
                 :class:`fiftyone.core.labels.Label` fields are drawn
+            overwrite (False): whether to delete ``anno_dir`` if it exists
+                before rendering the labels
             annotation_config (None): an
                 :class:`fiftyone.utils.annotations.AnnotationConfig` specifying
                 how to render the annotations
@@ -998,6 +1006,16 @@ class SampleCollection(object):
         Returns:
             the list of paths to the labeled images
         """
+        if os.path.isdir(anno_dir):
+            if overwrite:
+                etau.delete_dir(anno_dir)
+            else:
+                logger.warning(
+                    "Directory '%s' already exists; outputs will be merged "
+                    "with existing files",
+                    anno_dir,
+                )
+
         label_fields_schema = self.get_field_schema(
             ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
         )
@@ -1032,7 +1050,7 @@ class SampleCollection(object):
         label_field=None,
         label_prefix=None,
         labels_dict=None,
-        overwrite=True,
+        overwrite=False,
         **kwargs
     ):
         """Exports the samples in the collection to disk.
@@ -1067,7 +1085,7 @@ class SampleCollection(object):
                 to use when constructing the label dict to pass to the
                 exporter. This parameter can only be used when the exporter can
                 handle dictionaries of labels
-            overwrite (True): when an ``export_dir`` is provided, whether to
+            overwrite (False): when an ``export_dir`` is provided, whether to
                 delete the existing directory before performing the export
             **kwargs: optional keyword arguments to pass to
                 ``dataset_type.get_dataset_exporter_cls(export_dir, **kwargs)``
