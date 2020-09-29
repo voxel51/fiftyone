@@ -220,6 +220,7 @@ const SampleModal = ({
   const [activeLabels, setActiveLabels] = useRecoilState(
     atoms.modalActiveLabels
   );
+  const mediaType = useRecoilValue(selectors.mediaType);
   const filter = useRecoilValue(selectors.sampleModalFilter);
   const activeTags = useRecoilValue(atoms.modalActiveTags);
   const tagNames = useRecoilValue(selectors.tagNames);
@@ -231,9 +232,17 @@ const SampleModal = ({
     labelNames,
     labelTypes
   );
+  const [frameLabelsActive, setFrameLabelsActive] = useRecoilState(
+    atoms.modalFrameLabelsActive
+  );
+  const globalFrameLabelsActive = useRecoilValue(atoms.frameLabelsActive);
   useEffect(() => {
     setActiveLabels(rest.activeLabels);
   }, [rest.activeLabels]);
+
+  useEffect(() => {
+    setFrameLabelsActive(globalFrameLabelsActive);
+  }, [globalFrameLabelsActive]);
 
   // save overlay options when navigating - these are restored by passing them
   // in defaultOverlayOptions when the new player is created
@@ -384,6 +393,8 @@ const SampleModal = ({
     };
   }, {});
 
+  const frameCount = sample.frames ? Object.keys(sample.frames).length : 0;
+
   return (
     <Container className={fullscreen ? "fullscreen" : ""}>
       <div className="player" ref={playerContainerRef}>
@@ -470,6 +481,20 @@ const SampleModal = ({
               filteredLabelSampleValues
             )}
             onSelectLabel={handleSetDisplayOption(setActiveLabels)}
+            frameLabels={
+              mediaType === "video"
+                ? [
+                    {
+                      name: "frames",
+                      totalCount: frameCount,
+                      filteredCount: frameCount,
+                      type: "frames",
+                      selected: frameLabelsActive,
+                    },
+                  ]
+                : []
+            }
+            onSelectFrameLabels={() => setFrameLabelsActive(!frameLabelsActive)}
             scalars={getDisplayOptions(
               labelNameGroups.scalars,
               scalarSampleValues,

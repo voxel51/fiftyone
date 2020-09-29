@@ -185,7 +185,7 @@ const DisplayOptionsSidebar = React.forwardRef(
         {frameLabels.length ? (
           <Cell
             colorMap={colorMap}
-            label="Frame Labels"
+            label="Frames"
             icon={<Label style={{ transform: "rotate(180deg)" }} />}
             entries={frameLabels}
             onSelect={onSelectFrameLabels}
