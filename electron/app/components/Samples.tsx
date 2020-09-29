@@ -39,7 +39,11 @@ function Samples({ setView }) {
           >
             {r.samples.map((s, j) => (
               <Grid.Column key={j} style={{ padding: 0, width: "100%" }}>
-                <Sample sample={s} setView={setView} />
+                <Sample
+                  sample={s.sample}
+                  metadata={s.metadata}
+                  setView={setView}
+                />
               </Grid.Column>
             ))}
           </Grid>

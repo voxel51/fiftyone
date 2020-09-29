@@ -9,11 +9,16 @@ from .database import get_db_conn, drop_database
 from .dataset import SampleFieldDocument, DatasetDocument
 from .document import (
     Document,
+    DynamicDocument,
     EmbeddedDocument,
     DynamicEmbeddedDocument,
+    SerializableDocument,
 )
 from .sample import (
     SampleDocument,
     DatasetSampleDocument,
     NoDatasetSampleDocument,
+    DatasetFrameSampleDocument,
+    NoDatasetFrameSampleDocument,
+    get_implied_field_kwargs,
 )

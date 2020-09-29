@@ -97,7 +97,7 @@ class DatasetDocument(Document):
 
     meta = {"collection": "datasets"}
 
-    mtype = StringField(null=True)
+    media_type = StringField()
     name = StringField(unique=True, required=True)
     sample_collection_name = StringField(unique=True, required=True)
     persistent = BooleanField(default=False)
@@ -105,3 +105,4 @@ class DatasetDocument(Document):
     sample_fields = EmbeddedDocumentListField(
         document_type=SampleFieldDocument
     )
+    frame_fields = EmbeddedDocumentListField(document_type=SampleFieldDocument)

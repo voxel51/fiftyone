@@ -120,10 +120,14 @@ class StateDescriptionWithDerivables(StateDescription):
         if view is None or not with_stats:
             return
 
+        self.field_schema = self._get_field_schema()
         self.labels = self._get_label_fields(view)
+        if view.media_type == "video":
+            self.frame_labels = _get_field_count(
+                view, view.get_field_schema()["frames"]
+            )
         self.tags = list(sorted(view.get_tags()))
         self.view_stats = get_view_stats(view)
-        self.field_schema = self._get_field_schema()
 
         extended_view = view
         for stage_dict in self.filter_stages.values():
@@ -165,6 +169,8 @@ class StateDescriptionWithDerivables(StateDescription):
         label_fields = []
 
         for k, v in view.get_field_schema().items():
+            if view.media_type == "video" and k == "frames":
+                continue
             d = {"field": k}
             if isinstance(v, fof.EmbeddedDocumentField):
                 d["cls"] = v.document_type.__name__
@@ -355,8 +361,14 @@ def _get_label_confidence_bounds(view):
 
 
 def _get_field_count(view, field):
-    if isinstance(field, fof.EmbeddedDocumentField):
-        if issubclass(field.document_type, fol.Classifications):
+    if (
+        isinstance(field, fof.EmbeddedDocumentField)
+        or view.media_type == "video"
+        and field.name == "frames"
+    ):
+        if field.name == "frames":
+            array_field = {"$objectToArray": "$%s" % field.name}
+        elif issubclass(field.document_type, fol.Classifications):
             array_field = "$%s.classifications" % field.name
         elif issubclass(field.document_type, fol.Detections):
             array_field = "$%s.detections" % field.name

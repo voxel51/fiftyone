@@ -119,6 +119,7 @@ function Dataset(props) {
             fieldSchema={fieldSchema}
             colorMap={colorMap}
             sample={modal.sample}
+            metadata={modal.metadata}
             sampleUrl={src}
             onClose={handleHideModal}
             {...modalProps}
@@ -139,11 +140,12 @@ function Dataset(props) {
               <Route path={routes.SAMPLES}>
                 <SamplesContainer
                   {...props.socket}
-                  setView={(sample) =>
+                  setView={(sample, metadata) =>
                     setModal({
                       ...modal,
                       visible: true,
                       sample,
+                      metadata,
                     })
                   }
                   displayProps={displayProps}

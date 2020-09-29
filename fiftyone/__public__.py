@@ -51,7 +51,7 @@ from .core.metadata import (
     Metadata,
     ImageMetadata,
 )
-from .core.sample import Sample
+from .core.sample import FrameSample, Sample
 from .core.session import (
     close_app,
     launch_app,

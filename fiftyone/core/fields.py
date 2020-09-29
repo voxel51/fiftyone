@@ -13,6 +13,7 @@ import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone.core.utils as fou
+import fiftyone.core.frame_utils as fofu
 
 
 def parse_field_str(field_str):
@@ -250,6 +251,39 @@ class ImageLabelsField(Field):
             )
 
 
+class FramesField(mongoengine.fields.MapField, Field):
+    def __init__(self, *args, **kwargs):
+        self._frame_doc_cls = kwargs.pop("frame_doc_cls")
+        super().__init__(
+            mongoengine.fields.ReferenceField(self._frame_doc_cls),
+            db_field="frames",
+        )
+
+    def __getitem__(self, frame_number):
+        if not fofu.is_frame_number(frame_number):
+            raise fofu.FrameError("not a frame number")
+        frame_number = str(frame_number)
+        try:
+            return super().__getitem__(frame_number)
+        except:
+            # pylint: disable=no-member
+            super().__setitem__(frame_number, self._frame_doc_cls())
+
+        # pylint: disable=no-member
+        return super().__getitem__(frame_number)
+
+    def __setitem__(self, frame_number, value):
+        if not fofu.is_frame_number(frame_number):
+            self.error("not a frame number")
+        frame_number = str(frame_number)
+        # pylint: disable=no-member
+        super().__setitem__(frame_number, value)
+
+    def validate(self, value):
+        if not isinstance(value, (dict, self._frame_doc_cls)):
+            self.error("invalid")
+
+
 class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
     """A field that stores instances of a given type of
     :class:`fiftyone.core.odm.BaseEmbeddedDocument` object.
@@ -280,8 +314,3 @@ class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
             etau.get_class_name(self),
             etau.get_class_name(self.document_type),
         )
-
-
-class VideoLabelsField(Field):
-
-    pass  # todo

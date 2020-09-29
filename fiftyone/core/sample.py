@@ -8,12 +8,15 @@ Dataset samples.
 from collections import defaultdict
 from copy import deepcopy
 import os
+import six
 import weakref
 
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
 
+import fiftyone.core.fields as fof
+import fiftyone.core.frame_utils as fofu
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
@@ -40,6 +43,7 @@ class _Sample(object):
         ):
             super().__setattr__(name, value)
         else:
+            self._secure_media(name, value)
             self._doc.__setattr__(name, value)
 
     def __delattr__(self, name):
@@ -47,15 +51,6 @@ class _Sample(object):
             self.__delitem__(name)
         except KeyError:
             super().__delattr__(name)
-
-    def __getitem__(self, field_name):
-        try:
-            return self.get_field(field_name)
-        except AttributeError:
-            raise KeyError("Sample has no field '%s'" % field_name)
-
-    def __setitem__(self, field_name, value):
-        self.set_field(field_name, value=value)
 
     def __delitem__(self, field_name):
         try:
@@ -73,11 +68,6 @@ class _Sample(object):
         return self._doc == other._doc
 
     @property
-    def filename(self):
-        """The basename of the data filepath."""
-        return os.path.basename(self.filepath)
-
-    @property
     def id(self):
         """The ID of the document, or ``None`` if it has not been added to the
         database.
@@ -90,18 +80,6 @@ class _Sample(object):
         has not been added to the database.
         """
         return self._doc.ingest_time
-
-    @property
-    def in_dataset(self):
-        """Whether the sample has been added to a dataset."""
-        return self.dataset is not None
-
-    @property
-    def dataset(self):
-        """The dataset to which this sample belongs, or ``None`` if it has not
-        been added to a dataset.
-        """
-        return self._dataset
 
     @property
     def field_names(self):
@@ -180,16 +158,6 @@ class _Sample(object):
         for field_name in self.field_names:
             yield field_name, self.get_field(field_name)
 
-    def compute_metadata(self):
-        """Populates the ``metadata`` field of the sample."""
-        mime_type = etau.guess_mime_type(self.filepath)
-        if mime_type.startswith("image"):
-            self.metadata = fom.ImageMetadata.build_for(self.filepath)
-        else:
-            self.metadata = fom.Metadata.build_for(self.filepath)
-
-        self.save()
-
     def copy(self):
         """Returns a deep copy of the sample that has not been added to the
         database.
@@ -246,8 +214,145 @@ class _Sample(object):
         """Deletes the document from the database."""
         self._doc.delete()
 
+    @property
+    def in_dataset(self):
+        """Whether the sample has been added to a dataset."""
+        return self.dataset is not None
 
-class Sample(_Sample):
+    @property
+    def dataset(self):
+        """The dataset to which this sample belongs, or ``None`` if it has not
+        been added to a dataset.
+        """
+        return self._dataset
+
+
+class FrameSample(_Sample):
+    # Instance references keyed by [collection_name][sample_id]
+    _instances = defaultdict(weakref.WeakValueDictionary)
+
+    def __init__(self, **kwargs):
+        self._doc = foo.NoDatasetFrameSampleDocument(**kwargs)
+        super().__init__()
+
+    def __str__(self):
+        return repr(self)
+
+    def __repr__(self):
+        return self._doc.fancy_repr(class_name=self.__class__.__name__)
+
+    def __getitem__(self, field_name):
+        try:
+            return self.get_field(field_name)
+        except AttributeError:
+            raise KeyError(
+                "%s has no field '%s'" % (self.__class__.__name__, field_name)
+            )
+
+    def __setitem__(self, field_name, value):
+        self.set_field(field_name, value=value)
+
+    @classmethod
+    def from_doc(cls, doc, dataset=None):
+        """Creates an instance of the :class:`Sample` class backed by the given
+        document.
+
+        Args:
+            doc: a :class:`fiftyone.core.odm.SampleDocument`
+            dataset: the :class:`fiftyone.core.dataset.Dataset` that the sample
+                belongs to
+
+        Returns:
+            a :class:`Sample`
+        """
+        if isinstance(doc, foo.NoDatasetFrameSampleDocument):
+            sample = cls.__new__(cls)
+            sample._dataset = None
+            sample._doc = doc
+            return sample
+
+        if not doc.id:
+            raise ValueError("`doc` is not saved to the database.")
+
+        try:
+            # Get instance if exists
+            sample = cls._instances[doc.collection_name][str(doc.id)]
+        except KeyError:
+            sample = cls.__new__(cls)
+            sample._doc = None  # set to prevent RecursionError
+            if dataset is None:
+                raise ValueError(
+                    "`dataset` arg must be provided if sample is in a dataset"
+                )
+            sample._set_backing_doc(doc, dataset=dataset)
+
+        return sample
+
+
+class _DatasetSample(_Sample):
+    def __getitem__(self, field_name):
+        if fofu.is_frame_number(field_name):
+            if self.media_type == "video":
+                return self.frames[field_name]
+            raise KeyError("only str's allowed")
+        try:
+            return self.get_field(field_name)
+        except AttributeError:
+            raise KeyError(
+                "%s has no field '%s'" % (self.__class__.__name__, field_name)
+            )
+
+    def __setitem__(self, field_name, value):
+        if fofu.is_frame_number(field_name):
+            if self.media_type == "video":
+                self.frames[field_name] = value
+                return
+            raise KeyError("only str's allowed")
+        self._secure_media(field_name, value)
+        self.set_field(field_name, value=value)
+
+    @property
+    def filename(self):
+        """The basename of the data filepath."""
+        return os.path.basename(self.filepath)
+
+    def compute_metadata(self):
+        """Populates the ``metadata`` field of the sample."""
+        mime_type = etau.guess_mime_type(self.filepath)
+        if mime_type.startswith("image"):
+            self.metadata = fom.ImageMetadata.build_for(self.filepath)
+        else:
+            self.metadata = fom.Metadata.build_for(self.filepath)
+
+        self.save()
+
+    def _secure_media(self, field_name, value):
+        if field_name == "media_type" and self.media_type != value:
+            raise fomm.MediaTypeError(
+                "media_type cannot be modified. It is derived from the file type"
+            )
+
+        if field_name == "filepath":
+            value = os.path.abspath(os.path.expanduser(value))
+            # pylint: disable=no-member
+            if self.media_type != fomm.get_media_type(value):
+                raise fomm.MediaTypeError(
+                    "A sample's filepath can be changed, but its media_type cannot"
+                )
+
+        if value is not None:
+            # pylint: disable=no-member
+            try:
+                frame_doc_cls = self._dataset._frame_doc_cls
+            except:
+                frame_doc_cls = None
+            fomm.validate_field_against_media_type(
+                self.media_type,
+                **foo.get_implied_field_kwargs(frame_doc_cls, value)
+            )
+
+
+class Sample(_DatasetSample):
     """A sample in a :class:`fiftyone.core.dataset.Dataset`.
 
     Samples store all information associated with a particular piece of data in
@@ -268,16 +373,8 @@ class Sample(_Sample):
     _instances = defaultdict(weakref.WeakValueDictionary)
 
     def __init__(self, filepath, tags=None, metadata=None, **kwargs):
-        if "mtype" in kwargs:
-            raise fomm.MediaTypeError("mtype cannot be set")
-
-        mtype = fomm.get_media_type(filepath)
         self._doc = foo.NoDatasetSampleDocument(
-            filepath=filepath,
-            tags=tags,
-            metadata=metadata,
-            mtype=mtype,
-            **kwargs
+            filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
         super().__init__()
 
@@ -484,7 +581,7 @@ class Sample(_Sample):
         self._dataset = None
 
 
-class SampleView(_Sample):
+class SampleView(_DatasetSample):
     """A view of a sample returned by a:class:`fiftyone.core.view.DatasetView`.
 
     SampleViews should never be created manually, only returned by dataset
