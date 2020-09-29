@@ -27,7 +27,7 @@ from fiftyone.core.stages import _STAGES
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
 
-from json_util import FiftyOneJSONEncoder
+from json_util import convert, FiftyOneJSONEncoder
 from util import get_file_dimensions
 from pipelines import DISTRIBUTION_PIPELINES, LABELS, SCALARS
 
@@ -295,6 +295,8 @@ class StateController(Namespace):
                 frames = sample["frames"]
                 for frame_number in frames:
                     frames[frame_number] = next(cursor)
+
+        convert(samples)
 
         more = False
         if len(samples) > page_length:

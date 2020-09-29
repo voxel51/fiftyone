@@ -23,19 +23,23 @@ def _handle_bytes(o):
     return o
 
 
-def _objectid_to_str(d):
+def convert(d):
     if isinstance(d, (dict, OrderedDict)):
         for k, v in d.items():
             if isinstance(v, ObjectId):
                 d[k] = str(v)
             elif isinstance(v, (dict, OrderedDict, list)):
-                _objectid_to_str(v)
+                convert(v)
+            elif isinstance(v, bytes):
+                d[k] = str(fou.deserialize_numpy_array(v).shape)
     if isinstance(d, list):
         for idx, i in enumerate(d):
             if isinstance(i, (dict, OrderedDict, list)):
-                _objectid_to_str(i)
+                convert(i)
             elif isinstance(i, ObjectId):
                 d[idx] = str(i)
+            elif isinstance(i, bytes):
+                d[idx] = str(fou.deserialize_numpy_array(i).shape)
 
 
 class FiftyOneJSONEncoder(JSONEncoder):
@@ -68,7 +72,6 @@ class FiftyOneJSONEncoder(JSONEncoder):
     def dumps(*args, **kwargs):
         """Defined for overriding the default SocketIO `json` interface"""
         kwargs["cls"] = FiftyOneJSONEncoder
-        _objectid_to_str(args[0])
         return json_util.dumps(
             json_util.loads(
                 json_util.dumps(*args, **kwargs), parse_constant=lambda c: c
