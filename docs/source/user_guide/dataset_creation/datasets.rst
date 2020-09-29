@@ -1069,7 +1069,7 @@ where `<target>` is the zero-based integer index of the object class
 label from `obj.names` and the bounding box coordinates are expressed as
 relative coordinates in `[0, 1] x [0, 1]`.
 
-Unlabeled images have no corresponding file in `labels/`.
+Unlabeled images have no corresponding TXT file in `data/`.
 
 You can create a FiftyOne dataset from a YOLO dataset stored in the above
 format as follows:
