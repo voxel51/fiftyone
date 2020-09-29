@@ -5,7 +5,7 @@ import { useRecoilValue } from "recoil";
 
 import Player51 from "../player51/build/cjs/player51.min.js";
 import { useEventHandler } from "../utils/hooks";
-import { loadOverlay } from "../utils/labels";
+import { convertSampleToETA } from "../utils/labels";
 
 import * as atoms from "../recoil/atoms";
 
@@ -25,7 +25,7 @@ export default ({
 }) => {
   const filter = useRecoilValue(filterSelector);
   const colorMap = useRecoilValue(atoms.colorMap);
-  const overlay = loadOverlay(sample, fieldSchema);
+  const overlay = convertSampleToETA(sample, fieldSchema);
   const [initLoad, setInitLoad] = useState(false);
   const id = uuid();
   const mimetype =

@@ -139,10 +139,10 @@ export const convertAttributesToETA = (attrs: Attrs): object[] => {
   return Object.entries(attrs).map(([name, value]) => ({ name, value }));
 };
 
-const PARSERS = {
-  Classification: [
-    "attrs",
-    (name, obj) => {
+const FIFTYONE_TO_ETA_CONVERTERS = {
+  Classification: {
+    key: "attrs",
+    convert: (name, obj) => {
       return {
         type: "eta.core.data.CategoricalAttribute",
         name,
@@ -150,10 +150,10 @@ const PARSERS = {
         value: obj.label,
       };
     },
-  ],
-  Detection: [
-    "objects",
-    (name, obj) => {
+  },
+  Detection: {
+    key: "objects",
+    convert: (name, obj) => {
       const bb = obj.bounding_box;
       const attrs = convertAttributesToETA(getDetectionAttributes(obj));
       return {
@@ -173,10 +173,10 @@ const PARSERS = {
         attrs: { attrs },
       };
     },
-  ],
+  },
 };
 
-export const loadOverlay = (sample, fieldSchema) => {
+export const convertSampleToETA = (sample, fieldSchema) => {
   const imgLabels = { attrs: { attrs: [] }, objects: { objects: [] } };
   const sampleFields = Object.keys(sample).sort();
   for (const sampleField of sampleFields) {
@@ -185,13 +185,13 @@ export const loadOverlay = (sample, fieldSchema) => {
     }
     const field = sample[sampleField];
     if (field === null || field === undefined) continue;
-    if (["Classification", "Detection"].includes(field._cls)) {
-      const [key, fn] = PARSERS[field._cls];
-      imgLabels[key][key].push(fn(sampleField, field));
+    if (FIFTYONE_TO_ETA_CONVERTERS.hasOwnProperty(field._cls)) {
+      const { key, convert } = FIFTYONE_TO_ETA_CONVERTERS[field._cls];
+      imgLabels[key][key].push(convert(sampleField, field));
     } else if (["Classifications", "Detections"].includes(field._cls)) {
       for (const object of field[field._cls.toLowerCase()]) {
-        const [key, fn] = PARSERS[object._cls];
-        imgLabels[key][key].push(fn(sampleField, object));
+        const { key, convert } = FIFTYONE_TO_ETA_CONVERTERS[object._cls];
+        imgLabels[key][key].push(convert(sampleField, object));
       }
       continue;
     } else if (VALID_SCALAR_TYPES.includes(fieldSchema[sampleField])) {
