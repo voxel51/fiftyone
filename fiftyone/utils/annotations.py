@@ -25,14 +25,17 @@ class AnnotationConfig(etaa.AnnotationConfig):
         #
         # Assume that the user is likely comparing multiple sets of labels,
         # e.g.., ground truth vs predicted, and therefore would prefer that
-        # object boxes, polylines, have one color per label field rather than
-        # different colors for each label
+        # labels have one color per field rather than different colors for each
+        # label
         #
         if "per_object_label_colors" not in d:
             d["per_object_label_colors"] = False
 
         if "per_polyline_label_colors" not in d:
             d["per_polyline_label_colors"] = False
+
+        if "per_keypoints_label_colors" not in d:
+            d["per_keypoints_label_colors"] = False
 
         super().__init__(d)
 
