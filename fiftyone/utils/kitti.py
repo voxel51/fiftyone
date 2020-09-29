@@ -289,7 +289,7 @@ def _parse_kitti_detection_row(row, frame_size):
     attributes["alpha"] = fol.NumericAttribute(value=float(row[3]))
 
     width, height = frame_size
-    xtl, ytl, xbr, ybr = map(float, row[4:8])
+    xtl, ytl, xbr, ybr = tuple(map(float, row[4:8]))
     bounding_box = [
         xtl / width,
         ytl / height,
@@ -299,14 +299,14 @@ def _parse_kitti_detection_row(row, frame_size):
 
     try:
         attributes["dimensions"] = fol.VectorAttribute(
-            value=np.asarray(map(float, row[8:11]))
+            value=np.array(list(map(float, row[8:11])))
         )
     except IndexError:
         pass
 
     try:
         attributes["location"] = fol.VectorAttribute(
-            value=np.asarray(map(float, row[11:14]))
+            value=np.array(list(map(float, row[11:14])))
         )
     except IndexError:
         pass
