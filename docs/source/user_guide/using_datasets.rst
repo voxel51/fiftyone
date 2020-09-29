@@ -876,7 +876,7 @@ Objects with attributes
 -----------------------
 
 Object detections stored in |Detections| may also be given attributes, which
-should be stored in the
+can be stored in the
 :attr:`attributes <fiftyone.core.labels.Detection.attributes>` attribute of
 each |Detection|; this field is a dictionary mapping attribute names to
 |Attribute| instances, which contain the
@@ -1036,18 +1036,98 @@ the :attr:`filled <fiftyone.core.labels.Polyline.filled>` attribute to
         'polylines': <Polylines: {
             'polylines': BaseList([
                 <Polyline: {
-                    'id': '5f7219448220788a0ae08878',
+                    'id': '5f72ba1b9d80d726d8952d9b',
+                    'attributes': BaseDict({}),
                     'label': None,
                     'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)]),
                     'closed': False,
                     'filled': False,
                 }>,
                 <Polyline: {
-                    'id': '5f7219448220788a0ae08879',
+                    'id': '5f72ba1b9d80d726d8952d9c',
+                    'attributes': BaseDict({}),
                     'label': 'triangle',
                     'points': BaseList([(0.1, 0.1), (0.3, 0.1), (0.3, 0.3)]),
                     'closed': True,
                     'filled': True,
+                }>,
+            ]),
+        }>,
+    }>
+
+.. -polylines-with-attributes:
+
+Polylines with attributes
+-------------------------
+
+Polylines stored in |Polylines| may also be given attributes, which can be
+stored in the
+:attr:`attributes <fiftyone.core.labels.Polyline.attributes>` attribute of
+each |Polyline|; this field is a dictionary mapping attribute names to
+|Attribute| instances, which contain the
+:attr:`value <fiftyone.core.labels.Attribute.value>` of the attribute and any
+associated metadata.
+
+There are |Attribute| subclasses for various types of attributes you may want
+to store. Use the appropriate subclass when possible so that FiftyOne knows the
+schema of the attributes that you're storing.
+
+.. table::
+    :widths: 25 25 50
+
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | Attribute class                                                           | Value type | Description                     |
+    +===========================================================================+============+=================================+
+    | :class:`Attribute <fiftyone.core.labels.Attribute>`                       | arbitrary  | A generic attribute of any type |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | :class:`BooleanAttribute <fiftyone.core.labels.BooleanAttribute>`         | `bool`     | A boolean attribute             |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | :class:`CategoricalAttribute <fiftyone.core.labels.CategoricalAttribute>` | `string`   | A categorical attribute         |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | :class:`NumericAttribute <fiftyone.core.labels.NumericAttribute>`         | `float`    | A numeric attribute             |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+
+    # A simple polyline
+    polyline = fo.Polyline(
+        points=[(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)],
+        closed=False,
+        filled=False,
+        attributes={
+            "length": fo.NumericAttribute(value=3),
+            "shape": fo.CategoricalAttribute(value="L"),
+        },
+    )
+
+    sample["polylines"] = fo.Polylines(polylines=[polyline])
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'polylines': <Polylines: {
+            'polylines': BaseList([
+                <Polyline: {
+                    'id': '5f72bb639d80d726d8952d9d',
+                    'attributes': BaseDict({
+                        'length': <NumericAttribute: {'value': 3}>,
+                        'shape': <CategoricalAttribute: {'value': 'L', 'confidence': None, 'logits': None}>,
+                    }),
+                    'label': None,
+                    'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)]),
+                    'closed': False,
+                    'filled': False,
                 }>,
             ]),
         }>,
@@ -1106,9 +1186,11 @@ object.
 
 |ImageLabels| instances can contain one or more of the following:
 
-- frame-level classifications
-- semantic segmentation masks
-- object detections, optionally with attributes and/or instance segmentations
+- Frame-level classifications
+- Semantic segmentation masks
+- Object detections, optionally with attributes and/or instance segmentations
+- Polylines and polygons, optionally with attributes
+- Image keypoints
 
 The labels can be ground truth annotations or model predictions; in the
 latter case, additional metadata such as prediction confidences can be store.
