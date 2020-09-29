@@ -11,6 +11,16 @@ from collections import OrderedDict
 
 from fiftyone.core.sample import Sample, SampleView
 from fiftyone.core.stages import ViewStage
+import fiftyone.core.utils as fou
+
+
+def _handle_bytes(o):
+    for k, v in o.items():
+        if isinstance(v, bytes):
+            o[k] = str(fou.deserialize_numpy_array(v).shape)
+        if isinstance(v, dict):
+            o[k] = _handle_bytes(v)
+    return o
 
 
 def _objectid_to_str(d):
@@ -45,7 +55,7 @@ class FiftyOneJSONEncoder(JSONEncoder):
             str
         """
         if isinstance(o, (Sample, SampleView)):
-            return o.to_mongo_dict()
+            return _handle_bytes(o.to_mongo_dict())
         if issubclass(type(o), ViewStage):
             return o._serialize()
         if isinstance(o, ObjectId):
