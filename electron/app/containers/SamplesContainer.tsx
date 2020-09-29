@@ -53,7 +53,9 @@ const DisplayOptionsWrapper = (props) => {
   const filteredLabelSampleCounts = useRecoilValue(
     selectors.filteredLabelSampleCounts
   );
-  const frameLabelsActive = useRecoilValue(atoms.frameLabelsActive);
+  const [frameLabelsActive, setFrameLabelsActive] = useRecoilState(
+    atoms.frameLabelsActive
+  );
   const tagNames = useRecoilValue(selectors.tagNames);
   const tagSampleCounts = useRecoilValue(selectors.tagSampleCounts);
   const frameLabelsCount = useRecoilValue(selectors.framesLabelsCount);
@@ -117,6 +119,7 @@ const DisplayOptionsWrapper = (props) => {
                 ]
               : []
           }
+          onSelectFrameLabels={() => setFrameLabelsActive(!frameLabelsActive)}
           onSelectTag={handleSetDisplayOption(setActiveTags)}
           onSelectLabel={handleSetDisplayOption(setActiveLabels)}
           scalars={getDisplayOptions(

@@ -156,6 +156,7 @@ const DisplayOptionsSidebar = React.forwardRef(
       onSelectTag,
       onSelectLabel,
       onSelectScalar,
+      onSelectFrameLabels = null,
       ...rest
     }: Props,
     ref
@@ -181,14 +182,16 @@ const DisplayOptionsSidebar = React.forwardRef(
           onSelect={onSelectLabel}
           {...cellRest}
         />
-        <Cell
-          colorMap={colorMap}
-          label="Frame Labels"
-          icon={<Label style={{ transform: "rotate(180deg)" }} />}
-          entries={frameLabels}
-          onSelect={() => {}}
-          {...cellRest}
-        />
+        {frameLabels.length ? (
+          <Cell
+            colorMap={colorMap}
+            label="Frame Labels"
+            icon={<Label style={{ transform: "rotate(180deg)" }} />}
+            entries={frameLabels}
+            onSelect={onSelectFrameLabels}
+            {...cellRest}
+          />
+        ) : null}
         <Cell
           colorMap={colorMap}
           label="Scalars"

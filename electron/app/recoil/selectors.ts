@@ -138,7 +138,9 @@ export const labelClasses = selectorFamily({
   key: "labelClasses",
   get: (label) => ({ get }) => {
     const stats = get(datasetStats);
-    return stats.labels ? stats.labels[label].classes : [];
+    return stats.labels && stats.labels[label]
+      ? stats.labels[label].classes
+      : [];
   },
 });
 

@@ -15,6 +15,11 @@ export const frameLabelsActive = atom({
   default: true,
 });
 
+export const modalFrameLabelsActive = atom({
+  key: "modalFrameLabelsActive",
+  default: true,
+});
+
 export const stateDescription = atom({
   key: "stateDescription",
   default: {},

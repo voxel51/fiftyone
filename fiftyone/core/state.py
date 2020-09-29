@@ -169,6 +169,8 @@ class StateDescriptionWithDerivables(StateDescription):
         label_fields = []
 
         for k, v in view.get_field_schema().items():
+            if view.media_type == "video" and k == "frames":
+                continue
             d = {"field": k}
             if isinstance(v, fof.EmbeddedDocumentField):
                 d["cls"] = v.document_type.__name__
