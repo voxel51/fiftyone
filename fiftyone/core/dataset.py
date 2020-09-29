@@ -424,6 +424,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_doc_cls.delete_field(field_name)
         fos.Sample._purge_field(self._sample_collection_name, field_name)
 
+    def create_index(self, field):
+        """Updates the underlying database to create an index on a field for
+        efficient sorting
+
+        Args:
+            field: the name of the field to make an index over
+        """
+        self._sample_collection.create_index(field)
+
     def get_tags(self):
         """Returns the list of unique tags of samples in the dataset.
 
@@ -1213,7 +1222,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if pipeline is None:
             pipeline = []
 
-        return self._sample_collection.aggregate(pipeline)
+        return self._sample_collection.aggregate(pipeline,
+                allowDiskUse=True)
 
     def serialize(self):
         """Serializes the dataset.

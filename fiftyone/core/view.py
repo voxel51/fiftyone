@@ -209,6 +209,15 @@ class DatasetView(foc.SampleCollection):
 
         return field_schema
 
+    def create_index(self, field):
+        """Updates the underlying database to create an index on a field for
+        efficient sorting
+
+        Args:
+            field: the name of the field to make an index over
+        """
+        self._dataset.create_index(field)
+
     def get_tags(self):
         """Returns the list of unique tags of samples in the view.
 
