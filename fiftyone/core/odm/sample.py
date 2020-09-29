@@ -356,7 +356,7 @@ class DatasetMixin(object):
         embedded_doc_type=None,
         subfield=None,
         save=True,
-        **kwargs,
+        **kwargs
     ):
         """Adds a new field to the sample.
 
