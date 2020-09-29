@@ -89,14 +89,16 @@ class NumericAttribute(Attribute):
     value = fof.FloatField()
 
 
-class VectorAttribute(Attribute):
-    """A vector attribute.
+class ListAttribute(Attribute):
+    """A list attribute.
+
+    The list can store arbitrary JSON-serialiable values.
 
     Args:
         value (None): the attribute value
     """
 
-    value = fof.VectorField()
+    value = fof.ListField()
 
 
 class _HasAttributes(Label):
@@ -322,7 +324,7 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
     meta = {"allow_inheritance": True}
 
     label = fof.StringField()
-    bounding_box = fof.VectorField()
+    bounding_box = fof.ListField()
     confidence = fof.FloatField()
 
     def to_detected_object(self, name=None):

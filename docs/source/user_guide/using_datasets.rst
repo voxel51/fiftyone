@@ -852,7 +852,7 @@ detection can be stored in the
             'detections': BaseList([
                 <Detection: {
                     'label': 'cat',
-                    'bounding_box': array([0.5, 0.5, 0.4, 0.3]),
+                    'bounding_box': BaseList([0.5, 0.5, 0.4, 0.3]),
                     'confidence': None,
                     'attributes': BaseDict({}),
                 }>,
@@ -862,7 +862,7 @@ detection can be stored in the
             'detections': BaseList([
                 <Detection: {
                     'label': 'cat',
-                    'bounding_box': array([0.48 , 0.513, 0.397, 0.288]),
+                    'bounding_box': BaseList([0.480, 0.513, 0.397, 0.288]),
                     'confidence': 0.96,
                     'attributes': BaseDict({}),
                 }>,
@@ -949,7 +949,7 @@ schema of the attributes that you're storing.
             'detections': BaseList([
                 <Detection: {
                     'label': 'cat',
-                    'bounding_box': array([0.5, 0.5, 0.4, 0.3]),
+                    'bounding_box': BaseList([0.5, 0.5, 0.4, 0.3]),
                     'confidence': None,
                     'attributes': BaseDict({
                         'age': <NumericAttribute: {'value': 51.0}>,
@@ -962,7 +962,7 @@ schema of the attributes that you're storing.
             'detections': BaseList([
                 <Detection: {
                     'label': 'cat',
-                    'bounding_box': array([0.48 , 0.513, 0.397, 0.288]),
+                    'bounding_box': BaseList([0.480, 0.513, 0.397, 0.288]),
                     'confidence': 0.96,
                     'attributes': BaseDict({
                         'age': <NumericAttribute: {'value': 51.0}>,
