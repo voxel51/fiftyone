@@ -40,7 +40,7 @@ from .core.labels import (
     BooleanAttribute,
     CategoricalAttribute,
     NumericAttribute,
-    VectorAttribute,
+    ListAttribute,
     Classification,
     Classifications,
     Detection,
