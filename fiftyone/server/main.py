@@ -27,7 +27,7 @@ from fiftyone.core.stages import _STAGES
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
 
-from json_util import FiftyOneJSONEncoder
+from json_util import convert, FiftyOneJSONEncoder
 from util import get_file_dimensions
 from pipelines import DISTRIBUTION_PIPELINES, LABELS, SCALARS
 
@@ -288,13 +288,18 @@ class StateController(Namespace):
             frames = []
             frames_coll = state.dataset._frames_collection
             for idx, s in enumerate(samples):
-                frames += list(s["frames"].values())
+                frame_numbers = sorted(
+                    list(s["frames"].keys()), key=lambda k: int(k)
+                )
+                frames += [s["frames"][f] for f in frame_numbers]
             cursor = frames_coll.find({"_id": {"$in": frames}})
             sample_idx = 0
             for sample in samples:
                 frames = sample["frames"]
                 for frame_number in frames:
                     frames[frame_number] = next(cursor)
+
+        convert(samples)
 
         more = False
         if len(samples) > page_length:

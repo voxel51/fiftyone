@@ -18,6 +18,7 @@ import unittest
 import urllib
 
 from bson import ObjectId
+import numpy as np
 import socketio
 
 import eta.core.utils as etau
@@ -31,6 +32,7 @@ from fiftyone.core.session import (
     _subscribed_sessions,
 )
 from fiftyone.core.state import StateDescriptionWithDerivables
+import fiftyone.core.utils as fou
 from fiftyone.server.json_util import FiftyOneJSONEncoder
 
 
@@ -212,6 +214,8 @@ class ServerServiceTests(unittest.TestCase):
         self.assertEqual(enc.dumps(ObjectId(oid)), '{"$oid": "%s"}' % oid)
         self.assertEqual(enc.dumps(float("nan")), '"NaN"')
         self.assertEqual(enc.dumps(float("inf")), '"Infinity"')
+        sample = fo.Sample(filepath="/path.jpg", field=np.array([[1]]))
+        self.assertEqual(enc.loads(enc.dumps(sample))["field"], "(1, 1)")
 
     def test_steps(self):
         for name, step in self.steps():
