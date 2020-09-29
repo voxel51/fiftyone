@@ -444,6 +444,7 @@ const SampleModal = ({
           </h2>
           <Row name="ID" value={sample._id} />
           <Row name="Source" value={sample.filepath} />
+          <Row name="Media type" value={sample.media_type} />
           {formatMetadata(sample.metadata).map(({ name, value }) => (
             <Row key={"metadata-" + name} name={name} value={value} />
           ))}

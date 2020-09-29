@@ -17,6 +17,7 @@ export const VALID_NUMERIC_TYPES = [
 
 export const RESERVED_FIELDS = [
   "metadata",
+  "media_type",
   "_id",
   "tags",
   "filepath",
@@ -32,6 +33,7 @@ export const RESERVED_DETECTION_FIELDS = [
 export const METADATA_FIELDS = [
   { name: "Size (bytes)", key: "size_bytes" },
   { name: "Type", key: "mime_type" },
+  { name: "Media type", key: "media_type" },
   {
     name: "Dimensions",
     value: (metadata) => {
@@ -201,5 +203,7 @@ export const convertSampleToETA = (sample, fieldSchema) => {
       });
     }
   }
+  console.log(fieldSchema);
+  console.log(imgLabels);
   return imgLabels;
 };
