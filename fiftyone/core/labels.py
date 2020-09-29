@@ -640,7 +640,7 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
 
 
 class Keypoints(ImageLabel):
-    """A list of :class:`Keypoint` in an image.
+    """A list of :class:`Keypoint` instances in an image.
 
     Args:
         keypoints (None): a list of :class:`Keypoint` instances
@@ -735,6 +735,10 @@ class ImageLabels(ImageLabel):
 
         Polylines are expanded into fields with names
         ``prefix + polyline.name``, or ``prefix + "polylines"`` for polylines
+        that do not have their ``name`` field populated.
+
+        Keypoints are expanded into fields with names
+        ``prefix + keypoints.name``, or ``prefix + "keypoints"`` for keypoints
         that do not have their ``name`` field populated.
 
         Args:
@@ -847,6 +851,19 @@ def _expand_with_prefix(
         # pylint: disable=no-member
         labels[name] = Polylines.from_eta_polylines(polylines)
 
+    #
+    # Keypoints
+    #
+
+    keypoints_map = defaultdict(etak.KeypointsContainer)
+
+    for keypoints in _image_labels.keypoints:
+        keypoints_map[prefix + (keypoints.name or "keypoints")].add(keypoints)
+
+    for name, keypoints in keypoints_map.items():
+        # pylint: disable=no-member
+        labels[name] = Keypoints.from_eta_keypoints(keypoints)
+
     return labels
 
 
@@ -917,5 +934,21 @@ def _expand_with_labels_dict(
     for name, polylines in polylines_map.items():
         # pylint: disable=no-member
         labels[name] = Polylines.from_eta_polylines(polylines)
+
+    #
+    # Keypoints
+    #
+
+    keypoints_map = defaultdict(etak.KeypointsContainer)
+
+    for keypoints in _image_labels.keypoints:
+        if keypoints.name not in labels_dict:
+            continue
+
+        keypoints_map[labels_dict[keypoints.name]].add(keypoints)
+
+    for name, keypoints in keypoints_map.items():
+        # pylint: disable=no-member
+        labels[name] = Keypoints.from_eta_keypoints(keypoints)
 
     return labels
