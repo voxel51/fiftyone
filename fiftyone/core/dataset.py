@@ -717,19 +717,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field_name: the field name
             new_field_name: the new field name
         """
-        default_fields = foos.default_sample_fields(
-            include_private=True, include_id=True
+        self._sample_doc_cls.rename_field(field_name, new_field_name)
+        fos.Sample._rename_field(
+            self._sample_collection_name, field_name, new_field_name
         )
-        if field_name in default_fields:
-            raise ValueError("Cannot rename default field '%s'" % field_name)
-
-        # @todo optimize this
-        with fou.ProgressBar() as pb:
-            for sample in pb(self.select_fields(field_name)):
-                sample[new_field_name] = sample[field_name]
-                sample.save()
-
-        self.delete_sample_field(field_name)
 
     def save(self):
         """Saves dataset-level information such as its ``info`` to the

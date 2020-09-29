@@ -350,11 +350,8 @@ class Sample(_Sample):
 
     @classmethod
     def _save_dataset_samples(cls, collection_name):
-        """Saves all changes to samples instances in memory belonging to the
-        specified dataset to the database.
-
-        A samples only needs to be saved if it has non-persisted changes and
-        still exists in memory.
+        """Saves all changes to in-memory sample instances that belong to the
+        specified collection.
 
         Args:
             collection_name: the name of the MongoDB collection
@@ -364,20 +361,18 @@ class Sample(_Sample):
 
     @classmethod
     def _reload_dataset_sample(cls, collection_name, sample_id):
-        """Reloads the fields for a sample instance in memory belonging to the
-        specified dataset from the database.
+        """Reloads the fields for the in-memory sample instance that belong to
+        the specified collection.
 
-        If the sample does not exist in memory nothing is done.
+        If the sample does not exist in-memory, nothing is done.
 
         Args:
             collection_name: the name of the MongoDB collection
-            sample_id: the ID of the sample
+            sample_id: the sample ID
 
         Returns:
             True/False whether the sample was reloaded
         """
-        # @todo(Tyler) it could optimize the code to instead flag the sample as
-        #   "stale", then have it reload once __getattribute__ is called
         dataset_instances = cls._instances[collection_name]
         sample = dataset_instances.get(sample_id, None)
         if sample:
@@ -388,11 +383,8 @@ class Sample(_Sample):
 
     @classmethod
     def _reload_dataset_samples(cls, collection_name):
-        """Reloads the fields for sample instances in memory belonging to the
-        specified dataset from the database.
-
-        If multiple processes or users are accessing the same database this
-        will keep the dataset in sync.
+        """Reloads the fields for in-memory sample instances that belong to the
+        specified collection.
 
         Args:
             collection_name: the name of the MongoDB collection
@@ -401,8 +393,23 @@ class Sample(_Sample):
             sample.reload()
 
     @classmethod
+    def _rename_field(cls, collection_name, field_name, new_field_name):
+        """Renames any field values for in-memory sample instances that belong
+        to the specified collection.
+
+        Args:
+            collection_name: the name of the MongoDB collection
+            field_name: the name of the field to rename
+            new_field_name: the new field name
+        """
+        for sample in cls._instances[collection_name].values():
+            data = sample._doc._data
+            data[new_field_name] = data.pop(field_name, None)
+
+    @classmethod
     def _purge_field(cls, collection_name, field_name):
-        """Remove any field values from samples that exist in memory.
+        """Removes values for the given field from all in-memory sample
+        instances that belong to the specified collection.
 
         Args:
             collection_name: the name of the MongoDB collection
@@ -412,9 +419,12 @@ class Sample(_Sample):
             sample._doc._data.pop(field_name, None)
 
     def _set_backing_doc(self, doc, dataset=None):
-        """Updates the backing doc for the sample.
+        """Sets the backing doc for the sample.
 
-        For use **only** when adding a sample to a dataset.
+        Args:
+            doc: a :class:`fiftyone.core.odm.SampleDocument`
+            dataset (None): the :class:`fiftyone.core.dataset.Dataset` to which
+                the sample belongs, if any
         """
         if isinstance(self._doc, foo.DatasetSampleDocument):
             raise TypeError("Sample already belongs to a dataset")
@@ -443,8 +453,6 @@ class Sample(_Sample):
         """Resets the samples' backing documents to
         :class:`fiftyone.core.odm.NoDatasetSampleDocument` instances.
 
-        For use **only** when removing samples from a dataset.
-
         Args:
             collection_name: the name of the MongoDB collection
             sample_ids: a list of sample IDs
@@ -459,9 +467,7 @@ class Sample(_Sample):
     def _reset_all_backing_docs(cls, collection_name):
         """Resets the sample's backing document to a
         :class:`fiftyone.core.odm.NoDatasetSampleDocument` instance for all
-        samples in a dataset.
-
-        For use **only** when clearing a dataset.
+        samples in the specified collection.
 
         Args:
             collection_name: the name of the MongoDB collection
