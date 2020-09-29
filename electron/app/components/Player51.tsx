@@ -12,6 +12,7 @@ import * as atoms from "../recoil/atoms";
 export default ({
   thumbnail,
   sample,
+  metadata = {},
   src,
   style,
   onClick,
@@ -39,6 +40,7 @@ export default ({
         type: mimetype,
       },
       overlay,
+      fps: metadata.fps,
       colorMap,
       activeLabels,
       filter,

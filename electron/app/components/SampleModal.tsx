@@ -204,6 +204,7 @@ const Row = ({ name, renderedName, value, children, ...rest }) => (
 const SampleModal = ({
   sample,
   sampleUrl,
+  metadata,
   colorMap = {},
   onClose,
   ...rest
@@ -402,6 +403,7 @@ const SampleModal = ({
               ...playerStyle,
             }}
             sample={sample}
+            metadata={metadata}
             colorMap={colorMap}
             activeLabels={activeLabels}
             fieldSchema={fieldSchema}

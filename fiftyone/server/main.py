@@ -335,6 +335,8 @@ class StateController(Namespace):
             w, h = get_file_dimensions(r["sample"]["filepath"])
             r["width"] = w
             r["height"] = h
+            if r["sample"]["media_type"] == "video":
+                r["fps"] = etav.get_frame_rate(r["sample"]["filepath"])
 
         return {"results": results, "more": more}
 
