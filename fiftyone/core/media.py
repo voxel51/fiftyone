@@ -8,6 +8,10 @@ FiftyOne media discrimination utils.
 import eta.core.video as etav
 
 
+VIDEO = "video"
+IMAGE = "image"
+
+
 def validate_field_against_media_type(
     media_type, ftype, embedded_doc_type=None
 ):

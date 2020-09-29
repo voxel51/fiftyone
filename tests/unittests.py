@@ -27,6 +27,7 @@ from pymongo.errors import DuplicateKeyError
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
+import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 from fiftyone.core.odm.sample import default_sample_fields
 import fiftyone.core.sample as fos
@@ -2235,6 +2236,35 @@ class ViewStageTests(unittest.TestCase):
         self.assertEqual(
             stage_dict["_uuid"], fosg.ViewStage._from_dict(stage_dict)._uuid
         )
+
+
+class MediaTypeTests(unittest.TestCase):
+    @drop_datasets
+    def setUp(self):
+        self.img_sample = fo.Sample(filepath="image.png")
+        self.img_dataset = fo.Dataset()
+        self.img_dataset.add_saple(self.img_sample)
+
+        self.vid_sample = fo.Sample(filepath="video.mp4")
+        self.vid_dataset = fo.Dataset()
+        self.vid_dataset.add_sample(self.vid_sample)
+
+    def test_img_types(self):
+        self.assertEqual(self.img_sample, fom.IMAGE)
+        self.assertEqual(self.img_dataset, fom.IMAGE)
+
+    def test_vid_types(self):
+        self.assertEqual(self.vid_sample, fom.VIDEO)
+        self.assertEqual(self.vid_dataset, fom.VIDEO)
+
+    def test_img_change_attempts(self):
+        self.img_sample.filepath = "video.mp4"
+
+
+class VideoSampleTests(unittest.TestCase):
+    @drop_datasets
+    def setUp(self):
+        pass
 
 
 if __name__ == "__main__":
