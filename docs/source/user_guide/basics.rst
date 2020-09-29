@@ -256,13 +256,13 @@ FiftyOne provides a |Label| subclass for common tasks:
             'detections': BaseList([
                 <Detection: {
                     'label': 'cat',
-                    'bounding_box': array([0.5, 0.5, 0.4, 0.3]),
+                    'bounding_box': BaseList([0.5, 0.5, 0.4, 0.3]),
                     'confidence': None,
                     'attributes': BaseDict({}),
                 }>,
                 <Detection: {
                     'label': 'dog',
-                    'bounding_box': array([0.2, 0.2, 0.2, 0.4]),
+                    'bounding_box': BaseList([0.2, 0.2, 0.2, 0.4]),
                     'confidence': None,
                     'attributes': BaseDict({}),
                 }>,
