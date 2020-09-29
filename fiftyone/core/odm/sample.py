@@ -631,6 +631,11 @@ class DatasetSampleDocument(DatasetMixin, Document, SampleDocument):
         self._proxy = Proxy()
         super().__init__(*args, **kwargs)
 
+    def set_field(self, field_name, value, create=True):
+        if field_name == "frames" and isinstance(value, Proxy):
+            value = value.doc.frames
+        super().set_field(field_name, value, create=create)
+
 
 class NoDatasetMixin(object):
     def __getattr__(self, name):
@@ -830,7 +835,9 @@ class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
         if "media_type" in kwargs and kwargs["media_type"] != media_type:
             raise fomm.MediaTypeError("media_type cannot be set")
         kwargs["media_type"] = media_type
-        kwargs["frames"] = {}
+
+        if media_type == "video":
+            kwargs["frames"] = {}
 
         for field_name in self.default_fields_ordered:
 
@@ -848,6 +855,11 @@ class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
             self._data[field_name] = value
 
         self._data.update(kwargs)
+
+    def set_field(self, field_name, value, create=True):
+        if field_name == "frames" and isinstance(value, Proxy):
+            value = value.doc.frames
+        super().set_field(field_name, value, create=create)
 
 
 class DatasetFrameSampleDocument(DatasetMixin, Document, SampleDocument):
