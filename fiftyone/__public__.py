@@ -47,6 +47,7 @@ from .core.labels import (
     Detections,
     Polyline,
     Polylines,
+    Keypoint,
     Keypoints,
     ImageLabels,
 )

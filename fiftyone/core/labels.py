@@ -10,6 +10,7 @@ from collections import defaultdict
 
 import eta.core.data as etad
 import eta.core.geometry as etag
+import eta.core.keypoints as etak
 import eta.core.image as etai
 import eta.core.objects as etao
 import eta.core.polylines as etap
@@ -465,19 +466,19 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
     meta = {"allow_inheritance": True}
 
     label = fof.StringField()
-    points = fof.ListField(fof.ListField())
+    points = fof.ListField()
     closed = fof.BooleanField(default=False)
     filled = fof.BooleanField(default=False)
 
     def to_eta_polyline(self, name=None):
-        """Returns an ``eta.core.geometry.Polyline`` representation of this
+        """Returns an ``eta.core.polylines.Polyline`` representation of this
         instance.
 
         Args:
             name (None): the name of the label field
 
         Returns:
-            an ``eta.core.geometry.Polyline``
+            an ``eta.core.polylines.Polyline``
         """
         # pylint: disable=no-member
         attrs = _to_eta_attributes(self.attributes)
@@ -508,10 +509,10 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
     @classmethod
     def from_eta_polyline(cls, polyline):
         """Creates a :class:`Polyline` instance from an
-        ``eta.core.geometry.Polyline``.
+        ``eta.core.polylines.Polyline``.
 
         Args:
-            polyline: an ``eta.core.geometry.Polyline``
+            polyline: an ``eta.core.polylines.Polyline``
 
         Returns:
             a :class:`Polyline`
@@ -559,10 +560,10 @@ class Polylines(ImageLabel):
     @classmethod
     def from_eta_polylines(cls, polylines):
         """Creates a :class:`Polylines` instance from an
-        ``eta.core.geometry.PolylineContainer``.
+        ``eta.core.polylines.PolylineContainer``.
 
         Args:
-            polylines: an ``eta.core.geometry.PolylineContainer``
+            polylines: an ``eta.core.polylines.PolylineContainer``
 
         Returns:
             a :class:`Polylines`
@@ -572,41 +573,37 @@ class Polylines(ImageLabel):
         )
 
 
-class Keypoints(ImageLabel):
+class Keypoint(ImageLabel, _HasID, _HasAttributes):
     """A list of keypoints in an image.
 
     Args:
+        label (None): a label for the points
         points (None): a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
+        attributes ({}): a dict mapping attribute names to :class:`Attribute`
+            instances
     """
 
     meta = {"allow_inheritance": True}
 
+    label = fof.StringField()
     points = fof.ListField()
 
-    @classmethod
-    def from_eta_keypoints(cls, keypoints):
-        """Creates a :class:`Keypoints` instance from an
-        ``eta.core.geometry.Keypoints``.
-
-        Args:
-            keypoints: an ``eta.core.geometry.Keypoints``
-
-        Returns:
-            a :class:`Keypoints`
-        """
-        return cls(points=keypoints.points)
-
     def to_eta_keypoints(self, name=None):
-        """Returns an ``eta.core.geometry.Keypoints`` representation of this
+        """Returns an ``eta.core.keypoints.Keypoints`` representation of this
         instance.
 
         Args:
             name (None): the name of the label field
 
         Returns:
-            an ``eta.core.geometry.Keypoints``
+            an ``eta.core.keypoints.Keypoints``
         """
-        return etag.Keypoints(points=self.points)
+        # pylint: disable=no-member
+        attrs = _to_eta_attributes(self.attributes)
+
+        return etak.Keypoints(
+            name=name, label=self.label, points=self.points, attrs=attrs,
+        )
 
     def to_image_labels(self, name=None):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
@@ -618,8 +615,73 @@ class Keypoints(ImageLabel):
         Returns:
             an ``eta.core.image.ImageLabels``
         """
-        keypoints = self.to_eta_keypoints(name=name)
-        return etai.ImageLabels(keypoints=keypoints)
+        image_labels = etai.ImageLabels()
+        image_labels.add_keypoints(self.to_eta_keypoints(name=name))
+        return image_labels
+
+    @classmethod
+    def from_eta_keypoints(cls, keypoints):
+        """Creates a :class:`Keypoint` instance from an
+        ``eta.core.keypoints.Keypoints``.
+
+        Args:
+            keypoints: an ``eta.core.keypoints.Keypoints``
+
+        Returns:
+            a :class:`Keypoint`
+        """
+        attributes = _from_eta_attributes(keypoints.attrs)
+
+        return cls(
+            label=keypoints.label,
+            points=keypoints.points,
+            attributes=attributes,
+        )
+
+
+class Keypoints(ImageLabel):
+    """A list of :class:`Keypoint` in an image.
+
+    Args:
+        keypoints (None): a list of :class:`Keypoint` instances
+    """
+
+    meta = {"allow_inheritance": True}
+
+    keypoints = fof.ListField(fof.EmbeddedDocumentField(Keypoint))
+
+    def to_image_labels(self, name=None):
+        """Returns an ``eta.core.image.ImageLabels`` representation of this
+        instance.
+
+        Args:
+            name (None): the name of the label field
+
+        Returns:
+            an ``eta.core.image.ImageLabels``
+        """
+        image_labels = etai.ImageLabels()
+
+        # pylint: disable=not-an-iterable
+        for keypoint in self.keypoints:
+            image_labels.add_keypoints(keypoint.to_eta_keypoints(name=name))
+
+        return image_labels
+
+    @classmethod
+    def from_eta_keypoints(cls, keypoints):
+        """Creates a :class:`Keypoints` instance from an
+        ``eta.core.keypoints.KeypointsContainer``.
+
+        Args:
+            keypoints: an ``eta.core.keypoints.KeypointsContainer``
+
+        Returns:
+            a :class:`Keypoints`
+        """
+        return cls(
+            keypoints=[Keypoint.from_eta_keypoints(k) for k in keypoints]
+        )
 
 
 class ImageLabels(ImageLabel):
