@@ -320,6 +320,9 @@ class StateController(Namespace):
                                 _make_image_labels(k, v, frame_number)
                             )
                     labels.add_frame(frame_labels)
+                for frame in labels:
+                    for obj in labels[frame].objects:
+                        obj.frame_number = frame
                 sample["_eta_labels"] = labels.serialize()
                 sample["frames"] = new_frames
 
