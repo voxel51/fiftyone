@@ -12,8 +12,25 @@ export const datasetName = selector({
   key: "datasetName",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
-    console.log(stateDescription);
     return stateDescription.dataset ? stateDescription.dataset.name : null;
+  },
+});
+
+export const mediaType = selector({
+  key: "mediaType",
+  get: ({ get }) => {
+    const stateDescription = get(atoms.stateDescription);
+    return stateDescription.dataset
+      ? stateDescription.dataset.media_type
+      : null;
+  },
+});
+
+export const framesLabelsCount = selector({
+  key: "frameLabelsCount",
+  get: ({ get }) => {
+    const stateDescription = get(atoms.stateDescription);
+    return stateDescription.frame_labels ? stateDescription.frame_labels : null;
   },
 });
 
@@ -87,6 +104,7 @@ export const labelNames = selector({
   key: "labelNames",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
+    console.log(stateDescription);
     const stats = get(datasetStats);
     if (!stateDescription.labels) {
       return [];

@@ -10,6 +10,11 @@ export const colorMap = atom({
   default: {},
 });
 
+export const frameLabelsActive = atom({
+  key: "frameLabelsActive",
+  default: true,
+});
+
 export const stateDescription = atom({
   key: "stateDescription",
   default: {},

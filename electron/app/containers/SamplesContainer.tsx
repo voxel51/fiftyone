@@ -49,14 +49,14 @@ const DisplayOptionsWrapper = (props) => {
     setActiveOther,
   } = displayProps;
   const labelSampleCounts = useRecoilValue(selectors.labelSampleCounts);
+  const mediaType = useRecoilValue(selectors.mediaType);
   const filteredLabelSampleCounts = useRecoilValue(
     selectors.filteredLabelSampleCounts
   );
+  const frameLabelsActive = useRecoilValue(atoms.frameLabelsActive);
   const tagNames = useRecoilValue(selectors.tagNames);
   const tagSampleCounts = useRecoilValue(selectors.tagSampleCounts);
-  const filteredTagSampleCounts = useRecoilValue(
-    selectors.filteredTagSampleCounts
-  );
+  const frameLabelsCount = useRecoilValue(selectors.framesLabelsCount);
   const filters = useRecoilValue(selectors.labelFilters);
   const setModalFilters = useSetRecoilState(selectors.modalLabelFilters);
   const labelNameGroups = useRecoilValue(selectors.labelNameGroups);
@@ -104,6 +104,19 @@ const DisplayOptionsWrapper = (props) => {
             labelSampleCounts,
             activeLabels
           )}
+          frameLabels={
+            mediaType === "video"
+              ? [
+                  {
+                    name: "frames",
+                    type: "frames",
+                    totalCount: frameLabelsCount,
+                    filteredCount: frameLabelsCount,
+                    selected: frameLabelsActive,
+                  },
+                ]
+              : []
+          }
           onSelectTag={handleSetDisplayOption(setActiveTags)}
           onSelectLabel={handleSetDisplayOption(setActiveLabels)}
           scalars={getDisplayOptions(

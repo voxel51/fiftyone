@@ -1348,7 +1348,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a JSON representation of the dataset
         """
-        return {"name": self.name}
+        return {"name": self.name, "media_type": self.media_type}
 
     @classmethod
     def from_dict(cls, d, name=None, rel_dir=None):
