@@ -471,7 +471,7 @@ def serialize_numpy_array(array, ascii=False):
     """Serializes a numpy array.
 
     Args:
-        array: a numpy array
+        array: a numpy array-like
         ascii (False): whether to return a base64-encoded ASCII string instead
             of raw bytes
 
@@ -479,7 +479,7 @@ def serialize_numpy_array(array, ascii=False):
         the serialized bytes
     """
     with io.BytesIO() as f:
-        np.save(f, array, allow_pickle=False)
+        np.save(f, np.asarray(array), allow_pickle=False)
         bytes_str = zlib.compress(f.getvalue())
 
     if ascii:
