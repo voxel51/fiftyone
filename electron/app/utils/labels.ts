@@ -179,6 +179,9 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
 };
 
 export const convertSampleToETA = (sample, fieldSchema) => {
+  if (sample._eta_labels) {
+    return sample._eta_labels;
+  }
   const imgLabels = { attrs: { attrs: [] }, objects: { objects: [] } };
   const sampleFields = Object.keys(sample).sort();
   for (const sampleField of sampleFields) {
@@ -203,7 +206,5 @@ export const convertSampleToETA = (sample, fieldSchema) => {
       });
     }
   }
-  console.log(fieldSchema);
-  console.log(imgLabels);
   return imgLabels;
 };

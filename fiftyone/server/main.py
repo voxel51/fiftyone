@@ -305,10 +305,12 @@ class StateController(Namespace):
             sample_idx = 0
             for sample in samples:
                 frames = sample["frames"]
+                new_frames = {}
                 labels = etav.VideoLabels()
                 for frame_number in frames:
+                    frame_number = int(frame_number)
                     frame = next(cursor)
-                    frames[frame_number] = frame
+                    new_frames[frame_number] = frame
                     frame_labels = etav.VideoFrameLabels(
                         frame_number=frame_number
                     )
@@ -318,7 +320,8 @@ class StateController(Namespace):
                                 _make_image_labels(k, v, frame_number)
                             )
                     labels.add_frame(frame_labels)
-                sample["_eta_labels"] = labels
+                sample["_eta_labels"] = labels.serialize()
+                sample["frames"] = new_frames
 
         convert(samples)
 
