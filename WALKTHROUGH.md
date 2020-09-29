@@ -248,7 +248,7 @@ Sample fields:
             <Detection: {
                 'id': '5f42f54b9fff295adf837b72',
                 'label': 'potted plant',
-                'bounding_box': array([0.37028125, 0.33453052, 0.03859375, 0.16314554]),
+                'bounding_box': BaseList([0.37028125, 0.33453052, 0.03859375, 0.16314554]),
                 'confidence': None,
                 'attributes': BaseDict({
                     'area': <NumericAttribute: {'value': 531.8071000000001}>,
@@ -402,7 +402,7 @@ print(predictions_view.first())
             <Detection: {
                 'id': '5f42f5539fff295adf83bcbe',
                 'label': 'horse',
-                'bounding_box': array([0.460625  , 0.79220833, 0.03951562, 0.04891667]),
+                'bounding_box': BaseList([0.460625  , 0.79220833, 0.03951562, 0.04891667]),
                 'confidence': None,
                 'attributes': BaseDict({
                     'area': <NumericAttribute: {'value': 207.45490000000035}>,
@@ -417,7 +417,7 @@ print(predictions_view.first())
             <Detection: {
                 'id': '5f42f73a9fff295adf84aece',
                 'label': 'horse',
-                'bounding_box': array([0.46101789, 0.79770222, 0.03865576, 0.04035403]),
+                'bounding_box': BaseList([0.46101789, 0.79770222, 0.03865576, 0.04035403]),
                 'confidence': 0.9759229421615601,
                 'attributes': BaseDict({}),
             }>,
