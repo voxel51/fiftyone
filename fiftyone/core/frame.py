@@ -2,6 +2,45 @@ from collections import defaultdict
 import weakref
 
 from fiftyone.core._sample import _Sample
+import fiftyone.core.frame_utils as fofu
+
+
+class Frames(object):
+
+    _doc = None
+
+    def serve(self, sample):
+        self._doc = sample._doc
+        return self
+
+    def __repr__(self):
+        return "<%s %d>" % (
+            self.__class__.__name__,
+            len(self._doc.to_dict()["frames"]),
+        )
+
+    def __iter__(self):
+        self._iter = self._doc.frames.__iter__()
+        return self
+
+    def __next__(self):
+        return int(next(self._iter))
+
+    def __getitem__(self, key):
+        if fofu.is_frame_number(key):
+            try:
+                key = str(key)
+                self._doc.frames[key]
+            except KeyError:
+                self._doc.frames[key] = Frame(frame_number=key)
+            return self._doc.frames[key]
+
+    def __setitem__(self, key, value):
+        if fofu.is_frame_number(key):
+            self._doc.frames[str(key)] = value
+
+    def _get_field_cls(self):
+        return self._doc.frames.__class__
 
 
 class Frame(_Sample):

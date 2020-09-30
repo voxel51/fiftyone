@@ -10,6 +10,7 @@ import eta.core.video as etav
 
 VIDEO = "video"
 IMAGE = "image"
+MEDIA_TYPES = {IMAGE, VIDEO}
 
 
 def validate_field_against_media_type(
@@ -35,9 +36,9 @@ def validate_field_against_media_type(
 
 def get_media_type(filepath):
     if etav.is_supported_video_file(filepath):
-        return "video"
+        return VIDEO
 
-    return "image"
+    return IMAGE
 
 
 class MediaTypeError(TypeError):

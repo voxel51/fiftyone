@@ -16,6 +16,7 @@ import eta.core.utils as etau
 import eta.core.video as etav
 
 import fiftyone.core.fields as fof
+import fiftyone.core.frame as fofr
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
@@ -23,217 +24,19 @@ import fiftyone.core.odm as foo
 from fiftyone.core._sample import _Sample
 
 
-class _Sample(object):
-    """Base class for :class:`Sample` and :class:`SampleView`."""
-
-    def __init__(self, dataset=None):
-        self._dataset = dataset
-
-    def __dir__(self):
-        return super().__dir__() + list(self.field_names)
-
-    def __getattr__(self, name):
-        try:
-            return super().__getattribute__(name)
-        except AttributeError:
-            return self._doc.get_field(name)
-
-    def __setattr__(self, name, value):
-        if name.startswith("_") or (
-            hasattr(self, name) and not self._doc.has_field(name)
-        ):
-            super().__setattr__(name, value)
-        else:
-            self._secure_media(name, value)
-            self._doc.__setattr__(name, value)
-
-    def __delattr__(self, name):
-        try:
-            self.__delitem__(name)
-        except KeyError:
-            super().__delattr__(name)
-
-    def __delitem__(self, field_name):
-        try:
-            self.clear_field(field_name)
-        except ValueError as e:
-            raise KeyError(e.args[0])
-
-    def __copy__(self):
-        return self.copy()
-
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-
-        return self._doc == other._doc
-
-    @property
-    def id(self):
-        """The ID of the document, or ``None`` if it has not been added to the
-        database.
-        """
-        return str(self._doc.id) if self._in_db else None
-
-    @property
-    def ingest_time(self):
-        """The time the document was added to the database, or ``None`` if it
-        has not been added to the database.
-        """
-        return self._doc.ingest_time
-
-    @property
-    def field_names(self):
-        """An ordered tuple of the names of the fields of this sample."""
-        return self._doc.field_names
-
-    @property
-    def _in_db(self):
-        """Whether the underlying :class:`fiftyone.core.odm.Document` has
-        been inserted into the database.
-        """
-        return self._doc.in_db
-
-    def get_field(self, field_name):
-        """Accesses the value of a field of the sample.
-
-        Args:
-            field_name: the field name
-
-        Returns:
-            the field value
-
-        Raises:
-            AttributeError: if the field does not exist
-        """
-        return self._doc.get_field(field_name)
-
-    def set_field(self, field_name, value, create=True):
-        """Sets the value of a field of the sample.
-
-        Args:
-            field_name: the field name
-            value: the field value
-            create (True): whether to create the field if it does not exist
-
-        Raises:
-            ValueError: if ``field_name`` is not an allowed field name or does
-                not exist and ``create == False``
-        """
-        if field_name.startswith("_"):
-            raise ValueError(
-                "Invalid field name: '%s'. Field names cannot start with '_'"
-                % field_name
-            )
-
-        self._doc.set_field(field_name, value, create=create)
-
-    def update_fields(self, fields_dict, create=True):
-        """Sets the dictionary of fields on the sample.
-
-        Args:
-            fields_dict: a dict mapping field names to values
-            create (True): whether to create fields if they do not exist
-        """
-        for field_name, value in fields_dict.items():
-            self.set_field(field_name, value, create=create)
-
-    def clear_field(self, field_name):
-        """Clears the value of a field of the sample.
-
-        Args:
-            field_name: the name of the field to clear
-
-        Raises:
-            ValueError: if the field does not exist
-        """
-        self._doc.clear_field(field_name=field_name)
-
-    def iter_fields(self):
-        """Returns an iterator over the ``(name, value)`` pairs of the fields
-        of the sample.
-
-        Returns:
-            an iterator that emits ``(name, value)`` tuples
-        """
-        for field_name in self.field_names:
-            yield field_name, self.get_field(field_name)
-
-    def copy(self):
-        """Returns a deep copy of the sample that has not been added to the
-        database.
-
-        Returns:
-            a :class:`Sample`
-        """
-        kwargs = {f: deepcopy(self[f]) for f in self.field_names}
-        return self.__class__(**kwargs)
-
-    def to_dict(self):
-        """Serializes the sample to a JSON dictionary.
-
-        Sample IDs and private fields are excluded in this representation.
-
-        Returns:
-            a JSON dict
-        """
-        d = self._doc.to_dict(extended=True)
-        return {k: v for k, v in d.items() if not k.startswith("_")}
-
-    def to_json(self, pretty_print=False):
-        """Serializes the sample to a JSON string.
-
-        Sample IDs and private fields are excluded in this representation.
-
-        Args:
-            pretty_print (False): whether to render the JSON in human readable
-                format with newlines and indentations
-
-        Returns:
-            a JSON string
-        """
-        return etas.json_to_str(self.to_dict(), pretty_print=pretty_print)
-
-    def to_mongo_dict(self):
-        """Serializes the sample to a BSON dictionary equivalent to the
-        representation that would be stored in the database.
-
-        Returns:
-            a BSON dict
-        """
-        return self._doc.to_dict(extended=False)
-
-    def save(self):
-        """Saves the sample to the database."""
-        self._doc.save()
-
-    def reload(self):
-        """Reloads the sample from the database."""
-        self._doc.reload()
-
-    def _delete(self):
-        """Deletes the document from the database."""
-        self._doc.delete()
-
-    @property
-    def in_dataset(self):
-        """Whether the sample has been added to a dataset."""
-        return self.dataset is not None
-
-    @property
-    def dataset(self):
-        """The dataset to which this sample belongs, or ``None`` if it has not
-        been added to a dataset.
-        """
-        return self._dataset
-
-
 class _DatasetSample(_Sample):
+    def __getattr__(self, name):
+        if name == "frames" and self.media_type == fomm.VIDEO:
+            return self._frames.serve(self)
+        return super().__getattr__(name)
+
     def __getitem__(self, field_name):
         if fofu.is_frame_number(field_name):
-            if self.media_type == "video":
+            if self.media_type == fomm.VIDEO:
                 return self.frames[field_name]
             raise KeyError("only str's allowed")
+        if field_name == "frames" and self.media_type == fomm.VIDEO:
+            return self._frames.serve(self)
         try:
             return self.get_field(field_name)
         except AttributeError:
@@ -243,7 +46,7 @@ class _DatasetSample(_Sample):
 
     def __setitem__(self, field_name, value):
         if fofu.is_frame_number(field_name):
-            if self.media_type == "video":
+            if self.media_type == fomm.VIDEO:
                 self.frames[field_name] = value
                 return
             raise KeyError("only str's allowed")
@@ -287,7 +90,9 @@ class _DatasetSample(_Sample):
                 frame_doc_cls = None
             fomm.validate_field_against_media_type(
                 self.media_type,
-                **foo.get_implied_field_kwargs(frame_doc_cls, value)
+                **foo.get_implied_field_kwargs(
+                    value, frame_doc_cls=frame_doc_cls
+                )
             )
 
 
@@ -315,13 +120,24 @@ class Sample(_DatasetSample):
         self._doc = foo.NoDatasetSampleDocument(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
+        assert self.media_type is not None
+        if self.media_type == fomm.VIDEO:
+            self._frames = fofr.Frames()
         super().__init__()
 
     def __str__(self):
         return repr(self)
 
     def __repr__(self):
-        return self._doc.fancy_repr(class_name=self.__class__.__name__)
+        kwargs = {}
+        if self.media_type == fomm.VIDEO:
+            kwargs["frames"] = self._frames.serve(self).__repr__()
+        return self._doc.fancy_repr(
+            class_name=self.__class__.__name__, **kwargs
+        )
+
+    def __iter__(self):
+        return self._frames.serve(self).__iter__()
 
     @classmethod
     def from_doc(cls, doc, dataset=None):

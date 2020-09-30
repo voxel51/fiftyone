@@ -152,6 +152,9 @@ def no_delete_default_field(func):
 class SampleDocument(SerializableDocument):
     """Interface for sample backing documents."""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     @property
     def collection_name(self):
         """The name of the MongoDB collection to which this sample belongs, or
@@ -220,50 +223,6 @@ class SampleDocument(SerializableDocument):
             ValueError: if the field does not exist
         """
         raise NotImplementedError("Subclass must implement `clear_field()`")
-
-
-class Proxy(object):
-
-    doc = None
-
-    def serve(self, doc):
-        self.doc = doc
-        return self
-
-    def values(self):
-        return self.doc.frames.values()
-
-    def __iter__(self):
-        self._iter = self.doc.frames.__iter__()
-
-    def __next__(self):
-        doc = next(self._iter)
-        print(doc)
-        raise KeyError("Something")
-
-    def __getitem__(self, key):
-        if fofu.is_frame_number(key):
-            try:
-                key = str(key)
-                self.doc.frames[key]
-            except KeyError:
-                self.doc.frames[key] = NoDatasetFrameSampleDocument(
-                    frame_number=key
-                )
-            return fofr.Frame.from_doc(self.doc.frames[key])
-
-    def __setitem__(self, key, value):
-        if fofu.is_frame_number(key):
-            self.doc.frames[str(key)] = value._doc
-
-    def __getattr__(self, name):
-        return getattr(self.doc, name)
-
-    def __settattr__(self, name, value):
-        setattr(self.doc, name, value)
-
-    def _get_field_cls(self):
-        return self.doc.frames.__class__
 
 
 class DatasetMixin(object):
@@ -357,8 +316,6 @@ class DatasetMixin(object):
         return field_name in self._fields
 
     def get_field(self, field_name):
-        if field_name == "frames":
-            return self._proxy.serve(self)
         if not self.has_field(field_name):
             raise AttributeError("Sample has no field '%s'" % field_name)
         return getattr(self, field_name)
@@ -436,7 +393,7 @@ class DatasetMixin(object):
         return "frames." + cls.__name__
 
     @classmethod
-    def add_implied_field(cls, field_name, value):
+    def add_implied_field(cls, field_name, value, **kwargs):
         """Adds the field to the sample, inferring the field type from the
         provided value.
 
@@ -448,13 +405,7 @@ class DatasetMixin(object):
         if field_name in cls._fields:
             raise ValueError("Field '%s' already exists" % field_name)
 
-        frame_doc_cls = type(
-            cls._frame_collection_name(), (DatasetFrameSampleDocument,), {}
-        )
-
-        cls.add_field(
-            field_name, **get_implied_field_kwargs(frame_doc_cls, value)
-        )
+        cls.add_field(field_name, **get_implied_field_kwargs(value, **kwargs))
 
     def set_field(self, field_name, value, create=False):
         if field_name.startswith("_"):
@@ -716,12 +667,8 @@ class DatasetSampleDocument(DatasetMixin, Document, SampleDocument):
     # Random float used for random dataset operations (e.g. shuffle)
     _rand = fof.FloatField(default=_generate_rand)
 
-    def __init__(self, *args, **kwargs):
-        self._proxy = Proxy()
-        super().__init__(*args, **kwargs)
-
     def set_field(self, field_name, value, create=True):
-        if field_name == "frames" and isinstance(value, Proxy):
+        if field_name == "frames" and isinstance(value, fofr.Frames):
             value = value.doc.frames
         super().set_field(field_name, value, create=create)
 
@@ -833,7 +780,7 @@ class NoDatasetMixin(object):
     def to_dict(self, extended=False):
         d = {}
         for k, v in self._data.items():
-            if k == "frames" and self.media_type == "video":
+            if k == "frames" and self.media_type == fomm.VIDEO:
                 d[k] = {str(fk): fv for fk, fv in v.items()}
             elif hasattr(v, "to_dict"):
                 # Embedded document
@@ -916,7 +863,7 @@ class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
             raise fomm.MediaTypeError("media_type cannot be set")
         kwargs["media_type"] = media_type
 
-        if media_type == "video":
+        if media_type == fomm.VIDEO:
             kwargs["frames"] = defaultdict(fofr.Frame)
 
         for field_name in self.default_fields_ordered:
@@ -937,7 +884,7 @@ class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
         self._data.update(kwargs)
 
     def set_field(self, field_name, value, create=True):
-        if field_name == "frames" and isinstance(value, Proxy):
+        if field_name == "frames" and isinstance(value, fofr.Frames):
             value = value.doc.frames
         super().set_field(field_name, value, create=create)
 
@@ -963,7 +910,7 @@ class NoDatasetFrameSampleDocument(NoDatasetMixin, SampleDocument):
         self._data.update(kwargs)
 
 
-def get_implied_field_kwargs(frame_doc_cls, value):
+def get_implied_field_kwargs(value, **kwargs):
     if isinstance(value, BaseEmbeddedDocument):
         return {
             "ftype": fof.EmbeddedDocumentField,
@@ -994,8 +941,11 @@ def get_implied_field_kwargs(frame_doc_cls, value):
     if isinstance(value, dict):
         return {"ftype": fof.DictField}
 
-    if isinstance(value, Proxy):
-        return {"ftype": frame_doc_cls}
+    if isinstance(value, fofr.Frames):
+        return {
+            "ftype": fof.FramesField,
+            "frame_doc_cls": kwargs["frame_doc_cls"],
+        }
 
     raise TypeError("Unsupported field value '%s'" % type(value))
 

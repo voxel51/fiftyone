@@ -35,7 +35,11 @@ class SerializableDocument(object):
         return self.to_dict() == other.to_dict()
 
     def fancy_repr(
-        self, class_name=None, select_fields=None, exclude_fields=None
+        self,
+        class_name=None,
+        select_fields=None,
+        exclude_fields=None,
+        **kwargs
     ):
         """Generates a customizable string representation of the document.
 
@@ -57,13 +61,14 @@ class SerializableDocument(object):
                 )
             ):
                 continue
-
-            value = getattr(self, f)
-
-            if isinstance(value, ObjectId):
-                d[f] = str(value)
+            if f in kwargs:
+                d[f] = kwargs[f]
             else:
-                d[f] = value
+                value = getattr(self, f)
+                if isinstance(value, ObjectId):
+                    d[f] = str(value)
+                else:
+                    d[f] = value
 
         doc_name = class_name or self.__class__.__name__
         doc_str = fou.pformat(d)
