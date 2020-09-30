@@ -50,6 +50,7 @@ from .core.labels import (
     Detections,
     ImageLabels,
 )
+from .core.media import MediaType
 from .core.metadata import (
     Metadata,
     ImageMetadata,
