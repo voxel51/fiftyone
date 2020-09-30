@@ -63,19 +63,29 @@ class StateDescription(etas.Serializable):
         )
         super().__init__()
 
-    def serialize(self):
-        dataset = (
+    def serialize(self, reflective=False):
+        """Serializes the state into a dictionary.
+
+        Args:
+            reflective: whether to include reflective attributes when
+                serializing the object. By default, this is False
+        Returns:
+            a JSON dictionary representation of the object
+        """
+        d = super().serialize(reflective=reflective)
+        d["dataset"] = (
             self.dataset._serialize() if self.dataset is not None else None
         )
-        view = self.view._serialize() if self.view is not None else None
-        return {
-            "close": self.close,
-            "connect": self.connect,
-            "dataset": dataset,
-            "view": view,
-            "selected": self.selected,
-            "view_count": self.view_count,
-        }
+        d["view"] = self.view._serialize() if self.view is not None else None
+        return d
+
+    def attributes(self):
+        """Returns list of attributes to be serialize"""
+        return list(
+            filter(
+                lambda a: a not in {"dataset", "vide"}, super().attributes()
+            )
+        )
 
     @classmethod
     def from_dict(cls, d, **kwargs):
