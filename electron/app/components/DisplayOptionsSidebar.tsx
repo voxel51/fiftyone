@@ -218,7 +218,10 @@ const DisplayOptionsSidebar = React.forwardRef(
             {...cellRest}
           />
         ) : null}
-        {tags.length || labels.length || scalars.length ? (
+        {tags.length ||
+        labels.length ||
+        frameLabels.length ||
+        scalars.length ? (
           <Button onClick={refreshColorMap}>
             <Autorenew />
             Refresh colors
