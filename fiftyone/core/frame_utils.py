@@ -12,7 +12,7 @@ import six
 
 def is_frame_number(value):
     if isinstance(value, six.integer_types):
-        if value < 0:
+        if value < 1:
             raise FrameError("positive ints only")
         return True
     return False
