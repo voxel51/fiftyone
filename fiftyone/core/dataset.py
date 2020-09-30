@@ -1342,7 +1342,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return self._sample_collection.aggregate(pipeline)
 
-    def serialize(self):
+    def _serialize(self):
         """Serializes the dataset.
 
         Returns:

@@ -62,6 +62,20 @@ class StateDescription(etas.Serializable):
         )
         super().__init__()
 
+    def serialize(self):
+        dataset = (
+            self.dataset._serialize() if self.dataset is not None else None
+        )
+        view = self.view._serialize() if self.view is not None else None
+        return {
+            "close": self.close,
+            "connect": self.connect,
+            "dataset": dataset,
+            "view": view,
+            "selected": self.selected,
+            "view_count": self.view_count,
+        }
+
     @classmethod
     def from_dict(cls, d, **kwargs):
         """Constructs a :class:`StateDescription` from a JSON dictionary.

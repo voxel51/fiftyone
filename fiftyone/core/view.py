@@ -273,14 +273,14 @@ class DatasetView(foc.SampleCollection):
         d["samples"] = samples
         return d
 
-    def serialize(self):
+    def _serialize(self):
         """Serializes the view.
 
         Returns:
             a JSON representation of the view
         """
         return {
-            "dataset": self._dataset.serialize(),
+            "dataset": self._dataset._serialize(),
             "view": [s._serialize() for s in self._stages],
         }
 
