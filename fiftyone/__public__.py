@@ -19,7 +19,10 @@ from .core.dataset import (
     delete_dataset,
     delete_non_persistent_datasets,
 )
-from .core.expressions import ViewField, ViewExpression
+from .core.expressions import (
+    ViewField,
+    ViewExpression,
+)
 from .core.fields import (
     Field,
     BooleanField,
@@ -48,9 +51,11 @@ from .core.labels import (
     Detections,
     ImageLabels,
 )
+from .core.media import MediaType
 from .core.metadata import (
     Metadata,
     ImageMetadata,
+    VideoMetadata,
 )
 from .core.sample import Sample
 from .core.session import (
