@@ -41,7 +41,7 @@ class Frames(object):
     def keys(self):
         dataset = self._sample._dataset if self._sample._in_db else None
         for k in self._sample._doc.frames.keys():
-            return int(k)
+            yield int(k)
 
     def items(self):
         dataset = self._sample._dataset if self._sample._in_db else None
