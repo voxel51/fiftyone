@@ -1149,6 +1149,176 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema=expand_schema,
         )
 
+    def add_videos(self, samples, sample_parser, tags=None):
+        """Adds the given videos to the dataset.
+
+        This operation does not read the images.
+
+        See :ref:`this guide <custom-sample-parser>` for more details about
+        adding videos to a dataset by defining your own
+        :class:`UnlabeledVideoSampleParser <fiftyone.utils.data.parsers.UnlabeledVideoSampleParser>`.
+
+        Args:
+            samples: an iterable of samples
+            sample_parser: a
+                :class:`fiftyone.utils.data.parsers.UnlabeledVideoSampleParser`
+                instance to use to parse the samples
+            tags (None): an optional list of tags to attach to each sample
+
+        Returns:
+            a list of IDs of the samples that were added to the dataset
+        """
+        return foud.add_videos(self, samples, sample_parser, tags=tags)
+
+    def add_labeled_videos(
+        self, samples, sample_parser, tags=None, expand_schema=True,
+    ):
+        """Adds the given labeled videos to the dataset.
+
+        This operation will iterate over all provided samples, but the videos
+        will not be read/decoded/etc.
+
+        See :ref:`this guide <custom-sample-parser>` for more details about
+        adding labeled videos to a dataset by defining your own
+        :class:`LabeledVideoSampleParser <fiftyone.utils.data.parsers.LabeledVideoSampleParser>`.
+
+        Args:
+            samples: an iterable of samples
+            sample_parser: a
+                :class:`fiftyone.utils.data.parsers.LabeledVideoSampleParser`
+                instance to use to parse the samples
+            tags (None): an optional list of tags to attach to each sample
+            expand_schema (True): whether to dynamically add new sample fields
+                encountered to the dataset schema. If False, an error is raised
+                if a sample's schema is not a subset of the dataset schema
+
+        Returns:
+            a list of IDs of the samples that were added to the dataset
+        """
+        return foud.add_labeled_videos(
+            self,
+            samples,
+            sample_parser,
+            tags=tags,
+            expand_schema=expand_schema,
+        )
+
+    def add_videos_dir(self, videos_dir, tags=None, recursive=True):
+        """Adds the given directory of videos to the dataset.
+
+        See :class:`fiftyone.types.dataset_types.VideoDirectory` for format
+        details. In particular, note that files with non-video MIME types are
+        omitted.
+
+        This operation does not read/decode the videos.
+
+        Args:
+            videos_dir: a directory of videos
+            tags (None): an optional list of tags to attach to each sample
+            recursive (True): whether to recursively traverse subdirectories
+
+        Returns:
+            a list of IDs of the samples in the dataset
+        """
+        video_paths = foud.parse_videos_dir(videos_dir, recursive=recursive)
+        sample_parser = foud.VideoSampleParser()
+        return self.add_videos(video_paths, sample_parser, tags=tags)
+
+    def add_videos_patt(self, videos_patt, tags=None):
+        """Adds the given glob pattern of videos to the dataset.
+
+        This operation does not read/decode the videos.
+
+        Args:
+            videos_patt: a glob pattern of videos like
+                ``/path/to/videos/*.mp4``
+            tags (None): an optional list of tags to attach to each sample
+
+        Returns:
+            a list of IDs of the samples in the dataset
+        """
+        video_paths = etau.get_glob_matches(videos_patt)
+        sample_parser = foud.VideoSampleParser()
+        return self.add_videos(video_paths, sample_parser, tags=tags)
+
+    def ingest_videos(
+        self, samples, sample_parser, tags=None, dataset_dir=None,
+    ):
+        """Ingests the given iterable of videos into the dataset.
+
+        The videos are copied to ``dataset_dir``.
+
+        See :ref:`this guide <custom-sample-parser>` for more details about
+        ingesting videos into a dataset by defining your own
+        :class:`UnlabeledVideoSampleParser <fiftyone.utils.data.parsers.UnlabeledVideoSampleParser>`.
+
+        Args:
+            samples: an iterable of samples
+            sample_parser: a
+                :class:`fiftyone.utils.data.parsers.UnlabeledVideoSampleParser`
+                instance to use to parse the samples
+            tags (None): an optional list of tags to attach to each sample
+            dataset_dir (None): the directory in which the videos will be
+                written. By default, :func:`get_default_dataset_dir` is used
+
+        Returns:
+            a list of IDs of the samples in the dataset
+        """
+        if dataset_dir is None:
+            dataset_dir = get_default_dataset_dir(self.name)
+
+        dataset_ingestor = foud.UnlabeledVideoDatasetIngestor(
+            dataset_dir, samples, sample_parser
+        )
+
+        return self.add_importer(dataset_ingestor, tags=tags)
+
+    def ingest_labeled_videos(
+        self,
+        samples,
+        sample_parser,
+        tags=None,
+        expand_schema=True,
+        dataset_dir=None,
+        skip_unlabeled=False,
+    ):
+        """Ingests the given iterable of labeled video samples into the
+        dataset.
+
+        The videos are copied to ``dataset_dir``.
+
+        See :ref:`this guide <custom-sample-parser>` for more details about
+        ingesting labeled videos into a dataset by defining your own
+        :class:`LabeledVideoSampleParser <fiftyone.utils.data.parsers.LabeledVideoSampleParser>`.
+
+        Args:
+            samples: an iterable of samples
+            sample_parser: a
+                :class:`fiftyone.utils.data.parsers.LabeledVideoSampleParser`
+                instance to use to parse the samples
+            tags (None): an optional list of tags to attach to each sample
+            expand_schema (True): whether to dynamically add new sample fields
+                encountered to the dataset schema. If False, an error is raised
+                if the sample's schema is not a subset of the dataset schema
+            dataset_dir (None): the directory in which the videos will be
+                written. By default, :func:`get_default_dataset_dir` is used
+            skip_unlabeled (False): whether to skip unlabeled videos when
+                importing
+
+        Returns:
+            a list of IDs of the samples in the dataset
+        """
+        if dataset_dir is None:
+            dataset_dir = get_default_dataset_dir(self.name)
+
+        dataset_ingestor = foud.LabeledVideoDatasetIngestor(
+            dataset_dir, samples, sample_parser, skip_unlabeled=skip_unlabeled,
+        )
+
+        return self.add_importer(
+            dataset_ingestor, tags=tags, expand_schema=expand_schema
+        )
+
     @classmethod
     def from_dir(
         cls,
@@ -1325,6 +1495,103 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         dataset = cls(name)
         dataset.add_images_patt(images_patt, tags=tags)
+        return dataset
+
+    @classmethod
+    def from_videos(cls, samples, sample_parser, name=None, tags=None):
+        """Creates a :class:`Dataset` from the given videos.
+
+        This operation does not read/decode the videos.
+
+        See :ref:`this guide <custom-sample-parser>` for more details about
+        providing a custom
+        :class:`UnlabeledVideoSampleParser <fiftyone.utils.data.parsers.UnlabeledVideoSampleParser>`
+        to load video samples into FiftyOne.
+
+        Args:
+            samples: an iterable of samples
+            sample_parser: a
+                :class:`fiftyone.utils.data.parsers.UnlabeledVideoSampleParser`
+                instance to use to parse the samples
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+            tags (None): an optional list of tags to attach to each sample
+
+        Returns:
+            a :class:`Dataset`
+        """
+        dataset = cls(name)
+        dataset.add_videos(samples, sample_parser, tags=tags)
+        return dataset
+
+    @classmethod
+    def from_labeled_videos(
+        cls, samples, sample_parser, name=None, tags=None,
+    ):
+        """Creates a :class:`Dataset` from the given labeled videos.
+
+        This operation will iterate over all provided samples, but the videos
+        will not be read/decoded/etc.
+
+        See :ref:`this guide <custom-sample-parser>` for more details about
+        providing a custom
+        :class:`LabeledVideoSampleParser <fiftyone.utils.data.parsers.LabeledVideoSampleParser>`
+        to load labeled video samples into FiftyOne.
+
+        Args:
+            samples: an iterable of samples
+            sample_parser: a
+                :class:`fiftyone.utils.data.parsers.LabeledVideoSampleParser`
+                instance to use to parse the samples
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+            tags (None): an optional list of tags to attach to each sample
+
+        Returns:
+            a :class:`Dataset`
+        """
+        dataset = cls(name)
+        dataset.add_labeled_videos(samples, sample_parser, tags=tags)
+        return dataset
+
+    @classmethod
+    def from_videos_dir(cls, videos_dir, name=None, tags=None, recursive=True):
+        """Creates a :class:`Dataset` from the given directory of videos.
+
+        This operation does not read/decode the videos.
+
+        Args:
+            videos_dir: a directory of videos
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+            tags (None): an optional list of tags to attach to each sample
+            recursive (True): whether to recursively traverse subdirectories
+
+        Returns:
+            a :class:`Dataset`
+        """
+        dataset = cls(name)
+        dataset.add_videos_dir(videos_dir, tags=tags, recursive=recursive)
+        return dataset
+
+    @classmethod
+    def from_videos_patt(cls, videos_patt, name=None, tags=None):
+        """Creates a :class:`Dataset` from the given glob pattern of videos.
+
+        This operation does not read/decode the videos.
+
+        Args:
+            videos_patt: a glob pattern of videos like
+                ``/path/to/videos/*.mp4``
+            name (None): a name for the dataset. By default,
+                :func:`get_default_dataset_name` is used
+            tags (None): an optional list of tags to attach to each sample
+
+        Returns:
+            a :class:`Dataset`
+        """
+        dataset = cls(name)
+        dataset.add_videos_patt(videos_patt, tags=tags)
         return dataset
 
     def aggregate(self, pipeline=None):
