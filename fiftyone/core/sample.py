@@ -7,6 +7,7 @@ Dataset samples.
 """
 from collections import defaultdict
 from copy import deepcopy
+import logging
 import os
 import six
 import weakref
@@ -22,6 +23,9 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
 from fiftyone.core._sample import _Sample
+
+
+logger = logging.getLogger(__name__)
 
 
 class _DatasetSample(_Sample):
@@ -337,6 +341,12 @@ class Sample(_DatasetSample):
         self._doc = self.copy()._doc
         self._dataset = None
 
+    def save(self):
+        """Saves the sample to the database."""
+        if self.media_type == fomm.VIDEO:
+            logger.warn("Warning: Saving video samples is currently unstable")
+        super().save()
+
 
 class SampleView(_DatasetSample):
     """A view of a sample returned by a:class:`fiftyone.core.view.DatasetView`.
@@ -479,6 +489,11 @@ class SampleView(_DatasetSample):
         Any modified fields are updated, and any in-memory :class:`Sample`
         instances of this sample are updated.
         """
+        if self.media_type == fomm.VIDEO:
+            logger.warn(
+                "Warning: Saving video sample views is currently unstable"
+            )
+
         self._doc.save(filtered_fields=self._filtered_fields)
 
         # Reload the sample singleton if it exists in memory

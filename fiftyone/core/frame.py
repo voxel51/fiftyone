@@ -38,21 +38,55 @@ class Frames(object):
     def __next__(self):
         return int(next(self._iter))
 
+    def keys(self):
+        dataset = self._sample._dataset if self._sample._in_db else None
+        for k in self._sample._doc.frames.keys():
+            return int(k)
+
+    def items(self):
+        dataset = self._sample._dataset if self._sample._in_db else None
+        for k, v in self._sample._doc.frames.items():
+            yield int(k), Frame.from_doc(v, dataset=dataset)
+
+    def values(self):
+        dataset = self._sample._dataset if self._sample._in_db else None
+        for v in self._sample._doc.frames.values():
+            yield Frame.from_doc(v, dataset=dataset)
+
     def __getitem__(self, key):
         if fofu.is_frame_number(key):
             try:
                 key = str(key)
-                self._sample._doc.frames[key]
+                doc = self._sample._doc.frames[key]
             except KeyError:
-                self._sample._doc.frames[key] = Frame(frame_number=key)
-            frame = self._sample._doc.frames[key]
-            if not isinstance(frame, Frame):
-                frame = Frame.from_doc(frame, dataset=self._sample._dataset)
+                if self._sample._in_db:
+                    doc = self._sample._dataset._frame_doc_cls.from_dict(
+                        {"frame_number": key}
+                    )
+                    doc.save()
+                    dataset = self._sample._dataset
+                else:
+                    doc = NoDatasetFrameSampleDocument(frame_number=key)
+                    dataset = None
+            frame = Frame.from_doc(doc, dataset=self._sample._dataset)
+            self._sample._doc.frames[key] = frame._doc
             return frame
 
     def __setitem__(self, key, value):
         if fofu.is_frame_number(key):
-            self._sample._doc.frames[str(key)] = value
+            if not isinstance(value, Frame):
+                raise ValueError("%s is not a Frame")
+
+            d = value.to_dict()
+            d.pop("_id", None)
+            if self._sample._in_db:
+                doc = self._sample._dataset._frame_doc_cls.from_dict(d)
+                doc.save()
+                self._sample._doc.frames[str(key)] = doc
+            else:
+                self._sample._doc.frames[
+                    str(key)
+                ] = NoDatasetFrameSampleDocument.from_dict(d)
 
     def _get_field_cls(self):
         return self._sample._doc.frames.__class__
@@ -66,7 +100,6 @@ class Frame(_Sample):
     _NO_COLL_CLS = NoDatasetFrameSampleDocument
 
     def __init__(self, **kwargs):
-
         self._doc = NoDatasetFrameSampleDocument(**kwargs)
         super().__init__()
 
@@ -86,9 +119,6 @@ class Frame(_Sample):
 
     def __setitem__(self, field_name, value):
         self.set_field(field_name, value=value)
-
-    def to_mongo(self, value):
-        raise ValueError("Eeee")
 
     @classmethod
     def from_doc(cls, doc, dataset=None):

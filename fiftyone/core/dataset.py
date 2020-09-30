@@ -547,7 +547,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 str(frame_number) for frame_number in sample_frames.keys()
             ]
             sample_frames = [
-                frame.to_mongo_dict() for frame in sample_frames.values()
+                frame.to_dict() for frame in sample_frames.values()
             ]
             frames_len[idx] = len(sample_frames)
             for frame in sample_frames:
