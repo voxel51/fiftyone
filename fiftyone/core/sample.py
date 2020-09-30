@@ -179,6 +179,8 @@ class Sample(_DatasetSample):
                 )
             sample._set_backing_doc(doc, dataset=dataset)
 
+        if sample.media_type == fomm.VIDEO:
+            sample._frames = fofr.Frames()
         return sample
 
     @classmethod
