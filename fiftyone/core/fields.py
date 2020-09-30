@@ -80,13 +80,16 @@ class IntField(mongoengine.IntField, Field):
 
 
 class FrameNumberField(IntField):
-    """A strictly positive integer field."""
+    """A video frame number field."""
 
     def validate(self, value):
         if not isinstance(value, six.integer_types):
-            self.error("This value is not an integer type")
+            self.error("Frame numbers must be integers; found %s" % value)
+
         if value < 1:
-            self.error("This value is not a positive integer")
+            self.error(
+                "Frame numbers must be 1-based integers; found %s" % value
+            )
 
 
 class FloatField(mongoengine.FloatField, Field):
