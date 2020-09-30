@@ -431,7 +431,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             field: the name of the field to make an index over
         """
-        self._sample_collection.create_index(field)
+        if field not in self._indexes:
+            self._sample_collection.create_index(field)
 
     def get_tags(self):
         """Returns the list of unique tags of samples in the dataset.
@@ -1318,6 +1319,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @property
     def _sample_collection(self):
         return foo.get_db_conn()[self._sample_collection_name]
+
+    @property
+    def _indexes(self):
+        index_info = self._sample_collection.index_information()
+        indexes = [k['key'][0][0] for k in index_info.values()]
+        return indexes
 
     def _apply_field_schema(self, new_fields):
         curr_fields = self.get_field_schema()
