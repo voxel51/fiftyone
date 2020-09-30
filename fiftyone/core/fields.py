@@ -8,6 +8,7 @@ Dataset sample fields.
 from bson.binary import Binary
 import mongoengine.fields
 import numpy as np
+import six
 
 import eta.core.image as etai
 import eta.core.utils as etau
@@ -76,6 +77,16 @@ class IntField(mongoengine.IntField, Field):
     """A 32 bit integer field."""
 
     pass
+
+
+class FrameNumberField(IntField):
+    """A strictly positive integer field."""
+
+    def validate(self, value):
+        if not isinstance(value, six.integer_types):
+            self.error("This value is not an integer type")
+        if value < 1:
+            self.error("This value is not a positive integer")
 
 
 class FloatField(mongoengine.FloatField, Field):

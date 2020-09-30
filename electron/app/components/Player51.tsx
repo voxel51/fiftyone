@@ -8,6 +8,7 @@ import { useEventHandler } from "../utils/hooks";
 import { convertSampleToETA } from "../utils/labels";
 
 import * as atoms from "../recoil/atoms";
+import * as selectors from "../recoil/selectors";
 
 export default ({
   thumbnail,
@@ -19,6 +20,7 @@ export default ({
   onDoubleClick,
   onLoad = () => {},
   activeLabels,
+  frameLabelsActive,
   fieldSchema = {},
   filterSelector,
   playerRef,
@@ -26,6 +28,7 @@ export default ({
 }) => {
   const filter = useRecoilValue(filterSelector);
   const colorMap = useRecoilValue(atoms.colorMap);
+  const mediaType = useRecoilValue(selectors.mediaType);
   const overlay = convertSampleToETA(sample, fieldSchema);
   const [initLoad, setInitLoad] = useState(false);
   const id = uuid();
@@ -33,6 +36,12 @@ export default ({
     (sample.metadata && sample.metadata.mime_type) ||
     mime.lookup(sample.filepath) ||
     "image/jpg";
+  const playerActiveLabels = {
+    ...activeLabels,
+  };
+  if (mediaType === "video") {
+    playerActiveLabels.frames = frameLabelsActive;
+  }
   const [player] = useState(
     new Player51({
       media: {
@@ -42,7 +51,7 @@ export default ({
       overlay,
       fps: metadata.fps,
       colorMap,
-      activeLabels,
+      playerActiveLabels,
       filter,
       enableOverlayOptions: {
         attrRenderMode: false,
@@ -70,12 +79,13 @@ export default ({
       setInitLoad(true);
     } else {
       player.updateOptions({
-        activeLabels,
+        activeLabels: playerActiveLabels,
         filter,
         colorMap,
       });
     }
-  }, [filter, overlay, activeLabels, colorMap]);
+    console.log(playerActiveLabels);
+  }, [filter, overlay, playerActiveLabels, colorMap]);
 
   useEventHandler(player, "load", onLoad);
 

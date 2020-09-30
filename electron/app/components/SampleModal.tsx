@@ -417,6 +417,7 @@ const SampleModal = ({
             metadata={metadata}
             colorMap={colorMap}
             activeLabels={activeLabels}
+            frameLabelsActive={frameLabelsActive}
             fieldSchema={fieldSchema}
             filterSelector={selectors.modalLabelFilters}
             playerRef={playerRef}

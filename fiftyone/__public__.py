@@ -36,6 +36,7 @@ from .core.fields import (
     ArrayField,
     ImageLabelsField,
 )
+from .core.frame import Frame
 from .core.labels import (
     Label,
     ImageLabel,
@@ -56,7 +57,7 @@ from .core.metadata import (
     ImageMetadata,
     VideoMetadata,
 )
-from .core.sample import FrameSample, Sample
+from .core.sample import Sample
 from .core.session import (
     close_app,
     launch_app,

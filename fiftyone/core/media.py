@@ -9,6 +9,11 @@ import eta.core.image as etai
 import eta.core.video as etav
 
 
+# @todo deprecate in favor of MediaType?
+VIDEO = "video"
+IMAGE = "image"
+
+
 class MediaType(object):
     """Media type enum.
 

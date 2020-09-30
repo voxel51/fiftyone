@@ -47,7 +47,7 @@ type :class:`NoDatasetSampleDocument` to type ``dataset._sample_doc_cls``::
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import OrderedDict
+from collections import defaultdict, OrderedDict
 from functools import wraps
 import json
 import numbers
@@ -63,6 +63,7 @@ import six
 import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.frame_utils as fofu
+import fiftyone.core.frame as fofr
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.utils as fou
@@ -232,14 +233,28 @@ class Proxy(object):
     def values(self):
         return self.doc.frames.values()
 
+    def __iter__(self):
+        self._iter = self.doc.frames.__iter__()
+
+    def __next__(self):
+        doc = next(self._iter)
+        print(doc)
+        raise KeyError("Something")
+
     def __getitem__(self, key):
         if fofu.is_frame_number(key):
-            key = str(key)
-            return self.doc.frames[key]
+            try:
+                key = str(key)
+                self.doc.frames[key]
+            except KeyError:
+                self.doc.frames[key] = NoDatasetFrameSampleDocument(
+                    frame_number=key
+                )
+            return fofr.Frame.from_doc(self.doc.frames[key])
 
     def __setitem__(self, key, value):
         if fofu.is_frame_number(key):
-            self.doc.frames[str(key)] = value
+            self.doc.frames[str(key)] = value._doc
 
     def __getattr__(self, name):
         return getattr(self.doc, name)
@@ -904,7 +919,7 @@ class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
         kwargs["media_type"] = media_type
 
         if media_type == "video":
-            kwargs["frames"] = {}
+            kwargs["frames"] = defaultdict(fofr.Frame)
 
         for field_name in self.default_fields_ordered:
 
@@ -932,6 +947,8 @@ class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
 class DatasetFrameSampleDocument(DatasetMixin, Document, SampleDocument):
 
     meta = {"abstract": True}
+
+    frame_number = fof.FrameNumberField()
 
     @classmethod
     def _sample_collection_name(cls):

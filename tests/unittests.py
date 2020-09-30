@@ -27,6 +27,7 @@ from pymongo.errors import DuplicateKeyError
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
+import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 from fiftyone.core.odm.sample import default_sample_fields
 import fiftyone.core.sample as fos
@@ -2235,6 +2236,57 @@ class ViewStageTests(unittest.TestCase):
         self.assertEqual(
             stage_dict["_uuid"], fosg.ViewStage._from_dict(stage_dict)._uuid
         )
+
+
+class MediaTypeTests(unittest.TestCase):
+    @drop_datasets
+    def setUp(self):
+        self.img_sample = fo.Sample(filepath="image.png")
+        self.img_dataset = fo.Dataset()
+        self.img_dataset.add_sample(self.img_sample)
+
+        self.vid_sample = fo.Sample(filepath="video.mp4")
+        self.vid_dataset = fo.Dataset()
+        self.vid_dataset.add_sample(self.vid_sample)
+
+    def test_img_types(self):
+        self.assertEqual(self.img_sample.media_type, fom.IMAGE)
+        self.assertEqual(self.img_dataset.media_type, fom.IMAGE)
+
+    def test_vid_types(self):
+        self.assertEqual(self.vid_sample.media_type, fom.VIDEO)
+        self.assertEqual(self.vid_dataset.media_type, fom.VIDEO)
+
+    def test_img_change_attempts(self):
+        with self.assertRaises(fom.MediaTypeError):
+            self.img_sample.filepath = "video.mp4"
+
+    def test_vid_change_attempts(self):
+        with self.assertRaises(fom.MediaTypeError):
+            self.vid_sample.filepath = "image.png"
+
+
+class VideoSampleTests(unittest.TestCase):
+    @drop_datasets
+    def setUp(self):
+        self.dataset = fo.Dataset()
+
+    def test_no_dataset_samples(self):
+        sample = fo.Sample(filepath="video.mp4")
+        sample[1]["attribute"] = "attr"
+        self.assertEqual(sample[1]["attribute"], "attr")
+
+        for idx, frame in enumerate(sample):
+            self.assertEqual(idx, 0)
+
+    def test_dataset_samples(self):
+        sample = fo.Sample(filepath="video.mp4")
+        self.dataset.add_sample(sample)
+        sample[1]["attribute"] = "attr"
+        self.assertEqual(sample[1]["attribute"], "attr")
+
+        for idx, frame in enumerate(sample):
+            self.assertEqual(idx, 0)
 
 
 if __name__ == "__main__":
