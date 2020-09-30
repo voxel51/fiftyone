@@ -112,7 +112,7 @@ jobs:
           PIP_INDEX_URL: https://voxel51-ci@pypi.voxel51.com
         run: |
           pip install -e package/gui/
-          pip install -e . fiftyone-brain
+          pip install -e . fiftyone-brain "voxel51-eta>0.dev0"
       - name: Install test dependencies (non-Windows)
         if: ${{ !startsWith(matrix.os, 'windows') }}
         run: |
