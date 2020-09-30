@@ -30,6 +30,7 @@ function Dataset(props) {
   const [modal, setModal] = useState({
     visible: false,
     sample: null,
+    metadata: null,
     activeLabels: {},
   });
   const colorMap = useRecoilValue(atoms.colorMap);
@@ -100,12 +101,11 @@ function Dataset(props) {
     );
     const previousSample = currentSamples[currentSampleIndex - 1];
     if (previousSample) {
-      modalProps.onPrevious = () =>
-        setModal({ ...modal, sample: previousSample });
+      modalProps.onPrevious = () => setModal({ ...modal, ...previousSample });
     }
     const nextSample = currentSamples[currentSampleIndex + 1];
     if (nextSample) {
-      modalProps.onNext = () => setModal({ ...modal, sample: nextSample });
+      modalProps.onNext = () => setModal({ ...modal, ...nextSample });
     }
   }
 
