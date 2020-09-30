@@ -291,10 +291,9 @@ class FrameSample(_Sample):
 
 class _DatasetSample(_Sample):
     def __getitem__(self, field_name):
-        if fofu.is_frame_number(field_name):
-            if self.media_type == "video":
-                return self.frames[field_name]
-            raise KeyError("only str's allowed")
+        if fofu.is_frame_number(field_name) and self.media_type == "video":
+            return self.frames[field_name]
+
         try:
             return self.get_field(field_name)
         except AttributeError:
@@ -303,11 +302,10 @@ class _DatasetSample(_Sample):
             )
 
     def __setitem__(self, field_name, value):
-        if fofu.is_frame_number(field_name):
-            if self.media_type == "video":
-                self.frames[field_name] = value
-                return
-            raise KeyError("only str's allowed")
+        if fofu.is_frame_number(field_name) and (self.media_type == "video"):
+            self.frames[field_name] = value
+            return
+
         self._secure_media(field_name, value)
         self.set_field(field_name, value=value)
 
@@ -318,26 +316,31 @@ class _DatasetSample(_Sample):
 
     def compute_metadata(self):
         """Populates the ``metadata`` field of the sample."""
-        mime_type = etau.guess_mime_type(self.filepath)
-        if mime_type.startswith("image"):
+        if self.media_type == "image":
             self.metadata = fom.ImageMetadata.build_for(self.filepath)
+        elif self.media_type == "video":
+            self.metadata = fom.VideoMetadata.build_for(self.filepath)
         else:
             self.metadata = fom.Metadata.build_for(self.filepath)
 
         self.save()
 
     def _secure_media(self, field_name, value):
-        if field_name == "media_type" and self.media_type != value:
+        if field_name == "media_type":
             raise fomm.MediaTypeError(
-                "media_type cannot be modified. It is derived from the file type"
+                "Cannot modify 'media_type' field; it is automatically "
+                "derived from the 'filepath' of the sample"
             )
 
         if field_name == "filepath":
             value = os.path.abspath(os.path.expanduser(value))
             # pylint: disable=no-member
-            if self.media_type != fomm.get_media_type(value):
+            new_media_type = fomm.get_media_type(value)
+            if self.media_type != new_media_type:
                 raise fomm.MediaTypeError(
-                    "A sample's filepath can be changed, but its media_type cannot"
+                    "A sample's 'filepath' can be changed, but its media type "
+                    "cannot; current '%s', new '%s'"
+                    % (self.media_type, new_media_type)
                 )
 
         if value is not None:
@@ -346,6 +349,7 @@ class _DatasetSample(_Sample):
                 frame_doc_cls = self._dataset._frame_doc_cls
             except:
                 frame_doc_cls = None
+
             fomm.validate_field_against_media_type(
                 self.media_type,
                 **foo.get_implied_field_kwargs(frame_doc_cls, value)
