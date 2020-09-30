@@ -16,7 +16,10 @@ import eta.core.utils as etau
 
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-from fiftyone.core.odm.sample import default_sample_fields
+from fiftyone.core.odm.sample import (
+    DatasetSampleDocument,
+    default_sample_fields,
+)
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
 
@@ -231,7 +234,9 @@ class SampleCollection(object):
 
         schema = self.get_field_schema()
         default_fields = set(
-            default_sample_fields(include_private=True, include_id=True)
+            default_sample_fields(
+                DatasetSampleDocument, include_private=True, include_id=True
+            )
         )
         for field in field_or_fields:
             # We only validate that the root field exists

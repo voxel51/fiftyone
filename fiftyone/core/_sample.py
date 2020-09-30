@@ -214,3 +214,163 @@ class _Sample(object):
         been added to a dataset.
         """
         return self._dataset
+
+    @classmethod
+    def from_dict(cls, d):
+        """Loads the sample from a JSON dictionary.
+
+        The returned sample will not belong to a dataset.
+
+        Returns:
+            a :class:`Sample`
+        """
+        doc = cls._NO_COLL_CLS.from_dict(d, extended=True)
+        return cls.from_doc(doc)
+
+    @classmethod
+    def from_json(cls, s):
+        """Loads the sample from a JSON string.
+
+        Args:
+            s: the JSON string
+
+        Returns:
+            a :class:`Sample`
+        """
+        doc = cls._NO_COLL_CL.from_json(s)
+        return cls.from_doc(doc)
+
+    @classmethod
+    def _save_dataset_samples(cls, collection_name):
+        """Saves all changes to in-memory sample instances that belong to the
+        specified collection.
+
+        Args:
+            collection_name: the name of the MongoDB collection
+        """
+        for sample in cls._instances[collection_name].values():
+            sample.save()
+
+    @classmethod
+    def _reload_dataset_sample(cls, collection_name, sample_id):
+        """Reloads the fields for the in-memory sample instance that belong to
+        the specified collection.
+
+        If the sample does not exist in-memory, nothing is done.
+
+        Args:
+            collection_name: the name of the MongoDB collection
+            sample_id: the sample ID
+
+        Returns:
+            True/False whether the sample was reloaded
+        """
+        dataset_instances = cls._instances[collection_name]
+        sample = dataset_instances.get(sample_id, None)
+        if sample:
+            sample.reload()
+            return True
+
+        return False
+
+    @classmethod
+    def _reload_dataset_samples(cls, collection_name):
+        """Reloads the fields for in-memory sample instances that belong to the
+        specified collection.
+
+        Args:
+            collection_name: the name of the MongoDB collection
+        """
+        for sample in cls._instances[collection_name].values():
+            sample.reload()
+
+    @classmethod
+    def _rename_field(cls, collection_name, field_name, new_field_name):
+        """Renames any field values for in-memory sample instances that belong
+        to the specified collection.
+
+        Args:
+            collection_name: the name of the MongoDB collection
+            field_name: the name of the field to rename
+            new_field_name: the new field name
+        """
+        for sample in cls._instances[collection_name].values():
+            data = sample._doc._data
+            data[new_field_name] = data.pop(field_name, None)
+
+    @classmethod
+    def _purge_field(cls, collection_name, field_name):
+        """Removes values for the given field from all in-memory sample
+        instances that belong to the specified collection.
+
+        Args:
+            collection_name: the name of the MongoDB collection
+            field_name: the name of the field to purge
+        """
+        for sample in cls._instances[collection_name].values():
+            sample._doc._data.pop(field_name, None)
+
+    def _set_backing_doc(self, doc, dataset=None):
+        """Sets the backing doc for the sample.
+
+        Args:
+            doc: a :class:`fiftyone.core.odm.SampleDocument`
+            dataset (None): the :class:`fiftyone.core.dataset.Dataset` to which
+                the sample belongs, if any
+        """
+        if isinstance(self._doc, self._COLL_CLS):
+            raise TypeError("Sample already belongs to a dataset")
+
+        if not isinstance(doc, self._COLL_CLS):
+            raise TypeError(
+                "Backing doc must be an instance of %s; found %s"
+                % (self._COLLO_CLS, type(doc))
+            )
+
+        # Ensure the doc is saved to the database
+        if not doc.id:
+            doc.save()
+
+        self._doc = doc
+
+        # Save weak reference
+        dataset_instances = self._instances[doc.collection_name]
+        if self.id not in dataset_instances:
+            dataset_instances[self.id] = self
+
+        self._dataset = dataset
+
+    @classmethod
+    def _reset_backing_docs(cls, collection_name, sample_ids):
+        """Resets the samples' backing documents to
+        :class:`fiftyone.core.odm.NoDatasetSampleDocument` instances.
+
+        Args:
+            collection_name: the name of the MongoDB collection
+            sample_ids: a list of sample IDs
+        """
+        dataset_instances = cls._instances[collection_name]
+        for sample_id in sample_ids:
+            sample = dataset_instances.pop(sample_id, None)
+            if sample is not None:
+                sample._reset_backing_doc()
+
+    @classmethod
+    def _reset_all_backing_docs(cls, collection_name):
+        """Resets the sample's backing document to a
+        :class:`fiftyone.core.odm.NoDatasetSampleDocument` instance for all
+        samples in the specified collection.
+
+        Args:
+            collection_name: the name of the MongoDB collection
+        """
+        if collection_name not in cls._instances:
+            return
+
+        dataset_instances = cls._instances.pop(collection_name)
+        for sample in dataset_instances.values():
+            sample._reset_backing_doc()
+
+    def _reset_backing_doc(self):
+        self._doc = self.copy()._doc
+        self._dataset = None

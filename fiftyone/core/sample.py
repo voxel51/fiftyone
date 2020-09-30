@@ -123,7 +123,6 @@ class Sample(_DatasetSample):
         self._doc = foo.NoDatasetSampleDocument(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
-        assert self.media_type is not None
         if self.media_type == fomm.VIDEO:
             self._frames = fofr.Frames()
         super().__init__()

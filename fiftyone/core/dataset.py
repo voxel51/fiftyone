@@ -389,7 +389,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a tuple of field names
         """
-        return foos.default_sample_fields(include_private=include_private)
+        return foos.default_sample_fields(
+            foo.DatasetSampleDocument, include_private=include_private
+        )
 
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
