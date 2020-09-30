@@ -18,6 +18,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
 import fiftyone.core.media as fom
 import fiftyone.core.stages as fos
+import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
 
@@ -72,12 +73,15 @@ class StateDescription(etas.Serializable):
         Returns:
             a JSON dictionary representation of the object
         """
-        d = super().serialize(reflective=reflective)
-        d["dataset"] = (
-            self.dataset._serialize() if self.dataset is not None else None
-        )
-        d["view"] = self.view._serialize() if self.view is not None else None
-        return d
+        with fou.disable_progress_bars():
+            d = super().serialize(reflective=reflective)
+            d["dataset"] = (
+                self.dataset._serialize() if self.dataset is not None else None
+            )
+            d["view"] = (
+                self.view._serialize() if self.view is not None else None
+            )
+            return d
 
     def attributes(self):
         """Returns list of attributes to be serialize"""
