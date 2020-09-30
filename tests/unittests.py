@@ -29,7 +29,10 @@ import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
-from fiftyone.core.odm.sample import default_sample_fields
+from fiftyone.core.odm.sample import (
+    DatasetSampleDocument,
+    default_sample_fields,
+)
 import fiftyone.core.sample as fos
 import fiftyone.core.stages as fosg
 from fiftyone import ViewField as F
@@ -2203,7 +2206,8 @@ class ViewStageTests(unittest.TestCase):
 
         for sample in self.dataset.select_fields():
             self.assertSetEqual(
-                sample.selected_field_names, set(default_sample_fields())
+                sample.selected_field_names,
+                set(default_sample_fields(DatasetSampleDocument)),
             )
             self.assertIsNone(sample.excluded_field_names)
             sample.filepath
@@ -2264,6 +2268,12 @@ class MediaTypeTests(unittest.TestCase):
     def test_vid_change_attempts(self):
         with self.assertRaises(fom.MediaTypeError):
             self.vid_sample.filepath = "image.png"
+
+    def test_img_label_on_vid_sample(self):
+        with self.assertRaises(fom.MediaTypeError):
+            self.vid_sample["img_label"] = fo.Classification(label="label")
+        with self.assertRaises(KeyError):
+            self.vid_sample["img_label"]
 
 
 class VideoSampleTests(unittest.TestCase):
