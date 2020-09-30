@@ -618,6 +618,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         dicts = [sample.to_mongo_dict() for sample in samples]
         if self.media_type == fom.VIDEO:
+            # @todo improve batching behavior for frames
             self._add_frame_samples(dicts)
         for d in dicts:
             d.pop("_id", None)  # remove the ID if in DB
