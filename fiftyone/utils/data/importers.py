@@ -160,7 +160,11 @@ def import_samples(
                 sample = fos.Sample(
                     filepath=video_path, metadata=video_metadata, tags=tags,
                 )
-                sample.frames = frames
+
+                if frames is not None:
+                    # @todo replace with `sample.frames.update(frames)`
+                    for frame_number, frame in frames.items():
+                        sample.frames[frame_number] = frame
 
                 return sample
 
@@ -599,7 +603,9 @@ class LabeledVideoDatasetImporter(DatasetImporter):
                 )
 
                 if frames is not None:
-                    sample.frames.update(frames)
+                    # @todo replace with `sample.frames.update(frames)`
+                    for frame_number, frame in frames.items():
+                        sample.frames[frame_number] = frame
 
                 dataset.add_sample(sample)
 

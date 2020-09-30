@@ -1231,7 +1231,7 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
         new_image_filename = name + ext
         new_labels_filename = name + ".json"
 
-        _video_labels = _parse_video_labels(frames)
+        _video_labels = _parse_frame_labels(frames)
 
         video_labels_path = os.path.join(self._labels_dir, new_labels_filename)
         _video_labels.write_json(
@@ -1303,12 +1303,14 @@ def _parse_image_labels(label):
     return label.labels
 
 
-def _parse_video_labels(frames):
+def _parse_frame_labels(frames):
     video_labels = etav.VideoLabels()
     if frames is None:
         return video_labels
 
-    for frame_number, frame in frames.items():
+    # @todo replace with `frames.items()`
+    for frame_number in frames:
+        frame = frames[frame_number]
         video_labels[frame_number] = _parse_frame(frame, frame_number)
 
     return video_labels

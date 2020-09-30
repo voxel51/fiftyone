@@ -264,10 +264,14 @@ def add_labeled_videos(
         else:
             metadata = None
 
+        sample = fos.Sample(filepath=video_path, metadata=metadata, tags=tags)
+
         frames = sample_parser.get_frame_labels()
 
-        sample = fos.Sample(filepath=video_path, metadata=metadata, tags=tags)
-        sample.frames = frames
+        if frames is not None:
+            # @todo replace with `sample.frames.update(frames)`
+            for frame_number, frame in frames.items():
+                sample.frames[frame_number] = frame
 
         return sample
 
@@ -1168,7 +1172,12 @@ class VideoLabelsSampleParser(LabeledVideoSampleParser):
         frames = {}
         for frame_number in video_labels:
             frame = fof.Frame()
-            image_labels = fol.ImageLabels(labels=video_labels[frame_number])
+
+            image_labels = fol.ImageLabels(
+                labels=etai.ImageLabels.from_frame_labels(
+                    video_labels[frame_number]
+                )
+            )
 
             if self.expand:
                 frame.update_fields(
@@ -1383,12 +1392,16 @@ class FiftyOneLabeledVideoSampleParser(LabeledVideoSampleParser):
         return metadata
 
     def get_frame_labels(self):
-        frames = {}
-        for frame_number, frame in self.current_sample.frames.items():
+        frames = self.current_sample.frames
+        new_frames = {}
+
+        # @todo replace with `frames.items()`
+        for frame_number in frames:
+            frame = frames[frame_number]
             new_frame = fof.Frame()
             for k, v in self.labels_dict.items():
                 new_frame[v] = frame[k]
 
-            frames[frame_number] = new_frame
+            new_frames[frame_number] = new_frame
 
-        return frames
+        return new_frames
