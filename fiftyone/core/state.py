@@ -16,6 +16,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
+import fiftyone.core.media as fom
 import fiftyone.core.stages as fos
 import fiftyone.core.view as fov
 
@@ -61,6 +62,30 @@ class StateDescription(etas.Serializable):
             else 0
         )
         super().__init__()
+
+    def serialize(self, reflective=False):
+        """Serializes the state into a dictionary.
+
+        Args:
+            reflective: whether to include reflective attributes when
+                serializing the object. By default, this is False
+        Returns:
+            a JSON dictionary representation of the object
+        """
+        d = super().serialize(reflective=reflective)
+        d["dataset"] = (
+            self.dataset._serialize() if self.dataset is not None else None
+        )
+        d["view"] = self.view._serialize() if self.view is not None else None
+        return d
+
+    def attributes(self):
+        """Returns list of attributes to be serialize"""
+        return list(
+            filter(
+                lambda a: a not in {"dataset", "vide"}, super().attributes()
+            )
+        )
 
     @classmethod
     def from_dict(cls, d, **kwargs):
@@ -122,7 +147,7 @@ class StateDescriptionWithDerivables(StateDescription):
 
         self.field_schema = self._get_field_schema()
         self.labels = self._get_label_fields(view)
-        if view.media_type == "video":
+        if view.media_type == fom.VIDEO:
             self.frame_labels = _get_field_count(
                 view, view.get_field_schema()["frames"]
             )
@@ -169,7 +194,7 @@ class StateDescriptionWithDerivables(StateDescription):
         label_fields = []
 
         for k, v in view.get_field_schema().items():
-            if view.media_type == "video" and k == "frames":
+            if view.media_type == fom.VIDEO and k == "frames":
                 continue
             d = {"field": k}
             if isinstance(v, fof.EmbeddedDocumentField):
@@ -363,7 +388,7 @@ def _get_label_confidence_bounds(view):
 def _get_field_count(view, field):
     if (
         isinstance(field, fof.EmbeddedDocumentField)
-        or view.media_type == "video"
+        or view.media_type == fom.VIDEO
         and field.name == "frames"
     ):
         if field.name == "frames":

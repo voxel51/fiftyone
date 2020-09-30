@@ -22,7 +22,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
-import fiftyone.core.media as fomm
+import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.odm.sample as foos
 import fiftyone.core.sample as fos
@@ -232,7 +232,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def media_type(self, media_type):
         if len(self) != 0:
             raise ValueError("Cannot set media_type of non-empty dataset")
-        if media_type not in ["image", "video"]:
+        if media_type not in fom.MEDIA_TYPES:
             raise ValueError(
                 'media_type can only be one of "image" or "video". Received "%s"'
                 % media_type
@@ -542,7 +542,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._validate_sample(sample)
 
         d = sample.to_mongo_dict()
-        if self.media_type == "video":
+        if self.media_type == fom.VIDEO:
             self._add_frame_samples([d])
         d.pop("_id", None)  # remove the ID if in DB
         self._sample_collection.insert_one(d)  # adds `_id` to `d`
@@ -635,7 +635,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._validate_sample(sample)
 
         dicts = [sample.to_mongo_dict() for sample in samples]
-        if self.media_type == "video":
+        if self.media_type == fom.VIDEO:
+            # @todo improve batching behavior for frames
             self._add_frame_samples(dicts)
         for d in dicts:
             d.pop("_id", None)  # remove the ID if in DB
@@ -1627,7 +1628,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return self._sample_collection.aggregate(pipeline)
 
-    def serialize(self):
+    def _serialize(self):
         """Serializes the dataset.
 
         Returns:
@@ -1771,12 +1772,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
                 if field_name == "frames":
                     if self.media_type is None:
-                        self.media_type = "video"
-                    for frame in sample[field_name].values():
-                        for frame_field_name in frame.to_mongo_dict():
+                        self.media_type = fom.VIDEO
+                    for frame_number in sample[field_name]:
+                        frame_obj = sample[field_name][frame_number]
+                        for frame_field_name in frame_obj.to_mongo_dict():
                             if frame_field_name not in frames_fields:
                                 self._frame_doc_cls.add_implied_field(
-                                    frame_field_name, frame[frame_field_name]
+                                    frame_field_name,
+                                    frame_obj[frame_field_name],
                                 )
                                 frames_fields = self.get_frames_field_schema(
                                     include_private=True
@@ -1784,7 +1787,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
                 if field_name not in fields:
                     self._sample_doc_cls.add_implied_field(
-                        field_name, sample[field_name]
+                        field_name,
+                        sample[field_name],
+                        frame_doc_cls=self._frame_doc_cls,
                     )
                     fields = self.get_field_schema(include_private=True)
 
@@ -1806,9 +1811,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         }
 
         if self.media_type is None:
-            print(self.media_type)
             self.media_type = sample.media_type
-            if self.media_type == "video":
+            if self.media_type == fom.VIDEO:
                 self._sample_doc_cls.add_field(
                     "frames",
                     fof.FramesField(
@@ -1817,7 +1821,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     frame_doc_cls=self._frame_doc_cls,
                 )
         elif self.media_type != sample.media_type:
-            raise fomm.MediaTypeError(
+            raise fom.MediaTypeError(
                 "dataset and sample media types do not match"
             )
 
@@ -1830,7 +1834,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         for field_name, value in sample.iter_fields():
             field = fields[field_name]
-            if field_name == "frames" and self.media_type == "video":
+            if field_name == "frames" and self.media_type == fom.VIDEO:
                 continue
             if value is None and field.null:
                 continue
@@ -1937,7 +1941,7 @@ def _load_dataset(name):
         "frames." + dataset_doc.sample_collection_name
     )
 
-    is_video = dataset_doc.media_type == "video"
+    is_video = dataset_doc.media_type == fom.VIDEO
 
     # Populate sample field schema
     kwargs = {}

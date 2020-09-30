@@ -12,6 +12,7 @@ import eta.core.video as etav
 # @todo deprecate in favor of MediaType?
 VIDEO = "video"
 IMAGE = "image"
+MEDIA_TYPES = {IMAGE, VIDEO}
 
 
 class MediaType(object):
