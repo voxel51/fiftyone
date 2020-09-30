@@ -344,8 +344,10 @@ class DatasetMixin(object):
     def get_field(self, field_name):
         if field_name == "frames":
             return self._proxy.serve(self)
+
         if not self.has_field(field_name):
             raise AttributeError("Sample has no field '%s'" % field_name)
+
         return getattr(self, field_name)
 
     @classmethod
