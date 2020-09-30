@@ -17,14 +17,14 @@ class BdistWheelCustom(bdist_wheel):
         # for a development installation
         self.distribution.install_requires += [
             "fiftyone-brain>=0.1.8,<0.2",
-            "fiftyone-gui>=0.5.6,<0.6",
+            "fiftyone-gui>=0.6.0,<0.6",
             "fiftyone-db>=0.1.1,<0.2",
         ]
 
 
 setup(
     name="fiftyone",
-    version="0.5.6",
+    version="0.6.0",
     description=(
         "FiftyOne: a powerful package for dataset curation, analysis, and "
         "visualization"
