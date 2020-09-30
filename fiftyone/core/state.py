@@ -83,7 +83,7 @@ class StateDescription(etas.Serializable):
         """Returns list of attributes to be serialize"""
         return list(
             filter(
-                lambda a: a not in {"dataset", "vide"}, super().attributes()
+                lambda a: a not in {"dataset", "view"}, super().attributes()
             )
         )
 
