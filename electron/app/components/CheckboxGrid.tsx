@@ -227,7 +227,7 @@ const Entry = ({ entry, onCheck, modal }) => {
       {isNumericField && (
         <NumericFieldFilter expanded={expanded} entry={entry} />
       )}
-      {entry.type && !entry.type === "frames" && (
+      {entry.type && entry.type !== "frames" && (
         <Filter expanded={expanded} entry={entry} {...atoms} modal={modal} />
       )}
     </CheckboxContainer>
