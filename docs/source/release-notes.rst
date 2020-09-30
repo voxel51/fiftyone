@@ -3,6 +3,21 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne 0.6.0
+--------------
+*Released October 1, 2020*
+
+App
+^^^
+- Added support for visualizing video datasets
+
+Core
+^^^^
+- Added support for video datasets
+- Improved the performance of
+  :meth:`Dataset.rename_field() <fiftyone.core.dataset.Dataset.rename_field>`
+- Fixed issues with serializing vector fields and numpy arrays
+
 FiftyOne 0.5.6
 --------------
 *Released September 23, 2020*
