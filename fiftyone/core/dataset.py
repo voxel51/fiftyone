@@ -839,6 +839,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         If reference to a sample exists in memory, the sample object will be
         updated such that ``sample.in_dataset == False``.
         """
+        if self.media_type == fom.VIDEO:
+            self._frame_doc_cls.drop_collection()
+            fos.Sample._reset_all_backing_docs(self._frames_collection_name)
         self._sample_doc_cls.drop_collection()
         fos.Sample._reset_all_backing_docs(self._sample_collection_name)
 

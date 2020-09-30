@@ -7,7 +7,6 @@ Dataset samples.
 """
 from collections import defaultdict
 from copy import deepcopy
-import logging
 import os
 import six
 import weakref
@@ -23,9 +22,6 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
 from fiftyone.core._sample import _Sample
-
-
-logger = logging.getLogger(__name__)
 
 
 class _DatasetSample(_Sample):
@@ -144,6 +140,25 @@ class Sample(_DatasetSample):
 
     def __iter__(self):
         return self._frames.serve(self).__iter__()
+
+    def copy(self):
+        """Returns a deep copy of the sample that has not been added to the
+        database.
+
+        Returns:
+            a :class:`Sample`
+        """
+        video = self.media_type == fomm.VIDEO
+        kwargs = {
+            f: deepcopy(self[f])
+            for f in self.field_names
+            if f != "frames" or not video
+        }
+        if video:
+            kwargs["frames"] = {
+                str(k): v.copy()._doc for k, v in self.frames.items()
+            }
+        return self.__class__(**kwargs)
 
     @classmethod
     def from_doc(cls, doc, dataset=None):
@@ -346,7 +361,8 @@ class Sample(_DatasetSample):
     def save(self):
         """Saves the sample to the database."""
         if self.media_type == fomm.VIDEO:
-            logger.warn("Warning: Saving video samples is currently unstable")
+            for frame in self.frames.values():
+                frame.save()  # @todo batch
         super().save()
 
 
@@ -482,6 +498,7 @@ class SampleView(_DatasetSample):
         Returns:
             a :class:`Sample`
         """
+        skip_frames = self.media_type == fomm.VIDEO
         kwargs = {f: deepcopy(self[f]) for f in self.field_names}
         return Sample(**kwargs)
 
@@ -492,9 +509,8 @@ class SampleView(_DatasetSample):
         instances of this sample are updated.
         """
         if self.media_type == fomm.VIDEO:
-            logger.warn(
-                "Warning: Saving video sample views is currently unstable"
-            )
+            for frame in self.frames.values():
+                frame.save()  # @todo batch
 
         self._doc.save(filtered_fields=self._filtered_fields)
 

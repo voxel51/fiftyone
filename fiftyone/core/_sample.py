@@ -24,7 +24,10 @@ class _Sample(object):
         try:
             return super().__getattribute__(name)
         except AttributeError:
-            return self._doc.get_field(name)
+            if name != "_doc":
+                return self._doc.get_field(name)
+            else:
+                raise
 
     def __setattr__(self, name, value):
         if name.startswith("_") or (

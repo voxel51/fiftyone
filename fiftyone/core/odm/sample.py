@@ -140,7 +140,7 @@ class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
         kwargs["media_type"] = media_type
 
         if media_type == fomm.VIDEO:
-            kwargs["frames"] = defaultdict(fofr.Frame)
+            kwargs["frames"] = {}
 
         for field_name in self.default_fields_ordered:
 

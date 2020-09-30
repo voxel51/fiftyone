@@ -18,9 +18,6 @@ from fiftyone.core.odm.frame import (
 
 
 class Frames(object):
-
-    _doc = None
-
     def serve(self, sample):
         self._sample = sample
         return self
@@ -32,26 +29,32 @@ class Frames(object):
         )
 
     def __iter__(self):
-        self._iter = self._sample._doc.frames.__iter__()
+        self._iter = self.keys()
         return self
 
     def __next__(self):
-        return int(next(self._iter))
+        return next(self._iter)
 
     def keys(self):
         dataset = self._sample._dataset if self._sample._in_db else None
-        for k in self._sample._doc.frames.keys():
+        for k in sorted(
+            map(lambda k: int(k), self._sample._doc.frames.keys())
+        ):
             yield int(k)
 
     def items(self):
         dataset = self._sample._dataset if self._sample._in_db else None
-        for k, v in self._sample._doc.frames.items():
-            yield int(k), Frame.from_doc(v, dataset=dataset)
+        for k in self.keys():
+            yield k, Frame.from_doc(
+                self._sample._doc.frames[str(k)], dataset=dataset
+            )
 
     def values(self):
         dataset = self._sample._dataset if self._sample._in_db else None
-        for v in self._sample._doc.frames.values():
-            yield Frame.from_doc(v, dataset=dataset)
+        for k in self.keys():
+            yield Frame.from_doc(
+                self._sample._doc.frames[str(k)], dataset=dataset
+            )
 
     def __getitem__(self, key):
         if fofu.is_frame_number(key):
