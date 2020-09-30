@@ -419,6 +419,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def get_frames_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
     ):
+        """Returns a schema dictionary describing the fields of the frames of
+        the samples in the dataset.
+
+        Only applicable for video datasets.
+
+        Args:
+            ftype (None): an optional field type to which to restrict the
+                returned schema. Must be a subclass of
+                :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): an optional embedded document type to
+                which to restrict the returned schema. Must be a subclass of
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            include_private (False): whether to include fields that start with
+                `_` in the returned schema
+
+        Returns:
+             a dictionary mapping field names to field types
+        """
         return self._frame_doc_cls.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
