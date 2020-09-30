@@ -12,13 +12,15 @@ from .document import (
     DynamicDocument,
     EmbeddedDocument,
     DynamicEmbeddedDocument,
+    SampleDocument,
     SerializableDocument,
 )
-from .sample import (
-    SampleDocument,
-    DatasetSampleDocument,
-    NoDatasetSampleDocument,
+from .frame import (
     DatasetFrameSampleDocument,
     NoDatasetFrameSampleDocument,
-    get_implied_field_kwargs,
+)
+from .mixins import get_implied_field_kwargs
+from .sample import (
+    DatasetSampleDocument,
+    NoDatasetSampleDocument,
 )

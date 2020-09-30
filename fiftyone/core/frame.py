@@ -11,23 +11,28 @@ import weakref
 from fiftyone.core._sample import _Sample
 import fiftyone.core.frame_utils as fofu
 
+from fiftyone.core.odm.frame import (
+    NoDatasetFrameSampleDocument,
+    DatasetFrameSampleDocument,
+)
+
 
 class Frames(object):
 
     _doc = None
 
     def serve(self, sample):
-        self._doc = sample._doc
+        self._sample = sample
         return self
 
     def __repr__(self):
         return "<%s %d>" % (
             self.__class__.__name__,
-            len(self._doc.to_dict()["frames"]),
+            len(self._sample._doc.to_dict()["frames"]),
         )
 
     def __iter__(self):
-        self._iter = self._doc.frames.__iter__()
+        self._iter = self._sample._doc.frames.__iter__()
         return self
 
     def __next__(self):
@@ -37,25 +42,30 @@ class Frames(object):
         if fofu.is_frame_number(key):
             try:
                 key = str(key)
-                self._doc.frames[key]
+                self._sample._doc.frames[key]
             except KeyError:
-                self._doc.frames[key] = Frame(frame_number=key)
-            return self._doc.frames[key]
+                self._sample._doc.frames[key] = Frame(frame_number=key)
+            frame = self._sample._doc.frames[key]
+            if not isinstance(frame, Frame):
+                frame = Frame.from_doc(frame, dataset=self._sample._dataset)
+            return frame
 
     def __setitem__(self, key, value):
         if fofu.is_frame_number(key):
-            self._doc.frames[str(key)] = value
+            self._sample._doc.frames[str(key)] = value
 
     def _get_field_cls(self):
-        return self._doc.frames.__class__
+        return self._sample._doc.frames.__class__
 
 
 class Frame(_Sample):
     # Instance references keyed by [collection_name][sample_id]
     _instances = defaultdict(weakref.WeakValueDictionary)
 
+    _COLL_CLS = DatasetFrameSampleDocument
+    _NO_COLL_CLS = NoDatasetFrameSampleDocument
+
     def __init__(self, **kwargs):
-        from fiftyone.core.odm import NoDatasetFrameSampleDocument
 
         self._doc = NoDatasetFrameSampleDocument(**kwargs)
         super().__init__()
@@ -76,6 +86,9 @@ class Frame(_Sample):
 
     def __setitem__(self, field_name, value):
         self.set_field(field_name, value=value)
+
+    def to_mongo(self, value):
+        raise ValueError("Eeee")
 
     @classmethod
     def from_doc(cls, doc, dataset=None):

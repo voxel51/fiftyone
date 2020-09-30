@@ -95,7 +95,7 @@ class _DatasetSample(_Sample):
                 self.media_type,
                 **foo.get_implied_field_kwargs(
                     value, frame_doc_cls=frame_doc_cls
-                )
+                ),
             )
 
 
@@ -123,7 +123,6 @@ class Sample(_DatasetSample):
         self._doc = foo.NoDatasetSampleDocument(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
-        assert self.media_type is not None
         if self.media_type == fomm.VIDEO:
             self._frames = fofr.Frames()
         super().__init__()
@@ -389,16 +388,22 @@ class SampleView(_DatasetSample):
         self._excluded_fields = excluded_fields
         self._filtered_fields = filtered_fields
 
+        if self.media_type == fomm.VIDEO:
+            self._frames = fofr.Frames()
         super().__init__(dataset=dataset)
 
     def __str__(self):
         return repr(self)
 
     def __repr__(self):
+        kwargs = {}
+        if self.media_type == fomm.VIDEO:
+            kwargs["frames"] = self._frames.serve(self).__repr__()
         return self._doc.fancy_repr(
             class_name=self.__class__.__name__,
             select_fields=self._selected_fields,
             exclude_fields=self._excluded_fields,
+            **kwargs,
         )
 
     def __getattr__(self, name):
