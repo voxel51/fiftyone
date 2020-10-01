@@ -8,6 +8,7 @@ Core utilities.
 import atexit
 from base64 import b64encode, b64decode
 from collections import defaultdict
+from contextlib import contextmanager
 import importlib
 import io
 import itertools
@@ -376,6 +377,16 @@ class ProgressBar(etau.ProgressBar):
     def __init__(self, *args, **kwargs):
         quiet = not fo.config.show_progress_bars
         super().__init__(*args, iters_str="samples", quiet=quiet, **kwargs)
+
+
+@contextmanager
+def disable_progress_bars():
+    prev_show_progress_bars = fo.config.show_progress_bars
+    try:
+        fo.config.show_progress_bars = False
+        yield
+    finally:
+        fo.config.show_progress_bars = prev_show_progress_bars
 
 
 class UniqueFilenameMaker(object):

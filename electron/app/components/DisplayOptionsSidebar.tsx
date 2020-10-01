@@ -16,6 +16,7 @@ import DropdownCell from "./DropdownCell";
 import SelectionTag from "./Tags/SelectionTag";
 import { Button, scrollbarStyles } from "./utils";
 import * as atoms from "../recoil/atoms";
+import * as selectors from "../recoil/selectors";
 import { refreshColorMap as refreshColorMapSelector } from "../recoil/selectors";
 
 export type Entry = {
@@ -150,16 +151,19 @@ const DisplayOptionsSidebar = React.forwardRef(
       modal = false,
       tags = [],
       labels = [],
+      frameLabels = [],
       scalars = [],
       unsupported = [],
       onSelectTag,
       onSelectLabel,
       onSelectScalar,
+      onSelectFrameLabels = null,
       ...rest
     }: Props,
     ref
   ) => {
     const refreshColorMap = useSetRecoilState(refreshColorMapSelector);
+    const mediaType = useRecoilValue(selectors.mediaType);
     const colorMap = useRecoilValue(atoms.colorMap);
     const cellRest = { modal };
     return (
@@ -172,14 +176,26 @@ const DisplayOptionsSidebar = React.forwardRef(
           onSelect={onSelectTag}
           {...cellRest}
         />
-        <Cell
-          colorMap={colorMap}
-          label="Labels"
-          icon={<Label style={{ transform: "rotate(180deg)" }} />}
-          entries={labels}
-          onSelect={onSelectLabel}
-          {...cellRest}
-        />
+        {mediaType !== "video" ? (
+          <Cell
+            colorMap={colorMap}
+            label="Labels"
+            icon={<Label style={{ transform: "rotate(180deg)" }} />}
+            entries={labels}
+            onSelect={onSelectLabel}
+            {...cellRest}
+          />
+        ) : null}
+        {mediaType === "video" ? (
+          <Cell
+            colorMap={colorMap}
+            label="Labels"
+            icon={<Label style={{ transform: "rotate(180deg)" }} />}
+            entries={frameLabels}
+            onSelect={onSelectFrameLabels}
+            {...cellRest}
+          />
+        ) : null}
         <Cell
           colorMap={colorMap}
           label="Scalars"
@@ -202,7 +218,10 @@ const DisplayOptionsSidebar = React.forwardRef(
             {...cellRest}
           />
         ) : null}
-        {tags.length || labels.length || scalars.length ? (
+        {tags.length ||
+        labels.length ||
+        frameLabels.length ||
+        scalars.length ? (
           <Button onClick={refreshColorMap}>
             <Autorenew />
             Refresh colors

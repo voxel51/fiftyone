@@ -150,6 +150,7 @@ const Entry = ({ entry, onCheck, modal }) => {
   const atoms = modal ? MODAL_ATOMS : GLOBAL_ATOMS;
   const fieldIsFiltered = useRecoilValue(atoms.fieldIsFiltered(entry.name));
   const isNumericField = useRecoilValue(selectors.isNumericField(entry.name));
+  const mediaType = useRecoilValue(selectors.mediaType);
 
   const handleCheck = (entry) => {
     if (onCheck) {
@@ -182,7 +183,8 @@ const Entry = ({ entry, onCheck, modal }) => {
               entry.icon &&
               !["Detections", "Classifications"].includes(entry.type)
             ) &&
-              (entry.type || (isNumericField && !modal)) && (
+              (entry.type || (isNumericField && !modal)) &&
+              !(entry.name === "frames" && mediaType === "video") && (
                 <ArrowDropDown
                   onClick={(e) => {
                     e.preventDefault();
@@ -225,7 +227,7 @@ const Entry = ({ entry, onCheck, modal }) => {
       {isNumericField && (
         <NumericFieldFilter expanded={expanded} entry={entry} />
       )}
-      {entry.type && (
+      {entry.type && entry.type !== "frames" && (
         <Filter expanded={expanded} entry={entry} {...atoms} modal={modal} />
       )}
     </CheckboxContainer>
