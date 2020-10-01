@@ -5,8 +5,6 @@ Frame utilites.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
-
 import six
 
 
@@ -16,7 +14,7 @@ def is_frame_number(value):
     Frame numbers are strictly positive integers.
 
     Args:
-        value: an arbitrary value
+        value: a value
 
     Returns:
         True/False
@@ -34,6 +32,21 @@ def is_frame_number(value):
         return True
 
     return False
+
+
+def validate_frame_number(value):
+    """Validates that the provided value is a frame number.
+
+    Args:
+        value: a value
+
+    Raises:
+        :class:`FrameError` if ``value`` is not a frame number
+    """
+    if not isinstance(value, six.integer_types) or value < 1:
+        raise FrameError(
+            "Frame numbers must be 1-based integers; found %d" % value
+        )
 
 
 class FrameError(Exception):
