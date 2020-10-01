@@ -31,6 +31,7 @@ You can explicitly create a view that contains an entire dataset via
     print(view)
 
 .. code-block:: text
+
     Dataset:        cifar10-test
     Num samples:    10000
     Tags:           ['test']
