@@ -137,6 +137,7 @@ const Sample = ({ dispatch, sample, metadata, port, setView }) => {
             height: "100%",
             position: "absolute",
             top: 0,
+            pointerEvents: "none",
           }}
         />
       ) : null}
