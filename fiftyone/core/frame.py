@@ -61,12 +61,14 @@ class Frames(object):
         except KeyError:
             if self._sample._in_db:
                 doc = self._sample._dataset._frame_doc_cls.from_dict(
-                    {"frame_number": key}
+                    {"frame_number": key, "sample_id": self._sample._id}
                 )
                 doc.save()
                 dataset = self._sample._dataset
             else:
-                doc = NoDatasetFrameSampleDocument(frame_number=key)
+                doc = NoDatasetFrameSampleDocument(
+                    frame_number=key, sample_id=self._sample._id
+                )
                 dataset = None
 
         frame = Frame.from_doc(doc, dataset=self._sample._dataset)

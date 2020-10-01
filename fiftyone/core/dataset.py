@@ -841,9 +841,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         If reference to a sample exists in memory, the sample object will be
         updated such that ``sample.in_dataset == False``.
         """
-        if self.media_type == fom.VIDEO:
-            self._frame_doc_cls.drop_collection()
-            fos.Sample._reset_all_backing_docs(self._frame_collection_name)
+        self._frame_doc_cls.drop_collection()
+        fos.Sample._reset_all_backing_docs(self._frame_collection_name)
         self._sample_doc_cls.drop_collection()
         fos.Sample._reset_all_backing_docs(self._sample_collection_name)
 
@@ -1841,11 +1840,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self.media_type = sample.media_type
             if self.media_type == fom.VIDEO:
                 self._sample_doc_cls.add_field(
-                    "frames",
-                    fof.FramesField(
-                        frame_doc_cls=self._frame_doc_cls
-                    ).__class__,
-                    frame_doc_cls=self._frame_doc_cls,
+                    "frames", fof.IntField, frame_doc_cls=self._frame_doc_cls,
                 )
         elif self.media_type != sample.media_type:
             raise fom.MediaTypeError(
