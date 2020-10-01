@@ -133,7 +133,7 @@ export default ({
               <Warning classes={{ root: "error" }} />
               {thumbnail ? null : <div>{error}</div>}{" "}
             </>
-          ) : mediaLoading ? (
+          ) : mediaLoading && !thumbnail ? (
             <CircularProgress />
           ) : null}
         </InfoWrapper>
