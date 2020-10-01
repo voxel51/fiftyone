@@ -60,17 +60,19 @@ Listing zoo datasets
 
     .. code-block:: text
 
-        ['coco-2014',
-         'coco-2017',
-         'imagenet-2012',
-         'voc-2007',
-         'cifar100',
-         'kitti',
-         'mnist',
-         'voc-2012',
-         'cifar10',
-         'fashion-mnist',
-         'caltech101']
+        ['caltech101',
+        'cifar10',
+        'cifar100',
+        'coco-2014',
+        'coco-2017',
+        'fashion-mnist',
+        'imagenet-2012',
+        'kitti',
+        'mnist',
+        'quickstart',
+        'quickstart-video',
+        'voc-2007',
+        'voc-2012']
 
     To view the zoo datasets that you have downloaded, you can use
     :meth:`list_downloaded_zoo_datasets() <fiftyone.zoo.list_downloaded_zoo_datasets>`:
@@ -110,35 +112,37 @@ Listing zoo datasets
 
         $ fiftyone zoo list
 
-        name           split       downloaded    dataset_dir                     torch (*)    tensorflow
-        -------------  ----------  ------------  ------------------------------  -----------  ------------
-        caltech101     test                                                      ✓
-        caltech101     train                                                     ✓
-        cifar10        test        ✓             ~/fiftyone/cifar10/test         ✓            ✓
-        cifar10        train       ✓             ~/fiftyone/cifar10/train        ✓            ✓
-        cifar100       test        ✓             ~/fiftyone/cifar100/test        ✓            ✓
-        cifar100       train       ✓             ~/fiftyone/cifar100/train       ✓            ✓
-        coco-2014      test                                                      ✓            ✓
-        coco-2014      train                                                     ✓            ✓
-        coco-2014      validation                                                ✓            ✓
-        coco-2017      test                                                      ✓            ✓
-        coco-2017      train                                                     ✓            ✓
-        coco-2017      validation                                                ✓            ✓
-        fashion-mnist  test                                                      ✓            ✓
-        fashion-mnist  train                                                     ✓            ✓
-        imagenet-2012  train                                                     ✓            ✓
-        imagenet-2012  validation                                                ✓            ✓
-        kitti          test        ✓             ~/fiftyone/kitti/test                        ✓
-        kitti          train       ✓             ~/fiftyone/kitti/train                       ✓
-        kitti          validation  ✓             ~/fiftyone/kitti/validation                  ✓
-        mnist          test        ✓             ~/fiftyone/mnist/test           ✓            ✓
-        mnist          train       ✓             ~/fiftyone/mnist/train          ✓            ✓
-        voc-2007       test                                                                   ✓
-        voc-2007       train       ✓             ~/fiftyone/voc-2007/train       ✓            ✓
-        voc-2007       validation  ✓             ~/fiftyone/voc-2007/validation  ✓            ✓
-        voc-2012       test                                                                   ✓
-        voc-2012       train                                                     ✓            ✓
-        voc-2012       validation                                                ✓            ✓
+        name             split       downloaded    dataset_dir                     torch (*)    tensorflow    base
+        -------------    ----------  ------------  ------------------------------  -----------  ------------  ------
+        caltech101       test                                                      ✓
+        caltech101       train                                                     ✓
+        cifar10          test        ✓             ~/fiftyone/cifar10/test         ✓            ✓
+        cifar10          train       ✓             ~/fiftyone/cifar10/train        ✓            ✓
+        cifar100         test        ✓             ~/fiftyone/cifar100/test        ✓            ✓
+        cifar100         train       ✓             ~/fiftyone/cifar100/train       ✓            ✓
+        coco-2014        test                                                      ✓            ✓
+        coco-2014        train                                                     ✓            ✓
+        coco-2014        validation                                                ✓            ✓
+        coco-2017        test                                                      ✓            ✓
+        coco-2017        train                                                     ✓            ✓
+        coco-2017        validation                                                ✓            ✓
+        fashion-mnist    test                                                      ✓            ✓
+        fashion-mnist    train                                                     ✓            ✓
+        imagenet-2012    train                                                     ✓            ✓
+        imagenet-2012    validation                                                ✓            ✓
+        kitti            test        ✓             ~/fiftyone/kitti/test                        ✓
+        kitti            train       ✓             ~/fiftyone/kitti/train                       ✓
+        kitti            validation  ✓             ~/fiftyone/kitti/validation                  ✓
+        mnist            test        ✓             ~/fiftyone/mnist/test           ✓            ✓
+        mnist            train       ✓             ~/fiftyone/mnist/train          ✓            ✓
+        quickstart                   ✓             ~/quickstart                                               ✓
+        quickstart-video             ✓             ~/quickstart-video                                         ✓
+        voc-2007       test                                                                     ✓
+        voc-2007       train         ✓             ~/fiftyone/voc-2007/train       ✓            ✓
+        voc-2007       validation    ✓             ~/fiftyone/voc-2007/validation  ✓            ✓
+        voc-2012       test                                                                     ✓
+        voc-2012       train                                                       ✓            ✓
+        voc-2012       validation                                                  ✓            ✓
 
     Dataset splits that have been downloaded are indicated by a checkmark in
     the ``downloaded`` column, and their location on disk is indicated by
