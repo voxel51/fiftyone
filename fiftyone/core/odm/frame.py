@@ -59,7 +59,8 @@ class DatasetFrameSampleDocument(DatasetMixin, Document, SampleDocument):
 
     meta = {"abstract": True}
 
-    frame_number = fof.FrameNumberField(default=None, null=True)
+    sample_id = fof.ObjectIdField(required=True, unique_with="frame_number")
+    frame_number = fof.FrameNumberField(required=True)
 
     @classmethod
     def _sample_collection_name(cls):

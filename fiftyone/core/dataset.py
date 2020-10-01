@@ -1906,13 +1906,12 @@ def _create_dataset(name, persistent=False, media_type=None):
         )
 
     # Make a unique, permanent name for this sample collection
-    sample_collection_name = _make_sample_collection_name()
-
     # Create SampleDocument class for this dataset
-    frame_doc_cls = _create_frame_document_cls(
-        "frames." + sample_collection_name
-    )
+    sample_collection_name = _make_sample_collection_name()
     sample_doc_cls = _create_sample_document_cls(sample_collection_name)
+
+    frames_collection_name = "frames." + sample_collection_name
+    frame_doc_cls = _create_frame_document_cls(frames_collection_name)
 
     # Create DatasetDocument for this dataset
     dataset_doc = foo.DatasetDocument(
@@ -1930,6 +1929,10 @@ def _create_dataset(name, persistent=False, media_type=None):
     conn = foo.get_db_conn()
     collection = conn[sample_collection_name]
     collection.create_index("filepath", unique=True)
+    frames_collection = conn[frames_collection_name]
+    frames_collection.create_index(
+        [("sample_id", foo.ASC), ("frame_number", foo.ASC)]
+    )
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
 
