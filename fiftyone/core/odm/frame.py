@@ -59,7 +59,7 @@ class DatasetFrameSampleDocument(DatasetMixin, Document, SampleDocument):
 
     meta = {"abstract": True}
 
-    frame_number = fof.FrameNumberField()
+    frame_number = fof.FrameNumberField(default=None, null=True)
 
     @classmethod
     def _sample_collection_name(cls):
@@ -80,4 +80,13 @@ class NoDatasetFrameSampleDocument(NoDatasetMixin, SampleDocument):
 
     def __init__(self, **kwargs):
         self._data = OrderedDict()
+        for field_name in self.default_fields_ordered:
+
+            value = kwargs.pop(field_name, None)
+
+            if value is None:
+                value = self._get_default(self.default_fields[field_name])
+
+            self._data[field_name] = value
+
         self._data.update(kwargs)

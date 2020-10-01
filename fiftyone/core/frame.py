@@ -110,6 +110,7 @@ class Frames(object):
 
             d = value.to_dict()
             d.pop("_id", None)
+            d["frame_number"] = key
             if self._sample._in_db:
                 doc = self._sample._dataset._frame_doc_cls.from_dict(d)
                 doc.save()

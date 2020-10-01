@@ -2354,6 +2354,13 @@ class VideoSampleTests(unittest.TestCase):
             for idx, frame in enumerate(sample.frames.values()):
                 self.assertEqual(frame["label"], idx + 1)
 
+        f = fo.Frame()
+        f["frame_number"] = 1
+        self.assertEqual(f.frame_number, 1)
+        s = fo.Sample(filepath="video.mp4")
+        s[2] = f
+        self.assertEqual(s[2].frame_number, 2)
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
