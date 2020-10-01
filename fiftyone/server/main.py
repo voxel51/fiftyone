@@ -6,6 +6,7 @@ FiftyOne Flask server.
 |
 """
 import argparse
+from collections import defaultdict
 import json
 import logging
 import os
@@ -17,18 +18,21 @@ from flask_cors import CORS
 from flask_socketio import emit, Namespace, SocketIO
 
 import eta.core.utils as etau
+import eta.core.video as etav
 
 os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone.constants as foc
 import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
+import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 from fiftyone.core.service import DatabaseService
 from fiftyone.core.stages import _STAGES
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
 
-from json_util import FiftyOneJSONEncoder
-from util import get_image_size
+from json_util import convert, FiftyOneJSONEncoder
+from util import get_file_dimensions
 from pipelines import DISTRIBUTION_PIPELINES, LABELS, SCALARS
 
 
@@ -76,7 +80,8 @@ def get_sample_media():
         bytes
     """
     path = request.args.get("path")
-    return send_file(path)
+    # `conditional`: support partial content
+    return send_file(path, conditional=True)
 
 
 @app.route("/fiftyone")
@@ -139,6 +144,13 @@ _WITHOUT_PAGINATION_EXTENDED_STAGES = {
     fosg.FilterDetections,
     fosg.FilterField,
 }
+
+
+def _make_image_labels(name, label, frame_number):
+    return etav.VideoFrameLabels.from_image_labels(
+        fol.ImageLabel.from_dict(label).to_image_labels(name=name),
+        frame_number,
+    )
 
 
 class StateController(Namespace):
@@ -282,7 +294,41 @@ class StateController(Namespace):
             view = view.add_stage(stage)
 
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
-        samples = [s for s in view]
+        samples = [s.to_mongo_dict() for s in view]
+        if view.media_type == fom.VIDEO:
+            labels_dict = defaultdict(etav.VideoLabels)
+            frames_dict = defaultdict(dict)
+            frames = []
+            frames_map = {}
+            frames_coll = state.dataset._frames_collection
+            for idx, s in enumerate(samples):
+                frames += list(s["frames"].values())
+                for frame_number, _id in s["frames"].items():
+                    frames_map[_id] = (idx, int(frame_number))
+            cursor = frames_coll.find({"_id": {"$in": frames}})
+            sample_idx = 0
+            for frame in cursor:
+                _id = frame["_id"]
+                sample_idx, frame_number = frames_map[_id]
+                frames_dict[sample_idx][frame_number] = frame
+                labels = labels_dict[sample_idx]
+                frame_labels = etav.VideoFrameLabels(frame_number=frame_number)
+                for k, v in frame.items():
+                    if isinstance(v, dict) and "_cls" in v:
+                        frame_labels.merge_labels(
+                            _make_image_labels(k, v, frame_number)
+                        )
+                labels.add_frame(frame_labels)
+            for idx, sample in enumerate(samples):
+                labels = labels_dict[idx]
+                for frame in labels:
+                    for obj in labels[frame].objects:
+                        obj.frame_number = frame
+                sample["_eta_labels"] = labels.serialize()
+                sample["frames"] = frames_dict[idx]
+
+        convert(samples)
+
         more = False
         if len(samples) > page_length:
             samples = samples[:page_length]
@@ -290,9 +336,12 @@ class StateController(Namespace):
 
         results = [{"sample": s} for s in samples]
         for r in results:
-            w, h = get_image_size(r["sample"]["filepath"])
+            w, h = get_file_dimensions(r["sample"]["filepath"])
             r["width"] = w
             r["height"] = h
+            # default to image
+            if r["sample"].get("media_type", fom.IMAGE) == fom.VIDEO:
+                r["fps"] = etav.get_frame_rate(r["sample"]["filepath"])
 
         return {"results": results, "more": more}
 

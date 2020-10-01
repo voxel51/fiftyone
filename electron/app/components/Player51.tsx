@@ -1,95 +1,47 @@
+import mime from "mime-types";
 import React, { useState, useEffect } from "react";
+import styled from "styled-components";
 import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
+import CircularProgress from "@material-ui/core/CircularProgress";
+import { Warning } from "@material-ui/icons";
 
 import Player51 from "../player51/build/cjs/player51.min.js";
-import {
-  RESERVED_FIELDS,
-  VALID_SCALAR_TYPES,
-  getDetectionAttributes,
-  convertAttributesToETA,
-  stringify,
-} from "../utils/labels";
+import { useEventHandler } from "../utils/hooks";
+import { convertSampleToETA } from "../utils/labels";
 
 import * as atoms from "../recoil/atoms";
+import * as selectors from "../recoil/selectors";
 
-const PARSERS = {
-  Classification: [
-    "attrs",
-    (name, obj) => {
-      return {
-        type: "eta.core.data.CategoricalAttribute",
-        name,
-        confidence: obj.confidence,
-        value: obj.label,
-      };
-    },
-  ],
-  Detection: [
-    "objects",
-    (name, obj) => {
-      const bb = obj.bounding_box;
-      const attrs = convertAttributesToETA(getDetectionAttributes(obj));
-      return {
-        type: "eta.core.objects.DetectedObject",
-        name,
-        label: `${obj.label}`,
-        confidence: obj.confidence,
-        bounding_box: bb
-          ? {
-              top_left: { x: bb[0], y: bb[1] },
-              bottom_right: { x: bb[0] + bb[2], y: bb[1] + bb[3] },
-            }
-          : {
-              top_left: { x: 0, y: 0 },
-              bottom_right: { x: 0, y: 0 },
-            },
-        attrs: { attrs },
-      };
-    },
-  ],
-};
-
-const loadOverlay = (sample, colorMap, fieldSchema) => {
-  const imgLabels = { attrs: { attrs: [] }, objects: { objects: [] } };
-  const playerColorMap = {};
-  const sampleFields = Object.keys(sample).sort();
-  for (const sampleField of sampleFields) {
-    if (RESERVED_FIELDS.includes(sampleField)) {
-      continue;
-    }
-    const field = sample[sampleField];
-    if (field === null || field === undefined) continue;
-    if (["Classification", "Detection"].includes(field._cls)) {
-      const [key, fn] = PARSERS[field._cls];
-      imgLabels[key][key].push(fn(sampleField, field));
-      playerColorMap[`${sampleField}`] = colorMap[sampleField];
-    } else if (["Classifications", "Detections"].includes(field._cls)) {
-      for (const object of field[field._cls.toLowerCase()]) {
-        const [key, fn] = PARSERS[object._cls];
-        imgLabels[key][key].push(fn(sampleField, object));
-        playerColorMap[`${sampleField}`] = colorMap[sampleField];
-      }
-      continue;
-    } else if (VALID_SCALAR_TYPES.includes(fieldSchema[sampleField])) {
-      imgLabels.attrs.attrs.push({
-        name: sampleField,
-        value: stringify(field),
-      });
-    }
+const InfoWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 125%;
+  svg {
+    font-size: 200%;
+    color: ${({ theme }) => theme.fontDark};
   }
-  return [imgLabels, playerColorMap];
-};
+  svg.error {
+    color: ${({ theme }) => theme.error};
+  }
+`;
 
 export default ({
   thumbnail,
   sample,
+  metadata = {},
   src,
   style,
   onClick,
   onDoubleClick,
   onLoad = () => {},
   activeLabels,
+  frameLabelsActive,
   fieldSchema = {},
   filterSelector,
   playerRef,
@@ -97,51 +49,95 @@ export default ({
 }) => {
   const filter = useRecoilValue(filterSelector);
   const colorMap = useRecoilValue(atoms.colorMap);
-  const [overlay, playerColorMap] = loadOverlay(sample, colorMap, fieldSchema);
+  const mediaType = useRecoilValue(selectors.mediaType);
+  const overlay = convertSampleToETA(sample, fieldSchema);
+  const [mediaLoading, setMediaLoading] = useState(true);
   const [initLoad, setInitLoad] = useState(false);
+  const [error, setError] = useState(null);
   const id = uuid();
-  const [player] = useState(
-    new Player51({
-      media: {
-        src: src,
-        type: "image/jpg",
-      },
-      overlay: overlay,
-      colorMap: playerColorMap,
-      activeLabels,
-      filter,
-      enableOverlayOptions: {
-        attrRenderMode: false,
-        attrsOnlyOnClick: false,
-        attrRenderBox: false,
-      },
-      defaultOverlayOptions: {
-        ...defaultOverlayOptions,
-        action: "hover",
-        attrRenderMode: "attr-value",
-      },
-    })
-  );
+  const mimetype =
+    (sample.metadata && sample.metadata.mime_type) ||
+    mime.lookup(sample.filepath) ||
+    "image/jpg";
+  const playerActiveLabels = {
+    ...activeLabels,
+  };
+  if (mediaType === "video") {
+    playerActiveLabels.frames = frameLabelsActive;
+  }
+  const [player] = useState(() => {
+    try {
+      return new Player51({
+        media: {
+          src,
+          type: mimetype,
+        },
+        overlay,
+        fps: metadata.fps,
+        colorMap,
+        playerActiveLabels,
+        filter,
+        enableOverlayOptions: {
+          attrRenderMode: false,
+          attrsOnlyOnClick: false,
+          attrRenderBox: false,
+        },
+        defaultOverlayOptions: {
+          ...defaultOverlayOptions,
+          action: "hover",
+          attrRenderMode: "attr-value",
+        },
+      });
+    } catch (e) {
+      setError(`This file type (${mimetype}) is not supported.`);
+    }
+  });
+
   if (playerRef) {
     playerRef.current = player;
   }
   const props = thumbnail ? { onClick, onDoubleClick } : {};
   useEffect(() => {
+    if (!player || error) {
+      return;
+    }
     if (!initLoad) {
       if (thumbnail) {
         player.thumbnailMode();
       }
       player.render(id);
       setInitLoad(true);
-      onLoad();
     } else {
       player.updateOptions({
-        activeLabels,
+        activeLabels: playerActiveLabels,
         filter,
-        colorMap: playerColorMap,
+        colorMap,
       });
     }
-  }, [filter, overlay, activeLabels, colorMap]);
+  }, [player, filter, overlay, playerActiveLabels, colorMap]);
 
-  return <div id={id} style={style} {...props} />;
+  useEventHandler(player, "load", () => setMediaLoading(false));
+  useEventHandler(player, "load", onLoad);
+  useEventHandler(player, "error", () =>
+    setError(
+      `This video failed to load. Its type (${mimetype}) may be unsupported.`
+    )
+  );
+
+  return (
+    <div id={id} style={style} {...props}>
+      {error || mediaLoading ? (
+        <InfoWrapper>
+          {error ? (
+            <>
+              <Warning classes={{ root: "error" }} />
+              {thumbnail ? null : <div>{error}</div>}{" "}
+            </>
+          ) : mediaLoading && !thumbnail ? (
+            <CircularProgress />
+          ) : null}
+        </InfoWrapper>
+      ) : null}
+    </div>
+  );
 };
