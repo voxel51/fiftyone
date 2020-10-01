@@ -479,16 +479,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_doc_cls.delete_field(field_name)
         fos.Sample._purge_field(self._sample_collection_name, field_name)
 
-    def create_index(self, field):
-        """Creates a database index on the given field, enabling efficient
-        sorting on that field.
-
-        Args:
-            field: the name of the field to index
-        """
-        if field not in self._indexes:
-            self._sample_collection.create_index(field)
-
     def get_tags(self):
         """Returns the list of unique tags of samples in the dataset.
 
@@ -1628,6 +1618,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dataset = cls(name)
         dataset.add_videos_patt(videos_patt, tags=tags)
         return dataset
+
+    def create_index(self, field):
+        """Creates a database index on the given field, enabling efficient
+        sorting on that field.
+
+        Args:
+            field: the name of the field to index
+        """
+        if field not in self._indexes:
+            self._sample_collection.create_index(field)
 
     def aggregate(self, pipeline=None):
         """Calls the current MongoDB aggregation pipeline on the dataset.
