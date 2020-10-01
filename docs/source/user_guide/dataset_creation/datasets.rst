@@ -2484,9 +2484,7 @@ should implement is determined by the type of dataset that you are importing.
                 sample = fo.Sample(filepath=video_path, metadata=video_metadata)
 
                 if frames is not None:
-                    # @todo replace with `sample.frames.update(frames)`
-                    for frame_number, frame in frames.items():
-                        sample.frames[frame_number] = frame
+                    sample.frames.update(frames)
 
                 dataset.add_sample(sample)
 

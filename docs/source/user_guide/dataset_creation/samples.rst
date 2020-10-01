@@ -1368,9 +1368,7 @@ classification or object detections) associated with the image.
                 sample = fo.Sample(filepath=video_path, metadata=metadata)
 
                 if frame is not None:
-                    # @todo replace with `sample.frames.update(frames)`
-                    for frame_number, frame in frames.items():
-                        sample.frames[frame_number] = frame
+                    sample.frames.update(frames)
 
                 dataset.add_sample(sample)
 
