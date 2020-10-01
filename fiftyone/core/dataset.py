@@ -231,7 +231,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @media_type.setter
     def media_type(self, media_type):
         if len(self) != 0:
-            raise ValueError("Cannot set media_type of non-empty dataset")
+            raise ValueError("Cannot set media type of a non-empty dataset")
+
         if media_type not in fom.MEDIA_TYPES:
             raise ValueError(
                 'media_type can only be one of "image" or "video". Received "%s"'
@@ -1824,7 +1825,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 )
         elif self.media_type != sample.media_type:
             raise fom.MediaTypeError(
-                "dataset and sample media types do not match"
+                "Sample media type '%s' does not match dataset media type '%s'"
+                % (sample.media_type, self.media_type)
             )
 
         if non_existest_fields:
