@@ -269,9 +269,7 @@ def add_labeled_videos(
         frames = sample_parser.get_frame_labels()
 
         if frames is not None:
-            # @todo replace with `sample.frames.update(frames)`
-            for frame_number, frame in frames.items():
-                sample.frames[frame_number] = frame
+            sample.frames.update(frames)
 
         return sample
 
@@ -1395,9 +1393,7 @@ class FiftyOneLabeledVideoSampleParser(LabeledVideoSampleParser):
         frames = self.current_sample.frames
         new_frames = {}
 
-        # @todo replace with `frames.items()`
-        for frame_number in frames:
-            frame = frames[frame_number]
+        for frame_number, frame in frames.items():
             new_frame = fof.Frame()
             for k, v in self.labels_dict.items():
                 new_frame[v] = frame[k]

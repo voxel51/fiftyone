@@ -1308,9 +1308,7 @@ def _parse_frame_labels(frames):
     if frames is None:
         return video_labels
 
-    # @todo replace with `frames.items()`
-    for frame_number in frames:
-        frame = frames[frame_number]
+    for frame, frame_number in frames.items():
         video_labels[frame_number] = _parse_frame(frame, frame_number)
 
     return video_labels

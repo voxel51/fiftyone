@@ -162,9 +162,7 @@ def import_samples(
                 )
 
                 if frames is not None:
-                    # @todo replace with `sample.frames.update(frames)`
-                    for frame_number, frame in frames.items():
-                        sample.frames[frame_number] = frame
+                    sample.frames.update(frames)
 
                 return sample
 
@@ -603,9 +601,7 @@ class LabeledVideoDatasetImporter(DatasetImporter):
                 )
 
                 if frames is not None:
-                    # @todo replace with `sample.frames.update(frames)`
-                    for frame_number, frame in frames.items():
-                        sample.frames[frame_number] = frame
+                    sample.frames.update(frames)
 
                 dataset.add_sample(sample)
 
