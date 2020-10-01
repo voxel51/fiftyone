@@ -17,24 +17,30 @@ from fiftyone.core.odm.frame import (
 )
 
 
+#
+# This class is instantiated automatically and depends on an owning
+# :class:`fiftyone.core.sample.Sample`. Not for independent use or direct
+# assignment to :class:`fiftyone.core.sample.Sample`s.
+#
 class Frames(object):
-    """An ordered map of frames in a :class:`fiftyone.core.sample.Sample`
+    """An ordered dictionary of labels for the frames of a
+    :class:`fiftyone.core.sample.Sample`.
 
-    Note:
-        This class is instantiated automatically and depends on an owning
-        :class:`fiftyone.core.sample.Sample`. Not for independent use or direct
-        assignment to :class:`fiftyone.core.sample.Sample`s.
+    The frame labels are stored in :class:`Frame` instances.
+
+    :class:`Frames` instances behave like ``defaultdict(Frame)`` instances; an
+    empty :class:`Frame` instance is returned when accessing a new frame
+    number.
     """
 
-    def _serve(self, sample):
-        self._sample = sample
-        return self
+    def __init__(self):
+        self._sample = None
+        self._iter = None
 
     def __repr__(self):
-        return "<%s %d>" % (
-            self.__class__.__name__,
-            len(self._sample._doc.to_dict()["frames"]),
-        )
+        num_frames = len(self._sample._doc.to_dict()["frames"])
+        plural = "s" if num_frames != 1 else ""
+        return "{ <%d frame%s> }" % (num_frames, plural)
 
     def __iter__(self):
         self._iter = self.keys()
@@ -43,12 +49,52 @@ class Frames(object):
     def __next__(self):
         return next(self._iter)
 
+    def __getitem__(self, key):
+        fofu.validate_frame_number(key)
+
+        try:
+            key = str(key)
+            doc = self._sample._doc.frames[key]
+        except KeyError:
+            if self._sample._in_db:
+                doc = self._sample._dataset._frame_doc_cls.from_dict(
+                    {"frame_number": key}
+                )
+                doc.save()
+                dataset = self._sample._dataset
+            else:
+                doc = NoDatasetFrameSampleDocument(frame_number=key)
+                dataset = None
+
+        frame = Frame.from_doc(doc, dataset=self._sample._dataset)
+        self._sample._doc.frames[key] = frame._doc
+        return frame
+
+    def __setitem__(self, key, value):
+        fofu.validate_frame_number(key)
+
+        if not isinstance(value, Frame):
+            raise ValueError("Value must be a %s" % Frame.__name__)
+
+        d = value.to_dict()
+        d.pop("_id", None)
+        if self._sample._in_db:
+            doc = self._sample._dataset._frame_doc_cls.from_dict(d)
+            doc.save()
+            self._sample._doc.frames[str(key)] = doc
+        else:
+            self._sample._doc.frames[
+                str(key)
+            ] = NoDatasetFrameSampleDocument.from_dict(d)
+
     def keys(self):
-        """Iterator for the frame numbers in a video :class:`fiftyone.core.sample.Sample`.
+        """Returns an iterator over the frame numbers with labels in the
+        sample.
+
+        The frames are traversed in ascending order.
 
         Returns:
-            an iterator over the 1-based integer frame numbers in the owning
-            :class:`fiftyone.core.sample.Sample`, ordered by frame number.
+            a generator that emits frame numbers
         """
         dataset = self._sample._dataset if self._sample._in_db else None
         for k in sorted(
@@ -57,12 +103,13 @@ class Frames(object):
             yield int(k)
 
     def items(self):
-        """Iterator for the frames in a video :class:`fiftyone.core.sample.Sample`.
+        """Returns an iterator over the frame numberes and :class:`Frame`
+        instances for the sample.
+
+        The frames are traversed in ascending order.
 
         Returns:
-            an tuple iterator of 1-based integer frame numbers in the owning
-            :class:`fiftyone.core.sample.Sample` and the corresponding :class:`Frame`,
-            ordered by frame number.
+            a generator that emits ``(frame_number, Frame)`` tuples
         """
         dataset = self._sample._dataset if self._sample._in_db else None
         for k in self.keys():
@@ -71,12 +118,13 @@ class Frames(object):
             )
 
     def values(self):
-        """Iterator for the frames in a video :class:`fiftyone.core.sample.Sample`.
+        """Returns an iterator over the :class:`Frame` instances for the
+        sample.
+
+        The frames are traversed in ascending order.
 
         Returns:
-            an iterator over over the :class:`Frame`s in the owning
-            :class:`fiftyone.core.sample.Sample`, ordered by the 1-based integer
-            frame numbers.
+            a generator that emits :class:`Frame` instances
         """
         dataset = self._sample._dataset if self._sample._in_db else None
         for k in self.keys():
@@ -84,51 +132,31 @@ class Frames(object):
                 self._sample._doc.frames[str(k)], dataset=dataset
             )
 
-    def __getitem__(self, key):
-        if fofu.is_frame_number(key):
-            try:
-                key = str(key)
-                doc = self._sample._doc.frames[key]
-            except KeyError:
-                if self._sample._in_db:
-                    doc = self._sample._dataset._frame_doc_cls.from_dict(
-                        {"frame_number": key}
-                    )
-                    doc.save()
-                    dataset = self._sample._dataset
-                else:
-                    doc = NoDatasetFrameSampleDocument(frame_number=key)
-                    dataset = None
-            frame = Frame.from_doc(doc, dataset=self._sample._dataset)
-            self._sample._doc.frames[key] = frame._doc
-            return frame
+    def update(self, d):
+        """Adds the frame labels from the given dictionary to this instance.
 
-    def __setitem__(self, key, value):
-        if fofu.is_frame_number(key):
-            if not isinstance(value, Frame):
-                raise ValueError("%s is not a Frame")
+        Existing frames are overwritten.
 
-            d = value.to_dict()
-            d.pop("_id", None)
-            if self._sample._in_db:
-                doc = self._sample._dataset._frame_doc_cls.from_dict(d)
-                doc.save()
-                self._sample._doc.frames[str(key)] = doc
-            else:
-                self._sample._doc.frames[
-                    str(key)
-                ] = NoDatasetFrameSampleDocument.from_dict(d)
+        Args:
+            d: a dictionary mapping frame numbers to :class:`Frame` instances
+        """
+        for frame_number, frame in d.items():
+            self[frame_number] = frame
+
+    def _serve(self, sample):
+        self._sample = sample
+        return self
 
     def _get_field_cls(self):
         return self._sample._doc.frames.__class__
 
 
 class Frame(_Sample):
-    """A frame in a video :class:`fiftyone.core.sample.Sample`
+    """A frame in a video :class:`fiftyone.core.sample.Sample`.
 
-    Any `fiftyone.core.label.Label` or `fiftyone.core.fields.Field` that can
-    assigned to an image :class:`fiftyone.core.sample.Sample` can also be
-    assigned to a :class:`Frame`.
+    :class:`Frame` instances can hold any :class:`fiftyone.core.label.Label`
+    or other :class:`fiftyone.core.fields.Field` type that can be assigned
+    directly to :class:`fiftyone.core.sample.Sample` instances.
     """
 
     # Instance references keyed by [collection_name][sample_id]
@@ -165,14 +193,12 @@ class Frame(_Sample):
 
         Args:
             doc: a :class:`fiftyone.core.odm.SampleDocument`
-            dataset: the :class:`fiftyone.core.dataset.Dataset` that the frame
-                belongs to
+            dataset (None): the :class:`fiftyone.core.dataset.Dataset` that the
+                frame belongs to
 
         Returns:
             a :class:`Frame`
         """
-        from fiftyone.core.odm import NoDatasetFrameSampleDocument
-
         if isinstance(doc, NoDatasetFrameSampleDocument):
             sample = cls.__new__(cls)
             sample._dataset = None
