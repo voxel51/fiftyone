@@ -160,9 +160,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             after the session terminates
     """
 
-    # Batch size used when commiting samples to the database
-    _BATCH_SIZE = 128
-
     def __init__(self, name=None, persistent=False, _create=True):
         if name is None and _create:
             name = get_default_dataset_name()
@@ -620,9 +617,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             except:
                 pass
 
+        # @todo optimize adjust dynamically based on sample save time
+        batch_size = 128 if self.media_type == fom.IMAGE else 1
+
         sample_ids = []
         with fou.ProgressBar(total=num_samples) as pb:
-            for batch in fou.iter_batches(samples, self._BATCH_SIZE):
+            for batch in fou.iter_batches(samples, batch_size):
                 sample_ids.extend(
                     self._add_samples_batch(batch, expand_schema)
                 )
