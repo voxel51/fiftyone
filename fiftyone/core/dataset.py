@@ -425,11 +425,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fos.Sample._purge_field(self._sample_collection_name, field_name)
 
     def create_index(self, field):
-        """Updates the underlying database to create an index on a field for
-        efficient sorting
+        """Creates a database index on the given field, enabling efficient
+        sorting on that field.
 
         Args:
-            field: the name of the field to make an index over
+            field: the name of the field to index
         """
         if field not in self._indexes:
             self._sample_collection.create_index(field)
@@ -1223,8 +1223,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if pipeline is None:
             pipeline = []
 
-        return self._sample_collection.aggregate(pipeline,
-                allowDiskUse=True)
+        return self._sample_collection.aggregate(pipeline, allowDiskUse=True)
 
     def serialize(self):
         """Serializes the dataset.
@@ -1323,8 +1322,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @property
     def _indexes(self):
         index_info = self._sample_collection.index_information()
-        indexes = [k['key'][0][0] for k in index_info.values()]
-        return indexes
+        return [k["key"][0][0] for k in index_info.values()]
 
     def _apply_field_schema(self, new_fields):
         curr_fields = self.get_field_schema()

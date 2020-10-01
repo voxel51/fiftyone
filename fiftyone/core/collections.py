@@ -297,11 +297,11 @@ class SampleCollection(object):
                 )
 
     def create_index(self, field):
-        """Updates the underlying database to create an index on a field for
-        efficient sorting
+        """Creates a database index on the given field, enabling efficient
+        sorting on that field.
 
         Args:
-            field: the name of the field to make an index over
+            field: the name of the field to index
         """
         raise NotImplementedError("Subclass must implement make_index()")
 
@@ -950,10 +950,6 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-
-        if isinstance(field_or_expr, str):
-            self.create_index(field_or_expr)
-
         return self._add_view_stage(fos.SortBy(field_or_expr, reverse=reverse))
 
     @view_stage
