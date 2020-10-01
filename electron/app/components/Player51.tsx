@@ -1,7 +1,9 @@
 import mime from "mime-types";
 import React, { useState, useEffect } from "react";
+import styled from "styled-components";
 import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
+import { Warning } from "@material-ui/icons";
 
 import Player51 from "../player51/build/cjs/player51.min.js";
 import { useEventHandler } from "../utils/hooks";
@@ -9,6 +11,21 @@ import { convertSampleToETA } from "../utils/labels";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+
+const ErrorWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 125%;
+  svg {
+    font-size: 200%;
+    color: ${({ theme }) => theme.error};
+  }
+`;
 
 export default ({
   thumbnail,
@@ -31,6 +48,7 @@ export default ({
   const mediaType = useRecoilValue(selectors.mediaType);
   const overlay = convertSampleToETA(sample, fieldSchema);
   const [initLoad, setInitLoad] = useState(false);
+  const [error, setError] = useState(null);
   const id = uuid();
   const mimetype =
     (sample.metadata && sample.metadata.mime_type) ||
@@ -42,35 +60,42 @@ export default ({
   if (mediaType === "video") {
     playerActiveLabels.frames = frameLabelsActive;
   }
-  const [player] = useState(
-    new Player51({
-      media: {
-        src,
-        type: mimetype,
-      },
-      overlay,
-      fps: metadata.fps,
-      colorMap,
-      playerActiveLabels,
-      filter,
-      enableOverlayOptions: {
-        attrRenderMode: false,
-        attrsOnlyOnClick: false,
-        attrRenderBox: false,
-      },
-      defaultOverlayOptions: {
-        ...defaultOverlayOptions,
-        action: "hover",
-        attrRenderMode: "attr-value",
-      },
-    })
-  );
+  const [player] = useState(() => {
+    try {
+      return new Player51({
+        media: {
+          src,
+          type: mimetype,
+        },
+        overlay,
+        fps: metadata.fps,
+        colorMap,
+        playerActiveLabels,
+        filter,
+        enableOverlayOptions: {
+          attrRenderMode: false,
+          attrsOnlyOnClick: false,
+          attrRenderBox: false,
+        },
+        defaultOverlayOptions: {
+          ...defaultOverlayOptions,
+          action: "hover",
+          attrRenderMode: "attr-value",
+        },
+      });
+    } catch (e) {
+      setError(`This file type (${mimetype}) is not supported.`);
+    }
+  });
 
   if (playerRef) {
     playerRef.current = player;
   }
   const props = thumbnail ? { onClick, onDoubleClick } : {};
   useEffect(() => {
+    if (!player || error) {
+      return;
+    }
     if (!initLoad) {
       if (thumbnail) {
         player.thumbnailMode();
@@ -84,10 +109,23 @@ export default ({
         colorMap,
       });
     }
-    console.log(playerActiveLabels);
-  }, [filter, overlay, playerActiveLabels, colorMap]);
+  }, [player, filter, overlay, playerActiveLabels, colorMap]);
 
   useEventHandler(player, "load", onLoad);
+  useEventHandler(player, "error", () =>
+    setError(
+      `This video failed to load. Its type (${mimetype}) may be unsupported.`
+    )
+  );
 
-  return <div id={id} style={style} {...props} />;
+  return (
+    <div id={id} style={style} {...props}>
+      {error ? (
+        <ErrorWrapper>
+          <Warning />
+          {thumbnail ? null : <div>{error}</div>}
+        </ErrorWrapper>
+      ) : null}
+    </div>
+  );
 };

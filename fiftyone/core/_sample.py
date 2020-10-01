@@ -35,7 +35,10 @@ class _Sample(object):
         ):
             super().__setattr__(name, value)
         else:
-            self._secure_media(name, value)
+            try:
+                self._secure_media(name, value)
+            except AttributeError:
+                pass
             self._doc.__setattr__(name, value)
 
     def __delattr__(self, name):

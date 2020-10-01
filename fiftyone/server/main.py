@@ -24,7 +24,7 @@ os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone.constants as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-from fiftyone.core.media import MediaType
+import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 from fiftyone.core.service import DatabaseService
 from fiftyone.core.stages import _STAGES
@@ -295,7 +295,7 @@ class StateController(Namespace):
 
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
         samples = [s.to_mongo_dict() for s in view]
-        if view.media_type == MediaType.VIDEO:
+        if view.media_type == fom.VIDEO:
             labels_dict = defaultdict(etav.VideoLabels)
             frames_dict = defaultdict(dict)
             frames = []
@@ -340,10 +340,7 @@ class StateController(Namespace):
             r["width"] = w
             r["height"] = h
             # default to image
-            if (
-                r["sample"].get("media_type", MediaType.IMAGE)
-                == MediaType.VIDEO
-            ):
+            if r["sample"].get("media_type", fom.IMAGE) == fom.VIDEO:
                 r["fps"] = etav.get_frame_rate(r["sample"]["filepath"])
 
         return {"results": results, "more": more}

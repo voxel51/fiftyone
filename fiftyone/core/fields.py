@@ -273,6 +273,12 @@ class FramesField(mongoengine.fields.MapField, Field):
             db_field="frames",
         )
 
+    def validate(self, value):
+        try:
+            fofu.is_frame_number(value)
+        except fofu.FrameError as e:
+            self.error(str(e))
+
 
 class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
     """A field that stores instances of a given type of
