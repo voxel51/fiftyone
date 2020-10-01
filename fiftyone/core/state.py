@@ -390,10 +390,8 @@ def _get_label_confidence_bounds(view):
 
 
 def _get_field_count(view, field):
-    if (
-        isinstance(field, fof.EmbeddedDocumentField)
-        or view.media_type == fom.VIDEO
-        and field.name == "frames"
+    if isinstance(field, fof.EmbeddedDocumentField) or (
+        view.media_type == fom.VIDEO and field.name == "frames"
     ):
         if field.name == "frames":
             array_field = {"$objectToArray": "$%s" % field.name}

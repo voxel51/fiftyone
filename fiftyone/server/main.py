@@ -294,9 +294,9 @@ class StateController(Namespace):
 
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
         samples = [s.to_mongo_dict() for s in view]
-        labels_dict = defaultdict(etav.VideoLabels)
-        frames_dict = defaultdict(dict)
         if view.media_type == "video":
+            labels_dict = defaultdict(etav.VideoLabels)
+            frames_dict = defaultdict(dict)
             frames = []
             frames_map = {}
             frames_coll = state.dataset._frames_collection

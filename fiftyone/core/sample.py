@@ -27,14 +27,14 @@ from fiftyone.core._sample import _Sample
 class _DatasetSample(_Sample):
     def __getattr__(self, name):
         if name == "frames" and self.media_type == fomm.VIDEO:
-            return self._frames.serve(self)
+            return self._frames._serve(self)
         return super().__getattr__(name)
 
     def __getitem__(self, field_name):
         if fofu.is_frame_number(field_name) and self.media_type == "video":
             return self.frames[field_name]
         if field_name == "frames" and self.media_type == fomm.VIDEO:
-            return self._frames.serve(self)
+            return self._frames._serve(self)
 
         try:
             return self.get_field(field_name)
@@ -125,6 +125,7 @@ class Sample(_DatasetSample):
         )
         if self.media_type == fomm.VIDEO:
             self._frames = fofr.Frames()
+            self.__iter__ = lambda: self._frames._serve(self).__iter__()
         super().__init__()
 
     def __str__(self):
@@ -133,13 +134,10 @@ class Sample(_DatasetSample):
     def __repr__(self):
         kwargs = {}
         if self.media_type == fomm.VIDEO:
-            kwargs["frames"] = self._frames.serve(self).__repr__()
+            kwargs["frames"] = self._frames._serve(self).__repr__()
         return self._doc.fancy_repr(
             class_name=self.__class__.__name__, **kwargs
         )
-
-    def __iter__(self):
-        return self._frames.serve(self).__iter__()
 
     def copy(self):
         """Returns a deep copy of the sample that has not been added to the
@@ -426,7 +424,7 @@ class SampleView(_DatasetSample):
     def __repr__(self):
         kwargs = {}
         if self.media_type == fomm.VIDEO:
-            kwargs["frames"] = self._frames.serve(self).__repr__()
+            kwargs["frames"] = self._frames._serve(self).__repr__()
         return self._doc.fancy_repr(
             class_name=self.__class__.__name__,
             select_fields=self._selected_fields,
