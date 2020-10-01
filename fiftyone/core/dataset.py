@@ -5,6 +5,7 @@ FiftyOne datasets.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import defaultdict
 from copy import deepcopy
 import datetime
 import inspect
@@ -571,7 +572,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             frames += sample_frames
         if len(frames) == 0:
             return  # nothing to insert
-        result = self._frames_collection.insert_many(frames)
+        result = self._frame_collection.insert_many(frames)
         sample_idx = 0
         result_start = 0
         for sample_idx, num_frames in frames_len.items():
@@ -842,7 +843,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         if self.media_type == fom.VIDEO:
             self._frame_doc_cls.drop_collection()
-            fos.Sample._reset_all_backing_docs(self._frames_collection_name)
+            fos.Sample._reset_all_backing_docs(self._frame_collection_name)
         self._sample_doc_cls.drop_collection()
         fos.Sample._reset_all_backing_docs(self._sample_collection_name)
 
@@ -1626,7 +1627,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             field: the name of the field to index
         """
-        if field not in self._indexes:
+        if field not in self._sample_indexes:
             self._sample_collection.create_index(field)
 
     def aggregate(self, pipeline=None):
@@ -1738,16 +1739,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _sample_collection(self):
         return foo.get_db_conn()[self._sample_collection_name]
 
-    def _frames_collection_name(self):
+    @property
+    def _sample_indexes(self):
+        index_info = self._sample_collection.index_information()
+        return [k["key"][0][0] for k in index_info.values()]
+
+    @property
+    def _frame_collection_name(self):
         return "frames." + self._sample_collection_name
 
     @property
-    def _frames_collection(self):
-        return foo.get_db_conn()[self._frames_collection_name]
+    def _frame_collection(self):
+        return foo.get_db_conn()[self._frame_collection_name]
 
     @property
-    def _indexes(self):
-        index_info = self._sample_collection.index_information()
+    def _frame_indexes(self):
+        index_info = self._frame_collection.index_information()
         return [k["key"][0][0] for k in index_info.values()]
 
     def _apply_field_schema(self, new_fields):
