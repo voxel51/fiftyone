@@ -30,6 +30,7 @@ function Dataset(props) {
   const [modal, setModal] = useState({
     visible: false,
     sample: null,
+    metadata: null,
     activeLabels: {},
   });
   const colorMap = useRecoilValue(atoms.colorMap);
@@ -96,16 +97,15 @@ function Dataset(props) {
   let modalProps = {};
   if (modal.visible && modal.sample) {
     const currentSampleIndex = currentSamples.findIndex(
-      (sample) => sample._id == modal.sample._id
+      ({ sample }) => sample._id == modal.sample._id
     );
     const previousSample = currentSamples[currentSampleIndex - 1];
     if (previousSample) {
-      modalProps.onPrevious = () =>
-        setModal({ ...modal, sample: previousSample });
+      modalProps.onPrevious = () => setModal({ ...modal, ...previousSample });
     }
     const nextSample = currentSamples[currentSampleIndex + 1];
     if (nextSample) {
-      modalProps.onNext = () => setModal({ ...modal, sample: nextSample });
+      modalProps.onNext = () => setModal({ ...modal, ...nextSample });
     }
   }
 
@@ -119,6 +119,7 @@ function Dataset(props) {
             fieldSchema={fieldSchema}
             colorMap={colorMap}
             sample={modal.sample}
+            metadata={modal.metadata}
             sampleUrl={src}
             onClose={handleHideModal}
             {...modalProps}
@@ -139,11 +140,12 @@ function Dataset(props) {
               <Route path={routes.SAMPLES}>
                 <SamplesContainer
                   {...props.socket}
-                  setView={(sample) =>
+                  setView={(sample, metadata) =>
                     setModal({
                       ...modal,
                       visible: true,
                       sample,
+                      metadata,
                     })
                   }
                   displayProps={displayProps}

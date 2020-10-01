@@ -11,15 +11,47 @@ TODO (BEN): clean up, document, and fit into fiftyone.core
 """
 import collections
 import json
+import mimetypes
 import os
 import io
 import struct
 
+import eta.core.video as etav
+import PIL.Image
+
+
 FILE_UNKNOWN = "Sorry, don't know how to get size for this file."
 
 
-class UnknownImageFormat(Exception):
+class UnknownFileFormat(Exception):
     pass
+
+
+class UnknownImageFormat(UnknownFileFormat):
+    pass
+
+
+def get_file_dimensions(file_path):
+    """
+    Calculates the dimensions of the specified file.
+
+    Args:
+        file_path (str): path to the file
+
+    Returns:
+        tuple: (width, height) as integers
+    """
+    mime_type, _ = mimetypes.guess_type(file_path)
+    if mime_type is None:
+        raise UnknownFileFormat(
+            "Cannot identify mime type from %r" % file_path
+        )
+    category = mime_type.split("/")[0]
+    if category == "image":
+        return get_image_size(file_path)
+    elif category == "video":
+        return etav.get_frame_size(file_path)
+    raise UnknownFileFormat("Unhandled mime type: %r" % mime_type)
 
 
 types = collections.OrderedDict()
@@ -62,8 +94,11 @@ def get_image_size(file_path):
     Return (width, height) for a given img file content - no external
     dependencies except the os and struct builtin modules
     """
-    img = get_image_metadata(file_path)
-    return (img.width, img.height)
+    try:
+        img = get_image_metadata(file_path)
+        return (img.width, img.height)
+    except UnknownImageFormat:
+        return _get_image_size_pil(file_path)
 
 
 def get_image_size_from_bytesio(input, size):
@@ -74,8 +109,19 @@ def get_image_size_from_bytesio(input, size):
         input (io.IOBase): io object support read & seek
         size (int): size of buffer in byte
     """
-    img = get_image_metadata_from_bytesio(input, size)
-    return (img.width, img.height)
+    try:
+        img = get_image_metadata_from_bytesio(input, size)
+        return (img.width, img.height)
+    except UnknownImageFormat:
+        return _get_image_size_pil(input)
+
+
+def _get_image_size_pil(file):
+    try:
+        with PIL.Image.open(file) as image:
+            return image.size
+    except IOError as e:
+        raise UnknownImageFormat(e)
 
 
 def get_image_metadata(file_path):
@@ -243,7 +289,8 @@ def get_image_metadata_from_bytesio(input, size, file_path=None):
         if 0 != struct.unpack("<H", reserved)[0]:
             raise UnknownImageFormat(FILE_UNKNOWN)
         format = input.read(2)
-        assert 1 == struct.unpack("<H", format)[0]
+        if 1 != struct.unpack("<H", format)[0]:
+            raise UnknownImageFormat(FILE_UNKNOWN)
         num = input.read(2)
         num = struct.unpack("<H", num)[0]
         if num > 1:

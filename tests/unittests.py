@@ -27,8 +27,12 @@ from pymongo.errors import DuplicateKeyError
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
+import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
-from fiftyone.core.odm.sample import default_sample_fields
+from fiftyone.core.odm.sample import (
+    DatasetSampleDocument,
+    default_sample_fields,
+)
 import fiftyone.core.sample as fos
 import fiftyone.core.stages as fosg
 from fiftyone import ViewField as F
@@ -1776,8 +1780,6 @@ class SampleFieldTests(unittest.TestCase):
             sample.invalid_field
 
         # set field (default)
-        sample.filepath = ["invalid", "type"]
-        sample.filepath = None
         sample.tags = "invalid type"
         sample.tags = None
 
@@ -2204,7 +2206,8 @@ class ViewStageTests(unittest.TestCase):
 
         for sample in self.dataset.select_fields():
             self.assertSetEqual(
-                sample.selected_field_names, set(default_sample_fields())
+                sample.selected_field_names,
+                set(default_sample_fields(DatasetSampleDocument)),
             )
             self.assertIsNone(sample.excluded_field_names)
             sample.filepath
@@ -2237,6 +2240,126 @@ class ViewStageTests(unittest.TestCase):
         self.assertEqual(
             stage_dict["_uuid"], fosg.ViewStage._from_dict(stage_dict)._uuid
         )
+
+
+class MediaTypeTests(unittest.TestCase):
+    @drop_datasets
+    def setUp(self):
+        self.img_sample = fo.Sample(filepath="image.png")
+        self.img_dataset = fo.Dataset()
+        self.img_dataset.add_sample(self.img_sample)
+
+        self.vid_sample = fo.Sample(filepath="video.mp4")
+        self.vid_dataset = fo.Dataset()
+        self.vid_dataset.add_sample(self.vid_sample)
+
+    def test_img_types(self):
+        self.assertEqual(self.img_sample.media_type, fom.IMAGE)
+        self.assertEqual(self.img_dataset.media_type, fom.IMAGE)
+
+    def test_vid_types(self):
+        self.assertEqual(self.vid_sample.media_type, fom.VIDEO)
+        self.assertEqual(self.vid_dataset.media_type, fom.VIDEO)
+
+    def test_img_change_attempts(self):
+        with self.assertRaises(fom.MediaTypeError):
+            self.img_sample.filepath = "video.mp4"
+
+    def test_vid_change_attempts(self):
+        with self.assertRaises(fom.MediaTypeError):
+            self.vid_sample.filepath = "image.png"
+
+    def test_img_label_on_vid_sample(self):
+        with self.assertRaises(fom.MediaTypeError):
+            self.vid_sample["img_label"] = fo.Classification(label="label")
+        with self.assertRaises(KeyError):
+            self.vid_sample["img_label"]
+
+
+class VideoSampleTests(unittest.TestCase):
+    @drop_datasets
+    def setUp(self):
+        self.dataset = fo.Dataset()
+
+    def _make_dataset(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample("/path/to/video1.mp4"),
+                fo.Sample("/path/to/video2.mp4"),
+                fo.Sample("/path/to/video3.mp4"),
+                fo.Sample("/path/to/video4.mp4"),
+            ]
+        )
+        return dataset
+
+    def test_no_dataset_samples(self):
+        sample = fo.Sample(filepath="video.mp4")
+        sample[1]["attribute"] = "attr"
+        self.assertEqual(sample[1]["attribute"], "attr")
+
+        for idx, frame in enumerate(sample):
+            self.assertEqual(idx, 0)
+
+    def test_dataset_samples(self):
+        sample = fo.Sample(filepath="video.mp4")
+        self.dataset.add_sample(sample)
+        sample[1]["attribute"] = "attr"
+        self.assertEqual(sample[1]["attribute"], "attr")
+
+        for idx, frame in enumerate(sample):
+            self.assertEqual(idx, 0)
+
+    def test_save(self):
+        dataset = self._make_dataset()
+
+        for sample in dataset.iter_samples():
+            for i in range(1, 50):
+                sample.frames[i]["box"] = fo.Detection(
+                    label="foo", bounding_box=[i / 100, i / 100, 0.9, 0.9]
+                )
+            sample.save()
+        for sample in dataset.iter_samples():
+            for i in range(1, 50):
+                self.assertEqual(sample.frames[i]["box"].label, "foo")
+
+        samples = [fo.Sample("/path/to/video1.mp4")]
+        for sample in samples:
+            for i in range(1, 50):
+                sample.frames[i]["box"] = fo.Detection(
+                    label="foo", bounding_box=[i / 100, i / 100, 0.9, 0.9]
+                )
+            sample.save()
+        for sample in samples:
+            for i in range(1, 50):
+                self.assertEqual(sample.frames[i]["box"].label, "foo")
+
+    def test_frames(self):
+        dataset = self._make_dataset()
+        for sample in dataset.iter_samples():
+            for i in range(1, 50):
+                sample[i]["label"] = i
+            sample.save()
+        for sample in dataset.iter_samples():
+            for idx, frame_number in enumerate(sample):
+                self.assertEqual(frame_number - 1, idx)
+
+            for idx, frame_number in enumerate(sample.frames.keys()):
+                self.assertEqual(frame_number - 1, idx)
+
+            for idx, (frame_number, frame) in enumerate(sample.frames.items()):
+                self.assertEqual(frame_number - 1, idx)
+                self.assertEqual(frame["label"], frame_number)
+
+            for idx, frame in enumerate(sample.frames.values()):
+                self.assertEqual(frame["label"], idx + 1)
+
+        f = fo.Frame()
+        f["frame_number"] = 1
+        self.assertEqual(f.frame_number, 1)
+        s = fo.Sample(filepath="video.mp4")
+        s[2] = f
+        self.assertEqual(s[2].frame_number, 2)
 
 
 if __name__ == "__main__":
