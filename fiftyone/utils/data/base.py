@@ -10,6 +10,7 @@ import os
 
 import eta.core.image as etai
 import eta.core.utils as etau
+import eta.core.video as etav
 
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -37,6 +38,26 @@ def parse_images_dir(dataset_dir, recursive=True):
         dataset_dir, abs_paths=True, recursive=recursive
     )
     return [p for p in filepaths if etai.is_image_mime_type(p)]
+
+
+def parse_videos_dir(dataset_dir, recursive=True):
+    """Parses the contents of the given directory of videos.
+
+    See :class:`fiftyone.types.dataset_types.VideoDirectory` for format
+    details. In particular, note that files with non-video MIME types are
+    omitted.
+
+    Args:
+        dataset_dir: the dataset directory
+        recursive (True): whether to recursively traverse subdirectories
+
+    Returns:
+        a list of video paths
+    """
+    filepaths = etau.list_files(
+        dataset_dir, abs_paths=True, recursive=recursive
+    )
+    return [p for p in filepaths if etav.is_video_mime_type(p)]
 
 
 def parse_image_classification_dir_tree(dataset_dir):
@@ -152,10 +173,7 @@ def convert_classification_field_to_detections(
         dataset.delete_sample_field(classification_field)
 
     if overwrite:
-        # @todo replace with `dataset.rename_field()` when such a method exists
-        logger.info("Finalizing operation")
-        dataset.clone_field(detections_field, classification_field)
-        dataset.delete_sample_field(detections_field)
+        dataset.rename_field(detections_field, classification_field)
 
 
 def expand_image_labels_field(

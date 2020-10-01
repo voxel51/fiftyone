@@ -97,6 +97,8 @@ format when writing the dataset to disk.
     +====================================================================+====================================================================================+
     | :ref:`ImageDirectory <ImageDirectory-export>`                      | A directory of images.                                                             |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`VideoDirectory <VideoDirectory-export>`                      | A directory of videos.                                                             |
+    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`FiftyOneImageClassificationDataset                           | A labeled dataset consisting of images and their associated classification labels  |
     | <FiftyOneImageClassificationDataset-export>`                       | in a simple JSON format.                                                           |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
@@ -128,6 +130,10 @@ format when writing the dataset to disk.
     | :ref:`FiftyOneImageLabelsDataset                                   | A labeled dataset consisting of images and their associated multitask predictions  |
     | <FiftyOneImageLabelsDataset-export>`                               | stored in `ETA ImageLabels format \                                                |
     |                                                                    | <https://voxel51.com/docs/api/#types-imagelabels>`_.                               |
+    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`FiftyOneVideoLabelsDataset                                   | A labeled dataset consisting of videos and their associated multitask predictions  |
+    | <FiftyOneVideoLabelsDataset-export>`                               | stored in `ETA VideoLabels format \                                                |
+    |                                                                    | <https://voxel51.com/docs/api/#types-videolabels>`_.                               |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`BDDDataset <BDDDataset-export>`                              | A labeled dataset consisting of images and their associated multitask predictions  |
     |                                                                    | saved in `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.       |
@@ -189,6 +195,57 @@ disk as follows:
         fiftyone datasets export $NAME \
             --export-dir $EXPORT_DIR \
             --type fiftyone.types.ImageDirectory
+
+.. _VideoDirectory-export:
+
+VideoDirectory
+--------------
+
+The :class:`fiftyone.types.VideoDirectory <fiftyone.types.dataset_types.VideoDirectory>`
+type represents a directory of videos.
+
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        <filename1>.<ext>
+        <filename2>.<ext>
+        ...
+
+You can export the videos in a FiftyOne dataset as a directory of videos on
+disk as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        export_dir = "/path/for/videos-dir"
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir=export_dir, dataset_type=fo.types.VideoDirectory
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        EXPORT_DIR=/path/to/videos-dir
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --type fiftyone.types.VideoDirectory
 
 .. _FiftyOneImageClassificationDataset-export:
 
@@ -1058,7 +1115,7 @@ FiftyOneImageLabelsDataset
 The :class:`fiftyone.types.FiftyOneImageLabelsDataset <fiftyone.types.dataset_types.FiftyOneImageLabelsDataset>`
 type represents a labeled dataset consisting of images and their associated
 multitask predictions stored in
-`eta.core.image.ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_.
+`ETA ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_.
 
 Datasets of this type are exported in the following format:
 
@@ -1096,7 +1153,7 @@ where `manifest.json` is a JSON file in the following format:
     }
 
 and where each labels JSON file is stored in
-`eta.core.image.ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_.
+`ETA ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_.
 
 For unlabeled images, an empty `eta.core.image.ImageLabels` file is stored.
 
@@ -1138,6 +1195,95 @@ format as follows:
             --export-dir $EXPORT_DIR \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.FiftyOneImageLabelsDataset
+
+.. _FiftyOneVideoLabelsDataset-export:
+
+FiftyOneVideoLabelsDataset
+--------------------------
+
+The :class:`fiftyone.types.FiftyOneVideoLabelsDataset <fiftyone.types.dataset_types.FiftyOneVideoLabelsDataset>`
+type represents a labeled dataset consisting of videos and their associated
+labels stored in
+`ETA VideoLabels format <https://voxel51.com/docs/api/#types-videolabels>`_.
+
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        data/
+            <uuid1>.<ext>
+            <uuid2>.<ext>
+            ...
+        labels/
+            <uuid1>.json
+            <uuid2>.json
+            ...
+        manifest.json
+
+where `manifest.json` is a JSON file in the following format:
+
+.. code-block:: text
+
+    {
+        "type": "eta.core.datasets.LabeledVideoDataset",
+        "description": "",
+        "index": [
+            {
+                "data": "data/<uuid1>.<ext>",
+                "labels": "labels/<uuid1>.json"
+            },
+            {
+                "data": "data/<uuid2>.<ext>",
+                "labels": "labels/<uuid2>.json"
+            },
+            ...
+        ]
+    }
+
+and where each labels JSON file is stored in
+`ETA VideoLabels format <https://voxel51.com/docs/api/#types-videolabels>`_.
+
+For unlabeled videos, an empty `eta.core.video.VideoLabels` file is stored.
+
+You can export a FiftyOne dataset as a video labels dataset in the above format
+as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        export_dir = "/path/for/video-labels-dataset"
+        label_field = "ground_truth"  # for example
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneVideoLabelsDataset,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/video-labels-dataset
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.FiftyOneVideoLabelsDataset
 
 .. _BDDDataset-export:
 
@@ -1405,7 +1551,6 @@ should implement is determined by the type of dataset that you are exporting.
 
             import fiftyone.utils.data as foud
 
-
             class CustomUnlabeledImageDatasetExporter(foud.UnlabeledImageDatasetExporter):
                 """Custom exporter for unlabeled image datasets.
 
@@ -1552,7 +1697,6 @@ should implement is determined by the type of dataset that you are exporting.
             :linenos:
 
             import fiftyone.utils.data as foud
-
 
             class CustomLabeledImageDatasetExporter(foud.LabeledImageDatasetExporter):
                 """Custom exporter for labeled image datasets.
@@ -1707,6 +1851,304 @@ should implement is determined by the type of dataset that you are exporting.
         (e.g., its filename, encoding, shape, etc) are required in order to
         export the sample.
 
+  .. group-tab:: Unlabeled video datasets
+
+        To define a custom exporter for unlabeled video datasets, implement the
+        |UnlabeledVideoDatasetExporter| interface.
+
+        The pseudocode below provides a template for a custom
+        |UnlabeledVideoDatasetExporter|:
+
+        .. code-block:: python
+            :linenos:
+
+            import fiftyone.utils.data as foud
+
+            class CustomUnlabeledVideoDatasetExporter(foud.UnlabeledVideoDatasetExporter):
+                """Custom exporter for unlabeled video datasets.
+
+                Args:
+                    export_dir: the directory to write the export
+                    *args: additional positional arguments for your exporter
+                    **kwargs: additional keyword arguments for your exporter
+                """
+
+                def __init__(self, export_dir, *args, **kwargs):
+                    super().__init__(export_dir)
+                    # Your initialization here
+
+                @property
+                def requires_video_metadata(self):
+                    """Whether this exporter requires
+                    :class:`fiftyone.core.metadata.VideoMetadata` instances for each sample
+                    being exported.
+                    """
+                    # Return True or False here
+                    pass
+
+                def setup(self):
+                    """Performs any necessary setup before exporting the first sample in
+                    the dataset.
+
+                    This method is called when the exporter's context manager interface is
+                    entered, :func:`DatasetExporter.__enter__`.
+                    """
+                    # Your custom setup here
+                    pass
+
+                def log_collection(self, sample_collection):
+                    """Logs any relevant information about the
+                    :class:`fiftyone.core.collections.SampleCollection` whose samples will
+                    be exported.
+
+                    Subclasses can optionally implement this method if their export format
+                    can record information such as the
+                    :meth:`fiftyone.core.collections.SampleCollection.name` and
+                    :meth:`fiftyone.core.collections.SampleCollection.info` of the
+                    collection being exported.
+
+                    By convention, this method must be optional; i.e., if it is not called
+                    before the first call to :meth:`export_sample`, then the exporter must
+                    make do without any information about the
+                    :class:`fiftyone.core.collections.SampleCollection` (which may not be
+                    available, for example, if the samples being exported are not stored in
+                    a collection).
+
+                    Args:
+                        sample_collection: the
+                            :class:`fiftyone.core.collections.SampleCollection` whose
+                            samples will be exported
+                    """
+                    # Log any information from the sample collection here
+                    pass
+
+                def export_sample(self, video_path, metadata=None):
+                    """Exports the given sample to the dataset.
+
+                    Args:
+                        video_path: the path to a video on disk
+                        metadata (None): a :class:`fiftyone.core.metadata.VideoMetadata`
+                            isinstance for the sample. Only required when
+                            :meth:`requires_video_metadata` is ``True``
+                    """
+                    # Export the provided sample
+                    pass
+
+                def close(self, *args):
+                    """Performs any necessary actions after the last sample has been
+                    exported.
+
+                    This method is called when the importer's context manager interface is
+                    exited, :func:`DatasetExporter.__exit__`.
+
+                    Args:
+                        *args: the arguments to :func:`DatasetExporter.__exit__`
+                    """
+                    # Your custom code here to complete the export
+                    pass
+
+        When
+        :meth:`export() <fiftyone.core.collections.SampleCollection.export>` is
+        called with a custom |UnlabeledVideoDatasetExporter|, the export is
+        effectively performed via the pseudocode below:
+
+        .. code-block:: python
+
+            import fiftyone as fo
+
+            samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
+
+            exporter = CustomUnlabeledVideoDatasetExporter(dataset_dir, ...)
+            with exporter:
+                exporter.log_collection(samples)
+                for sample in samples:
+                    video_path = sample.filepath
+                    metadata = sample.metadata
+                    if exporter.requires_video_metadata and metadata is None:
+                        metadata = fo.VideoMetadata.build_for(video_path)
+
+                    exporter.export_sample(video_path, metadata=metadata)
+
+        Note that the exporter is invoked via its context manager interface,
+        which automatically calls the
+        :meth:`setup() <fiftyone.utils.data.exporters.UnlabeledVideoDatasetExporter.setup>`
+        and
+        :meth:`close() <fiftyone.utils.data.exporters.UnlabeledVideoDatasetExporter.close>`
+        methods of the exporter to handle setup/completion of the export.
+
+        The
+        :meth:`log_collection() <fiftyone.utils.data.exporters.UnlabeledVideoDatasetExporter.log_collection>`
+        method is called after the exporter's context manager has been entered
+        but before any samples have been exported. This method can optionally
+        be implemented by exporters that store information such as the
+        :meth:`name <fiftyone.core.collections.SampleCollection.name>` or
+        :meth:`info <fiftyone.core.collections.SampleCollection.info>` from the
+        collection being exported.
+
+        The video in each |Sample| is exported via the
+        :meth:`export_sample() <fiftyone.utils.data.exporters.UnlabeledVideoDatasetExporter.export_sample>`
+        method.
+
+        The
+        :meth:`requires_video_metadata <fiftyone.utils.data.exporters.UnlabeledVideoDatasetExporter.requires_video_metadata>`
+        property of the exporter allows it to declare whether it requires
+        |VideoMetadata| instances for each video to be provided when
+        :meth:`export_sample() <fiftyone.utils.data.exporters.UnlabeledVideoDatasetExporter.export_sample>`
+        is called. This allows for cases where metadata about the video
+        (e.g., its filename, encoding, shape, etc) are required in order to export the
+        sample.
+
+  .. group-tab:: Labeled video datasets
+
+        To define a custom exporter for labeled video datasets, implement the
+        |LabeledVideoDatasetExporter| interface.
+
+        The pseudocode below provides a template for a custom
+        |LabeledVideoDatasetExporter|:
+
+        .. code-block:: python
+            :linenos:
+
+            import fiftyone.utils.data as foud
+
+            class CustomLabeledVideoDatasetExporter(foud.LabeledVideoDatasetExporter):
+                """Custom exporter for labeled video datasets.
+
+                Args:
+                    export_dir: the directory to write the export
+                    *args: additional positional arguments for your exporter
+                    **kwargs: additional keyword arguments for your exporter
+                """
+
+                def __init__(self, export_dir, *args, **kwargs):
+                    super().__init__(export_dir)
+                    # Your initialization here
+
+                @property
+                def requires_video_metadata(self):
+                    """Whether this exporter requires
+                    :class:`fiftyone.core.metadata.VideoMetadata` instances for each sample
+                    being exported.
+                    """
+                    # Return True or False here
+                    pass
+
+                def setup(self):
+                    """Performs any necessary setup before exporting the first sample in
+                    the dataset.
+
+                    This method is called when the exporter's context manager interface is
+                    entered, :func:`DatasetExporter.__enter__`.
+                    """
+                    # Your custom setup here
+                    pass
+
+                def log_collection(self, sample_collection):
+                    """Logs any relevant information about the
+                    :class:`fiftyone.core.collections.SampleCollection` whose samples will
+                    be exported.
+
+                    Subclasses can optionally implement this method if their export format
+                    can record information such as the
+                    :meth:`fiftyone.core.collections.SampleCollection.name` and
+                    :meth:`fiftyone.core.collections.SampleCollection.info` of the
+                    collection being exported.
+
+                    By convention, this method must be optional; i.e., if it is not called
+                    before the first call to :meth:`export_sample`, then the exporter must
+                    make do without any information about the
+                    :class:`fiftyone.core.collections.SampleCollection` (which may not be
+                    available, for example, if the samples being exported are not stored in
+                    a collection).
+
+                    Args:
+                        sample_collection: the
+                            :class:`fiftyone.core.collections.SampleCollection` whose
+                            samples will be exported
+                    """
+                    # Log any information from the sample collection here
+                    pass
+
+                def export_sample(self, video_path, frames, metadata=None):
+                    """Exports the given sample to the dataset.
+
+                    Args:
+                        video_path: the path to a video on disk
+                        frames: a dictionary mapping frame numbers to
+                            :class:`fiftyone.core.frame.Frame` instances, or ``None`` if
+                            the sample is unlabeled
+                        metadata (None): a :class:`fiftyone.core.metadata.VideoMetadata`
+                            instance for the sample. Only required when
+                            :meth:`requires_video_metadata` is ``True``
+                    """
+                    # Export the provided sample
+                    pass
+
+                def close(self, *args):
+                    """Performs any necessary actions after the last sample has been
+                    exported.
+
+                    This method is called when the importer's context manager interface is
+                    exited, :func:`DatasetExporter.__exit__`.
+
+                    Args:
+                        *args: the arguments to :func:`DatasetExporter.__exit__`
+                    """
+                    # Your custom code here to complete the export
+                    pass
+
+        When
+        :meth:`export() <fiftyone.core.collections.SampleCollection.export>` is
+        called with a custom |LabeledVideoDatasetExporter|, the export is
+        effectively performed via the pseudocode below:
+
+        .. code-block:: python
+
+            import fiftyone as fo
+
+            samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
+
+            exporter = CustomLabeledVideoDatasetExporter(dataset_dir, ...)
+            with exporter:
+                exporter.log_collection(samples)
+                for sample in samples:
+                    video_path = sample.filepath
+                    frames = sample.frames
+                    metadata = sample.metadata
+                    if exporter.requires_video_metadata and metadata is None:
+                        metadata = fo.VideoMetadata.build_for(video_path)
+
+                    exporter.export_sample(video_path, frames, metadata=metadata)
+
+        Note that the exporter is invoked via its context manager interface,
+        which automatically calls the
+        :meth:`setup() <fiftyone.utils.data.exporters.LabeledVideoDatasetExporter.setup>`
+        and
+        :meth:`close() <fiftyone.utils.data.exporters.LabeledVideoDatasetExporter.close>`
+        methods of the exporter to handle setup/completion of the export.
+
+        The
+        :meth:`log_collection() <fiftyone.utils.data.exporters.LabeledVideoDatasetExporter.log_collection>`
+        method is called after the exporter's context manager has been entered
+        but before any samples have been exported. This method can optionally
+        be implemented by exporters that store information such as the
+        :meth:`name <fiftyone.core.collections.SampleCollection.name>` or
+        :meth:`info <fiftyone.core.collections.SampleCollection.info>` from the
+        collection being exported.
+
+        The video and its corresponding frame labels are exported via the
+        :meth:`export_sample() <fiftyone.utils.data.exporters.LabeledVideoDatasetExporter.export_sample>`
+        method.
+
+        The
+        :meth:`requires_video_metadata <fiftyone.utils.data.exporters.LabeledVideoDatasetExporter.requires_video_metadata>`
+        property of the exporter allows it to declare whether it requires
+        |VideoMetadata| instances for each video to be provided when
+        :meth:`export_sample() <fiftyone.utils.data.exporters.LabeledVideoDatasetExporter.export_sample>`
+        is called. This allows for cases where metadata about the video
+        (e.g., its filename, encoding, shape, etc) are required in order to
+        export the sample.
+
 .. _writing-a-custom-dataset-type-exporter:
 
 Writing a custom Dataset type
@@ -1737,7 +2179,6 @@ corresponding to the type of dataset that you are working with.
             :linenos:
 
             import fiftyone.types as fot
-
 
             class CustomUnlabeledImageDataset(fot.UnlabeledImageDataset):
                 """Custom unlabeled image dataset type."""
@@ -1780,7 +2221,6 @@ corresponding to the type of dataset that you are working with.
 
             import fiftyone.types as fot
 
-
             class CustomLabeledImageDataset(fot.LabeledImageDataset):
                 """Custom labeled image dataset type."""
 
@@ -1811,3 +2251,85 @@ corresponding to the type of dataset that you are working with.
         Note that, as this type represents a labeled image dataset, its
         importer must be a subclass of |LabeledImageDatasetImporter|, and its
         exporter must be a subclass of |LabeledImageDatasetExporter|.
+
+  .. group-tab:: Unlabeled video datasets
+
+        The pseudocode below provides a template for a custom
+        |UnlabeledVideoDatasetType| subclass:
+
+        .. code-block:: python
+            :linenos:
+
+            import fiftyone.types as fot
+
+            class CustomUnlabeledVideoDataset(fot.UnlabeledVideoDataset):
+                """Custom unlabeled video dataset type."""
+
+                def get_dataset_importer_cls(self):
+                    """Returns the
+                    :class:`fiftyone.utils.data.importers.UnlabeledVideoDatasetImporter`
+                    class for importing datasets of this type from disk.
+
+                    Returns:
+                        a :class:`fiftyone.utils.data.importers.UnlabeledVideoDatasetImporter`
+                        class
+                    """
+                    # Return your custom UnlabeledVideoDatasetImporter class here
+                    pass
+
+                def get_dataset_exporter_cls(self):
+                    """Returns the
+                    :class:`fiftyone.utils.data.exporters.UnlabeledVideoDatasetExporter`
+                    class for exporting datasets of this type to disk.
+
+                    Returns:
+                        a :class:`fiftyone.utils.data.exporters.UnlabeledVideoDatasetExporter`
+                        class
+                    """
+                    # Return your custom UnlabeledVideoDatasetExporter class here
+                    pass
+
+        Note that, as this type represents an unlabeled video dataset, its
+        importer must be a subclass of |UnlabeledVideoDatasetImporter|, and its
+        exporter must be a subclass of |UnlabeledVideoDatasetExporter|.
+
+  .. group-tab:: Labeled video datasets
+
+        The pseudocode below provides a template for a custom
+        |LabeledVideoDatasetType| subclass:
+
+        .. code-block:: python
+            :linenos:
+
+            import fiftyone.types as fot
+
+            class CustomLabeledVideoDataset(fot.LabeledVideoDataset):
+                """Custom labeled video dataset type."""
+
+                def get_dataset_importer_cls(self):
+                    """Returns the
+                    :class:`fiftyone.utils.data.importers.LabeledVideoDatasetImporter`
+                    class for importing datasets of this type from disk.
+
+                    Returns:
+                        a :class:`fiftyone.utils.data.importers.LabeledVideoDatasetImporter`
+                        class
+                    """
+                    # Return your custom LabeledVideoDatasetImporter class here
+                    pass
+
+                def get_dataset_exporter_cls(self):
+                    """Returns the
+                    :class:`fiftyone.utils.data.exporters.LabeledVideoDatasetExporter`
+                    class for exporting datasets of this type to disk.
+
+                    Returns:
+                        a :class:`fiftyone.utils.data.exporters.LabeledVideoDatasetExporter`
+                        class
+                    """
+                    # Return your custom LabeledVideoDatasetExporter class here
+                    pass
+
+        Note that, as this type represents a labeled video dataset, its
+        importer must be a subclass of |LabeledVideoDatasetImporter|, and its
+        exporter must be a subclass of |LabeledVideoDatasetExporter|.

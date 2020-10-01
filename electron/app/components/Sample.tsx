@@ -11,7 +11,7 @@ import * as selectors from "../recoil/selectors";
 import { getLabelText, stringify } from "../utils/labels";
 import { useFastRerender } from "../utils/hooks";
 
-const Sample = ({ dispatch, sample, port, setView }) => {
+const Sample = ({ dispatch, sample, metadata, port, setView }) => {
   const host = `http://127.0.0.1:${port}`;
   const id = sample._id;
   const src = `${host}?path=${sample.filepath}&id=${id}`;
@@ -21,6 +21,7 @@ const Sample = ({ dispatch, sample, port, setView }) => {
   const activeLabels = useRecoilValue(atoms.activeLabels);
   const activeTags = useRecoilValue(atoms.activeTags);
   const activeOther = useRecoilValue(atoms.activeOther);
+  const frameLabelsActive = useRecoilValue(atoms.frameLabelsActive);
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     atoms.selectedSamples
   );
@@ -44,7 +45,7 @@ const Sample = ({ dispatch, sample, port, setView }) => {
   };
   const eventHandlers = {
     onClick: () => handleClick(),
-    onDoubleClick: () => setView(sample),
+    onDoubleClick: () => setView(sample, metadata),
   };
   const renderLabel = ({ name, label, idx }) => {
     if (!activeLabels[name] || !label) {
@@ -96,8 +97,10 @@ const Sample = ({ dispatch, sample, port, setView }) => {
           position: "relative",
         }}
         sample={sample}
+        metadata={metadata}
         thumbnail={true}
         activeLabels={activeLabels}
+        frameLabelsActive={frameLabelsActive}
         {...eventHandlers}
         filterSelector={selectors.labelFilters}
       />
@@ -134,6 +137,7 @@ const Sample = ({ dispatch, sample, port, setView }) => {
             height: "100%",
             position: "absolute",
             top: 0,
+            pointerEvents: "none",
           }}
         />
       ) : null}
