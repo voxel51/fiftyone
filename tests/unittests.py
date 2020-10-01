@@ -2281,6 +2281,18 @@ class VideoSampleTests(unittest.TestCase):
     def setUp(self):
         self.dataset = fo.Dataset()
 
+    def _make_dataset(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample("/path/to/video1.mp4"),
+                fo.Sample("/path/to/video2.mp4"),
+                fo.Sample("/path/to/video3.mp4"),
+                fo.Sample("/path/to/video4.mp4"),
+            ]
+        )
+        return dataset
+
     def test_no_dataset_samples(self):
         sample = fo.Sample(filepath="video.mp4")
         sample[1]["attribute"] = "attr"
@@ -2297,6 +2309,50 @@ class VideoSampleTests(unittest.TestCase):
 
         for idx, frame in enumerate(sample):
             self.assertEqual(idx, 0)
+
+    def test_save(self):
+        dataset = self._make_dataset()
+
+        for sample in dataset.iter_samples():
+            for i in range(1, 50):
+                sample.frames[i]["box"] = fo.Detection(
+                    label="foo", bounding_box=[i / 100, i / 100, 0.9, 0.9]
+                )
+            sample.save()
+        for sample in dataset.iter_samples():
+            for i in range(1, 50):
+                self.assertEqual(sample.frames[i]["box"].label, "foo")
+
+        samples = [fo.Sample("/path/to/video1.mp4")]
+        for sample in samples:
+            for i in range(1, 50):
+                sample.frames[i]["box"] = fo.Detection(
+                    label="foo", bounding_box=[i / 100, i / 100, 0.9, 0.9]
+                )
+            sample.save()
+        for sample in samples:
+            for i in range(1, 50):
+                self.assertEqual(sample.frames[i]["box"].label, "foo")
+
+    def test_frames(self):
+        dataset = self._make_dataset()
+        for sample in dataset.iter_samples():
+            for i in range(1, 50):
+                sample[i]["label"] = i
+            sample.save()
+        for sample in dataset.iter_samples():
+            for idx, frame_number in enumerate(sample):
+                self.assertEqual(frame_number - 1, idx)
+
+            for idx, frame_number in enumerate(sample.frames.keys()):
+                self.assertEqual(frame_number - 1, idx)
+
+            for idx, (frame_number, frame) in enumerate(sample.frames.items()):
+                self.assertEqual(frame_number - 1, idx)
+                self.assertEqual(frame["label"], frame_number)
+
+            for idx, frame in enumerate(sample.frames.values()):
+                self.assertEqual(frame["label"], idx + 1)
 
 
 if __name__ == "__main__":

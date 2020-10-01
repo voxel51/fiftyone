@@ -27,14 +27,14 @@ from fiftyone.core._sample import _Sample
 class _DatasetSample(_Sample):
     def __getattr__(self, name):
         if name == "frames" and self.media_type == fomm.VIDEO:
-            return self._frames.serve(self)
+            return self._frames._serve(self)
         return super().__getattr__(name)
 
     def __getitem__(self, field_name):
         if fofu.is_frame_number(field_name) and self.media_type == "video":
             return self.frames[field_name]
         if field_name == "frames" and self.media_type == fomm.VIDEO:
-            return self._frames.serve(self)
+            return self._frames._serve(self)
 
         try:
             return self.get_field(field_name)
@@ -133,13 +133,34 @@ class Sample(_DatasetSample):
     def __repr__(self):
         kwargs = {}
         if self.media_type == fomm.VIDEO:
-            kwargs["frames"] = self._frames.serve(self).__repr__()
+            kwargs["frames"] = self._frames._serve(self).__repr__()
         return self._doc.fancy_repr(
             class_name=self.__class__.__name__, **kwargs
         )
 
     def __iter__(self):
-        return self._frames.serve(self).__iter__()
+        if self.media_type == fomm.VIDEO:
+            return self._frames._serve(self).__iter__()
+        raise StopIteration
+
+    def copy(self):
+        """Returns a deep copy of the sample that has not been added to the
+        database.
+
+        Returns:
+            a :class:`Sample`
+        """
+        video = self.media_type == fomm.VIDEO
+        kwargs = {
+            f: deepcopy(self[f])
+            for f in self.field_names
+            if f != "frames" or not video
+        }
+        if video:
+            kwargs["frames"] = {
+                str(k): v.copy()._doc for k, v in self.frames.items()
+            }
+        return self.__class__(**kwargs)
 
     @classmethod
     def from_doc(cls, doc, dataset=None):
@@ -175,6 +196,8 @@ class Sample(_DatasetSample):
                 )
             sample._set_backing_doc(doc, dataset=dataset)
 
+        if sample.media_type == fomm.VIDEO:
+            sample._frames = fofr.Frames()
         return sample
 
     @classmethod
@@ -337,6 +360,13 @@ class Sample(_DatasetSample):
         self._doc = self.copy()._doc
         self._dataset = None
 
+    def save(self):
+        """Saves the sample to the database."""
+        if self.media_type == fomm.VIDEO:
+            for frame in self.frames.values():
+                frame.save()  # @todo batch
+        super().save()
+
 
 class SampleView(_DatasetSample):
     """A view of a sample returned by a:class:`fiftyone.core.view.DatasetView`.
@@ -398,7 +428,7 @@ class SampleView(_DatasetSample):
     def __repr__(self):
         kwargs = {}
         if self.media_type == fomm.VIDEO:
-            kwargs["frames"] = self._frames.serve(self).__repr__()
+            kwargs["frames"] = self._frames._serve(self).__repr__()
         return self._doc.fancy_repr(
             class_name=self.__class__.__name__,
             select_fields=self._selected_fields,
@@ -470,6 +500,7 @@ class SampleView(_DatasetSample):
         Returns:
             a :class:`Sample`
         """
+        skip_frames = self.media_type == fomm.VIDEO
         kwargs = {f: deepcopy(self[f]) for f in self.field_names}
         return Sample(**kwargs)
 
@@ -479,6 +510,10 @@ class SampleView(_DatasetSample):
         Any modified fields are updated, and any in-memory :class:`Sample`
         instances of this sample are updated.
         """
+        if self.media_type == fomm.VIDEO:
+            for frame in self.frames.values():
+                frame.save()  # @todo batch
+
         self._doc.save(filtered_fields=self._filtered_fields)
 
         # Reload the sample singleton if it exists in memory

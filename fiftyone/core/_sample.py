@@ -24,7 +24,10 @@ class _Sample(object):
         try:
             return super().__getattribute__(name)
         except AttributeError:
-            return self._doc.get_field(name)
+            if name != "_doc":
+                return self._doc.get_field(name)
+            else:
+                raise
 
     def __setattr__(self, name, value):
         if name.startswith("_") or (
@@ -318,15 +321,6 @@ class _Sample(object):
             dataset (None): the :class:`fiftyone.core.dataset.Dataset` to which
                 the sample belongs, if any
         """
-        if isinstance(self._doc, self._COLL_CLS):
-            raise TypeError("Sample already belongs to a dataset")
-
-        if not isinstance(doc, self._COLL_CLS):
-            raise TypeError(
-                "Backing doc must be an instance of %s; found %s"
-                % (self._COLLO_CLS, type(doc))
-            )
-
         # Ensure the doc is saved to the database
         if not doc.id:
             doc.save()
