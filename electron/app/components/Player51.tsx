@@ -19,7 +19,8 @@ const ErrorWrapper = styled.div`
   height: 100%;
   align-items: center;
   justify-content: center;
-  font-size: 150%;
+  text-align: center;
+  font-size: 125%;
   svg {
     font-size: 200%;
     color: ${({ theme }) => theme.error};
@@ -111,6 +112,11 @@ export default ({
   }, [player, filter, overlay, playerActiveLabels, colorMap]);
 
   useEventHandler(player, "load", onLoad);
+  useEventHandler(player, "error", () =>
+    setError(
+      `This video failed to load. Its type (${mimetype}) may be unsupported.`
+    )
+  );
 
   return (
     <div id={id} style={style} {...props}>
