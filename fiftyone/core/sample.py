@@ -28,11 +28,13 @@ class _DatasetSample(_Sample):
     def __getattr__(self, name):
         if name == "frames" and self.media_type == fomm.VIDEO:
             return self._frames._serve(self)
+
         return super().__getattr__(name)
 
     def __getitem__(self, field_name):
         if fofu.is_frame_number(field_name) and self.media_type == "video":
             return self.frames[field_name]
+
         if field_name == "frames" and self.media_type == fomm.VIDEO:
             return self._frames._serve(self)
 
@@ -47,6 +49,7 @@ class _DatasetSample(_Sample):
         if fofu.is_frame_number(field_name) and (self.media_type == "video"):
             self.frames[field_name] = value
             return
+
         self._secure_media(field_name, value)
         self.set_field(field_name, value=value)
 
@@ -125,6 +128,7 @@ class Sample(_DatasetSample):
         )
         if self.media_type == fomm.VIDEO:
             self._frames = fofr.Frames()
+
         super().__init__()
 
     def __str__(self):
@@ -134,6 +138,7 @@ class Sample(_DatasetSample):
         kwargs = {}
         if self.media_type == fomm.VIDEO:
             kwargs["frames"] = self._frames._serve(self).__repr__()
+
         return self._doc.fancy_repr(
             class_name=self.__class__.__name__, **kwargs
         )
@@ -141,6 +146,7 @@ class Sample(_DatasetSample):
     def __iter__(self):
         if self.media_type == fomm.VIDEO:
             return self._frames._serve(self).__iter__()
+
         raise StopIteration
 
     def copy(self):
@@ -160,6 +166,7 @@ class Sample(_DatasetSample):
             kwargs["frames"] = {
                 str(k): v.copy()._doc for k, v in self.frames.items()
             }
+
         return self.__class__(**kwargs)
 
     @classmethod
@@ -169,8 +176,8 @@ class Sample(_DatasetSample):
 
         Args:
             doc: a :class:`fiftyone.core.odm.SampleDocument`
-            dataset: the :class:`fiftyone.core.dataset.Dataset` that the sample
-                belongs to
+            dataset (None): the :class:`fiftyone.core.dataset.Dataset` that
+                the sample belongs to
 
         Returns:
             a :class:`Sample`
@@ -192,12 +199,14 @@ class Sample(_DatasetSample):
             sample._doc = None  # set to prevent RecursionError
             if dataset is None:
                 raise ValueError(
-                    "`dataset` arg must be provided if sample is in a dataset"
+                    "`dataset` arg must be provided for samples in datasets"
                 )
+
             sample._set_backing_doc(doc, dataset=dataset)
 
         if sample.media_type == fomm.VIDEO:
             sample._frames = fofr.Frames()
+
         return sample
 
     @classmethod
@@ -420,6 +429,7 @@ class SampleView(_DatasetSample):
 
         if self.media_type == fomm.VIDEO:
             self._frames = fofr.Frames()
+
         super().__init__(dataset=dataset)
 
     def __str__(self):
@@ -429,6 +439,7 @@ class SampleView(_DatasetSample):
         kwargs = {}
         if self.media_type == fomm.VIDEO:
             kwargs["frames"] = self._frames._serve(self).__repr__()
+
         return self._doc.fancy_repr(
             class_name=self.__class__.__name__,
             select_fields=self._selected_fields,
