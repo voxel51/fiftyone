@@ -16,7 +16,11 @@ import eta.core.utils as etau
 
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-from fiftyone.core.odm.sample import default_sample_fields
+import fiftyone.core.media as fom
+from fiftyone.core.odm.sample import (
+    DatasetSampleDocument,
+    default_sample_fields,
+)
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
 
@@ -189,6 +193,31 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement get_field_schema()")
 
+    def get_frames_field_schema(
+        self, ftype=None, embedded_doc_type=None, include_private=False
+    ):
+        """Returns a schema dictionary describing the fields of the frames of
+        the samples in the collection.
+
+        Only applicable for video collections.
+
+        Args:
+            ftype (None): an optional field type to which to restrict the
+                returned schema. Must be a subclass of
+                :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): an optional embedded document type to
+                which to restrict the returned schema. Must be a subclass of
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            include_private (False): whether to include fields that start with
+                `_` in the returned schema
+
+        Returns:
+             a dictionary mapping field names to field types
+        """
+        raise NotImplementedError(
+            "Subclass must implement get_frames_field_schema()"
+        )
+
     def make_unique_field_name(self, root=""):
         """Makes a unique field name with the given root name for the
         collection.
@@ -231,7 +260,9 @@ class SampleCollection(object):
 
         schema = self.get_field_schema()
         default_fields = set(
-            default_sample_fields(include_private=True, include_id=True)
+            default_sample_fields(
+                DatasetSampleDocument, include_private=True, include_id=True
+            )
         )
         for field in field_or_fields:
             # We only validate that the root field exists
@@ -1273,9 +1304,15 @@ def _get_random_characters(n):
 
 
 def _get_labels_dict_for_prefix(sample_collection, label_prefix):
-    label_fields = sample_collection.get_field_schema(
-        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
-    )
+    if sample_collection.media_type == fom.VIDEO:
+        label_fields = sample_collection.get_frames_field_schema(
+            ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+        )
+    else:
+        label_fields = sample_collection.get_field_schema(
+            ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+        )
+
     labels_dict = {}
     for field_name in label_fields:
         if field_name.startswith(label_prefix):
@@ -1285,6 +1322,10 @@ def _get_labels_dict_for_prefix(sample_collection, label_prefix):
 
 
 def _get_default_label_field_for_exporter(sample_collection, dataset_exporter):
+    #
+    # Labeled image datasets
+    #
+
     if isinstance(dataset_exporter, foud.LabeledImageDatasetExporter):
         label_cls = dataset_exporter.label_cls
         label_fields = sample_collection.get_field_schema(
@@ -1306,8 +1347,24 @@ def _get_default_label_field_for_exporter(sample_collection, dataset_exporter):
                 if issubclass(field_type.document_type, fol.Classification):
                     return field
 
-        raise ValueError(
-            "No compatible label field of type %s found" % label_cls
+        raise ValueError("No compatible field of type %s found" % label_cls)
+
+    #
+    # Video datasets
+    #
+
+    if sample_collection.media_type == fom.VIDEO:
+        label_fields = sample_collection.get_frames_field_schema(
+            ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
         )
+
+        for field, field_type in label_fields.items():
+            return field  # Just return first field
+
+        raise ValueError("No compatible field of type %s found" % label_cls)
+
+    #
+    # Other
+    #
 
     return None

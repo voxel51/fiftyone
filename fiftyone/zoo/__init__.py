@@ -115,6 +115,7 @@ def load_zoo_dataset(
     dataset_dir=None,
     download_if_necessary=True,
     drop_existing_dataset=False,
+    **kwargs
 ):
     """Loads the dataset of the given name from the FiftyOne Dataset Zoo as
     a :class:`fiftyone.core.dataset.Dataset`.
@@ -149,6 +150,9 @@ def load_zoo_dataset(
             not found in the specified dataset directory
         drop_existing_dataset (False): whether to drop an existing dataset
             with the same name if it exists
+        **kwargs: optional keyword arguments to pass to the constructor of the
+            :class:`fiftyone.utils.data.importers.DatasetImporter` for the
+            dataset via the syntax ``DatasetImporter(dataset_dir, **kwargs)``
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
@@ -193,10 +197,10 @@ def load_zoo_dataset(
             tags = [split]
 
             logger.info("Loading '%s' split '%s'", zoo_dataset.name, split)
-            dataset.add_dir(split_dir, dataset_type, tags=tags)
+            dataset.add_dir(split_dir, dataset_type, tags=tags, **kwargs)
     else:
         logger.info("Loading '%s'", zoo_dataset.name)
-        dataset.add_dir(dataset_dir, dataset_type)
+        dataset.add_dir(dataset_dir, dataset_type, **kwargs)
 
     if info.classes is not None:
         dataset.info["classes"] = info.classes

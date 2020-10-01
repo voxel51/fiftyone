@@ -60,17 +60,19 @@ Listing zoo datasets
 
     .. code-block:: text
 
-        ['coco-2014',
-         'coco-2017',
-         'imagenet-2012',
-         'voc-2007',
-         'cifar100',
-         'kitti',
-         'mnist',
-         'voc-2012',
-         'cifar10',
-         'fashion-mnist',
-         'caltech101']
+        ['caltech101',
+        'cifar10',
+        'cifar100',
+        'coco-2014',
+        'coco-2017',
+        'fashion-mnist',
+        'imagenet-2012',
+        'kitti',
+        'mnist',
+        'quickstart',
+        'quickstart-video',
+        'voc-2007',
+        'voc-2012']
 
     To view the zoo datasets that you have downloaded, you can use
     :meth:`list_downloaded_zoo_datasets() <fiftyone.zoo.list_downloaded_zoo_datasets>`:
@@ -110,35 +112,37 @@ Listing zoo datasets
 
         $ fiftyone zoo list
 
-        name           split       downloaded    dataset_dir                     torch (*)    tensorflow
-        -------------  ----------  ------------  ------------------------------  -----------  ------------
-        caltech101     test                                                      ✓
-        caltech101     train                                                     ✓
-        cifar10        test        ✓             ~/fiftyone/cifar10/test         ✓            ✓
-        cifar10        train       ✓             ~/fiftyone/cifar10/train        ✓            ✓
-        cifar100       test        ✓             ~/fiftyone/cifar100/test        ✓            ✓
-        cifar100       train       ✓             ~/fiftyone/cifar100/train       ✓            ✓
-        coco-2014      test                                                      ✓            ✓
-        coco-2014      train                                                     ✓            ✓
-        coco-2014      validation                                                ✓            ✓
-        coco-2017      test                                                      ✓            ✓
-        coco-2017      train                                                     ✓            ✓
-        coco-2017      validation                                                ✓            ✓
-        fashion-mnist  test                                                      ✓            ✓
-        fashion-mnist  train                                                     ✓            ✓
-        imagenet-2012  train                                                     ✓            ✓
-        imagenet-2012  validation                                                ✓            ✓
-        kitti          test        ✓             ~/fiftyone/kitti/test                        ✓
-        kitti          train       ✓             ~/fiftyone/kitti/train                       ✓
-        kitti          validation  ✓             ~/fiftyone/kitti/validation                  ✓
-        mnist          test        ✓             ~/fiftyone/mnist/test           ✓            ✓
-        mnist          train       ✓             ~/fiftyone/mnist/train          ✓            ✓
-        voc-2007       test                                                                   ✓
-        voc-2007       train       ✓             ~/fiftyone/voc-2007/train       ✓            ✓
-        voc-2007       validation  ✓             ~/fiftyone/voc-2007/validation  ✓            ✓
-        voc-2012       test                                                                   ✓
-        voc-2012       train                                                     ✓            ✓
-        voc-2012       validation                                                ✓            ✓
+        name             split       downloaded    dataset_dir                     torch (*)    tensorflow    base
+        -------------    ----------  ------------  ------------------------------  -----------  ------------  ------
+        caltech101       test                                                      ✓
+        caltech101       train                                                     ✓
+        cifar10          test        ✓             ~/fiftyone/cifar10/test         ✓            ✓
+        cifar10          train       ✓             ~/fiftyone/cifar10/train        ✓            ✓
+        cifar100         test        ✓             ~/fiftyone/cifar100/test        ✓            ✓
+        cifar100         train       ✓             ~/fiftyone/cifar100/train       ✓            ✓
+        coco-2014        test                                                      ✓            ✓
+        coco-2014        train                                                     ✓            ✓
+        coco-2014        validation                                                ✓            ✓
+        coco-2017        test                                                      ✓            ✓
+        coco-2017        train                                                     ✓            ✓
+        coco-2017        validation                                                ✓            ✓
+        fashion-mnist    test                                                      ✓            ✓
+        fashion-mnist    train                                                     ✓            ✓
+        imagenet-2012    train                                                     ✓            ✓
+        imagenet-2012    validation                                                ✓            ✓
+        kitti            test        ✓             ~/fiftyone/kitti/test                        ✓
+        kitti            train       ✓             ~/fiftyone/kitti/train                       ✓
+        kitti            validation  ✓             ~/fiftyone/kitti/validation                  ✓
+        mnist            test        ✓             ~/fiftyone/mnist/test           ✓            ✓
+        mnist            train       ✓             ~/fiftyone/mnist/train          ✓            ✓
+        quickstart                   ✓             ~/quickstart                                               ✓
+        quickstart-video             ✓             ~/quickstart-video                                         ✓
+        voc-2007       test                                                                     ✓
+        voc-2007       train         ✓             ~/fiftyone/voc-2007/train       ✓            ✓
+        voc-2007       validation    ✓             ~/fiftyone/voc-2007/validation  ✓            ✓
+        voc-2012       test                                                                     ✓
+        voc-2012       train                                                       ✓            ✓
+        voc-2012       validation                                                  ✓            ✓
 
     Dataset splits that have been downloaded are indicated by a checkmark in
     the ``downloaded`` column, and their location on disk is indicated by
@@ -387,6 +391,25 @@ Loading zoo datasets
         # Print the first few samples in the dataset
         print(dataset.head())
 
+    You can also provide additional arguments to
+    :meth:`load_zoo_dataset() <fiftyone.zoo.load_zoo_dataset>` to customize the
+    import behavior:
+
+    .. code-block:: python
+        :linenos:
+
+        # Import a random subset of 10 samples from the zoo dataset
+        dataset = foz.load_zoo_dataset(
+            "cifar10",
+            split="test",
+            dataset_name="cifar10-test-sample",
+            shuffle=True,
+            max_samples=10,
+        )
+
+    The additional arguments are passed directly to the |DatasetImporter| that
+    performs the actual import.
+
   .. group-tab:: CLI
 
     After a zoo dataset has been downloaded from the web, you can load it as
@@ -403,6 +426,20 @@ Loading zoo datasets
         Split 'test' already downloaded
         Loading 'cifar10' split 'test'
          100% |██████████████████████████████████████████████| 10000/10000 [3.6s elapsed, 0s remaining, 2.9K samples/s]
+        Dataset 'cifar10-test' created
+
+    You can also provide :ref:`additional arguments <cli-fiftyone-zoo-load>`
+    to customize the import behavior. For example, you can load a random subset
+    of 10 samples from the zoo dataset:
+
+    .. code-block:: text
+
+        $ fiftyone zoo load cifar10 --splits test \
+            --dataset-name cifar10-test-sample --shuffle --max-samples 10
+
+        Split 'test' already downloaded
+        Loading 'cifar10' split 'test'
+         100% |██████████████████████████████████████████████| 10/10 [3.2ms elapsed, 0s remaining, 2.9K samples/s]
         Dataset 'cifar10-test' created
 
 Controlling where zoo datasets are downloaded

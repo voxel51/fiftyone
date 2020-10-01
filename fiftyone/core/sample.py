@@ -8,238 +8,101 @@ Dataset samples.
 from collections import defaultdict
 from copy import deepcopy
 import os
+import six
 import weakref
 
 import eta.core.serial as etas
 import eta.core.utils as etau
+import eta.core.video as etav
 
+import fiftyone.core.fields as fof
+import fiftyone.core.frame as fofr
+import fiftyone.core.frame_utils as fofu
 import fiftyone.core.metadata as fom
+import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
+from fiftyone.core._sample import _Sample
 
 
-class _Sample(object):
-    """Base class for :class:`Sample` and :class:`SampleView`."""
-
-    def __init__(self, dataset=None):
-        self._dataset = dataset
-
-    def __dir__(self):
-        return super().__dir__() + list(self.field_names)
-
+class _DatasetSample(_Sample):
     def __getattr__(self, name):
-        try:
-            return super().__getattribute__(name)
-        except AttributeError:
-            return self._doc.get_field(name)
+        if name == "frames" and self.media_type == fomm.VIDEO:
+            return self._frames._serve(self)
 
-    def __setattr__(self, name, value):
-        if name.startswith("_") or (
-            hasattr(self, name) and not self._doc.has_field(name)
-        ):
-            super().__setattr__(name, value)
-        else:
-            self._doc.__setattr__(name, value)
-
-    def __delattr__(self, name):
-        try:
-            self.__delitem__(name)
-        except KeyError:
-            super().__delattr__(name)
+        return super().__getattr__(name)
 
     def __getitem__(self, field_name):
+        if fofu.is_frame_number(field_name) and self.media_type == "video":
+            return self.frames[field_name]
+
+        if field_name == "frames" and self.media_type == fomm.VIDEO:
+            return self._frames._serve(self)
+
         try:
             return self.get_field(field_name)
         except AttributeError:
-            raise KeyError("Sample has no field '%s'" % field_name)
+            raise KeyError(
+                "%s has no field '%s'" % (self.__class__.__name__, field_name)
+            )
 
     def __setitem__(self, field_name, value):
+        if fofu.is_frame_number(field_name) and (self.media_type == "video"):
+            self.frames[field_name] = value
+            return
+
+        self._secure_media(field_name, value)
         self.set_field(field_name, value=value)
-
-    def __delitem__(self, field_name):
-        try:
-            self.clear_field(field_name)
-        except ValueError as e:
-            raise KeyError(e.args[0])
-
-    def __copy__(self):
-        return self.copy()
-
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-
-        return self._doc == other._doc
 
     @property
     def filename(self):
         """The basename of the data filepath."""
         return os.path.basename(self.filepath)
 
-    @property
-    def id(self):
-        """The ID of the document, or ``None`` if it has not been added to the
-        database.
-        """
-        return str(self._doc.id) if self._in_db else None
-
-    @property
-    def ingest_time(self):
-        """The time the document was added to the database, or ``None`` if it
-        has not been added to the database.
-        """
-        return self._doc.ingest_time
-
-    @property
-    def in_dataset(self):
-        """Whether the sample has been added to a dataset."""
-        return self.dataset is not None
-
-    @property
-    def dataset(self):
-        """The dataset to which this sample belongs, or ``None`` if it has not
-        been added to a dataset.
-        """
-        return self._dataset
-
-    @property
-    def field_names(self):
-        """An ordered tuple of the names of the fields of this sample."""
-        return self._doc.field_names
-
-    @property
-    def _in_db(self):
-        """Whether the underlying :class:`fiftyone.core.odm.Document` has
-        been inserted into the database.
-        """
-        return self._doc.in_db
-
-    def get_field(self, field_name):
-        """Accesses the value of a field of the sample.
-
-        Args:
-            field_name: the field name
-
-        Returns:
-            the field value
-
-        Raises:
-            AttributeError: if the field does not exist
-        """
-        return self._doc.get_field(field_name)
-
-    def set_field(self, field_name, value, create=True):
-        """Sets the value of a field of the sample.
-
-        Args:
-            field_name: the field name
-            value: the field value
-            create (True): whether to create the field if it does not exist
-
-        Raises:
-            ValueError: if ``field_name`` is not an allowed field name or does
-                not exist and ``create == False``
-        """
-        if hasattr(self, field_name) and not self._doc.has_field(field_name):
-            raise ValueError("Cannot use reserved keyword '%s'" % field_name)
-
-        self._doc.set_field(field_name, value, create=create)
-
-    def update_fields(self, fields_dict, create=True):
-        """Sets the dictionary of fields on the sample.
-
-        Args:
-            fields_dict: a dict mapping field names to values
-            create (True): whether to create fields if they do not exist
-        """
-        for field_name, value in fields_dict.items():
-            self.set_field(field_name, value, create=create)
-
-    def clear_field(self, field_name):
-        """Clears the value of a field of the sample.
-
-        Args:
-            field_name: the name of the field to clear
-
-        Raises:
-            ValueError: if the field does not exist
-        """
-        self._doc.clear_field(field_name=field_name)
-
-    def iter_fields(self):
-        """Returns an iterator over the field (name, value) pairs of the
-        sample.
-        """
-        for field_name in self.field_names:
-            yield field_name, self.get_field(field_name)
-
     def compute_metadata(self):
         """Populates the ``metadata`` field of the sample."""
-        mime_type = etau.guess_mime_type(self.filepath)
-        if mime_type.startswith("image"):
+        if self.media_type == "image":
             self.metadata = fom.ImageMetadata.build_for(self.filepath)
+        elif self.media_type == "video":
+            self.metadata = fom.VideoMetadata.build_for(self.filepath)
         else:
             self.metadata = fom.Metadata.build_for(self.filepath)
 
         self.save()
 
-    def copy(self):
-        """Returns a deep copy of the sample that has not been added to the
-        database.
+    def _secure_media(self, field_name, value):
+        if field_name == "media_type" and value != self.media_type:
+            raise fomm.MediaTypeError(
+                "Cannot modify 'media_type' field; it is automatically "
+                "derived from the 'filepath' of the sample"
+            )
 
-        Returns:
-            a :class:`Sample`
-        """
-        kwargs = {f: deepcopy(self[f]) for f in self.field_names}
-        return self.__class__(**kwargs)
+        if field_name == "filepath":
+            value = os.path.abspath(os.path.expanduser(value))
+            # pylint: disable=no-member
+            new_media_type = fomm.get_media_type(value)
+            if self.media_type != new_media_type:
+                raise fomm.MediaTypeError(
+                    "A sample's 'filepath' can be changed, but its media type "
+                    "cannot; current '%s', new '%s'"
+                    % (self.media_type, new_media_type)
+                )
 
-    def to_dict(self):
-        """Serializes the sample to a JSON dictionary.
+        if value is not None:
+            # pylint: disable=no-member
+            try:
+                frame_doc_cls = self._dataset._frame_doc_cls
+            except:
+                frame_doc_cls = None
 
-        Sample IDs and private fields are excluded in this representation.
-
-        Returns:
-            a JSON dict
-        """
-        d = self._doc.to_dict(extended=True)
-        return {k: v for k, v in d.items() if not k.startswith("_")}
-
-    def to_json(self, pretty_print=False):
-        """Serializes the sample to a JSON string.
-
-        Sample IDs and private fields are excluded in this representation.
-
-        Args:
-            pretty_print (False): whether to render the JSON in human readable
-                format with newlines and indentations
-
-        Returns:
-            a JSON string
-        """
-        return etas.json_to_str(self.to_dict(), pretty_print=pretty_print)
-
-    def to_mongo_dict(self):
-        """Serializes the sample to a BSON dictionary equivalent to the
-        representation that would be stored in the database.
-
-        Returns:
-            a BSON dict
-        """
-        return self._doc.to_dict(extended=False)
-
-    def save(self):
-        """Saves the sample to the database."""
-        self._doc.save()
-
-    def reload(self):
-        """Reloads the sample from the database."""
-        self._doc.reload()
-
-    def _delete(self):
-        """Deletes the document from the database."""
-        self._doc.delete()
+            fomm.validate_field_against_media_type(
+                self.media_type,
+                **foo.get_implied_field_kwargs(
+                    value, frame_doc_cls=frame_doc_cls
+                ),
+            )
 
 
-class Sample(_Sample):
+class Sample(_DatasetSample):
     """A sample in a :class:`fiftyone.core.dataset.Dataset`.
 
     Samples store all information associated with a particular piece of data in
@@ -263,13 +126,48 @@ class Sample(_Sample):
         self._doc = foo.NoDatasetSampleDocument(
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
+        if self.media_type == fomm.VIDEO:
+            self._frames = fofr.Frames()
+
         super().__init__()
 
     def __str__(self):
         return repr(self)
 
     def __repr__(self):
-        return self._doc.fancy_repr(class_name=self.__class__.__name__)
+        kwargs = {}
+        if self.media_type == fomm.VIDEO:
+            kwargs["frames"] = self._frames._serve(self).__repr__()
+
+        return self._doc.fancy_repr(
+            class_name=self.__class__.__name__, **kwargs
+        )
+
+    def __iter__(self):
+        if self.media_type == fomm.VIDEO:
+            return self._frames._serve(self).__iter__()
+
+        raise StopIteration
+
+    def copy(self):
+        """Returns a deep copy of the sample that has not been added to the
+        database.
+
+        Returns:
+            a :class:`Sample`
+        """
+        video = self.media_type == fomm.VIDEO
+        kwargs = {
+            f: deepcopy(self[f])
+            for f in self.field_names
+            if f != "frames" or not video
+        }
+        if video:
+            kwargs["frames"] = {
+                str(k): v.copy()._doc for k, v in self.frames.items()
+            }
+
+        return self.__class__(**kwargs)
 
     @classmethod
     def from_doc(cls, doc, dataset=None):
@@ -278,8 +176,8 @@ class Sample(_Sample):
 
         Args:
             doc: a :class:`fiftyone.core.odm.SampleDocument`
-            dataset: the :class:`fiftyone.core.dataset.Dataset` that the sample
-                belongs to
+            dataset (None): the :class:`fiftyone.core.dataset.Dataset` that
+                the sample belongs to
 
         Returns:
             a :class:`Sample`
@@ -301,9 +199,13 @@ class Sample(_Sample):
             sample._doc = None  # set to prevent RecursionError
             if dataset is None:
                 raise ValueError(
-                    "`dataset` arg must be provided if sample is in a dataset"
+                    "`dataset` arg must be provided for samples in datasets"
                 )
+
             sample._set_backing_doc(doc, dataset=dataset)
+
+        if sample.media_type == fomm.VIDEO:
+            sample._frames = fofr.Frames()
 
         return sample
 
@@ -334,11 +236,8 @@ class Sample(_Sample):
 
     @classmethod
     def _save_dataset_samples(cls, collection_name):
-        """Saves all changes to samples instances in memory belonging to the
-        specified dataset to the database.
-
-        A samples only needs to be saved if it has non-persisted changes and
-        still exists in memory.
+        """Saves all changes to in-memory sample instances that belong to the
+        specified collection.
 
         Args:
             collection_name: the name of the MongoDB collection
@@ -348,20 +247,18 @@ class Sample(_Sample):
 
     @classmethod
     def _reload_dataset_sample(cls, collection_name, sample_id):
-        """Reloads the fields for a sample instance in memory belonging to the
-        specified dataset from the database.
+        """Reloads the fields for the in-memory sample instance that belong to
+        the specified collection.
 
-        If the sample does not exist in memory nothing is done.
+        If the sample does not exist in-memory, nothing is done.
 
         Args:
             collection_name: the name of the MongoDB collection
-            sample_id: the ID of the sample
+            sample_id: the sample ID
 
         Returns:
             True/False whether the sample was reloaded
         """
-        # @todo(Tyler) it could optimize the code to instead flag the sample as
-        #   "stale", then have it reload once __getattribute__ is called
         dataset_instances = cls._instances[collection_name]
         sample = dataset_instances.get(sample_id, None)
         if sample:
@@ -372,11 +269,8 @@ class Sample(_Sample):
 
     @classmethod
     def _reload_dataset_samples(cls, collection_name):
-        """Reloads the fields for sample instances in memory belonging to the
-        specified dataset from the database.
-
-        If multiple processes or users are accessing the same database this
-        will keep the dataset in sync.
+        """Reloads the fields for in-memory sample instances that belong to the
+        specified collection.
 
         Args:
             collection_name: the name of the MongoDB collection
@@ -385,8 +279,23 @@ class Sample(_Sample):
             sample.reload()
 
     @classmethod
+    def _rename_field(cls, collection_name, field_name, new_field_name):
+        """Renames any field values for in-memory sample instances that belong
+        to the specified collection.
+
+        Args:
+            collection_name: the name of the MongoDB collection
+            field_name: the name of the field to rename
+            new_field_name: the new field name
+        """
+        for sample in cls._instances[collection_name].values():
+            data = sample._doc._data
+            data[new_field_name] = data.pop(field_name, None)
+
+    @classmethod
     def _purge_field(cls, collection_name, field_name):
-        """Remove any field values from samples that exist in memory.
+        """Removes values for the given field from all in-memory sample
+        instances that belong to the specified collection.
 
         Args:
             collection_name: the name of the MongoDB collection
@@ -396,9 +305,12 @@ class Sample(_Sample):
             sample._doc._data.pop(field_name, None)
 
     def _set_backing_doc(self, doc, dataset=None):
-        """Updates the backing doc for the sample.
+        """Sets the backing doc for the sample.
 
-        For use **only** when adding a sample to a dataset.
+        Args:
+            doc: a :class:`fiftyone.core.odm.SampleDocument`
+            dataset (None): the :class:`fiftyone.core.dataset.Dataset` to which
+                the sample belongs, if any
         """
         if isinstance(self._doc, foo.DatasetSampleDocument):
             raise TypeError("Sample already belongs to a dataset")
@@ -427,8 +339,6 @@ class Sample(_Sample):
         """Resets the samples' backing documents to
         :class:`fiftyone.core.odm.NoDatasetSampleDocument` instances.
 
-        For use **only** when removing samples from a dataset.
-
         Args:
             collection_name: the name of the MongoDB collection
             sample_ids: a list of sample IDs
@@ -443,9 +353,7 @@ class Sample(_Sample):
     def _reset_all_backing_docs(cls, collection_name):
         """Resets the sample's backing document to a
         :class:`fiftyone.core.odm.NoDatasetSampleDocument` instance for all
-        samples in a dataset.
-
-        For use **only** when clearing a dataset.
+        samples in the specified collection.
 
         Args:
             collection_name: the name of the MongoDB collection
@@ -461,8 +369,15 @@ class Sample(_Sample):
         self._doc = self.copy()._doc
         self._dataset = None
 
+    def save(self):
+        """Saves the sample to the database."""
+        if self.media_type == fomm.VIDEO:
+            for frame in self.frames.values():
+                frame.save()  # @todo batch
+        super().save()
 
-class SampleView(_Sample):
+
+class SampleView(_DatasetSample):
     """A view of a sample returned by a:class:`fiftyone.core.view.DatasetView`.
 
     SampleViews should never be created manually, only returned by dataset
@@ -512,16 +427,24 @@ class SampleView(_Sample):
         self._excluded_fields = excluded_fields
         self._filtered_fields = filtered_fields
 
+        if self.media_type == fomm.VIDEO:
+            self._frames = fofr.Frames()
+
         super().__init__(dataset=dataset)
 
     def __str__(self):
         return repr(self)
 
     def __repr__(self):
+        kwargs = {}
+        if self.media_type == fomm.VIDEO:
+            kwargs["frames"] = self._frames._serve(self).__repr__()
+
         return self._doc.fancy_repr(
             class_name=self.__class__.__name__,
             select_fields=self._selected_fields,
             exclude_fields=self._excluded_fields,
+            **kwargs,
         )
 
     def __getattr__(self, name):
@@ -588,6 +511,7 @@ class SampleView(_Sample):
         Returns:
             a :class:`Sample`
         """
+        skip_frames = self.media_type == fomm.VIDEO
         kwargs = {f: deepcopy(self[f]) for f in self.field_names}
         return Sample(**kwargs)
 
@@ -597,6 +521,10 @@ class SampleView(_Sample):
         Any modified fields are updated, and any in-memory :class:`Sample`
         instances of this sample are updated.
         """
+        if self.media_type == fomm.VIDEO:
+            for frame in self.frames.values():
+                frame.save()  # @todo batch
+
         self._doc.save(filtered_fields=self._filtered_fields)
 
         # Reload the sample singleton if it exists in memory

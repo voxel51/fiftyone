@@ -83,6 +83,11 @@ class DatasetView(foc.SampleCollection):
         return view
 
     @property
+    def media_type(self):
+        """The media type of the underlying dataset."""
+        return self._dataset.media_type
+
+    @property
     def name(self):
         """The name of the view."""
         return self.dataset_name + "-view"
@@ -208,14 +213,32 @@ class DatasetView(foc.SampleCollection):
 
         return field_schema
 
-    def create_index(self, field):
-        """Creates a database index on the given field, enabling efficient
-        sorting on that field.
+    def get_frames_field_schema(
+        self, ftype=None, embedded_doc_type=None, include_private=False
+    ):
+        """Returns a schema dictionary describing the fields of the frames of
+        the samples in the view.
+
+        Only applicable for video datasets.
 
         Args:
-            field: the name of the field to index
+            ftype (None): an optional field type to which to restrict the
+                returned schema. Must be a subclass of
+                :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): an optional embedded document type to
+                which to restrict the returned schema. Must be a subclass of
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            include_private (False): whether to include fields that start with
+                `_` in the returned schema
+
+        Returns:
+             a dictionary mapping field names to field types
         """
-        self._dataset.create_index(field)
+        return self._dataset.get_frames_field_schema(
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            include_private=include_private,
+        )
 
     def get_tags(self):
         """Returns the list of unique tags of samples in the view.
@@ -234,6 +257,15 @@ class DatasetView(foc.SampleCollection):
             pass
 
         return []
+
+    def create_index(self, field):
+        """Creates a database index on the given field, enabling efficient
+        sorting on that field.
+
+        Args:
+            field: the name of the field to index
+        """
+        self._dataset.create_index(field)
 
     def aggregate(self, pipeline=None):
         """Calls the view's current MongoDB aggregation pipeline.
@@ -275,14 +307,14 @@ class DatasetView(foc.SampleCollection):
         d["samples"] = samples
         return d
 
-    def serialize(self):
+    def _serialize(self):
         """Serializes the view.
 
         Returns:
             a JSON representation of the view
         """
         return {
-            "dataset": self._dataset.serialize(),
+            "dataset": self._dataset._serialize(),
             "view": [s._serialize() for s in self._stages],
         }
 

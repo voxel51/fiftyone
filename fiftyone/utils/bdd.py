@@ -162,6 +162,12 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
         skip_non_categorical (False): whether to skip non-categorical frame
             attributes (True) or cast them to strings (False). Only applicable
             when ``expand`` is True
+        skip_unlabeled (False): whether to skip unlabeled images when importing
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
     """
 
     def __init__(
@@ -172,8 +178,18 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
         labels_dict=None,
         multilabel=False,
         skip_non_categorical=False,
+        skip_unlabeled=False,
+        shuffle=False,
+        seed=None,
+        max_samples=None,
     ):
-        super().__init__(dataset_dir)
+        super().__init__(
+            dataset_dir,
+            skip_unlabeled=skip_unlabeled,
+            shuffle=shuffle,
+            seed=seed,
+            max_samples=max_samples,
+        )
         self.expand = expand
         self.prefix = prefix
         self.labels_dict = labels_dict
@@ -184,13 +200,14 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
         self._anno_dict_map = None
         self._filenames = None
         self._iter_filenames = None
+        self._num_samples = None
 
     def __iter__(self):
         self._iter_filenames = iter(self._filenames)
         return self
 
     def __len__(self):
-        return len(self._filenames)
+        return self._num_samples
 
     def __next__(self):
         filename = next(self._iter_filenames)
@@ -205,6 +222,7 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
             frame_size = (image_metadata.width, image_metadata.height)
             label = _parse_bdd_annotation(anno_dict, frame_size)
         else:
+            # Unlabeled image
             label = None
 
         if label is not None and self.expand:
@@ -237,7 +255,13 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
         else:
             self._anno_dict_map = {}
 
-        self._filenames = etau.list_files(self._data_dir, abs_paths=False)
+        filenames = etau.list_files(self._data_dir, abs_paths=False)
+
+        if self.skip_unlabeled:
+            filenames = [f for f in filenames if f in self._anno_dict_map]
+
+        self._filenames = self._preprocess_list(filenames)
+        self._num_samples = len(self._filenames)
 
 
 class BDDDatasetExporter(foud.LabeledImageDatasetExporter):
@@ -357,7 +381,8 @@ def _make_bdd_annotation(image_labels_or_dict, metadata, filename):
     if isinstance(image_labels_or_dict, dict):
         image_labels = etai.ImageLabels()
         for name, label in image_labels_or_dict.items():
-            image_labels.merge_labels(label.to_image_labels(name=name))
+            if label is not None:
+                image_labels.merge_labels(label.to_image_labels(name=name))
     else:
         image_labels = image_labels_or_dict.labels
 

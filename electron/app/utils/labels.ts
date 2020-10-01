@@ -15,7 +15,14 @@ export const VALID_NUMERIC_TYPES = [
   "fiftyone.core.fields.IntField",
 ];
 
-export const RESERVED_FIELDS = ["metadata", "_id", "tags", "filepath"];
+export const RESERVED_FIELDS = [
+  "metadata",
+  "media_type",
+  "_id",
+  "tags",
+  "filepath",
+  "frames",
+];
 export const RESERVED_DETECTION_FIELDS = [
   "label",
   "bounding_box",
@@ -26,6 +33,7 @@ export const RESERVED_DETECTION_FIELDS = [
 export const METADATA_FIELDS = [
   { name: "Size (bytes)", key: "size_bytes" },
   { name: "Type", key: "mime_type" },
+  { name: "Media type", key: "media_type" },
   {
     name: "Dimensions",
     value: (metadata) => {
@@ -131,4 +139,72 @@ export const getDetectionAttributes = (detection: object): Attrs => {
 
 export const convertAttributesToETA = (attrs: Attrs): object[] => {
   return Object.entries(attrs).map(([name, value]) => ({ name, value }));
+};
+
+const FIFTYONE_TO_ETA_CONVERTERS = {
+  Classification: {
+    key: "attrs",
+    convert: (name, obj) => {
+      return {
+        type: "eta.core.data.CategoricalAttribute",
+        name,
+        confidence: obj.confidence,
+        value: obj.label,
+      };
+    },
+  },
+  Detection: {
+    key: "objects",
+    convert: (name, obj) => {
+      const bb = obj.bounding_box;
+      const attrs = convertAttributesToETA(getDetectionAttributes(obj));
+      return {
+        type: "eta.core.objects.DetectedObject",
+        name,
+        label: `${obj.label}`,
+        confidence: obj.confidence,
+        bounding_box: bb
+          ? {
+              top_left: { x: bb[0], y: bb[1] },
+              bottom_right: { x: bb[0] + bb[2], y: bb[1] + bb[3] },
+            }
+          : {
+              top_left: { x: 0, y: 0 },
+              bottom_right: { x: 0, y: 0 },
+            },
+        attrs: { attrs },
+      };
+    },
+  },
+};
+
+export const convertSampleToETA = (sample, fieldSchema) => {
+  if (sample._eta_labels) {
+    return JSON.parse(JSON.stringify(sample._eta_labels));
+  }
+  const imgLabels = { attrs: { attrs: [] }, objects: { objects: [] } };
+  const sampleFields = Object.keys(sample).sort();
+  for (const sampleField of sampleFields) {
+    if (RESERVED_FIELDS.includes(sampleField)) {
+      continue;
+    }
+    const field = sample[sampleField];
+    if (field === null || field === undefined) continue;
+    if (FIFTYONE_TO_ETA_CONVERTERS.hasOwnProperty(field._cls)) {
+      const { key, convert } = FIFTYONE_TO_ETA_CONVERTERS[field._cls];
+      imgLabels[key][key].push(convert(sampleField, field));
+    } else if (["Classifications", "Detections"].includes(field._cls)) {
+      for (const object of field[field._cls.toLowerCase()]) {
+        const { key, convert } = FIFTYONE_TO_ETA_CONVERTERS[object._cls];
+        imgLabels[key][key].push(convert(sampleField, object));
+      }
+      continue;
+    } else if (VALID_SCALAR_TYPES.includes(fieldSchema[sampleField])) {
+      imgLabels.attrs.attrs.push({
+        name: sampleField,
+        value: stringify(field),
+      });
+    }
+  }
+  return imgLabels;
 };

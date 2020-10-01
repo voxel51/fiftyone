@@ -8,6 +8,7 @@ Core utilities.
 import atexit
 from base64 import b64encode, b64decode
 from collections import defaultdict
+from contextlib import contextmanager
 import importlib
 import io
 import itertools
@@ -378,6 +379,16 @@ class ProgressBar(etau.ProgressBar):
         super().__init__(*args, iters_str="samples", quiet=quiet, **kwargs)
 
 
+@contextmanager
+def disable_progress_bars():
+    prev_show_progress_bars = fo.config.show_progress_bars
+    try:
+        fo.config.show_progress_bars = False
+        yield
+    finally:
+        fo.config.show_progress_bars = prev_show_progress_bars
+
+
 class UniqueFilenameMaker(object):
     """A class that generates unique output paths in a directory.
 
@@ -471,7 +482,7 @@ def serialize_numpy_array(array, ascii=False):
     """Serializes a numpy array.
 
     Args:
-        array: a numpy array
+        array: a numpy array-like
         ascii (False): whether to return a base64-encoded ASCII string instead
             of raw bytes
 
@@ -479,7 +490,7 @@ def serialize_numpy_array(array, ascii=False):
         the serialized bytes
     """
     with io.BytesIO() as f:
-        np.save(f, array, allow_pickle=False)
+        np.save(f, np.asarray(array), allow_pickle=False)
         bytes_str = zlib.compress(f.getvalue())
 
     if ascii:

@@ -45,8 +45,7 @@ export default function tile(data, newHasMore, state) {
             0
           );
 
-    for (const j in row) {
-      const sample = row[j];
+    for (const sample of row) {
       const sampleWidth = (baseHeight * sample.width) / sample.height;
       columns.push(sampleWidth / refWidth);
     }
@@ -58,7 +57,11 @@ export default function tile(data, newHasMore, state) {
       width: "100%",
       margin: 0,
     };
-    rows.push({ style: rowStyle, samples: row.map((s) => s.sample) });
+    rows.push({
+      style: rowStyle,
+      samples: row.map(({ sample, ...rest }) => ({ sample, metadata: rest })),
+      aspectRatio: refWidth / baseHeight,
+    });
   }
   return {
     hasMore: Boolean(newHasMore),

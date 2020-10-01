@@ -18,6 +18,7 @@ import unittest
 import urllib
 
 from bson import ObjectId
+import numpy as np
 import socketio
 
 import eta.core.utils as etau
@@ -31,6 +32,7 @@ from fiftyone.core.session import (
     _subscribed_sessions,
 )
 from fiftyone.core.state import StateDescriptionWithDerivables
+import fiftyone.core.utils as fou
 from fiftyone.server.json_util import FiftyOneJSONEncoder
 
 
