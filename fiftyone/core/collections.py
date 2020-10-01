@@ -1162,6 +1162,15 @@ class SampleCollection(object):
             label_field_or_dict=label_field_or_dict,
         )
 
+    def create_index(self, field):
+        """Creates a database index on the given field, enabling efficient
+        sorting on that field.
+
+        Args:
+            field: the name of the field to index
+        """
+        raise NotImplementedError("Subclass must implement make_index()")
+
     def aggregate(self, pipeline=None):
         """Calls the collection's current MongoDB aggregation pipeline.
 

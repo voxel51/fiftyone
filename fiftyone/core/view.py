@@ -9,11 +9,10 @@ from collections import OrderedDict
 from copy import copy, deepcopy
 import numbers
 
-from bson import ObjectId, json_util
+from bson import ObjectId
 
 import fiftyone.core.collections as foc
 import fiftyone.core.sample as fos
-import fiftyone.core.stages as fost
 
 
 class DatasetView(foc.SampleCollection):
@@ -258,6 +257,15 @@ class DatasetView(foc.SampleCollection):
             pass
 
         return []
+
+    def create_index(self, field):
+        """Creates a database index on the given field, enabling efficient
+        sorting on that field.
+
+        Args:
+            field: the name of the field to index
+        """
+        self._dataset.create_index(field)
 
     def aggregate(self, pipeline=None):
         """Calls the view's current MongoDB aggregation pipeline.

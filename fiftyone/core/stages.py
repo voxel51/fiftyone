@@ -1294,7 +1294,7 @@ class SortBy(ViewStage):
 
         field_or_expr = self._get_mongo_field_or_expr()
 
-        if not isinstance(field_or_expr, dict):
+        if etau.is_str(field_or_expr):
             return [{"$sort": {field_or_expr: order}}]
 
         return [
@@ -1331,8 +1331,16 @@ class SortBy(ViewStage):
         ]
 
     def validate(self, sample_collection):
-        if etau.is_str(self._field_or_expr):
-            sample_collection.validate_fields_exist(self._field_or_expr)
+        field_or_expr = self._get_mongo_field_or_expr()
+
+        # If sorting by a field, not an expression
+        if etau.is_str(field_or_expr):
+            # Make sure the field exists
+            sample_collection.validate_fields_exist(field_or_expr)
+
+            # Create an index on the field, if necessary, to make sorting
+            # more efficient
+            sample_collection.create_index(field_or_expr)
 
 
 class Take(ViewStage):
