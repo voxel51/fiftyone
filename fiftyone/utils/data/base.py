@@ -173,10 +173,7 @@ def convert_classification_field_to_detections(
         dataset.delete_sample_field(classification_field)
 
     if overwrite:
-        # @todo replace with `dataset.rename_field()` when such a method exists
-        logger.info("Finalizing operation")
-        dataset.clone_field(detections_field, classification_field)
-        dataset.delete_sample_field(detections_field)
+        dataset.rename_field(detections_field, classification_field)
 
 
 def expand_image_labels_field(
