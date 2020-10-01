@@ -3,6 +3,35 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne 0.6.0
+--------------
+*Released October 1, 2020*
+
+App
+^^^
+- Added support for visualizing video datasets in the App
+
+Core
+^^^^
+- Added support for :ref:`storing frame labels <video-frame-labels>` on
+  video samples
+- Added support for :ref:`importing <VideoDirectory-import>` and
+  :ref:`exporting <VideoDirectory-export>` datasets of unlabeled videos
+- Added support for :ref:`importing <FiftyOneVideoLabelsDataset-import>` and
+  :ref:`exporting <FiftyOneVideoLabelsDataset-export>` labeled video
+  datasets in
+  `ETA VideoLabels format <https://voxel51.com/docs/api/#types-videolabels>`_.
+- Added support for :ref:`importing <writing-a-custom-dataset-importer>` and
+  :ref:`exporting <writing-a-custom-dataset-exporter>` video datasets in
+  custom formats
+- Improved the performance of
+  :meth:`Dataset.rename_field() <fiftyone.core.dataset.Dataset.rename_field>`
+- Added support for using disk space when running aggregation pipelines on
+  large datasets
+- Added support for automatically creating database indexes when sorting by
+  sample fields, for efficiency
+- Fixed issues with serializing vector fields and numpy arrays
+
 FiftyOne 0.5.6
 --------------
 *Released September 23, 2020*
