@@ -860,6 +860,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self.media_type == fom.VIDEO:
             self._frame_doc_cls.drop_collection()
             fos.Sample._reset_all_backing_docs(self._frames_collection_name)
+
         self._sample_doc_cls.drop_collection()
         fos.Sample._reset_all_backing_docs(self._sample_collection_name)
 
@@ -1755,6 +1756,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _sample_collection(self):
         return foo.get_db_conn()[self._sample_collection_name]
 
+    @property
     def _frames_collection_name(self):
         return "frames." + self._sample_collection_name
 
