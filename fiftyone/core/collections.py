@@ -327,15 +327,6 @@ class SampleCollection(object):
                     % (field_name, ftype, field)
                 )
 
-    def create_index(self, field):
-        """Creates a database index on the given field, enabling efficient
-        sorting on that field.
-
-        Args:
-            field: the name of the field to index
-        """
-        raise NotImplementedError("Subclass must implement make_index()")
-
     def get_tags(self):
         """Returns the list of unique tags of samples in the collection.
 
@@ -1170,6 +1161,15 @@ class SampleCollection(object):
             dataset_exporter=dataset_exporter,
             label_field_or_dict=label_field_or_dict,
         )
+
+    def create_index(self, field):
+        """Creates a database index on the given field, enabling efficient
+        sorting on that field.
+
+        Args:
+            field: the name of the field to index
+        """
+        raise NotImplementedError("Subclass must implement make_index()")
 
     def aggregate(self, pipeline=None):
         """Calls the collection's current MongoDB aggregation pipeline.
