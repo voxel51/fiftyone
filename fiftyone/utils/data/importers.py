@@ -1504,3 +1504,7 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
 
     def get_dataset_info(self):
         return {"description": self._description}
+
+    @staticmethod
+    def get_num_samples(dataset_dir):
+        return len(etads.load_dataset(dataset_dir))
