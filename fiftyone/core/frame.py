@@ -8,8 +8,8 @@ Video frames.
 from collections import defaultdict
 import weakref
 
-from fiftyone.core._sample import _Sample
 import fiftyone.core.frame_utils as fofu
+from fiftyone.core._sample import _Sample
 
 from fiftyone.core.odm.frame import (
     NoDatasetFrameSampleDocument,
@@ -43,7 +43,9 @@ class Frames(object):
         return "{ <%d frame%s> }" % (num_frames, plural)
 
     def __len__(self):
-        return len(self._sample._doc.to_dict()["frames"])
+        if self._sample._in_db:
+            return self._frame_collection.count({"sample_id": self._sample.id})
+        return len(self._sample._doc.frames)
 
     def __iter__(self):
         self._iter = self.keys()
@@ -61,13 +63,13 @@ class Frames(object):
         except KeyError:
             if self._sample._in_db:
                 doc = self._sample._dataset._frame_doc_cls.from_dict(
-                    {"frame_number": key, "sample_id": self._sample._id}
+                    {"frame_number": key, "sample_id": self._sample.id}
                 )
                 doc.save()
                 dataset = self._sample._dataset
             else:
                 doc = NoDatasetFrameSampleDocument(
-                    frame_number=key, sample_id=self._sample._id
+                    frame_number=key, sample_id=self._sample.id
                 )
                 dataset = None
 
@@ -84,13 +86,13 @@ class Frames(object):
         d = value.to_dict()
         d.pop("_id", None)
         d["frame_number"] = key
+        d["sample_id"] = self._sample.id
         if self._sample._in_db:
             doc = self._sample._dataset._frame_doc_cls.from_dict(d)
             doc.save()
-            self._sample._doc.frames[str(key)] = doc
         else:
             self._sample._doc.frames[
-                str(key)
+                key
             ] = NoDatasetFrameSampleDocument.from_dict(d)
 
     def keys(self):
@@ -102,11 +104,8 @@ class Frames(object):
         Returns:
             a generator that emits frame numbers
         """
-        dataset = self._sample._dataset if self._sample._in_db else None
-        for k in sorted(
-            map(lambda k: int(k), self._sample._doc.frames.keys())
-        ):
-            yield int(k)
+        for doc in self._iter_docs():
+            yield doc.frame_number
 
     def items(self):
         """Returns an iterator over the frame numberes and :class:`Frame`
@@ -117,10 +116,9 @@ class Frames(object):
         Returns:
             a generator that emits ``(frame_number, Frame)`` tuples
         """
-        dataset = self._sample._dataset if self._sample._in_db else None
-        for k in self.keys():
-            yield k, Frame.from_doc(
-                self._sample._doc.frames[str(k)], dataset=dataset
+        for doc in self._iter_docs():
+            yield doc.frame_number, Frame.from_doc(
+                doc, dataset=self._sample._dataset
             )
 
     def values(self):
@@ -133,10 +131,8 @@ class Frames(object):
             a generator that emits :class:`Frame` instances
         """
         dataset = self._sample._dataset if self._sample._in_db else None
-        for k in self.keys():
-            yield Frame.from_doc(
-                self._sample._doc.frames[str(k)], dataset=dataset
-            )
+        for doc in self._iter_docs():
+            yield Frame.from_doc(doc, dataset=self._sample._dataset)
 
     def update(self, d):
         """Adds the frame labels from the given dictionary to this instance.
@@ -149,12 +145,26 @@ class Frames(object):
         for frame_number, frame in d.items():
             self[frame_number] = frame
 
-    def _serve(self, sample):
-        self._sample = sample
-        return self
+    @property
+    def _frame_collection(self):
+        return self._sample._dataset._frame_collection
+
+    def _iter_docs(self):
+        if self._sample._in_db:
+            for d in self._frame_collection.find(
+                {"sample_id": self._sample.id}
+            ):
+                yield self._sample._dataset._frame_dict_to_doc(d)
+        else:
+            for frame_number in sorted(self._sample._doc.frames.keys()):
+                yield self._sample._doc.frames[frame_number]
 
     def _get_field_cls(self):
         return self._sample._doc.frames.__class__
+
+    def _serve(self, sample):
+        self._sample = sample
+        return self
 
 
 class Frame(_Sample):
