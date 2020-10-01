@@ -88,15 +88,23 @@ class QuickstartCommand(Command):
 
         # Launch the quickstart
         fiftyone quickstart
+
+        # Launch the quickstart with a video dataset
+        fiftyone quickstart --video
     """
 
     @staticmethod
     def setup(parser):
-        pass
+        parser.add_argument(
+            "-v",
+            "--video",
+            action="store_true",
+            help="launch the quickstart with a video dataset",
+        )
 
     @staticmethod
     def execute(parser, args):
-        fouq.quickstart(interactive=False)
+        fouq.quickstart(interactive=False, video=args.video)
 
 
 class ConfigCommand(Command):
