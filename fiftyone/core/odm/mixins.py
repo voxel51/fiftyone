@@ -1,3 +1,10 @@
+"""
+Mixins and helpers for sample backing documents.
+
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 from collections import OrderedDict
 from functools import wraps
 import json
@@ -77,6 +84,10 @@ def no_delete_default_field(func):
 
 
 class DatasetMixin(object):
+    """Mixin for required for concrete :class:`fiftyone.core.odm.document.SampleDocument`s
+    that are backed by a dataset
+    """
+
     def __setattr__(self, name, value):
         # pylint: disable=no-member
         has_field = self.has_field(name)
@@ -498,6 +509,10 @@ class DatasetMixin(object):
 
 
 class NoDatasetMixin(object):
+    """Mixin for required for concrete :class:`fiftyone.core.odm.document.SampleDocument`s
+    that are not backed by a dataset
+    """
+
     def __getattr__(self, name):
         try:
             return self._data[name]

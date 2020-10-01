@@ -1,5 +1,5 @@
 """
-Video sample frames.
+Video frames.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -18,7 +18,15 @@ from fiftyone.core.odm.frame import (
 
 
 class Frames(object):
-    def serve(self, sample):
+    """An ordered map of frames in a :class:`fiftyone.core.sample.Sample`
+
+    Note:
+        This class is instantiated automatically and depends on an owning
+        :class:`fiftyone.core.sample.Sample`. Not for independent use or direct
+        assignment to :class:`fiftyone.core.sample.Sample`s.
+    """
+
+    def _serve(self, sample):
         self._sample = sample
         return self
 
@@ -36,6 +44,12 @@ class Frames(object):
         return next(self._iter)
 
     def keys(self):
+        """Iterator for the frame numbers in a video :class:`fiftyone.core.sample.Sample`.
+
+        Returns:
+            an iterator over 1-based integer frame numbers in the owning
+            :class:`fiftyone.core.sample.Sample`, ordered by frame number.
+        """
         dataset = self._sample._dataset if self._sample._in_db else None
         for k in sorted(
             map(lambda k: int(k), self._sample._doc.frames.keys())
@@ -43,6 +57,12 @@ class Frames(object):
             yield int(k)
 
     def items(self):
+        """Iterator for the frames in a video :class:`fiftyone.core.sample.Sample`.
+
+        Returns:
+            an iterator over 1-based integer frame numbers in the owning
+            :class:`fiftyone.core.sample.Sample` and the corresponding :class:`Frame`.
+        """
         dataset = self._sample._dataset if self._sample._in_db else None
         for k in self.keys():
             yield k, Frame.from_doc(
@@ -50,6 +70,12 @@ class Frames(object):
             )
 
     def values(self):
+        """Iterator for the frames in a video :class:`fiftyone.core.sample.Sample`.
+
+        Returns:
+            an iterator over 1-based integer frame numbers in the owning
+            :class:`fiftyone.core.sample.Sample` and the corresponding :class:`Frame`.
+        """
         dataset = self._sample._dataset if self._sample._in_db else None
         for k in self.keys():
             yield Frame.from_doc(
@@ -125,16 +151,16 @@ class Frame(_Sample):
 
     @classmethod
     def from_doc(cls, doc, dataset=None):
-        """Creates an instance of the :class:`Sample` class backed by the given
+        """Creates an instance of the :class:`Frame` class backed by the given
         document.
 
         Args:
             doc: a :class:`fiftyone.core.odm.SampleDocument`
-            dataset: the :class:`fiftyone.core.dataset.Dataset` that the sample
+            dataset: the :class:`fiftyone.core.dataset.Dataset` that the frame
                 belongs to
 
         Returns:
-            a :class:`Sample`
+            a :class:`Frame`
         """
         from fiftyone.core.odm import NoDatasetFrameSampleDocument
 
