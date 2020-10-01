@@ -739,7 +739,7 @@ You can automically compute metadata for all samples in a dataset via
                     'duration': 2.268933,
                     'encoding_str': 'avc1',
                 }>,
-                'frames': ...,
+                'frames': { <0 frames> },
             }>
 
     .. group-tab:: Generic data
@@ -1156,7 +1156,7 @@ labels for the video.
         'filepath': '/path/to/video.mp4',
         'tags': [],
         'metadata': None,
-        'frames': '<Frames 0>',
+        'frames': { <0 frames> },
     }>
 
 The `frames` attribute of a video sample is a dictionary whose keys are frame
@@ -1197,7 +1197,7 @@ interact with |Sample| objects:
         'filepath': '/path/to/video.mp4',
         'tags': [],
         'metadata': None,
-        'frames': '<Frames 1>',     <-- `frames` now contains 1 frame of labels
+        'frames': { <1 frame> },    <-- `frames` now contains 1 frame of labels
     }>
 
 .. note::
