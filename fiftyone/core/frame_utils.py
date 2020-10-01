@@ -26,7 +26,7 @@ def is_frame_number(value):
     if isinstance(value, six.integer_types):
         if value < 1:
             raise FrameError(
-                "Frame numbers must be 1-based integers; found %d" % value
+                "Frame numbers must be 1-based integers; found %s" % value
             )
 
         return True
@@ -45,7 +45,7 @@ def validate_frame_number(value):
     """
     if not isinstance(value, six.integer_types) or value < 1:
         raise FrameError(
-            "Frame numbers must be 1-based integers; found %d" % value
+            "Frame numbers must be 1-based integers; found %s" % value
         )
 
 
