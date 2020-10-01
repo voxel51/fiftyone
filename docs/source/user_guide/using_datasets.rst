@@ -15,7 +15,7 @@ FiftyOne |Dataset|.
 Datasets
 ________
 
-Instantiating a |Dataset| object creates a **new** dataset.
+Instantiating a |Dataset| object creates a new dataset.
 
 .. code-block:: python
     :linenos:
@@ -45,7 +45,7 @@ Dataset objects are singletons. Cool!
     _dataset2 = fo.load_dataset("my_second_dataset")
     _dataset2 is dataset2  # True
 
-If you try to *load a dataset* via `Dataset(...)` or *create a new dataset* via
+If you try to load a dataset via `Dataset(...)` or create a new dataset via
 :meth:`load_dataset() <fiftyone.core.dataset.load_dataset>` you're going to
 have a bad time:
 
@@ -56,7 +56,7 @@ have a bad time:
     # Dataset 'my_second_dataset' already exists; use `fiftyone.load_dataset()`
     # to load an existing dataset
 
-    dataset4 = fo.load_dataset(name="my_fourth_dataset")
+    dataset4 = fo.load_dataset("my_fourth_dataset")
     # DoesNotExistError: Dataset 'my_fourth_dataset' not found
 
 Dataset persistence
@@ -105,6 +105,38 @@ shell and run the command again:
 
 you'll see that the `my_second_dataset` and `2020.08.04.12.36.29` datasets have
 been deleted because they were not persistent.
+
+Dataset media type
+------------------
+
+The media type of a dataset is determined by the
+:ref:`media type <using-media-type>` of the |Sample| objects that it contains.
+
+The :meth:`media_type <fiftyone.core.dataset.Dataset.media_type>` property of a
+dataset is set based on the first sample added to it:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+
+    print(dataset.media_type)
+    # None
+
+    dataset.add_sample(fo.Sample(filepath="/path/to/image.png"))
+
+    print(dataset.media_type)
+    # "image"
+
+Datasets are homogeneous; they must contain samples of the same media type:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.add_sample(fo.Sample(filepath="/path/to/video.mp4"))
+    # MediaTypeError: Sample media type 'video' does not match dataset media type 'image'
 
 Storing dataset information
 ---------------------------
@@ -183,7 +215,11 @@ corresponding data on disk.
 .. code-block:: python
     :linenos:
 
+    # An image sample
     sample = fo.Sample(filepath="/path/to/image.png")
+
+    # A video sample
+    another_sample = fo.Sample(filepath="/path/to/video.mp4")
 
 .. note::
 
@@ -201,8 +237,8 @@ A |Sample| can easily be added to an existing |Dataset|:
     dataset = fo.Dataset(name="example_dataset")
     dataset.add_sample(sample)
 
-When a |Sample| is added to a |Dataset|, the relevant attributes of the
-|Sample| are automatically updated:
+When a sample is added to a dataset, the relevant attributes of the |Sample|
+are automatically updated:
 
 .. code-block:: python
     :linenos:
@@ -213,7 +249,7 @@ When a |Sample| is added to a |Dataset|, the relevant attributes of the
     print(sample.dataset_name)
     # example_dataset
 
-Every |Sample| in a |Dataset| is given a unique ID when it is added:
+Every sample in a dataset is given a unique ID when it is added:
 
 .. code-block:: python
     :linenos:
@@ -221,8 +257,7 @@ Every |Sample| in a |Dataset| is given a unique ID when it is added:
     print(sample.id)
     # 5ee0ebd72ceafe13e7741c42
 
-A batch of |Sample| objects can be added to a |Dataset| at the same time by
-providing a list of samples:
+Multiple samples can be efficiently added to a dataset in batches:
 
 .. code-block:: python
     :linenos:
@@ -248,7 +283,7 @@ Accessing samples in a dataset
 
 FiftyOne provides multiple ways to access a |Sample| in a |Dataset|.
 
-A |Dataset| is iterable allowing every |Sample| to be accessed sequentially:
+You can iterate over the samples in a dataset:
 
 .. code-block:: python
     :linenos:
@@ -266,7 +301,7 @@ last samples in a dataset, respectively:
     first_sample = dataset.first()
     last_sample = dataset.last()
 
-A |Sample| can be accessed directly from a |Dataset| by its ID. The |Sample|
+Samples can be accessed directly from datasets by their IDs. The |Sample|
 that is returned when accessing a |Dataset| will always provide the same
 instance:
 
@@ -303,12 +338,12 @@ Samples can also be removed from a |Dataset| by using the sample's ID or the
 
     dataset.remove_sample(sample_id)
 
-    # or equivalently:
+    # Equivalently
     sample = dataset[sample_id]
     dataset.remove_sample(sample)
 
-In the latter case, where the |Sample| is in memory, it will behave the same as
-a |Sample| that has never been added to the |Dataset|:
+If a |Sample| object in memory is deleted from a dataset, it will revert to
+a |Sample| that has not been added to a |Dataset|:
 
 .. code-block:: python
     :linenos:
@@ -333,8 +368,10 @@ sample.
 Fields can be dynamically created, modified, and deleted from samples on a
 per-sample basiss. When a new |Field| is assigned to a |Sample| in a |Dataset|,
 it is automatically added to the dataset's schema and thus accessible on all
-other samples in the dataset. If a |Field| is unset on a particular |Sample|,
-its value will be ``None``.
+other samples in the dataset.
+
+If a field exists on a dataset but has not been set on a particular sample, its
+value will be ``None``.
 
 Default fields
 --------------
@@ -344,19 +381,21 @@ By default, all |Sample| instances have the following fields:
 .. table::
     :widths: 18 18 18 46
 
-    +------------+------------------------------------+-------------+---------------------------------------------------+
-    | Field      | Type                               | Default     | Description                                       |
-    +============+====================================+=============+===================================================+
-    | `filepath` | string                             | N/A         | `(required)` The path to the source data on disk  |
-    +------------+------------------------------------+-------------+---------------------------------------------------+
-    | `id`       | string                             | `None`      | The ID of the sample in its parent dataset, or    |
-    |            |                                    |             | `None` if the sample does not belong to a dataset |
-    +------------+------------------------------------+-------------+---------------------------------------------------+
-    | `metadata` | :class:`Metadata                   | `None`      | Type-specific metadata about the source data      |
-    |            | <fiftyone.core.metadata.Metadata>` |             |                                                   |
-    +------------+------------------------------------+-------------+---------------------------------------------------+
-    | `tags`     | list                               | `[]`        | A list of string tags for the sample              |
-    +------------+------------------------------------+-------------+---------------------------------------------------+
+    +--------------+------------------------------------+--------------+---------------------------------------------------+
+    | Field        | Type                               | Default      | Description                                       |
+    +==============+====================================+==============+===================================================+
+    | `filepath`   | string                             | `(required)` |  The path to the source data on disk              |
+    +--------------+------------------------------------+--------------+---------------------------------------------------+
+    | `media_type` | string                             | `-`          | The media type of the sample                      |
+    +--------------+------------------------------------+--------------+---------------------------------------------------+
+    | `id`         | string                             | `None`       | The ID of the sample in its parent dataset, or    |
+    |              |                                    |              | `None` if the sample does not belong to a dataset |
+    +--------------+------------------------------------+--------------+---------------------------------------------------+
+    | `metadata`   | :class:`Metadata                   | `None`       | Type-specific metadata about the source data      |
+    |              | <fiftyone.core.metadata.Metadata>` |              |                                                   |
+    +--------------+------------------------------------+--------------+---------------------------------------------------+
+    | `tags`       | list                               | `[]`         | A list of string tags for the sample              |
+    +--------------+------------------------------------+--------------+---------------------------------------------------+
 
 .. code-block:: python
     :linenos:
@@ -371,6 +410,7 @@ By default, all |Sample| instances have the following fields:
 
     <Sample: {
         'id': None,
+        'media_type': 'image',
         'filepath': 'path/to/image.png',
         'tags': [],
         'metadata': None,
@@ -385,10 +425,10 @@ The names of available fields can be checked on any individual |Sample|:
     :linenos:
 
     sample.field_names
-    # ('filepath', 'tags', 'metadata')
+    # ('filepath', 'media_type', 'tags', 'metadata')
 
-Only the |Dataset| has any notion of a field "schema", which specifies the
-field types:
+You can retrieve detailed information about the schema of the samples in a
+|Dataset|:
 
 .. code-block:: python
     :linenos:
@@ -397,15 +437,15 @@ field types:
 
 .. code-block:: text
 
-    OrderedDict(
-        [
-            ('filepath', <fiftyone.core.fields.StringField object at 0x11436e710>),
-            ('tags',     <fiftyone.core.fields.ListField object at 0x11b7f2dd8>),
-            ('metadata', <fiftyone.core.fields.EmbeddedDocumentField object at 0x11b7f2e80>)
-        ]
-    )
+    OrderedDict([
+        ('media_type', <fiftyone.core.fields.StringField at 0x11c77add8>),
+        ('filepath', <fiftyone.core.fields.StringField at 0x11c77ae10>),
+        ('tags', <fiftyone.core.fields.ListField at 0x11c790828>),
+        ('metadata', <fiftyone.core.fields.EmbeddedDocumentField at 0x11c7907b8>)
+    ])
 
-To to simply view the field schema print the dataset:
+You can view helpful information about a dataset, including its schema, by
+printing it:
 
 .. code-block:: python
     :linenos:
@@ -415,28 +455,30 @@ To to simply view the field schema print the dataset:
 .. code-block:: text
 
     Name:           a_dataset
+    Media type      image
     Num samples:    0
     Persistent:     False
     Info:           {}
     Tags:           []
     Sample fields:
-        filepath:     fiftyone.core.fields.StringField
-        tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
-        metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
+        media_type: fiftyone.core.fields.StringField
+        filepath:   fiftyone.core.fields.StringField
+        tags:       fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
 
-The value of a |Field| for a given |Sample| can be accessed either by key or
-attribute access:
+The value of a |Field| for a given |Sample| can be accessed either by either
+attribute or item access:
 
 .. code-block:: python
     :linenos:
 
     sample.filepath
-    sample["filepath"]
+    sample["filepath"]  # equivalent
 
 Adding fields to a sample
 -------------------------
 
-New fields can be added to a |Sample| using key assignment:
+New fields can be added to a |Sample| using item assignment:
 
 .. code-block:: python
     :linenos:
@@ -444,8 +486,8 @@ New fields can be added to a |Sample| using key assignment:
     sample["integer_field"] = 51
     sample.save()
 
-If this |Sample| is in a |Dataset| the field schema will be automatically
-updated:
+If the |Sample| belongs to a |Dataset|, the dataset's field schema will be
+updated to reflect the new field:
 
 .. code-block:: python
     :linenos:
@@ -455,11 +497,13 @@ updated:
 .. code-block:: text
 
     Name:           a_dataset
+    Media type      image
     Num samples:    0
     Persistent:     False
     Info:           {}
     Tags:           []
     Sample fields:
+        media_type:    fiftyone.core.fields.StringField
         filepath:      fiftyone.core.fields.StringField
         tags:          fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
         metadata:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
@@ -474,11 +518,11 @@ A |Field| can be any primitive type: `bool`, `int`, `float`, `str`, `list`,
     sample["ground_truth"] = fo.Classification(label="alligator")
     sample.save()
 
-Whenever a new |Field| is added to one |Sample| in a |Dataset|, that |Field| is
-added to every other |Sample| in the |Dataset| with the value `None`.
+Whenever a new field is added to a sample in a dataset, the field is available
+on every other sample in the dataset with the value `None`.
 
-A |Field| must be the same type across every |Sample| in the |Dataset|. Setting
-a |Field| to an inappropriate type raises a `ValidationError`:
+Fields must have the same type (or `None`) across all samples in the dataset.
+Setting a field to an inappropriate type raises an error:
 
 .. code-block:: python
     :linenos:
@@ -491,12 +535,12 @@ a |Field| to an inappropriate type raises a `ValidationError`:
 
     If a |Sample| is in a |Dataset|, then
     :meth:`sample.save() <fiftyone.core.sample.Sample.save>` must be used
-    whenever the |Sample| is updated.
+    whenever the sample is updated.
 
 Removing fields from a sample
 -----------------------------
 
-A |Field| can be deleted from a |Sample| using `del`:
+A field can be deleted from a |Sample| using `del`:
 
 .. code-block:: python
     :linenos:
@@ -505,15 +549,47 @@ A |Field| can be deleted from a |Sample| using `del`:
     print(sample.integer_field)
     # None
 
-A |Field| can be removed from a |Dataset|, in which case it is deleted for
-every |Sample| in the |Dataset|:
+Fields can also be deleted at the |Dataset| level, in which case they are
+deleted from every |Sample| in the dataset:
 
 .. code-block:: python
     :linenos:
 
     dataset.delete_sample_field("integer_field")
+
     sample.integer_field
     # AttributeError: Sample has no field 'integer_field'
+
+.. _using-media-type:
+
+Media type
+__________
+
+When a |Sample| is created, its media type is inferred from the `filepath` to
+the source media and available via the `media_type` attribute of the sample,
+which is read-only.
+
+Media type is inferred from the
+`MIME type <https://en.wikipedia.org/wiki/Media_type>`__ of the file on disk,
+as per the table below:
+
+.. table::
+    :widths: 30 30 40
+
+    +------------+----------------+-------------------------------------------+
+    | MIME type  | `media_type`   | Description                               |
+    +============+================+===========================================+
+    | `image/*`  | `image`        | Image sample                              |
+    +------------+----------------+-------------------------------------------+
+    | `video/*`  | `video`        | Video sample                              |
+    +------------+----------------+-------------------------------------------+
+    | other      | `-`            | Generic sample                            |
+    +------------+----------------+-------------------------------------------+
+
+.. note::
+    The `filepath` of a sample can be changed after the sample is created, but
+    the new filepath must have the same media type. In other words,
+    `media_type` is immutable.
 
 .. _using-tags:
 
@@ -527,7 +603,7 @@ dataset splits or mark low quality images:
 .. code-block:: python
     :linenos:
 
-    dataset = fo.Dataset("tagged_dataset")
+    dataset = fo.Dataset(name="tagged_dataset")
 
     dataset.add_samples(
         [
@@ -564,14 +640,14 @@ about the raw data in the sample. The :doc:`FiftyOne App </user_guide/app>` and
 the :doc:`FiftyOne Brain </user_guide/brain>` will use this provided metadata
 in some workflows when it is available.
 
-To automatically compute metadata for all samples in the dataset use
+You can automically compute metadata for all samples in a dataset via
 :meth:`Dataset.compute_metadata() <fiftyone.core.collections.SampleCollection.compute_metadata>`.
 
 .. tabs::
 
     .. group-tab:: Images
 
-        For image data, use the |ImageMetadata| class to store information
+        For image samples, use the |ImageMetadata| class to store information
         about your image.
 
         |ImageMetadata| instances can also store arbitrary custom fields, but,
@@ -602,6 +678,7 @@ To automatically compute metadata for all samples in the dataset use
 
             <Sample: {
                 'id': None,
+                'media_type': 'image',
                 'filepath': '/path/to/image.png',
                 'tags': [],
                 'metadata': <ImageMetadata: {
@@ -611,6 +688,58 @@ To automatically compute metadata for all samples in the dataset use
                     'height': 664,
                     'num_channels': 3,
                 }>,
+            }>
+
+    .. group-tab:: Videos
+
+        For video samples, use the |VideoMetadata| class to store information
+        about your video.
+
+        |VideoMetadata| instances can also store arbitrary custom fields, but,
+        by default, they provide
+        :attr:`size_bytes <fiftyone.core.metadata.VideoMetadata.size_bytes>`,
+        :attr:`mime_type <fiftyone.core.metadata.VideoMetadata.mime_type>`,
+        :attr:`frame_width <fiftyone.core.metadata.VideoMetadata.frame_width>`,
+        :attr:`frame_height <fiftyone.core.metadata.VideoMetadata.frame_height>`,
+        :attr:`frame_rate <fiftyone.core.metadata.VideoMetadata.frame_rate>`,
+        :attr:`total_frame_count <fiftyone.core.metadata.VideoMetadata.total_frame_count>`,
+        :attr:`duration <fiftyone.core.metadata.VideoMetadata.duration>`, and
+        :attr:`encoding_str <fiftyone.core.metadata.VideoMetadata.encoding_str>`
+        attributes, which are `None` by default.
+
+        FiftyOne provides a convenient
+        :meth:`VideoMetadata.build_for() <fiftyone.core.metadata.VideoMetadata.build_for>`
+        factory method that you can use to populate metdata for your videos:
+
+        .. code-block:: python
+            :linenos:
+
+            video_path = "/path/to/video.mp4"
+
+            metadata = fo.VideoMetadata.build_for(video_path)
+
+            sample = fo.Sample(filepath=video_path, metadata=metadata)
+
+            print(sample)
+
+        .. code-block:: text
+
+            <Sample: {
+                'id': None,
+                'media_type': 'video',
+                'filepath': '/Users/Brian/Desktop/people.mp4',
+                'tags': [],
+                'metadata': <VideoMetadata: {
+                    'size_bytes': 2038250,
+                    'mime_type': 'video/mp4',
+                    'frame_width': 1920,
+                    'frame_height': 1080,
+                    'frame_rate': 29.97002997002997,
+                    'total_frame_count': 68,
+                    'duration': 2.268933,
+                    'encoding_str': 'avc1',
+                }>,
+                'frames': ...,
             }>
 
     .. group-tab:: Generic data
@@ -643,6 +772,7 @@ To automatically compute metadata for all samples in the dataset use
 
             <Sample: {
                 'id': None,
+                'media_type': '-',
                 'filepath': '/path/to/data.zip',
                 'tags': [],
                 'metadata': <Metadata: {
@@ -682,7 +812,8 @@ labels.
         label["bool"] = True
         label["dict"] = {"key": ["list", "of", "values"]}
 
-FiftyOne provides a dedicated |Label| subclass for many common tasks.
+FiftyOne provides a dedicated |Label| subclass for many common tasks. The
+subsections below describe them.
 
 .. _classification:
 
@@ -718,6 +849,7 @@ be visualized in the App or used by Brain methods, e.g., when
 
     <Sample: {
         'id': None,
+        'media_type': 'image',
         'filepath': 'path/to/image.png',
         'tags': [],
         'metadata': None,
@@ -770,6 +902,7 @@ overarching model (if applicable) in the
 
     <Sample: {
         'id': None,
+        'media_type': 'image',
         'filepath': 'path/to/image.png',
         'tags': [],
         'metadata': None,
@@ -845,6 +978,7 @@ detection can be stored in the
 
     <Sample: {
         'id': None,
+        'media_type': 'image',
         'filepath': 'path/to/image.png',
         'tags': [],
         'metadata': None,
@@ -893,13 +1027,13 @@ schema of the attributes that you're storing.
     +---------------------------------------------------------------------------+------------+---------------------------------+
     | Attribute class                                                           | Value type | Description                     |
     +===========================================================================+============+=================================+
-    | :class:`Attribute <fiftyone.core.labels.Attribute>`                       | arbitrary  | A generic attribute of any type |
-    +---------------------------------------------------------------------------+------------+---------------------------------+
     | :class:`BooleanAttribute <fiftyone.core.labels.BooleanAttribute>`         | `bool`     | A boolean attribute             |
     +---------------------------------------------------------------------------+------------+---------------------------------+
     | :class:`CategoricalAttribute <fiftyone.core.labels.CategoricalAttribute>` | `string`   | A categorical attribute         |
     +---------------------------------------------------------------------------+------------+---------------------------------+
     | :class:`NumericAttribute <fiftyone.core.labels.NumericAttribute>`         | `float`    | A numeric attribute             |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | :class:`Attribute <fiftyone.core.labels.Attribute>`                       | arbitrary  | A generic attribute of any type |
     +---------------------------------------------------------------------------+------------+---------------------------------+
 
 .. code-block:: python
@@ -942,6 +1076,7 @@ schema of the attributes that you're storing.
 
     <Sample: {
         'id': None,
+        'media_type': 'image',
         'filepath': 'path/to/image.png',
         'tags': [],
         'metadata': None,
@@ -981,20 +1116,137 @@ Multitask predictions
 The |ImageLabels| class represents a collection of multitask labels for an
 image. The labels are stored in the
 :attr:`labels <fiftyone.core.labels.ImageLabels.labels>` attribute of the
-|ImageLabels| object, which should contain an
-`eta.core.image.ImageLabels <https://voxel51.com/docs/api/#types-imagelabels>`_
-object.
+|ImageLabels| object, which should contain labels in
+`ETA ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_.
 
 |ImageLabels| instances can contain one or more of the following:
 
-- frame-level classifications
-- semantic segmentation masks
-- object detections, optionally with attributes and/or instance segmentations
+- Frame-level classifications
+- Semantic segmentation masks
+- Object detections, optionally with attributes and/or instance segmentations
 
 The labels can be ground truth annotations or model predictions; in the
 latter case, additional metadata such as prediction confidences can be store.
-See the `ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_
+See the `ETA ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_
 for more details.
+
+.. _video-frame-labels:
+
+Video frame labels
+------------------
+
+When you create a video sample (i.e., a |Sample| with `media_type == 'video'`),
+it is given a reserved `frames` attribute in which you can store frame-level
+labels for the video.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/video.mp4")
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'media_type': 'video',
+        'filepath': '/path/to/video.mp4',
+        'tags': [],
+        'metadata': None,
+        'frames': '<Frames 0>',
+    }>
+
+The `frames` attribute of a video sample is a dictionary whose keys are frame
+numbers and whose values are |Frame| instances that hold all of the |Label|
+instances for the frame.
+
+.. note::
+
+    FiftyOne uses 1-based indexing for video frame numbers.
+
+You can add, modify, and delete :ref:`labels of any type <using-labels>` on the
+frames of the video using the same dynamic attribute syntax that you use to
+interact with |Sample| objects:
+
+.. code:: python
+    :linenos:
+
+    # Add labels to first frame of a video sample
+
+    frame = sample.frames[1]
+
+    frame["weather"] = fo.Classification(label="sunny")
+
+    frame["objects"] = fo.Detections(
+        detections=[
+            fo.Detection(label="cat", bounding_box=[0.1, 0.1, 0.2, 0.2]),
+            fo.Detection(label="dog", bounding_box=[0.7, 0.7, 0.2, 0.2]),
+        ]
+    )
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'media_type': 'video',
+        'filepath': '/path/to/video.mp4',
+        'tags': [],
+        'metadata': None,
+        'frames': '<Frames 1>',     <-- `frames` now contains 1 frame of labels
+    }>
+
+.. note::
+
+    The `frames` attribute of video samples behaves like a defaultdict; a new
+    |Frame| will be created if the frame number does not exist when you access
+    it.
+
+You can iterate over the frames in a video sample using the expected syntax:
+
+.. code:: python
+    :linenos:
+
+    for frame_number in sample.frames:
+        frame = sample.frames[frame_number]
+        print(frame)
+
+.. code-block:: text
+
+    <Frame: {
+        'id': None,
+        'weather': <Classification: {
+            'id': '5f750a77f23c456448ebf700',
+            'label': 'sunny',
+            'confidence': None,
+            'logits': None,
+        }>,
+        'objects': <Detections: {
+            'detections': BaseList([
+                <Detection: {
+                    'id': '5f750a77f23c456448ebf701',
+                    'label': 'cat',
+                    'bounding_box': BaseList([0.1, 0.1, 0.2, 0.2]),
+                    'confidence': None,
+                    'attributes': BaseDict({}),
+                }>,
+                <Detection: {
+                    'id': '5f750a77f23c456448ebf702',
+                    'label': 'dog',
+                    'bounding_box': BaseList([0.7, 0.7, 0.2, 0.2]),
+                    'confidence': None,
+                    'attributes': BaseDict({}),
+                }>,
+            ]),
+        }>,
+    }>
+
+:ref:`See this page <manually-building-datasets>` for more information about
+building labeled video samples.
 
 DatasetViews
 ____________
@@ -1006,16 +1258,17 @@ the ability to search, sort, filter, and explore the contents of a |Dataset|.
 Behind this power is the |DatasetView|. Whenever an operation
 like :meth:`match() <fiftyone.core.view.DatasetView.match>` or
 :meth:`sort_by() <fiftyone.core.view.DatasetView.sort_by>` is applied to a
-|Dataset|, a |DatasetView| is returned. As the name implies, a |DatasetView|
+dataset, a |DatasetView| is returned. As the name implies, a |DatasetView|
 is a *view* into the data in your |Dataset| that was produced by a series of
 operations that manipulated your data in different ways.
 
 A |DatasetView| is composed of |SampleView| objects for a subset of the samples
 in your dataset. For example, a view may contain only samples with a given tag,
-or samples whose labels meet a certain criteria. In turn, each |SampleView|
-represents a view into the content of the underlying |Sample| in the datset.
-For example, a |SampleView| may represent the contents of a sample with
-|Detections| below a specified threshold filtered out.
+or samples whose labels meet a certain criteria.
+
+In turn, each |SampleView| represents a view into the content of the underlying
+|Sample| in the datset. For example, a |SampleView| may represent the contents
+of a sample with |Detections| below a specified threshold filtered out.
 
 .. custombutton::
     :button_text: Learn more about DatasetViews
