@@ -87,7 +87,7 @@ Launch a FiftyOne quickstart.
 
 .. code-block:: text
 
-    fiftyone quickstart [-h]
+    fiftyone quickstart [-h] [-v]
 
 **Arguments**
 
@@ -95,6 +95,7 @@ Launch a FiftyOne quickstart.
 
     optional arguments:
       -h, --help    show this help message and exit
+      -v, --video  launch the quickstart with a video dataset
 
 **Examples**
 
@@ -102,6 +103,11 @@ Launch a FiftyOne quickstart.
 
     # Launch the quickstart
     fiftyone quickstart
+
+.. code-block:: shell
+
+    # Launch the quickstart with a video dataset
+    fiftyone quickstart --video
 
 .. _cli-fiftyone-config:
 
@@ -660,7 +666,8 @@ View datasets in the FiftyOne App without persisting them to the database.
 
     fiftyone app view [-h] [-n NAME] [-d DATASET_DIR] [-t TYPE] [-z NAME]
                       [-s SPLITS [SPLITS ...]] [--images-dir IMAGES_DIR]
-                      [--images-patt IMAGES_PATT] [-j JSON_PATH]
+                      [--images-patt IMAGES_PATT] [--videos-dir VIDEOS_DIR]
+                      [--videos-patt VIDEOS_PATT] [-j JSON_PATH]
                       [--shuffle] [--seed SEED] [--max-samples MAX_SAMPLES]
                       [-p PORT] [-r]
 
@@ -712,6 +719,16 @@ View datasets in the FiftyOne App without persisting them to the database.
 
     # View a glob pattern of images in the app
     fiftyone app view --images-patt <images-patt>
+
+.. code-block:: shell
+
+    # View a directory of videos in the app
+    fiftyone app view --videos-dir <videos-dir>
+
+.. code-block:: shell
+
+    # View a glob pattern of videos in the app
+    fiftyone app view --videos-patt <videos-patt>
 
 .. code-block:: shell
 
