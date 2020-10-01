@@ -7,6 +7,7 @@ FiftyOne server json utilies.
 """
 from bson import ObjectId, json_util
 from flask.json import JSONEncoder
+from collections import OrderedDict
 
 from fiftyone.core.sample import Sample, SampleView
 from fiftyone.core.stages import ViewStage
@@ -20,6 +21,27 @@ def _handle_bytes(o):
         if isinstance(v, dict):
             o[k] = _handle_bytes(v)
     return o
+
+
+def convert(d):
+    if isinstance(d, (dict, OrderedDict)):
+        for k, v in d.items():
+            if k == "_eta_labels":
+                continue
+            if isinstance(v, ObjectId):
+                d[k] = str(v)
+            elif isinstance(v, (dict, OrderedDict, list)):
+                convert(v)
+            elif isinstance(v, bytes):
+                d[k] = str(fou.deserialize_numpy_array(v).shape)
+    if isinstance(d, list):
+        for idx, i in enumerate(d):
+            if isinstance(i, (dict, OrderedDict, list)):
+                convert(i)
+            elif isinstance(i, ObjectId):
+                d[idx] = str(i)
+            elif isinstance(i, bytes):
+                d[idx] = str(fou.deserialize_numpy_array(i).shape)
 
 
 class FiftyOneJSONEncoder(JSONEncoder):
