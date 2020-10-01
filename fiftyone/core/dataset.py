@@ -1619,6 +1619,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dataset.add_videos_patt(videos_patt, tags=tags)
         return dataset
 
+    def create_index(self, field):
+        """Creates a database index on the given field, enabling efficient
+        sorting on that field.
+
+        Args:
+            field: the name of the field to index
+        """
+        if field not in self._indexes:
+            self._sample_collection.create_index(field)
+
     def aggregate(self, pipeline=None):
         """Calls the current MongoDB aggregation pipeline on the dataset.
 
@@ -1632,7 +1642,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if pipeline is None:
             pipeline = []
 
-        return self._sample_collection.aggregate(pipeline)
+        return self._sample_collection.aggregate(pipeline, allowDiskUse=True)
 
     def _serialize(self):
         """Serializes the dataset.
@@ -1728,13 +1738,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _sample_collection(self):
         return foo.get_db_conn()[self._sample_collection_name]
 
-    @property
     def _frames_collection_name(self):
         return "frames." + self._sample_collection_name
 
     @property
     def _frames_collection(self):
         return foo.get_db_conn()[self._frames_collection_name]
+
+    @property
+    def _indexes(self):
+        index_info = self._sample_collection.index_information()
+        return [k["key"][0][0] for k in index_info.values()]
 
     def _apply_field_schema(self, new_fields):
         curr_fields = self.get_field_schema()
