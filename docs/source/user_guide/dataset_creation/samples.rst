@@ -46,6 +46,7 @@ manually.
                 filepath = images_patt % i
 
                 sample = fo.Sample(filepath=filepath)
+
                 samples.append(sample)
 
             # Create the dataset
@@ -163,6 +164,7 @@ manually.
                 filepath = videos_patt % i
 
                 sample = fo.Sample(filepath=filepath)
+
                 samples.append(sample)
 
             # Create the dataset
