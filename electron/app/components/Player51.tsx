@@ -43,27 +43,28 @@ export default ({
     playerActiveLabels.frames = frameLabelsActive;
   }
   const [player] = useState(
-    new Player51({
-      media: {
-        src,
-        type: mimetype,
-      },
-      overlay,
-      fps: metadata.fps,
-      colorMap,
-      playerActiveLabels,
-      filter,
-      enableOverlayOptions: {
-        attrRenderMode: false,
-        attrsOnlyOnClick: false,
-        attrRenderBox: false,
-      },
-      defaultOverlayOptions: {
-        ...defaultOverlayOptions,
-        action: "hover",
-        attrRenderMode: "attr-value",
-      },
-    })
+    () =>
+      new Player51({
+        media: {
+          src,
+          type: mimetype,
+        },
+        overlay,
+        fps: metadata.fps,
+        colorMap,
+        playerActiveLabels,
+        filter,
+        enableOverlayOptions: {
+          attrRenderMode: false,
+          attrsOnlyOnClick: false,
+          attrRenderBox: false,
+        },
+        defaultOverlayOptions: {
+          ...defaultOverlayOptions,
+          action: "hover",
+          attrRenderMode: "attr-value",
+        },
+      })
   );
 
   if (playerRef) {
