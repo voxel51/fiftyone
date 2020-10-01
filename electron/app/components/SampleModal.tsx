@@ -12,11 +12,7 @@ import { Button, ModalFooter } from "./utils";
 import * as selectors from "../recoil/selectors";
 import * as atoms from "../recoil/atoms";
 
-import {
-  useEventHandler,
-  useKeydownHandler,
-  useResizeHandler,
-} from "../utils/hooks";
+import { useKeydownHandler, useResizeHandler } from "../utils/hooks";
 import {
   formatMetadata,
   makeLabelNameGroups,
@@ -208,18 +204,23 @@ const Row = ({ name, renderedName, value, children, ...rest }) => (
 const SampleModal = ({
   sample,
   sampleUrl,
+  metadata,
   colorMap = {},
   onClose,
   ...rest
 }: Props) => {
   const playerContainerRef = useRef();
-  const [playerStyle, setPlayerStyle] = useState({ height: "100%" });
+  const [playerStyle, setPlayerStyle] = useState({
+    height: "100%",
+    width: "100%",
+  });
   const [showJSON, setShowJSON] = useState(false);
   const [enableJSONFilter, setEnableJSONFilter] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const [activeLabels, setActiveLabels] = useRecoilState(
     atoms.modalActiveLabels
   );
+  const mediaType = useRecoilValue(selectors.mediaType);
   const filter = useRecoilValue(selectors.sampleModalFilter);
   const activeTags = useRecoilValue(atoms.modalActiveTags);
   const tagNames = useRecoilValue(selectors.tagNames);
@@ -231,9 +232,17 @@ const SampleModal = ({
     labelNames,
     labelTypes
   );
+  const [frameLabelsActive, setFrameLabelsActive] = useRecoilState(
+    atoms.modalFrameLabelsActive
+  );
+  const globalFrameLabelsActive = useRecoilValue(atoms.frameLabelsActive);
   useEffect(() => {
     setActiveLabels(rest.activeLabels);
   }, [rest.activeLabels]);
+
+  useEffect(() => {
+    setFrameLabelsActive(globalFrameLabelsActive);
+  }, [globalFrameLabelsActive]);
 
   // save overlay options when navigating - these are restored by passing them
   // in defaultOverlayOptions when the new player is created
@@ -253,35 +262,36 @@ const SampleModal = ({
   const onNext = wrapNavigationFunc(rest.onNext);
 
   const handleResize = () => {
-    if (!playerContainerRef.current || showJSON) {
+    if (!playerRef.current || !playerContainerRef.current || showJSON) {
       return;
     }
     const container = playerContainerRef.current;
-    const image = playerContainerRef.current.querySelector(
-      "img.p51-contained-image"
-    );
     const containerRatio = container.clientWidth / container.clientHeight;
-    const imageRatio = image.clientWidth / image.clientHeight;
-    if (containerRatio < imageRatio) {
+    const contentDimensions = playerRef.current.getContentDimensions();
+    if (
+      !contentDimensions ||
+      contentDimensions.width === 0 ||
+      contentDimensions.height === 0
+    ) {
+      // content may not have loaded yet
+      return;
+    }
+    const contentRatio = contentDimensions.width / contentDimensions.height;
+    if (containerRatio < contentRatio) {
       setPlayerStyle({
         width: container.clientWidth,
-        height: container.clientWidth / imageRatio,
+        height: container.clientWidth / contentRatio,
       });
     } else {
       setPlayerStyle({
         height: container.clientHeight,
-        width: container.clientHeight * imageRatio,
+        width: container.clientHeight * contentRatio,
       });
     }
   };
 
   useResizeHandler(handleResize);
-  useEffect(handleResize, [showJSON, fullscreen]);
-  useEventHandler(
-    playerContainerRef.current?.querySelector("img.p51-contained-image"),
-    "load",
-    handleResize
-  );
+  useEffect(handleResize, [sampleUrl, showJSON, fullscreen]);
 
   useKeydownHandler((e) => {
     if (
@@ -383,6 +393,8 @@ const SampleModal = ({
     };
   }, {});
 
+  const frameCount = sample.frames ? Object.keys(sample.frames).length : 0;
+
   return (
     <Container className={fullscreen ? "fullscreen" : ""}>
       <div className="player" ref={playerContainerRef}>
@@ -402,8 +414,10 @@ const SampleModal = ({
               ...playerStyle,
             }}
             sample={sample}
+            metadata={metadata}
             colorMap={colorMap}
             activeLabels={activeLabels}
+            frameLabelsActive={frameLabelsActive}
             fieldSchema={fieldSchema}
             filterSelector={selectors.modalLabelFilters}
             playerRef={playerRef}
@@ -444,6 +458,7 @@ const SampleModal = ({
           </h2>
           <Row name="ID" value={sample._id} />
           <Row name="Source" value={sample.filepath} />
+          <Row name="Media type" value={sample.media_type} />
           {formatMetadata(sample.metadata).map(({ name, value }) => (
             <Row key={"metadata-" + name} name={name} value={value} />
           ))}
@@ -467,6 +482,20 @@ const SampleModal = ({
               filteredLabelSampleValues
             )}
             onSelectLabel={handleSetDisplayOption(setActiveLabels)}
+            frameLabels={
+              mediaType === "video"
+                ? [
+                    {
+                      name: "frames",
+                      totalCount: frameCount,
+                      filteredCount: frameCount,
+                      type: "frames",
+                      selected: frameLabelsActive,
+                    },
+                  ]
+                : []
+            }
+            onSelectFrameLabels={() => setFrameLabelsActive(!frameLabelsActive)}
             scalars={getDisplayOptions(
               labelNameGroups.scalars,
               scalarSampleValues,

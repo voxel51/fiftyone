@@ -75,6 +75,37 @@ class UnlabeledImageDataset(UnlabeledDataset):
         )
 
 
+class UnlabeledVideoDataset(UnlabeledDataset):
+    """Base type for datasets that represent an unlabeled collection of videos.
+    """
+
+    def get_dataset_importer_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.importers.UnlabeledVideoDatasetImporter`
+        class for importing datasets of this type from disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.importers.UnlabeledVideoDatasetImporter`
+            class
+        """
+        raise NotImplementedError(
+            "subclass must implement get_dataset_importer_cls()"
+        )
+
+    def get_dataset_exporter_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.exporters.UnlabeledVideoDatasetExporter`
+        class for exporting datasets of this type to disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.exporters.UnlabeledVideoDatasetExporter`
+            class
+        """
+        raise NotImplementedError(
+            "subclass must implement get_dataset_exporter_cls()"
+        )
+
+
 class LabeledDataset(Dataset):
     """Base type for datasets that represent a collection of data samples and
     their associated labels.
@@ -108,6 +139,38 @@ class LabeledImageDataset(LabeledDataset):
 
         Returns:
             a :class:`fiftyone.utils.data.exporters.LabeledImageDatasetExporter`
+            class
+        """
+        raise NotImplementedError(
+            "subclass must implement get_dataset_exporter_cls()"
+        )
+
+
+class LabeledVideoDataset(LabeledDataset):
+    """Base type for datasets that represent a collection of videos and their
+    associated labels.
+    """
+
+    def get_dataset_importer_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.importers.LabeledVideoDatasetImporter`
+        class for importing datasets of this type from disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.importers.LabeledVideoDatasetImporter`
+            class
+        """
+        raise NotImplementedError(
+            "subclass must implement get_dataset_importer_cls()"
+        )
+
+    def get_dataset_exporter_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.exporters.LabeledVideoDatasetExporter`
+        class for exporting datasets of this type to disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.exporters.LabeledVideoDatasetExporter`
             class
         """
         raise NotImplementedError(
@@ -162,6 +225,31 @@ class ImageDirectory(UnlabeledImageDataset):
         import fiftyone.utils.data as foud
 
         return foud.ImageDirectoryExporter
+
+
+class VideoDirectory(UnlabeledImageDataset):
+    """A directory of videos.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            <filename1>.<ext>
+            <filename2>.<ext>
+            ...
+
+    When reading datasets of this type, subfolders are recursively traversed,
+    and files with non-video MIME types are omitted.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.VideoDirectoryImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.VideoDirectoryExporter
 
 
 class FiftyOneImageClassificationDataset(ImageClassificationDataset):
@@ -870,6 +958,61 @@ class BDDDataset(ImageLabelsDataset):
         import fiftyone.utils.bdd as foub
 
         return foub.BDDDatasetExporter
+
+
+class FiftyOneVideoLabelsDataset(ImageLabelsDataset):
+    """A labeled dataset consisting of videos and their associated labels
+    stored in
+    `ETA VideoLabels format <https://voxel51.com/docs/api/#types-videolabels>`_.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            data/
+                <uuid1>.<ext>
+                <uuid2>.<ext>
+                ...
+            labels/
+                <uuid1>.json
+                <uuid2>.json
+                ...
+            manifest.json
+
+    where ``manifest.json`` is a JSON file in the following format::
+
+        {
+            "type": "eta.core.datasets.LabeledVideoDataset",
+            "description": "",
+            "index": [
+                {
+                    "data": "data/<uuid1>.<ext>",
+                    "labels": "labels/<uuid1>.json"
+                },
+                {
+                    "data": "data/<uuid2>.<ext>",
+                    "labels": "labels/<uuid2>.json"
+                },
+                ...
+            ]
+        }
+
+    and where each labels JSON file is stored in ``eta.core.image.VideoLabels``
+    format. See https://voxel51.com/docs/api/#types-videolabels for more
+    details.
+
+    For unlabeled videos, an empty ``eta.core.image.VideoLabels`` file is
+    stored.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.FiftyOneVideoLabelsDatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.FiftyOneVideoLabelsDatasetExporter
 
 
 class FiftyOneDataset(Dataset):

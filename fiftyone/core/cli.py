@@ -88,15 +88,23 @@ class QuickstartCommand(Command):
 
         # Launch the quickstart
         fiftyone quickstart
+
+        # Launch the quickstart with a video dataset
+        fiftyone quickstart --video
     """
 
     @staticmethod
     def setup(parser):
-        pass
+        parser.add_argument(
+            "-v",
+            "--video",
+            action="store_true",
+            help="launch the quickstart with a video dataset",
+        )
 
     @staticmethod
     def execute(parser, args):
-        fouq.quickstart(interactive=False)
+        fouq.quickstart(interactive=False, video=args.video)
 
 
 class ConfigCommand(Command):
@@ -779,6 +787,12 @@ class AppViewCommand(Command):
         # View a glob pattern of images in the app
         fiftyone app view --images-patt <images-patt>
 
+        # View a directory of videos in the app
+        fiftyone app view --videos-dir <videos-dir>
+
+        # View a glob pattern of videos in the app
+        fiftyone app view --videos-patt <videos-patt>
+
         # View a dataset stored in JSON format on disk in the app
         fiftyone app view --json-path <json-path>
 
@@ -828,6 +842,16 @@ class AppViewCommand(Command):
             "--images-patt",
             metavar="IMAGES_PATT",
             help="a glob pattern of images",
+        )
+        parser.add_argument(
+            "--videos-dir",
+            metavar="VIDEOS_DIR",
+            help="the path to a directory of videos",
+        )
+        parser.add_argument(
+            "--videos-patt",
+            metavar="VIDEOS_PATT",
+            help="a glob pattern of videos",
         )
         parser.add_argument(
             "-j",
@@ -905,6 +929,16 @@ class AppViewCommand(Command):
             name = args.name
             images_patt = args.images_patt
             dataset = fod.Dataset.from_images_patt(images_patt, name=name)
+        elif args.videos_dir:
+            # View a directory of images
+            name = args.name
+            videos_dir = args.videos_dir
+            dataset = fod.Dataset.from_videos_dir(videos_dir, name=name)
+        elif args.videos_patt:
+            # View a glob pattern of videos
+            name = args.name
+            videos_patt = args.videos_patt
+            dataset = fod.Dataset.from_videos_patt(videos_patt, name=name)
         elif args.json_path:
             # View a dataset from a JSON file
             name = args.name

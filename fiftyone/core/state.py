@@ -16,7 +16,9 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
+import fiftyone.core.media as fom
 import fiftyone.core.stages as fos
+import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
 
@@ -61,6 +63,33 @@ class StateDescription(etas.Serializable):
             else 0
         )
         super().__init__()
+
+    def serialize(self, reflective=False):
+        """Serializes the state into a dictionary.
+
+        Args:
+            reflective: whether to include reflective attributes when
+                serializing the object. By default, this is False
+        Returns:
+            a JSON dictionary representation of the object
+        """
+        with fou.disable_progress_bars():
+            d = super().serialize(reflective=reflective)
+            d["dataset"] = (
+                self.dataset._serialize() if self.dataset is not None else None
+            )
+            d["view"] = (
+                self.view._serialize() if self.view is not None else None
+            )
+            return d
+
+    def attributes(self):
+        """Returns list of attributes to be serialize"""
+        return list(
+            filter(
+                lambda a: a not in {"dataset", "view"}, super().attributes()
+            )
+        )
 
     @classmethod
     def from_dict(cls, d, **kwargs):
@@ -120,10 +149,14 @@ class StateDescriptionWithDerivables(StateDescription):
         if view is None or not with_stats:
             return
 
+        self.field_schema = self._get_field_schema()
         self.labels = self._get_label_fields(view)
+        if view.media_type == fom.VIDEO:
+            self.frame_labels = _get_field_count(
+                view, view.get_field_schema()["frames"]
+            )
         self.tags = list(sorted(view.get_tags()))
         self.view_stats = get_view_stats(view)
-        self.field_schema = self._get_field_schema()
 
         extended_view = view
         for stage_dict in self.filter_stages.values():
@@ -165,6 +198,8 @@ class StateDescriptionWithDerivables(StateDescription):
         label_fields = []
 
         for k, v in view.get_field_schema().items():
+            if view.media_type == fom.VIDEO and k == "frames":
+                continue
             d = {"field": k}
             if isinstance(v, fof.EmbeddedDocumentField):
                 d["cls"] = v.document_type.__name__
@@ -355,8 +390,12 @@ def _get_label_confidence_bounds(view):
 
 
 def _get_field_count(view, field):
-    if isinstance(field, fof.EmbeddedDocumentField):
-        if issubclass(field.document_type, fol.Classifications):
+    if isinstance(field, fof.EmbeddedDocumentField) or (
+        view.media_type == fom.VIDEO and field.name == "frames"
+    ):
+        if field.name == "frames":
+            array_field = {"$objectToArray": "$%s" % field.name}
+        elif issubclass(field.document_type, fol.Classifications):
             array_field = "$%s.classifications" % field.name
         elif issubclass(field.document_type, fol.Detections):
             array_field = "$%s.detections" % field.name

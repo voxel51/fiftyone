@@ -34,10 +34,9 @@ You can explicitly create a view that contains an entire dataset via
 
     Dataset:        cifar10-test
     Num samples:    10000
-    Persistent:     False
-    Info:           {'classes': ['airplane', 'automobile', 'bird', ...]}
     Tags:           ['test']
     Sample fields:
+        media_type:   fiftyone.core.fields.StringField
         filepath:     fiftyone.core.fields.StringField
         tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
         metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
