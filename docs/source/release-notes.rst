@@ -13,7 +13,7 @@ App
 
 Core
 ^^^^
-- Added support for :ref:`storing frame-level labels <video-frame-labels>` on
+- Added support for :ref:`storing frame labels <video-frame-labels>` on
   video samples
 - Added support for :ref:`importing <VideoDirectory-import>` and
   :ref:`exporting <VideoDirectory-export>` datasets of unlabeled videos
