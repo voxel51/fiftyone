@@ -9,24 +9,11 @@ import eta.core.image as etai
 import eta.core.video as etav
 
 
-# @todo deprecate in favor of MediaType?
+# Valid media types
+# @todo convert to a MediaType enum class?
 VIDEO = "video"
 IMAGE = "image"
 MEDIA_TYPES = {IMAGE, VIDEO}
-
-
-class MediaType(object):
-    """Media type enum.
-
-    Attributes:
-        IMAGE ("image"): image media
-        VIDEO ("video"): video media
-        OTHER ("-"): other media
-    """
-
-    IMAGE = "image"
-    VIDEO = "video"
-    OTHER = "-"
 
 
 def validate_field_against_media_type(
@@ -35,7 +22,7 @@ def validate_field_against_media_type(
     """Validates that a field is compliant with the given media type.
 
     Args:
-        media_type: a :class:`MediaType` value
+        media_type: a media type
         ftype: the field type. Must be a subclass of
             :class:`fiftyone.core.fields.Field`
         embedded_doc_type (None): the
@@ -61,7 +48,7 @@ def validate_field_against_media_type(
     ):
         is_image_field = True
 
-    if is_image_field and media_type != MediaType.IMAGE:
+    if is_image_field and media_type != IMAGE:
         if embedded_doc_type is not None:
             field_str = "%s(%s)" % (ftype.__name__, embedded_doc_type.__name__)
         else:
@@ -74,23 +61,20 @@ def validate_field_against_media_type(
 
 
 def get_media_type(filepath):
-    """Gets the :class:`MediaType` for the given filepath.
+    """Gets the media type for the given filepath.
 
     Args:
         filepath: a filepath
 
     Returns:
-        a :class:`MediaType` value
+        the media type
     """
     # @todo use `etav.is_supported_video_file` instead?
     if etav.is_video_mime_type(filepath):
-        return MediaType.VIDEO
+        return VIDEO
 
-    # @todo use `etai.is_supported_image` instead?
-    if etai.is_image_mime_type(filepath):
-        return MediaType.IMAGE
-
-    return MediaType.OTHER
+    # @todo don't assume all non-video samples are images!
+    return IMAGE
 
 
 class MediaTypeError(TypeError):
