@@ -125,7 +125,6 @@ class Sample(_DatasetSample):
         )
         if self.media_type == fomm.VIDEO:
             self._frames = fofr.Frames()
-            self.__iter__ = lambda: self._frames._serve(self).__iter__()
         super().__init__()
 
     def __str__(self):
@@ -138,6 +137,11 @@ class Sample(_DatasetSample):
         return self._doc.fancy_repr(
             class_name=self.__class__.__name__, **kwargs
         )
+
+    def __iter__(self):
+        if self.media_type == fomm.VIDEO:
+            return self._frames._serve(self).__iter__()
+        raise StopIteration
 
     def copy(self):
         """Returns a deep copy of the sample that has not been added to the
