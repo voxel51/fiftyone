@@ -47,7 +47,7 @@ class Frames(object):
         """Iterator for the frame numbers in a video :class:`fiftyone.core.sample.Sample`.
 
         Returns:
-            an iterator over 1-based integer frame numbers in the owning
+            an iterator over the 1-based integer frame numbers in the owning
             :class:`fiftyone.core.sample.Sample`, ordered by frame number.
         """
         dataset = self._sample._dataset if self._sample._in_db else None
@@ -60,8 +60,9 @@ class Frames(object):
         """Iterator for the frames in a video :class:`fiftyone.core.sample.Sample`.
 
         Returns:
-            an iterator over 1-based integer frame numbers in the owning
-            :class:`fiftyone.core.sample.Sample` and the corresponding :class:`Frame`.
+            an tuple iterator of 1-based integer frame numbers in the owning
+            :class:`fiftyone.core.sample.Sample` and the corresponding :class:`Frame`,
+            ordered by frame number.
         """
         dataset = self._sample._dataset if self._sample._in_db else None
         for k in self.keys():
@@ -73,8 +74,9 @@ class Frames(object):
         """Iterator for the frames in a video :class:`fiftyone.core.sample.Sample`.
 
         Returns:
-            an iterator over 1-based integer frame numbers in the owning
-            :class:`fiftyone.core.sample.Sample` and the corresponding :class:`Frame`.
+            an iterator over over the :class:`Frame`s in the owning
+            :class:`fiftyone.core.sample.Sample`, ordered by the 1-based integer
+            frame numbers.
         """
         dataset = self._sample._dataset if self._sample._in_db else None
         for k in self.keys():
@@ -122,6 +124,13 @@ class Frames(object):
 
 
 class Frame(_Sample):
+    """A frame in a video :class:`fiftyone.core.sample.Sample`
+
+    Any `fiftyone.core.label.Label` or `fiftyone.core.fields.Field` that can
+    assigned to an image :class:`fiftyone.core.sample.Sample` can also be
+    assigned to a :class:`Frame`.
+    """
+
     # Instance references keyed by [collection_name][sample_id]
     _instances = defaultdict(weakref.WeakValueDictionary)
 
