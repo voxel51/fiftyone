@@ -30,9 +30,9 @@ def quickstart(interactive=True, video=False):
         If ``interactive`` is ``False``, ``None`` is returned
     """
     if video:
-        _video_quickstart(interactive)
+        return _video_quickstart(interactive)
     else:
-        _quickstart(interactive)
+        return _quickstart(interactive)
 
 
 def _quickstart(interactive):
