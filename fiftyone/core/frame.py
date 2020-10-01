@@ -38,9 +38,12 @@ class Frames(object):
         self._iter = None
 
     def __repr__(self):
-        num_frames = len(self._sample._doc.to_dict()["frames"])
+        num_frames = len(self)
         plural = "s" if num_frames != 1 else ""
         return "{ <%d frame%s> }" % (num_frames, plural)
+
+    def __len__(self):
+        return len(self._sample._doc.to_dict()["frames"])
 
     def __iter__(self):
         self._iter = self.keys()
