@@ -576,24 +576,38 @@ Delete FiftyOne datasets.
 
 .. code-block:: text
 
-    fiftyone datasets delete [-h] NAME
+    fiftyone datasets delete [-h] [-g GLOB_PATT] [--non-persistent]
+                             [NAME [NAME ...]]
 
 **Arguments**
 
 .. code-block:: text
 
     positional arguments:
-      NAME        the name of the dataset
+      NAME                  the dataset name(s) to delete
 
     optional arguments:
-      -h, --help  show this help message and exit
+      -h, --help            show this help message and exit
+      -g GLOB_PATT, --glob-patt GLOB_PATT
+                            a glob pattern of datasets to delete
+      --non-persistent      delete all non-persistent datasetes
 
 **Examples**
 
 .. code-block:: shell
 
-    # Delete the dataset with the given name
-    fiftyone datasets delete <name>
+    # Delete the datasets with the given name(s)
+    fiftyone datasets delete <name1> <name2> ...
+
+.. code-block:: shell
+
+    # Delete the datasets whose names match the given glob pattern
+    fiftyone datasets delete --glob-patt <glob-patt>
+
+.. code-block:: shell
+
+    # Delete all non-persistent datasets
+    fiftyone datasets delete --non-persistent
 
 .. _cli-fiftyone-app:
 
