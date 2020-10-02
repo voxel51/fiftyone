@@ -89,7 +89,7 @@ def _generate_rand(filepath=None):
     if filepath is not None:
         _random.seed(filepath)
 
-    return _random.random() * 0.001 + 0.999
+    return _random.getrandbits(48)
 
 
 class DatasetSampleDocument(DatasetMixin, Document, SampleDocument):
@@ -112,7 +112,7 @@ class DatasetSampleDocument(DatasetMixin, Document, SampleDocument):
     metadata = fof.EmbeddedDocumentField(fom.Metadata, null=True)
 
     # Random float used for random dataset operations (e.g. shuffle)
-    _rand = fof.FloatField(default=_generate_rand)
+    _rand = fof.IntField()
 
     def set_field(self, field_name, value, create=True):
         if field_name == "frames" and isinstance(value, fofr.Frames):
