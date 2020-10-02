@@ -6,10 +6,10 @@ This page provides useful information about contributing to FifyOne.
 
 ## Contribution process
 
-The FiftyOne contribution process starts with filing a GitHub issue. FiftyOne
-defines four categories of issues: feature requests, bug reports, documentation
-fixes, and installation issues. Details about each issue type and the issue
-lifecycle are discussed in the [FiftyOne Issue Policy](ISSUE_POLICY.md).
+The FiftyOne contribution process starts with filing a GitHub issue. We use
+four categories of issues: feature requests, bug reports, documentation fixes,
+and installation issues. Details about each issue type and the issue lifecycle
+are discussed in the [FiftyOne Issue Policy](ISSUE_POLICY.md).
 
 FiftyOne committers actively [triage](ISSUE_TRIAGE.md) and respond to GitHub
 issues. In general, we recommend waiting for feebdack from an FiftyOne
@@ -183,7 +183,3 @@ Chromatic homepage: Our Chromatic homepage can be found
 [//]: # "-   Recoil best practices"
 [//]: # "-   TSDoc documentation for non-component code?"
 [//]: # "-   Add custom introduction page to Storybook"
-
-## Copyright
-
-Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com
