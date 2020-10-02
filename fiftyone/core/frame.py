@@ -101,7 +101,7 @@ class Frames(object):
             self._set_replacement(d)
             self._sample._doc.frames["frame_count"] += 1
 
-        if key != 1 and self._sample._in_db:
+        if self._sample._in_db:
             doc = self._sample._dataset._frame_doc_cls.from_dict(d)
             dataset = self._sample._dataset
         else:
@@ -195,9 +195,6 @@ class Frames(object):
             "frame_count": self._sample._doc.frames["frame_count"],
             "first_frame": self._first_frame,
         }
-
-    def _expand_schema(self, dataset):
-        pass
 
     @property
     def _frame_collection(self):

@@ -418,7 +418,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             include_private=include_private,
         )
 
-    def get_frames_field_schema(
+    def get_frame_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
     ):
         """Returns a schema dictionary describing the fields of the frames of
@@ -1773,7 +1773,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for sample in samples:
             self._validate_media_type(sample)
             if self.media_type == fom.VIDEO:
-                sample.frames._expand_schema(self)
+                self._expand_frame_schema(sample.frames.values())
             for field_name in sample.to_mongo_dict():
                 if field_name == "_id":
                     continue
@@ -1785,6 +1785,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         frame_doc_cls=self._frame_doc_cls,
                     )
                     fields = self.get_field_schema(include_private=True)
+
+    def _expand_frame_schema(self, frames):
+        fields = self.get_frame_field_schema(include_private=True)
+        for frame in frames:
+            for field_name in frame.to_mongo_dict():
+                if field_name == "_id":
+                    continue
+
+                if field_name not in fields:
+                    self._frame_doc_cls.add_implied_field(
+                        field_name,
+                        frame[field_name],
+                        frame_doc_cls=self._frame_doc_cls,
+                    )
+                    fields = self.get_frame_field_schema(include_private=True)
 
     def _validate_media_type(self, sample):
         if self.media_type != sample.media_type:
