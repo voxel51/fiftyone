@@ -41,6 +41,7 @@ below to figure out which option is best for you.
         - :ref:`FiftyOneImageDetectionDataset <FiftyOneImageDetectionDataset-import>`
         - :ref:`COCODetectionDataset <COCODetectionDataset-import>`
         - :ref:`VOCDetectionDataset <VOCDetectionDataset-import>`
+        - :ref:`YOLODataset <YOLODataset-import>`
         - :ref:`KITTIDetectionDataset <KITTIDetectionDataset-import>`
         - :ref:`TFObjectDetectionDataset <TFObjectDetectionDataset-import>`
         - :ref:`CVATImageDataset <CVATImageDataset-import>`
