@@ -43,9 +43,19 @@ class Frames(object):
         return "{ <%d frame%s> }" % (num_frames, plural)
 
     def __len__(self):
+        num_frames = 0
         if self._sample._in_db:
-            return self._frame_collection.count({"sample_id": self._sample.id})
-        return len(self._sample._doc.frames)
+            num_frames = self._frame_collection.count(
+                {"sample_id": self._sample.id}
+            )
+        else:
+            num_frames += len(self._sample._doc.frames)
+        if self._first_frame:
+            num_frames += 1
+        return num_frames
+
+    def _first_frame(self):
+        return self._sample._doc.get_field("frames")["first_frame"]
 
     def __iter__(self):
         self._iter = self.keys()

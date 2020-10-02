@@ -295,6 +295,7 @@ class StateController(Namespace):
 
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
         samples = [s.to_mongo_dict() for s in view]
+        """
         if view.media_type == fom.VIDEO:
             labels_dict = defaultdict(etav.VideoLabels)
             frames_dict = defaultdict(dict)
@@ -326,7 +327,7 @@ class StateController(Namespace):
                         obj.frame_number = frame
                 sample["_eta_labels"] = labels.serialize()
                 sample["frames"] = frames_dict[idx]
-
+        """
         convert(samples)
 
         more = False
