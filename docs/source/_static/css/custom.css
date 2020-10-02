@@ -34,10 +34,6 @@ article.pytorch-article .wy-table-responsive table thead th {
   padding-bottom: 0rem;
 }
 
-.wy-table-responsive table colgroup col:first-of-type {
-  width: 70% !important;
-}
-
 .pytorch-page-level-bar {
   z-index: 500;
 }
