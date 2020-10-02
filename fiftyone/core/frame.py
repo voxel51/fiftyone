@@ -43,16 +43,7 @@ class Frames(object):
         return "{ <%d frame%s> }" % (num_frames, plural)
 
     def __len__(self):
-        num_frames = 0
-        if self._sample._in_db:
-            num_frames = self._frame_collection.count(
-                {"sample_id": self._sample.id}
-            )
-        else:
-            num_frames += len(self._sample._doc.frames)
-        if self._first_frame:
-            num_frames += 1
-        return num_frames
+        return self._sample._doc.frames["frame_count"]
 
     def _first_frame(self):
         return self._sample._doc.get_field("frames")["first_frame"]
@@ -71,7 +62,8 @@ class Frames(object):
             key = str(key)
             doc = self._sample._doc.frames[key]
         except KeyError:
-            if self._sample._in_db:
+            self._sample._doc.frames.frame_count += 1
+            if self._sample._in_db and key != 1:
                 doc = self._sample._dataset._frame_doc_cls.from_dict(
                     {"frame_number": key, "sample_id": self._sample.id}
                 )
@@ -94,14 +86,22 @@ class Frames(object):
             raise ValueError("Value must be a %s" % Frame.__name__)
 
         d = value.to_dict()
-        d.pop("_id", None)
         d["frame_number"] = key
         d["sample_id"] = self._sample.id
+
+        d.pop("_id", None)
         if self._sample._in_db:
+            if key == 1 and self._sample._doc.frames["first_frame"] is None:
+                self._sample._doc.frames["frame_count"] += 1
+            if key == 1:
+                self._sample._doc.frames["first_frame"] = value.to_dict()
             doc = self._sample._dataset._frame_doc_cls.from_dict(d)
             doc.save()
         else:
-            self._sample._doc.frames[
+            frames = self._sample._doc.frames["frames"]
+            if key not in frames:
+                self._sample._doc.frames["frame_count"] += 1
+            self._sample._doc.frames["frames"][
                 key
             ] = NoDatasetFrameSampleDocument.from_dict(d)
 
@@ -164,13 +164,17 @@ class Frames(object):
 
     def _iter_docs(self):
         if self._sample._in_db:
+            if self._sample._doc.frames.first_frame:
+                yield self._sample._doc.frames.first_frame
             for d in self._frame_collection.find(
                 {"sample_id": self._sample.id}
             ):
                 yield self._sample._dataset._frame_dict_to_doc(d)
         else:
-            for frame_number in sorted(self._sample._doc.frames.keys()):
-                yield self._sample._doc.frames[frame_number]
+            for frame_number in sorted(
+                self._sample._doc.frames["frames"].keys()
+            ):
+                yield self._sample._doc.frames["frames"][frame_number]
 
     def _get_field_cls(self):
         return self._sample._doc.frames.__class__
