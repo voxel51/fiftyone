@@ -62,7 +62,7 @@ class Frames(object):
             key = str(key)
             doc = self._sample._doc.frames[key]
         except KeyError:
-            self._sample._doc.frames.frame_count += 1
+            self._sample._doc.frames["frame_count"] += 1
             if self._sample._in_db and key != 1:
                 doc = self._sample._dataset._frame_doc_cls.from_dict(
                     {"frame_number": key, "sample_id": self._sample.id}
@@ -178,6 +178,12 @@ class Frames(object):
 
     def _get_field_cls(self):
         return self._sample._doc.frames.__class__
+
+    def _save(self):
+        if not self._sample._in_db:
+            raise fofu.FrameError(
+                "Sample does not have a dataset, Frames cannot be saved"
+            )
 
     def _serve(self, sample):
         self._sample = sample

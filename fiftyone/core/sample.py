@@ -372,8 +372,7 @@ class Sample(_DatasetSample):
     def save(self):
         """Saves the sample to the database."""
         if self.media_type == fomm.VIDEO:
-            for frame in self.frames.values():
-                frame.save()  # @todo batch
+            self.frames._save()
         super().save()
 
 
@@ -522,8 +521,7 @@ class SampleView(_DatasetSample):
         instances of this sample are updated.
         """
         if self.media_type == fomm.VIDEO:
-            for frame in self.frames.values():
-                frame.save()  # @todo batch
+            self.frames._save()
 
         self._doc.save(filtered_fields=self._filtered_fields)
 

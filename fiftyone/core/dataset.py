@@ -544,8 +544,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._validate_sample(sample)
 
         d = sample.to_mongo_dict()
-        if self.media_type == fom.VIDEO:
-            self._add_frame_samples([sample])
         d.pop("_id", None)  # remove the ID if in DB
         self._sample_collection.insert_one(d)  # adds `_id` to `d`
 
@@ -553,7 +551,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             doc = self._sample_doc_cls.from_dict(d, extended=False)
             sample._set_backing_doc(doc, dataset=self)
 
-        sample.frames.save()
+        if self.media_type == fom.VIDEO:
+            sample.frames._save()
 
         return str(d["_id"])
 
@@ -610,9 +609,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for sample in samples:
             self._validate_sample(sample)
 
-        if self.media_type == fom.VIDEO:
-            # @todo improve batching behavior for frames
-            self._add_frame_samples([samples])
         dicts = [sample.to_mongo_dict() for sample in samples]
         for d in dicts:
             d.pop("_id", None)  # remove the ID if in DB
@@ -622,6 +618,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if not sample._in_db:
                 doc = self._sample_doc_cls.from_dict(d, extended=False)
                 sample._set_backing_doc(doc, dataset=self)
+
+        if self.media_type == fom.VIDEO:
+            sample.frames._save()
 
         return [str(d["_id"]) for d in dicts]
 
