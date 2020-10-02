@@ -225,6 +225,9 @@ article.pytorch-article .wy-table-responsive table {
   table-layout: auto;
 }
 
+td code {
+  white-space: nowrap;
+}
 
 /* fixes for code line numbers */
 
