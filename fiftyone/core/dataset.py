@@ -620,8 +620,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 doc = self._sample_doc_cls.from_dict(d, extended=False)
                 sample._set_backing_doc(doc, dataset=self)
 
-        if self.media_type == fom.VIDEO:
-            sample.frames._save()
+            if self.media_type == fom.VIDEO:
+                sample.frames._serve(self)
+                sample.frames._save()
 
         return [str(d["_id"]) for d in dicts]
 
