@@ -40,6 +40,7 @@ class Frames(object):
     def __init__(self):
         self._sample = None
         self._iter = None
+        self._iter_d = None
         self._replacements = {}
 
     def __repr__(self):
@@ -73,14 +74,21 @@ class Frames(object):
         return self
 
     def __next__(self):
-        return next(self._iter)
+        try:
+            next(self._iter)
+        except StopIteration:
+            self._iter = None
+            self._iter_d = None
+            raise
 
     def __getitem__(self, key):
         fofu.validate_frame_number(key)
 
         d = None
         default_d = {"sample_id": self._sample.id, "frame_number": key}
-        if key in self._replacements:
+        if self._iter is not None and key == self._iter_d["frame_number"]:
+            d = self._iter_d
+        elif key in self._replacements:
             d = self._replacements[key]
         elif self._sample._in_db:
             d = self._frame_collection.find_one(default_d)
@@ -110,6 +118,14 @@ class Frames(object):
         d["sample_id"] = self._sample.id
 
         d.pop("_id", None)
+        if not self._sample._in_db and key not in self._replacements:
+            self._sample._doc.frames["frame_count"] += 1
+        elif self._sample._in_db:
+            if self._iter is not None or key != self._iter_d["frame_number"]:
+                find_d = {"sample_id": self._sample.id, "frame_number": key}
+                exists = self._frame_collection.find(find_d)
+                if exists is None:
+                    self._sample._doc.frames["frame_count"] += 1
 
         self._set_replacement(d)
 
@@ -192,14 +208,14 @@ class Frames(object):
                 {"sample_id": self._sample.id}
             ):
                 if repl_fn is not None and d["frame_number"] >= repl_fn:
-                    yield self._sample._dataset._frame_dict_to_doc(
-                        self._replacements[repl_fn]
-                    )
+                    self._iter_d = self._replacements[repl_fn]
                     repl_fn += 1
                 else:
-                    yield self._sample._dataset._frame_dict_to_doc(d)
+                    self._iter_d = d
+                yield self._sample._dataset._frame_dict_to_doc(self._iter_d)
         else:
             for frame_number in sorted(self._replacements.keys()):
+                self._iter_d = self._replacements[frame_number]
                 yield NoDatasetFrameSampleDocument(
                     **self._replacements[frame_number]
                 )
