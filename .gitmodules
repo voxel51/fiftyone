@@ -1,4 +1,3 @@
 [submodule "electron/app/player51"]
 	path = electron/app/player51
 	url = ../../voxel51/player51.git
-    ignore = dirty
