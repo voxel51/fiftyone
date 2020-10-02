@@ -670,6 +670,58 @@ class KITTIDetectionDataset(ImageDetectionDataset):
         return fouk.KITTIDetectionDatasetExporter
 
 
+class YOLODataset(ImageDetectionDataset):
+    """A labeled dataset consisting of images and their associated object
+    detections saved in `YOLO format <https://github.com/AlexeyAB/darknet>`_.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            obj.names
+            images.txt
+            data/
+                <uuid1>.<ext>
+                <uuid1>.txt
+                <uuid2>.<ext>
+                <uuid2>.txt
+                ...
+
+    where ``obj.names`` contains the object class labels::
+
+        <label-0>
+        <label-1>
+        ...
+
+    and ``images.txt`` contains the list of images in ``data/``::
+
+        data/<uuid1>.<ext>
+        data/<uuid2>.<ext>
+        ...
+
+    and the TXT files in ``data/`` are space-delimited files where each row
+    corresponds to an object in the image of the same name, in the following
+    format::
+
+        <target> <x-center> <y-center> <width> <height>
+
+    where ``<target>`` is the zero-based integer index of the object class
+    label from ``obj.names`` and the bounding box coordinates are expressed as
+    relative coordinates in ``[0, 1] x [0, 1]``.
+
+    Unlabeled images have no corresponding TXT file in ``data/``.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.yolo as fouy
+
+        return fouy.YOLODatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.yolo as fouy
+
+        return fouy.YOLODatasetExporter
+
+
 class TFObjectDetectionDataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
     detections stored as TFRecords in
