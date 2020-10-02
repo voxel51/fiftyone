@@ -50,13 +50,6 @@ workflows.
     :tags: Basics,Model-Training
 
 .. customcarditem::
-    :header: Convert dataset formats on disk
-    :description: Use FiftyOne's powerful dataset import/export features to convert your datasets on disk between standard (or custom) formats.
-    :link: convert_datasets.html
-    :image: ../_static/images/recipes/convert_datasets.png
-    :tags: Basics,I/O
-
-.. customcarditem::
     :header: Draw labels on samples
     :description: Render labels on the samples in your FiftyOne Dataset with a single line of code.
     :link: draw_labels.html
@@ -64,9 +57,16 @@ workflows.
     :tags: Basics,Visualization
 
 .. customcarditem::
+    :header: Convert dataset formats on disk
+    :description: Use FiftyOne's powerful dataset import/export features to convert your datasets on disk between standard (or custom) formats.
+    :link: convert_datasets.html
+    :image: ../_static/images/recipes/convert_datasets.png
+    :tags: Basics,I/O
+
+.. customcarditem::
     :header: Merge datasets
     :description: Easily merge datasets on disk or in-memory using FiftyOne; e.g., to add a new set of model predictions to a dataset.
-    :link: merging_datasets.html
+    :link: merge_datasets.html
     :image: ../_static/images/recipes/merge_datasets.png
     :tags: Basics,I/O
 
@@ -113,6 +113,7 @@ workflows.
    Add model predictions<model_inference.ipynb>
    Draw labels on samples<draw_labels.ipynb>
    Convert dataset formats<convert_datasets.ipynb>
+   Merge datasets<merge_datasets.ipynb>
    Custom dataset importers<custom_importer.ipynb>
    Custom dataset exporters<custom_exporter.ipynb>
    Custom sample parsers<custom_parser.ipynb>
