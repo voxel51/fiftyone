@@ -8,6 +8,7 @@ Video frames.
 from collections import defaultdict
 import weakref
 
+
 import fiftyone.core.frame_utils as fofu
 from fiftyone.core._sample import _Sample
 
@@ -45,8 +46,12 @@ class Frames(object):
     def __len__(self):
         return self._sample._doc.frames["frame_count"]
 
+    @property
     def _first_frame(self):
-        return self._sample._doc.get_field("frames")["first_frame"]
+        if self._sample._in_db:
+            return self._sample._doc.frames["first_frame"]
+        else:
+            return self._sample._doc.frames["frames"].get(1, None)
 
     def __iter__(self):
         self._iter = self.keys()
@@ -154,6 +159,15 @@ class Frames(object):
         """
         for frame_number, frame in d.items():
             self[frame_number] = frame
+
+    def to_mongo_dict(self):
+        first_frame = self._first_frame
+        if first_frame:
+            first_frame = first_frame.to_mongo_dict()
+        return {
+            "frame_count": self._sample._doc.frames["frame_count"],
+            "first_frame": first_frame,
+        }
 
     def _expand_schema(self, dataset):
         pass

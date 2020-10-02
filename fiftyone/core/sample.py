@@ -101,6 +101,18 @@ class _DatasetSample(_Sample):
                 ),
             )
 
+    def to_mongo_dict(self):
+        """Serializes the sample to a BSON dictionary equivalent to the
+        representation that would be stored in the database.
+
+        Returns:
+            a BSON dict
+        """
+        d = super().to_mongo_dict()
+        if self.media_type == fomm.VIDEO:
+            d["frames"] = self.frames.to_mongo_dict()
+        return d
+
 
 class Sample(_DatasetSample):
     """A sample in a :class:`fiftyone.core.dataset.Dataset`.
