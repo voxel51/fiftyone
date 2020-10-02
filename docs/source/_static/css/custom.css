@@ -232,7 +232,7 @@ article.pytorch-article .wy-table-responsive {
   overflow-x: auto;
 }
 
-article.pytorch-article table td code {
+article.pytorch-article table td:first-of-type code {
   /* prevent line breaks within inline code */
   white-space: nowrap;
 }
