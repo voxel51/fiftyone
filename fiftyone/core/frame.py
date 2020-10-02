@@ -56,13 +56,16 @@ class Frames(object):
 
     def _save_replacements(self):
         first_frame = self._replacements.get(1, None)
-        self._frame_collection.bulk_write(
-            [
-                ReplaceOne(self._make_filter(frame_number, d), d, upsert=True)
-                for frame_number, d in self._replacements.items()
-            ]
-        )
-        self._replacements = []
+        if len(self._replacements):
+            self._frame_collection.bulk_write(
+                [
+                    ReplaceOne(
+                        self._make_filter(frame_number, d), d, upsert=True
+                    )
+                    for frame_number, d in self._replacements.items()
+                ]
+            )
+            self._replacements = []
         return first_frame
 
     def _make_filter(self, frame_number, d):
