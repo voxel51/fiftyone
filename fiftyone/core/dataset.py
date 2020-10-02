@@ -675,12 +675,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return [str(d["_id"]) for d in dicts]
 
     def merge_samples(
-        self, samples, overwrite=False, key_field="filepath", base_only=False
+        self, samples, overwrite=False, key_field="filepath", key_fcn=None
     ):
         """Merges the contents of the given samples into the dataset.
 
-        By default, samples with the same ``filepath`` are merged. Use the
-        ``key_field`` parameter to specify a different sample field to join on.
+        By default, samples with the same absolute ``filepath`` are merged.
+
+        You can customize this behavior via the ``key_field`` and ``key_fcn``
+        parameters. For example, you could set
+        ``key_fcn = lambda k: os.path.basename(k)`` to merge samples with the
+        same base filename.
 
         Args:
             samples: an iterable of :class:`fiftyone.core.sample.Sample`
@@ -690,43 +694,40 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 existing sample fields
             key_field ("filepath"): the sample field to use to decide whether
                 to join with an existing sample
-            base_only (False): whether to join based on
-                ``os.path.splitext(os.path.normpath(filepath))[0]`` rather than
-                the absolute filepath. Only applicable when ``key_field`` is
-                ``"filepath"``
+            key_fcn (None): a function to apply to ``key_field`` to generate
+                the comparator used to decide if two samples should be merged
         """
+        if key_fcn is None:
+            key_fcn = lambda k: k
+
         existing_schema = self.get_field_schema()
 
         id_map = {}
-        if key_field:
-            use_uuids = (key_field == "filepath") and base_only
-            for sample in self.select_fields(key_field):
-                key = sample[key_field]
-                if use_uuids:
-                    key = os.path.splitext(os.path.normpath(key))[0]
+        for sample in self.select_fields(key_field):
+            id_map[key_fcn(sample[key_field])] = sample.id
 
-                id_map[key] = sample.id
+        with fou.ProgressBar() as pb:
+            for new_sample in pb(samples):
+                key = key_fcn(new_sample[key_field])
+                if key in id_map:
+                    existing_sample = self[id_map[key]]
 
-        for new_sample in samples:
-            if new_sample.filepath in id_map:
-                existing_sample = self[id_map[new_sample.filepath]]
+                    for name, value in new_sample.iter_fields():
+                        if name == "media_type":
+                            continue
 
-                for name, value in new_sample.iter_fields():
-                    if name == "filepath":
-                        continue
+                        if (
+                            not overwrite
+                            and name in existing_schema
+                            and existing_sample[name] is not None
+                        ):
+                            continue
 
-                    if (
-                        not overwrite
-                        and name in existing_schema
-                        and existing_sample[name] is not None
-                    ):
-                        continue
+                        existing_sample[name] = value
 
-                    existing_sample[name] = value
-
-                existing_sample.save()
-            else:
-                self.add_sample(new_sample)
+                    existing_sample.save()
+                else:
+                    self.add_sample(new_sample)
 
     def remove_sample(self, sample_or_id):
         """Removes the given sample from the dataset.
