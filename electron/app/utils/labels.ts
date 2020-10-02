@@ -200,6 +200,8 @@ export const convertSampleToETA = (sample, fieldSchema) => {
         imgLabels[key][key].push(convert(sampleField, object));
       }
       continue;
+    } else if (field._cls == "Segmentation") {
+      imgLabels.mask = field.mask;
     } else if (VALID_SCALAR_TYPES.includes(fieldSchema[sampleField])) {
       imgLabels.attrs.attrs.push({
         name: sampleField,
