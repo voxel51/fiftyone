@@ -686,20 +686,46 @@ class DatasetsDeleteCommand(Command):
 
     Examples::
 
-        # Delete the dataset with the given name
-        fiftyone datasets delete <name>
+        # Delete the datasets with the given name(s)
+        fiftyone datasets delete <name1> <name2> ...
+
+        # Delete the datasets whose names match the given glob pattern
+        fiftyone datasets delete --glob-patt <glob-patt>
+
+        # Delete all non-persistent datasets
+        fiftyone datasets delete --non-persistent
     """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the dataset",
+            "name",
+            metavar="NAME",
+            nargs="*",
+            help="the dataset name(s) to delete",
+        )
+        parser.add_argument(
+            "-g",
+            "--glob-patt",
+            metavar="GLOB_PATT",
+            help="a glob pattern of datasets to delete",
+        )
+        parser.add_argument(
+            "--non-persistent",
+            action="store_true",
+            help="delete all non-persistent datasetes",
         )
 
     @staticmethod
     def execute(parser, args):
-        fod.delete_dataset(args.name)
-        print("Dataset '%s' deleted" % args.name)
+        for name in args.name:
+            fod.delete_dataset(name, verbose=True)
+
+        if args.glob_patt:
+            fod.delete_datasets(args.glob_patt, verbose=True)
+
+        if args.non_persistent:
+            fod.delete_non_persistent_datasets(verbose=True)
 
 
 class AppCommand(Command):

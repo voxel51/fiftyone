@@ -7,6 +7,7 @@ FiftyOne datasets.
 """
 from copy import deepcopy
 import datetime
+import fnmatch
 import inspect
 import logging
 import numbers
@@ -111,7 +112,7 @@ def get_default_dataset_dir(name):
     return os.path.join(fo.config.default_dataset_dir, name)
 
 
-def delete_dataset(name):
+def delete_dataset(name, verbose=False):
     """Deletes the FiftyOne dataset with the given name.
 
     If reference to the dataset exists in memory, only `Dataset.name` and
@@ -123,20 +124,41 @@ def delete_dataset(name):
 
     Args:
         name: the name of the dataset
+        verbose (False): whether to log the name of the deleted dataset
 
     Raises:
         ValueError: if the dataset is not found
     """
     dataset = fo.load_dataset(name)
     dataset.delete()
+    if verbose:
+        logger.info("Dataset '%s' deleted", name)
 
 
-def delete_non_persistent_datasets():
-    """Deletes all non-persistent datasets."""
-    for dataset_name in list_datasets():
-        dataset = load_dataset(dataset_name)
+def delete_datasets(glob_patt, verbose=False):
+    """Deletes all FiftyOne datasets whose names match the given glob pattern.
+
+    Args:
+        glob_patt: a glob pattern of datasets to delete
+        verbose (False): whether to log the names of deleted datasets
+    """
+    all_datasets = list_datasets()
+    for name in fnmatch.filter(all_datasets, glob_patt):
+        delete_dataset(name, verbose=verbose)
+
+
+def delete_non_persistent_datasets(verbose=False):
+    """Deletes all non-persistent datasets.
+
+    Args:
+        verbose (False): whether to log the names of deleted datasets
+    """
+    for name in list_datasets():
+        dataset = load_dataset(name)
         if not dataset.persistent:
             dataset.delete()
+            if verbose:
+                logger.info("Dataset '%s' deleted", name)
 
 
 class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
