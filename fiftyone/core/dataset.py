@@ -23,6 +23,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.odm.sample as foos
@@ -1791,25 +1792,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _expand_schema(self, samples):
         fields = self.get_field_schema(include_private=True)
         frames_fields = self.get_frames_field_schema(include_private=True)
+        if self.media_type == None and len(samples):
+            self.media_type = samples[0].media_type
+            if self.media_type == fom.VIDEO:
+                self._sample_doc_cls.add_field("frames", fol.FirstFrameLabel())
+
         for sample in samples:
+            self._validate_media_type(sample)
+            if self.media_type == fom.VIDEO:
+                sample.frames._expand_schema(self)
             for field_name in sample.to_mongo_dict():
                 if field_name == "_id":
                     continue
-
-                if field_name == "frames":
-                    if self.media_type is None:
-                        self.media_type = fom.VIDEO
-                    for frame_number in sample[field_name]:
-                        frame_obj = sample[field_name][frame_number]
-                        for frame_field_name in frame_obj.to_mongo_dict():
-                            if frame_field_name not in frames_fields:
-                                self._frame_doc_cls.add_implied_field(
-                                    frame_field_name,
-                                    frame_obj[frame_field_name],
-                                )
-                                frames_fields = self.get_frames_field_schema(
-                                    include_private=True
-                                )
 
                 if field_name not in fields:
                     self._sample_doc_cls.add_implied_field(
@@ -1818,6 +1812,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         frame_doc_cls=self._frame_doc_cls,
                     )
                     fields = self.get_field_schema(include_private=True)
+
+    def _validate_media_type(self, sample):
+        if self.media_type != sample.media_type:
+            raise fom.MediaTypeError(
+                "Sample media type '%s' does not match dataset media type '%s'"
+                % (sample.media_type, self.media_type)
+            )
 
     def _sample_dict_to_doc(self, d):
         return self._sample_doc_cls.from_dict(d, extended=False)
@@ -1838,18 +1839,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         non_existest_fields = {
             fn for fn in sample.field_names if fn not in fields
         }
-
-        if self.media_type is None:
-            self.media_type = sample.media_type
-            if self.media_type == fom.VIDEO:
-                self._sample_doc_cls.add_field(
-                    "frames", fof.IntField, frame_doc_cls=self._frame_doc_cls,
-                )
-        elif self.media_type != sample.media_type:
-            raise fom.MediaTypeError(
-                "Sample media type '%s' does not match dataset media type '%s'"
-                % (sample.media_type, self.media_type)
-            )
 
         if non_existest_fields:
             msg = "The fields %s do not exist on the dataset '%s'" % (

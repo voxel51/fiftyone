@@ -145,6 +145,9 @@ class Frames(object):
         for frame_number, frame in d.items():
             self[frame_number] = frame
 
+    def _expand_schema(self, dataset):
+        pass
+
     @property
     def _frame_collection(self):
         return self._sample._dataset._frame_collection
