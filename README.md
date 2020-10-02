@@ -1,6 +1,6 @@
 # [FiftyOne](http://www.voxel51.com/fiftyone): Explore, Analyze and Curate Visual Datasets
 
-<img alt="FiftyOne" src="https://user-images.githubusercontent.com/25985824/90993132-ac26fe80-e581-11ea-9efc-c3e1a0f876d8.png">
+<img alt="FiftyOne" src="https://user-images.githubusercontent.com/25985824/94951173-cffb2f80-04b1-11eb-8ae2-3a7c3658e71d.png">
 
 ![Build](https://github.com/voxel51/fiftyone/workflows/Build/badge.svg?branch=develop&event=push)
 
