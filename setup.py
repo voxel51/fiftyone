@@ -24,7 +24,7 @@ class BdistWheelCustom(bdist_wheel):
 
 setup(
     name="fiftyone",
-    version="0.6.0",
+    version="0.6.0.1",
     description=(
         "FiftyOne: a powerful package for dataset curation, analysis, and "
         "visualization"
