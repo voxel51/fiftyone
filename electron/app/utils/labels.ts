@@ -163,6 +163,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
         name,
         label: `${obj.label}`,
         confidence: obj.confidence,
+        mask: obj.mask,
         bounding_box: bb
           ? {
               top_left: { x: bb[0], y: bb[1] },
