@@ -222,10 +222,18 @@ a:visited.has-code span {
 table,
 article.pytorch-article table,
 article.pytorch-article .wy-table-responsive table {
+  /* allow cells to expand beyond their colgroup's set width if needed */
   table-layout: auto;
 }
 
-td code {
+article.pytorch-article .wy-table-responsive {
+  /* make tables scroll horizontally within their container if they overflow */
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+article.pytorch-article table td code {
+  /* prevent line breaks within inline code */
   white-space: nowrap;
 }
 
