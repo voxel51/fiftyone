@@ -552,6 +552,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample._set_backing_doc(doc, dataset=self)
 
         if self.media_type == fom.VIDEO:
+            sample.frames._serve(self)
             sample.frames._save()
 
         return str(d["_id"])

@@ -138,6 +138,8 @@ class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
         if "media_type" in kwargs and kwargs["media_type"] != media_type:
             raise fomm.MediaTypeError("media_type cannot be set")
         kwargs["media_type"] = media_type
+        if media_type == fomm.VIDEO:
+            kwargs["frames"] = {"frame_count": 0}
 
         for field_name in self.default_fields_ordered:
 

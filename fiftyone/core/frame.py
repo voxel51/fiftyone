@@ -41,7 +41,6 @@ class Frames(object):
         self._sample = None
         self._iter = None
         self._replacements = {}
-        self._cache = {}
 
     def __repr__(self):
         num_frames = len(self)
@@ -55,15 +54,19 @@ class Frames(object):
         self._replacements[d["frame_number"]] = d
 
     def _save_replacements(self):
+        first_frame = self._replacements.get(1, None)
         self._frame_collection.bulk_write(
             [
-                ReplaceOne(self._make_filter(d), d, upsert=True)
-                for d in self._replacements.values()
+                ReplaceOne(self._make_filter(frame_number, d), d, upsert=True)
+                for frame_number, d in self._replacements.items()
             ]
         )
+        self._replacements = []
+        return first_frame
 
-    def _make_filter(self, d):
-        return {k: d[k] for k in ["sample_id", "frame_number"]}
+    def _make_filter(self, frame_number, d):
+        d["sample_id"] = self._sample.id
+        return {"frame_number": frame_number, "sample_id": self._sample.id}
 
     def __iter__(self):
         self._iter = self.keys()
@@ -76,18 +79,14 @@ class Frames(object):
         fofu.validate_frame_number(key)
 
         d = None
+        default_d = {"sample_id": self._sample.id, "frame_number": key}
         if key in self._replacements:
             d = self._replacements[key]
         elif self._sample._in_db:
-            d = {"sample_id": self._sample.id, "frame_number": key}
-            if key == 1:
-                first_frame = self._sample._doc.frames["first_frame"]
-                if first_frame is not None:
-                    d = first_frame
-            else:
-                d = self._frame_collection.find_one(d)
+            d = self._frame_collection.find_one(default_d)
 
         if d is None:
+            d = default_d
             self._set_replacement(d)
             self._sample._doc.frames["frame_count"] += 1
 
@@ -111,6 +110,7 @@ class Frames(object):
         d["sample_id"] = self._sample.id
 
         d.pop("_id", None)
+
         self._set_replacement(d)
 
     def keys(self):
@@ -167,15 +167,14 @@ class Frames(object):
     def _first_frame(self):
         first_frame = self._replacements.get(1, None)
         if first_frame is None and self._sample._in_db:
-            return self._sample._doc.frames["first_frame"]
+            first_frame = self._sample._doc.frames["first_frame"]
+        return first_frame
 
     def to_mongo_dict(self):
         first_frame = self._first_frame
-        if first_frame:
-            first_frame = first_frame.to_mongo_dict()
         return {
             "frame_count": self._sample._doc.frames["frame_count"],
-            "first_frame": first_frame,
+            "first_frame": self._first_frame,
         }
 
     def _expand_schema(self, dataset):
@@ -187,25 +186,23 @@ class Frames(object):
 
     def _iter_docs(self):
         if self._sample._in_db:
-            self._save()
-            if 1 in self._replacements:
-                yield self._replacements[1]
-            elif self._sample._doc.frames.first_frame:
-                yield self._sample._doc.frames.first_frame
-
             repl_fns = sorted(self._replacements.keys())
             repl_fn = repl_fns[0] if len(repl_fns) else None
             for d in self._frame_collection.find(
                 {"sample_id": self._sample.id}
             ):
-                if d["frame_number"] >= repl_fn:
-                    yield self._replacements[repl_fn]
+                if repl_fn is not None and d["frame_number"] >= repl_fn:
+                    yield self._sample._dataset._frame_dict_to_doc(
+                        self._replacements[repl_fn]
+                    )
                     repl_fn += 1
                 else:
                     yield self._sample._dataset._frame_dict_to_doc(d)
         else:
             for frame_number in sorted(self._replacements.keys()):
-                yield self._replacements[frame_number]
+                yield NoDatasetFrameSampleDocument(
+                    **self._replacements[frame_number]
+                )
 
     def _get_field_cls(self):
         return self._sample._doc.frames.__class__
@@ -215,9 +212,9 @@ class Frames(object):
             raise fofu.FrameError(
                 "Sample does not have a dataset, Frames cannot be saved"
             )
-        if 1 in self._replacements:
-            raise fofu.FrameError("Sample has not been saved yet")
-        self._save_replacements()
+        first_frame = self._save_replacements()
+        if first_frame is not None:
+            self._sample._doc.frames["first_frame"] = first_frame
 
     def _serve(self, sample):
         self._sample = sample
