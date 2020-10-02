@@ -218,6 +218,14 @@ a:visited.has-code span {
   display: none;
 }
 
+/* table fixes */
+table,
+article.pytorch-article table,
+article.pytorch-article .wy-table-responsive table {
+  table-layout: auto;
+}
+
+
 /* fixes for code line numbers */
 
 article.pytorch-article div[class*="highlight-"] {
@@ -226,7 +234,6 @@ article.pytorch-article div[class*="highlight-"] {
 }
 
 article.pytorch-article table.highlighttable {
-  table-layout: auto;
   margin-bottom: 0;
 }
 
