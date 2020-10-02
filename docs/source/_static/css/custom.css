@@ -197,8 +197,12 @@ ul.pytorch-breadcrumbs a {
 }
 
 a:link.has-code span,
+a:link.has-code span.pre,
 a:hover.has-code span,
-a:visited.has-code span {
+a:hover.has-code span.pre,
+a:visited.has-code span,
+a:visited.has-code span.pre {
+  /* make links in inline code blue */
   color: var(--color-secondary);
 }
 
@@ -246,6 +250,11 @@ article.pytorch-article .wy-table-responsive table tbody td code {
 
 article.pytorch-article .wy-table-responsive table tbody td code span.pre {
   outline: none;
+}
+
+article.pytorch-article .wy-table-responsive table tbody td a[href] span.pre {
+  /* make links in inline code blue */
+  color: var(--color-secondary);
 }
 
 /* fixes for code line numbers */
