@@ -9,6 +9,9 @@ from collections import defaultdict
 import weakref
 
 
+from pymongo import ReplaceOne
+
+
 import fiftyone.core.frame_utils as fofu
 from fiftyone.core._sample import _Sample
 
@@ -37,6 +40,8 @@ class Frames(object):
     def __init__(self):
         self._sample = None
         self._iter = None
+        self._replacements = {}
+        self._cache = {}
 
     def __repr__(self):
         num_frames = len(self)
@@ -46,12 +51,19 @@ class Frames(object):
     def __len__(self):
         return self._sample._doc.frames["frame_count"]
 
-    @property
-    def _first_frame(self):
-        if self._sample._in_db:
-            return self._sample._doc.frames["first_frame"]
-        else:
-            return self._sample._doc.frames["frames"].get(1, None)
+    def _set_replacement(self, d):
+        self._replacements[d["frame_number"]] = d
+
+    def _save_replacements(self):
+        self._frame_collection.bulk_write(
+            [
+                ReplaceOne(self._make_filter(d), d, upsert=True)
+                for d in self._replacements.values()
+            ]
+        )
+
+    def _make_filter(self, d):
+        return {k: d[k] for k in ["sample_id", "frame_number"]}
 
     def __iter__(self):
         self._iter = self.keys()
@@ -63,26 +75,30 @@ class Frames(object):
     def __getitem__(self, key):
         fofu.validate_frame_number(key)
 
-        try:
-            key = str(key)
-            doc = self._sample._doc.frames[key]
-        except KeyError:
-            self._sample._doc.frames["frame_count"] += 1
-            if self._sample._in_db and key != 1:
-                doc = self._sample._dataset._frame_doc_cls.from_dict(
-                    {"frame_number": key, "sample_id": self._sample.id}
-                )
-                doc.save()
-                dataset = self._sample._dataset
+        d = None
+        if key in self._replacements:
+            d = self._replacements[key]
+        elif self._sample._in_db:
+            d = {"sample_id": self._sample.id, "frame_number": key}
+            if key == 1:
+                first_frame = self._sample._doc.frames["first_frame"]
+                if first_frame is not None:
+                    d = first_frame
             else:
-                doc = NoDatasetFrameSampleDocument(
-                    frame_number=key, sample_id=self._sample.id
-                )
-                dataset = None
+                d = self._frame_collection.find_one(d)
 
-        frame = Frame.from_doc(doc, dataset=self._sample._dataset)
-        self._sample._doc.frames[key] = frame._doc
-        return frame
+        if d is None:
+            self._set_replacement(d)
+            self._sample._doc.frames["frame_count"] += 1
+
+        if key != 1 and self._sample._in_db:
+            doc = self._sample._dataset._frame_doc_cls.from_dict(d)
+            dataset = self._sample._dataset
+        else:
+            doc = NoDatasetFrameSampleDocument(**d)
+            dataset = None
+
+        return Frame.from_doc(doc, dataset=dataset)
 
     def __setitem__(self, key, value):
         fofu.validate_frame_number(key)
@@ -95,20 +111,7 @@ class Frames(object):
         d["sample_id"] = self._sample.id
 
         d.pop("_id", None)
-        if self._sample._in_db:
-            if key == 1 and self._sample._doc.frames["first_frame"] is None:
-                self._sample._doc.frames["frame_count"] += 1
-            if key == 1:
-                self._sample._doc.frames["first_frame"] = value.to_dict()
-            doc = self._sample._dataset._frame_doc_cls.from_dict(d)
-            doc.save()
-        else:
-            frames = self._sample._doc.frames["frames"]
-            if key not in frames:
-                self._sample._doc.frames["frame_count"] += 1
-            self._sample._doc.frames["frames"][
-                key
-            ] = NoDatasetFrameSampleDocument.from_dict(d)
+        self._set_replacement(d)
 
     def keys(self):
         """Returns an iterator over the frame numbers with labels in the
@@ -160,6 +163,12 @@ class Frames(object):
         for frame_number, frame in d.items():
             self[frame_number] = frame
 
+    @property
+    def _first_frame(self):
+        first_frame = self._replacements.get(1, None)
+        if first_frame is None and self._sample._in_db:
+            return self._sample._doc.frames["first_frame"]
+
     def to_mongo_dict(self):
         first_frame = self._first_frame
         if first_frame:
@@ -178,17 +187,25 @@ class Frames(object):
 
     def _iter_docs(self):
         if self._sample._in_db:
-            if self._sample._doc.frames.first_frame:
+            self._save()
+            if 1 in self._replacements:
+                yield self._replacements[1]
+            elif self._sample._doc.frames.first_frame:
                 yield self._sample._doc.frames.first_frame
+
+            repl_fns = sorted(self._replacements.keys())
+            repl_fn = repl_fns[0] if len(repl_fns) else None
             for d in self._frame_collection.find(
                 {"sample_id": self._sample.id}
             ):
-                yield self._sample._dataset._frame_dict_to_doc(d)
+                if d["frame_number"] >= repl_fn:
+                    yield self._replacements[repl_fn]
+                    repl_fn += 1
+                else:
+                    yield self._sample._dataset._frame_dict_to_doc(d)
         else:
-            for frame_number in sorted(
-                self._sample._doc.frames["frames"].keys()
-            ):
-                yield self._sample._doc.frames["frames"][frame_number]
+            for frame_number in sorted(self._replacements.keys()):
+                yield self._replacements[frame_number]
 
     def _get_field_cls(self):
         return self._sample._doc.frames.__class__
@@ -198,6 +215,9 @@ class Frames(object):
             raise fofu.FrameError(
                 "Sample does not have a dataset, Frames cannot be saved"
             )
+        if 1 in self._replacements:
+            raise fofu.FrameError("Sample has not been saved yet")
+        self._save_replacements()
 
     def _serve(self, sample):
         self._sample = sample
