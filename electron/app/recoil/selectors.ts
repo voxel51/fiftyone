@@ -226,7 +226,7 @@ export const refreshColorMap = selector({
   key: "refreshColorMap",
   get: ({ get }) => get(atoms.colorMap),
   set: ({ get, set }, colorMap) => {
-    const frames = get(mediaType) ? ["frames"] : [];
+    const frames = get(mediaType) == "video" ? ["frames"] : [];
     const colorLabelNames = Object.entries(get(labelTypes))
       .filter(([name, type]) => labelTypeHasColor(type))
       .map(([name]) => name);
