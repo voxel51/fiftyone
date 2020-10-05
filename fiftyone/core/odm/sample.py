@@ -119,6 +119,31 @@ class DatasetSampleDocument(DatasetMixin, Document, SampleDocument):
             value = value.doc.frames
         super().set_field(field_name, value, create=create)
 
+    @classmethod
+    def from_dict(cls, d, extended=False):
+        try:
+            ff = d["frames"]["first_frame"]
+            for k, v in ff.items():
+                if isinstance(v, dict):
+                    if "_cls" in v:
+                        # Serialized embedded document
+                        _cls = getattr(fo, v["_cls"])
+                        ff[k] = _cls.from_dict(v)
+                    elif "$binary" in v:
+                        # Serialized array in extended format
+                        binary = json_util.loads(json.dumps(v))
+                        ff[k] = fou.deserialize_numpy_array(binary)
+                    else:
+                        ff[k] = v
+                elif isinstance(v, six.binary_type):
+                    # Serialized array in non-extended format
+                    ff[k] = fou.deserialize_numpy_array(v)
+                else:
+                    ff[k] = v
+        except:
+            pass
+        return super().from_dict(d, extended=extended)
+
 
 class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
     """Backing document for samples that have not been added to a dataset."""

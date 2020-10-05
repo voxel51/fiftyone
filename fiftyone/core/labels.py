@@ -38,10 +38,15 @@ class Label(DynamicEmbeddedDocument):
     meta = {"allow_inheritance": True}
 
 
-class FirstFrame(Label):
+class FrameLabel(Label):
+
+    pass
+
+
+class Frames(Label):
 
     frame_count = fof.IntField(required=True, null=False, default=0)
-    first_frame = fof.EmbeddedDocumentField(Label, null=True)
+    first_frame = fof.EmbeddedDocumentField(FrameLabel, null=True)
 
 
 class Attribute(DynamicEmbeddedDocument):

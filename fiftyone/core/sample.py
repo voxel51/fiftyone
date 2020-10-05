@@ -110,7 +110,9 @@ class _DatasetSample(_Sample):
         """
         d = super().to_mongo_dict()
         if self.media_type == fomm.VIDEO:
-            d["frames"] = self.frames.to_mongo_dict()
+            first_frame = self.frames._get_first_frame()
+            if first_frame is not None:
+                d["frames"]["first_frame"] = first_frame
         return d
 
 

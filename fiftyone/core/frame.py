@@ -55,20 +55,19 @@ class Frames(object):
         self._replacements[doc.get_field("frame_number")] = doc
 
     def _save_replacements(self):
-        first_frame = self._replacements.get(1, None)
-        if len(self._replacements):
-            self._frame_collection.bulk_write(
-                [
-                    ReplaceOne(
-                        self._make_filter(frame_number, doc),
-                        self._make_dict,
-                        upsert=True,
-                    )
-                    for frame_number, doc in self._replacements.items()
-                ]
-            )
-            self._replacements = {}
-        return first_frame
+        if len(self._replacements) == 0:
+            return
+        self._frame_collection.bulk_write(
+            [
+                ReplaceOne(
+                    self._make_filter(frame_number, doc),
+                    self._make_dict(doc),
+                    upsert=True,
+                )
+                for frame_number, doc in self._replacements.items()
+            ]
+        )
+        self._replacements = {}
 
     def _make_filter(self, frame_number, doc):
         doc.set_field("sample_id", self._sample.id)
@@ -237,17 +236,22 @@ class Frames(object):
     def _get_field_cls(self):
         return self._sample._doc.frames.__class__
 
+    def _get_first_frame(self):
+        if 1 in self._replacements:
+            from fiftyone.core.labels import Label
+
+            d = self._make_dict(self._replacements[1])
+            d.pop("sample_id")
+            return d
+
+        return None
+
     def _save(self):
         if not self._sample._in_db:
             raise fofu.FrameError(
                 "Sample does not have a dataset, Frames cannot be saved"
             )
-        first_frame = self._save_replacements()
-        if first_frame is not None:
-            first_frame.pop("sample_id", None)
-            from fiftyone.core.labels import Label
-
-            self._sample._doc.frames["first_frame"] = Label(**first_frame)
+        self._save_replacements()
 
     def _serve(self, sample):
         self._sample = sample

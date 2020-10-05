@@ -542,7 +542,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample = sample.copy()
 
         self._validate_sample(sample)
-
         d = sample.to_mongo_dict()
         d.pop("_id", None)  # remove the ID if in DB
         self._sample_collection.insert_one(d)  # adds `_id` to `d`
@@ -1766,7 +1765,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self.media_type = samples[0].media_type
             if self.media_type == fom.VIDEO:
                 self._sample_doc_cls.add_field(
-                    "frames", fof.EmbeddedDocumentField, fol.FirstFrame
+                    "frames", fof.EmbeddedDocumentField, fol.Frames
                 )
 
         fields = self.get_field_schema(include_private=True)
