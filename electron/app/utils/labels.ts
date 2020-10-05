@@ -192,7 +192,11 @@ export const convertSampleToETA = (sample, fieldSchema) => {
   if (sample._eta_labels) {
     return JSON.parse(JSON.stringify(sample._eta_labels));
   }
-  const imgLabels = { attrs: { attrs: [] }, objects: { objects: [] } };
+  const imgLabels = {
+    attrs: { attrs: [] },
+    objects: { objects: [] },
+    masks: [],
+  };
   const sampleFields = Object.keys(sample).sort();
   for (const sampleField of sampleFields) {
     if (RESERVED_FIELDS.includes(sampleField)) {
@@ -209,8 +213,11 @@ export const convertSampleToETA = (sample, fieldSchema) => {
         imgLabels[key][key].push(convert(sampleField, object));
       }
       continue;
-    } else if (field._cls == "Segmentation") {
-      imgLabels.mask = field.mask;
+    } else if (VALID_MASK_TYPES.includes(field._cls)) {
+      imgLabels.masks.push({
+        name: sampleField,
+        mask: field.mask,
+      });
     } else if (VALID_SCALAR_TYPES.includes(fieldSchema[sampleField])) {
       imgLabels.attrs.attrs.push({
         name: sampleField,
