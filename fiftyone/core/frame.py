@@ -95,6 +95,7 @@ class Frames(object):
             d = self._replacements[key]
         elif self._sample._in_db:
             d = self._frame_collection.find_one(default_d)
+            print(d)
 
         if d is None:
             d = default_d
@@ -102,7 +103,7 @@ class Frames(object):
             self._sample._doc.frames["frame_count"] += 1
 
         if self._sample._in_db:
-            doc = self._sample._dataset._frame_doc_cls.from_dict(d)
+            doc = self._sample._dataset._frame_dict_to_doc(d)
             dataset = self._sample._dataset
         else:
             doc = NoDatasetFrameSampleDocument(**d)
@@ -230,6 +231,7 @@ class Frames(object):
             )
         first_frame = self._save_replacements()
         if first_frame is not None:
+            first_frame.pop("sample_id", None)
             self._sample._doc.frames["first_frame"] = first_frame
 
     def _serve(self, sample):
@@ -246,7 +248,7 @@ class Frame(_Sample):
     """
 
     # Instance references keyed by [collection_name][sample_id]
-    _instances = defaultdict(weakref.WeakValueDictionary)
+    _instances = defaultdict(lambda: defaultdict(weakref.WeakValueDictionary))
 
     _COLL_CLS = DatasetFrameSampleDocument
     _NO_COLL_CLS = NoDatasetFrameSampleDocument
@@ -291,19 +293,71 @@ class Frame(_Sample):
             sample._doc = doc
             return sample
 
-        if not doc.id:
-            raise ValueError("`doc` is not saved to the database.")
-
         try:
             # Get instance if exists
-            sample = cls._instances[doc.collection_name][str(doc.id)]
+            sample = cls._instances[doc.collection_name][str(doc.sample_id)][
+                doc.frame_number
+            ]
         except KeyError:
             sample = cls.__new__(cls)
             sample._doc = None  # set to prevent RecursionError
             if dataset is None:
                 raise ValueError(
-                    "`dataset` arg must be provided if sample is in a dataset"
+                    "`dataset` arg must be provided if frame is in a dataset"
                 )
             sample._set_backing_doc(doc, dataset=dataset)
 
         return sample
+
+    @classmethod
+    def _save_dataset_samples(cls, collection_name):
+        """Saves all changes to in-memory sample instances that belong to the
+        specified collection.
+
+        Args:
+            collection_name: the name of the MongoDB collection
+        """
+        for sample_frames in cls._instances[collection_name].values():
+            for frame in sample_frames.values():
+                frame.save()
+
+    @classmethod
+    def _reload_dataset_sample(cls, collection_name, sample_id):
+        pass
+
+    @classmethod
+    def _reload_dataset_samples(cls, collection_name):
+        pass
+
+    @classmethod
+    def _rename_field(cls, collection_name, field_name, new_field_name):
+        pass
+
+    @classmethod
+    def _purge_field(cls, collection_name, field_name):
+        pass
+
+    def _set_backing_doc(self, doc, dataset=None):
+        """Sets the backing doc for the sample.
+
+        Args:
+            doc: a :class:`fiftyone.core.odm.SampleDocument`
+            dataset (None): the :class:`fiftyone.core.dataset.Dataset` to which
+                the sample belongs, if any
+        """
+        self._doc = doc
+
+        # Save weak reference
+        dataset_instances = self._instances[doc.collection_name]
+        if self.frame_number not in dataset_instances[self.sample_id]:
+            dataset_instances[self.sample_id][self.frame_number] = self
+
+        self._dataset = dataset
+
+    @classmethod
+    def _reset_backing_docs(cls, collection_name, sample_ids):
+        pass
+
+    @classmethod
+    def _reset_all_backing_docs(cls, collection_name):
+        pass
