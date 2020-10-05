@@ -9,6 +9,7 @@ from collections import defaultdict
 import weakref
 
 
+from bson import ObjectId
 from pymongo import ReplaceOne
 
 
@@ -88,7 +89,7 @@ class Frames(object):
 
     def __next__(self):
         try:
-            next(self._iter)
+            return next(self._iter)
         except StopIteration:
             self._iter = None
             self._iter_doc = None
@@ -114,11 +115,13 @@ class Frames(object):
                 self._sample._doc.frames["frame_count"] += 1
             doc = self._sample._dataset._frame_dict_to_doc(d)
             self._set_replacement(doc)
-            dataset = self._sample._dataset
         else:
             doc = NoDatasetFrameSampleDocument(**default_d)
             self._set_replacement(doc)
             self._sample._doc.frames["frame_count"] += 1
+
+        if self._sample._in_db:
+            dataset = self._sample._dataset
 
         return Frame.from_doc(doc, dataset=dataset)
 
@@ -155,7 +158,7 @@ class Frames(object):
             a generator that emits frame numbers
         """
         for doc in self._iter_docs():
-            yield doc.frame_number
+            yield doc.get_field("frame_number")
 
     def items(self):
         """Returns an iterator over the frame numberes and :class:`Frame`
@@ -182,7 +185,7 @@ class Frames(object):
         """
         dataset = self._sample._dataset if self._sample._in_db else None
         for doc in self._iter_docs():
-            yield Frame.from_doc(doc, dataset=self._sample._dataset)
+            yield Frame.from_doc(doc, dataset=dataset)
 
     def update(self, d):
         """Adds the frame labels from the given dictionary to this instance.
@@ -217,9 +220,8 @@ class Frames(object):
         if self._sample._in_db:
             repl_fns = sorted(self._replacements.keys())
             repl_fn = repl_fns[0] if len(repl_fns) else None
-            for d in self._frame_collection.find(
-                {"sample_id": self._sample.id}
-            ):
+            find_d = {"sample_id": self._sample.id}
+            for d in self._frame_collection.find(find_d):
                 if repl_fn is not None and d["frame_number"] >= repl_fn:
                     self._iter_doc = self._replacements[repl_fn]
                     repl_fn += 1

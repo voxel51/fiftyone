@@ -385,7 +385,7 @@ class Sample(_DatasetSample):
 
     def save(self):
         """Saves the sample to the database."""
-        if self.media_type == fomm.VIDEO:
+        if self.media_type == fomm.VIDEO and self._in_db:
             self.frames._save()
         super().save()
 
