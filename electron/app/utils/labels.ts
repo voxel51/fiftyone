@@ -61,6 +61,13 @@ export const labelTypeHasColor = (labelType) => {
   return !VALID_MASK_TYPES.includes(labelType);
 };
 
+export const labelTypeIsFilterable = (labelType) => {
+  return (
+    VALID_OBJECT_TYPES.includes(labelType) ||
+    VALID_CLASS_TYPES.includes(labelType)
+  );
+};
+
 export const getLabelText = (label) => {
   if (
     !label._cls ||
