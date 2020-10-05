@@ -33,6 +33,7 @@ export const RESERVED_DETECTION_FIELDS = [
   "bounding_box",
   "confidence",
   "attributes",
+  "mask",
 ];
 
 export const METADATA_FIELDS = [
