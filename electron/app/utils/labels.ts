@@ -57,6 +57,10 @@ export const stringify = (value) => {
   return String(value);
 };
 
+export const labelTypeHasColor = (labelType) => {
+  return !VALID_MASK_TYPES.includes(labelType);
+};
+
 export const getLabelText = (label) => {
   if (
     !label._cls ||
