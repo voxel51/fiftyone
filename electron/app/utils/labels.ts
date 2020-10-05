@@ -1,6 +1,11 @@
-export const VALID_OBJECT_TYPES = ["Detection", "Detections"];
+export const VALID_OBJECT_TYPES = [
+  "Detection",
+  "Detections",
+  "Keypoint",
+  "Keypoints",
+];
 export const VALID_CLASS_TYPES = ["Classification", "Classifications"];
-export const VALID_LIST_TYPES = ["Classifications", "Detections"];
+export const VALID_LIST_TYPES = ["Classifications", "Detections", "Keypoints"];
 export const VALID_LABEL_TYPES = [...VALID_CLASS_TYPES, ...VALID_OBJECT_TYPES];
 
 export const VALID_SCALAR_TYPES = [
@@ -161,7 +166,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
       return {
         type: "eta.core.objects.DetectedObject",
         name,
-        label: `${obj.label}`,
+        label: obj.label,
         confidence: obj.confidence,
         bounding_box: bb
           ? {
@@ -176,13 +181,27 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
       };
     },
   },
+  Keypoint: {
+    key: "keypoints",
+    convert: (name, obj) => {
+      return {
+        name,
+        label: obj.label,
+        points: obj.points,
+      };
+    },
+  },
 };
 
 export const convertSampleToETA = (sample, fieldSchema) => {
   if (sample._eta_labels) {
     return JSON.parse(JSON.stringify(sample._eta_labels));
   }
-  const imgLabels = { attrs: { attrs: [] }, objects: { objects: [] } };
+  const imgLabels = {
+    attrs: { attrs: [] },
+    objects: { objects: [] },
+    keypoints: { keypoints: [] },
+  };
   const sampleFields = Object.keys(sample).sort();
   for (const sampleField of sampleFields) {
     if (RESERVED_FIELDS.includes(sampleField)) {
@@ -193,7 +212,7 @@ export const convertSampleToETA = (sample, fieldSchema) => {
     if (FIFTYONE_TO_ETA_CONVERTERS.hasOwnProperty(field._cls)) {
       const { key, convert } = FIFTYONE_TO_ETA_CONVERTERS[field._cls];
       imgLabels[key][key].push(convert(sampleField, field));
-    } else if (["Classifications", "Detections"].includes(field._cls)) {
+    } else if (VALID_LIST_TYPES.includes(field._cls)) {
       for (const object of field[field._cls.toLowerCase()]) {
         const { key, convert } = FIFTYONE_TO_ETA_CONVERTERS[object._cls];
         imgLabels[key][key].push(convert(sampleField, object));
