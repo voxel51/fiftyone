@@ -295,39 +295,6 @@ class StateController(Namespace):
 
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
         samples = [s.to_mongo_dict() for s in view]
-        """
-        if view.media_type == fom.VIDEO:
-            labels_dict = defaultdict(etav.VideoLabels)
-            frames_dict = defaultdict(dict)
-            frames = []
-            frames_map = {}
-            frames_coll = state.dataset._frames_collection
-            for idx, s in enumerate(samples):
-                frames += list(s["frames"].values())
-                for frame_number, _id in s["frames"].items():
-                    frames_map[_id] = (idx, int(frame_number))
-            cursor = frames_coll.find({"_id": {"$in": frames}})
-            sample_idx = 0
-            for frame in cursor:
-                _id = frame["_id"]
-                sample_idx, frame_number = frames_map[_id]
-                frames_dict[sample_idx][frame_number] = frame
-                labels = labels_dict[sample_idx]
-                frame_labels = etav.VideoFrameLabels(frame_number=frame_number)
-                for k, v in frame.items():
-                    if isinstance(v, dict) and "_cls" in v:
-                        frame_labels.merge_labels(
-                            _make_image_labels(k, v, frame_number)
-                        )
-                labels.add_frame(frame_labels)
-            for idx, sample in enumerate(samples):
-                labels = labels_dict[idx]
-                for frame in labels:
-                    for obj in labels[frame].objects:
-                        obj.frame_number = frame
-                sample["_eta_labels"] = labels.serialize()
-                sample["frames"] = frames_dict[idx]
-        """
         convert(samples)
 
         more = False

@@ -40,7 +40,7 @@ class Frames(object):
     def __init__(self):
         self._sample = None
         self._iter = None
-        self._iter_d = None
+        self._iter_doc = None
         self._replacements = {}
 
     def __repr__(self):
@@ -51,8 +51,8 @@ class Frames(object):
     def __len__(self):
         return self._sample._doc.frames["frame_count"]
 
-    def _set_replacement(self, d):
-        self._replacements[d["frame_number"]] = d
+    def _set_replacement(self, doc):
+        self._replacements[doc.get_field("frame_number")] = doc
 
     def _save_replacements(self):
         first_frame = self._replacements.get(1, None)
@@ -60,17 +60,28 @@ class Frames(object):
             self._frame_collection.bulk_write(
                 [
                     ReplaceOne(
-                        self._make_filter(frame_number, d), d, upsert=True
+                        self._make_filter(frame_number, doc),
+                        self._make_dict,
+                        upsert=True,
                     )
-                    for frame_number, d in self._replacements.items()
+                    for frame_number, doc in self._replacements.items()
                 ]
             )
-            self._replacements = []
+            self._replacements = {}
         return first_frame
 
-    def _make_filter(self, frame_number, d):
+    def _make_filter(self, frame_number, doc):
+        doc.set_field("sample_id", self._sample.id)
+        return {
+            "frame_number": doc.get_field("frame_number"),
+            "sample_id": self._sample.id,
+        }
+
+    def _make_dict(self, doc):
+        d = doc.to_dict(extended=False)
+        d.pop("_id", None)
         d["sample_id"] = self._sample.id
-        return {"frame_number": frame_number, "sample_id": self._sample.id}
+        return d
 
     def __iter__(self):
         self._iter = self.keys()
@@ -81,57 +92,59 @@ class Frames(object):
             next(self._iter)
         except StopIteration:
             self._iter = None
-            self._iter_d = None
+            self._iter_doc = None
             raise
 
     def __getitem__(self, key):
         fofu.validate_frame_number(key)
 
+        dataset = None
+        doc = None
         d = None
         default_d = {"sample_id": self._sample.id, "frame_number": key}
-        if self._iter is not None and key == self._iter_d["frame_number"]:
-            d = self._iter_d
+        if self._iter is not None and key == self._iter_doc.get_field(
+            "frame_number"
+        ):
+            doc = self._iter_doc
         elif key in self._replacements:
-            d = self._replacements[key]
+            doc = self._replacements[key]
         elif self._sample._in_db:
             d = self._frame_collection.find_one(default_d)
-            print(d)
-
-        if d is None:
-            d = default_d
-            self._set_replacement(d)
-            self._sample._doc.frames["frame_count"] += 1
-
-        if self._sample._in_db:
+            if d is None:
+                d = default_d
+                self._sample._doc.frames["frame_count"] += 1
             doc = self._sample._dataset._frame_dict_to_doc(d)
+            self._set_replacement(doc)
             dataset = self._sample._dataset
         else:
-            doc = NoDatasetFrameSampleDocument(**d)
-            dataset = None
+            doc = NoDatasetFrameSampleDocument(**default_d)
+            self._set_replacement(doc)
+            self._sample._doc.frames["frame_count"] += 1
 
         return Frame.from_doc(doc, dataset=dataset)
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key, frame):
         fofu.validate_frame_number(key)
 
-        if not isinstance(value, Frame):
+        if not isinstance(frame, Frame):
             raise ValueError("Value must be a %s" % Frame.__name__)
 
-        d = value.to_dict()
-        d["frame_number"] = key
-        d["sample_id"] = self._sample.id
+        doc = frame._doc
+        doc.set_field("frame_number", key)
+        doc.set_field("sample_id", self._sample.id)
 
-        d.pop("_id", None)
         if not self._sample._in_db and key not in self._replacements:
             self._sample._doc.frames["frame_count"] += 1
         elif self._sample._in_db:
-            if self._iter is not None or key != self._iter_d["frame_number"]:
+            if self._iter is not None or key != self._iter_doc.get_field(
+                "frame_number"
+            ):
                 find_d = {"sample_id": self._sample.id, "frame_number": key}
                 exists = self._frame_collection.find(find_d)
                 if exists is None:
                     self._sample._doc.frames["frame_count"] += 1
 
-        self._set_replacement(d)
+        self._set_replacement(doc)
 
     def keys(self):
         """Returns an iterator over the frame numbers with labels in the
@@ -209,17 +222,17 @@ class Frames(object):
                 {"sample_id": self._sample.id}
             ):
                 if repl_fn is not None and d["frame_number"] >= repl_fn:
-                    self._iter_d = self._replacements[repl_fn]
+                    self._iter_doc = self._replacements[repl_fn]
                     repl_fn += 1
                 else:
-                    self._iter_d = d
-                yield self._sample._dataset._frame_dict_to_doc(self._iter_d)
+                    self._iter_doc = self._sample._dataset._frame_dict_to_doc(
+                        d
+                    )
+                yield self._iter_doc
         else:
             for frame_number in sorted(self._replacements.keys()):
-                self._iter_d = self._replacements[frame_number]
-                yield NoDatasetFrameSampleDocument(
-                    **self._replacements[frame_number]
-                )
+                self._iter_doc = self._replacements[frame_number]
+                yield self._iter_doc
 
     def _get_field_cls(self):
         return self._sample._doc.frames.__class__
@@ -232,7 +245,9 @@ class Frames(object):
         first_frame = self._save_replacements()
         if first_frame is not None:
             first_frame.pop("sample_id", None)
-            self._sample._doc.frames["first_frame"] = first_frame
+            from fiftyone.core.labels import Label
+
+            self._sample._doc.frames["first_frame"] = Label(**first_frame)
 
     def _serve(self, sample):
         self._sample = sample
