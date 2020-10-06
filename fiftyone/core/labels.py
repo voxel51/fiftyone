@@ -317,6 +317,9 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
 
             [<top-left-x>, <top-left-y>, <width>, <height>]
 
+        mask (None): an instance segmentation mask for the detection within
+            its bounding box, which should be a 2D binary or 0/1 integer NumPy
+            array
         confidence (None): a confidence in ``[0, 1]`` for the label
         index (None): an index for the object
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
@@ -327,6 +330,7 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
 
     label = fof.StringField()
     bounding_box = fof.ListField()
+    mask = fof.ArrayField()
     confidence = fof.FloatField()
     index = fof.IntField()
 
@@ -349,6 +353,7 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
         bry = tly + h
         bounding_box = etag.BoundingBox.from_coords(tlx, tly, brx, bry)
 
+        mask = self.mask
         confidence = self.confidence
 
         # pylint: disable=no-member
@@ -358,6 +363,7 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
             label=label,
             index=index,
             bounding_box=bounding_box,
+            mask=mask,
             confidence=confidence,
             name=name,
             attrs=attrs,
@@ -398,6 +404,7 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
             bounding_box=bounding_box,
             confidence=dobj.confidence,
             index=dobj.index,
+            mask=dobj.mask,
             attributes=attributes,
         )
 
