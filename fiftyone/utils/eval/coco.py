@@ -34,8 +34,11 @@ _IOU_THRESHOLD_STRS = [str(iou).replace(".", "_") for iou in IOU_THRESHOLDS]
 
 
 def evaluate_detections(
-    samples, pred_field, gt_field="ground_truth", save_ious=[0.5,0.75,0.95],
-    sample_iou=0.75
+    samples,
+    pred_field,
+    gt_field="ground_truth",
+    save_ious=[0.5, 0.75, 0.95],
+    sample_iou=0.75,
 ):
     """Evaluates the predicted detections in the given samples with respect to
     the specified ground truth detections for each of the following
@@ -92,8 +95,8 @@ def evaluate_detections(
     gt_key = "%s_eval" % pred_field
     pred_key = "%s_eval" % gt_field
     eval_id = 0
-    
-    save_ious = list(set(save_ious+[sample_iou]))
+
+    save_ious = list(set(save_ious + [sample_iou]))
     sample_iou_str = str(sample_iou).replace(".", "_")
     save_iou_strs = [str(iou).replace(".", "_") for iou in save_ious]
 
@@ -118,7 +121,7 @@ def evaluate_detections(
             for k in sample_result_dict.keys():
                 for iou_str in save_iou_strs:
                     sample_result_dict[k][iou_str] = 0
-            
+
             for image in images:
                 preds = image[pred_field]
                 gts = image[gt_field]
@@ -129,7 +132,7 @@ def evaluate_detections(
                     det[pred_key] = {}
                     det[pred_key]["matches"] = {
                         iou_str: {"gt_id": -1, "iou": -1}
-                        for iou_str in save_iou_strs 
+                        for iou_str in save_iou_strs
                     }
 
                     if det.label not in image_cats:
@@ -142,7 +145,7 @@ def evaluate_detections(
                     det[gt_key] = {}
                     det[gt_key]["matches"] = {
                         iou_str: {"pred_id": -1, "iou": -1}
-                        for iou_str in save_iou_strs 
+                        for iou_str in save_iou_strs
                     }
 
                     if det.label not in image_cats:
@@ -159,7 +162,8 @@ def evaluate_detections(
                     preds = dets["preds"]
 
                     inds = np.argsort(
-                        [-(p.confidence or 0.0) for p in preds], kind="mergesort"
+                        [-(p.confidence or 0.0) for p in preds],
+                        kind="mergesort",
                     )
                     preds = [preds[i] for i in inds]
                     image_cats[cat]["preds"] = preds
@@ -179,9 +183,7 @@ def evaluate_detections(
                     ious = _compute_iou(pred_boxes, gt_boxes, iscrowd)
 
                     for pind, gt_ious in enumerate(ious):
-                        pred_ious[preds[pind].id] = list(
-                                zip(gt_ids, gt_ious)
-                        )
+                        pred_ious[preds[pind].id] = list(zip(gt_ids, gt_ious))
 
                 #
                 # Starting with highest confidence prediction, match all with gts
@@ -214,9 +216,9 @@ def evaluate_detections(
                                 best_match_iou = min([iou_thresh, 1 - 1e-10])
                                 for gt_id, iou in pred_ious[pred.id]:
                                     gt = gt_by_id[gt_id]
-                                    curr_gt_match = gt[gt_key]["matches"][iou_str][
-                                        "pred_id"
-                                    ]
+                                    curr_gt_match = gt[gt_key]["matches"][
+                                        iou_str
+                                    ]["pred_id"]
 
                                     if "iscrowd" in gt.attributes:
                                         iscrowd = bool(
@@ -282,12 +284,15 @@ def evaluate_detections(
 
             if has_frames:
                 sample[pred_key] = sample_result_dict
-                sample["tp_iou_%s" % sample_iou_str] = \
-                    sample_result_dict["true_positives"][sample_iou_str]
-                sample["fp_iou_%s" % sample_iou_str] = \
-                    sample_result_dict["false_positives"][sample_iou_str]
-                sample["fn_iou_%s" % sample_iou_str] = \
-                    sample_result_dict["false_negatives"][sample_iou_str]
+                sample["tp_iou_%s" % sample_iou_str] = sample_result_dict[
+                    "true_positives"
+                ][sample_iou_str]
+                sample["fp_iou_%s" % sample_iou_str] = sample_result_dict[
+                    "false_positives"
+                ][sample_iou_str]
+                sample["fn_iou_%s" % sample_iou_str] = sample_result_dict[
+                    "false_negatives"
+                ][sample_iou_str]
 
             sample.save()
 
