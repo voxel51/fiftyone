@@ -1099,7 +1099,7 @@ class BDDDataset(ImageLabelsDataset):
         return foub.BDDDatasetExporter
 
 
-class FiftyOneVideoLabelsDataset(ImageLabelsDataset):
+class FiftyOneVideoLabelsDataset(LabeledVideoDataset):
     """A labeled dataset consisting of videos and their associated labels
     stored in
     `ETA VideoLabels format <https://voxel51.com/docs/api/#types-videolabels>`_.
