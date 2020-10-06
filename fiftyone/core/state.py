@@ -390,12 +390,22 @@ def _get_label_confidence_bounds(view):
 
 
 def _get_field_count(view, field):
-    if isinstance(field, fof.EmbeddedDocumentField) or (
-        view.media_type == fom.VIDEO and field.name == "frames"
-    ):
-        if field.name == "frames":
-            array_field = {"$objectToArray": "$%s" % field.name}
-        elif issubclass(field.document_type, fol.Classifications):
+    if view.media_type == fom.VIDEO and field.name == "frames":
+        pipeline = [
+            {
+                "$group": {
+                    "_id": None,
+                    "totalCount": {"$sum": "$frames.frame_count"},
+                }
+            }
+        ]
+        try:
+            return next(view.aggregate(pipeline))["totalCount"]
+        except StopIteration:
+            return 0
+
+    elif isinstance(field, fof.EmbeddedDocumentField):
+        if issubclass(field.document_type, fol.Classifications):
             array_field = "$%s.classifications" % field.name
         elif issubclass(field.document_type, fol.Detections):
             array_field = "$%s.detections" % field.name
