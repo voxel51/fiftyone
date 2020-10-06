@@ -193,7 +193,6 @@ class StateController(Namespace):
         self.state = fos.StateDescriptionWithDerivables.from_dict(
             data["data"]
         ).serialize()
-        self.state["with_stats"] = False
         emit(
             "update",
             self.state,
