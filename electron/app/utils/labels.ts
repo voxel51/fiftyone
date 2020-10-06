@@ -20,6 +20,13 @@ export const VALID_LABEL_TYPES = [
   ...VALID_MASK_TYPES,
 ];
 
+export const FILTERABLE_TYPES = [
+  "Classification",
+  "Classifications",
+  "Detection",
+  "Detections",
+];
+
 export const VALID_SCALAR_TYPES = [
   "fiftyone.core.fields.BooleanField",
   "fiftyone.core.fields.FloatField",
@@ -76,10 +83,7 @@ export const labelTypeHasColor = (labelType) => {
 };
 
 export const labelTypeIsFilterable = (labelType) => {
-  return (
-    VALID_OBJECT_TYPES.includes(labelType) ||
-    VALID_CLASS_TYPES.includes(labelType)
-  );
+  return FILTERABLE_TYPES.includes(labelType);
 };
 
 export const getLabelText = (label) => {
