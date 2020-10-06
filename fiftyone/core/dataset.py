@@ -1799,6 +1799,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if field_name == "frames":
                     if self.media_type is None:
                         self.media_type = fom.VIDEO
+                        frames_fields = self.get_frames_field_schema(
+                            include_private=True
+                        )
+
                     for frame_number in sample[field_name]:
                         frame_obj = sample[field_name][frame_number]
                         for frame_field_name in frame_obj.to_mongo_dict():
