@@ -9,6 +9,8 @@ from bson import ObjectId, json_util
 from flask.json import JSONEncoder
 from collections import OrderedDict
 
+import numpy as np
+
 from fiftyone.core.sample import Sample, SampleView
 from fiftyone.core.stages import ViewStage
 import fiftyone.core.utils as fou
@@ -18,9 +20,17 @@ def _handle_bytes(o):
     for k, v in o.items():
         if isinstance(v, bytes):
             o[k] = str(fou.deserialize_numpy_array(v).shape)
-        if isinstance(v, dict):
+        elif isinstance(v, dict):
             o[k] = _handle_bytes(v)
     return o
+
+
+def _handle_numpy_array(raw, key=None):
+    if key != "mask":
+        return str(fou.deserialize_numpy_array(raw).shape)
+    return fou.serialize_numpy_array(
+        fou.deserialize_numpy_array(raw), ascii=True
+    )
 
 
 def convert(d):
@@ -33,7 +43,7 @@ def convert(d):
             elif isinstance(v, (dict, OrderedDict, list)):
                 convert(v)
             elif isinstance(v, bytes):
-                d[k] = str(fou.deserialize_numpy_array(v).shape)
+                d[k] = _handle_numpy_array(v, k)
     if isinstance(d, list):
         for idx, i in enumerate(d):
             if isinstance(i, (dict, OrderedDict, list)):
@@ -41,7 +51,7 @@ def convert(d):
             elif isinstance(i, ObjectId):
                 d[idx] = str(i)
             elif isinstance(i, bytes):
-                d[idx] = str(fou.deserialize_numpy_array(i).shape)
+                d[idx] = _handle_numpy_array(i)
 
 
 class FiftyOneJSONEncoder(JSONEncoder):

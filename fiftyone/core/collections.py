@@ -1029,30 +1029,14 @@ class SampleCollection(object):
         Returns:
             the list of paths to the labeled images
         """
-        label_fields_schema = self.get_field_schema(
-            ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
-        )
-
         if label_fields is None:
-            label_fields = list(label_fields_schema.keys())
+            label_fields = _get_image_label_fields(self)
 
-        non_image_label_fields = [
-            lf
-            for lf in label_fields
-            if not issubclass(
-                label_fields_schema[lf].document_type, fol.ImageLabel
-            )
-        ]
-
-        if non_image_label_fields:
-            raise ValueError(
-                "Cannot draw label fields %s; only "
-                "`fiftyone.core.labels.ImageLabel` fields are supported"
-            )
-
-        # Draw labeled images
         return foua.draw_labeled_images(
-            self, label_fields, anno_dir, annotation_config=annotation_config,
+            self,
+            anno_dir,
+            label_fields=label_fields,
+            annotation_config=annotation_config,
         )
 
     def export(
@@ -1155,7 +1139,6 @@ class SampleCollection(object):
         else:
             label_field_or_dict = label_field
 
-        # Export the dataset
         foud.export_samples(
             self,
             dataset_exporter=dataset_exporter,
@@ -1301,6 +1284,13 @@ def _get_random_characters(n):
     return "".join(
         random.choice(string.ascii_lowercase + string.digits) for _ in range(n)
     )
+
+
+def _get_image_label_fields(sample_collection):
+    label_fields = sample_collection.get_field_schema(
+        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.ImageLabel
+    )
+    return list(label_fields.keys())
 
 
 def _get_labels_dict_for_prefix(sample_collection, label_prefix):

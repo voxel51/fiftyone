@@ -7,6 +7,7 @@ import { animated, useSpring } from "react-spring";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+import { labelTypeIsFilterable } from "../utils/labels";
 
 import Filter from "./Filter";
 import NumericFieldFilter from "./NumericFieldFilter";
@@ -183,16 +184,16 @@ const Entry = ({ entry, onCheck, modal }) => {
               entry.icon &&
               !["Detections", "Classifications"].includes(entry.type)
             ) &&
-              (entry.type || (isNumericField && !modal)) &&
-              !(entry.name === "frames" && mediaType === "video") && (
-                <ArrowDropDown
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setExpanded(!expanded);
-                  }}
-                  style={{ marginRight: -4 }}
-                />
-              )}
+            ((entry.type && labelTypeIsFilterable(entry.type)) ||
+              (isNumericField && !modal)) ? (
+              <ArrowDropDown
+                onClick={(e) => {
+                  e.preventDefault();
+                  setExpanded(!expanded);
+                }}
+                style={{ marginRight: -4 }}
+              />
+            ) : null}
           </>
         }
         classes={{
@@ -224,12 +225,12 @@ const Entry = ({ entry, onCheck, modal }) => {
           />
         }
       />
-      {isNumericField && (
+      {isNumericField ? (
         <NumericFieldFilter expanded={expanded} entry={entry} />
-      )}
-      {entry.type && entry.type !== "frames" && (
+      ) : null}
+      {entry.type && labelTypeIsFilterable(entry.type) ? (
         <Filter expanded={expanded} entry={entry} {...atoms} modal={modal} />
-      )}
+      ) : null}
     </CheckboxContainer>
   );
 };

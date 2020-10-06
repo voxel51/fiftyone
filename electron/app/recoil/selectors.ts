@@ -6,6 +6,7 @@ import {
   VALID_LIST_TYPES,
   VALID_NUMERIC_TYPES,
   makeLabelNameGroups,
+  labelTypeHasColor,
 } from "../utils/labels";
 
 export const datasetName = selector({
@@ -225,11 +226,14 @@ export const refreshColorMap = selector({
   key: "refreshColorMap",
   get: ({ get }) => get(atoms.colorMap),
   set: ({ get, set }, colorMap) => {
-    const frames = get(mediaType) ? ["frames"] : [];
+    const frames = get(mediaType) == "video" ? ["frames"] : [];
+    const colorLabelNames = Object.entries(get(labelTypes))
+      .filter(([name, type]) => labelTypeHasColor(type))
+      .map(([name]) => name);
     set(
       atoms.colorMap,
       generateColorMap(
-        [...get(tagNames), ...get(labelNames), ...frames],
+        [...get(tagNames), ...colorLabelNames, ...frames],
         colorMap
       )
     );
