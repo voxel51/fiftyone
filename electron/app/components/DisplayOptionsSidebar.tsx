@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import styled from "styled-components";
+import React, { useState, useContext } from "react";
+import styled, { ThemeContext } from "styled-components";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 
 import {
@@ -18,6 +18,7 @@ import { Button, scrollbarStyles } from "./utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { refreshColorMap as refreshColorMapSelector } from "../recoil/selectors";
+import { labelTypeHasColor } from "../utils/labels";
 
 export type Entry = {
   name: string;
@@ -75,6 +76,7 @@ const Container = styled.div`
 `;
 
 const Cell = ({ label, icon, entries, onSelect, colorMap, title, modal }) => {
+  const theme = useContext(ThemeContext);
   const [expanded, setExpanded] = useState(true);
   const numSelected = entries.filter((e) => e.selected).length;
   const handleClear = (e) => {
@@ -120,7 +122,9 @@ const Cell = ({ label, icon, entries, onSelect, colorMap, title, modal }) => {
             data: e.icon ? e.icon : [makeData(e.filteredCount, e.totalCount)],
             totalCount: e.totalCount,
             filteredCount: e.filteredCount,
-            color: colorMap[e.name],
+            color: labelTypeHasColor(e.type)
+              ? colorMap[e.name]
+              : theme.backgroundLight,
             hideCheckbox: e.hideCheckbox,
             disabled: Boolean(e.disabled),
           }))}

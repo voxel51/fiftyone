@@ -34,10 +34,6 @@ article.pytorch-article .wy-table-responsive table thead th {
   padding-bottom: 0rem;
 }
 
-.wy-table-responsive table colgroup col:first-of-type {
-  width: 70% !important;
-}
-
 .pytorch-page-level-bar {
   z-index: 500;
 }
@@ -201,8 +197,12 @@ ul.pytorch-breadcrumbs a {
 }
 
 a:link.has-code span,
+a:link.has-code span.pre,
 a:hover.has-code span,
-a:visited.has-code span {
+a:hover.has-code span.pre,
+a:visited.has-code span,
+a:visited.has-code span.pre {
+  /* make links in inline code blue */
   color: var(--color-secondary);
 }
 
@@ -222,6 +222,41 @@ a:visited.has-code span {
   display: none;
 }
 
+/* table fixes */
+
+table,
+article.pytorch-article table,
+article.pytorch-article .wy-table-responsive table {
+  /* allow cells to expand beyond their colgroup's set width if needed */
+  table-layout: auto;
+}
+
+article.pytorch-article .wy-table-responsive {
+  /* make tables scroll horizontally within their container if they overflow */
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+article.pytorch-article table td:first-of-type code {
+  /* prevent line breaks within inline code */
+  white-space: nowrap;
+}
+
+article.pytorch-article .wy-table-responsive table tbody td code {
+  /* move outline to enclosing code tag instead of span.pre, and fix colors */
+  background-color: #ffffff;
+  border: 1px solid #e9e9e9;
+}
+
+article.pytorch-article .wy-table-responsive table tbody td code span.pre {
+  outline: none;
+}
+
+article.pytorch-article .wy-table-responsive table tbody td a[href] span.pre {
+  /* make links in inline code blue */
+  color: var(--color-secondary);
+}
+
 /* fixes for code line numbers */
 
 article.pytorch-article div[class*="highlight-"] {
@@ -230,7 +265,6 @@ article.pytorch-article div[class*="highlight-"] {
 }
 
 article.pytorch-article table.highlighttable {
-  table-layout: auto;
   margin-bottom: 0;
 }
 

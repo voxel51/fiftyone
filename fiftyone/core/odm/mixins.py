@@ -84,8 +84,8 @@ def no_delete_default_field(func):
 
 
 class DatasetMixin(object):
-    """Mixin for required for concrete :class:`fiftyone.core.odm.document.SampleDocument`s
-    that are backed by a dataset
+    """Mixin for concrete :class:`fiftyone.core.odm.document.SampleDocument`
+    subtypes that are backed by a dataset
     """
 
     def __setattr__(self, name, value):
@@ -509,8 +509,8 @@ class DatasetMixin(object):
 
 
 class NoDatasetMixin(object):
-    """Mixin for required for concrete :class:`fiftyone.core.odm.document.SampleDocument`s
-    that are not backed by a dataset
+    """Mixin for concrete :class:`fiftyone.core.odm.document.SampleDocument`
+    subtypes that are not backed by a dataset
     """
 
     def __getattr__(self, name):
