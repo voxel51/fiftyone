@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<annotations>
+    <version>1.1</version>
+    <meta>
+        <task>
+            <id>{{ id }}</id>
+            <name>{{ name }}</name>
+            <size>{{ size }}</size>
+            <mode>interpolation</mode>
+            <overlap></overlap>
+            <bugtracker></bugtracker>
+            <flipped>False</flipped>
+            <created>{{ created }}</created>
+            <updated>{{ updated }}</updated>
+            <labels>
+{% for label in labels %}
+                <label>
+                    <name>{{ label.name }}</name>
+                    <attributes>
+{% for attribute in label.attributes %}
+                        <attribute>
+                            <name>{{ attribute.name }}</name>
+                            <values>{{ attribute.categories|join('\n') }}</values>
+                        </attribute>
+{% endfor %}
+                    </attributes>
+                </label>
+{% endfor %}
+            </labels>
+            <segments>
+                    <segment>
+                        <id>{{ id }}</id>
+                        <start>{{ 0 }}</start>
+                        <stop>{{ [size - 1, 0]|max }}</stop>
+                        <url></url>
+                    </segment>
+            </segments>
+            <owner>
+                <username></username>
+                <email></email>
+            </owner>
+            <original_size>
+                <width>{{ width }}</width>
+                <height>{{ height }}</height>
+            </original_size>
+        </task>
+        <dumped>{{ dumped }}</dumped>
+    </meta>
+{% for track in tracks %}
+    <track id="{{ track.id }}" label="{{ track.label }}">
+{% for frame, box in track.boxes|dictsort %}
+        <box frame="{{ frame }}" xtl="{{ box.xtl }}" ytl="{{ box.ytl }}" xbr="{{ box.xbr }}" ybr="{{ box.ybr }}"{% if box.outside is not none %} outside="{{ box.outside }}" {%endif %}{% if box.occluded is not none %} occluded="{{ box.occluded }}" {%endif %}{% if box.keyframe is not none %} keyframe="{{ box.keyframe }}" {%endif %}>
+{% for attr in box.attributes %}
+            <attribute name="{{ attr.name }}">{{ attr.value }}</attribute>
+{% endfor %}
+        </box>
+{% endfor %}
+    </track>
+{% endfor %}
+</annotations>
