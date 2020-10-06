@@ -120,10 +120,12 @@ def _catch_errors(func):
     return wrapper
 
 
-def _load_state(trigger_update=False):
+def _load_state(trigger_update=False, with_stats=False):
     def decorator(func):
         def wrapper(self, *args, **kwargs):
-            state = fos.StateDescriptionWithDerivables.from_dict(self.state)
+            state = self.state.copy()
+            state["with_stats"] = with_stats
+            state = fos.StateDescriptionWithDerivables.from_dict(state)
             state = func(self, state, *args, **kwargs)
             self.state = state.serialize()
             emit(
@@ -186,9 +188,12 @@ class StateController(Namespace):
             state_dict: a serialized
                 :class:`fiftyone.core.state.StateDescription`
         """
+        state = data["data"]
+        state["with_stats"] = True
         self.state = fos.StateDescriptionWithDerivables.from_dict(
             data["data"]
         ).serialize()
+        self.state["with_stats"] = False
         emit(
             "update",
             self.state,
@@ -267,6 +272,22 @@ class StateController(Namespace):
         """
         state.selected = []
         return state
+
+    @_catch_errors
+    def on_get_frame_labels(self, sample_id):
+        """Gets the frame labels for video samples
+
+        Args:
+            sample_id: the id of the video sample
+
+        Returns:
+            ...
+        """
+        state = self.state.copy()
+        state["with_stats"] = False
+        state = fos.StateDescriptionWithDerivables.from_dict(state)
+        find_d = {"sample_id": sample_id}
+        return {"frames": list(state.dataset._frame_collection.find(find_d))}
 
     @_catch_errors
     def on_page(self, page, page_length=20):

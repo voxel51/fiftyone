@@ -31,6 +31,15 @@ export default (port) => {
     if (!state.loadMore || state.isLoading || !state.hasMore) return;
     setState({ ...state, isLoading: true, loadMore: false });
     socket.emit("page", state.pageToLoad, (data) => {
+      if (data.results.length) {
+        socket.emit(
+          "get_frame_labels",
+          data.results[0].sample._id,
+          (frame_labels) => {
+            console.log(frame_labels); // frames!
+          }
+        );
+      }
       setState(tile(data.results, data.more, state, host));
     });
   }, [state.loadMore, state.pageToLoad, state.hasMore]);
