@@ -1211,8 +1211,8 @@ You can iterate over the frames in a video sample using the expected syntax:
 .. code:: python
     :linenos:
 
-    for frame_number in sample.frames:
-        frame = sample.frames[frame_number]
+    for frame_number, frame in sample.frames.items():
+        print(frame_number)
         print(frame)
 
 .. code-block:: text
