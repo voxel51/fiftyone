@@ -127,7 +127,6 @@ def evaluate_detections(
                 image_cats = {}
                 for det in preds.detections:
                     det[pred_key] = {}
-                    det[pred_key]["ious"] = {}
                     det[pred_key]["matches"] = {
                         iou_str: {"gt_id": -1, "iou": -1}
                         for iou_str in save_iou_strs 
@@ -153,6 +152,8 @@ def evaluate_detections(
                     image_cats[det.label]["gts"].append(det)
 
                 # Compute IoU for every detection and gt
+                pred_ious = {}
+
                 for cat, dets in image_cats.items():
                     gts = dets["gts"]
                     preds = dets["preds"]
@@ -178,8 +179,8 @@ def evaluate_detections(
                     ious = _compute_iou(pred_boxes, gt_boxes, iscrowd)
 
                     for pind, gt_ious in enumerate(ious):
-                        preds[pind][pred_key]["ious"][cat] = list(
-                            zip(gt_ids, gt_ious)
+                        pred_ious[preds[pind].id] = list(
+                                zip(gt_ids, gt_ious)
                         )
 
                 #
@@ -208,10 +209,10 @@ def evaluate_detections(
                         # Match each prediction to the highest IoU ground truth
                         # available
                         for pred in preds:
-                            if cat in pred[pred_key]["ious"]:
+                            if pred.id in pred_ious:
                                 best_match = -1
                                 best_match_iou = min([iou_thresh, 1 - 1e-10])
-                                for gt_id, iou in pred[pred_key]["ious"][cat]:
+                                for gt_id, iou in pred_ious[pred.id]:
                                     gt = gt_by_id[gt_id]
                                     curr_gt_match = gt[gt_key]["matches"][iou_str][
                                         "pred_id"
