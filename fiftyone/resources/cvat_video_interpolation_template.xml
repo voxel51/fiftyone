@@ -6,7 +6,7 @@
             <id>{{ id }}</id>
             <name>{{ name }}</name>
             <size>{{ size }}</size>
-            <mode>annotation</mode>
+            <mode>interpolation</mode>
             <overlap></overlap>
             <bugtracker></bugtracker>
             <flipped>False</flipped>
@@ -39,18 +39,22 @@
                 <username></username>
                 <email></email>
             </owner>
+            <original_size>
+                <width>{{ width }}</width>
+                <height>{{ height }}</height>
+            </original_size>
         </task>
         <dumped>{{ dumped }}</dumped>
     </meta>
-{% for image in images %}
-    <image id="{{ image.id }}" name="{{ image.name }}" width="{{ image.width }}" height="{{ image.height }}">
-{% for box in image.boxes %}
-        <box label="{{ box.label }}" xtl="{{ box.xtl }}" ytl="{{ box.ytl }}" xbr="{{ box.xbr }}" ybr="{{ box.ybr }}"{% if box.occluded is not none %} occluded="{{ box.occluded }}" {%endif %}>
+{% for track in tracks %}
+    <track id="{{ track.id }}" label="{{ track.label }}">
+{% for frame, box in track.boxes|dictsort %}
+        <box frame="{{ frame }}" xtl="{{ box.xtl }}" ytl="{{ box.ytl }}" xbr="{{ box.xbr }}" ybr="{{ box.ybr }}"{% if box.outside is not none %} outside="{{ box.outside }}" {%endif %}{% if box.occluded is not none %} occluded="{{ box.occluded }}" {%endif %}{% if box.keyframe is not none %} keyframe="{{ box.keyframe }}" {%endif %}>
 {% for attr in box.attributes %}
             <attribute name="{{ attr.name }}">{{ attr.value }}</attribute>
 {% endfor %}
         </box>
 {% endfor %}
-    </image>
+    </track>
 {% endfor %}
 </annotations>

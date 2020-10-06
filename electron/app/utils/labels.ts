@@ -30,6 +30,7 @@ export const RESERVED_FIELDS = [
 ];
 export const RESERVED_DETECTION_FIELDS = [
   "label",
+  "index",
   "bounding_box",
   "confidence",
   "attributes",
@@ -178,7 +179,8 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
       return {
         type: "eta.core.objects.DetectedObject",
         name,
-        label: `${obj.label}`,
+        label: obj.label,
+        index: obj.index,
         confidence: obj.confidence,
         mask: obj.mask,
         bounding_box: bb

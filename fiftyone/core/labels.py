@@ -261,6 +261,7 @@ class Detection(ImageLabel):
             its bounding box, which should be a 2D binary or 0/1 integer NumPy
             array
         confidence (None): a confidence in ``[0, 1]`` for the label
+        index (None): an index for the object
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
     """
@@ -274,6 +275,7 @@ class Detection(ImageLabel):
     bounding_box = fof.ListField()
     mask = fof.ArrayField()
     confidence = fof.FloatField()
+    index = fof.IntField()
     attributes = fof.DictField(fof.EmbeddedDocumentField(Attribute))
 
     @property
@@ -331,6 +333,7 @@ class Detection(ImageLabel):
             an ``eta.core.objects.DetectedObject``
         """
         label = self.label
+        index = self.index
 
         # pylint: disable=unpacking-non-sequence
         tlx, tly, w, h = self.bounding_box
@@ -356,6 +359,7 @@ class Detection(ImageLabel):
 
         return etao.DetectedObject(
             label=label,
+            index=index,
             bounding_box=bounding_box,
             mask=mask,
             confidence=confidence,
@@ -409,8 +413,9 @@ class Detection(ImageLabel):
 
         return Detection(
             label=dobj.label,
-            confidence=dobj.confidence,
             bounding_box=bounding_box,
+            confidence=dobj.confidence,
+            index=dobj.index,
             mask=dobj.mask,
             attributes=attributes,
         )
