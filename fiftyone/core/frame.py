@@ -330,34 +330,6 @@ class Frame(_Sample):
 
         return sample
 
-    @classmethod
-    def _save_dataset_samples(cls, collection_name):
-        """Saves all changes to in-memory sample instances that belong to the
-        specified collection.
-
-        Args:
-            collection_name: the name of the MongoDB collection
-        """
-        for sample_frames in cls._instances[collection_name].values():
-            for frame in sample_frames.values():
-                frame.save()
-
-    @classmethod
-    def _reload_dataset_sample(cls, collection_name, sample_id):
-        pass
-
-    @classmethod
-    def _reload_dataset_samples(cls, collection_name):
-        pass
-
-    @classmethod
-    def _rename_field(cls, collection_name, field_name, new_field_name):
-        pass
-
-    @classmethod
-    def _purge_field(cls, collection_name, field_name):
-        pass
-
     def _set_backing_doc(self, doc, dataset=None):
         """Sets the backing doc for the sample.
 
@@ -374,11 +346,3 @@ class Frame(_Sample):
             dataset_instances[self.sample_id][self.frame_number] = self
 
         self._dataset = dataset
-
-    @classmethod
-    def _reset_backing_docs(cls, collection_name, sample_ids):
-        pass
-
-    @classmethod
-    def _reset_all_backing_docs(cls, collection_name):
-        pass

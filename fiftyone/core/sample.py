@@ -249,17 +249,6 @@ class Sample(_DatasetSample):
         return cls.from_doc(doc)
 
     @classmethod
-    def _save_dataset_samples(cls, collection_name):
-        """Saves all changes to in-memory sample instances that belong to the
-        specified collection.
-
-        Args:
-            collection_name: the name of the MongoDB collection
-        """
-        for sample in cls._instances[collection_name].values():
-            sample.save()
-
-    @classmethod
     def _reload_dataset_sample(cls, collection_name, sample_id):
         """Reloads the fields for the in-memory sample instance that belong to
         the specified collection.
@@ -280,17 +269,6 @@ class Sample(_DatasetSample):
             return True
 
         return False
-
-    @classmethod
-    def _reload_dataset_samples(cls, collection_name):
-        """Reloads the fields for in-memory sample instances that belong to the
-        specified collection.
-
-        Args:
-            collection_name: the name of the MongoDB collection
-        """
-        for sample in cls._instances[collection_name].values():
-            sample.reload()
 
     @classmethod
     def _rename_field(cls, collection_name, field_name, new_field_name):
