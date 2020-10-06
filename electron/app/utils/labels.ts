@@ -5,8 +5,13 @@ export const VALID_OBJECT_TYPES = [
   "Keypoints",
 ];
 export const VALID_CLASS_TYPES = ["Classification", "Classifications"];
+export const VALID_MASK_TYPES = ["Segmentation"];
 export const VALID_LIST_TYPES = ["Classifications", "Detections", "Keypoints"];
-export const VALID_LABEL_TYPES = [...VALID_CLASS_TYPES, ...VALID_OBJECT_TYPES];
+export const VALID_LABEL_TYPES = [
+  ...VALID_CLASS_TYPES,
+  ...VALID_OBJECT_TYPES,
+  ...VALID_MASK_TYPES,
+];
 
 export const VALID_SCALAR_TYPES = [
   "fiftyone.core.fields.BooleanField",
@@ -33,6 +38,7 @@ export const RESERVED_DETECTION_FIELDS = [
   "bounding_box",
   "confidence",
   "attributes",
+  "mask",
 ];
 
 export const METADATA_FIELDS = [
@@ -55,6 +61,17 @@ export const stringify = (value) => {
     value = Number(value.toFixed(3));
   }
   return String(value);
+};
+
+export const labelTypeHasColor = (labelType) => {
+  return !VALID_MASK_TYPES.includes(labelType);
+};
+
+export const labelTypeIsFilterable = (labelType) => {
+  return (
+    VALID_OBJECT_TYPES.includes(labelType) ||
+    VALID_CLASS_TYPES.includes(labelType)
+  );
 };
 
 export const getLabelText = (label) => {
@@ -168,6 +185,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
         name,
         label: obj.label,
         confidence: obj.confidence,
+        mask: obj.mask,
         bounding_box: bb
           ? {
               top_left: { x: bb[0], y: bb[1] },
@@ -201,6 +219,7 @@ export const convertSampleToETA = (sample, fieldSchema) => {
     attrs: { attrs: [] },
     objects: { objects: [] },
     keypoints: { keypoints: [] },
+    masks: [],
   };
   const sampleFields = Object.keys(sample).sort();
   for (const sampleField of sampleFields) {
@@ -218,6 +237,11 @@ export const convertSampleToETA = (sample, fieldSchema) => {
         imgLabels[key][key].push(convert(sampleField, object));
       }
       continue;
+    } else if (VALID_MASK_TYPES.includes(field._cls)) {
+      imgLabels.masks.push({
+        name: sampleField,
+        mask: field.mask,
+      });
     } else if (VALID_SCALAR_TYPES.includes(fieldSchema[sampleField])) {
       imgLabels.attrs.attrs.push({
         name: sampleField,

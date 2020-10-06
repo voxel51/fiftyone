@@ -896,6 +896,7 @@ overarching model (if applicable) in the
             fo.Classification(label="tabby", confidence=0.72),
         ]
     )
+
     print(sample)
 
 .. code-block:: text
@@ -972,6 +973,7 @@ detection can be stored in the
             ),
         ]
     )
+
     print(sample)
 
 .. code-block:: text
@@ -997,6 +999,74 @@ detection can be stored in the
                 <Detection: {
                     'label': 'cat',
                     'bounding_box': BaseList([0.480, 0.513, 0.397, 0.288]),
+                    'confidence': 0.96,
+                    'attributes': BaseDict({}),
+                }>,
+            ]),
+        }>,
+    }>
+
+.. -objects-with-instance-segmentations:
+
+Objects with instance segmentations
+-----------------------------------
+
+Object detections stored in |Detections| may also have instance segmentation
+masks, which should be stored in the
+:attr:`mask <fiftyone.core.labels.Detection.mask>` attribute of each
+|Detection|.
+
+The mask must be a 2D NumPy array containing either booleans or 0/1 integers
+encoding the extent of the instance mask within the
+:attr:`bounding_box <fiftyone.core.labels.Detection.bounding_box>` of the
+object. The array can be of any size; it is stretched as necessary to fill the
+object's bounding box when visualizing in the App.
+
+.. code-block:: python
+    :linenos:
+
+    import numpy as np
+
+    import fiftyone as fo
+
+    # Example instance mask
+    mask = (np.random.randn(32, 32) > 0)
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+
+    sample["prediction"] = fo.Detections(
+        detections=[
+            fo.Detection(
+                label="cat",
+                bounding_box=[0.480, 0.513, 0.397, 0.288],
+                mask=mask,
+                confidence=0.96,
+            ),
+        ]
+    )
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'prediction': <Detections: {
+            'detections': BaseList([
+                <Detection: {
+                    'id': '5f6cb35dd1d11965ad1a2717',
+                    'label': 'cat',
+                    'bounding_box': BaseList([0.48, 0.513, 0.397, 0.288]),
+                    'mask': array([[ True, False,  True, ...,  True, False,  True],
+                           [ True,  True,  True, ..., False,  True,  True],
+                           [False, False,  True, ...,  True, False, False],
+                           ...,
+                           [ True,  True, False, ..., False, False,  True],
+                           [ True, False,  True, ..., False,  True,  True],
+                           [ True,  True,  True, ..., False, False, False]]),
                     'confidence': 0.96,
                     'attributes': BaseDict({}),
                 }>,
@@ -1070,6 +1140,7 @@ schema of the attributes that you're storing.
             ),
         ]
     )
+
     print(sample)
 
 .. code-block:: text
@@ -1396,6 +1467,55 @@ schema of the attributes that you're storing.
                     'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)]),
                 }>,
             ]),
+        }>,
+    }>
+
+
+.. _semantic-segmentation:
+
+Semantic segmentation
+---------------------
+
+The |Segmentation| class represents a semantic segmentation mask for an image.
+The mask itself is stored in the
+:attr:`mask <fiftyone.core.labels.Segmentation.mask>` attribute of the
+|Segmentation| object.
+
+The mask should be a 2D NumPy array with integer values encoding the semantic
+labels for each pixel in the image. The array can be of any size; it is
+stretched as necessary to fit the image's extent when visualizing in the App.
+
+.. code-block:: python
+    :linenos:
+
+    import numpy as np
+
+    import fiftyone as fo
+
+    # Example segmentation mask
+    mask = np.random.randint(10, size=(128, 128))
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+
+    sample["segmentation"] = fo.Segmentation(mask=mask)
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'segmentation': <Segmentation: {
+            'mask': array([[4, 8, 2, ..., 8, 4, 6],
+                   [5, 1, 8, ..., 7, 0, 9],
+                   [9, 5, 3, ..., 3, 2, 0],
+                   ...,
+                   [4, 8, 4, ..., 1, 2, 9],
+                   [3, 5, 2, ..., 0, 0, 7],
+                   [3, 4, 0, ..., 6, 0, 7]]),
         }>,
     }>
 

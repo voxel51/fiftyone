@@ -110,14 +110,11 @@ For example, you can draw an annotated version of an image sample with
         ),
     )
 
-    # The label fields to render
-    label_fields = ["gt_label", "pred_label", "gt_objects", "pred_objects"]
-
     # The path to write the annotated image
     outpath = "/path/for/image-annotated.jpg"
 
     # Render the annotated image
-    foua.draw_labeled_image(sample, label_fields, outpath)
+    foua.draw_labeled_image(sample, outpath)
 
 .. image:: ../images/draw_labels_example1.jpg
    :alt: image-annotated.jpg
@@ -154,9 +151,7 @@ predictions:
     )
 
     # Render the annotated image
-    foua.draw_labeled_image(
-        sample, label_fields, outpath, annotation_config=annotation_config
-    )
+    foua.draw_labeled_image(sample, outpath, annotation_config=annotation_config)
 
 .. image:: ../images/draw_labels_example2.jpg
    :alt: image-annotated.jpg

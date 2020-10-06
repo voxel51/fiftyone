@@ -53,6 +53,7 @@ from .core.labels import (
     Polylines,
     Keypoint,
     Keypoints,
+    Segmentation,
     ImageLabels,
 )
 from .core.metadata import (

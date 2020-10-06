@@ -685,6 +685,31 @@ class Keypoints(ImageLabel):
         )
 
 
+class Segmentation(ImageLabel):
+    """A semantic segmentation mask for an image.
+
+    Args:
+        mask (None): a semantic segmentation mask, which should be a 2D NumPy
+            array with integer values encoding the semantic labels
+    """
+
+    meta = {"allow_inheritance": True}
+
+    mask = fof.ArrayField()
+
+    def to_image_labels(self, name=None):
+        """Returns an ``eta.core.image.ImageLabels`` representation of this
+        instance.
+
+        Args:
+            name (None): the name of the label field
+
+        Returns:
+            an ``eta.core.image.ImageLabels``
+        """
+        return etai.ImageLabels(mask=self.mask)
+
+
 class ImageLabels(ImageLabel):
     """A collection of multitask labels for an image sample in a
     :class:`fiftyone.core.dataset.Dataset`.
