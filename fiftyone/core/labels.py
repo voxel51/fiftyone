@@ -318,6 +318,7 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
             [<top-left-x>, <top-left-y>, <width>, <height>]
 
         confidence (None): a confidence in ``[0, 1]`` for the label
+        index (None): an index for the object
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
     """
@@ -327,6 +328,7 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
     label = fof.StringField()
     bounding_box = fof.ListField()
     confidence = fof.FloatField()
+    index = fof.IntField()
 
     def to_detected_object(self, name=None):
         """Returns an ``eta.core.objects.DetectedObject`` representation of
@@ -339,6 +341,7 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
             an ``eta.core.objects.DetectedObject``
         """
         label = self.label
+        index = self.index
 
         # pylint: disable=unpacking-non-sequence
         tlx, tly, w, h = self.bounding_box
@@ -353,6 +356,7 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
 
         return etao.DetectedObject(
             label=label,
+            index=index,
             bounding_box=bounding_box,
             confidence=confidence,
             name=name,
@@ -391,8 +395,9 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
 
         return cls(
             label=dobj.label,
-            confidence=dobj.confidence,
             bounding_box=bounding_box,
+            confidence=dobj.confidence,
+            index=dobj.index,
             attributes=attributes,
         )
 

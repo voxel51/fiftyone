@@ -232,7 +232,8 @@ class DatasetView(foc.SampleCollection):
                 `_` in the returned schema
 
         Returns:
-             a dictionary mapping field names to field types
+            a dictionary mapping field names to field types, or ``None`` if
+            the dataset is not a video dataset
         """
         return self._dataset.get_frames_field_schema(
             ftype=ftype,
