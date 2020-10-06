@@ -212,7 +212,8 @@ class SampleCollection(object):
                 `_` in the returned schema
 
         Returns:
-             a dictionary mapping field names to field types
+            a dictionary mapping field names to field types, or ``None`` if
+            the collection is not a video collection
         """
         raise NotImplementedError(
             "Subclass must implement get_frames_field_schema()"

@@ -435,8 +435,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 `_` in the returned schema
 
         Returns:
-             a dictionary mapping field names to field types
+            a dictionary mapping field names to field types, or ``None`` if
+            the dataset is not a video dataset
         """
+        if self.media_type != fom.VIDEO:
+            return None
+
         return self._frame_doc_cls.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
