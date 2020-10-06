@@ -810,7 +810,7 @@ class CVATImageBox(object):
         ytl: the top-left y-coordinate of the box, in pixels
         xbr: the bottom-right x-coordinate of the box, in pixels
         ybr: the bottom-right y-coordinate of the box, in pixels
-        occluded: whether the object is occluded
+        occluded (None): whether the object is occluded
         attributes (None): a list of :class:`CVATAttribute` instances
     """
 
@@ -941,7 +941,7 @@ class CVATTrack(object):
     """An annotated object track in CVAT video format.
 
     Args:
-        id: the int ID of the track
+        id: the ID of the track
         label: the label for the track
         width: the width of the video frames, in pixels
         height: the height of the video frames, in pixels
@@ -979,6 +979,7 @@ class CVATTrack(object):
         :class:`fiftyone.core.labels.Detection` instances.
 
         Args:
+            id: the ID of the track
             detections: a dict mapping frame numbers to
                 :class:`fiftyone.core.labels.Detection` instances
             frame_size: the ``(width, height)`` of the video frames
