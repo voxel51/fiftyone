@@ -2354,12 +2354,34 @@ class VideoSampleTests(unittest.TestCase):
             for idx, frame in enumerate(sample.frames.values()):
                 self.assertEqual(frame["label"], idx + 1)
 
-        f = fo.Frame()
+        f = fo.Frame(frame_number=2)
         f["frame_number"] = 1
         self.assertEqual(f.frame_number, 1)
         s = fo.Sample(filepath="video.mp4")
         s[2] = f
         self.assertEqual(s[2].frame_number, 2)
+
+    def test_frame(self):
+        d = fo.Dataset()
+        s = fo.Sample(filepath="video.mp4")
+        label = "label"
+        new_label = "new label"
+        s[1]["label"] = label
+        s[1].save()
+        self.assertEqual(s[1]["label"], label)
+        s[1].save()
+        s[1]["label"] = new_label
+        self.assertEqual(s[1]["label"], new_label)
+        d.add_sample(s)
+        self.assertEqual(s[1]["label"], new_label)
+        s[1].save()
+        self.assertEqual(s[1]["label"], new_label)
+        for f in s:
+            self.assertEqual(s[f]["label"], new_label)
+        s[1]["label"] = label
+        s[1].save()
+        for f in s:
+            self.assertEqual(s[f]["label"], label)
 
 
 if __name__ == "__main__":
