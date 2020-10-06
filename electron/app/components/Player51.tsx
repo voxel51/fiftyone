@@ -86,6 +86,7 @@ export default ({
           ...defaultOverlayOptions,
           action: "hover",
           attrRenderMode: "attr-value",
+          smoothMasks: false,
         },
       });
     } catch (e) {
