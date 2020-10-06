@@ -190,7 +190,7 @@ class ImageLabel(Label):
         raise NotImplementedError("Subclass must implement to_image_labels()")
 
 
-class Classification(ImageLabel):
+class Classification(ImageLabel, _HasID):
     """A classification label.
 
     Args:
@@ -400,10 +400,6 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
             index=dobj.index,
             attributes=attributes,
         )
-
-    def _get_repr_fields(self):
-        # pylint: disable=no-member
-        return ("id",) + self._fields_ordered
 
 
 class Detections(ImageLabel):
