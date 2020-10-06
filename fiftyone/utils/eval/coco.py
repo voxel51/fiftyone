@@ -70,7 +70,7 @@ def evaluate_detections(
         Predictions:    detection.<gt_field>_eval
 
     In addition, true positive (TP), false positive (FP), and false negative
-    (FN) counts at the specified ``save_iou`` are saved in the following
+    (FN) counts at the specified ``sample_iou`` are saved in the following
     top-level fields of each sample::
 
         TP: sample.tp_iou_<sample_iou>
