@@ -1209,7 +1209,7 @@ class SampleCollection(object):
         # @todo support serializing video datasets?
         # That would be a lot of labels to store in one JSON......
         if self.media_type == fom.VIDEO:
-            raise ValueError("Serializing video datasets is not yet supported")
+            raise ValueError("Serializing video datasets is not supported")
 
         if rel_dir is not None:
             rel_dir = (
@@ -1221,11 +1221,11 @@ class SampleCollection(object):
         samples = []
         with fou.ProgressBar() as pb:
             for sample in pb(self):
-                sd = sample.to_dict()
-                if rel_dir and sd["filepath"].startswith(rel_dir):
-                    sd["filepath"] = sd["filepath"][len_rel_dir:]
+                d = sample.to_dict()
+                if rel_dir and d["filepath"].startswith(rel_dir):
+                    d["filepath"] = d["filepath"][len_rel_dir:]
 
-                samples.append(sd)
+                samples.append(d)
 
         return {
             "name": self.name,
