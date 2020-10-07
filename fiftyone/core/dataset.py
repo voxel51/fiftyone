@@ -254,9 +254,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if media_type not in fom.MEDIA_TYPES:
             raise ValueError(
-                'media_type can only be one of "image" or "video". Received "%s"'
-                % media_type
+                'media_type can only be one of %s; received "%s"'
+                % (fom.MEDIA_TYPES, media_type)
             )
+
         self._doc.media_type = media_type
 
         self._doc.save()
