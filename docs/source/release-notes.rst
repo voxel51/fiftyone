@@ -20,7 +20,8 @@ App
 Core
 ^^^^
 - Added support for storing :class:`keypoints <fiftyone.core.labels.Keypoint>`,
-  :class:`polylines and polygons <fiftyone.core.labels.Polyline>` on samples
+  :class:`polylines <fiftyone.core.labels.Polyline>`, and
+  :class:`polygons <fiftyone.core.labels.Polygon>` on samples
 - Added support for setting an `index` attribute on |Detection| instances that
   defines a unique identifier for an object (e.g., across frames of a video)
 - Added support for :ref:`importing <YOLODataset-import>` and
