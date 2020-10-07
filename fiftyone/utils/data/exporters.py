@@ -20,6 +20,7 @@ import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
+import fiftyone.core.media as fomm
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
 
@@ -718,14 +719,17 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
         super().__init__(export_dir)
         self.pretty_print = pretty_print
         self._data_dir = None
+        self._frame_labels_dir = None
         self._metadata_path = None
         self._samples_path = None
         self._metadata = None
         self._samples = None
         self._filename_maker = None
+        self._is_video_dataset = False
 
     def setup(self):
         self._data_dir = os.path.join(self.export_dir, "data")
+        self._frame_labels_dir = os.path.join(self.export_dir, "frames")
         self._metadata_path = os.path.join(self.export_dir, "metadata.json")
         self._samples_path = os.path.join(self.export_dir, "samples.json")
         self._metadata = {}
@@ -735,19 +739,34 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
         )
 
     def log_collection(self, sample_collection):
+        self._is_video_dataset = sample_collection.media_type == fomm.VIDEO
+
         self._metadata["name"] = sample_collection.name
-        self._metadata[
-            "sample_fields"
-        ] = sample_collection._serialize_field_schema()
+        self._metadata["media_type"] = sample_collection.media_type
+
+        schema = sample_collection._serialize_field_schema()
+        self._metadata["sample_fields"] = schema
+
+        if self._is_video_dataset:
+            schema = sample_collection._serialize_frames_field_schema()
+            self._metadata["frame_fields"] = schema
+
         self._metadata["info"] = sample_collection.info
 
     def export_sample(self, sample):
         out_filepath = self._filename_maker.get_output_path(sample.filepath)
         etau.copy_file(sample.filepath, out_filepath)
 
-        d = sample.to_dict()
-        d["filepath"] = os.path.relpath(out_filepath, self.export_dir)
-        self._samples.append(d)
+        sd = sample.to_dict()
+        sd["filepath"] = os.path.relpath(out_filepath, self.export_dir)
+
+        if self._is_video_dataset:
+            # Serialize frame labels separately
+            uuid = os.path.splitext(os.path.basename(out_filepath))[0]
+            outpath = self._export_frame_labels(sample, uuid)
+            sd["frames"] = os.path.relpath(outpath, self.export_dir)
+
+        self._samples.append(sd)
 
     def close(self, *args):
         samples = {"samples": self._samples}
@@ -757,6 +776,17 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
         etas.write_json(
             samples, self._samples_path, pretty_print=self.pretty_print
         )
+
+    def _export_frame_labels(self, sample, uuid):
+        frames = {}
+        for frame_number, frame in sample.frames.items():
+            frames[str(frame_number)] = frame.to_dict()
+
+        frames_dict = {"frames": frames}
+        outpath = os.path.join(self._frame_labels_dir, uuid + ".json")
+        etas.write_json(frames_dict, outpath, pretty_print=self.pretty_print)
+
+        return outpath
 
 
 class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
