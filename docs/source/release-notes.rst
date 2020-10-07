@@ -10,7 +10,7 @@ FiftyOne 0.6.1
 App
 ^^^
 - Added support for visualizing keypoints, polylines, and segmentation masks
-- Added support for selecting `SortBy` fields from an autocomplete dropdown
+- Added autocompletion when selecting `SortBy` fields in the view bar
 - Added support for viewing `index` fields of |Detection| labels in the media
   viewer, if present
 - Fixed counting of |Classifications| fields in the expanded sample view
