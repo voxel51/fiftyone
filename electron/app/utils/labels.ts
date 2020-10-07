@@ -1,11 +1,30 @@
-export const VALID_OBJECT_TYPES = ["Detection", "Detections"];
+export const VALID_OBJECT_TYPES = [
+  "Detection",
+  "Detections",
+  "Keypoint",
+  "Keypoints",
+  "Polyline",
+  "Polylines",
+];
 export const VALID_CLASS_TYPES = ["Classification", "Classifications"];
 export const VALID_MASK_TYPES = ["Segmentation"];
-export const VALID_LIST_TYPES = ["Classifications", "Detections"];
+export const VALID_LIST_TYPES = [
+  "Classifications",
+  "Detections",
+  "Keypoints",
+  "Polylines",
+];
 export const VALID_LABEL_TYPES = [
   ...VALID_CLASS_TYPES,
   ...VALID_OBJECT_TYPES,
   ...VALID_MASK_TYPES,
+];
+
+export const FILTERABLE_TYPES = [
+  "Classification",
+  "Classifications",
+  "Detection",
+  "Detections",
 ];
 
 export const VALID_SCALAR_TYPES = [
@@ -64,10 +83,7 @@ export const labelTypeHasColor = (labelType) => {
 };
 
 export const labelTypeIsFilterable = (labelType) => {
-  return (
-    VALID_OBJECT_TYPES.includes(labelType) ||
-    VALID_CLASS_TYPES.includes(labelType)
-  );
+  return FILTERABLE_TYPES.includes(labelType);
 };
 
 export const getLabelText = (label) => {
@@ -196,6 +212,38 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
       };
     },
   },
+  Keypoint: {
+    key: "keypoints",
+    convert: (name, obj) => {
+      return {
+        name,
+        label: obj.label,
+        points: obj.points,
+      };
+    },
+  },
+  Polyline: {
+    key: "polylines",
+    convert: (name, obj) => {
+      return {
+        name,
+        label: obj.label,
+        points: obj.points,
+        closed: Boolean(obj.closed),
+        filled: Boolean(obj.filled),
+      };
+    },
+  },
+};
+
+const _addToETAContainer = (obj, key, item) => {
+  if (!obj[key]) {
+    obj[key] = {};
+  }
+  if (!obj[key][key]) {
+    obj[key][key] = [];
+  }
+  obj[key][key].push(item);
 };
 
 export const convertSampleToETA = (sample, fieldSchema) => {
@@ -203,8 +251,6 @@ export const convertSampleToETA = (sample, fieldSchema) => {
     return JSON.parse(JSON.stringify(sample._eta_labels));
   }
   const imgLabels = {
-    attrs: { attrs: [] },
-    objects: { objects: [] },
     masks: [],
   };
   const sampleFields = Object.keys(sample).sort();
@@ -216,11 +262,11 @@ export const convertSampleToETA = (sample, fieldSchema) => {
     if (field === null || field === undefined) continue;
     if (FIFTYONE_TO_ETA_CONVERTERS.hasOwnProperty(field._cls)) {
       const { key, convert } = FIFTYONE_TO_ETA_CONVERTERS[field._cls];
-      imgLabels[key][key].push(convert(sampleField, field));
-    } else if (["Classifications", "Detections"].includes(field._cls)) {
+      _addToETAContainer(imgLabels, key, convert(sampleField, field));
+    } else if (VALID_LIST_TYPES.includes(field._cls)) {
       for (const object of field[field._cls.toLowerCase()]) {
         const { key, convert } = FIFTYONE_TO_ETA_CONVERTERS[object._cls];
-        imgLabels[key][key].push(convert(sampleField, object));
+        _addToETAContainer(imgLabels, key, convert(sampleField, object));
       }
       continue;
     } else if (VALID_MASK_TYPES.includes(field._cls)) {
@@ -229,7 +275,7 @@ export const convertSampleToETA = (sample, fieldSchema) => {
         mask: field.mask,
       });
     } else if (VALID_SCALAR_TYPES.includes(fieldSchema[sampleField])) {
-      imgLabels.attrs.attrs.push({
+      _addToETAContainer(imgLabels, "attrs", {
         name: sampleField,
         value: stringify(field),
       });

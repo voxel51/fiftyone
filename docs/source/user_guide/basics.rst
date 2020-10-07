@@ -263,6 +263,8 @@ FiftyOne provides a |Label| subclass for common tasks:
 - :ref:`Classifications <multilabel-classification>`: a list of classifications
   (typically for multilabel tasks)
 - :ref:`Detections <object-detection>`: a list of object detections
+- :ref:`Polylines <polylines>`: a list of polylines or polygons in an image
+- :ref:`Keypoints <keypoints>`: a list of keypoints in an image
 - :ref:`Segmentation <semantic-segmentation>`: a semantic segmentation mask for
   an image
 - :ref:`ImageLabels <multitask-predictions>`: a generic collection of multitask
