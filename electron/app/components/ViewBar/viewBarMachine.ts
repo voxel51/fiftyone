@@ -137,6 +137,7 @@ function setStages(ctx, stageInfo) {
           const stageInfoResult = stageInfo.filter(
             (s) => s.name === stageName
           )[0];
+
           return createParameter(
             ctx.fieldNames,
             stageName,

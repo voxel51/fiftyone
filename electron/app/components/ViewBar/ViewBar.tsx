@@ -63,6 +63,7 @@ const ViewBar = React.memo(() => {
   const [stateDescriptionValue, setStateDescription] = useRecoilState(
     stateDescription
   );
+
   const portValue = useRecoilValue(port);
 
   useEffect(() => {

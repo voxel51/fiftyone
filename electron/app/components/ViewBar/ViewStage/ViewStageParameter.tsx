@@ -309,7 +309,7 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
   } = state.context;
   const hasObjectType = typeof type === "string" && type.includes("dict");
 
-  const hasExpansion = state.context.type === "dict|field";
+  const hasExpansion = state.context.type === "dict|str";
   const isObjectEditor = hasObjectType && (!hasExpansion || expanded);
   useEffect(() => {
     if (!hasExpansion || expanded) return;
@@ -425,19 +425,16 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
           </ViewStageParameterDiv>
         )}
       </ViewStageParameterContainer>
-      {state.matches("editing") &&
-        barRef.current &&
-        containerRef.current &&
-        !expanded && (
-          <SearchResults
-            results={results}
-            send={send}
-            currentResult={currentResult}
-            bestMatch={bestMatch.value}
-            followRef={containerRef}
-            barRef={barRef}
-          />
-        )}
+      {state.matches("editing") && barRef.current && containerRef.current && (
+        <SearchResults
+          results={results}
+          send={send}
+          currentResult={currentResult}
+          bestMatch={bestMatch.value}
+          followRef={containerRef}
+          barRef={barRef}
+        />
+      )}
       {!hasObjectType && containerRef.current && (
         <ErrorMessage
           key="error"
