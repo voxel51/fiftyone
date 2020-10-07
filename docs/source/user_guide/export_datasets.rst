@@ -1633,7 +1633,7 @@ The :class:`fiftyone.types.FiftyOneDataset <fiftyone.types.dataset_types.FiftyOn
 provides a disk representation of a |Dataset|, including its |Sample| instances
 stored in a serialized JSON format, and the associated source data.
 
-Datasets of this type are exported in the following format:
+Non-video datasets of this type are exported in the following format:
 
 .. code-block:: text
 
