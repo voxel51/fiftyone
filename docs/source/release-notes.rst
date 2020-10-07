@@ -3,6 +3,34 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne 0.6.1
+--------------
+*Released October 7, 2020*
+
+App
+^^^
+- Added support for visualizing keypoints, polylines, and segmentation masks
+- Added |Detection| `index` fields in the media viewer, if present
+- Fixed counting of |Classifications| fields in the expanded sample view
+
+Core
+^^^^
+- Added support for storing keypoints, polylines, and segmentation masks on
+  samples
+- Added support for importing and exporting datasets in YOLO format and CVAT
+  video format
+- Added frame field schemas to dataset string representations
+
+CLI
+^^^
+- Added options to `fiftyone datasets delete <cli-fiftyone-datasets-delete>` to
+  delete all datasets matching a pattern and all non-persistent datasets
+
+Documentation
+^^^^^^^^^^^^^
+- Added a recipe for :doc:`merging datasets </recipes/merge_datasets>`
+- Fixed some table widths and other display issues
+
 FiftyOne 0.6.0
 --------------
 *Released October 1, 2020*
