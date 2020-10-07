@@ -189,7 +189,7 @@ export default Machine(
             prevValue: ({ value }) => value,
             focusOnInit: false,
             results: ({ type, fieldNames, value }) =>
-              type === "field"
+              ["field", "dict|field"].includes(type)
                 ? fieldNames.filter((f) =>
                     f.toLowerCase().startsWith(value.toLowerCase())
                   )
@@ -220,7 +220,7 @@ export default Machine(
                 value: (_, { value }) => value,
                 errorId: undefined,
                 results: ({ type, fieldNames }, { value }) =>
-                  type === "field"
+                  ["field", "dict|field"].includes(type)
                     ? fieldNames.filter((f) =>
                         f.toLowerCase().startsWith(value.toLowerCase())
                       )

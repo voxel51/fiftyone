@@ -36,7 +36,6 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
     color: ${({ theme }) => theme.font};
     line-height: 1rem;
     font-weight: bold;
-    min-width: 2rem;
   }
 
   & > input:focus {
@@ -426,16 +425,19 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
           </ViewStageParameterDiv>
         )}
       </ViewStageParameterContainer>
-      {state.matches("editing") && barRef.current && containerRef.current && (
-        <SearchResults
-          results={results}
-          send={send}
-          currentResult={currentResult}
-          bestMatch={bestMatch.value}
-          followRef={containerRef}
-          barRef={barRef}
-        />
-      )}
+      {state.matches("editing") &&
+        barRef.current &&
+        containerRef.current &&
+        !expanded && (
+          <SearchResults
+            results={results}
+            send={send}
+            currentResult={currentResult}
+            bestMatch={bestMatch.value}
+            followRef={containerRef}
+            barRef={barRef}
+          />
+        )}
       {!hasObjectType && containerRef.current && (
         <ErrorMessage
           key="error"
