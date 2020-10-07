@@ -3,6 +3,7 @@ import { animated, useSpring } from "react-spring";
 import styled, { ThemeContext } from "styled-components";
 import { useService } from "@xstate/react";
 import AutosizeInput from "react-input-autosize";
+import { ArrowDropDown } from "@material-ui/icons";
 
 import { BestMatchDiv } from "./BestMatch";
 import { PARSER } from "./viewStageParameterMachine";
@@ -278,9 +279,9 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
   const [stageState] = useService(stageRef);
   const inputRef = useRef();
   const [containerRef, setContainerRef] = useState({});
+  const [expanded, setExpanded] = useState(false);
 
   const {
-    tail,
     type,
     value,
     active,
@@ -290,9 +291,11 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
   } = state.context;
   const hasObjectType = typeof type === "string" && type.includes("dict");
 
+  const needsExpansion = state.context.type === "dict|field";
+
   const props = useSpring({
     backgroundColor:
-      state.matches("editing") && hasObjectType
+      state.matches("editing") && hasObjectType && (!needsExpansion || expanded)
         ? theme.backgroundDark
         : state.matches("reading.submitted")
         ? theme.backgroundLight
@@ -302,8 +305,11 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
       active && stageState.matches("focusedViewBar.yes")
         ? theme.brand
         : theme.fontDarkest,
-    height: hasObjectType && state.matches("editing") ? 200 : 34,
-    borderWidth: hasObjectType ? 0 : 1,
+    height:
+      hasObjectType && (!needsExpansion || expanded) && state.matches("editing")
+        ? 200
+        : 34,
+    borderWidth: hasObjectType && (!needsExpansion || expanded) ? 0 : 1,
     borderRightWidth: 0,
     opacity: 1,
     from: {
@@ -326,7 +332,7 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
           setContainerRef({ current: node })
         }
       >
-        {hasObjectType ? (
+        {hasObjectType && (!needsExpansion || expanded) ? (
           <ObjectEditor
             parameterRef={parameterRef}
             barRef={barRef}
@@ -382,6 +388,16 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
             <BestMatchDiv>
               {bestMatch ? bestMatch.placeholder : ""}
             </BestMatchDiv>
+            {needsExpansion && isEditing && (
+              <ArrowDropDown
+                style={{
+                  cursor: "pointer",
+                  color: theme.font,
+                  marginTop: "0.2em",
+                }}
+                onClick={() => setExpanded(true)}
+              />
+            )}
           </ViewStageParameterDiv>
         )}
       </ViewStageParameterContainer>
