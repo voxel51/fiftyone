@@ -3,7 +3,7 @@ import { animated, useSpring } from "react-spring";
 import styled, { ThemeContext } from "styled-components";
 import { useService } from "@xstate/react";
 import AutosizeInput from "react-input-autosize";
-import { ArrowType } from "@material-ui/icons";
+import { ArrowDropDown } from "@material-ui/icons";
 
 import { BestMatchDiv } from "./BestMatch";
 import { PARSER } from "./viewStageParameterMachine";
@@ -389,7 +389,7 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
               {bestMatch ? bestMatch.placeholder : ""}
             </BestMatchDiv>
             {needsExpansion && isEditing && (
-              <ArrowType
+              <ArrowDropDown
                 style={{
                   cursor: "pointer",
                   color: theme.font,
