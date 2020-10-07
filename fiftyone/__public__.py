@@ -7,11 +7,9 @@ FiftyOne's public interface.
 """
 import fiftyone.core.config as foc
 import fiftyone.core.service as fos
-import fiftyone.migrations as fom
 
 _database_service = fos.DatabaseService()
 config = foc.load_config()
-fom.migrate_if_necessary()
 
 from .core.dataset import (
     Dataset,

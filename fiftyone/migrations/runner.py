@@ -43,9 +43,6 @@ class Runner(object):
             fn = etau.get_function(action, module)
             fn(connection, "")
 
-        head_json = {"head": self.destination}
-        # etas.write_json(head_json, foc.MIGRATIONS_HEAD_PATH)
-
     def _get_revisions_to_run(self):
         revision_strings = list(map(lambda rt: rt[0], self.revisions))
         if self.destination is None:
@@ -84,21 +81,9 @@ def _get_revisions():
         )
     )
 
-
-def _load_head():
-    head_path = foc.MIGRATIONS_HEAD_PATH
-
-    if os.path.isfile(head_path):
-        head_json = etas.load_json(foc.MIGRATIONS_HEAD_PATH)
-        return head_json["head"]
-
-    return None
-
-
-def migrate_if_necessary():
-    """Migrates all backing collections for datasets to the latest revision"""
+def migrate(dataset_name):
+    """Migrates a single dataset to the latest revision"""
     revisions = _get_revisions()
-    head = _load_head()
     latest_revision, _ = revisions[-1]
     if head is None or head < latest_revision:
         Runner(

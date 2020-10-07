@@ -8,7 +8,7 @@ FiftyOne v0.6.2 revisions
 import pymongo as pm
 
 
-def up(conn, sample_collection_names):
+def up(conn, dataset_name):
     colls = set(conn.collection_names())
     for c in colls:
         if c.startswith("frames.") and ".".join(c.split(".")[1:]) not in colls:
@@ -17,5 +17,5 @@ def up(conn, sample_collection_names):
     colls = set(conn.collection_names())
 
 
-def down(conn, sample_collection_names):
+def down(conn, dataset_name):
     print("down")

@@ -14,6 +14,7 @@ from mongoengine import (
 
 import eta.core.utils as etau
 
+import fiftyone.constants as foc
 from .document import Document, EmbeddedDocument
 
 
@@ -105,3 +106,4 @@ class DatasetDocument(Document):
         document_type=SampleFieldDocument
     )
     frame_fields = EmbeddedDocumentListField(document_type=SampleFieldDocument)
+    version = StringField(default=foc.Version
