@@ -46,10 +46,12 @@ if [[ ${STATIC_ONLY} = true ]]; then
 fi
 
 FIFTYONE_BRAIN_DIR=$( \
-    python -c "import os, fiftyone.brain as fob; print(os.path.dirname(fob.__file__))" || \
-    (echo "fiftyone-brain not installed" >&2; exit 1)
+    python -c "import os, fiftyone.brain as fob; print(os.path.dirname(fob.__file__))"
 )
-
+if [[ -z "${FIFTYONE_BRAIN_DIR}" ]] || [[ ! -d "${FIFTYONE_BRAIN_DIR}" ]]; then
+    echo "fiftyone-brain not installed" >&2
+    exit 1
+fi
 
 if [[ ${CLEAN_BUILD} = true ]]; then
     echo "**** Deleting existing build directories ****"
