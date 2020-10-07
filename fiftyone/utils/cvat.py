@@ -729,7 +729,7 @@ class CVATImage(object):
         boxes (None): a list of :class:`CVATImageBox` instances
         polylines (None): a list of :class:`CVATImagePolyline` instances
         polygons (None): a list of :class:`CVATImagePolygon` instances
-        points (None): a list of :class:`CVATImagePoints` instances
+        keypoints (None): a list of :class:`CVATImageKeypoint` instances
     """
 
     def __init__(
@@ -741,7 +741,7 @@ class CVATImage(object):
         boxes=None,
         polylines=None,
         polygons=None,
-        points=None,
+        keypoints=None,
     ):
         self.id = id
         self.name = name
@@ -750,7 +750,7 @@ class CVATImage(object):
         self.boxes = boxes or []
         self.polylines = polylines or []
         self.polygons = polygons or []
-        self.points = points or []
+        self.keypoints = keypoints or []
 
     def get_image_metadata(self):
         """Returns a :class:`fiftyone.core.metadata.ImageMetadata` instance for
@@ -964,14 +964,33 @@ class CVATTrack(object):
         height: the height of the video frames, in pixels
         boxes (None): a dict mapping frame numbers to :class:`CVATVideoBox`
             instances
+        polylines (None): a dict mapping frame numbers to
+            :class:`CVATVideoPolyline` instances
+        polygons (None): a dict mapping frame numbers to
+            :class:`CVATVideoPolygon` instances
+        keypoints (None): a dict mapping frame numbers to
+            :class:`CVATVideoKeypoint` instances
     """
 
-    def __init__(self, id, label, width, height, boxes=None):
+    def __init__(
+        self,
+        id,
+        label,
+        width,
+        height,
+        boxes=None,
+        polylines=None,
+        polygons=None,
+        keypoints=None,
+    ):
         self.id = id
         self.label = label
         self.width = width
         self.height = height
         self.boxes = boxes or {}
+        self.polylines = polylines or {}
+        self.polygons = polygons or {}
+        self.keypoints = keypoints or {}
 
     def to_detections(self):
         """Returns a :class:`fiftyone.core.labels.Detection` representation of

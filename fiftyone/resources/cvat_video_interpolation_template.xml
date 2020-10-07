@@ -55,6 +55,27 @@
 {% endfor %}
         </box>
 {% endfor %}
+{% for frame, polygon in track.polygons|dictsort %}
+        <polygon frame="{{ frame }}" points="{{ polygon.points }}"{% if polygon.outside is not none %} outside="{{ polygon.outside }}" {%endif %}{% if polygon.occluded is not none %} occluded="{{ polygon.occluded }}" {%endif %}{% if polygon.keyframe is not none %} keyframe="{{ polygon.keyframe }}" {%endif %}>
+{% for attr in polygon.attributes %}
+            <attribute name="{{ attr.name }}">{{ attr.value }}</attribute>
+{% endfor %}
+        </polygon>
+{% endfor %}
+{% for frame, polyline in track.polylines|dictsort %}
+        <polyline frame="{{ frame }}" points="{{ polyline.points }}"{% if polyline.outside is not none %} outside="{{ polyline.outside }}" {%endif %}{% if polyline.occluded is not none %} occluded="{{ polyline.occluded }}" {%endif %}{% if polyline.keyframe is not none %} keyframe="{{ polyline.keyframe }}" {%endif %}>
+{% for attr in polyline.attributes %}
+            <attribute name="{{ attr.name }}">{{ attr.value }}</attribute>
+{% endfor %}
+        </polyline>
+{% endfor %}
+{% for frame, keypoint in track.keypoints|dictsort %}
+        <points frame="{{ frame }}" points="{{ keypoint.points }}"{% if keypoint.outside is not none %} outside="{{ keypoint.outside }}" {%endif %}{% if keypoint.occluded is not none %} occluded="{{ keypoint.occluded }}" {%endif %}{% if keypoint.keyframe is not none %} keyframe="{{ keypoint.keyframe }}" {%endif %}>
+{% for attr in keypoint.attributes %}
+            <attribute name="{{ attr.name }}">{{ attr.value }}</attribute>
+{% endfor %}
+        </points>
+{% endfor %}
     </track>
 {% endfor %}
 </annotations>
