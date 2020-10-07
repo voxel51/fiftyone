@@ -81,6 +81,7 @@ def _get_revisions():
         )
     )
 
+
 def migrate(dataset_name):
     """Migrates a single dataset to the latest revision"""
     revisions = _get_revisions()
