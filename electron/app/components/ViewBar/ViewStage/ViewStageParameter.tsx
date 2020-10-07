@@ -71,6 +71,7 @@ const ObjectEditorTextArea = animated(styled.textarea`
   height: 100%;
   font-size: 14px;
   will-change: tranform;
+  resize: none;
 
   &::-webkit-scrollbar {
     width: 0px;
