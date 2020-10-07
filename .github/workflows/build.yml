@@ -118,6 +118,7 @@ jobs:
         env:
           PIP_INDEX_URL: https://voxel51-ci@pypi.voxel51.com
         run: |
+          echo "Upgrading ETA because github.ref = ${{ github.ref }} (not a release)"
           pip install -U "voxel51-eta>=0.dev0"
       - name: Install test dependencies (non-Windows)
         if: ${{ !startsWith(matrix.os, 'windows') }}
