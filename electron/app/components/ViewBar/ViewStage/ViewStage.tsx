@@ -32,7 +32,7 @@ const ViewStageInput = styled(AuosizeInput)`
   & input {
     background-color: transparent;
     border: none;
-    margin: 0.5rem 0 0.5rem 0.5rem;
+    padding: 0.5rem 0 0.5rem 0.5rem;
     color: ${({ theme }) => theme.font};
     line-height: 1rem;
     border: none;

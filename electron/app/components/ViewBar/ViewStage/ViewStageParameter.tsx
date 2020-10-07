@@ -3,6 +3,7 @@ import { animated, useSpring } from "react-spring";
 import styled, { ThemeContext } from "styled-components";
 import { useService } from "@xstate/react";
 import AutosizeInput from "react-input-autosize";
+import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
 
 import { BestMatchDiv } from "./BestMatch";
 import { PARSER } from "./viewStageParameterMachine";
@@ -31,7 +32,7 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
   & > input {
     background-color: transparent;
     border: none;
-    margin: 0.5rem 0 0.5rem 0.5rem;
+    padding: 0.5rem 0 0.5rem 0.5rem;
     color: ${({ theme }) => theme.font};
     line-height: 1rem;
     font-weight: bold;
@@ -59,6 +60,7 @@ const ObjectEditorContainer = animated(styled.div`
   border-style: solid;
   z-index: 800;
   will-change: transform;
+  min-width: 2rem;
 `);
 
 const ObjectEditorTextArea = animated(styled.textarea`
@@ -70,6 +72,7 @@ const ObjectEditorTextArea = animated(styled.textarea`
   height: 100%;
   font-size: 14px;
   will-change: tranform;
+  resize: none;
 
   &::-webkit-scrollbar {
     width: 0px;
@@ -142,6 +145,8 @@ const ObjectEditor = ({
   followRef,
   inputRef,
   stageRef,
+  onClose,
+  hasExpansion,
 }) => {
   const [state, send] = useService(parameterRef);
   const [stageState] = useService(stageRef);
@@ -175,6 +180,7 @@ const ObjectEditor = ({
   useOutsideClick(containerRef, (e) => {
     e.stopPropagation();
     send("BLUR");
+    onClose();
   });
 
   useEffect(() => {
@@ -254,11 +260,24 @@ const ObjectEditor = ({
               onKeyDown={(e) => {
                 if (["Escape", "Tab"].includes(e.key)) {
                   send("COMMIT");
+                  onClose();
                 }
               }}
               value={value}
               ref={inputRef}
             ></ObjectEditorTextArea>
+            {hasExpansion && (
+              <ArrowDropUp
+                style={{
+                  cursor: "pointer",
+                  color: theme.font,
+                  marginTop: "0.2em",
+                  position: "absolute",
+                  right: "0.2rem",
+                }}
+                onClick={onClose}
+              />
+            )}
             <Submit key="submit" send={send} />
           </>
         )}
@@ -278,9 +297,9 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
   const [stageState] = useService(stageRef);
   const inputRef = useRef();
   const [containerRef, setContainerRef] = useState({});
+  const [expanded, setExpanded] = useState(false);
 
   const {
-    tail,
     type,
     value,
     active,
@@ -290,20 +309,29 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
   } = state.context;
   const hasObjectType = typeof type === "string" && type.includes("dict");
 
+  const hasExpansion = state.context.type === "dict|str";
+  const isObjectEditor = hasObjectType && (!hasExpansion || expanded);
+  useEffect(() => {
+    if (!hasExpansion || expanded) return;
+    try {
+      JSON.parse(value);
+      setExpanded(true);
+    } catch {}
+  }, [value]);
+
   const props = useSpring({
-    backgroundColor:
-      state.matches("editing") && hasObjectType
-        ? theme.backgroundDark
-        : state.matches("reading.submitted")
-        ? theme.backgroundLight
-        : theme.background,
+    backgroundColor: state.matches("editing")
+      ? theme.backgroundDark
+      : state.matches("reading.submitted")
+      ? theme.backgroundLight
+      : theme.background,
     borderStyle: "solid",
     borderColor:
       active && stageState.matches("focusedViewBar.yes")
         ? theme.brand
         : theme.fontDarkest,
-    height: hasObjectType && state.matches("editing") ? 200 : 34,
-    borderWidth: hasObjectType ? 0 : 1,
+    height: isObjectEditor && state.matches("editing") ? 200 : 34,
+    borderWidth: isObjectEditor ? 0 : 1,
     borderRightWidth: 0,
     opacity: 1,
     from: {
@@ -326,13 +354,15 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
           setContainerRef({ current: node })
         }
       >
-        {hasObjectType ? (
+        {isObjectEditor ? (
           <ObjectEditor
             parameterRef={parameterRef}
             barRef={barRef}
             followRef={containerRef}
             inputRef={inputRef}
             stageRef={stageRef}
+            onClose={() => hasExpansion && setExpanded(false)}
+            hasExpansion={hasExpansion}
           />
         ) : (
           <ViewStageParameterDiv style={props}>
@@ -382,6 +412,16 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
             <BestMatchDiv>
               {bestMatch ? bestMatch.placeholder : ""}
             </BestMatchDiv>
+            {hasExpansion && isEditing && (
+              <ArrowDropDown
+                style={{
+                  cursor: "pointer",
+                  color: theme.font,
+                  marginTop: "0.2em",
+                }}
+                onClick={() => setExpanded(true)}
+              />
+            )}
           </ViewStageParameterDiv>
         )}
       </ViewStageParameterContainer>

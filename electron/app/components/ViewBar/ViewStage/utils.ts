@@ -1,4 +1,5 @@
 export const computeBestMatchString = (options, value) => {
+  value = value || "";
   const match = options.filter((n) =>
     n.toLowerCase().startsWith(value.toLowerCase())
   )[0];
