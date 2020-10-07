@@ -94,6 +94,11 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement name")
 
     @property
+    def media_type(self):
+        """The media type of the collection."""
+        raise NotImplementedError("Subclass must implement media_type")
+
+    @property
     def info(self):
         """The :meth:`fiftyone.core.dataset.Dataset.info` dict of the dataset
         underlying the collection.
@@ -1201,6 +1206,11 @@ class SampleCollection(object):
         Returns:
             a JSON dict
         """
+        # @todo support serializing video datasets?
+        # That would be a lot of labels to store in one JSON......
+        if self.media_type == fom.VIDEO:
+            raise ValueError("Serializing video datasets is not yet supported")
+
         if rel_dir is not None:
             rel_dir = (
                 os.path.abspath(os.path.expanduser(rel_dir)) + os.path.sep
@@ -1211,11 +1221,11 @@ class SampleCollection(object):
         samples = []
         with fou.ProgressBar() as pb:
             for sample in pb(self):
-                d = sample.to_dict()
-                if rel_dir and d["filepath"].startswith(rel_dir):
-                    d["filepath"] = d["filepath"][len_rel_dir:]
+                sd = sample.to_dict()
+                if rel_dir and sd["filepath"].startswith(rel_dir):
+                    sd["filepath"] = sd["filepath"][len_rel_dir:]
 
-                samples.append(d)
+                samples.append(sd)
 
         return {
             "name": self.name,
@@ -1293,11 +1303,13 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement _add_view_stage()")
 
     def _serialize_field_schema(self):
-        field_schema = self.get_field_schema()
-        return {
-            field_name: str(field)
-            for field_name, field in field_schema.items()
-        }
+        return self._serialize_schema(self.get_field_schema())
+
+    def _serialize_frames_field_schema(self):
+        return self._serialize_schema(self.get_frames_field_schema())
+
+    def _serialize_schema(self, schema):
+        return {field_name: str(field) for field_name, field in schema.items()}
 
 
 def _get_random_characters(n):
