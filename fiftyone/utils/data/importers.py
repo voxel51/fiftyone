@@ -127,7 +127,10 @@ def import_samples(
                     "from a LabeledImageDatasetImporter"
                 )
 
-            if expand_schema and dataset_importer.label_cls is not None:
+            # @todo `label_cls` rewrite
+            if expand_schema and issubclass(
+                dataset_importer.label_cls, fol.Label
+            ):
                 # This has the benefit of ensuring that `label_field` exists,
                 # even if all of the imported samples are unlabeled (i.e.,
                 # return labels that are all `None`)
@@ -146,7 +149,10 @@ def import_samples(
                 )
 
                 if isinstance(label, dict):
-                    sample.update_fields(label)
+                    # @todo is this what we want to do?
+                    sample.update_fields(
+                        {label_field + "_" + k: v for k, v in label.items()}
+                    )
                 elif label is not None:
                     sample[label_field] = label
 

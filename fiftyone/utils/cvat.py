@@ -236,7 +236,8 @@ class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
 
     @property
     def label_cls(self):
-        return fol.Detections
+        # @todo is this how we want to handle this?
+        return (fol.Detections, fol.Polylines, fol.Keypoints)
 
     def setup(self):
         self._data_dir = os.path.join(self.dataset_dir, "data")
@@ -726,14 +727,30 @@ class CVATImage(object):
         width: the width of the image, in pixels
         height: the height of the image, in pixels
         boxes (None): a list of :class:`CVATImageBox` instances
+        polylines (None): a list of :class:`CVATImagePolyline` instances
+        polygons (None): a list of :class:`CVATImagePolygon` instances
+        points (None): a list of :class:`CVATImagePoints` instances
     """
 
-    def __init__(self, id, name, width, height, boxes=None):
+    def __init__(
+        self,
+        id,
+        name,
+        width,
+        height,
+        boxes=None,
+        polylines=None,
+        polygons=None,
+        points=None,
+    ):
         self.id = id
         self.name = name
         self.width = width
         self.height = height
         self.boxes = boxes or []
+        self.polylines = polylines or []
+        self.polygons = polygons or []
+        self.points = points or []
 
     def get_image_metadata(self):
         """Returns a :class:`fiftyone.core.metadata.ImageMetadata` instance for

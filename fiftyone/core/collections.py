@@ -1337,7 +1337,15 @@ def _get_default_label_field_for_exporter(sample_collection, dataset_exporter):
     #
 
     if isinstance(dataset_exporter, foud.LabeledImageDatasetExporter):
+        # @todo handle `label_cls` here
         label_cls = dataset_exporter.label_cls
+
+        if label_cls is None:
+            raise ValueError(
+                "Cannot select a default field when exporter does not provide "
+                "a `label_cls`"
+            )
+
         label_fields = sample_collection.get_field_schema(
             ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
         )

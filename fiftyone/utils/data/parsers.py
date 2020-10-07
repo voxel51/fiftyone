@@ -125,7 +125,8 @@ def add_labeled_images(
             )
         )
 
-    if expand_schema and sample_parser.label_cls is not None:
+    # @todo `label_cls` rewrite
+    if expand_schema and issubclass(sample_parser.label_cls, fol.Label):
         # This has the benefit of ensuring that `label_field` exists, even if
         # all of the parsed samples are unlabeled (i.e., return labels that are
         # all `None`)
@@ -150,7 +151,10 @@ def add_labeled_images(
         sample = fos.Sample(filepath=image_path, metadata=metadata, tags=tags)
 
         if isinstance(label, dict):
-            sample.update_fields(label)
+            # @todo is this what we want?
+            sample.update_fields(
+                {label_field + "_" + k: v for k, v in label.items()}
+            )
         elif label is not None:
             sample[label_field] = label
 
