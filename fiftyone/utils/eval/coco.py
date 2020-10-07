@@ -22,6 +22,7 @@ import logging
 
 import numpy as np
 
+import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
 
@@ -87,10 +88,10 @@ def evaluate_detections(
     logger.info("Evaluating detections...")
     with fou.ProgressBar() as pb:
         for sample in pb(samples):
-            if samples.media_type == "video":
+            # Get image(s) to process
+            if sample.media_type == fom.VIDEO:
                 images = sample.frames.values()
                 has_frames = True
-
             else:
                 images = [sample]
                 has_frames = False
