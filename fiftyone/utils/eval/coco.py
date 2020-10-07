@@ -33,19 +33,18 @@ def evaluate_detections(
     samples, pred_field, gt_field="ground_truth", iou=0.75,
 ):
     """Evaluates the predicted detections in the given samples with respect to
-    the specified ground truth detections the Intersection over Union (IoU)
-    threshold as specified by the iou kwarg.
+    the specified ground truth detections using the specified Intersection over
+    Union (IoU) threshold to determine matches.
 
-    It should be noted that if a :class:`fiftyone.core.labels.Detection` in the
-    ground truth field has a boolean attribute called `iscrowd`, then this
-    detection will be matched to multiple predictions and result in them all
-    being true positives, as per the evaluation strategy used by the COCO
-    authors.
+    This method uses COCO-style evaluation. In particular, this means that if a
+    :class:`fiftyone.core.labels.Detection` in the ground truth field has a
+    boolean attribute called ``iscrowd``, then this detection can have multiple
+    true positive predictions matched to it.
 
     Dictionaries are added to each predicted/ground truth
     :class:`fiftyone.core.labels.Detections` instance in the fields listed
     below; these fields tabulate the true positive (TP), false positive (FP),
-    and false negative (FN) counts for the sample at each IoU::
+    and false negative (FN) counts for the sample at the specified IoU::
 
         Ground truth:   detections.<pred_field>_eval
         Predictions:    detections.<gt_field>_eval
@@ -53,14 +52,14 @@ def evaluate_detections(
     Dictionaries are also added to each individual
     :class:`fiftyone.core.labels.Detection` instance in the fields listed
     below; these fields tabulate the IDs of the matching ground
-    truth/prediction for the detection at each IoU::
+    truth/prediction for the detection at the specified IoU::
 
         Ground truth:   detection.<pred_field>_eval
         Predictions:    detection.<gt_field>_eval
 
     In addition, true positive (TP), false positive (FP), and false negative
-    (FN) counts at the specified ``iou`` are saved in the following
-    top-level fields of each sample::
+    (FN) counts at the specified IoU are saved in the following top-level
+    fields of each sample::
 
         TP: sample.tp_iou_<iou>
         FP: sample.fp_iou_<iou>
@@ -181,8 +180,8 @@ def evaluate_detections(
                         pred_ious[preds[pind].id] = list(zip(gt_ids, gt_ious))
 
                 #
-                # Starting with highest confidence prediction, match all with gts
-                # Store true and false positives
+                # Starting with highest confidence prediction, match all with
+                # GTs. Store true and false positives
                 #
                 # Reference implementation:
                 # https://github.com/cocodataset/cocoapi/blob/8c9bcc3cf640524c4c20a9c40e89cb6a2f2fa0e9/PythonAPI/pycocotools/cocoeval.py#L273
@@ -275,12 +274,7 @@ def evaluate_detections(
                     "false_negatives"
                 ]
 
-            try:
-                sample.save()
-            except AttributeError:
-                import pdb
-
-                pdb.set_trace()
+            sample.save()
 
 
 def _compute_iou(pred_boxes, gt_boxes, iscrowd):
