@@ -9,8 +9,8 @@ import fiftyone as fo
 
 
 def up():
-    pass
+    print("up")
 
 
 def down():
-    pass
+    print("down")

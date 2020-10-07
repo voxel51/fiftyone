@@ -15,7 +15,7 @@ import fiftyone.core.dataset as fod
 
 
 DOWN = "down"
-up = "up"
+UP = "up"
 
 
 class Runner(object):
@@ -34,35 +34,52 @@ class Runner(object):
 
     def run(self):
         """Runs the revisions"""
-        path = self._get_path()
-        for revision in path:
-            print(revision)
+        revisions, action = self._get_revisions_to_run()
+
+        for revision, module in revisions:
+            fn = etau.get_function(action, module)
+            fn()
 
         head_json = {"head": self.destination}
-        etas.write_json(head_json, foc.MIGRATIONS_HEAD_PATH)
+        # etas.write_json(head_json, foc.MIGRATIONS_HEAD_PATH)
 
-    def _get_path(self):
+    def _get_revisions_to_run(self):
+        revision_strings = list(map(lambda rt: rt[0], self.revisions))
         if self.destination is None:
             destination_idx = 0
         else:
-            destination_idx = self.revisions.index(self.destination) + 1
+            destination_idx = revision_strings.index(self.destination) + 1
 
         if self.head is None:
-            head_idx = -1
+            head_idx = 0
         else:
-            head_idx = self.revisions.index(self.head)
+            head_idx = revision_strings.index(self.head)
 
-        direction = 1
-        if head_idx > destination_idx:
+        action = UP
+        if self.destination is None or head_idx > destination_idx:
             action = DOWN
-            direction = -1
-            head_idx -= 1
+            destination_idx += 1
 
-        return self.revisions[head_idx - 1 : destination_idx - 1 : direction]
+        revisions_to_run = self.revisions[head_idx:destination_idx]
+        if action == DOWN:
+            revisions_to_run = list(reversed(revisions_to_run))
+
+        return revisions_to_run, action
 
 
-def _list_revisions():
-    return etau.list_files(foc.MIGRATIONS_REVISIONS_DIR)
+def _get_revisions():
+    files = etau.list_files(foc.MIGRATIONS_REVISIONS_DIR)
+    filtered_files = filter(lambda r: r.endswith(".py"), files)
+    module_prefix = ".".join(__loader__.name.split(".")[:-1] + ["revisions"])
+    return list(
+        map(
+            lambda r: (
+                r[:-3].replace("_", "."),
+                ".".join([module_prefix, r[:-3]]),
+            ),
+            filtered_files,
+        )
+    )
 
 
 def _load_head():
@@ -76,10 +93,10 @@ def _load_head():
 
 
 def migrate_if_necessary():
-    """Migrates the database model to the latest revision"""
-    revisions = _list_revisions()
+    """Migrates all backing collections for datasets to the latest revision"""
+    revisions = _get_revisions()
     head = _load_head()
-    latest_revision = revisions[-1]
+    latest_revision, _ = revisions[-1]
     if head is None or head < latest_revision:
         Runner(
             head=head, destination=latest_revision, revisions=revisions
