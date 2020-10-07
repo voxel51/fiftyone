@@ -318,12 +318,11 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
   }, [value]);
 
   const props = useSpring({
-    backgroundColor:
-      state.matches("editing") && isObjectEditor
-        ? theme.backgroundDark
-        : state.matches("reading.submitted")
-        ? theme.backgroundLight
-        : theme.background,
+    backgroundColor: state.matches("editing")
+      ? theme.backgroundDark
+      : state.matches("reading.submitted")
+      ? theme.backgroundLight
+      : theme.background,
     borderStyle: "solid",
     borderColor:
       active && stageState.matches("focusedViewBar.yes")
