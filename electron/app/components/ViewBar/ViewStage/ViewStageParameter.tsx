@@ -36,6 +36,7 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
     color: ${({ theme }) => theme.font};
     line-height: 1rem;
     font-weight: bold;
+    min-width: 2rem;
   }
 
   & > input:focus {
@@ -60,6 +61,7 @@ const ObjectEditorContainer = animated(styled.div`
   border-style: solid;
   z-index: 800;
   will-change: transform;
+  min-width: 2rem;
 `);
 
 const ObjectEditorTextArea = animated(styled.textarea`
