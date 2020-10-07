@@ -1290,8 +1290,8 @@ where the labels XML files are stored in the following format:
                 </original_size>
                 <dumped>2017-11-20 11:51:51.000000+00:00</dumped>
             </meta>
-            <track id="0" label=car">
-                <box frame="0" xtl="100" ytl="50" xbr="325" ybr="190" outside="0" occluded="0", keyframe="1">
+            <track id="0" label="car">
+                <box frame="0" xtl="100" ytl="50" xbr="325" ybr="190" outside="0" occluded="0" keyframe="1">
                     <attribute name="type">sedan</attribute>
                     ...
                 </box>
@@ -1299,7 +1299,7 @@ where the labels XML files are stored in the following format:
             </track>
             ...
             <track id="10" label="person">
-                <box frame="45" xtl="300" ytl="25" xbr="375" ybr="400" outside="0" occluded="0", keyframe="1">
+                <box frame="45" xtl="300" ytl="25" xbr="375" ybr="400" outside="0" occluded="0" keyframe="1">
                     <attribute name="gender">female</attribute>
                     ...
                 </box>
