@@ -45,11 +45,15 @@ if [[ ${STATIC_ONLY} = true ]]; then
     exit 0
 fi
 
-FIFTYONE_BRAIN_DIR=$( \
-    python -c "import os, fiftyone.brain as fob; print(os.path.dirname(fob.__file__))"
+FIFTYONE_BRAIN_DIR=$(
+    python -c "import os, fiftyone.brain as fob; print(os.path.dirname(fob.__file__))" ||
+    true
 )
 if [[ -z "${FIFTYONE_BRAIN_DIR}" ]] || [[ ! -d "${FIFTYONE_BRAIN_DIR}" ]]; then
     echo "fiftyone-brain not installed" >&2
+    # workaround for https://github.com/voxel51/fiftyone/issues/583
+    echo "Importing fiftyone.brain produced the following output:" >&2
+    echo "${FIFTYONE_BRAIN_DIR}" >&2
     exit 1
 fi
 
