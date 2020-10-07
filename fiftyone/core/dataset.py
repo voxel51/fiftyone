@@ -7,6 +7,7 @@ FiftyOne datasets.
 """
 from copy import deepcopy
 import datetime
+import fnmatch
 import inspect
 import logging
 import numbers
@@ -111,7 +112,7 @@ def get_default_dataset_dir(name):
     return os.path.join(fo.config.default_dataset_dir, name)
 
 
-def delete_dataset(name):
+def delete_dataset(name, verbose=False):
     """Deletes the FiftyOne dataset with the given name.
 
     If reference to the dataset exists in memory, only `Dataset.name` and
@@ -123,20 +124,41 @@ def delete_dataset(name):
 
     Args:
         name: the name of the dataset
+        verbose (False): whether to log the name of the deleted dataset
 
     Raises:
         ValueError: if the dataset is not found
     """
     dataset = fo.load_dataset(name)
     dataset.delete()
+    if verbose:
+        logger.info("Dataset '%s' deleted", name)
 
 
-def delete_non_persistent_datasets():
-    """Deletes all non-persistent datasets."""
-    for dataset_name in list_datasets():
-        dataset = load_dataset(dataset_name)
+def delete_datasets(glob_patt, verbose=False):
+    """Deletes all FiftyOne datasets whose names match the given glob pattern.
+
+    Args:
+        glob_patt: a glob pattern of datasets to delete
+        verbose (False): whether to log the names of deleted datasets
+    """
+    all_datasets = list_datasets()
+    for name in fnmatch.filter(all_datasets, glob_patt):
+        delete_dataset(name, verbose=verbose)
+
+
+def delete_non_persistent_datasets(verbose=False):
+    """Deletes all non-persistent datasets.
+
+    Args:
+        verbose (False): whether to log the names of deleted datasets
+    """
+    for name in list_datasets():
+        dataset = load_dataset(name)
         if not dataset.persistent:
             dataset.delete()
+            if verbose:
+                logger.info("Dataset '%s' deleted", name)
 
 
 class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
@@ -232,9 +254,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if media_type not in fom.MEDIA_TYPES:
             raise ValueError(
-                'media_type can only be one of "image" or "video". Received "%s"'
-                % media_type
+                'media_type can only be one of %s; received "%s"'
+                % (fom.MEDIA_TYPES, media_type)
             )
+
         self._doc.media_type = media_type
 
         self._doc.save()
@@ -291,18 +314,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a string summary
         """
-        return "\n".join(
-            [
-                "Name:           %s" % self.name,
-                "Media type      %s" % self.media_type,
-                "Num samples:    %d" % len(self),
-                "Persistent:     %s" % self.persistent,
-                "Info:           %s" % _info_repr.repr(self.info),
-                "Tags:           %s" % self.get_tags(),
-                "Sample fields:",
-                self._to_fields_str(self.get_field_schema()),
-            ]
-        )
+        elements = [
+            "Name:           %s" % self.name,
+            "Media type      %s" % self.media_type,
+            "Num samples:    %d" % len(self),
+            "Persistent:     %s" % self.persistent,
+            "Info:           %s" % _info_repr.repr(self.info),
+            "Tags:           %s" % self.get_tags(),
+            "Sample fields:",
+            self._to_fields_str(self.get_field_schema()),
+        ]
+
+        if self.media_type == fom.VIDEO:
+            elements.extend(
+                [
+                    "Frame fields:",
+                    self._to_fields_str(self.get_frames_field_schema()),
+                ]
+            )
+
+        return "\n".join(elements)
 
     def first(self):
         """Returns the first sample in the dataset.
@@ -435,8 +466,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 `_` in the returned schema
 
         Returns:
-             a dictionary mapping field names to field types
+            a dictionary mapping field names to field types, or ``None`` if
+            the dataset is not a video dataset
         """
+        if self.media_type != fom.VIDEO:
+            return None
+
         return self._frame_doc_cls.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
@@ -652,11 +687,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return [str(d["_id"]) for d in dicts]
 
-    def merge_samples(self, samples, overwrite=False):
+    def merge_samples(
+        self, samples, overwrite=False, key_field="filepath", key_fcn=None
+    ):
         """Merges the contents of the given samples into the dataset.
 
-        Input samples whose ``filepath`` matches an existing ``filepath`` are
-        merged, and samples with new ``filepath`` values are added.
+        By default, samples with the same absolute ``filepath`` are merged.
+
+        You can customize this behavior via the ``key_field`` and ``key_fcn``
+        parameters. For example, you could set
+        ``key_fcn = lambda k: os.path.basename(k)`` to merge samples with the
+        same base filename.
 
         Args:
             samples: an iterable of :class:`fiftyone.core.sample.Sample`
@@ -664,30 +705,42 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 or a :class:`fiftyone.core.views.DatasetView`
             overwrite (False): whether to overwrite (True) or skip (False)
                 existing sample fields
+            key_field ("filepath"): the sample field to use to decide whether
+                to join with an existing sample
+            key_fcn (None): a function to apply to ``key_field`` to generate
+                the comparator used to decide if two samples should be merged
         """
+        if key_fcn is None:
+            key_fcn = lambda k: k
+
         existing_schema = self.get_field_schema()
-        filepath_map = {s.filepath: s.id for s in self.select_fields()}
 
-        for new_sample in samples:
-            if new_sample.filepath in filepath_map:
-                existing_sample = self[filepath_map[new_sample.filepath]]
+        id_map = {}
+        for sample in self.select_fields(key_field):
+            id_map[key_fcn(sample[key_field])] = sample.id
 
-                for name, value in new_sample.iter_fields():
-                    if name == "filepath":
-                        continue
+        with fou.ProgressBar() as pb:
+            for new_sample in pb(samples):
+                key = key_fcn(new_sample[key_field])
+                if key in id_map:
+                    existing_sample = self[id_map[key]]
 
-                    if (
-                        not overwrite
-                        and name in existing_schema
-                        and existing_sample[name] is not None
-                    ):
-                        continue
+                    for name, value in new_sample.iter_fields():
+                        if name == "media_type":
+                            continue
 
-                    existing_sample[name] = value
+                        if (
+                            not overwrite
+                            and name in existing_schema
+                            and existing_sample[name] is not None
+                        ):
+                            continue
 
-                existing_sample.save()
-            else:
-                self.add_sample(new_sample)
+                        existing_sample[name] = value
+
+                    existing_sample.save()
+                else:
+                    self.add_sample(new_sample)
 
     def remove_sample(self, sample_or_id):
         """Removes the given sample from the dataset.
@@ -1795,6 +1848,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if field_name == "frames":
                     if self.media_type is None:
                         self.media_type = fom.VIDEO
+                        frames_fields = self.get_frames_field_schema(
+                            include_private=True
+                        )
+
                     for frame_number in sample[field_name]:
                         frame_obj = sample[field_name][frame_number]
                         for frame_field_name in frame_obj.to_mongo_dict():

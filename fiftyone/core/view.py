@@ -12,6 +12,7 @@ import numbers
 from bson import ObjectId
 
 import fiftyone.core.collections as foc
+import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
 
 
@@ -117,8 +118,23 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a string summary
         """
-        field_schema = self.get_field_schema()
-        fields_str = self._dataset._to_fields_str(field_schema)
+        elements = [
+            "Dataset:        %s" % self.dataset_name,
+            "Num samples:    %d" % len(self),
+            "Tags:           %s" % self.get_tags(),
+            "Sample fields:",
+            self._dataset._to_fields_str(self.get_field_schema()),
+        ]
+
+        if self.media_type == fom.VIDEO:
+            elements.extend(
+                [
+                    "Frame fields:",
+                    self._dataset._to_fields_str(
+                        self.get_frames_field_schema()
+                    ),
+                ]
+            )
 
         if self._stages:
             pipeline_str = "    " + "\n    ".join(
@@ -130,17 +146,9 @@ class DatasetView(foc.SampleCollection):
         else:
             pipeline_str = "    ---"
 
-        return "\n".join(
-            [
-                "Dataset:        %s" % self.dataset_name,
-                "Num samples:    %d" % len(self),
-                "Tags:           %s" % self.get_tags(),
-                "Sample fields:",
-                fields_str,
-                "Pipeline stages:",
-                pipeline_str,
-            ]
-        )
+        elements.extend(["Pipeline stages:", pipeline_str])
+
+        return "\n".join(elements)
 
     def iter_samples(self):
         """Returns an iterator over the samples in the view.
@@ -232,7 +240,8 @@ class DatasetView(foc.SampleCollection):
                 `_` in the returned schema
 
         Returns:
-             a dictionary mapping field names to field types
+            a dictionary mapping field names to field types, or ``None`` if
+            the dataset is not a video dataset
         """
         return self._dataset.get_frames_field_schema(
             ftype=ftype,

@@ -17,6 +17,7 @@ from .core.dataset import (
     dataset_exists,
     load_dataset,
     delete_dataset,
+    delete_datasets,
     delete_non_persistent_datasets,
 )
 from .core.expressions import (
@@ -49,6 +50,10 @@ from .core.labels import (
     Classifications,
     Detection,
     Detections,
+    Polyline,
+    Polylines,
+    Keypoint,
+    Keypoints,
     Segmentation,
     ImageLabels,
 )

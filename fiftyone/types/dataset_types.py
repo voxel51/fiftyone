@@ -798,8 +798,15 @@ class CVATImageDataset(ImageDetectionDataset):
             <version>1.1</version>
             <meta>
                 <task>
+                    <id>0</id>
+                    <name>task-name</name>
                     <size>51</size>
                     <mode>annotation</mode>
+                    <overlap></overlap>
+                    <bugtracker></bugtracker>
+                    <flipped>False</flipped>
+                    <created>2017-11-20 11:51:51.000000+00:00</created>
+                    <updated>2017-11-20 11:51:51.000000+00:00</updated>
                     <labels>
                         <label>
                             <name>car</name>
@@ -824,15 +831,33 @@ class CVATImageDataset(ImageDetectionDataset):
                         ...
                     </labels>
                 </task>
+                <segments>
+                    <segment>
+                        <id>0</id>
+                        <start>0</start>
+                        <stop>50</stop>
+                        <url></url>
+                    </segment>
+                </segments>
+                <owner>
+                    <username></username>
+                    <email></email>
+                </owner>
                 <dumped>2017-11-20 11:51:51.000000+00:00</dumped>
             </meta>
             <image id="1" name="<uuid1>.<ext>" width="640" height="480">
-                <box label="car" xtl="100" ytl="50" xbr="325" ybr="190" type="sedan"></box>
+                <box label="car" xtl="100" ytl="50" xbr="325" ybr="190" occluded="0">
+                    <attribute name="type">sedan</attribute>
+                    ...
+                </box>
                 ...
             </image>
             ...
             <image id="51" name="<uuid51>.<ext>" width="640" height="480">
-                <box label="person" xtl="300" ytl="25" xbr="375" ybr="400" gender="female"></box>
+                <box label="person" xtl="300" ytl="25" xbr="375" ybr="400" occluded="0">
+                    <attribute name="gender">female</attribute>
+                    ...
+                </box>
                 ...
             </image>
         </annotations>
@@ -849,6 +874,111 @@ class CVATImageDataset(ImageDetectionDataset):
         import fiftyone.utils.cvat as fouc
 
         return fouc.CVATImageDatasetExporter
+
+
+class CVATVideoDataset(LabeledVideoDataset):
+    """A labeled dataset consisting of images and their associated object
+    detections stored in `CVAT video format <https://github.com/opencv/cvat>`_.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            data/
+                <uuid1>.<ext>
+                <uuid2>.<ext>
+                ...
+            labels/
+                <uuid1>.xml
+                <uuid2>.xml
+                ...
+
+    where the labels XML files are stored in the following format::
+
+        <?xml version="1.0" encoding="utf-8"?>
+        <annotations>
+            <version>1.1</version>
+            <meta>
+                <task>
+                    <id>task-id</id>
+                    <name>task-name</name>
+                    <size>51</size>
+                    <mode>interpolation</mode>
+                    <overlap></overlap>
+                    <bugtracker></bugtracker>
+                    <flipped>False</flipped>
+                    <created>2017-11-20 11:51:51.000000+00:00</created>
+                    <updated>2017-11-20 11:51:51.000000+00:00</updated>
+                    <labels>
+                        <label>
+                            <name>car</name>
+                            <attributes>
+                                <attribute>
+                                    <name>type</name>
+                                    <values>coupe\\nsedan\\ntruck</values>
+                                </attribute>
+                                ...
+                            </attributes>
+                        </label>
+                        <label>
+                            <name>person</name>
+                            <attributes>
+                                <attribute>
+                                    <name>gender</name>
+                                    <values>male\\nfemale</values>
+                                </attribute>
+                                ...
+                            </attributes>
+                        </label>
+                        ...
+                    </labels>
+                </task>
+                <segments>
+                    <segment>
+                        <id>0</id>
+                        <start>0</start>
+                        <stop>50</stop>
+                        <url></url>
+                    </segment>
+                </segments>
+                <owner>
+                    <username></username>
+                    <email></email>
+                </owner>
+                <original_size>
+                    <width>640</width>
+                    <height>480</height>
+                </original_size>
+                <dumped>2017-11-20 11:51:51.000000+00:00</dumped>
+            </meta>
+            <track id="0" label=car">
+                <box frame="0" xtl="100" ytl="50" xbr="325" ybr="190" outside="0" occluded="0", keyframe="1">
+                    <attribute name="type">sedan</attribute>
+                    ...
+                </box>
+                ...
+            </track>
+            ...
+            <track id="10" label="person">
+                <box frame="45" xtl="300" ytl="25" xbr="375" ybr="400" outside="0" occluded="0", keyframe="1">
+                    <attribute name="gender">female</attribute>
+                    ...
+                </box>
+                ...
+            </track>
+        </annotations>
+
+    Unlabeled videos have no corresponding XML file in ``labels/``.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.cvat as fouc
+
+        return fouc.CVATVideoDatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.cvat as fouc
+
+        return fouc.CVATVideoDatasetExporter
 
 
 class FiftyOneImageLabelsDataset(ImageLabelsDataset):
@@ -932,6 +1062,10 @@ class BDDDataset(ImageLabelsDataset):
                 },
                 "labels": [
                     {
+                        "id": 0,
+                        "category": "traffic sign",
+                        "manualAttributes": true,
+                        "manualShape": true,
                         "attributes": {
                             "occluded": false,
                             "trafficLightColor": "none",
@@ -942,16 +1076,55 @@ class BDDDataset(ImageLabelsDataset):
                             "x2": 1040.626872,
                             "y1": 281.992415,
                             "y2": 326.91156
-                        },
-                        "category": "traffic sign",
-                        "id": 0,
-                        "manualAttributes": true,
-                        "manualShape": true
+                        }
                     },
                     ...
-                ],
-                ...
-            },
+                    {
+                        "id": 34,
+                        "category": "drivable area",
+                        "manualAttributes": true,
+                        "manualShape": true,
+                        "attributes": {
+                            "areaType": "direct"
+                        },
+                        "poly2d": [
+                            {
+                                "types": "LLLLCCC",
+                                "closed": true,
+                                "vertices": [
+                                    [241.143645, 697.923453],
+                                    [541.525255, 380.564983],
+                                    ...
+                                ]
+                            }
+                        ]
+                    },
+                    ...
+                    {
+                        "id": 109356,
+                        "category": "lane",
+                        "attributes": {
+                            "laneDirection": "parallel",
+                            "laneStyle": "dashed",
+                            "laneType": "single white"
+                        },
+                        "manualShape": true,
+                        "manualAttributes": true,
+                        "poly2d": [
+                            {
+                                "types": "LL",
+                                "closed": false,
+                                "vertices": [
+                                    [492.879546, 331.939543],
+                                    [0, 471.076658],
+                                    ...
+                                ]
+                            }
+                        ],
+                    },
+                    ...
+                }
+            }
             ...
         ]
 
@@ -969,7 +1142,7 @@ class BDDDataset(ImageLabelsDataset):
         return foub.BDDDatasetExporter
 
 
-class FiftyOneVideoLabelsDataset(ImageLabelsDataset):
+class FiftyOneVideoLabelsDataset(LabeledVideoDataset):
     """A labeled dataset consisting of videos and their associated labels
     stored in
     `ETA VideoLabels format <https://voxel51.com/docs/api/#types-videolabels>`_.
