@@ -59,7 +59,9 @@ const NumericFieldFilter = ({ expanded, entry }) => {
       return;
     }
     setLocalBounds(bounds);
-    localBounds.some((b, i) => b !== bounds[i]) && setRange([...bounds]);
+    if (localBounds.some((b, i) => b !== bounds[i] && b !== null)) {
+      setRange([...bounds]);
+    }
   }, [bounds]);
 
   useEffect(() => {
