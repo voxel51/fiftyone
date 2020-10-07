@@ -1,7 +1,7 @@
 import React, { useContext, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
-import { ArrowDropDown } from "@material-ui/icons";
+import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
 import { useRecoilValue } from "recoil";
 import { animated, useSpring } from "react-spring";
 
@@ -167,6 +167,7 @@ const Entry = ({ entry, onCheck, modal }) => {
       ? theme.backgroundLight
       : theme.background,
   });
+  const ArrowType = expanded ? ArrowDropUp : ArrowDropDown;
 
   return (
     <CheckboxContainer key={entry.name} style={containerProps}>
@@ -186,7 +187,7 @@ const Entry = ({ entry, onCheck, modal }) => {
             ) &&
             ((entry.type && labelTypeIsFilterable(entry.type)) ||
               (isNumericField && !modal)) ? (
-              <ArrowDropDown
+              <ArrowType
                 onClick={(e) => {
                   e.preventDefault();
                   setExpanded(!expanded);
