@@ -1,20 +1,19 @@
 # [FiftyOne](http://www.voxel51.com/fiftyone): Explore, Analyze and Curate Visual Datasets
 
-<img alt="FiftyOne" src="https://user-images.githubusercontent.com/25985824/90993132-ac26fe80-e581-11ea-9efc-c3e1a0f876d8.png">
+<img alt="FiftyOne" src="https://user-images.githubusercontent.com/25985824/94951983-346abe80-04b3-11eb-9717-9fb47fc8e5b2.png">
 
 ![Build](https://github.com/voxel51/fiftyone/workflows/Build/badge.svg?branch=develop&event=push)
 
 [FiftyOne](http://www.voxel51.com/docs/fiftyone) is an open source machine
-learning tool created by [Voxel51](https://voxel51.com) that helps you get
-closer to your data and ML models.
+learning tool created by [Voxel51](https://voxel51.com) that helps you rapidly
+experiment with your data and ML models.
 
-With FiftyOne, you can rapidly experiment with your datasets, enabling you to
-search, sort, filter, visualize, analyze, and improve your datasets without
-excess wrangling or writing custom scripts. It also provides powerful
-functionality for analyzing your models, allowing you to understand their
-strengths and weaknesses, visualize, diagnose, and correct their failure modes,
-and more. FiftyOne is designed to be lightweight and easily integrate into your
-existing CV/ML workflows.
+With FiftyOne, you can search, sort, filter, visualize, analyze, and improve
+your datasets without excess wrangling or writing custom scripts. It also
+provides powerful functionality for analyzing your models, allowing you to
+understand their strengths and weaknesses, visualize, diagnose, and correct
+their failure modes, and more. FiftyOne is designed to be lightweight and
+easily integrate into your existing CV/ML workflows.
 
 Join the
 [FiftyOne Slack Community](https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg)
