@@ -590,7 +590,7 @@ Delete FiftyOne datasets.
       -h, --help            show this help message and exit
       -g GLOB_PATT, --glob-patt GLOB_PATT
                             a glob pattern of datasets to delete
-      --non-persistent      delete all non-persistent datasetes
+      --non-persistent      delete all non-persistent datasets
 
 **Examples**
 

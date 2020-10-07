@@ -713,7 +713,7 @@ class DatasetsDeleteCommand(Command):
         parser.add_argument(
             "--non-persistent",
             action="store_true",
-            help="delete all non-persistent datasetes",
+            help="delete all non-persistent datasets",
         )
 
     @staticmethod
