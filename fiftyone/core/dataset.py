@@ -1734,6 +1734,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if rel_dir is not None:
             rel_dir = os.path.abspath(os.path.expanduser(rel_dir))
 
+        # @todo support importing video datasets?
+        if d["media_type"] == fom.VIDEO:
+            raise ValueError("Importing video datasets is not yet supported")
+
         def parse_sample(sd):
             if rel_dir and not sd["filepath"].startswith(os.path.sep):
                 sd["filepath"] = os.path.join(rel_dir, sd["filepath"])
