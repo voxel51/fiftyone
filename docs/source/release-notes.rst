@@ -19,12 +19,14 @@ Core
   samples
 - Added support for importing and exporting datasets in YOLO format and CVAT
   video format
+- Adding support for importing/exporting video datasets in
+  :class:`FiftyOneDataset <fiftyone.types.dataset_types.FiftyOneDataset>` format
 - Added frame field schemas to dataset string representations
 
 CLI
 ^^^
-- Added options to `fiftyone datasets delete <cli-fiftyone-datasets-delete>` to
-  delete all datasets matching a pattern and all non-persistent datasets
+- Added options to :ref:`fiftyone datasets delete <cli-fiftyone-datasets-delete>`
+  to delete all datasets matching a pattern and all non-persistent datasets
 
 Documentation
 ^^^^^^^^^^^^^
