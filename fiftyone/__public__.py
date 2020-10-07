@@ -50,6 +50,10 @@ from .core.labels import (
     Classifications,
     Detection,
     Detections,
+    Polyline,
+    Polylines,
+    Keypoint,
+    Keypoints,
     Segmentation,
     ImageLabels,
 )
