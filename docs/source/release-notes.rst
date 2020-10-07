@@ -10,21 +10,36 @@ FiftyOne 0.6.1
 App
 ^^^
 - Added support for visualizing keypoints, polylines, and segmentation masks
-- Added |Detection| `index` fields in the media viewer, if present
+- Added support for selecting `SortBy` fields from an autocomplete dropdown
+- Added support for viewing `index` fields of |Detection| labels in the media
+  viewer, if present
 - Fixed counting of |Classifications| fields in the expanded sample view
+- Fixed a bug that prevented label filters from fully resetting when a `reset`
+  or `clear` button is pressed
 
 Core
 ^^^^
-- Added support for storing keypoints, polylines, and segmentation masks on
-  samples
-- Added support for importing and exporting datasets in YOLO format and CVAT
-  video format
-- Added frame field schemas to dataset string representations
+- Added support for storing :class:`keypoints <fiftyone.core.labels.Keypoint>`,
+  :class:`polylines and polygons <fiftyone.core.labels.Polyline>` on samples
+- Added support for setting an `index` attribute on |Detection| instances that
+  defines a unique identifier for an object (e.g., across frames of a video)
+- Added support for :ref:`importing <YOLODataset-import>` and
+  :ref:`exporting <YOLODataset-export>` datasets in
+  `YOLO format <https://github.com/AlexeyAB/darknet>`_
+- Added support for :ref:`importing <CVATVideoDataset-import>` and
+  :ref:`exporting <CVATVideoDataset-export>` datasets in
+  `CVAT video format <https://github.com/openvinotoolkit/cvat/blob/develop/cvat/apps/documentation/xml_format.md>`_
+- Added support for :ref:`importing <FiftyOneDataset-import>` and
+  :ref:`exporting <FiftyOneDataset-export>` video datasets in
+  :class:`FiftyOneDataset <fiftyone.types.dataset_types.FiftyOneDataset>`
+  format
+- Added frame field schemas to string representations for video datasets/views
 
 CLI
 ^^^
-- Added options to `fiftyone datasets delete <cli-fiftyone-datasets-delete>` to
-  delete all datasets matching a pattern and all non-persistent datasets
+- Added options to
+  :ref:`fiftyone datasets delete <cli-fiftyone-datasets-delete>` to delete all
+  datasets matching a pattern and all non-persistent datasets
 
 Documentation
 ^^^^^^^^^^^^^
