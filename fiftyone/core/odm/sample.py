@@ -117,6 +117,7 @@ class DatasetSampleDocument(DatasetMixin, Document, SampleDocument):
     def set_field(self, field_name, value, create=True):
         if field_name == "frames" and isinstance(value, fofr.Frames):
             value = value.doc.frames
+
         super().set_field(field_name, value, create=create)
 
 
@@ -162,4 +163,5 @@ class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
     def set_field(self, field_name, value, create=True):
         if field_name == "frames" and isinstance(value, fofr.Frames):
             value = value.doc.frames
+
         super().set_field(field_name, value, create=create)

@@ -254,9 +254,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if media_type not in fom.MEDIA_TYPES:
             raise ValueError(
-                'media_type can only be one of "image" or "video". Received "%s"'
-                % media_type
+                'media_type can only be one of %s; received "%s"'
+                % (fom.MEDIA_TYPES, media_type)
             )
+
         self._doc.media_type = media_type
 
         self._doc.save()
@@ -313,18 +314,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a string summary
         """
-        return "\n".join(
-            [
-                "Name:           %s" % self.name,
-                "Media type      %s" % self.media_type,
-                "Num samples:    %d" % len(self),
-                "Persistent:     %s" % self.persistent,
-                "Info:           %s" % _info_repr.repr(self.info),
-                "Tags:           %s" % self.get_tags(),
-                "Sample fields:",
-                self._to_fields_str(self.get_field_schema()),
-            ]
-        )
+        elements = [
+            "Name:           %s" % self.name,
+            "Media type      %s" % self.media_type,
+            "Num samples:    %d" % len(self),
+            "Persistent:     %s" % self.persistent,
+            "Info:           %s" % _info_repr.repr(self.info),
+            "Tags:           %s" % self.get_tags(),
+            "Sample fields:",
+            self._to_fields_str(self.get_field_schema()),
+        ]
+
+        if self.media_type == fom.VIDEO:
+            elements.extend(
+                [
+                    "Frame fields:",
+                    self._to_fields_str(self.get_frames_field_schema()),
+                ]
+            )
+
+        return "\n".join(elements)
 
     def first(self):
         """Returns the first sample in the dataset.
@@ -1724,6 +1733,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if rel_dir is not None:
             rel_dir = os.path.abspath(os.path.expanduser(rel_dir))
+
+        # @todo support importing video datasets?
+        # This should never actually be run, as serializing video datasets is
+        # not supported in the first place
+        if d["media_type"] == fom.VIDEO:
+            raise ValueError(
+                "Importing serialized video datasets is not supported"
+            )
 
         def parse_sample(sd):
             if rel_dir and not sd["filepath"].startswith(os.path.sep):

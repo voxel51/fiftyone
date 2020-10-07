@@ -16,8 +16,10 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
 
+import fiftyone.core.frame as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
+import fiftyone.core.media as fomm
 import fiftyone.core.sample as fos
 
 from .parsers import (
@@ -689,9 +691,11 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
             dataset_dir, shuffle=shuffle, seed=seed, max_samples=max_samples
         )
         self._metadata = None
+        self._frame_labels_dir = None
         self._samples = None
         self._iter_samples = None
         self._num_samples = None
+        self._is_video_dataset = False
 
     def __iter__(self):
         self._iter_samples = iter(self._samples)
@@ -714,10 +718,24 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
         # Convert filepath to absolute path
         d["filepath"] = os.path.join(self.dataset_dir, d["filepath"])
 
-        return fos.Sample.from_dict(d)
+        if self._is_video_dataset:
+            labels_relpath = d.pop("frames")
+            labels_path = os.path.join(self.dataset_dir, labels_relpath)
+
+            sample = fos.Sample.from_dict(d)
+            sample._frames = fof.Frames()  # @todo clean up this hack
+
+            self._import_frame_labels(sample, labels_path)
+        else:
+            sample = fos.Sample.from_dict(d)
+
+        return sample
 
     @property
     def has_sample_field_schema(self):
+        if self._is_video_dataset:
+            return False
+
         return "sample_fields" in self._metadata
 
     @property
@@ -727,13 +745,17 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
     def setup(self):
         metadata_path = os.path.join(self.dataset_dir, "metadata.json")
         if os.path.isfile(metadata_path):
-            self._metadata = etas.load_json(metadata_path)
+            metadata = etas.load_json(metadata_path)
+            self._metadata = metadata
+            self._is_video_dataset = metadata["media_type"] == fomm.VIDEO
         else:
             self._metadata = {}
 
-        samples_path = os.path.join(self.dataset_dir, "samples.json")
+        self._frame_labels_dir = os.path.join(self.dataset_dir, "frames")
 
+        samples_path = os.path.join(self.dataset_dir, "samples.json")
         samples = etas.load_json(samples_path).get("samples", [])
+
         self._samples = self._preprocess_list(samples)
         self._num_samples = len(self._samples)
 
@@ -759,6 +781,11 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
             return 0
 
         return len(etau.list_files(data_dir))
+
+    def _import_frame_labels(self, sample, labels_path):
+        frames_map = etas.load_json(labels_path).get("frames", {})
+        for key, value in frames_map.items():
+            sample.frames[int(key)] = fof.Frame.from_dict(value)
 
 
 class ImageDirectoryImporter(UnlabeledImageDatasetImporter):

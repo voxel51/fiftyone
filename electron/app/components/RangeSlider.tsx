@@ -157,7 +157,7 @@ type NamedProps = {
   color: string;
 };
 
-const isDefaultRange = (range, bounds, maxMin, minMax) => {
+const getMinAndMax = (bounds, minMax, maxMin) => {
   const min =
     maxMin !== undefined && maxMin < bounds[0] && bounds[1] !== bounds[0]
       ? maxMin
@@ -166,8 +166,11 @@ const isDefaultRange = (range, bounds, maxMin, minMax) => {
     minMax !== undefined && minMax > bounds[1] && bounds[1] !== bounds[0]
       ? minMax
       : bounds[1];
+  return { min, max };
+};
 
-  return [min, max].every((b, i) => b === range[i]);
+const isDefaultRange = (range, bounds) => {
+  return bounds.every((b, i) => b === range[i]);
 };
 
 export const NamedRangeSlider = React.forwardRef(
@@ -187,7 +190,8 @@ export const NamedRangeSlider = React.forwardRef(
     const [range, setRange] = useRecoilState(rangeSliderProps.rangeAtom);
     const bounds = useRecoilValue(rangeSliderProps.boundsAtom);
 
-    const hasDefaultRange = isDefaultRange(range, bounds, maxMin, minMax);
+    const { min, max } = getMinAndMax(bounds, minMax, maxMin);
+    const hasDefaultRange = isDefaultRange(range, [min, max]);
     const hasBounds = bounds.every((b) => b !== null);
     const isSingleValue = hasBounds && bounds[0] === bounds[1];
 
@@ -199,7 +203,7 @@ export const NamedRangeSlider = React.forwardRef(
             <a
               style={{ cursor: "pointer", textDecoration: "underline" }}
               onClick={() => {
-                setRange([...bounds]);
+                setRange([min, max]);
                 setIncludeNone(true);
               }}
             >
