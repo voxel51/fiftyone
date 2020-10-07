@@ -106,4 +106,4 @@ class DatasetDocument(Document):
         document_type=SampleFieldDocument
     )
     frame_fields = EmbeddedDocumentListField(document_type=SampleFieldDocument)
-    version = StringField(default=foc.Version
+    version = StringField(default=foc.VERSION, required=True, null=True)
