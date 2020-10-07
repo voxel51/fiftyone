@@ -10,6 +10,8 @@ import os
 import eta.core.serial as etas
 import eta.core.utils as etau
 
+import fiftyone as fo
+import fiftyone.core.odm as foo
 import fiftyone.constants as foc
 import fiftyone.core.dataset as fod
 
@@ -34,11 +36,12 @@ class Runner(object):
 
     def run(self):
         """Runs the revisions"""
+        connection = foo.get_db_conn()
         revisions, action = self._get_revisions_to_run()
 
         for revision, module in revisions:
             fn = etau.get_function(action, module)
-            fn()
+            fn(connection, "")
 
         head_json = {"head": self.destination}
         # etas.write_json(head_json, foc.MIGRATIONS_HEAD_PATH)
