@@ -719,7 +719,7 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
             sample = fos.Sample.from_dict(d)
             sample._frames = fof.Frames()  # @todo clean up this hack
 
-            self._load_frame_labels(sample, labels_path)
+            self._import_frame_labels(sample, labels_path)
         else:
             sample = fos.Sample.from_dict(d)
 
@@ -776,7 +776,7 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
 
         return len(etau.list_files(data_dir))
 
-    def _load_frame_labels(self, sample, labels_path):
+    def _import_frame_labels(self, sample, labels_path):
         frames_map = etas.load_json(labels_path).get("frames", {})
         for key, value in frames_map.items():
             sample.frames[int(key)] = fof.Frame.from_dict(value)

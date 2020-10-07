@@ -763,7 +763,7 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
         if self._is_video_dataset:
             # Serialize frame labels separately
             uuid = os.path.splitext(os.path.basename(out_filepath))[0]
-            outpath = self._export_frame_labels(uuid, sample.frames)
+            outpath = self._export_frame_labels(sample, uuid)
             sd["frames"] = os.path.relpath(outpath, self.export_dir)
 
         self._samples.append(sd)
@@ -777,15 +777,15 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
             samples, self._samples_path, pretty_print=self.pretty_print
         )
 
-    def _export_frame_labels(self, uuid, frames):
-        frames_map = {}
-        for frame_number, frame in frames.items():
-            frames_map[str(frame_number)] = frame.to_dict()
+    def _export_frame_labels(self, sample, uuid):
+        frames = {}
+        for frame_number, frame in sample.frames.items():
+            frames[str(frame_number)] = frame.to_dict()
 
+        frames_dict = {"frames": frames}
         outpath = os.path.join(self._frame_labels_dir, uuid + ".json")
-        etas.write_json(
-            {"frames": frames_map}, outpath, pretty_print=self.pretty_print
-        )
+        etas.write_json(frames_dict, outpath, pretty_print=self.pretty_print)
+
         return outpath
 
 
