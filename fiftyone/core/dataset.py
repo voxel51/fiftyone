@@ -22,10 +22,12 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
+from fiftyone.constants import VERSION
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+from fiftyone.migrations import migrate_dataset
 import fiftyone.core.odm as foo
 import fiftyone.core.odm.sample as foos
 import fiftyone.core.sample as fos
@@ -1989,6 +1991,14 @@ def _load_dataset(name):
         dataset_doc = foo.DatasetDocument.objects.get(name=name)
     except DoesNotExist:
         raise DoesNotExistError("Dataset '%s' not found" % name)
+
+    version = dataset_doc.version
+    if version is None or version != VERSION:
+        logger.info(
+            "Migrating dataset '%s' to the current version (%s)"
+            % (dataset_doc.name, VERSION)
+        )
+        migrate_dataset(dataset_doc.name, dataset_doc.version, VERSION)
 
     # Create SampleDocument class for this dataset
     sample_doc_cls = _create_sample_document_cls(

@@ -7,6 +7,8 @@ FiftyOne v0.6.2 revisions
 """
 import pymongo as pm
 
+DATASETS = "datasets"
+
 
 def up(conn, dataset_name):
     colls = set(conn.collection_names())
@@ -15,6 +17,9 @@ def up(conn, dataset_name):
             conn[c].drop()
 
     colls = set(conn.collection_names())
+
+    for i in conn[DATASETS].find():
+        print(i)
 
 
 def down(conn, dataset_name):

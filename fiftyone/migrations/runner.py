@@ -13,7 +13,6 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.odm as foo
 import fiftyone.constants as foc
-import fiftyone.core.dataset as fod
 
 
 DOWN = "down"
@@ -34,30 +33,40 @@ class Runner(object):
         self.destination = destination
         self.revisions = revisions
 
-    def run(self):
+    def run(self, dataset_names=[]):
         """Runs the revisions"""
         connection = foo.get_db_conn()
         revisions, action = self._get_revisions_to_run()
 
-        for revision, module in revisions:
-            fn = etau.get_function(action, module)
-            fn(connection, "")
+        for dataset_name in dataset_names:
+            for revision, module in revisions:
+                fcn = etau.get_function(action, module)
+                fcn(connection, dataset_name)
 
     def _get_revisions_to_run(self):
-        revision_strings = list(map(lambda rt: rt[0], self.revisions))
+        revisions = self.revisions.copy()
+        revision_strs = list(map(lambda rt: rt[0], self.revisions))
+        action = UP
+        if self.destination is None or self.destination < self.head:
+            action = DOWN
+
         if self.destination is None:
             destination_idx = 0
         else:
-            destination_idx = revision_strings.index(self.destination) + 1
+            for idx, revision in enumerate(revision_strs):
+                if revision > self.destination:
+                    break
+                destination_idx = idx
 
         if self.head is None:
             head_idx = 0
         else:
-            head_idx = revision_strings.index(self.head)
+            for idx, revision in enumerate(revision_strs):
+                if revision > self.head:
+                    break
+                head_idx = idx
 
-        action = UP
         if self.destination is None or head_idx > destination_idx:
-            action = DOWN
             destination_idx += 1
 
         revisions_to_run = self.revisions[head_idx:destination_idx]
@@ -74,7 +83,7 @@ def _get_revisions():
     return list(
         map(
             lambda r: (
-                r[:-3].replace("_", "."),
+                r[1:-3].replace("_", "."),
                 ".".join([module_prefix, r[:-3]]),
             ),
             filtered_files,
@@ -82,11 +91,13 @@ def _get_revisions():
     )
 
 
-def migrate(dataset_name):
-    """Migrates a single dataset to the latest revision"""
+def migrate_dataset(dataset_name, head, destination):
+    """Migrates a single dataset to the latest revision.
+
+    Args:
+        dataset_name: the dataset's name
+        head: the current version
+        destination: the destination version
+    """
     revisions = _get_revisions()
-    latest_revision, _ = revisions[-1]
-    if head is None or head < latest_revision:
-        Runner(
-            head=head, destination=latest_revision, revisions=revisions
-        ).run()
+    Runner(head=head, destination=destination, revisions=revisions).run()
