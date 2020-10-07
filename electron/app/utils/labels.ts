@@ -1,7 +1,12 @@
 export const VALID_OBJECT_TYPES = ["Detection", "Detections"];
 export const VALID_CLASS_TYPES = ["Classification", "Classifications"];
+export const VALID_MASK_TYPES = ["Segmentation"];
 export const VALID_LIST_TYPES = ["Classifications", "Detections"];
-export const VALID_LABEL_TYPES = [...VALID_CLASS_TYPES, ...VALID_OBJECT_TYPES];
+export const VALID_LABEL_TYPES = [
+  ...VALID_CLASS_TYPES,
+  ...VALID_OBJECT_TYPES,
+  ...VALID_MASK_TYPES,
+];
 
 export const VALID_SCALAR_TYPES = [
   "fiftyone.core.fields.BooleanField",
@@ -25,9 +30,11 @@ export const RESERVED_FIELDS = [
 ];
 export const RESERVED_DETECTION_FIELDS = [
   "label",
+  "index",
   "bounding_box",
   "confidence",
   "attributes",
+  "mask",
 ];
 
 export const METADATA_FIELDS = [
@@ -50,6 +57,17 @@ export const stringify = (value) => {
     value = Number(value.toFixed(3));
   }
   return String(value);
+};
+
+export const labelTypeHasColor = (labelType) => {
+  return !VALID_MASK_TYPES.includes(labelType);
+};
+
+export const labelTypeIsFilterable = (labelType) => {
+  return (
+    VALID_OBJECT_TYPES.includes(labelType) ||
+    VALID_CLASS_TYPES.includes(labelType)
+  );
 };
 
 export const getLabelText = (label) => {
@@ -161,8 +179,10 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
       return {
         type: "eta.core.objects.DetectedObject",
         name,
-        label: `${obj.label}`,
+        label: obj.label,
+        index: obj.index,
         confidence: obj.confidence,
+        mask: obj.mask,
         bounding_box: bb
           ? {
               top_left: { x: bb[0], y: bb[1] },
@@ -182,7 +202,11 @@ export const convertSampleToETA = (sample, fieldSchema) => {
   if (sample._eta_labels) {
     return JSON.parse(JSON.stringify(sample._eta_labels));
   }
-  const imgLabels = { attrs: { attrs: [] }, objects: { objects: [] } };
+  const imgLabels = {
+    attrs: { attrs: [] },
+    objects: { objects: [] },
+    masks: [],
+  };
   const sampleFields = Object.keys(sample).sort();
   for (const sampleField of sampleFields) {
     if (RESERVED_FIELDS.includes(sampleField)) {
@@ -199,6 +223,11 @@ export const convertSampleToETA = (sample, fieldSchema) => {
         imgLabels[key][key].push(convert(sampleField, object));
       }
       continue;
+    } else if (VALID_MASK_TYPES.includes(field._cls)) {
+      imgLabels.masks.push({
+        name: sampleField,
+        mask: field.mask,
+      });
     } else if (VALID_SCALAR_TYPES.includes(fieldSchema[sampleField])) {
       imgLabels.attrs.attrs.push({
         name: sampleField,

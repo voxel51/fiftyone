@@ -48,6 +48,7 @@ const DisplayOptionsWrapper = (props) => {
     setActiveLabels,
     setActiveOther,
   } = displayProps;
+
   const labelSampleCounts = useRecoilValue(selectors.labelSampleCounts);
   const mediaType = useRecoilValue(selectors.mediaType);
   const filteredLabelSampleCounts = useRecoilValue(
