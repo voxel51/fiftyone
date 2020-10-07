@@ -51,6 +51,7 @@ from .core.labels import (
     Classifications,
     Detection,
     Detections,
+    Segmentation,
     ImageLabels,
 )
 from .core.metadata import (

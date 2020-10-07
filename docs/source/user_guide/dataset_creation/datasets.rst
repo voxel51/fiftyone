@@ -131,12 +131,18 @@ format when reading the dataset from disk.
     | :ref:`KITTIDetectionDataset <KITTIDetectionDataset-import>`                           | A labeled dataset consisting of images and their associated object detections      |
     |                                                                                       | saved in `KITTI format <http://www.cvlibs.net/datasets/kitti/eval\_object.php>`_.  |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`YOLODataset <YOLODataset-import>`                                               | A labeled dataset consisting of images and their associated object detections      |
+    |                                                                                       | saved in `YOLO format <https://github.com/AlexeyAB/darknet>`_.                     |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`TFObjectDetectionDataset <TFObjectDetectionDataset-import>`                     | A labeled dataset consisting of images and their associated object detections      |
     |                                                                                       | stored as TFRecords in `TF Object Detection API format \                           |
     |                                                                                       | <https://github.com/tensorflow/models/blob/master/research/object\_detection>`_.   |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`CVATImageDataset <CVATImageDataset-import>`                                     | A labeled dataset consisting of images and their associated object detections      |
     |                                                                                       | stored in `CVAT image format <https://github.com/opencv/cvat>`_.                   |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`CVATVideoDataset <CVATVideoDataset-import>`                                     | A labeled dataset consisting of videos and their associated object detections      |
+    |                                                                                       | stored in `CVAT video format <https://github.com/opencv/cvat>`_.                   |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`FiftyOneImageLabelsDataset <FiftyOneImageLabelsDataset-import>`                 | A labeled dataset consisting of images and their associated multitask predictions  |
     |                                                                                       | stored in `ETA ImageLabels format \                                                |
@@ -1093,6 +1099,117 @@ above format as follows:
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.KITTIDetectionDataset
 
+.. _YOLODataset-import:
+
+YOLODataset
+-----------
+
+The :class:`fiftyone.types.YOLODataset <fiftyone.types.dataset_types.YOLODataset>`
+type represents a labeled dataset consisting of images and their associated
+object detections saved in
+`YOLO format <https://github.com/AlexeyAB/darknet>`_.
+
+Datasets of this type are read in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        obj.names
+        images.txt
+        data/
+            <uuid1>.<ext>
+            <uuid1>.txt
+            <uuid2>.<ext>
+            <uuid2>.txt
+            ...
+
+where `obj.names` contains the object class labels:
+
+.. code-block:: text
+
+    <label-0>
+    <label-1>
+    ...
+
+and `images.txt` contains the list of images in `data/`:
+
+.. code-block:: text
+
+    data/<uuid1>.<ext>
+    data/<uuid2>.<ext>
+    ...
+
+and the TXT files in `data/` are space-delimited files where each row
+corresponds to an object in the image of the same name, in the following
+format:
+
+.. code-block:: text
+
+    <target> <x-center> <y-center> <width> <height>
+
+where `<target>` is the zero-based integer index of the object class
+label from `obj.names` and the bounding box coordinates are expressed as
+relative coordinates in `[0, 1] x [0, 1]`.
+
+Unlabeled images have no corresponding TXT file in `data/`.
+
+You can create a FiftyOne dataset from a YOLO dataset stored in the above
+format as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-yolo-dataset"
+        dataset_dir = "/path/to/yolo-dataset"
+
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_dir, fo.types.YOLODataset, name=name
+        )
+
+        # View summary info about the dataset
+        print(dataset)
+
+        # Print the first few samples in the dataset
+        print(dataset.head())
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-yolo-dataset
+        DATASET_DIR=/path/to/yolo-dataset
+
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.YOLODataset
+
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
+
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
+
+    To view a YOLO dataset stored in the above format in the FiftyOne App
+    without creating a persistent FiftyOne dataset, you can execute:
+
+    .. code-block:: shell
+
+        DATASET_DIR=/path/to/yolo-dataset
+
+        # View the dataset in the app
+        fiftyone app view \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.YOLODataset
+
 .. _TFObjectDetectionDataset-import:
 
 TFObjectDetectionDataset
@@ -1351,6 +1468,166 @@ format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.CVATImageDataset
+
+.. _CVATVideoDataset-import:
+
+CVATVideoDataset
+----------------
+
+The :class:`fiftyone.types.CVATVideoDataset <fiftyone.types.dataset_types.CVATVideoDataset>`
+type represents a labeled dataset consisting of videos and their associated
+object detections stored in
+`CVAT video format <https://github.com/opencv/cvat>`_.
+
+Datasets of this type are read in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        data/
+            <uuid1>.<ext>
+            <uuid2>.<ext>
+            ...
+        labels/
+            <uuid1>.xml
+            <uuid2>.xml
+            ...
+
+where the labels XML files are stored in the following format:
+
+.. code-block:: xml
+
+    <?xml version="1.0" encoding="utf-8"?>
+        <annotations>
+            <version>1.1</version>
+            <meta>
+                <task>
+                    <id>task-id</id>
+                    <name>task-name</name>
+                    <size>51</size>
+                    <mode>interpolation</mode>
+                    <overlap></overlap>
+                    <bugtracker></bugtracker>
+                    <flipped>False</flipped>
+                    <created>2017-11-20 11:51:51.000000+00:00</created>
+                    <updated>2017-11-20 11:51:51.000000+00:00</updated>
+                    <labels>
+                        <label>
+                            <name>car</name>
+                            <attributes>
+                                <attribute>
+                                    <name>type</name>
+                                    <values>coupe\\nsedan\\ntruck</values>
+                                </attribute>
+                                ...
+                            </attributes>
+                        </label>
+                        <label>
+                            <name>person</name>
+                            <attributes>
+                                <attribute>
+                                    <name>gender</name>
+                                    <values>male\\nfemale</values>
+                                </attribute>
+                                ...
+                            </attributes>
+                        </label>
+                        ...
+                    </labels>
+                </task>
+                <segments>
+                    <segment>
+                        <id>0</id>
+                        <start>0</start>
+                        <stop>50</stop>
+                        <url></url>
+                    </segment>
+                </segments>
+                <owner>
+                    <username></username>
+                    <email></email>
+                </owner>
+                <original_size>
+                    <width>640</width>
+                    <height>480</height>
+                </original_size>
+                <dumped>2017-11-20 11:51:51.000000+00:00</dumped>
+            </meta>
+            <track id="0" label=car">
+                <box frame="0" xtl="100" ytl="50" xbr="325" ybr="190" outside="0" occluded="0", keyframe="1">
+                    <attribute name="type">sedan</attribute>
+                    ...
+                </box>
+                ...
+            </track>
+            ...
+            <track id="10" label="person">
+                <box frame="45" xtl="300" ytl="25" xbr="375" ybr="400" outside="0" occluded="0", keyframe="1">
+                    <attribute name="gender">female</attribute>
+                    ...
+                </box>
+                ...
+            </track>
+        </annotations>
+
+Unlabeled videos have no corresponding file in `labels/`.
+
+You can create a FiftyOne dataset from a CVAT video dataset stored in the above
+format as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-cvat-video-dataset"
+        dataset_dir = "/path/to/cvat-video-dataset"
+
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_dir, fo.types.CVATVideoDataset, name=name
+        )
+
+        # View summary info about the dataset
+        print(dataset)
+
+        # Print the first few samples in the dataset
+        print(dataset.head())
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-cvat-video-dataset
+        DATASET_DIR=/path/to/cvat-video-dataset
+
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.CVATVideoDataset
+
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
+
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
+
+    To view a CVAT video dataset stored in the above format in the FiftyOne
+    App without creating a persistent FiftyOne dataset, you can execute:
+
+    .. code-block:: shell
+
+        DATASET_DIR=/path/to/cvat-video-dataset
+
+        # View the dataset in the app
+        fiftyone app view \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.CVATVideoDataset
 
 .. _FiftyOneImageLabelsDataset-import:
 

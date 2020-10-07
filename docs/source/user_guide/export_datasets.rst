@@ -120,12 +120,18 @@ format when writing the dataset to disk.
     | :ref:`KITTIDetectionDataset <KITTIDetectionDataset-export>`        | A labeled dataset consisting of images and their associated object detections      |
     |                                                                    | saved in `KITTI format <http://www.cvlibs.net/datasets/kitti/eval\_object.php>`_.  |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`YOLODataset <YOLODataset-export>`                            | A labeled dataset consisting of images and their associated object detections      |
+    |                                                                    | saved in `YOLO format <https://github.com/AlexeyAB/darknet>`_.                     |
+    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`TFObjectDetectionDataset <TFObjectDetectionDataset-export>`  | A labeled dataset consisting of images and their associated object detections      |
     |                                                                    | stored as TFRecords in `TF Object Detection API format \                           |
     |                                                                    | <https://github.com/tensorflow/models/blob/master/research/object\_detection>`_.   |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`CVATImageDataset <CVATImageDataset-export>`                  | A labeled dataset consisting of images and their associated object detections      |
     |                                                                    | stored in `CVAT image format <https://github.com/opencv/cvat>`_.                   |
+    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`CVATVideoDataset <CVATVideoDataset-export>`                  | A labeled dataset consisting of videos and their associated object detections      |
+    |                                                                    | stored in `CVAT video format <https://github.com/opencv/cvat>`_.                   |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`FiftyOneImageLabelsDataset                                   | A labeled dataset consisting of images and their associated multitask predictions  |
     | <FiftyOneImageLabelsDataset-export>`                               | stored in `ETA ImageLabels format \                                                |
@@ -899,6 +905,99 @@ format as follows:
             --label-field $LABEL_FIELD \
             --type fiftyone.types.KITTIDetectionDataset
 
+.. _YOLODataset-export:
+
+YOLODataset
+-----------
+
+The :class:`fiftyone.types.YOLODataset <fiftyone.types.dataset_types.YOLODataset>`
+type represents a labeled dataset consisting of images and their associated
+object detections saved in
+`YOLO format <https://github.com/AlexeyAB/darknet>`_.
+
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        obj.names
+        images.txt
+        data/
+            <uuid1>.<ext>
+            <uuid1>.txt
+            <uuid2>.<ext>
+            <uuid2>.txt
+            ...
+
+where `obj.names` contains the object class labels:
+
+.. code-block:: text
+
+    <label-0>
+    <label-1>
+    ...
+
+and `images.txt` contains the list of images in `data/`:
+
+.. code-block:: text
+
+    data/<uuid1>.<ext>
+    data/<uuid2>.<ext>
+    ...
+
+and the TXT files in `data/` are space-delimited files where each row
+corresponds to an object in the image of the same name, in the following
+format:
+
+.. code-block:: text
+
+    <target> <x-center> <y-center> <width> <height>
+
+where `<target>` is the zero-based integer index of the object class
+label from `obj.names` and the bounding box coordinates are expressed as
+relative coordinates in `[0, 1] x [0, 1]`.
+
+Unlabeled images have no corresponding TXT file in `data/`.
+
+You can export a FiftyOne dataset as a YOLO dataset in the above format as
+follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        export_dir = "/path/for/yolo-dataset"
+        label_field = "ground_truth"  # for example
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.YOLODataset,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/yolo-dataset
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.YOLODataset
+
 .. _TFObjectDetectionDataset-export:
 
 TFObjectDetectionDataset
@@ -1106,6 +1205,148 @@ as follows:
             --export-dir $EXPORT_DIR \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.CVATImageDataset
+
+.. _CVATVideoDataset-export:
+
+CVATVideoDataset
+----------------
+
+The :class:`fiftyone.types.CVATVideoDataset <fiftyone.types.dataset_types.CVATVideoDataset>`
+type represents a labeled dataset consisting of videos and their associated
+object detections stored in
+`CVAT video format <https://github.com/opencv/cvat>`_.
+
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        data/
+            <uuid1>.<ext>
+            <uuid2>.<ext>
+            ...
+        labels/
+            <uuid1>.xml
+            <uuid2>.xml
+            ...
+
+where the labels XML files are stored in the following format:
+
+.. code-block:: xml
+
+    <?xml version="1.0" encoding="utf-8"?>
+        <annotations>
+            <version>1.1</version>
+            <meta>
+                <task>
+                    <id>task-id</id>
+                    <name>task-name</name>
+                    <size>51</size>
+                    <mode>interpolation</mode>
+                    <overlap></overlap>
+                    <bugtracker></bugtracker>
+                    <flipped>False</flipped>
+                    <created>2017-11-20 11:51:51.000000+00:00</created>
+                    <updated>2017-11-20 11:51:51.000000+00:00</updated>
+                    <labels>
+                        <label>
+                            <name>car</name>
+                            <attributes>
+                                <attribute>
+                                    <name>type</name>
+                                    <values>coupe\\nsedan\\ntruck</values>
+                                </attribute>
+                                ...
+                            </attributes>
+                        </label>
+                        <label>
+                            <name>person</name>
+                            <attributes>
+                                <attribute>
+                                    <name>gender</name>
+                                    <values>male\\nfemale</values>
+                                </attribute>
+                                ...
+                            </attributes>
+                        </label>
+                        ...
+                    </labels>
+                </task>
+                <segments>
+                    <segment>
+                        <id>0</id>
+                        <start>0</start>
+                        <stop>50</stop>
+                        <url></url>
+                    </segment>
+                </segments>
+                <owner>
+                    <username></username>
+                    <email></email>
+                </owner>
+                <original_size>
+                    <width>640</width>
+                    <height>480</height>
+                </original_size>
+                <dumped>2017-11-20 11:51:51.000000+00:00</dumped>
+            </meta>
+            <track id="0" label=car">
+                <box frame="0" xtl="100" ytl="50" xbr="325" ybr="190" outside="0" occluded="0", keyframe="1">
+                    <attribute name="type">sedan</attribute>
+                    ...
+                </box>
+                ...
+            </track>
+            ...
+            <track id="10" label="person">
+                <box frame="45" xtl="300" ytl="25" xbr="375" ybr="400" outside="0" occluded="0", keyframe="1">
+                    <attribute name="gender">female</attribute>
+                    ...
+                </box>
+                ...
+            </track>
+        </annotations>
+
+Unlabeled videos have no corresponding file in `labels/`.
+
+You can export a FiftyOne dataset as a CVAT video dataset in the above format
+as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        export_dir = "/path/for/cvat-video-dataset"
+        label_field = "ground_truth"  # for example
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.CVATVideoDataset,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/cvat-video-dataset
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.CVATVideoDataset
 
 .. _FiftyOneImageLabelsDataset-export:
 
