@@ -403,12 +403,22 @@ def _get_field_count(view, field):
             return next(view.aggregate(pipeline))["totalCount"]
         except StopIteration:
             return 0
-
     elif isinstance(field, fof.EmbeddedDocumentField):
+        extra_stage = []
         if issubclass(field.document_type, fol.Classifications):
             array_field = "$%s.classifications" % field.name
         elif issubclass(field.document_type, fol.Detections):
             array_field = "$%s.detections" % field.name
+        elif issubclass(field.document_type, fol.Polylines):
+            array_field = "$%s.polylines" % field.name
+        elif issubclass(field.document_type, fol.Keypoint):
+            array_field = "$%s.points" % field.name
+        elif issubclass(field.document_type, fol.Keypoints):
+            array_field = "$%s.keypoints" % field.name
+            extra_stage = [
+                {"$unwind": array_field},
+            ]
+            array_field = "%s.points" % array_field
         else:
             array_field = None
 
@@ -430,6 +440,7 @@ def _get_field_count(view, field):
                     }
                 }
             ]
+            pipeline = extra_stage + pipeline
             try:
                 return next(view.aggregate(pipeline))["totalCount"]
             except StopIteration:

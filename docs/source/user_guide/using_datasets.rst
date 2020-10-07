@@ -1080,7 +1080,7 @@ Objects with attributes
 -----------------------
 
 Object detections stored in |Detections| may also be given attributes, which
-should be stored in the
+can be stored in the
 :attr:`attributes <fiftyone.core.labels.Detection.attributes>` attribute of
 each |Detection|; this field is a dictionary mapping attribute names to
 |Attribute| instances, which contain the
@@ -1179,6 +1179,298 @@ schema of the attributes that you're storing.
         }>,
     }>
 
+.. _polylines:
+
+Polylines and polygons
+----------------------
+
+The |Polylines| class represents a list of
+`polylines <https://en.wikipedia.org/wiki/Polygonal_chain>`__ or
+`polygons <https://en.wikipedia.org/wiki/Polygon>`__ in an image. The polylines
+are stored in the
+:attr:`polylines <fiftyone.core.labels.Polylines.polylines>` attribute of the
+|Polylines| object.
+
+Each individual polyline is represented by a |Polyline| object. The
+:attr:`points <fiftyone.core.labels.Polyline.points>` attribute contains a
+list of ``(x, y)`` coordinates defining the vertices of the polyline. If the
+polyline represents a closed curve, you can set the
+:attr:`closed <fiftyone.core.labels.Polyline.closed>` attribute to ``True`` to
+indicate that a line segment should be drawn from the last vertex to the first
+vertex. If the polyline defines a simple region that can be filled, you can set
+the :attr:`filled <fiftyone.core.labels.Polyline.filled>` attribute to
+``True``. Polylines can also have string labels, which are stored in their
+:attr:`label <fiftyone.core.labels.Polyline.label>` attribute.
+
+.. note::
+    FiftyOne stores vertex coordinates as floats in `[0, 1]` relative to the
+    dimensions of the image.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+
+    # A simple polyline
+    polyline1 = fo.Polyline(
+        points=[(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)],
+        closed=False,
+        filled=False
+    )
+
+    # A closed, filled polygon with a label
+    polyline2 = fo.Polyline(
+        label="triangle",
+        points=[(0.1, 0.1), (0.3, 0.1), (0.3, 0.3)],
+        closed=True,
+        filled=True
+    )
+
+    sample["polylines"] = fo.Polylines(polylines=[polyline1, polyline2])
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'polylines': <Polylines: {
+            'polylines': BaseList([
+                <Polyline: {
+                    'id': '5f72ba1b9d80d726d8952d9b',
+                    'attributes': BaseDict({}),
+                    'label': None,
+                    'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)]),
+                    'closed': False,
+                    'filled': False,
+                }>,
+                <Polyline: {
+                    'id': '5f72ba1b9d80d726d8952d9c',
+                    'attributes': BaseDict({}),
+                    'label': 'triangle',
+                    'points': BaseList([(0.1, 0.1), (0.3, 0.1), (0.3, 0.3)]),
+                    'closed': True,
+                    'filled': True,
+                }>,
+            ]),
+        }>,
+    }>
+
+.. -polylines-with-attributes:
+
+Polylines with attributes
+-------------------------
+
+Polylines stored in |Polylines| may also be given attributes, which can be
+stored in the
+:attr:`attributes <fiftyone.core.labels.Polyline.attributes>` attribute of
+each |Polyline|; this field is a dictionary mapping attribute names to
+|Attribute| instances, which contain the
+:attr:`value <fiftyone.core.labels.Attribute.value>` of the attribute and any
+associated metadata.
+
+There are |Attribute| subclasses for various types of attributes you may want
+to store. Use the appropriate subclass when possible so that FiftyOne knows the
+schema of the attributes that you're storing.
+
+.. table::
+    :widths: 25 25 50
+
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | Attribute class                                                           | Value type | Description                     |
+    +===========================================================================+============+=================================+
+    | :class:`Attribute <fiftyone.core.labels.Attribute>`                       | arbitrary  | A generic attribute of any type |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | :class:`BooleanAttribute <fiftyone.core.labels.BooleanAttribute>`         | `bool`     | A boolean attribute             |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | :class:`CategoricalAttribute <fiftyone.core.labels.CategoricalAttribute>` | `string`   | A categorical attribute         |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | :class:`NumericAttribute <fiftyone.core.labels.NumericAttribute>`         | `float`    | A numeric attribute             |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+
+    # A simple polyline
+    polyline = fo.Polyline(
+        points=[(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)],
+        closed=False,
+        filled=False,
+        attributes={
+            "length": fo.NumericAttribute(value=3),
+            "shape": fo.CategoricalAttribute(value="L"),
+        },
+    )
+
+    sample["polylines"] = fo.Polylines(polylines=[polyline])
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'polylines': <Polylines: {
+            'polylines': BaseList([
+                <Polyline: {
+                    'id': '5f72bb639d80d726d8952d9d',
+                    'attributes': BaseDict({
+                        'length': <NumericAttribute: {'value': 3}>,
+                        'shape': <CategoricalAttribute: {'value': 'L', 'confidence': None, 'logits': None}>,
+                    }),
+                    'label': None,
+                    'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)]),
+                    'closed': False,
+                    'filled': False,
+                }>,
+            ]),
+        }>,
+    }>
+
+.. _keypoints:
+
+Keypoints
+---------
+
+The |Keypoints| class represents a list of keypoints in an image. The keypoints
+are stored in the
+:attr:`keypoints <fiftyone.core.labels.Keypoints.keypoints>` attribute of the
+|Keypoints| object.
+
+Each element of this list is a |Keypoint| object whose
+:attr:`points <fiftyone.core.labels.Keypoint.points>` attribute contains a
+list of ``(x, y)`` coordinates defining a set of keypoints in the image. Each
+|Keypoint| object can have a string label, which is stored in its
+:attr:`label <fiftyone.core.labels.Keypoint.label>` attribute.
+
+.. note::
+    FiftyOne stores keypoint coordinates as floats in `[0, 1]` relative to the
+    dimensions of the image.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+
+    sample["keypoints"] = fo.Keypoints(
+        keypoints=[
+            fo.Keypoint(
+                label="square",
+                points=[(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)]
+            )
+        ]
+    )
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'keypoints': <Keypoints: {
+            'keypoints': BaseList([
+                <Keypoint: {
+                    'id': '5f737fae2e5f75f7211b5d03',
+                    'attributes': BaseDict({}),
+                    'label': 'square',
+                    'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)]),
+                }>,
+            ]),
+        }>,
+    }>
+
+.. -keypoints-with-attributes:
+
+Keypoints with attributes
+-------------------------
+
+Keypoints stored in |Keypoints| may also be given attributes, which can be
+stored in the
+:attr:`attributes <fiftyone.core.labels.Keypoint.attributes>` attribute of
+each |Keypoint|; this field is a dictionary mapping attribute names to
+|Attribute| instances, which contain the
+:attr:`value <fiftyone.core.labels.Attribute.value>` of the attribute and any
+associated metadata.
+
+There are |Attribute| subclasses for various types of attributes you may want
+to store. Use the appropriate subclass when possible so that FiftyOne knows the
+schema of the attributes that you're storing.
+
+.. table::
+    :widths: 25 25 50
+
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | Attribute class                                                           | Value type | Description                     |
+    +===========================================================================+============+=================================+
+    | :class:`Attribute <fiftyone.core.labels.Attribute>`                       | arbitrary  | A generic attribute of any type |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | :class:`BooleanAttribute <fiftyone.core.labels.BooleanAttribute>`         | `bool`     | A boolean attribute             |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | :class:`CategoricalAttribute <fiftyone.core.labels.CategoricalAttribute>` | `string`   | A categorical attribute         |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | :class:`NumericAttribute <fiftyone.core.labels.NumericAttribute>`         | `float`    | A numeric attribute             |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+
+    keypoint = fo.Keypoint(
+        label="square",
+        points=[(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)],
+        attributes={
+            "corners": fo.NumericAttribute(value=4),
+            "convex": fo.BooleanAttribute(value=True),
+        },
+    )
+
+    sample["keypoints"] = fo.Keypoints(keypoints=[keypoint])
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': None,
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'keypoints': <Keypoints: {
+            'keypoints': BaseList([
+                <Keypoint: {
+                    'id': '5f73805f2e5f75f7211b5d05',
+                    'attributes': BaseDict({
+                        'corners': <NumericAttribute: {'value': 4}>,
+                        'convex': <BooleanAttribute: {'value': True}>,
+                    }),
+                    'label': 'square',
+                    'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)]),
+                }>,
+            ]),
+        }>,
+    }>
+
+
 .. _semantic-segmentation:
 
 Semantic segmentation
@@ -1243,6 +1535,8 @@ image. The labels are stored in the
 - Frame-level classifications
 - Semantic segmentation masks
 - Object detections, optionally with attributes and/or instance segmentations
+- Polylines and polygons, optionally with attributes
+- Image keypoints, optionally with attributes
 
 The labels can be ground truth annotations or model predictions; in the
 latter case, additional metadata such as prediction confidences can be store.

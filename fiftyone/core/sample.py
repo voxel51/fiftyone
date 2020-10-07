@@ -32,7 +32,7 @@ class _DatasetSample(_Sample):
         return super().__getattr__(name)
 
     def __getitem__(self, field_name):
-        if fofu.is_frame_number(field_name) and self.media_type == "video":
+        if fofu.is_frame_number(field_name) and self.media_type == fomm.VIDEO:
             return self.frames[field_name]
 
         if field_name == "frames" and self.media_type == fomm.VIDEO:
@@ -46,7 +46,7 @@ class _DatasetSample(_Sample):
             )
 
     def __setitem__(self, field_name, value):
-        if fofu.is_frame_number(field_name) and (self.media_type == "video"):
+        if fofu.is_frame_number(field_name) and self.media_type == fomm.VIDEO:
             self.frames[field_name] = value
             return
 
@@ -60,9 +60,9 @@ class _DatasetSample(_Sample):
 
     def compute_metadata(self):
         """Populates the ``metadata`` field of the sample."""
-        if self.media_type == "image":
+        if self.media_type == fomm.IMAGE:
             self.metadata = fom.ImageMetadata.build_for(self.filepath)
-        elif self.media_type == "video":
+        elif self.media_type == fomm.VIDEO:
             self.metadata = fom.VideoMetadata.build_for(self.filepath)
         else:
             self.metadata = fom.Metadata.build_for(self.filepath)

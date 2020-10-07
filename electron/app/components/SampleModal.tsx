@@ -361,8 +361,12 @@ const SampleModal = ({
       if (!s[name]) {
         value = 0;
       } else {
-        value = ["Detections", "Classifcations"].includes(type)
+        value = ["Detections", "Classifications", "Polylines"].includes(type)
           ? s[name][type.toLowerCase()].length
+          : type === "Keypoints"
+          ? s[name].keypoints.reduce((acc, cur) => acc + cur.points.length, 0)
+          : type === "Keypoint"
+          ? s[name].points.length
           : 1;
       }
       return {

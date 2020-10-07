@@ -12,6 +12,7 @@ import eta.core.data as etad
 import eta.core.geometry as etag
 import eta.core.image as etai
 import eta.core.objects as etao
+import eta.core.polylines as etap
 import eta.core.utils as etau
 import eta.core.serial as etas
 
@@ -35,6 +36,7 @@ class BDDSampleParser(foud.LabeledImageTupleSampleParser):
         - ``anno_or_path`` is a dictionary in the following format::
 
             {
+                "name": "<filename>.<ext>",
                 "attributes": {
                     "scene": "city street",
                     "timeofday": "daytime",
@@ -42,6 +44,10 @@ class BDDSampleParser(foud.LabeledImageTupleSampleParser):
                 },
                 "labels": [
                     {
+                        "id": 0,
+                        "category": "traffic sign",
+                        "manualAttributes": true,
+                        "manualShape": true,
                         "attributes": {
                             "occluded": false,
                             "trafficLightColor": "none",
@@ -52,16 +58,54 @@ class BDDSampleParser(foud.LabeledImageTupleSampleParser):
                             "x2": 1040.626872,
                             "y1": 281.992415,
                             "y2": 326.91156
-                        },
-                        "category": "traffic sign",
-                        "id": 0,
-                        "manualAttributes": true,
-                        "manualShape": true
+                        }
                     },
                     ...
-                ],
-                "name": "b1c66a42-6f7d68ca.jpg",
-                ...
+                    {
+                        "id": 34,
+                        "category": "drivable area",
+                        "manualAttributes": true,
+                        "manualShape": true,
+                        "attributes": {
+                            "areaType": "direct"
+                        },
+                        "poly2d": [
+                            {
+                                "types": "LLLLCCC",
+                                "closed": true,
+                                "vertices": [
+                                    [241.143645, 697.923453],
+                                    [541.525255, 380.564983],
+                                    ...
+                                ]
+                            }
+                        ]
+                    },
+                    ...
+                    {
+                        "id": 109356,
+                        "category": "lane",
+                        "attributes": {
+                            "laneDirection": "parallel",
+                            "laneStyle": "dashed",
+                            "laneType": "single white"
+                        },
+                        "manualShape": true,
+                        "manualAttributes": true,
+                        "poly2d": [
+                            {
+                                "types": "LL",
+                                "closed": false,
+                                "vertices": [
+                                    [492.879546, 331.939543],
+                                    [0, 471.076658],
+                                    ...
+                                ]
+                            }
+                        ],
+                    },
+                    ...
+                }
             }
 
           or the path to such a JSON file on disk. For unlabeled images,
@@ -347,33 +391,71 @@ def _parse_bdd_annotation(d, frame_size):
     frame_attrs = d.get("attributes", {})
     image_labels.attrs = _make_attributes(frame_attrs)
 
-    # Objects
-    objects = d.get("labels", [])
-    for obj in objects:
-        if "box2d" not in obj:
-            continue
+    # Objects and polylines
+    labels = d.get("labels", [])
+    for label in labels:
+        if "box2d" in label:
+            dobj = _parse_bdd_object(label, frame_size)
+            image_labels.add_object(dobj)
 
-        label = obj["category"]
+        if "poly2d" in label:
+            polylines = _parse_bdd_polylines(label, frame_size)
+            image_labels.add_polylines(polylines)
 
-        bbox = obj["box2d"]
-        bounding_box = etag.BoundingBox.from_abs_coords(
-            bbox["x1"],
-            bbox["y1"],
-            bbox["x2"],
-            bbox["y2"],
-            frame_size=frame_size,
-        )
+    return fol.ImageLabels(labels=image_labels)
 
-        obj_attrs = obj.get("attributes", {})
-        attrs = _make_attributes(obj_attrs)
 
-        image_labels.add_object(
-            etao.DetectedObject(
-                label=label, bounding_box=bounding_box, attrs=attrs,
+def _parse_bdd_object(d, frame_size):
+    label = d["category"]
+
+    box2d = d["box2d"]
+    bounding_box = etag.BoundingBox.from_abs_coords(
+        box2d["x1"],
+        box2d["y1"],
+        box2d["x2"],
+        box2d["y2"],
+        frame_size=frame_size,
+        clamp=False,
+    )
+
+    obj_attrs = d.get("attributes", {})
+    attrs = _make_attributes(obj_attrs)
+
+    return etao.DetectedObject(
+        label=label, bounding_box=bounding_box, attrs=attrs,
+    )
+
+
+def _parse_bdd_polylines(d, frame_size):
+    label = d["category"]
+
+    attributes = d.get("attributes", {})
+    attrs = _make_attributes(attributes)
+    polylines = etap.PolylineContainer()
+    for poly2d in d.get("poly2d", []):
+        points = poly2d.get("vertices", [])
+        closed = poly2d.get("closed", False)
+        filled = closed  # assume that closed figures should be filled
+
+        _attrs = attrs.copy()
+
+        types = poly2d.get("types", None)
+        if types is not None:
+            _attrs.add(_make_attribute("types", types))
+
+        polylines.add(
+            etap.Polyline.from_abs_coords(
+                points,
+                label=label,
+                closed=closed,
+                filled=filled,
+                attrs=_attrs,
+                frame_size=frame_size,
+                clamp=False,
             )
         )
 
-    return fol.ImageLabels(labels=image_labels)
+    return polylines
 
 
 def _make_bdd_annotation(image_labels_or_dict, metadata, filename):
@@ -386,22 +468,49 @@ def _make_bdd_annotation(image_labels_or_dict, metadata, filename):
     else:
         image_labels = image_labels_or_dict.labels
 
+    labels = []
+    frame_size = (metadata.width, metadata.height)
+    uuid = -1
+
     # Frame attributes
     frame_attrs = {a.name: a.value for a in image_labels.attrs}
 
     # Objects
-    labels = []
-    frame_size = (metadata.width, metadata.height)
-    for idx, obj in enumerate(image_labels.objects):
+    for obj in image_labels.objects:
+        uuid += 1
         tlx, tly, w, h = obj.bounding_box.coords_in(frame_size=frame_size)
         labels.append(
             {
-                "attributes": {a.name: a.value for a in obj.attrs},
-                "box2d": {"x1": tlx, "x2": tlx + w, "y1": tly, "y2": tly + h,},
+                "id": uuid,
                 "category": obj.label,
-                "id": idx,
                 "manualAttributes": True,
                 "manualShape": True,
+                "attributes": {a.name: a.value for a in obj.attrs},
+                "box2d": {"x1": tlx, "x2": tlx + w, "y1": tly, "y2": tly + h},
+            }
+        )
+
+    # Polylines
+    for polyline in image_labels.polylines:
+        uuid += 1
+        vertices = polyline.coords_in(frame_size=frame_size)
+        types = polyline.attrs.get_attr_value_with_name("types", None)
+        labels.append(
+            {
+                "id": uuid,
+                "category": polyline.label,
+                "manualAttributes": True,
+                "manualShape": True,
+                "attributes": {
+                    a.name: a.value
+                    for a in polyline.attrs
+                    if a.name != "types"
+                },
+                "poly2d": {
+                    "types": types,
+                    "closed": polyline.closed,
+                    "vertices": vertices,
+                },
             }
         )
 
