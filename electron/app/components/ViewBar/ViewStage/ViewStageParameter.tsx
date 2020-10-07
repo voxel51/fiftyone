@@ -264,16 +264,18 @@ const ObjectEditor = ({
               value={value}
               ref={inputRef}
             ></ObjectEditorTextArea>
-            <ArrowDropUp
-              style={{
-                cursor: "pointer",
-                color: theme.font,
-                marginTop: "0.2em",
-                position: "absolute",
-                right: "0.2rem",
-              }}
-              onClick={onClose}
-            />
+            {hasExpansion && (
+              <ArrowDropUp
+                style={{
+                  cursor: "pointer",
+                  color: theme.font,
+                  marginTop: "0.2em",
+                  position: "absolute",
+                  right: "0.2rem",
+                }}
+                onClick={onClose}
+              />
+            )}
             <Submit key="submit" send={send} />
           </>
         )}
@@ -307,6 +309,13 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
 
   const hasExpansion = state.context.type === "dict|field";
   const isObjectEditor = hasObjectType && (!hasExpansion || expanded);
+  useEffect(() => {
+    if (!hasExpansion || expanded) return;
+    try {
+      JSON.parse(value);
+      setExpanded(true);
+    } catch {}
+  }, [value]);
 
   const props = useSpring({
     backgroundColor:
