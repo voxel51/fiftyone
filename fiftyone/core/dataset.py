@@ -1852,6 +1852,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     )
                     fields = self.get_field_schema(include_private=True)
 
+        self._doc.reload()
+
     def _expand_frame_schema(self, frames):
         fields = self.get_frame_field_schema(include_private=True)
         for frame in frames:
