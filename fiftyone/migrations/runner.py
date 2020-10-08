@@ -40,13 +40,7 @@ class Runner(object):
         for dataset_name in dataset_names:
             for revision, module in self._revisions_to_run:
                 fcn = etau.get_function(self.direction, module)
-                # fcn(conn, dataset_name)
-                # Testing
-                up = etau.get_function("up", module)
-                down = etau.get_function("down", module)
-                up(conn, dataset_name)
-                down(conn, dataset_name)
-                up(conn, dataset_name)
+                fcn(conn, dataset_name)
 
     @property
     def direction(self):

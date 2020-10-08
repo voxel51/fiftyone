@@ -77,4 +77,6 @@ def down(db, dataset_name):
             {"_id": s["_id"]}, {"$set": {"frames": frames}}
         )
 
-    db[frame_coll].update({}, {"$unset": {"_sample_id": ""}}, {"multi": True})
+    db[frame_coll].update(
+        {}, {"$unset": {"_sample_id": ""}}, multi=True, upsert=True
+    )

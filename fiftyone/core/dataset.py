@@ -2039,6 +2039,7 @@ def _load_dataset(name):
                 % (dataset_doc.name, VERSION)
             )
             runner.run(dataset_names=[dataset_doc.name])
+        dataset_doc.reload()
 
     # Create SampleDocument class for this dataset
     sample_doc_cls = _create_sample_document_cls(
