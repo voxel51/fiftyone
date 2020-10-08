@@ -1711,6 +1711,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if rel_dir is not None:
             rel_dir = os.path.abspath(os.path.expanduser(rel_dir))
 
+        # @todo support importing video datasets?
+        # This should never actually be run, as serializing video datasets is
+        # not supported in the first place
+        if d.get("media_type", fom.IMAGE) == fom.VIDEO:
+            raise ValueError(
+                "Importing serialized video datasets is not supported"
+            )
+
         def parse_sample(sd):
             if rel_dir and not sd["filepath"].startswith(os.path.sep):
                 sd["filepath"] = os.path.join(rel_dir, sd["filepath"])
