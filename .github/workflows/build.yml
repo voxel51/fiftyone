@@ -110,8 +110,13 @@ jobs:
       - name: Install fiftyone-gui stub
         working-directory: package/gui
         run: |
-          cp "$(which true)" ./FiftyOne-stub.AppImage
-          export FIFTYONE_GUI_EXE_PATH=./FiftyOne-stub.AppImage
+          if [[ ${{ matrix.os }} = windows-* ]]; then
+            ext=exe
+          else
+            ext=AppImage
+          fi
+          cp -v "$(which true)" ./FiftyOne-stub.${ext}
+          export FIFTYONE_GUI_EXE_PATH=./FiftyOne-stub.${ext}
           python setup.py bdist_wheel
           pip install dist/*.whl
       - name: Install fiftyone
