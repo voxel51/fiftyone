@@ -1169,7 +1169,7 @@ class VideoLabelsSampleParser(LabeledVideoSampleParser):
 
         frames = {}
         for frame_number in video_labels:
-            frame = fof.Frame()
+            frame = fof.Frame(frame_number=frame_number)
 
             image_labels = fol.ImageLabels(
                 labels=etai.ImageLabels.from_frame_labels(
