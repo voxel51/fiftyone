@@ -740,7 +740,7 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
         metadata_path = os.path.join(self.dataset_dir, "metadata.json")
         if os.path.isfile(metadata_path):
             metadata = etas.load_json(metadata_path)
-            media_type = metadata.get("media_type", None)
+            media_type = metadata.get("media_type", fomm.IMAGE)
             self._metadata = metadata
             self._is_video_dataset = media_type == fomm.VIDEO
         else:
