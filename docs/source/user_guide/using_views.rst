@@ -384,26 +384,72 @@ stages to select or exclude fields from the returned |SampleView|:
         print(sample.tags)     # AttributeError: `tags` was excluded
     )
 
-The :meth:`filter_classifications() <fiftyone.core.view.DatasetView.filter_classifications>`
-and :meth:`filter_detections() <fiftyone.core.view.DatasetView.filter_detections>`
+The :meth:`filter_classifications() <fiftyone.core.view.DatasetView.filter_classifications>`,
+:meth:`filter_detections() <fiftyone.core.view.DatasetView.filter_detections>`,
+:meth:`filter_polylines() <fiftyone.core.view.DatasetView.filter_polylines>`, and
+:meth:`filter_keypoints() <fiftyone.core.view.DatasetView.filter_keypoints>`
 stages are powerful stages that allow you to filter the contents of
-|Classifications| and |Detections| fields, respectively.
+|Detections|, |Classifications|, |Polylines|, and |Keypoints| fields,
+respectively.
 
-Here are some examples:
+Here are some examples for each task:
+
+.. tabs::
+
+    .. tab:: Classifications
+
+        .. code-block:: python
+            :linenos:
+
+            # Only include labels in the `my_classifications` field of each sample with
+            # label "friend" and confidence greater than 0.5
+            confident_friends_view = dataset.filter_classifications(
+                "my_classifications", (F("confidence") > 0.5) & (F("label") == "friend")
+            )
+
+    .. tab:: Detections
+
+        .. code-block:: python
+            :linenos:
+
+            # Only include detections in the `my_detections` field of each sample
+            # whose bounding boxes have an area of at least 0.5
+            large_boxes_view = dataset.filter_detections(
+                "my_detections", F("bounding_box")[2] * F("bounding_box")[3] >= 0.5
+            )
+
+    .. tab:: Polylines
+
+        .. code-block:: python
+            :linenos:
+
+            # Only include polylines in the `my_polylines` field that are filled
+            # (i.e., are polygons)
+            filled_polygons_view = dataset.filter_polylines(
+                "my_polylines", F("filled")
+            )
+
+    .. tab:: Keypoints
+
+        .. code-block:: python
+            :linenos:
+
+            # Only include keypoints in the `my_keypoints`  field of each sample
+            # that have at most 10 vertices
+            many_points_view = dataset.filter_keypoints(
+                "my_keypoints", F("points").length() >= 10
+            )
+
+You can also use the :meth:`filter_field() <fiftyone.core.view.DatasetView.filter_field>`
+stage to filter the contents of arbitrarily-typed fields:
 
 .. code-block:: python
     :linenos:
 
-    # Only include labels in the `my_classifications` field of each sample with
-    # label "friend" and confidence greater than 0.5
-    confident_friends_view = dataset.filter_classifications(
-        "my_classifications", (F("confidence") > 0.5) & (F("label") == "friend")
-    )
-
-    # Only include detections in the `my_detections` field whose boxes have
-    # an area of at least 0.5
-    large_boxes_view = dataset.filter_detections(
-        "my_detections", F("bounding_box")[2] * F("bounding_box")[3] >= 0.5
+    # Only include values for the `my_string` field that are either "awesome" or
+    # "cool"
+    awesome_cool_view = dataset.filter_field(
+        "my_string", F().is_in(["awesome", "cool"])
     )
 
 .. note::
