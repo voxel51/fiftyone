@@ -7,20 +7,39 @@ FiftyOne v0.6.2 revisions
 """
 import pymongo as pm
 
-DATASETS = "datasets"
 
-
-def up(conn, dataset_name):
-    colls = set(conn.collection_names())
+def up(db, dataset_name):
+    colls = set(db.collection_names())
     for c in colls:
         if c.startswith("frames.") and ".".join(c.split(".")[1:]) not in colls:
-            conn[c].drop()
+            db[c].drop()
 
-    colls = set(conn.collection_names())
+    colls = set(db.collection_names())
 
-    dataset_dict = conn[DATASETS].find_one({"name": dataset_name})
-    print(dataset_dict)
+    match_d = {"name": dataset_name}
+    dataset_dict = db.datasets.find_one(match_d)
+    if "media_type" not in dataset_dict:
+        dataset_dict["media_type"] = "image"
+        db.datasets.update_one(
+            match_d, {"$set": {"media_type": dataset_dict["media_type"]}}
+        )
+
+    if dataset_dict["media_type"] == "image":
+        return
+
+    sample_coll = dataset_dict["sample_collection_name"]
+    frame_coll = "frames.%s" % sample_coll
+    for s in sample_coll.find():
+        print(s)
 
 
-def down(conn, dataset_name):
+def down(db, dataset_name):
+    match_d = {"name": dataset_name}
+    dataset_dict = db.datasets.find_one(match_d)
+    sample_coll = dataset_dict["sample_collection_name"]
+    frame_coll = "frames.%s" % sample_coll
+
+    db.datasets.update_one(match_d, {"$unset": {"media_type": ""}})
+
+    db[dataset_name].update({}, {"$unset": {"sample_id": 1}}, {"multi": True})
     print("down")
