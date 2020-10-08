@@ -59,7 +59,7 @@ class DatasetFrameSampleDocument(DatasetMixin, Document, SampleDocument):
 
     meta = {"abstract": True}
 
-    sample_id = fof.ObjectIdField(default=None, required=True)
+    _sample_id = fof.ObjectIdField(default=None, required=True)
     frame_number = fof.FrameNumberField(required=True)
 
     @classmethod
@@ -85,7 +85,7 @@ class NoDatasetFrameSampleDocument(NoDatasetMixin, SampleDocument):
 
             value = kwargs.pop(field_name, None)
 
-            if value is None and field_name != "sample_id":
+            if value is None and field_name != "_sample_id":
                 value = self._get_default(self.default_fields[field_name])
 
             self._data[field_name] = value

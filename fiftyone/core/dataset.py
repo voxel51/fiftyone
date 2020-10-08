@@ -337,7 +337,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             elements.extend(
                 [
                     "Frame fields:",
-                    self._to_fields_str(self.get_frames_field_schema()),
+                    self._to_fields_str(self.get_frame_field_schema()),
                 ]
             )
 
