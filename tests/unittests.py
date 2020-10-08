@@ -27,6 +27,7 @@ from pymongo.errors import DuplicateKeyError
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
+from fiftyone.migrations.runner import Runner
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 from fiftyone.core.odm.sample import (
@@ -2382,6 +2383,24 @@ class VideoSampleTests(unittest.TestCase):
         s[1].save()
         for f in s:
             self.assertEqual(s[f]["label"], label)
+
+
+class MigrationTests(unittest.TestCase):
+    def test_runner(self):
+        runner = Runner(
+            head=None, destination="0.3", revisions=["0.1", "0.2", "0.3"]
+        )
+        self.assertEqual(runner.revisions, ["0.1", "0.2", "0.3"])
+        runner = Runner(
+            head="0.1", destination="0.3", revisions=["0.1", "0.2", "0.3"]
+        )
+        self.assertEqual(runner.revisions, ["0.2", "0.3"])
+        runner = Runner(
+            head="0.3", destination=None, revisions=["0.1", "0.2", "0.3"]
+        )
+        self.assertEqual(runner.revisions, ["0.3", "0.2", "0.1"])
+        runner = Runner(head=None, destination="0.1", revisions=["0.1"])
+        self.assertEqual(runner.revisions, ["0.3"])
 
 
 if __name__ == "__main__":

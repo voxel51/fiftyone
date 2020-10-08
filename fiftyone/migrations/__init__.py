@@ -5,4 +5,4 @@ FiftyOne's migration interface.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from .runner import migrate_dataset
+from .runner import get_migration_runner
