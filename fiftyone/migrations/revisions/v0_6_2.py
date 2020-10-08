@@ -9,6 +9,7 @@ import pymongo as pm
 
 
 def up(db, dataset_name):
+    assert False
     colls = set(db.collection_names())
     for c in colls:
         if c.startswith("frames.") and ".".join(c.split(".")[1:]) not in colls:
@@ -26,6 +27,11 @@ def up(db, dataset_name):
             match_d, {"$set": {"media_type": dataset_dict["media_type"]}}
         )
         return
+
+    for field in dataset_dict["sample_fields"] + dataset_dict["frame_fields"]:
+        del field["media_type"]
+
+    db.datasets.replace_one(match_d, dataset_dict)
 
     dataset_dict["frames"][
         "ftype"
