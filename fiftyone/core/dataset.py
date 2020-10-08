@@ -2038,7 +2038,7 @@ def _load_dataset(name):
                 "Migrating dataset '%s' to the current version (%s)"
                 % (dataset_doc.name, VERSION)
             )
-            runner.run()
+            runner.run(dataset_names=[dataset_doc.name])
 
     # Create SampleDocument class for this dataset
     sample_doc_cls = _create_sample_document_cls(

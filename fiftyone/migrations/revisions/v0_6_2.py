@@ -22,29 +22,25 @@ def up(db, dataset_name):
     if "media_type" not in dataset_dict:
         dataset_dict["media_type"] = "image"
 
-    if dataset_dict["media_type"] == "image":
-        db.datasets.update_one(
-            match_d, {"$set": {"media_type": dataset_dict["media_type"]}}
-        )
-        return
-
     for field in dataset_dict["sample_fields"] + dataset_dict["frame_fields"]:
-        del field["media_type"]
+        if "media_type" in field:
+            del field["media_type"]
+        if field["name"] == "frames" and dataset_dict["media_type"] == "video":
+            field["ftype"] = "fiftyone.core.fields.EmbeddedDocumentField"
+            field["subfield"] = None
+            field["embedded_doc_type"] = "fiftyone.core.labels.Frames"
 
     db.datasets.replace_one(match_d, dataset_dict)
 
-    dataset_dict["frames"][
-        "ftype"
-    ] = "fiftyone.core.fields.EmbeddedDocumentField"
-    dataset_dict["frames"]["subfield"] = None
-    dataset_dict["frames"]["embedded_doc_type"] = "fiftyone.core.labels.Frames"
+    if dataset_dict["media_type"] == "image":
+        return
 
     sample_coll = dataset_dict["sample_collection_name"]
     frame_coll = "frames.%s" % sample_coll
     for s in db[sample_coll].find():
         frames_d = {"frame_count": len(s["frames"]), "first_frame": None}
         frame_updates = []
-        for frame_number_str, frame_id in s["frames"]:
+        for frame_number_str, frame_id in s["frames"].items():
             frame_number = int(frame_number_str)
             if frame_number == 1:
                 first_frame = db[frame_coll].find_one({"_id": frame_id})
@@ -58,16 +54,19 @@ def up(db, dataset_name):
 
 
 def down(db, dataset_name):
-    print("down")
     match_d = {"name": dataset_name}
     dataset_dict = db.datasets.find_one(match_d)
     sample_coll = dataset_dict["sample_collection_name"]
     frame_coll = "frames.%s" % sample_coll
 
-    db.datasets.update_one(match_d, {"$unset": {"media_type": ""}})
-    dataset_dict["frames"]["ftype"] = "fiftyone.core.fields.FramesField"
-    dataset_dict["frames"]["subfield"] = "fiftyone.core.fields.ReferenceField"
-    dataset_dict["frames"]["embedded_doc_type"] = None
+    for field in dataset_dict["sample_fields"] + dataset_dict["frame_fields"]:
+        field["media_type"] = None
+        if field["name"] == "frames" and dataset_dict["media_type"] == "video":
+            field["ftype"] = "fiftyone.core.fields.FramesField"
+            field["subfield"] = "fiftyone.core.fields.ReferenceField"
+            field["embedded_doc_type"] = None
+
+    db.datasets.replace_one(match_d, dataset_dict)
 
     for s in db[sample_coll].find():
         frames = {}
