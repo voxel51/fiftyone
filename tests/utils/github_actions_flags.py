@@ -15,4 +15,6 @@ if (
     flags["run_integration"] = True
 
 for k, v in flags.items():
-    print("::set-output name=%s::%s" % (k, str(v).lower()))
+    v = str(v).lower()
+    print("flag %s = %s" % (k, v))
+    print("::set-output name=%s::%s" % (k, v))
