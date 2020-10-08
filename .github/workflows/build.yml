@@ -147,6 +147,9 @@ jobs:
         if: success() || failure()
         run: |
           find tests/isolated/ -name '*.py' -print0 | xargs -0 --verbose -n1 python tests/utils/pytest_wrapper.py --verbose
+      - name: Test quickstart
+        run: |
+          fiftyone quickstart
 
   all-tests:
     needs: test
