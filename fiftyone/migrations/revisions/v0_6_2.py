@@ -9,7 +9,7 @@ import pymongo as pm
 
 
 def up(db, dataset_name):
-    assert False
+    print("up")
     colls = set(db.collection_names())
     for c in colls:
         if c.startswith("frames.") and ".".join(c.split(".")[1:]) not in colls:
@@ -46,6 +46,7 @@ def up(db, dataset_name):
 
 
 def down(db, dataset_name):
+    print("down")
     match_d = {"name": dataset_name}
     dataset_dict = db.datasets.find_one(match_d)
     sample_coll = dataset_dict["sample_collection_name"]
@@ -57,4 +58,3 @@ def down(db, dataset_name):
     dataset_dict["frames"]["embedded_doc_type"] = None
 
     db[dataset_name].update({}, {"$unset": {"sample_id": 1}}, {"multi": True})
-    print("down")
