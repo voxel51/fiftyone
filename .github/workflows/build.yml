@@ -151,9 +151,11 @@ jobs:
         run: |
           find tests/isolated/ -name '*.py' -print0 | xargs -0 --verbose -n1 python tests/utils/pytest_wrapper.py --verbose
       - name: Test quickstarts
+        env:
+          PYTHONUNBUFFERED: 1
         run: |
-          fiftyone quickstart
-          fiftyone quickstart --video
+          python tests/utils/command_wrapper.py fiftyone quickstart
+          python tests/utils/command_wrapper.py fiftyone quickstart --video
 
   all-tests:
     needs: test
