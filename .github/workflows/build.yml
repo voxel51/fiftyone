@@ -140,7 +140,7 @@ jobs:
         run: |
           pip install pytest tensorflow tensorflow-datasets
           pip install torch==1.6.0+cpu torchvision==0.7.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
-      - name: Configure FiftyOne for tests
+      - name: Configure fiftyone for tests
         run: |
           python tests/utils/setup_config.py
       - name: Run tests
@@ -150,9 +150,10 @@ jobs:
         if: success() || failure()
         run: |
           find tests/isolated/ -name '*.py' -print0 | xargs -0 --verbose -n1 python tests/utils/pytest_wrapper.py --verbose
-      - name: Test quickstart
+      - name: Test quickstarts
         run: |
           fiftyone quickstart
+          fiftyone quickstart --video
 
   all-tests:
     needs: test
