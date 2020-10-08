@@ -41,7 +41,6 @@ class Label(DynamicEmbeddedDocument):
 
 
 class FrameLabel(Label):
-
     pass
 
 

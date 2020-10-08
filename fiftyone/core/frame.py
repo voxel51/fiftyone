@@ -66,7 +66,8 @@ class Frames(object):
                     upsert=True,
                 )
                 for frame_number, doc in self._replacements.items()
-            ]
+            ],
+            ordered=False,
         )
         self._replacements = {}
 
@@ -240,8 +241,6 @@ class Frames(object):
 
     def _get_first_frame(self):
         if 1 in self._replacements:
-            from fiftyone.core.labels import Label
-
             d = self._make_dict(self._replacements[1])
             d.pop("sample_id")
             return d
@@ -253,6 +252,11 @@ class Frames(object):
             raise fofu.FrameError(
                 "Sample does not have a dataset, Frames cannot be saved"
             )
+        from fiftyone.core.labels import FrameLabel
+
+        first_frame = self._get_first_frame()
+        if first_frame is not None:
+            self._sample._doc.frames.first_frame = FrameLabel(**first_frame)
         self._save_replacements()
 
     def _serve(self, sample):
