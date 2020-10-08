@@ -463,6 +463,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
         label (None): a label for the shape
         points (None): a list of ``(x, y)`` points in ``[0, 1] x [0, 1]``
             describing the vertexes of a polyline
+        index (None): an index for the polyline
         closed (False): whether the polyline is closed, i.e., and edge should
             be drawn from the last vertex to the first vertex
         filled (False): whether the polyline represents a shape that can be
@@ -475,6 +476,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
 
     label = fof.StringField()
     points = fof.ListField()
+    index = fof.IntField()
     closed = fof.BooleanField(default=False)
     filled = fof.BooleanField(default=False)
 
@@ -493,6 +495,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
 
         return etap.Polyline(
             label=self.label,
+            index=self.index,
             name=name,
             points=self.points,
             closed=self.closed,
@@ -530,6 +533,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
         return cls(
             label=polyline.label,
             points=polyline.points,
+            index=polyline.index,
             closed=polyline.closed,
             filled=polyline.filled,
             attributes=attributes,
@@ -587,6 +591,7 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
     Args:
         label (None): a label for the points
         points (None): a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
+        index (None): an index for the keypoints
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
     """
@@ -595,6 +600,7 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
 
     label = fof.StringField()
     points = fof.ListField()
+    index = fof.IntField()
 
     def to_eta_keypoints(self, name=None):
         """Returns an ``eta.core.keypoints.Keypoints`` representation of this
@@ -610,7 +616,11 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
         attrs = _to_eta_attributes(self.attributes)
 
         return etak.Keypoints(
-            name=name, label=self.label, points=self.points, attrs=attrs,
+            name=name,
+            label=self.label,
+            index=self.index,
+            points=self.points,
+            attrs=attrs,
         )
 
     def to_image_labels(self, name=None):
@@ -643,6 +653,7 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
         return cls(
             label=keypoints.label,
             points=keypoints.points,
+            index=keypoints.index,
             attributes=attributes,
         )
 
