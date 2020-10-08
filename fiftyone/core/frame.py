@@ -6,20 +6,21 @@ Video frames.
 |
 """
 from collections import defaultdict
+import json
 import weakref
+import six
 
-
-from bson import ObjectId
+from bson import ObjectId, json_util
 from pymongo import ReplaceOne
 
-
+import fiftyone as fo
 import fiftyone.core.frame_utils as fofu
-from fiftyone.core._sample import _Sample
-
 from fiftyone.core.odm.frame import (
     NoDatasetFrameSampleDocument,
     DatasetFrameSampleDocument,
 )
+import fiftyone.core.utils as fou
+from fiftyone.core._sample import _Sample
 
 
 #
@@ -244,7 +245,6 @@ class Frames(object):
             d = self._make_dict(self._replacements[1])
             d.pop("_sample_id")
             return d
-
         return None
 
     def _save(self):
@@ -254,9 +254,26 @@ class Frames(object):
             )
         from fiftyone.core.labels import FrameLabel
 
-        first_frame = self._get_first_frame()
-        if first_frame is not None:
-            self._sample._doc.frames.first_frame = FrameLabel(**first_frame)
+        d = self._get_first_frame()
+        if d is not None:
+            for k, v in d.items():
+                if isinstance(v, dict):
+                    if "_cls" in v:
+                        # Serialized embedded document
+                        _cls = getattr(fo, v["_cls"])
+                        d[k] = _cls.from_dict(v)
+                    elif "$binary" in v:
+                        # Serialized array in extended format
+                        binary = json_util.loads(json.dumps(v))
+                        d[k] = fou.deserialize_numpy_array(binary)
+                    else:
+                        d[k] = v
+                elif isinstance(v, six.binary_type):
+                    # Serialized array in non-extended format
+                    d[k] = fou.deserialize_numpy_array(v)
+                else:
+                    d[k] = v
+            self._sample._doc.frames.first_frame = FrameLabel(**d)
         self._save_replacements()
 
     def _serve(self, sample):
