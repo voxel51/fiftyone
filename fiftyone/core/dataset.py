@@ -16,6 +16,7 @@ import reprlib
 
 from bson import ObjectId
 from mongoengine.errors import DoesNotExist, FieldDoesNotExist
+from pymongo.errors import BulkWriteError
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -603,9 +604,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             frames_len[idx] = len(sample_frames)
             for frame in sample_frames:
                 frame.pop("_id", None)
+
             frames += sample_frames
         if len(frames) == 0:
             return  # nothing to insert
+
         result = self._frames_collection.insert_many(frames)
         sample_idx = 0
         result_start = 0
@@ -676,9 +679,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if self.media_type == fom.VIDEO:
             # @todo improve batching behavior for frames
             self._add_frame_samples(dicts)
+
         for d in dicts:
             d.pop("_id", None)  # remove the ID if in DB
-        self._sample_collection.insert_many(dicts)  # adds `_id` to each dict
+
+        try:
+            # adds `_id` to each dict
+            self._sample_collection.insert_many(dicts)
+        except BulkWriteError as bwe:
+            msg = bwe.details["writeErrors"][0]["errmsg"]
+            raise ValueError(msg) from bwe
 
         for sample, d in zip(samples, dicts):
             if not sample._in_db:
