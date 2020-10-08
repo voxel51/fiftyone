@@ -7,9 +7,11 @@ Utilities for working with datasets in
 |
 """
 from collections import defaultdict
+from copy import copy
 from datetime import datetime
 import logging
 import os
+import warnings
 
 import jinja2
 
@@ -81,7 +83,11 @@ class CVATImageSampleParser(foud.LabeledImageTupleSampleParser):
 
     @property
     def label_cls(self):
-        return fol.Detections
+        return {
+            "objects": fol.Detections,
+            "polylines": fol.Polylines,
+            "keypoints": fol.Keypoints,
+        }
 
     @property
     def has_image_metadata(self):
@@ -101,6 +107,7 @@ class CVATImageSampleParser(foud.LabeledImageTupleSampleParser):
             sample: the sample
 
         Returns:
+            a dictionary mapping
             a :class:`fiftyone.core.labels.Detections` instance, or ``None`` if
             the sample is unlabeled
         """
@@ -108,7 +115,7 @@ class CVATImageSampleParser(foud.LabeledImageTupleSampleParser):
         if cvat_image is None:
             return None
 
-        return cvat_image.to_detections()
+        return cvat_image.to_labels()
 
     def clear_sample(self):
         super().clear_sample()
@@ -145,6 +152,8 @@ class CVATVideoSampleParser(foud.LabeledVideoSampleParser):
     def __init__(self):
         super().__init__()
         self._objects_field = "objects"
+        self._polylines_field = "polylines"
+        self._keypoints_field = "keypoints"
 
     @property
     def has_video_metadata(self):
@@ -160,7 +169,12 @@ class CVATVideoSampleParser(foud.LabeledVideoSampleParser):
             return None
 
         _, _, cvat_tracks = load_cvat_video_annotations(labels_path)
-        return _cvat_tracks_to_frames(cvat_tracks, self._objects_field)
+        return _cvat_tracks_to_frames(
+            cvat_tracks,
+            self._objects_field,
+            self._polylines_field,
+            self._keypoints_field,
+        )
 
 
 class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
@@ -218,13 +232,13 @@ class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
         if cvat_image is not None:
             # Labeled image
             image_metadata = cvat_image.get_image_metadata()
-            detections = cvat_image.to_detections()
+            labels = cvat_image.to_labels()
         else:
             # Unlabeled image
             image_metadata = fom.ImageMetadata.build_for(image_path)
-            detections = None
+            labels = None
 
-        return image_path, image_metadata, detections
+        return image_path, image_metadata, labels
 
     @property
     def has_dataset_info(self):
@@ -237,7 +251,11 @@ class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
     @property
     def label_cls(self):
         # @todo is this how we want to handle this?
-        return (fol.Detections, fol.Polylines, fol.Keypoints)
+        return {
+            "objects": fol.Detections,
+            "polylines": fol.Polylines,
+            "keypoints": fol.Keypoints,
+        }
 
     def setup(self):
         self._data_dir = os.path.join(self.dataset_dir, "data")
@@ -300,6 +318,8 @@ class CVATVideoDatasetImporter(foud.LabeledVideoDatasetImporter):
             max_samples=max_samples,
         )
         self._objects_field = "objects"
+        self._polylines_field = "polylines"
+        self._keypoints_field = "keypoints"
         self._info = None
         self._cvat_task_labels = None
         self._uuids_to_video_paths = None
@@ -333,7 +353,12 @@ class CVATVideoDatasetImporter(foud.LabeledVideoDatasetImporter):
             self._cvat_task_labels.merge_task_labels(cvat_task_labels)
             self._info["task_labels"] = self._cvat_task_labels.labels
 
-            frames = _cvat_tracks_to_frames(cvat_tracks, self._objects_field)
+            frames = _cvat_tracks_to_frames(
+                cvat_tracks,
+                self._objects_field,
+                self._polylines_field,
+                self._keypoints_field,
+            )
         else:
             # Unlabeled video
             frames = None
@@ -415,7 +440,11 @@ class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
 
     @property
     def label_cls(self):
-        return fol.Detections
+        return {
+            "objects": fol.Detections,
+            "polylines": fol.Polylines,
+            "keypoints": fol.Keypoints,
+        }
 
     def setup(self):
         self._data_dir = os.path.join(self.export_dir, "data")
@@ -429,18 +458,18 @@ class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
         self._name = sample_collection.name
         self._task_labels = sample_collection.info.get("task_labels", None)
 
-    def export_sample(self, image_or_path, detections, metadata=None):
+    def export_sample(self, image_or_path, labels, metadata=None):
         out_image_path = self._export_image_or_path(
             image_or_path, self._filename_maker
         )
 
-        if detections is None:
+        if labels is None:
             return
 
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(out_image_path)
 
-        cvat_image = CVATImage.from_detections(detections, metadata)
+        cvat_image = CVATImage.from_labels(labels, metadata)
 
         cvat_image.id = len(self._cvat_images)
         cvat_image.name = os.path.basename(out_image_path)
@@ -582,6 +611,10 @@ class CVATTaskLabels(object):
         """Returns an ``eta.core.image.ImageLabelsSchema`` representation of
         the task labels.
 
+        Note that CVAT's task labels schema does not distinguish between boxes,
+        polylines, and keypoints, so the returned schema stores all annotations
+        under the ``"objects"`` field.
+
         Returns:
             an ``eta.core.image.ImageLabelsSchema``
         """
@@ -612,14 +645,14 @@ class CVATTaskLabels(object):
         """
         schema = etai.ImageLabelsSchema()
         for cvat_image in cvat_images:
-            for box in cvat_image.boxes:
-                _label = box.label
+            for anno in cvat_image.iter_annos():
+                _label = anno.label
                 schema.add_object_label(_label)
 
-                if box.occluded is not None:
-                    schema.add_object_attribute("occluded", box.occluded)
+                if anno.occluded is not None:
+                    schema.add_object_attribute("occluded", anno.occluded)
 
-                for attr in box.attributes:
+                for attr in anno.attributes:
                     _attr = attr.to_eta_attribute()
                     schema.add_object_attribute(_label, _attr)
 
@@ -638,20 +671,20 @@ class CVATTaskLabels(object):
         """
         schema = etai.ImageLabelsSchema()
         for cvat_track in cvat_tracks:
-            for box in cvat_track.boxes.values():
-                _label = box.label
+            for anno in cvat_track.iter_annos():
+                _label = anno.label
                 schema.add_object_label(_label)
 
-                if box.outside is not None:
-                    schema.add_object_attribute("outside", box.outside)
+                if anno.outside is not None:
+                    schema.add_object_attribute("outside", anno.outside)
 
-                if box.occluded is not None:
-                    schema.add_object_attribute("occluded", box.occluded)
+                if anno.occluded is not None:
+                    schema.add_object_attribute("occluded", anno.occluded)
 
-                if box.keyframe is not None:
-                    schema.add_object_attribute("keyframe", box.keyframe)
+                if anno.keyframe is not None:
+                    schema.add_object_attribute("keyframe", anno.keyframe)
 
-                for attr in box.attributes:
+                for attr in anno.attributes:
                     _attr = attr.to_eta_attribute()
                     schema.add_object_attribute(_label, _attr)
 
@@ -727,9 +760,9 @@ class CVATImage(object):
         width: the width of the image, in pixels
         height: the height of the image, in pixels
         boxes (None): a list of :class:`CVATImageBox` instances
-        polylines (None): a list of :class:`CVATImagePolyline` instances
         polygons (None): a list of :class:`CVATImagePolygon` instances
-        keypoints (None): a list of :class:`CVATImageKeypoint` instances
+        polylines (None): a list of :class:`CVATImagePolyline` instances
+        points (None): a list of :class:`CVATImagePoints` instances
     """
 
     def __init__(
@@ -739,18 +772,27 @@ class CVATImage(object):
         width,
         height,
         boxes=None,
-        polylines=None,
         polygons=None,
-        keypoints=None,
+        polylines=None,
+        points=None,
     ):
         self.id = id
         self.name = name
         self.width = width
         self.height = height
         self.boxes = boxes or []
-        self.polylines = polylines or []
         self.polygons = polygons or []
-        self.keypoints = keypoints or []
+        self.polylines = polylines or []
+        self.points = points or []
+
+    def iter_annos(self):
+        """Returns an iterator over the annotations in the image.
+
+        Returns:
+            an iterator that emits :class:`fiftyone.core.labels.ImageLabel`
+            instances
+        """
+        pass
 
     def get_image_metadata(self):
         """Returns a :class:`fiftyone.core.metadata.ImageMetadata` instance for
@@ -761,24 +803,32 @@ class CVATImage(object):
         """
         return fom.ImageMetadata(width=self.width, height=self.height)
 
-    def to_detections(self):
-        """Returns a :class:`fiftyone.core.labels.Detections` representation of
+    def to_labels(self):
+        """Returns :class:`fiftyone.core.labels.ImageLabel` representations of
         the annotations.
 
         Returns:
-            a :class:`fiftyone.core.labels.Detections`
+            a dictionary mapping field keys to
+            :class:`fiftyone.core.labels.ImageLabel` containers
         """
         frame_size = (self.width, self.height)
-        detections = [box.to_detection(frame_size) for box in self.boxes]
-        return fol.Detections(detections=detections)
+        detections = [b.to_detection(frame_size) for b in self.boxes]
+        polygons = [p.to_polyline(frame_size) for p in self.polygons]
+        polylines = [p.to_polyline(frame_size) for p in self.polylines]
+        keypoints = [k.to_keypoint(frame_size) for k in self.points]
+        return {
+            "objects": fol.Detections(detections=detections),
+            "polylines": fol.Polylines(polylines=polygons + polylines),
+            "keypoints": fol.Keypoints(keypoints=keypoints),
+        }
 
     @classmethod
-    def from_detections(cls, detections, metadata):
-        """Creates a :class:`CVATImage` from a
-        :class:`fiftyone.core.labels.Detections`.
+    def from_labels(cls, labels, metadata):
+        """Creates a :class:`CVATImage` from a dictionary of labels.
 
         Args:
-            detections: a :class:`fiftyone.core.labels.Detections`
+            labels: a dictionary mapping keys to
+                :class:`fiftyone.core.labels.ImageLabel` containers
             metadata: a :class:`fiftyone.core.metadata.ImageMetadata` for the
                 image
 
@@ -788,12 +838,48 @@ class CVATImage(object):
         width = metadata.width
         height = metadata.height
 
-        boxes = [
-            CVATImageBox.from_detection(d, metadata)
-            for d in detections.detections
+        _detections = []
+        _polygons = []
+        _polylines = []
+        _keypoints = []
+        for _labels in labels.values():
+            if isinstance(_labels, fol.Detections):
+                _detections.extend(_labels.detections)
+            elif isinstance(_labels, fol.Polylines):
+                for poly in _labels.polylines:
+                    if poly.closed:
+                        _polygons.append(poly)
+                    else:
+                        _polylines.append(poly)
+            elif isinstance(_labels, fol.Keypoints):
+                _keypoints.extend(_labels.keypoints)
+            else:
+                msg = (
+                    "Ignoring unsupported label type '%s'" % _labels.__class__
+                )
+                warnings.warn(msg)
+
+        boxes = [CVATImageBox.from_detection(d, metadata) for d in _detections]
+        polygons = [
+            CVATImagePolygon.from_polyline(p, metadata) for p in _polygons
+        ]
+        polylines = [
+            CVATImagePolyline.from_polyline(p, metadata) for p in _polylines
+        ]
+        points = [
+            CVATImagePoints.from_keypoint(k, metadata) for k in _keypoints
         ]
 
-        return cls(None, None, width, height, boxes=boxes)
+        return cls(
+            None,
+            None,
+            width,
+            height,
+            boxes=boxes,
+            polygons=polygons,
+            polylines=polylines,
+            points=points,
+        )
 
     @classmethod
     def from_image_dict(cls, d):
@@ -812,14 +898,135 @@ class CVATImage(object):
         height = int(d["@height"])
 
         boxes = []
-        for box in _ensure_list(d.get("box", [])):
-            boxes.append(CVATImageBox.from_box_dict(box))
+        for bd in _ensure_list(d.get("box", [])):
+            boxes.append(CVATImageBox.from_box_dict(bd))
 
-        return cls(id, name, width, height, boxes=boxes)
+        polygons = []
+        for pd in _ensure_list(d.get("polygon", [])):
+            polygons.append(CVATImagePolygon.from_polygon_dict(pd))
+
+        polylines = []
+        for pd in _ensure_list(d.get("polyline", [])):
+            polylines.append(CVATImagePolyline.from_polyline_dict(pd))
+
+        points = []
+        for pd in _ensure_list(d.get("points", [])):
+            points.append(CVATImagePoints.from_points_dict(pd))
+
+        return cls(
+            id,
+            name,
+            width,
+            height,
+            boxes=boxes,
+            polygons=polygons,
+            polylines=polylines,
+            points=points,
+        )
 
 
-class CVATImageBox(object):
-    """An object bounding box (with attributes) in CVAT image format.
+class HasCVATPoints(object):
+    """Mixin for CVAT annotations that store a list of ``(x, y)`` pixel
+    coordinates.
+
+    Attributes:
+        points: a list of ``(x, y)`` pixel coordinates defining points
+    """
+
+    @property
+    def points_str(self):
+        # pylint: disable=no-member
+        return self._to_cvat_points_str(self.points)
+
+    @staticmethod
+    def _to_rel_points(points, frame_size):
+        width, height = frame_size
+        rel_points = [(x / width, y / height) for x, y in points]
+        return rel_points
+
+    @staticmethod
+    def _to_abs_points(points, frame_size):
+        width, height = frame_size
+        abs_points = []
+        for x, y in points:
+            abs_points.append((int(round(x * width)), int(round(y * height))))
+
+        return abs_points
+
+    @staticmethod
+    def _parse_cvat_points_str(points_str):
+        points = []
+        for xy_str in points_str.split(";"):
+            x, y = xy_str.split(",")
+            points.append((int(round(float(x))), int(round(float(y)))))
+
+        return points
+
+    @staticmethod
+    def _to_cvat_points_str(points):
+        points_str = ""
+        for x, y in points:
+            points_str += ";%g,%g" % (x, y)
+
+        return points_str
+
+
+class CVATImageAnno(object):
+    """Mixin for annotations in CVAT image format."""
+
+    @staticmethod
+    def _to_attributes(occluded, attributes):
+        attributes = {a.name: a.to_attribute() for a in attributes}
+
+        if occluded is not None:
+            attributes["occluded"] = fol.BooleanAttribute(value=occluded)
+
+        return attributes
+
+    @staticmethod
+    def _parse_attributes(label):
+        occluded = None
+
+        if label.attributes:
+            supported_attrs = (
+                fol.BooleanAttribute,
+                fol.CategoricalAttribute,
+                fol.NumericAttribute,
+            )
+
+            attributes = []
+            for name, attr in label.attributes.items():
+                if name == "occluded":
+                    occluded = attr.value
+                elif isinstance(attr, supported_attrs):
+                    attributes.append(CVATAttribute(name, attr.value))
+        else:
+            attributes = None
+
+        return occluded, attributes
+
+    @staticmethod
+    def _parse_anno_dict(d):
+        occluded = d.get("@occluded", None)
+        if occluded is not None:
+            occluded = bool(int(occluded))
+
+        attributes = []
+        for attr in _ensure_list(d.get("attribute", [])):
+            name = attr["@name"].lstrip("@")
+            value = attr["#text"]
+            try:
+                value = float(value)
+            except:
+                pass
+
+            attributes.append(CVATAttribute(name, value))
+
+        return occluded, attributes
+
+
+class CVATImageBox(CVATImageAnno):
+    """An object bounding box in CVAT image format.
 
     Args:
         label: the object label string
@@ -862,10 +1069,7 @@ class CVATImageBox(object):
             (self.ybr - self.ytl) / height,
         ]
 
-        attributes = {a.name: a.to_attribute() for a in self.attributes}
-
-        if self.occluded is not None:
-            attributes["occluded"] = fol.BooleanAttribute(value=self.occluded)
+        attributes = self._to_attributes(self.occluded, self.attributes)
 
         return fol.Detection(
             label=label, bounding_box=bounding_box, attributes=attributes,
@@ -894,23 +1098,7 @@ class CVATImageBox(object):
         xbr = int(round((x + w) * width))
         ybr = int(round((y + h) * height))
 
-        occluded = None
-
-        if detection.attributes:
-            supported_attrs = (
-                fol.BooleanAttribute,
-                fol.CategoricalAttribute,
-                fol.NumericAttribute,
-            )
-
-            attributes = []
-            for name, attr in detection.attributes.items():
-                if name == "occluded":
-                    occluded = attr.value
-                elif isinstance(attr, supported_attrs):
-                    attributes.append(CVATAttribute(name, attr.value))
-        else:
-            attributes = None
+        occluded, attributes = cls._parse_attributes(detection)
 
         return cls(
             label, xtl, ytl, xbr, ybr, occluded=occluded, attributes=attributes
@@ -934,28 +1122,238 @@ class CVATImageBox(object):
         xbr = int(round(float(d["@xbr"])))
         ybr = int(round(float(d["@ybr"])))
 
-        occluded = d.get("@occluded", None)
-        if occluded is not None:
-            occluded = bool(int(occluded))
-
-        attributes = []
-        for attr in _ensure_list(d.get("attribute", [])):
-            name = attr["@name"].lstrip("@")
-            value = attr["#text"]
-            try:
-                value = float(value)
-            except:
-                pass
-
-            attributes.append(CVATAttribute(name, value))
+        occluded, attributes = cls._parse_anno_dict(d)
 
         return cls(
             label, xtl, ytl, xbr, ybr, occluded=occluded, attributes=attributes
         )
 
 
+class CVATImagePolygon(CVATImageAnno, HasCVATPoints):
+    """A polygon in CVAT image format.
+
+    Args:
+        label: the polygon label string
+        points: a list of ``(x, y)`` pixel coordinates defining the vertices of
+            the polygon
+        occluded (None): whether the polygon is occluded
+        attributes (None): a list of :class:`CVATAttribute` instances
+    """
+
+    def __init__(self, label, points, occluded=None, attributes=None):
+        self.label = label
+        self.points = points
+        self.occluded = occluded
+        self.attributes = attributes or []
+
+    def to_polyline(self, frame_size):
+        """Returns a :class:`fiftyone.core.labels.Polyline` representation of
+        the polygon.
+
+        Args:
+            frame_size: the ``(width, height)`` of the image
+
+        Returns:
+            a :class:`fiftyone.core.labels.Polyline`
+        """
+        label = self.label
+        points = self._to_rel_points(self.points, frame_size)
+        attributes = self._to_attributes(self.occluded, self.attributes)
+        return fol.Polyline(
+            label=label,
+            points=points,
+            closed=True,
+            filled=True,
+            attributes=attributes,
+        )
+
+    @classmethod
+    def from_polyline(cls, polyline, metadata):
+        """Creates a :class:`CVATImagePolygon` from a
+        :class:`fiftyone.core.labels.Polyline`.
+
+        Args:
+            polyline: a :class:`fiftyone.core.labels.Polyline`
+            metadata: a :class:`fiftyone.core.metadata.ImageMetadata` for the
+                image
+
+        Returns:
+            a :class:`CVATImagePolygon`
+        """
+        label = polyline.label
+        frame_size = (metadata.width, metadata.height)
+        points = cls._to_abs_points(polyline.points, frame_size)
+        occluded, attributes = cls._parse_attributes(polyline)
+        return cls(label, points, occluded=occluded, attributes=attributes)
+
+    @classmethod
+    def from_polygon_dict(cls, d):
+        """Creates a :class:`CVATImagePolygon` from a ``<polygon>`` tag of a
+        CVAT image annotation XML file.
+
+        Args:
+            d: a dict representation of a ``<polygon>`` tag
+
+        Returns:
+            a :class:`CVATImagePolygon`
+        """
+        label = d["@label"]
+        points = cls._parse_cvat_points_str(d["@points"])
+        occluded, attributes = cls._parse_anno_dict(d)
+
+        return cls(label, points, occluded=occluded, attributes=attributes)
+
+
+class CVATImagePolyline(CVATImageAnno, HasCVATPoints):
+    """A polyline in CVAT image format.
+
+    Args:
+        label: the polyline label string
+        points: a list of ``(x, y)`` pixel coordinates defining the vertices of
+            the polyline
+        occluded (None): whether the polyline is occluded
+        attributes (None): a list of :class:`CVATAttribute` instances
+    """
+
+    def __init__(self, label, points, occluded=None, attributes=None):
+        self.label = label
+        self.points = points
+        self.occluded = occluded
+        self.attributes = attributes or []
+
+    def to_polyline(self, frame_size):
+        """Returns a :class:`fiftyone.core.labels.Polyline` representation of
+        the polyline.
+
+        Args:
+            frame_size: the ``(width, height)`` of the image
+
+        Returns:
+            a :class:`fiftyone.core.labels.Polyline`
+        """
+        label = self.label
+        points = self._to_rel_points(self.points, frame_size)
+        attributes = self._to_attributes(self.occluded, self.attributes)
+        return fol.Polyline(
+            label=label,
+            points=points,
+            closed=False,
+            filled=False,
+            attributes=attributes,
+        )
+
+    @classmethod
+    def from_polyline(cls, polyline, metadata):
+        """Creates a :class:`CVATImagePolyline` from a
+        :class:`fiftyone.core.labels.Polyline`.
+
+        Args:
+            polyline: a :class:`fiftyone.core.labels.Polyline`
+            metadata: a :class:`fiftyone.core.metadata.ImageMetadata` for the
+                image
+
+        Returns:
+            a :class:`CVATImagePolyline`
+        """
+        label = polyline.label
+
+        frame_size = (metadata.width, metadata.height)
+        points = cls._to_abs_points(polyline.points, frame_size)
+        if points and polyline.closed:
+            points.append(copy(points[0]))
+
+        occluded, attributes = cls._parse_attributes(polyline)
+
+        return cls(label, points, occluded=occluded, attributes=attributes)
+
+    @classmethod
+    def from_polyline_dict(cls, d):
+        """Creates a :class:`CVATImagePolyline` from a ``<polyline>`` tag of a
+        CVAT image annotation XML file.
+
+        Args:
+            d: a dict representation of a ``<polyline>`` tag
+
+        Returns:
+            a :class:`CVATImagePolyline`
+        """
+        label = d["@label"]
+        points = cls._parse_cvat_points_str(d["@points"])
+        occluded, attributes = cls._parse_anno_dict(d)
+
+        return cls(label, points, occluded=occluded, attributes=attributes)
+
+
+class CVATImagePoints(CVATImageAnno, HasCVATPoints):
+    """A set of keypoints in CVAT image format.
+
+    Args:
+        label: the keypoints label string
+        points: a list of ``(x, y)`` pixel coordinates defining the vertices of
+            the keypoints
+        occluded (None): whether the keypoints are occluded
+        attributes (None): a list of :class:`CVATAttribute` instances
+    """
+
+    def __init__(self, label, points, occluded=None, attributes=None):
+        self.label = label
+        self.points = points
+        self.occluded = occluded
+        self.attributes = attributes or []
+
+    def to_keypoint(self, frame_size):
+        """Returns a :class:`fiftyone.core.labels.Keypoint` representation of
+        the points.
+
+        Args:
+            frame_size: the ``(width, height)`` of the image
+
+        Returns:
+            a :class:`fiftyone.core.labels.Keypoint`
+        """
+        label = self.label
+        points = self._to_rel_points(self.points, frame_size)
+        attributes = self._to_attributes(self.occluded, self.attributes)
+        return fol.Keypoint(label=label, points=points, attributes=attributes)
+
+    @classmethod
+    def from_keypoint(cls, keypoint, metadata):
+        """Creates a :class:`CVATImagePoints` from a
+        :class:`fiftyone.core.labels.Keypoint`.
+
+        Args:
+            keypoint: a :class:`fiftyone.core.labels.Keypoint`
+            metadata: a :class:`fiftyone.core.metadata.ImageMetadata` for the
+                image
+
+        Returns:
+            a :class:`CVATImagePoints`
+        """
+        label = keypoint.label
+        frame_size = (metadata.width, metadata.height)
+        points = cls._to_abs_points(keypoint.points, frame_size)
+        occluded, attributes = cls._parse_attributes(keypoint)
+        return cls(label, points, occluded=occluded, attributes=attributes)
+
+    @classmethod
+    def from_points_dict(cls, d):
+        """Creates a :class:`CVATImagePoints` from a ``<points>`` tag of a
+        CVAT image annotation XML file.
+
+        Args:
+            d: a dict representation of a ``<points>`` tag
+
+        Returns:
+            a :class:`CVATImagePoints`
+        """
+        label = d["@label"]
+        points = cls._parse_cvat_points_str(d["@points"])
+        occluded, attributes = cls._parse_anno_dict(d)
+        return cls(label, points, occluded=occluded, attributes=attributes)
+
+
 class CVATTrack(object):
-    """An annotated object track in CVAT video format.
+    """An annotation track in CVAT video format.
 
     Args:
         id: the ID of the track
@@ -964,12 +1362,12 @@ class CVATTrack(object):
         height: the height of the video frames, in pixels
         boxes (None): a dict mapping frame numbers to :class:`CVATVideoBox`
             instances
-        polylines (None): a dict mapping frame numbers to
-            :class:`CVATVideoPolyline` instances
         polygons (None): a dict mapping frame numbers to
             :class:`CVATVideoPolygon` instances
-        keypoints (None): a dict mapping frame numbers to
-            :class:`CVATVideoKeypoint` instances
+        polylines (None): a dict mapping frame numbers to
+            :class:`CVATVideoPolyline` instances
+        points (None): a dict mapping frame numbers to :class:`CVATVideoPoints`
+            instances
     """
 
     def __init__(
@@ -979,45 +1377,63 @@ class CVATTrack(object):
         width,
         height,
         boxes=None,
-        polylines=None,
         polygons=None,
-        keypoints=None,
+        polylines=None,
+        points=None,
     ):
         self.id = id
         self.label = label
         self.width = width
         self.height = height
         self.boxes = boxes or {}
-        self.polylines = polylines or {}
         self.polygons = polygons or {}
-        self.keypoints = keypoints or {}
+        self.polylines = polylines or {}
+        self.points = points or {}
 
-    def to_detections(self):
-        """Returns a :class:`fiftyone.core.labels.Detection` representation of
+    def to_labels(self):
+        """Returns :class:`fiftyone.core.labels.ImageLabel` representations of
         the annotations.
 
         Returns:
             a dictionary mapping frame numbers to
-                :class:`fiftyone.core.labels.Detection` instances
+            :class:`fiftyone.core.labels.ImageLabel` instances
         """
         frame_size = (self.width, self.height)
-        detections = {}
+
+        labels = {}
+
+        # Only one of these will actually contain labels
+
         for frame_number, box in self.boxes.items():
             detection = box.to_detection(frame_size)
             detection.index = self.id
-            detections[frame_number] = detection
+            labels[frame_number] = detection
 
-        return detections
+        for frame_number, polygon in self.polygons.items():
+            polyline = polygon.to_polyline(frame_size)
+            polyline.index = self.id
+            labels[frame_number] = polyline
+
+        for frame_number, polyline in self.polylines.items():
+            polyline = polyline.to_polyline(frame_size)
+            polyline.index = self.id
+            labels[frame_number] = polyline
+
+        for frame_number, points in self.points.items():
+            keypoint = points.to_keypoint(frame_size)
+            keypoint.index = self.id
+            labels[frame_number] = keypoint
+
+        return labels
 
     @classmethod
-    def from_detections(cls, id, detections, frame_size):
-        """Creates a :class:`CVATTrack` from a dictionary of
-        :class:`fiftyone.core.labels.Detection` instances.
+    def from_labels(cls, id, labels, frame_size):
+        """Creates a :class:`CVATTrack` from a dictionary of labels.
 
         Args:
             id: the ID of the track
-            detections: a dict mapping frame numbers to
-                :class:`fiftyone.core.labels.Detection` instances
+            labels: a dictionary mapping frame numbers to
+                :class:`fiftyone.core.labels.ImageLabel` instances
             frame_size: the ``(width, height)`` of the video frames
 
         Returns:
@@ -1026,14 +1442,44 @@ class CVATTrack(object):
         width, height = frame_size
 
         boxes = {}
+        polygons = {}
+        polylines = {}
+        points = {}
         label = None
-        for frame_number, detection in detections.items():
-            label = detection.label
-            boxes[frame_number] = CVATVideoBox.from_detection(
-                frame_number, detection, frame_size
-            )
+        for frame_number, _label in labels.items():
+            label = _label.label
 
-        return cls(id, label, width, height, boxes=boxes)
+            if isinstance(_label, fol.Detection):
+                boxes[frame_number] = CVATVideoBox.from_detection(
+                    frame_number, _label, frame_size
+                )
+            elif isinstance(_label, fol.Polyline):
+                if _label.filled:
+                    polygons[frame_number] = CVATVideoPolygon.from_polyline(
+                        frame_number, _label, frame_size
+                    )
+                else:
+                    polylines[frame_number] = CVATVideoPolyline.from_polyline(
+                        frame_number, _label, frame_size
+                    )
+            elif isinstance(_label, fol.Keypoint):
+                points[frame_number] = CVATVideoPoints.from_keypoint(
+                    frame_number, _label, frame_size
+                )
+            else:
+                msg = "Ignoring unsupported label type '%s'" % _label.__class__
+                warnings.warn(msg)
+
+        return cls(
+            id,
+            label,
+            width,
+            height,
+            boxes=boxes,
+            polygons=polygons,
+            polylines=polylines,
+            points=points,
+        )
 
     @classmethod
     def from_track_dict(cls, d, frame_size):
@@ -1053,15 +1499,113 @@ class CVATTrack(object):
         width, height = frame_size
 
         boxes = {}
-        for box_dict in _ensure_list(d.get("box", [])):
-            box = CVATVideoBox.from_box_dict(label, box_dict)
+        for bd in _ensure_list(d.get("box", [])):
+            box = CVATVideoBox.from_box_dict(label, bd)
             boxes[box.frame] = box
 
-        return cls(id, label, width, height, boxes=boxes)
+        polygons = {}
+        for pd in _ensure_list(d.get("polygon", [])):
+            polygon = CVATVideoPolygon.from_polygon_dict(label, pd)
+            polygons[polygon.frame] = polygon
+
+        polylines = {}
+        for pd in _ensure_list(d.get("polyline", [])):
+            polyline = CVATVideoPolyline.from_polyline_dict(label, pd)
+            polylines[polyline.frame] = polyline
+
+        points = {}
+        for pd in _ensure_list(d.get("point", [])):
+            point = CVATVideoPoints.from_points_dict(label, pd)
+            points[point.frame] = point
+
+        return cls(
+            id,
+            label,
+            width,
+            height,
+            boxes=boxes,
+            polygons=polygons,
+            polylines=polylines,
+            points=points,
+        )
 
 
-class CVATVideoBox(object):
-    """An object bounding box (with attributes) in CVAT video format.
+class CVATVideoAnno(object):
+    """Mixin for annotations in CVAT video format."""
+
+    @staticmethod
+    def _to_attributes(outside, occluded, keyframe, attributes):
+        attributes = {a.name: a.to_attribute() for a in attributes}
+
+        if outside is not None:
+            attributes["outside"] = fol.BooleanAttribute(value=outside)
+
+        if occluded is not None:
+            attributes["occluded"] = fol.BooleanAttribute(value=occluded)
+
+        if keyframe is not None:
+            attributes["keyframe"] = fol.BooleanAttribute(value=keyframe)
+
+        return attributes
+
+    @staticmethod
+    def _parse_attributes(label):
+        outside = None
+        occluded = None
+        keyframe = None
+
+        if label.attributes:
+            supported_attrs = (
+                fol.BooleanAttribute,
+                fol.CategoricalAttribute,
+                fol.NumericAttribute,
+            )
+
+            attributes = []
+            for name, attr in label.attributes.items():
+                if name == "outside":
+                    outside = attr.value
+                elif name == "occluded":
+                    occluded = attr.value
+                elif name == "keyframe":
+                    keyframe = attr.value
+                elif isinstance(attr, supported_attrs):
+                    attributes.append(CVATAttribute(name, attr.value))
+        else:
+            attributes = None
+
+        return outside, occluded, keyframe, attributes
+
+    @staticmethod
+    def _parse_anno_dict(d):
+        outside = d.get("@outside", None)
+        if outside is not None:
+            outside = bool(int(outside))
+
+        occluded = d.get("@occluded", None)
+        if occluded is not None:
+            occluded = bool(int(occluded))
+
+        keyframe = d.get("@keyframe", None)
+        if keyframe is not None:
+            keyframe = bool(int(keyframe))
+
+        attributes = []
+        for attr in _ensure_list(d.get("attribute", [])):
+            name = attr["@name"].lstrip("@")
+            value = attr["#text"]
+            try:
+                value = float(value)
+            except:
+                pass
+
+            attributes.append(CVATAttribute(name, value))
+
+        return outside, occluded, keyframe, attributes
+
+
+class CVATVideoBox(CVATVideoAnno):
+    """An object bounding box in CVAT video format.
 
     Args:
         frame: the frame number
@@ -1120,16 +1664,9 @@ class CVATVideoBox(object):
             (self.ybr - self.ytl) / height,
         ]
 
-        attributes = {a.name: a.to_attribute() for a in self.attributes}
-
-        if self.outside is not None:
-            attributes["outside"] = fol.BooleanAttribute(value=self.outside)
-
-        if self.occluded is not None:
-            attributes["occluded"] = fol.BooleanAttribute(value=self.occluded)
-
-        if self.keyframe is not None:
-            attributes["keyframe"] = fol.BooleanAttribute(value=self.keyframe)
+        attributes = self._to_attributes(
+            self.outside, self.occluded, self.keyframe, self.attributes
+        )
 
         return fol.Detection(
             label=label, bounding_box=bounding_box, attributes=attributes,
@@ -1157,29 +1694,9 @@ class CVATVideoBox(object):
         xbr = int(round((x + w) * width))
         ybr = int(round((y + h) * height))
 
-        outside = None
-        occluded = None
-        keyframe = None
-
-        if detection.attributes:
-            supported_attrs = (
-                fol.BooleanAttribute,
-                fol.CategoricalAttribute,
-                fol.NumericAttribute,
-            )
-
-            attributes = []
-            for name, attr in detection.attributes.items():
-                if name == "outside":
-                    outside = attr.value
-                elif name == "occluded":
-                    occluded = attr.value
-                elif name == "keyframe":
-                    keyframe = attr.value
-                elif isinstance(attr, supported_attrs):
-                    attributes.append(CVATAttribute(name, attr.value))
-        else:
-            attributes = None
+        outside, occluded, keyframe, attributes = cls._parse_attributes(
+            detection
+        )
 
         return cls(
             frame_number,
@@ -1207,33 +1724,13 @@ class CVATVideoBox(object):
             a :class:`CVATVideoBox`
         """
         frame = int(d["@frame"])
+
         xtl = int(round(float(d["@xtl"])))
         ytl = int(round(float(d["@ytl"])))
         xbr = int(round(float(d["@xbr"])))
         ybr = int(round(float(d["@ybr"])))
 
-        outside = d.get("@outside", None)
-        if outside is not None:
-            outside = bool(int(outside))
-
-        occluded = d.get("@occluded", None)
-        if occluded is not None:
-            occluded = bool(int(occluded))
-
-        keyframe = d.get("@keyframe", None)
-        if keyframe is not None:
-            keyframe = bool(int(keyframe))
-
-        attributes = []
-        for attr in _ensure_list(d.get("attribute", [])):
-            name = attr["@name"].lstrip("@")
-            value = attr["#text"]
-            try:
-                value = float(value)
-            except:
-                pass
-
-            attributes.append(CVATAttribute(name, value))
+        outside, occluded, keyframe, attributes = cls._parse_anno_dict(d)
 
         return cls(
             frame,
@@ -1242,6 +1739,331 @@ class CVATVideoBox(object):
             ytl,
             xbr,
             ybr,
+            outside=outside,
+            occluded=occluded,
+            keyframe=keyframe,
+            attributes=attributes,
+        )
+
+
+class CVATVideoPolygon(CVATVideoAnno, HasCVATPoints):
+    """A polygon in CVAT video format.
+
+    Args:
+        frame: the frame number
+        label: the polygon label string
+        points: a list of ``(x, y)`` pixel coordinates defining the vertices of
+            the polygon
+        outside (None): whether the polygon is truncated by the frame edge
+        occluded (None): whether the polygon is occluded
+        keyframe (None): whether the frame is a key frame
+        attributes (None): a list of :class:`CVATAttribute` instances
+    """
+
+    def __init__(
+        self,
+        frame,
+        label,
+        points,
+        outside=None,
+        occluded=None,
+        keyframe=None,
+        attributes=None,
+    ):
+        self.frame = frame
+        self.label = label
+        self.points = points
+        self.outside = outside
+        self.occluded = occluded
+        self.keyframe = keyframe
+        self.attributes = attributes or []
+
+    def to_polyline(self, frame_size):
+        """Returns a :class:`fiftyone.core.labels.Polyline` representation of
+        the polygon.
+
+        Args:
+            frame_size: the ``(width, height)`` of the video frames
+
+        Returns:
+            a :class:`fiftyone.core.labels.Polyline`
+        """
+        label = self.label
+        points = self._to_rel_points(self.points, frame_size)
+        attributes = self._to_attributes(
+            self.outside, self.occluded, self.keyframe, self.attributes
+        )
+        return fol.Polyline(
+            label=label,
+            points=points,
+            closed=True,
+            filled=True,
+            attributes=attributes,
+        )
+
+    @classmethod
+    def from_polyline(cls, frame_number, polyline, frame_size):
+        """Creates a :class:`CVATVideoPolygon` from a
+        :class:`fiftyone.core.labels.Polyline`.
+
+        Args:
+            frame_number: the frame number
+            polyline: a :class:`fiftyone.core.labels.Polyline`
+            frame_size: the ``(width, height)`` of the video frames
+
+        Returns:
+            a :class:`CVATVideoPolygon`
+        """
+        label = polyline.label
+        points = cls._to_abs_points(polyline.points, frame_size)
+        outside, occluded, keyframe, attributes = cls._parse_attributes(
+            polyline
+        )
+        return cls(
+            frame_number,
+            label,
+            points,
+            outside=outside,
+            occluded=occluded,
+            keyframe=keyframe,
+            attributes=attributes,
+        )
+
+    @classmethod
+    def from_polygon_dict(cls, label, d):
+        """Creates a :class:`CVATVideoPolygon` from a ``<polygon>`` tag of a
+        CVAT video annotation XML file.
+
+        Args:
+            label: the object label
+            d: a dict representation of a ``<polygon>`` tag
+
+        Returns:
+            a :class:`CVATVideoPolygon`
+        """
+        frame = int(d["@frame"])
+        points = cls._parse_cvat_points_str(d["@points"])
+        outside, occluded, keyframe, attributes = cls._parse_anno_dict(d)
+        return cls(
+            frame,
+            label,
+            points,
+            outside=outside,
+            occluded=occluded,
+            keyframe=keyframe,
+            attributes=attributes,
+        )
+
+
+class CVATVideoPolyline(CVATVideoAnno, HasCVATPoints):
+    """A polyline in CVAT video format.
+
+    Args:
+        frame: the frame number
+        label: the polyline label string
+        points: a list of ``(x, y)`` pixel coordinates defining the vertices of
+            the polyline
+        outside (None): whether the polyline is truncated by the frame edge
+        occluded (None): whether the polyline is occluded
+        keyframe (None): whether the frame is a key frame
+        attributes (None): a list of :class:`CVATAttribute` instances
+    """
+
+    def __init__(
+        self,
+        frame,
+        label,
+        points,
+        outside=None,
+        occluded=None,
+        keyframe=None,
+        attributes=None,
+    ):
+        self.frame = frame
+        self.label = label
+        self.points = points
+        self.outside = outside
+        self.occluded = occluded
+        self.keyframe = keyframe
+        self.attributes = attributes or []
+
+    def to_polyline(self, frame_size):
+        """Returns a :class:`fiftyone.core.labels.Polyline` representation of
+        the polyline.
+
+        Args:
+            frame_size: the ``(width, height)`` of the video frames
+
+        Returns:
+            a :class:`fiftyone.core.labels.Polyline`
+        """
+        label = self.label
+        points = self._to_rel_points(self.points, frame_size)
+        attributes = self._to_attributes(
+            self.outside, self.occluded, self.keyframe, self.attributes
+        )
+        return fol.Polyline(
+            label=label,
+            points=points,
+            closed=False,
+            filled=False,
+            attributes=attributes,
+        )
+
+    @classmethod
+    def from_polyline(cls, frame_number, polyline, frame_size):
+        """Creates a :class:`CVATVideoPolyline` from a
+        :class:`fiftyone.core.labels.Polyline`.
+
+        Args:
+            frame_number: the frame number
+            polyline: a :class:`fiftyone.core.labels.Polyline`
+            frame_size: the ``(width, height)`` of the video frames
+
+        Returns:
+            a :class:`CVATVideoPolyline`
+        """
+        label = polyline.label
+
+        points = cls._to_abs_points(polyline.points, frame_size)
+        if points and polyline.closed:
+            points.append(copy(points[0]))
+
+        outside, occluded, keyframe, attributes = cls._parse_attributes(
+            polyline
+        )
+
+        return cls(
+            frame_number,
+            label,
+            points,
+            outside=outside,
+            occluded=occluded,
+            keyframe=keyframe,
+            attributes=attributes,
+        )
+
+    @classmethod
+    def from_polyline_dict(cls, label, d):
+        """Creates a :class:`CVATVideoPolyline` from a ``<polyline>`` tag of a
+        CVAT video annotation XML file.
+
+        Args:
+            label: the object label
+            d: a dict representation of a ``<polyline>`` tag
+
+        Returns:
+            a :class:`CVATVideoPolyline`
+        """
+        frame = int(d["@frame"])
+        points = cls._parse_cvat_points_str(d["@points"])
+        outside, occluded, keyframe, attributes = cls._parse_anno_dict(d)
+        return cls(
+            frame,
+            label,
+            points,
+            outside=outside,
+            occluded=occluded,
+            keyframe=keyframe,
+            attributes=attributes,
+        )
+
+
+class CVATVideoPoints(CVATVideoAnno, HasCVATPoints):
+    """A set of keypoints in CVAT video format.
+
+    Args:
+        frame: the frame number
+        label: the keypoints label string
+        points: a list of ``(x, y)`` pixel coordinates defining the keypoints
+        outside (None): whether the keypoints are truncated by the frame edge
+        occluded (None): whether the keypoints are occluded
+        keyframe (None): whether the frame is a key frame
+        attributes (None): a list of :class:`CVATAttribute` instances
+    """
+
+    def __init__(
+        self,
+        frame,
+        label,
+        points,
+        outside=None,
+        occluded=None,
+        keyframe=None,
+        attributes=None,
+    ):
+        self.frame = frame
+        self.label = label
+        self.points = points
+        self.outside = outside
+        self.occluded = occluded
+        self.keyframe = keyframe
+        self.attributes = attributes or []
+
+    def to_keypoint(self, frame_size):
+        """Returns a :class:`fiftyone.core.labels.Keypoint` representation of
+        the points.
+
+        Args:
+            frame_size: the ``(width, height)`` of the video frames
+
+        Returns:
+            a :class:`fiftyone.core.labels.Keypoint`
+        """
+        label = self.label
+        points = self._to_rel_points(self.points, frame_size)
+        attributes = self._to_attributes(
+            self.outside, self.occluded, self.keyframe, self.attributes
+        )
+        return fol.Keypoint(label=label, points=points, attributes=attributes)
+
+    @classmethod
+    def from_keypoint(cls, frame_number, keypoint, frame_size):
+        """Creates a :class:`CVATVideoPoints` from a
+        :class:`fiftyone.core.labels.Keypoint`.
+
+        Args:
+            frame_number: the frame number
+            keypoint: a :class:`fiftyone.core.labels.Keypoint`
+            frame_size: the ``(width, height)`` of the video frames
+
+        Returns:
+            a :class:`CVATVideoPoints`
+        """
+        label = keypoint.label
+        points = cls._to_abs_points(keypoint.points, frame_size)
+        outside, occluded, keyframe, attributes = cls._parse_attributes(
+            keypoint
+        )
+        return cls(
+            frame_number,
+            label,
+            points,
+            outside=outside,
+            occluded=occluded,
+            keyframe=keyframe,
+            attributes=attributes,
+        )
+
+    @classmethod
+    def from_points_dict(cls, label, d):
+        """Creates a :class:`CVATVideoPoints` from a ``<points>`` tag of a
+        CVAT video annotation XML file.
+
+        Args:
+            label: the object label
+            d: a dict representation of a ``<points>`` tag
+
+        Returns:
+            a :class:`CVATVideoPoints`
+        """
+        frame = int(d["@frame"])
+        points = cls._parse_cvat_points_str(d["@points"])
+        outside, occluded, keyframe, attributes = cls._parse_anno_dict(d)
+        return cls(
+            frame,
+            label,
+            points,
             outside=outside,
             occluded=occluded,
             keyframe=keyframe,
@@ -1514,59 +2336,80 @@ def load_cvat_video_annotations(xml_path):
     return info, cvat_task_labels, cvat_tracks
 
 
-def _cvat_tracks_to_frames(cvat_tracks, objects_field):
+def _cvat_tracks_to_frames(
+    cvat_tracks, objects_field, polylines_field, keypoints_field
+):
     frames = {}
     for cvat_track in cvat_tracks:
-        detections = cvat_track.to_detections()
-        for frame_number, detection in detections.items():
+        labels = cvat_track.to_labels()
+        for frame_number, label in labels.items():
             if frame_number not in frames:
                 frame = fof.Frame()
-                frame[objects_field] = fol.Detections()
                 frames[frame_number] = frame
             else:
                 frame = frames[frame_number]
 
-            frame[objects_field].detections.append(detection)
+            if isinstance(label, fol.Detection):
+                if objects_field not in frame.field_names:
+                    frame[objects_field] = fol.Detections()
+
+                frame[objects_field].detections.append(label)
+            elif isinstance(label, fol.Polyline):
+                if polylines_field not in frame.field_names:
+                    frame[polylines_field] = fol.Polylines()
+
+                frame[polylines_field].polylines.append(label)
+            elif isinstance(label, fol.Keypoint):
+                if keypoints_field not in frame.field_names:
+                    frame[keypoints_field] = fol.Keypoints()
+
+                frame[keypoints_field].keypoints.append(label)
 
     return frames
 
 
 def _frames_to_cvat_tracks(frames, frame_size):
+    labels_map = defaultdict(dict)
     no_index_map = defaultdict(list)
-    detections_map = defaultdict(dict)
 
-    def process_detection(detection, frame_number):
-        if detection.index is not None:
-            detections_map[detection.index][frame_number] = detection
+    def process_label(label, frame_number):
+        if label.index is not None:
+            labels_map[label.index][frame_number] = label
         else:
-            no_index_map[frame_number].append(detection)
+            no_index_map[frame_number].append(label)
 
     # Convert from per-frame to per-object tracks
     for frame_number, frame in frames.items():
         for _, value in frame.iter_fields():
-            if isinstance(value, fol.Detection):
-                process_detection(value, frame_number)
+            if isinstance(value, (fol.Detection, fol.Polyline, fol.Keypoint)):
+                process_label(value, frame_number)
             elif isinstance(value, fol.Detections):
                 for detection in value.detections:
-                    process_detection(detection, frame_number)
+                    process_label(detection, frame_number)
+            elif isinstance(value, fol.Polylines):
+                for polyline in value.polylines:
+                    process_label(polyline, frame_number)
+            elif isinstance(value, fol.Keypoints):
+                for keypoint in value.keypoints:
+                    process_label(keypoint, frame_number)
 
     cvat_tracks = []
 
     # Generate object tracks
     max_index = -1
-    for index in sorted(detections_map):
+    for index in sorted(labels_map):
         max_index = max(index, max_index)
-        detections = detections_map[index]
-        cvat_track = CVATTrack.from_detections(index, detections, frame_size)
+        labels = labels_map[index]
+        cvat_track = CVATTrack.from_labels(index, labels, frame_size)
         cvat_tracks.append(cvat_track)
 
     # Generate single tracks for detections with no `index`
     index = max_index
-    for frame_number, detections in no_index_map.items():
-        for detection in detections:
+    for frame_number, labels in no_index_map.items():
+        for label in labels:
             index += 1
-            cvat_track = CVATTrack.from_detections(
-                index, {frame_number: detection}, frame_size
+            cvat_track = CVATTrack.from_labels(
+                index, {frame_number: label}, frame_size
             )
             cvat_tracks.append(cvat_track)
 
