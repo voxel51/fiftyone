@@ -1737,7 +1737,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # @todo support importing video datasets?
         # This should never actually be run, as serializing video datasets is
         # not supported in the first place
-        if d["media_type"] == fom.VIDEO:
+        if d.get("media_type", fom.IMAGE) == fom.VIDEO:
             raise ValueError(
                 "Importing serialized video datasets is not supported"
             )
