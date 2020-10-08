@@ -50,6 +50,13 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DEFAULT_IMAGE_EXT",
             default=".jpg",
         )
+        self.default_video_ext = self.parse_string(
+            d,
+            "default_video_ext",
+            env_var="FIFTYONE_DEFAULT_VIDEO_EXT",
+            default=".mp4",
+        )
+        self._show_progress_bars = None  # declare
         self.show_progress_bars = self.parse_bool(
             d,
             "show_progress_bars",
