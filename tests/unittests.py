@@ -59,7 +59,7 @@ class SingleProcessSynchronizationTests(unittest.TestCase):
 
     @drop_datasets
     def test_dataset_singleton(self):
-        """Testss that datasets are singletons."""
+        """Tests that datasets are singletons."""
         dataset1 = fo.Dataset("test_dataset")
         dataset2 = fo.load_dataset("test_dataset")
         dataset3 = fo.Dataset()
@@ -2387,20 +2387,25 @@ class VideoSampleTests(unittest.TestCase):
 
 class MigrationTests(unittest.TestCase):
     def test_runner(self):
+        def revs(versions):
+            return list(map(lambda v: (v, v + ".py"), versions))
+
         runner = Runner(
-            head=None, destination="0.3", revisions=["0.1", "0.2", "0.3"]
+            head=None, destination="0.3", revisions=revs(["0.1", "0.2", "0.3"])
         )
         self.assertEqual(runner.revisions, ["0.1", "0.2", "0.3"])
         runner = Runner(
-            head="0.1", destination="0.3", revisions=["0.1", "0.2", "0.3"]
+            head="0.1",
+            destination="0.3",
+            revisions=revs(["0.1", "0.2", "0.3"]),
         )
         self.assertEqual(runner.revisions, ["0.2", "0.3"])
         runner = Runner(
-            head="0.3", destination=None, revisions=["0.1", "0.2", "0.3"]
+            head="0.3", destination=None, revisions=revs(["0.1", "0.2", "0.3"])
         )
         self.assertEqual(runner.revisions, ["0.3", "0.2", "0.1"])
-        runner = Runner(head=None, destination="0.1", revisions=["0.1"])
-        self.assertEqual(runner.revisions, ["0.3"])
+        runner = Runner(head=None, destination="0.1", revisions=revs(["0.1"]))
+        self.assertEqual(runner.revisions, ["0.1"])
 
 
 if __name__ == "__main__":

@@ -82,10 +82,12 @@ class Runner(object):
             for idx, revision in enumerate(revision_strs):
                 if revision > self._head:
                     break
-                head_idx = idx
+                head_idx = idx + 1
 
         if self._destination is None or head_idx > destination_idx:
-            destination_idx += 1
+            tmp = head_idx
+            head_idx = destination_idx
+            destination_idx = tmp
 
         revisions_to_run = self._revisions[head_idx:destination_idx]
         if direction == DOWN:

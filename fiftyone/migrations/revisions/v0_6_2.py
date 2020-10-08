@@ -18,8 +18,8 @@ def up(conn, dataset_name):
 
     colls = set(conn.collection_names())
 
-    for i in conn[DATASETS].find():
-        print(i)
+    dataset_dict = conn[DATASETS].find_one({"name": dataset_name})
+    print(dataset_dict)
 
 
 def down(conn, dataset_name):

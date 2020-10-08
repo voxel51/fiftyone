@@ -265,6 +265,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.save()
 
     @property
+    def version(self):
+        """The version of the dataset"""
+        return self._doc.version
+
+    @property
     def name(self):
         """The name of the dataset."""
         return self._doc.name
@@ -323,6 +328,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             "Persistent:     %s" % self.persistent,
             "Info:           %s" % _info_repr.repr(self.info),
             "Tags:           %s" % self.get_tags(),
+            "Version:        %s" % self.version,
             "Sample fields:",
             self._to_fields_str(self.get_field_schema()),
         ]
@@ -1949,6 +1955,7 @@ def _create_dataset(name, persistent=False, media_type=None):
         sample_fields=foo.SampleFieldDocument.list_from_field_schema(
             sample_doc_cls.get_field_schema(include_private=True)
         ),
+        version=VERSION,
     )
     dataset_doc.save()
 
@@ -1989,7 +1996,7 @@ def _drop_dataset(name, if_persistent=True):
     except DoesNotExist:
         raise DoesNotExistError("Dataset '%s' not found" % name)
 
-    if not dataset_doc.persistent:
+    if dataset_doc.persistent:
         return False
 
     sample_doc_cls = _create_sample_document_cls(
