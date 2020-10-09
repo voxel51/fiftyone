@@ -122,12 +122,6 @@ class CVATVideoSampleParser(foud.LabeledVideoSampleParser):
     details.
     """
 
-    def __init__(self):
-        super().__init__()
-        self._objects_field = "objects"
-        self._polylines_field = "polylines"
-        self._keypoints_field = "keypoints"
-
     @property
     def has_video_metadata(self):
         return False
@@ -142,12 +136,7 @@ class CVATVideoSampleParser(foud.LabeledVideoSampleParser):
             return None
 
         _, _, cvat_tracks = load_cvat_video_annotations(labels_path)
-        return _cvat_tracks_to_frames(
-            cvat_tracks,
-            self._objects_field,
-            self._polylines_field,
-            self._keypoints_field,
-        )
+        return _cvat_tracks_to_frames(cvat_tracks)
 
 
 class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
@@ -223,7 +212,6 @@ class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
 
     @property
     def label_cls(self):
-        # @todo is this how we want to handle this?
         return {
             "objects": fol.Detections,
             "polylines": fol.Polylines,
@@ -290,9 +278,6 @@ class CVATVideoDatasetImporter(foud.LabeledVideoDatasetImporter):
             seed=seed,
             max_samples=max_samples,
         )
-        self._objects_field = "objects"
-        self._polylines_field = "polylines"
-        self._keypoints_field = "keypoints"
         self._info = None
         self._cvat_task_labels = None
         self._uuids_to_video_paths = None
@@ -326,12 +311,7 @@ class CVATVideoDatasetImporter(foud.LabeledVideoDatasetImporter):
             self._cvat_task_labels.merge_task_labels(cvat_task_labels)
             self._info["task_labels"] = self._cvat_task_labels.labels
 
-            frames = _cvat_tracks_to_frames(
-                cvat_tracks,
-                self._objects_field,
-                self._polylines_field,
-                self._keypoints_field,
-            )
+            frames = _cvat_tracks_to_frames(cvat_tracks)
         else:
             # Unlabeled video
             frames = None
@@ -788,15 +768,23 @@ class CVATImage(object):
             :class:`fiftyone.core.labels.ImageLabel` containers
         """
         frame_size = (self.width, self.height)
-        detections = [b.to_detection(frame_size) for b in self.boxes]
-        polygons = [p.to_polyline(frame_size) for p in self.polygons]
-        polylines = [p.to_polyline(frame_size) for p in self.polylines]
-        keypoints = [k.to_keypoint(frame_size) for k in self.points]
-        return {
-            "objects": fol.Detections(detections=detections),
-            "polylines": fol.Polylines(polylines=polygons + polylines),
-            "keypoints": fol.Keypoints(keypoints=keypoints),
-        }
+
+        labels = {}
+
+        if self.boxes:
+            detections = [b.to_detection(frame_size) for b in self.boxes]
+            labels["objects"] = fol.Detections(detections=detections)
+
+        if self.polygons or self.polylines:
+            polygons = [p.to_polyline(frame_size) for p in self.polygons]
+            polylines = [p.to_polyline(frame_size) for p in self.polylines]
+            labels["polylines"] = fol.Polylines(polylines=polygons + polylines)
+
+        if self.points:
+            keypoints = [k.to_keypoint(frame_size) for k in self.points]
+            labels["keypoints"] = fol.Keypoints(keypoints=keypoints)
+
+        return labels
 
     @classmethod
     def from_labels(cls, labels, metadata):
@@ -2312,9 +2300,7 @@ def load_cvat_video_annotations(xml_path):
     return info, cvat_task_labels, cvat_tracks
 
 
-def _cvat_tracks_to_frames(
-    cvat_tracks, objects_field, polylines_field, keypoints_field
-):
+def _cvat_tracks_to_frames(cvat_tracks):
     frames = {}
     for cvat_track in cvat_tracks:
         labels = cvat_track.to_labels()
@@ -2326,20 +2312,20 @@ def _cvat_tracks_to_frames(
                 frame = frames[frame_number]
 
             if isinstance(label, fol.Detection):
-                if objects_field not in frame.field_names:
-                    frame[objects_field] = fol.Detections()
+                if "objects" not in frame.field_names:
+                    frame["objects"] = fol.Detections()
 
-                frame[objects_field].detections.append(label)
+                frame["objects"].detections.append(label)
             elif isinstance(label, fol.Polyline):
-                if polylines_field not in frame.field_names:
-                    frame[polylines_field] = fol.Polylines()
+                if "polylines" not in frame.field_names:
+                    frame["polylines"] = fol.Polylines()
 
-                frame[polylines_field].polylines.append(label)
+                frame["polylines"].polylines.append(label)
             elif isinstance(label, fol.Keypoint):
-                if keypoints_field not in frame.field_names:
-                    frame[keypoints_field] = fol.Keypoints()
+                if "keypoints" not in frame.field_names:
+                    frame["keypoints"] = fol.Keypoints()
 
-                frame[keypoints_field].keypoints.append(label)
+                frame["keypoints"].keypoints.append(label)
 
     return frames
 

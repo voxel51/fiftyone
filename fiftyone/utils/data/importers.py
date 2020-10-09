@@ -129,10 +129,15 @@ def import_samples(
                     "from a LabeledImageDatasetImporter"
                 )
 
-            # @todo `label_cls` rewrite
-            if expand_schema and issubclass(
-                dataset_importer.label_cls, fol.Label
-            ):
+            # Check if a single label field is being imported
+            try:
+                single_label_field = issubclass(
+                    dataset_importer.label_cls, fol.Label
+                )
+            except:
+                single_label_field = False
+
+            if expand_schema and single_label_field:
                 # This has the benefit of ensuring that `label_field` exists,
                 # even if all of the imported samples are unlabeled (i.e.,
                 # return labels that are all `None`)
@@ -151,7 +156,6 @@ def import_samples(
                 )
 
                 if isinstance(label, dict):
-                    # @todo is this what we want to do?
                     sample.update_fields(
                         {label_field + "_" + k: v for k, v in label.items()}
                     )
@@ -583,8 +587,19 @@ class LabeledImageDatasetImporter(DatasetImporter):
 
     @property
     def label_cls(self):
-        """The :class:`fiftyone.core.labels.Label` class returned by this
-        importer, or ``None`` if it returns a dictionary of labels.
+        """The :class:`fiftyone.core.labels.Label` class(es) returned by this
+        importer.
+
+        This can be any of the following:
+
+        -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+            importer is guaranteed to return labels of this type
+        -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+            In this case, the importer will return label dictionaries with keys
+            and value-types specified by this dictionary. Not all keys need be
+            present in the imported labels
+        -   ``None``. In this case, the importer makes no guarantees about the
+            labels that it may return
         """
         raise NotImplementedError("subclass must implement label_cls")
 
@@ -666,6 +681,24 @@ class LabeledVideoDatasetImporter(DatasetImporter):
         :class:`fiftyone.core.metadata.VideoMetadata` instances for each video.
         """
         raise NotImplementedError("subclass must implement has_video_metadata")
+
+    @property
+    def label_cls(self):
+        """The :class:`fiftyone.core.labels.Label` class(es) returned by this
+        importer.
+
+        This can be any of the following:
+
+        -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+            importer is guaranteed to return frames with labels of this type
+        -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+            In this case, the importer will return label dictionaries with keys
+            and value-types specified by this dictionary. Not all keys need be
+            present in the imported labels
+        -   ``None``. In this case, the importer makes no guarantees about the
+            labels that it may return
+        """
+        raise NotImplementedError("subclass must implement label_cls")
 
 
 class FiftyOneDatasetImporter(GenericSampleDatasetImporter):

@@ -245,26 +245,9 @@ def _write_image_dataset(
                     # Convert `Classification` labels to `Detections` format,
                     # if necessary
                     #
-                    if (
-                        dataset_exporter.label_cls is fol.Detections
-                        and isinstance(label, fol.Classification)
-                    ):
-                        msg = (
-                            "Dataset exporter expects labels in %s format, "
-                            "but found %s. Converting labels to detections "
-                            "whose bounding boxes span the entire image"
-                            % (fol.Detections, label.__class__)
-                        )
-                        warnings.warn(msg)
-                        label = fol.Detections(
-                            detections=[
-                                fol.Detection(
-                                    label=label.label,
-                                    bounding_box=[0, 0, 1, 1],  # entire image
-                                    confidence=label.confidence,
-                                )
-                            ]
-                        )
+                    label = _check_classification_to_detections(
+                        dataset_exporter, label
+                    )
 
                     # Export sample
                     dataset_exporter.export_sample(
@@ -275,6 +258,31 @@ def _write_image_dataset(
                     dataset_exporter.export_sample(
                         image_or_path, metadata=metadata
                     )
+
+
+def _check_classification_to_detections(dataset_exporter, label):
+    if dataset_exporter.label_cls is not fol.Detections:
+        return label
+
+    if not isinstance(label, fol.Classification):
+        return label
+
+    msg = (
+        "Dataset exporter expects labels in %s format, but found %s. "
+        "Converting labels to detections whose bounding boxes span the entire "
+        "image" % (fol.Detections, label.__class__)
+    )
+    warnings.warn(msg)
+
+    return fol.Detections(
+        detections=[
+            fol.Detection(
+                label=label.label,
+                bounding_box=[0, 0, 1, 1],  # entire image
+                confidence=label.confidence,
+            )
+        ]
+    )
 
 
 def _write_video_dataset(

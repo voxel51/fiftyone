@@ -125,8 +125,13 @@ def add_labeled_images(
             )
         )
 
-    # @todo `label_cls` rewrite
-    if expand_schema and issubclass(sample_parser.label_cls, fol.Label):
+    # Check if a single label field is being imported
+    try:
+        single_label_field = issubclass(sample_parser.label_cls, fol.Label)
+    except:
+        single_label_field = False
+
+    if expand_schema and single_label_field:
         # This has the benefit of ensuring that `label_field` exists, even if
         # all of the parsed samples are unlabeled (i.e., return labels that are
         # all `None`)
@@ -151,7 +156,6 @@ def add_labeled_images(
         sample = fos.Sample(filepath=image_path, metadata=metadata, tags=tags)
 
         if isinstance(label, dict):
-            # @todo is this what we want?
             sample.update_fields(
                 {label_field + "_" + k: v for k, v in label.items()}
             )
@@ -558,8 +562,19 @@ class LabeledImageSampleParser(SampleParser):
 
     @property
     def label_cls(self):
-        """The :class:`fiftyone.core.labels.Label` class returned by this
-        parser, or ``None`` if it returns a dictionary of labels.
+        """The :class:`fiftyone.core.labels.Label` class(es) returned by this
+        parser.
+
+        This can be any of the following:
+
+        -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+            parser is guaranteed to return labels of this type
+        -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+            In this case, the parser will return label dictionaries with keys
+            and value-types specified by this dictionary. Not all keys need be
+            present in the imported labels
+        -   ``None``. In this case, the parser makes no guarantees about the
+            labels that it may return
         """
         raise NotImplementedError("subclass must implement label_cls")
 
