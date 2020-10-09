@@ -232,6 +232,7 @@ const SampleModal = ({
     labelNames,
     labelTypes
   );
+  const videoLabels = useRecoilValue(atoms.sampleVideoLabels(sample._id));
   const [frameLabelsActive, setFrameLabelsActive] = useRecoilState(
     atoms.modalFrameLabelsActive
   );
@@ -418,6 +419,7 @@ const SampleModal = ({
               ...playerStyle,
             }}
             sample={sample}
+            overlay={videoLabels}
             metadata={metadata}
             colorMap={colorMap}
             activeLabels={activeLabels}

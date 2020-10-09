@@ -39,6 +39,7 @@ export default ({
   style,
   onClick,
   onDoubleClick,
+  overlay = null,
   onLoad = () => {},
   onMouseEnter = null,
   activeLabels,
@@ -51,7 +52,9 @@ export default ({
   const filter = useRecoilValue(filterSelector);
   const colorMap = useRecoilValue(atoms.colorMap);
   const mediaType = useRecoilValue(selectors.mediaType);
-  const overlay = convertSampleToETA(sample, fieldSchema);
+  if (overlay === null) {
+    overlay = convertSampleToETA(sample, fieldSchema);
+  }
   const [mediaLoading, setMediaLoading] = useState(true);
   const [initLoad, setInitLoad] = useState(false);
   const [error, setError] = useState(null);
@@ -96,12 +99,12 @@ export default ({
           attrsOnlyOnClick: false,
           attrRenderBox: false,
         },
+        onMouseEnter,
         defaultOverlayOptions: {
           ...defaultOverlayOptions,
           action: "hover",
           attrRenderMode: "attr-value",
           smoothMasks: false,
-          onMouseEnter,
         },
       });
     } catch (e) {
