@@ -25,11 +25,15 @@ def is_frame_number(value):
         :class:`FrameError` if ``value`` is an integer but is not strictly
         positive
     """
-    try:
-        validate_frame_number(value)
+    if isinstance(value, six.integer_types):
+        if value < 1:
+            raise FrameError(
+                "Frame numbers must be integers; found %s" % type(value)
+            )
+
         return True
-    except:
-        return False
+
+    return False
 
 
 def validate_frame_number(value):
