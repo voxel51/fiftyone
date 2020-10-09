@@ -646,6 +646,111 @@ class FilterDetections(_FilterListField):
         )
 
 
+class FilterPolylines(_FilterListField):
+    """Filters the :class:`fiftyone.core.labels.Polyline` elements in the
+    specified :class:`fiftyone.core.labels.Polylines` field of the samples in
+    the stage.
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone import ViewField as F
+        from fiftyone.core.stages import FilterPolylines
+
+        dataset = fo.load_dataset(...)
+
+        #
+        # Only include polylines in the `predictions` field that are filled
+        #
+
+        stage = FilterPolylines("predictions", F("filled"))
+        view = dataset.add_stage(stage)
+
+        #
+        # Only include polylines in the `predictions` field whose `label` is
+        # "lane"
+        #
+
+        stage = FilterPolylines("predictions", F("label") == "lane")
+        view = dataset.add_stage(stage)
+
+        #
+        # Only include polylines in the `predictions` field with at least
+        # 10 vertices
+        #
+
+        stage = FilterPolylines("predictions", F("points").length() >= 10)
+        view = dataset.add_stage(stage)
+
+    Args:
+        field: the field to filter, which must be a
+            :class:`fiftyone.core.labels.Polylines`
+        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that returns a boolean describing the filter to apply
+    """
+
+    @property
+    def _filter_field(self):
+        return self.field + ".polylines"
+
+    def validate(self, sample_collection):
+        sample_collection.validate_field_type(
+            self.field,
+            fof.EmbeddedDocumentField,
+            embedded_doc_type=fol.Polylines,
+        )
+
+
+class FilterKeypoints(_FilterListField):
+    """Filters the :class:`fiftyone.core.labels.Keypoint` elements in the
+    specified :class:`fiftyone.core.labels.Keypoints` field of the samples in
+    the stage.
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone import ViewField as F
+        from fiftyone.core.stages import FilterKeypoints
+
+        dataset = fo.load_dataset(...)
+
+        #
+        # Only include keypoints in the `predictions` field whose `label` is
+        # "face"
+        #
+
+        stage = FilterKeypoints("predictions", F("label") == "face")
+        view = dataset.add_stage(stage)
+
+        #
+        # Only include keypoints in the `predictions` field with at least
+        # 10 points
+        #
+
+        stage = FilterKeypoints("predictions", F("points").length() >= 10)
+        view = dataset.add_stage(stage)
+
+    Args:
+        field: the field to filter, which must be a
+            :class:`fiftyone.core.labels.Keypoints`
+        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that returns a boolean describing the filter to apply
+    """
+
+    @property
+    def _filter_field(self):
+        return self.field + ".keypoints"
+
+    def validate(self, sample_collection):
+        sample_collection.validate_field_type(
+            self.field,
+            fof.EmbeddedDocumentField,
+            embedded_doc_type=fol.Keypoints,
+        )
+
+
 class Limit(ViewStage):
     """Limits the view to the given number of samples.
 
@@ -1458,6 +1563,8 @@ _STAGES = [
     FilterField,
     FilterClassifications,
     FilterDetections,
+    FilterPolylines,
+    FilterKeypoints,
     Limit,
     Match,
     MatchTag,
