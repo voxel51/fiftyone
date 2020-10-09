@@ -3,8 +3,9 @@ Drawing Labels on Samples
 
 .. default-role:: code
 
-FiftyOne provides native support for rendering annotated versions of samples
-with :ref:`label fields <using-labels>` overlaid on the source media.
+FiftyOne provides native support for rendering annotated versions of image and
+video samples with :ref:`label fields <using-labels>` overlaid on the source
+media.
 
 Basic recipe
 ------------
@@ -68,7 +69,8 @@ You can also annotate individual samples directly by using the various methods
 exposed in the :mod:`fiftyone.utils.annotations` module.
 
 For example, you can draw an annotated version of an image sample with
-|Classification| and |Detections| labels overlaid as follows:
+|Classification| and |Detections| labels overlaid via
+:func:`draw_labeled_image() <fiftyone.utils.annotations.draw_labeled_image>`:
 
 .. code-block:: python
     :linenos:
@@ -119,6 +121,10 @@ For example, you can draw an annotated version of an image sample with
 .. image:: ../images/draw_labels_example1.jpg
    :alt: image-annotated.jpg
    :align: center
+
+Similarly, you can draw an annotated version of a video sample with its frame
+labels overlaid via
+:func:`draw_labeled_video() <fiftyone.utils.annotations.draw_labeled_video>`.
 
 Customizing annotation rendering
 --------------------------------
