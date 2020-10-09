@@ -70,6 +70,13 @@ class _Sample(object):
         return str(self._doc.id) if self._in_db else None
 
     @property
+    def _id(self):
+        """The ObjectId of the document, or ``None`` if it has not been added to the
+        database.
+        """
+        return self._doc.id if self._in_db else None
+
+    @property
     def ingest_time(self):
         """The time the document was added to the database, or ``None`` if it
         has not been added to the database.

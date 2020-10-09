@@ -73,16 +73,16 @@ class Frames(object):
         self._replacements = {}
 
     def _make_filter(self, frame_number, doc):
-        doc._sample_id = self._sample.id
+        doc._sample_id = self._sample._id
         return {
             "frame_number": doc.get_field("frame_number"),
-            "_sample_id": self._sample.id,
+            "_sample_id": self._sample._id,
         }
 
     def _make_dict(self, doc):
         d = doc.to_dict(extended=False)
         d.pop("_id", None)
-        d["_sample_id"] = self._sample.id
+        d["_sample_id"] = self._sample._id
         return d
 
     def __iter__(self):
@@ -103,7 +103,7 @@ class Frames(object):
         dataset = None
         doc = None
         d = None
-        default_d = {"_sample_id": self._sample.id, "frame_number": key}
+        default_d = {"_sample_id": self._sample._id, "frame_number": key}
         if self._iter is not None and key == self._iter_doc.get_field(
             "frame_number"
         ):
@@ -135,7 +135,7 @@ class Frames(object):
 
         doc = frame._doc
         doc.set_field("frame_number", key)
-        doc._sample_id = self._sample.id
+        doc._sample_id = self._sample._id
 
         if not self._sample._in_db and key not in self._replacements:
             self._sample._doc.frames["frame_count"] += 1
@@ -143,7 +143,7 @@ class Frames(object):
             if self._iter is not None or key != self._iter_doc.get_field(
                 "frame_number"
             ):
-                find_d = {"_sample_id": self._sample.id, "frame_number": key}
+                find_d = {"_sample_id": self._sample._id, "frame_number": key}
                 exists = self._frame_collection.find(find_d)
                 if exists is None:
                     self._sample._doc.frames["frame_count"] += 1
@@ -231,7 +231,7 @@ class Frames(object):
         if self._sample._in_db:
             repl_fns = sorted(self._replacements.keys())
             repl_fn = repl_fns[0] if len(repl_fns) else None
-            find_d = {"_sample_id": self._sample.id}
+            find_d = {"_sample_id": self._sample._id}
             for d in self._frame_collection.find(find_d):
                 if repl_fn is not None and d["frame_number"] >= repl_fn:
                     self._iter_doc = self._replacements[repl_fn]
@@ -372,7 +372,8 @@ class Frame(_Sample):
 
         # Save weak reference
         dataset_instances = self._instances[doc.collection_name]
-        if self.frame_number not in dataset_instances[self._sample_id]:
-            dataset_instances[self._sample_id][self.frame_number] = self
+        _sample_id = str(self._sample_id)
+        if self.frame_number not in dataset_instances[_sample_id]:
+            dataset_instances[_sample_id][self.frame_number] = self
 
         self._dataset = dataset
