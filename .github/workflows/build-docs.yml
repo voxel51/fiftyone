@@ -47,7 +47,7 @@ jobs:
         run: |
           pip install --upgrade pip setuptools wheel
           mkdir -p pip-cache
-          echo ::set-env name=PIP_CACHE_DIR::pip-cache
+          echo "PIP_CACHE_DIR=pip-cache" >> $GITHUB_ENV
       - name: Fetch pip cache
         uses: actions/cache@v2
         with:
