@@ -289,7 +289,22 @@ class StateController(Namespace):
         state["with_stats"] = False
         state = fos.StateDescriptionWithDerivables.from_dict(state)
         find_d = {"_sample_id": ObjectId(sample_id)}
-        return {"frames": list(state.dataset._frame_collection.find(find_d))}
+        labels = etav.VideoLabels()
+
+        for frame_dict in state.dataset._frame_collection.find(find_d):
+            frame_number = frame_dict["frame_number"]
+            frame_labels = etav.VideoFrameLabels(frame_number=frame_number)
+            for k, v in frame_dict.items():
+                if isinstance(v, dict) and "_cls" in v:
+                    field_labels = _make_image_labels(k, v, frame_number)
+                    for obj in field_labels.objects:
+                        obj.frame_number = frame_number
+
+                    frame_labels.merge_labels(field_labels)
+
+            labels.add_frame(frame_labels)
+
+        return labels.serialize()
 
     @_catch_errors
     def on_page(self, page, page_length=20):

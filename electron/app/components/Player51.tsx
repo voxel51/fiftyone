@@ -40,6 +40,7 @@ export default ({
   onClick,
   onDoubleClick,
   onLoad = () => {},
+  onMouseEnter = null,
   activeLabels,
   frameLabelsActive,
   fieldSchema = {},
@@ -66,6 +67,18 @@ export default ({
     playerActiveLabels.frames = frameLabelsActive;
   }
 
+  /**
+   *      if (data.results.length) {
+        socket.emit(
+          "get_frame_labels",
+          data.results[0].sample._id,
+          (frame_labels) => {
+            console.log(frame_labels); // frames!
+          }
+        );
+      }
+   */
+
   const [player] = useState(() => {
     try {
       return new Player51({
@@ -88,6 +101,7 @@ export default ({
           action: "hover",
           attrRenderMode: "attr-value",
           smoothMasks: false,
+          onMouseEnter,
         },
       });
     } catch (e) {

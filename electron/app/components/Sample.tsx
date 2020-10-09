@@ -22,6 +22,9 @@ const Sample = ({ dispatch, sample, metadata, port, setView }) => {
   const activeTags = useRecoilValue(atoms.activeTags);
   const activeOther = useRecoilValue(atoms.activeOther);
   const frameLabelsActive = useRecoilValue(atoms.frameLabelsActive);
+  const [videoLabels, setVideoLabels] = useRecoilState(
+    atoms.sampleVideoLabels(sample._id)
+  );
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     atoms.selectedSamples
   );
@@ -87,6 +90,15 @@ const Sample = ({ dispatch, sample, metadata, port, setView }) => {
   };
   const tooltip = `Double-click for details`;
 
+  const onMouseEnter =
+    sample.media_type === "video"
+      ? (player) => {
+          socket.emit("get_frame_labels", sample._id, (labels) => {
+            setVideoLabels(labels);
+          });
+        }
+      : null;
+
   return (
     <div className="sample" title={tooltip}>
       <Player51
@@ -103,6 +115,7 @@ const Sample = ({ dispatch, sample, metadata, port, setView }) => {
         frameLabelsActive={frameLabelsActive}
         {...eventHandlers}
         filterSelector={selectors.labelFilters}
+        onMouseEnter={onMouseEnter}
       />
       <div className="sample-info" {...eventHandlers}>
         {Object.keys(sample)

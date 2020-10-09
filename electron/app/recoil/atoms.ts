@@ -124,3 +124,8 @@ export const filterNumericFieldIncludeNone = atomFamily({
   key: "filterNumericFieldIncludeNone",
   default: true,
 });
+
+export const sampleVideoLabels = atomFamily({
+  key: "sampleVideoLabels",
+  default: null,
+});
