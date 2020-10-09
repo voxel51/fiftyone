@@ -42,36 +42,9 @@ class CVATImageSampleParser(foud.LabeledImageTupleSampleParser):
           format via ``np.asarray()`` or the path to an image on disk
 
         - ``image_tag_dict`` is a JSON dictionary representation of an
-          ``<image>`` tag of a CVAT image annotations file, which should have
-          the following format::
-
-            {
-                "@id": "0",
-                "@name": "filename.jpg",
-                "@width": "640",
-                "@height": "480",
-                "box": [
-                    {
-                        "@label": "car",
-                        "@xtl": "100",
-                        "@ytl": "50",
-                        "@xbr": "325",
-                        "@ybr": "190",
-                        "@occluded": "0",
-                        "attribute": [
-                            {
-                                "@name": "type",
-                                "#text": "sedan"
-                            },
-                            ...
-                        ]
-                    },
-                    ...
-                ],
-                ...
-            }
-
-          For unlabeled images, ``image_tag_dict`` can be ``None``.
+          ``<image>`` tag of a CVAT image annotations file which has been
+          loaded via :meth:`fiftyone.core.utils.load_xml_as_json_dict`, or
+          ``None`` for unlabeled images.
 
     See :class:`fiftyone.types.dataset_types.CVATImageDataset` for more format
     details.
@@ -107,8 +80,8 @@ class CVATImageSampleParser(foud.LabeledImageTupleSampleParser):
             sample: the sample
 
         Returns:
-            a dictionary mapping
-            a :class:`fiftyone.core.labels.Detections` instance, or ``None`` if
+            a dictionary mapping field names to
+            :class:`fiftyone.core.labels.ImageLabel` instances, or ``None`` if
             the sample is unlabeled
         """
         cvat_image = self._cvat_image
@@ -468,6 +441,9 @@ class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
 
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(out_image_path)
+
+        if isinstance(labels, fol.Label):
+            labels = {"labels": labels}
 
         cvat_image = CVATImage.from_labels(labels, metadata)
 
