@@ -182,6 +182,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
       return {
         type: "eta.core.data.CategoricalAttribute",
         name,
+        _id: obj._id,
         confidence: obj.confidence,
         value: obj.label,
       };
@@ -195,6 +196,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
       return {
         type: "eta.core.objects.DetectedObject",
         name,
+        _id: obj._id,
         label: obj.label,
         index: obj.index,
         confidence: obj.confidence,
@@ -217,6 +219,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
     convert: (name, obj) => {
       return {
         name,
+        _id: obj._id,
         label: obj.label,
         points: obj.points,
       };
@@ -227,6 +230,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
     convert: (name, obj) => {
       return {
         name,
+        _id: obj._id,
         label: obj.label,
         points: obj.points,
         closed: Boolean(obj.closed),
