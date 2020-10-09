@@ -39,6 +39,7 @@ class _Sample(object):
                 self._secure_media(name, value)
             except AttributeError:
                 pass
+
             self._doc.__setattr__(name, value)
 
     def __delattr__(self, name):
@@ -87,6 +88,11 @@ class _Sample(object):
         been inserted into the database.
         """
         return self._doc.in_db
+
+    @property
+    def _immutable_field_names(self):
+        """A tuple of names of immutable fields."""
+        return tuple()
 
     def get_field(self, field_name):
         """Accesses the value of a field of the sample.
@@ -143,15 +149,42 @@ class _Sample(object):
         """
         self._doc.clear_field(field_name=field_name)
 
-    def iter_fields(self):
+    def iter_fields(self, include_immutable=False):
         """Returns an iterator over the ``(name, value)`` pairs of the fields
         of the sample.
+
+        Args:
+            include_immutable (False): whether to include immutable fields
 
         Returns:
             an iterator that emits ``(name, value)`` tuples
         """
-        for field_name in self.field_names:
+        field_names = self.field_names
+        if not include_immutable:
+            field_names = tuple(
+                f for f in field_names if f not in self._immutable_field_names
+            )
+
+        for field_name in field_names:
             yield field_name, self.get_field(field_name)
+
+    def merge(self, sample, overwrite=True):
+        """Merges the fields of the sample into this sample.
+
+        Args:
+            sample: a :class:`fiftyone.core.sample.Sample`
+            overwrite (True): whether to overwrite existing fields
+        """
+        if overwrite:
+            for field_name, value in sample.iter_fields():
+                self.set_field(field_name, value)
+
+            return
+
+        existing_field_names = self.field_names
+        for field_name, value in sample.iter_fields():
+            if field_name not in existing_field_names:
+                self.set_field(field_name, value)
 
     def copy(self):
         """Returns a deep copy of the sample that has not been added to the

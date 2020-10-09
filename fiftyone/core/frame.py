@@ -10,6 +10,7 @@ import weakref
 
 from fiftyone.core._sample import _Sample
 import fiftyone.core.frame_utils as fofu
+import fiftyone.core.utils as fou
 
 from fiftyone.core.odm.frame import (
     NoDatasetFrameSampleDocument,
@@ -37,6 +38,9 @@ class Frames(object):
         self._sample = None
         self._iter = None
 
+    def __str__(self):
+        return "<%s: %s>" % (self.__class__.__name__, fou.pformat(dict(self)))
+
     def __repr__(self):
         num_frames = len(self)
         plural = "s" if num_frames != 1 else ""
@@ -52,44 +56,51 @@ class Frames(object):
     def __next__(self):
         return next(self._iter)
 
-    def __getitem__(self, key):
-        fofu.validate_frame_number(key)
+    def __contains__(self, frame_number):
+        return str(frame_number) in self._sample._doc.frames
+
+    def __getitem__(self, frame_number):
+        fofu.validate_frame_number(frame_number)
+
+        key = str(frame_number)
 
         try:
-            key = str(key)
             doc = self._sample._doc.frames[key]
         except KeyError:
             if self._sample._in_db:
                 doc = self._sample._dataset._frame_doc_cls.from_dict(
-                    {"frame_number": key}
+                    {"frame_number": frame_number}
                 )
                 doc.save()
-                dataset = self._sample._dataset
             else:
-                doc = NoDatasetFrameSampleDocument(frame_number=key)
-                dataset = None
+                doc = NoDatasetFrameSampleDocument(frame_number=frame_number)
 
         frame = Frame.from_doc(doc, dataset=self._sample._dataset)
         self._sample._doc.frames[key] = frame._doc
+
         return frame
 
-    def __setitem__(self, key, value):
-        fofu.validate_frame_number(key)
+    def __setitem__(self, frame_number, frame):
+        fofu.validate_frame_number(frame_number)
 
-        if not isinstance(value, Frame):
-            raise ValueError("Value must be a %s" % Frame.__name__)
+        key = str(frame_number)
 
-        d = value.to_dict()
+        if not isinstance(frame, Frame):
+            raise ValueError(
+                "Value must be a %s; found %s" % (Frame, frame.__class__)
+            )
+
+        d = frame.to_dict()
         d.pop("_id", None)
-        d["frame_number"] = key
+        d["frame_number"] = frame_number
+
         if self._sample._in_db:
             doc = self._sample._dataset._frame_doc_cls.from_dict(d)
             doc.save()
-            self._sample._doc.frames[str(key)] = doc
         else:
-            self._sample._doc.frames[
-                str(key)
-            ] = NoDatasetFrameSampleDocument.from_dict(d)
+            doc = NoDatasetFrameSampleDocument.from_dict(d)
+
+        self._sample._doc.frames[key] = doc
 
     @property
     def field_names(self):
@@ -145,16 +156,28 @@ class Frames(object):
                 self._sample._doc.frames[str(k)], dataset=dataset
             )
 
-    def update(self, d):
-        """Adds the frame labels from the given dictionary to this instance.
-
-        Existing frames are overwritten.
+    def update(self, frames, overwrite=True):
+        """Adds the frame labels to this instance.
 
         Args:
-            d: a dictionary mapping frame numbers to :class:`Frame` instances
+            frames: a :class:`Frames` instance or dictionary mapping frame
+                numbers to :class:`Frame` instances
+            overwrite (True): whether to overwrite existing frames
         """
-        for frame_number, frame in d.items():
-            self[frame_number] = frame
+        for frame_number, frame in frames.items():
+            if overwrite or frame_number not in self:
+                self[frame_number] = frame
+
+    def merge(self, frames, overwrite=True):
+        """Merges the frame labels into this instance.
+
+        Args:
+            frames: a :class:`Frames` instance or dictionary mapping frame
+                numbers to :class:`Frame` instances
+            overwrite (True): whether to overwrite existing fields
+        """
+        for frame_number, frame in frames.items():
+            self[frame_number].merge(frame, overwrite=overwrite)
 
     def _serve(self, sample):
         self._sample = sample

@@ -58,6 +58,10 @@ class _DatasetSample(_Sample):
         """The basename of the data filepath."""
         return os.path.basename(self.filepath)
 
+    @property
+    def _immutable_field_names(self):
+        return ("media_type",)
+
     def compute_metadata(self):
         """Populates the ``metadata`` field of the sample."""
         if self.media_type == fomm.IMAGE:
