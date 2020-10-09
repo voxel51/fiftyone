@@ -49,18 +49,29 @@ export default function tile(data, newHasMore, state) {
       const sampleWidth = (baseHeight * sample.width) / sample.height;
       columns.push(sampleWidth / refWidth);
     }
+
     const rowStyle = {
       display: "grid",
       gridTemplateColumns: columns
-        .map((c) => (c * 100).toFixed(2) + "%")
+        .map((c) => {
+          return (c * (100 - (columns.length - 1) / 2)).toFixed(2) + "%";
+        })
+        .reduce((acc, cur, i) => {
+          if (i < columns.length - 1) {
+            return [...acc, cur, "0.5%"];
+          }
+          return [...acc, cur];
+        }, [])
         .join(" "),
       width: "100%",
       margin: 0,
     };
+
     rows.push({
       style: rowStyle,
       samples: row.map(({ sample, ...rest }) => ({ sample, metadata: rest })),
-      aspectRatio: refWidth / baseHeight,
+      aspectRatio:
+        (refWidth + ((columns.length - 1) / 2) * (refWidth / 100)) / baseHeight,
     });
   }
   return {

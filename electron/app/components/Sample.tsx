@@ -16,6 +16,7 @@ import { useFastRerender } from "../utils/hooks";
 const SampleDiv = styled.div`
   position: relative;
   overflow: hidden;
+  box-shadow: 0 2px 20px ${({ theme }) => theme.backgroundDark};
 `;
 
 const LoadingBar = animated(styled.div`
