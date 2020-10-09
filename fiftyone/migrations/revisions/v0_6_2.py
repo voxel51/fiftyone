@@ -37,13 +37,17 @@ def up(db, dataset_name):
     sample_coll = dataset_dict["sample_collection_name"]
     frame_coll = "frames.%s" % sample_coll
     for s in db[sample_coll].find():
-        frames_d = {"frame_count": len(s["frames"]), "first_frame": None}
+        frames_d = {
+            "_cls": "Frames",
+            "frame_count": len(s["frames"]),
+            "first_frame": None,
+        }
         frame_updates = []
         for frame_number_str, frame_id in s["frames"].items():
             frame_number = int(frame_number_str)
             if frame_number == 1:
                 first_frame = db[frame_coll].find_one({"_id": frame_id})
-                first_frame.pop("_id")
+                first_frame["_cls"] = "FrameLabel"
                 frames_d["first_frame"] = first_frame
             frame_updates.append(
                 pm.UpdateOne(
