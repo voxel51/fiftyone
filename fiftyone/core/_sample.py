@@ -173,18 +173,20 @@ class _Sample(object):
 
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
-            overwrite (True): whether to overwrite existing fields
+            overwrite (True): whether to overwrite existing fields. Note that
+                existing fields whose values are ``None`` are always
+                overwritten
         """
-        if overwrite:
-            for field_name, value in sample.iter_fields():
-                self.set_field(field_name, value)
-
-            return
-
         existing_field_names = self.field_names
         for field_name, value in sample.iter_fields():
-            if field_name not in existing_field_names:
-                self.set_field(field_name, value)
+            if (
+                not overwrite
+                and field_name in existing_field_names
+                and self[field_name] is not None
+            ):
+                continue
+
+            self.set_field(field_name, value)
 
     def copy(self):
         """Returns a deep copy of the sample that has not been added to the

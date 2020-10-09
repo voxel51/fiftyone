@@ -713,34 +713,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if key_fcn is None:
             key_fcn = lambda k: k
 
-        existing_schema = self.get_field_schema()
-
         id_map = {}
         for sample in self.select_fields(key_field):
             id_map[key_fcn(sample[key_field])] = sample.id
 
         with fou.ProgressBar() as pb:
-            for new_sample in pb(samples):
-                key = key_fcn(new_sample[key_field])
+            for sample in pb(samples):
+                key = key_fcn(sample[key_field])
                 if key in id_map:
                     existing_sample = self[id_map[key]]
-
-                    for name, value in new_sample.iter_fields():
-                        if name == "media_type":
-                            continue
-
-                        if (
-                            not overwrite
-                            and name in existing_schema
-                            and existing_sample[name] is not None
-                        ):
-                            continue
-
-                        existing_sample[name] = value
-
+                    existing_sample.merge(sample, overwrite=overwrite)
                     existing_sample.save()
                 else:
-                    self.add_sample(new_sample)
+                    self.add_sample(sample)
 
     def remove_sample(self, sample_or_id):
         """Removes the given sample from the dataset.
