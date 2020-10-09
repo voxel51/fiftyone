@@ -123,7 +123,7 @@ format when reading the dataset from disk.
     |                                                                                       | stored in a simple JSON format.                                                    |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`COCODetectionDataset <COCODetectionDataset-import>`                             | A labeled dataset consisting of images and their associated object detections      |
-    |                                                                                       | saved in `COCO format <http://cocodataset.org/#home>`_.                            |
+    |                                                                                       | saved in `COCO Object Detection Format <https://cocodataset.org/#format-data>`_.   |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`VOCDetectionDataset <VOCDetectionDataset-import>`                               | A labeled dataset consisting of images and their associated object detections      |
     |                                                                                       | saved in `VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`_.                   |
@@ -728,7 +728,8 @@ COCODetectionDataset
 
 The :class:`fiftyone.types.COCODetectionDataset <fiftyone.types.dataset_types.COCODetectionDataset>`
 type represents a labeled dataset consisting of images and their associated
-object detections saved in `COCO format <http://cocodataset.org/#home>`_.
+object detections saved in
+`COCO Object Detection Format <https://cocodataset.org/#format-data>`_.
 
 Datasets of this type are read in the following format:
 

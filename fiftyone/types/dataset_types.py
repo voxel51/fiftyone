@@ -440,7 +440,8 @@ class FiftyOneImageDetectionDataset(ImageDetectionDataset):
 
 class COCODetectionDataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
-    detections saved in `COCO format <http://cocodataset.org/#home>`_.
+    detections saved in
+    `COCO Object Detection Format <https://cocodataset.org/#format-data>`_.
 
     Datasets of this type are read/written in the following format::
 

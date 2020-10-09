@@ -896,7 +896,7 @@ You can use a |SampleParser| to
 | :class:`TFObjectDetectionSampleParser                                  | Parser for image detection samples stored in                                                                    |
 | <fiftyone.utils.tf.TFObjectDetectionSampleParser>`                     | `TF Object Detection API format <https://github.com/tensorflow/models/blob/master/research/object_detection>`_. |
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| :class:`COCODetectionSampleParser                                      | Parser for samples in `COCO detection format <http://cocodataset.org/#home>`_.                                  |
+| :class:`COCODetectionSampleParser                                      | Parser for samples in `COCO Object Detection Format <https://cocodataset.org/#format-data>`_.                   |
 | <fiftyone.utils.coco.COCODetectionSampleParser>`                       |                                                                                                                 |
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | :class:`VOCDetectionSampleParser                                       | Parser for samples in `VOC detection format <http://host.robots.ox.ac.uk/pascal/VOC>`_.                         |

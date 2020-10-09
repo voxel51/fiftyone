@@ -112,7 +112,7 @@ format when writing the dataset to disk.
     | <FiftyOneImageDetectionDataset-export>`                            | stored in a simple JSON format.                                                    |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`COCODetectionDataset                                         | A labeled dataset consisting of images and their associated object detections      |
-    | <COCODetectionDataset-export>`                                     | saved in `COCO format <http://cocodataset.org/#home>`_.                            |
+    | <COCODetectionDataset-export>`                                     | saved in `COCO Object Detection Format <https://cocodataset.org/#format-data>`_.   |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`VOCDetectionDataset                                          | A labeled dataset consisting of images and their associated object detections      |
     | <VOCDetectionDataset-export>`                                      | saved in `VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`_.                   |
@@ -585,7 +585,8 @@ COCODetectionDataset
 
 The :class:`fiftyone.types.COCODetectionDataset <fiftyone.types.dataset_types.COCODetectionDataset>`
 type represents a labeled dataset consisting of images and their associated
-object detections saved in `COCO format <http://cocodataset.org/#home>`_.
+object detections saved in
+`COCO Object Detection Format <https://cocodataset.org/#format-data>`_.
 
 Datasets of this type are exported in the following format:
 

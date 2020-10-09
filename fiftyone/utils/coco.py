@@ -1,6 +1,6 @@
 """
 Utilities for working with datasets in
-`COCO format <http://cocodataset.org/#home>`_.
+`COCO format <https://cocodataset.org/#format-data>`_.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
     """Parser for samples in
-    `COCO detection format <http://cocodataset.org/#home>`_.
+    `COCO Object Detection Format <https://cocodataset.org/#format-data>`_.
 
     This implementation supports samples that are
     ``(image_or_path, annotations)`` tuples, where:
