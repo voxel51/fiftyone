@@ -9,7 +9,7 @@ import pymongo as pm
 
 
 def up(db, dataset_name):
-    colls = set(db.collection_names())
+    colls = set(db.list_collection_names())
     for c in colls:
         if c.startswith("frames.") and ".".join(c.split(".")[1:]) not in colls:
             db[c].drop()
@@ -43,12 +43,16 @@ def up(db, dataset_name):
             frame_number = int(frame_number_str)
             if frame_number == 1:
                 first_frame = db[frame_coll].find_one({"_id": frame_id})
+                first_frame.pop("_id")
                 frames_d["first_frame"] = first_frame
             frame_updates.append(
                 pm.UpdateOne(
                     {"_id": frame_id}, {"$set": {"_sample_id": s["_id"]}}
                 )
             )
+        db[sample_coll].update_one(
+            {"_id": s["_id"]}, {"$set": {"frames": frames_d}}
+        )
         db[frame_coll].bulk_write(frame_updates, ordered=False)
 
 
