@@ -150,6 +150,15 @@ class Frames(object):
 
         self._set_replacement(doc)
 
+    @property
+    def field_names(self):
+        """An ordered tuple of the names of the fields on the frames."""
+        try:
+            frame = next(self.values())
+            return frame.field_names
+        except:
+            return ("frame_number",)
+
     def keys(self):
         """Returns an iterator over the frame numbers with labels in the
         sample.

@@ -622,6 +622,99 @@ class SampleCollection(object):
         return self._add_view_stage(fos.FilterDetections(field, filter))
 
     @view_stage
+    def filter_polylines(self, field, filter):
+        """Filters the polylines of the given
+        :class:`fiftyone.core.labels.Polylines` field.
+
+        Elements of ``<field>.polylines`` for which ``filter`` returns
+        ``False`` are omitted from the field.
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+            from fiftyone.core.stages import FilterPolylines
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Only include polylines in the `predictions` field that are filled
+            #
+
+            stage = FilterPolylines("predictions", F("filled"))
+            view = dataset.add_stage(stage)
+
+            #
+            # Only include polylines in the `predictions` field whose `label`
+            # is "lane"
+            #
+
+            stage = FilterPolylines("predictions", F("label") == "lane")
+            view = dataset.add_stage(stage)
+
+            #
+            # Only include polylines in the `predictions` field with at least
+            # 10 vertices
+            #
+
+            stage = FilterPolylines("predictions", F("points").length() >= 10)
+            view = dataset.add_stage(stage)
+
+        Args:
+            field: the :class:`fiftyone.core.labels.Polylines` field
+            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that returns a boolean describing the filter to apply
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.FilterPolylines(field, filter))
+
+    @view_stage
+    def filter_keypoints(self, field, filter):
+        """Filters the keypoints of the given
+        :class:`fiftyone.core.labels.Keypoints` field.
+
+        Elements of ``<field>.keypoints`` for which ``filter`` returns
+        ``False`` are omitted from the field.
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+            from fiftyone.core.stages import FilterKeypoints
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Only include keypoints in the `predictions` field whose `label`
+            # is "face"
+            #
+
+            stage = FilterKeypoints("predictions", F("label") == "face")
+            view = dataset.add_stage(stage)
+
+            #
+            # Only include keypoints in the `predictions` field with at least
+            # 10 points
+            #
+
+            stage = FilterKeypoints("predictions", F("points").length() >= 10)
+            view = dataset.add_stage(stage)
+
+        Args:
+            field: the :class:`fiftyone.core.labels.Keypoints` field
+            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that returns a boolean describing the filter to apply
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.FilterKeypoints(field, filter))
+
+    @view_stage
     def limit(self, limit):
         """Returns a view with at most the given number of samples.
 
@@ -1053,6 +1146,17 @@ class SampleCollection(object):
                     anno_dir,
                 )
 
+        if self.media_type == fom.VIDEO:
+            if label_fields is None:
+                label_fields = _get_frame_label_fields(self)
+
+                return foua.draw_labeled_videos(
+                    self,
+                    anno_dir,
+                    label_fields=label_fields,
+                    annotation_config=annotation_config,
+                )
+
         if label_fields is None:
             label_fields = _get_image_label_fields(self)
 
@@ -1320,6 +1424,13 @@ def _get_random_characters(n):
 
 def _get_image_label_fields(sample_collection):
     label_fields = sample_collection.get_field_schema(
+        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.ImageLabel
+    )
+    return list(label_fields.keys())
+
+
+def _get_frame_label_fields(sample_collection):
+    label_fields = sample_collection.get_frames_field_schema(
         ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.ImageLabel
     )
     return list(label_fields.keys())

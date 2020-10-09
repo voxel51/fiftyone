@@ -34,7 +34,9 @@ FiftyOne supports the configuration options described below:
 | `default_sequence_idx` | `FIFTYONE_DEFAULT_SEQUENCE_IDX` | `%06d`                 | The default numeric string pattern to use when writing sequential lists of             |
 |                        |                                 |                        | files.                                                                                 |
 +------------------------+---------------------------------+------------------------+----------------------------------------------------------------------------------------+
-| `default_image_ext`    | `FIFTYONE_DEFAULT_IMAGE_EXT`    | `.jpg`                 | The default image encoding to use when writing images to disk.                         |
+| `default_image_ext`    | `FIFTYONE_DEFAULT_IMAGE_EXT`    | `.jpg`                 | The default image format to use when writing images to disk.                           |
++------------------------+---------------------------------+------------------------+----------------------------------------------------------------------------------------+
+| `default_video_ext`    | `FIFTYONE_DEFAULT_VIDEO_EXT`    | `.mp4`                 | The default video format to use when writing videos to disk.                           |
 +------------------------+---------------------------------+------------------------+----------------------------------------------------------------------------------------+
 | `show_progress_bars`   | `FIFTYONE_SHOW_PROGRESS_BARS`   | `True`                 | Controls whether progress bars are printed to the terminal when performing             |
 |                        |                                 |                        | operations such reading/writing large datasets or activiating FiftyOne                 |
@@ -68,6 +70,7 @@ described in the next section) at any time via the Python library and the CLI.
             "default_ml_backend": "torch",
             "default_sequence_idx": "%08d",
             "default_image_ext": ".jpg",
+            "default_video_ext": ".mp4",
             "show_progress_bars": true
         }
 
@@ -90,6 +93,7 @@ described in the next section) at any time via the Python library and the CLI.
             "default_ml_backend": "torch",
             "default_sequence_idx": "%08d",
             "default_image_ext": ".jpg",
+            "default_video_ext": ".mp4",
             "show_progress_bars": true
         }
 
@@ -123,6 +127,7 @@ For example, a valid config JSON file is:
       "default_ml_backend": "tensorflow",
       "default_sequence_idx": "%08d",
       "default_image_ext": ".png",
+      "default_video_ext": ".mp4",
       "show_progress_bars": true
     }
 
@@ -171,5 +176,6 @@ For example, you can customize your FiftyOne config at runtime as follows:
         default_ml_backend="tensorflow",
         default_sequence_idx="%08d",
         default_image_ext=".png",
+        default_video_ext=".mp4",
         show_progress_bars=True,
     )

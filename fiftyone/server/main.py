@@ -144,6 +144,8 @@ def _load_state(trigger_update=False, with_stats=False):
 _WITHOUT_PAGINATION_EXTENDED_STAGES = {
     fosg.FilterClassifications,
     fosg.FilterDetections,
+    fosg.FilterPolylines,
+    fosg.FilterKeypoints,
     fosg.FilterField,
 }
 
