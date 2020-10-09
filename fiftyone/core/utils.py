@@ -381,6 +381,7 @@ class ProgressBar(etau.ProgressBar):
 
 @contextmanager
 def disable_progress_bars():
+    """Context manager that temporarily disables all progress bars."""
     prev_show_progress_bars = fo.config.show_progress_bars
     try:
         fo.config.show_progress_bars = False

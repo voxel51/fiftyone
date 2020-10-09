@@ -318,6 +318,10 @@ const CLS_TO_STAGE = {
   Classifications: "FilterClassifications",
   Detection: "FilterField",
   Detections: "FilterDetections",
+  Polyline: "FilterField",
+  Polylines: "FilterPolylines",
+  Keypoint: "FilterField",
+  Keypoints: "FilterKeypoints",
 };
 
 const makeFilter = (fieldName, cls, labels, range, includeNone, hasBounds) => {
