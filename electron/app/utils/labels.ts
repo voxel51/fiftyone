@@ -1,3 +1,5 @@
+import { fieldSchema } from "../recoil/selectors";
+
 export const VALID_OBJECT_TYPES = [
   "Detection",
   "Detections",
@@ -189,10 +191,12 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
   },
   Detection: {
     key: "objects",
-    convert: (name, obj) => {
+    convert: (name, obj, frame_number) => {
       const bb = obj.bounding_box;
       const attrs = convertAttributesToETA(getDetectionAttributes(obj));
+      const base = frame_number ? { frame_number } : {};
       return {
+        ...base,
         type: "eta.core.objects.DetectedObject",
         name,
         label: obj.label,
@@ -247,9 +251,27 @@ const _addToETAContainer = (obj, key, item) => {
 };
 
 export const convertSampleToETA = (sample, fieldSchema) => {
-  if (sample._eta_labels) {
-    return JSON.parse(JSON.stringify(sample._eta_labels));
+  if (sample.media_type === "image") {
+    return convertImageSampleToETA(sample, fieldSchema);
+  } else if (sample.media_type === "video") {
+    let first_frame = {};
+    if (sample.frames.first_frame) {
+      first_frame = convertImageSampleToETA(
+        sample.frames.first_frame,
+        fieldSchema,
+        1
+      );
+    }
+    first_frame.frame_number = 1;
+    return {
+      frames: {
+        1: first_frame,
+      },
+    };
   }
+};
+
+const convertImageSampleToETA = (sample, fieldSchema, frame_number) => {
   const imgLabels = {
     masks: [],
   };
@@ -262,11 +284,19 @@ export const convertSampleToETA = (sample, fieldSchema) => {
     if (field === null || field === undefined) continue;
     if (FIFTYONE_TO_ETA_CONVERTERS.hasOwnProperty(field._cls)) {
       const { key, convert } = FIFTYONE_TO_ETA_CONVERTERS[field._cls];
-      _addToETAContainer(imgLabels, key, convert(sampleField, field));
+      _addToETAContainer(
+        imgLabels,
+        key,
+        convert(sampleField, field, frame_number)
+      );
     } else if (VALID_LIST_TYPES.includes(field._cls)) {
       for (const object of field[field._cls.toLowerCase()]) {
         const { key, convert } = FIFTYONE_TO_ETA_CONVERTERS[object._cls];
-        _addToETAContainer(imgLabels, key, convert(sampleField, object));
+        _addToETAContainer(
+          imgLabels,
+          key,
+          convert(sampleField, object, frame_number)
+        );
       }
       continue;
     } else if (VALID_MASK_TYPES.includes(field._cls)) {

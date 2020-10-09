@@ -65,6 +65,7 @@ export default ({
   if (mediaType === "video") {
     playerActiveLabels.frames = frameLabelsActive;
   }
+
   const [player] = useState(() => {
     try {
       return new Player51({

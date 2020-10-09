@@ -13,6 +13,7 @@ import os
 import traceback
 import uuid
 
+from bson import ObjectId
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 from flask_socketio import emit, Namespace, SocketIO
@@ -287,7 +288,7 @@ class StateController(Namespace):
         state = self.state.copy()
         state["with_stats"] = False
         state = fos.StateDescriptionWithDerivables.from_dict(state)
-        find_d = {"sample_id": sample_id}
+        find_d = {"_sample_id": ObjectId(sample_id)}
         return {"frames": list(state.dataset._frame_collection.find(find_d))}
 
     @_catch_errors
