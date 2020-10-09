@@ -17,6 +17,7 @@ const SampleDiv = styled.div`
   position: relative;
   overflow: hidden;
   box-shadow: 0 2px 20px ${({ theme }) => theme.backgroundDark};
+  background-color: ${({ theme }) => theme.backgroundLight};
 `;
 
 const LoadingBar = animated(styled.div`
@@ -118,9 +119,14 @@ const Sample = ({ dispatch, sample, metadata, port, setView }) => {
   const [barItem, setBarItem] = useState([]);
   const [running, setRunning] = useState(false);
   const [load, setLoad] = useState(false);
+
   const onMouseEnter =
     !load && sample.media_type === "video"
-      ? (renderer) => {
+      ? (event) => {
+          event.preventDefault();
+          const {
+            data: { renderer },
+          } = event;
           setLoad(true);
           setBarItem([0]);
           setRunning(true);
@@ -136,8 +142,10 @@ const Sample = ({ dispatch, sample, metadata, port, setView }) => {
             }
             renderer.updateFromDynamicState();
           });
+          return;
         }
-      : null;
+      : () => {};
+
   const bar = useTransition(barItem, (item) => item, {
     from: { right: "100%" },
     enter: () => async (next) => {

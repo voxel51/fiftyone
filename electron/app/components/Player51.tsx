@@ -87,7 +87,6 @@ export default ({
           attrsOnlyOnClick: false,
           attrRenderBox: false,
         },
-        onMouseEnter,
         defaultOverlayOptions: {
           ...defaultOverlayOptions,
           action: "hover",
@@ -130,6 +129,7 @@ export default ({
       `This video failed to load. Its type (${mimetype}) may be unsupported.`
     )
   );
+  useEventHandler(player, "mouseenter", onMouseEnter);
 
   return (
     <div id={id} style={style} {...props}>
