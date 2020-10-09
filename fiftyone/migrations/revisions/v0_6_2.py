@@ -9,7 +9,6 @@ import pymongo as pm
 
 
 def up(db, dataset_name):
-    print("up")
     colls = set(db.collection_names())
     for c in colls:
         if c.startswith("frames.") and ".".join(c.split(".")[1:]) not in colls:
