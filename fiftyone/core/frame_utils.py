@@ -7,8 +7,6 @@ Frame utilites.
 """
 import six
 
-import eta.core.utils as etau
-
 
 def is_frame_number(value):
     """Determines whether the provided value is a frame number.
