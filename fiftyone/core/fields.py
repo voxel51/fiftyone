@@ -83,13 +83,10 @@ class FrameNumberField(IntField):
     """A video frame number field."""
 
     def validate(self, value):
-        if not isinstance(value, six.integer_types):
-            self.error("Frame numbers must be integers; found %s" % value)
-
-        if value < 1:
-            self.error(
-                "Frame numbers must be 1-based integers; found %s" % value
-            )
+        try:
+            fofu.validate_frame_number(value)
+        except fofu.FrameError as e:
+            self.error(str(e))
 
 
 class FloatField(mongoengine.FloatField, Field):
@@ -272,12 +269,6 @@ class FramesField(mongoengine.fields.MapField, Field):
             mongoengine.fields.ReferenceField(self._frame_doc_cls),
             db_field="frames",
         )
-
-    def validate(self, value):
-        try:
-            fofu.is_frame_number(value)
-        except fofu.FrameError as e:
-            self.error(str(e))
 
 
 class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
