@@ -99,8 +99,8 @@ def add_labeled_images(
         sample_parser: a
             :class:`fiftyone.utils.data.parsers.LabeledImageSampleParser`
             instance to use to parse the samples
-        label_field ("ground_truth"): the name of the field to use for the
-            labels
+        label_field ("ground_truth"): the name (or root name) of the field(s)
+            to use for the labels
         tags (None): an optional list of tags to attach to each sample
         expand_schema (True): whether to dynamically add new sample fields
             encountered to the dataset schema. If False, an error is raised
@@ -227,7 +227,12 @@ def add_videos(dataset, samples, sample_parser, tags=None):
 
 
 def add_labeled_videos(
-    dataset, samples, sample_parser, tags=None, expand_schema=True,
+    dataset,
+    samples,
+    sample_parser,
+    label_field="ground_truth",
+    tags=None,
+    expand_schema=True,
 ):
     """Adds the given labeled videos to the dataset.
 
@@ -244,6 +249,8 @@ def add_labeled_videos(
         sample_parser: a
             :class:`fiftyone.utils.data.parsers.LabeledVideoSampleParser`
             instance to use to parse the samples
+        label_field ("ground_truth"): the name (or root name) of the frame
+            fields to use for the labels
         tags (None): an optional list of tags to attach to each sample
         expand_schema (True): whether to dynamically add new sample fields
             encountered to the dataset schema. If False, an error is raised
@@ -276,7 +283,15 @@ def add_labeled_videos(
         frames = sample_parser.get_frame_labels()
 
         if frames is not None:
-            sample.frames.merge(frames, overwrite=True)
+            sample.frames.merge(
+                {
+                    frame_number: {
+                        label_field + "_" + field_name: label
+                        for field_name, label in frame_dict.items()
+                    }
+                    for frame_number, frame_dict in frames.items()
+                }
+            )
 
         return sample
 
@@ -655,17 +670,16 @@ class LabeledVideoSampleParser(SampleParser):
     @property
     def label_cls(self):
         """The :class:`fiftyone.core.labels.Label` class(es) returned by this
-        parser within the :class:`fiftyone.core.frame.Frame` instances that
-        it produces.
+        parser within the frame labels that it produces.
 
         This can be any of the following:
 
         -   a :class:`fiftyone.core.labels.Label` class. In this case, the
-            parser is guaranteed to return labels of this type
+            parser is guaranteed to return frame labels of this type
         -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
-            In this case, the parser will return label dictionaries with keys
-            and value-types specified by this dictionary. Not all keys need be
-            present in the imported labels
+            In this case, the parser will return frame label dictionaries with
+            keys and value-types specified by this dictionary. Not all keys
+            need be present in each frame
         -   ``None``. In this case, the parser makes no guarantees about the
             labels that it may return
         """

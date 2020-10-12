@@ -526,6 +526,7 @@ class UnlabeledImageDatasetExporter(DatasetExporter, ExportsImages):
 
             for sample in samples:
                 image_path = sample.filepath
+
                 metadata = sample.metadata
                 if exporter.requires_image_metadata and metadata is None:
                     metadata = fo.ImageMetadata.build_for(image_path)
@@ -573,6 +574,7 @@ class UnlabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
 
             for sample in samples:
                 video_path = sample.filepath
+
                 metadata = sample.metadata
                 if exporter.requires_video_metadata and metadata is None:
                     metadata = fo.VideoMetadata.build_for(video_path)
@@ -613,7 +615,7 @@ class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
         import fiftyone as fo
 
         samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
-        label_field = ...  # assumes single label field case
+        label_field = ...
 
         exporter = LabeledImageDatasetExporter(export_dir, ...)
         with exporter:
@@ -621,10 +623,13 @@ class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
 
             for sample in samples:
                 image_path = sample.filepath
-                label = sample[label_field]
+
                 metadata = sample.metadata
                 if exporter.requires_image_metadata and metadata is None:
                     metadata = fo.ImageMetadata.build_for(image_path)
+
+                # Assumes single label field case
+                label = sample[label_field]
 
                 exporter.export_sample(image_path, label, metadata=metadata)
 
@@ -717,8 +722,7 @@ class LabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
     @property
     def label_cls(self):
         """The :class:`fiftyone.core.labels.Label` class(es) that can be
-        exported by this exporter within the :class:`fiftyone.core.frame.Frame`
-        instances that it is provided.
+        exported by this exporter within the frame labels that it is provided.
 
         This can be any of the following:
 

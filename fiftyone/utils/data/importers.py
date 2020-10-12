@@ -187,8 +187,7 @@ def import_samples(
                                 for field_name, label in frame_dict.items()
                             }
                             for frame_number, frame_dict in frames.items()
-                        },
-                        overwrite=True,
+                        }
                     )
 
                 return sample
@@ -632,6 +631,7 @@ class LabeledVideoDatasetImporter(DatasetImporter):
         import fiftyone as fo
 
         dataset = fo.Dataset(...)
+        label_field = ...
 
         importer = LabeledVideoDatasetImporter(dataset_dir, ...)
         with importer:
@@ -648,8 +648,7 @@ class LabeledVideoDatasetImporter(DatasetImporter):
                                 for field_name, label in frame_dict.items()
                             }
                             for frame_number, frame_dict in frames.items()
-                        },
-                        overwrite=True,
+                        }
                     )
 
                 dataset.add_sample(sample)
@@ -711,17 +710,16 @@ class LabeledVideoDatasetImporter(DatasetImporter):
     @property
     def label_cls(self):
         """The :class:`fiftyone.core.labels.Label` class(es) returned by this
-        importer within the :class:`fiftyone.core.frame.Frame` instances that
-        it produces.
+        importer within the frame labels that it produces.
 
         This can be any of the following:
 
         -   a :class:`fiftyone.core.labels.Label` class. In this case, the
-            importer is guaranteed to return labels of this type
+            importer is guaranteed to return frame labels of this type
         -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
-            In this case, the importer will return label dictionaries with keys
-            and value-types specified by this dictionary. Not all keys need be
-            present in the imported labels
+            In this case, the importer will return frame label dictionaries
+            with keys and value-types specified by this dictionary. Not all
+            keys need be present in each frame
         -   ``None``. In this case, the importer makes no guarantees about the
             labels that it may return
         """
