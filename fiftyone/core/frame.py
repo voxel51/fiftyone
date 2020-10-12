@@ -177,7 +177,10 @@ class Frames(object):
             overwrite (True): whether to overwrite existing fields
         """
         for frame_number, frame in frames.items():
-            self[frame_number].merge(frame, overwrite=overwrite)
+            if frame_number in self:
+                self[frame_number].merge(frame, overwrite=overwrite)
+            else:
+                self[frame_number] = frame
 
     def _serve(self, sample):
         self._sample = sample

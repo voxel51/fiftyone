@@ -83,14 +83,6 @@ class _DatasetSample(Document):
         super().set_field(field_name, value, create=create)
 
     def clear_field(self, field_name):
-        """Clears the value of a field of the sample.
-
-        Args:
-            field_name: the name of the field to clear
-
-        Raises:
-            ValueError: if the field does not exist
-        """
         if field_name == "frames" and self.media_type == fomm.VIDEO:
             # @todo support `clear_field("frames")`
             raise ValueError("Clearing frames is not yet supported")
