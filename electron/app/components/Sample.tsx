@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
-import { animated, useTransition } from "react-spring";
+import { animated, useSpring, useTransition } from "react-spring";
 
 import { updateState } from "../actions/update";
 import { getSocket } from "../utils/socket";
@@ -13,12 +13,12 @@ import * as selectors from "../recoil/selectors";
 import { getLabelText, stringify } from "../utils/labels";
 import { useFastRerender } from "../utils/hooks";
 
-const SampleDiv = styled.div`
+const SampleDiv = animated(styled.div`
   position: relative;
   overflow: hidden;
   box-shadow: 0 2px 20px ${({ theme }) => theme.backgroundDark};
   background-color: ${({ theme }) => theme.backgroundLight};
-`;
+`);
 
 const LoadingBar = animated(styled.div`
   position: absolute;
@@ -38,35 +38,33 @@ const LoadingBar = animated(styled.div`
 
 const useMouseEnterLoad = (socket, sample, setVideoLabels) => {
   const [barItem, setBarItem] = useState([]);
-  const [running, setRunning] = useState(false);
-  const [load, setLoad] = useState(false);
-  const loaded = load && !running;
+  const [requested, setRequested] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   const onMouseEnter =
-    !load && sample.media_type === "video"
+    !loaded && sample.media_type === "video"
       ? (event) => {
-          if (loaded) return;
           event.preventDefault();
-          if (running) {
-            return;
-          }
+          if (!loaded && requested) return;
           const {
             data: { renderer },
           } = event;
-          setLoad(true);
+          setRequested(true);
           setBarItem([0]);
-          setRunning(true);
           socket.emit("get_frame_labels", sample._id, (labels) => {
             setVideoLabels(labels);
-            setRunning(false);
+            setLoaded(true);
+            setBarItem([]);
             renderer._overlayData = labels;
             renderer._isOverlayPrepared = false;
             renderer.prepareOverlay(renderer._overlayData);
-            renderer._boolPlaying = true;
-            if (renderer._boolSingleFrame) {
-              renderer.processFrame();
+            if (renderer.player._boolHovering) {
+              renderer._boolPlaying = true;
+              if (renderer._boolSingleFrame) {
+                renderer.processFrame();
+              }
+              renderer.updateFromDynamicState();
             }
-            renderer.updateFromDynamicState();
           });
           return;
         }
@@ -81,7 +79,7 @@ const useMouseEnterLoad = (socket, sample, setVideoLabels) => {
       right: "-100%",
     },
     onRest: (item) => {
-      setBarItem(running ? [item + 1] : []);
+      setBarItem(requested && !loaded ? [item + 1] : []);
     },
   });
 
@@ -100,9 +98,7 @@ const Sample = ({ dispatch, sample, metadata, port, setView }) => {
   const activeOther = useRecoilValue(atoms.activeOther);
   const frameLabelsActive = useRecoilValue(atoms.frameLabelsActive);
 
-  const [videoLabels, setVideoLabels] = useRecoilState(
-    atoms.sampleVideoLabels(sample._id)
-  );
+  const setVideoLabels = useSetRecoilState(atoms.sampleVideoLabels(sample._id));
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     atoms.selectedSamples
   );
@@ -168,10 +164,16 @@ const Sample = ({ dispatch, sample, metadata, port, setView }) => {
   };
   const tooltip = `Double-click for details`;
 
-  const [bar, onMouseEnter] = useMouseEnterLoad(socket, sample, setVideoLabels);
+  const showSamples = useSpring({
+    from: {
+      opacity: 0,
+    },
+    opacity: 1,
+  });
 
+  const [bar, onMouseEnter] = useMouseEnterLoad(socket, sample, setVideoLabels);
   return (
-    <SampleDiv className="sample" title={tooltip}>
+    <SampleDiv className="sample" style={showSamples} title={tooltip}>
       <Player51
         src={src}
         style={{
