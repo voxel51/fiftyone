@@ -36,6 +36,58 @@ const LoadingBar = animated(styled.div`
   height: 0.2em;
 `);
 
+const useMouseEnterLoad = (socket, sample, setVideoLabels) => {
+  const [barItem, setBarItem] = useState([]);
+  const [running, setRunning] = useState(false);
+  const [load, setLoad] = useState(false);
+  const loaded = load && !running;
+
+  const onMouseEnter =
+    !load && sample.media_type === "video"
+      ? (event) => {
+          if (loaded) return;
+          event.preventDefault();
+          if (running) {
+            return;
+          }
+          const {
+            data: { renderer },
+          } = event;
+          setLoad(true);
+          setBarItem([0]);
+          setRunning(true);
+          socket.emit("get_frame_labels", sample._id, (labels) => {
+            setVideoLabels(labels);
+            setRunning(false);
+            renderer._overlayData = labels;
+            renderer._isOverlayPrepared = false;
+            renderer.prepareOverlay(renderer._overlayData);
+            renderer._boolPlaying = true;
+            if (renderer._boolSingleFrame) {
+              renderer.processFrame();
+            }
+            renderer.updateFromDynamicState();
+          });
+          return;
+        }
+      : () => {};
+
+  const bar = useTransition(barItem, (item) => item, {
+    from: { right: "100%" },
+    enter: {
+      right: "0%",
+    },
+    leave: {
+      right: "-100%",
+    },
+    onRest: (item) => {
+      setBarItem(running ? [item + 1] : []);
+    },
+  });
+
+  return [bar, onMouseEnter];
+};
+
 const Sample = ({ dispatch, sample, metadata, port, setView }) => {
   const host = `http://127.0.0.1:${port}`;
   const id = sample._id;
@@ -116,49 +168,7 @@ const Sample = ({ dispatch, sample, metadata, port, setView }) => {
   };
   const tooltip = `Double-click for details`;
 
-  const [barItem, setBarItem] = useState([]);
-  const [running, setRunning] = useState(false);
-  const [load, setLoad] = useState(false);
-
-  const onMouseEnter =
-    !load && sample.media_type === "video"
-      ? (event) => {
-          event.preventDefault();
-          const {
-            data: { renderer },
-          } = event;
-          setLoad(true);
-          setBarItem([0]);
-          setRunning(true);
-          socket.emit("get_frame_labels", sample._id, (labels) => {
-            setVideoLabels(labels);
-            setRunning(false);
-            renderer._overlayData = labels;
-            renderer._isOverlayPrepared = false;
-            renderer.prepareOverlay(renderer._overlayData);
-            renderer._boolPlaying = true;
-            if (renderer._boolSingleFrame) {
-              renderer.processFrame();
-            }
-            renderer.updateFromDynamicState();
-          });
-          return;
-        }
-      : () => {};
-
-  const bar = useTransition(barItem, (item) => item, {
-    from: { right: "100%" },
-    enter: () => async (next) => {
-      await next({ right: "0%" });
-    },
-    leave: () => async (next) => {
-      await next({ right: "-100%" });
-    },
-    onRest: (item) => {
-      setBarItem(running ? [item + 1] : []);
-    },
-    config: { tension: 125, friction: 20, precision: 0.1 },
-  });
+  const [bar, onMouseEnter] = useMouseEnterLoad(socket, sample, setVideoLabels);
 
   return (
     <SampleDiv className="sample" title={tooltip}>
