@@ -15,28 +15,32 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
 
+from fiftyone.core.document import Document
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
-from fiftyone.core._sample import _Sample
 
 
-class _DatasetSample(_Sample):
+class _DatasetSample(Document):
     def __getattr__(self, name):
         if name == "frames" and self.media_type == fomm.VIDEO:
             return self._frames._serve(self)
 
         return super().__getattr__(name)
 
+    def __setattr__(self, name, value):
+        if name == "frames" and self.media_type == fomm.VIDEO:
+            # @todo support `__setattr__("frames", value)`
+            raise ValueError("Setting frames is not yet supported")
+
+        super().__setattr__(name, value)
+
     def __getitem__(self, field_name):
         if fofu.is_frame_number(field_name) and self.media_type == fomm.VIDEO:
             return self.frames[field_name]
-
-        if field_name == "frames" and self.media_type == fomm.VIDEO:
-            return self._frames._serve(self)
 
         try:
             return self.get_field(field_name)
@@ -55,8 +59,35 @@ class _DatasetSample(_Sample):
 
     @property
     def filename(self):
-        """The basename of the data filepath."""
+        """The basename of the media's filepath."""
         return os.path.basename(self.filepath)
+
+    @property
+    def _skip_iter_field_names(self):
+        if self.media_type == fomm.VIDEO:
+            return ("media_type", "frames")
+
+        return ("media_type",)
+
+    def get_field(self, field_name):
+        if field_name == "frames" and self.media_type == fomm.VIDEO:
+            return self._frames._serve(self)
+
+        return super().get_field(field_name)
+
+    def set_field(self, field_name, value, create=True):
+        if field_name == "frames" and self.media_type == fomm.VIDEO:
+            # @todo support `set_field("frames")`
+            raise ValueError("Setting frames is not yet supported")
+
+        super().set_field(field_name, value, create=create)
+
+    def clear_field(self, field_name):
+        if field_name == "frames" and self.media_type == fomm.VIDEO:
+            # @todo support `clear_field("frames")`
+            raise ValueError("Clearing frames is not yet supported")
+
+        super().clear_field(field_name)
 
     def compute_metadata(self):
         """Populates the ``metadata`` field of the sample."""
@@ -68,6 +99,26 @@ class _DatasetSample(_Sample):
             self.metadata = fom.Metadata.build_for(self.filepath)
 
         self.save()
+
+    def merge(self, sample, overwrite=True):
+        """Merges the fields of the sample into this sample.
+
+        Args:
+            sample: a :class:`fiftyone.core.sample.Sample`
+            overwrite (True): whether to overwrite existing fields. Note that
+                existing fields whose values are ``None`` are always
+                overwritten
+        """
+        if sample.media_type != self.media_type:
+            raise ValueError(
+                "Cannot merge sample with media type '%s' into sample with "
+                "media type '%s'" % (sample.media_type, self.media_type)
+            )
+
+        super().merge(sample, overwrite=overwrite)
+
+        if self.media_type == fomm.VIDEO:
+            self.frames.merge(sample.frames, overwrite=overwrite)
 
     def _secure_media(self, field_name, value):
         if field_name == "media_type" and value != self.media_type:
@@ -156,18 +207,21 @@ class Sample(_DatasetSample):
         Returns:
             a :class:`Sample`
         """
-        video = self.media_type == fomm.VIDEO
-        kwargs = {
-            f: deepcopy(self[f])
-            for f in self.field_names
-            if f != "frames" or not video
-        }
-        if video:
-            kwargs["frames"] = {
-                str(k): v.copy()._doc for k, v in self.frames.items()
-            }
+        kwargs = {k: deepcopy(v) for k, v in self.iter_fields()}
+        sample = self.__class__(**kwargs)
 
-        return self.__class__(**kwargs)
+        if self.media_type == fomm.VIDEO:
+            sample.frames.update({k: v.copy() for k, v in self.frames.items()})
+
+        return sample
+
+    def save(self):
+        """Saves the sample to the database."""
+        if self.media_type == fomm.VIDEO:
+            for frame in self.frames.values():
+                frame.save()  # @todo batch
+
+        super().save()
 
     @classmethod
     def from_doc(cls, doc, dataset=None):
@@ -278,40 +332,7 @@ class Sample(_DatasetSample):
         for sample in cls._instances[collection_name].values():
             sample.reload()
 
-    @classmethod
-    def _rename_field(cls, collection_name, field_name, new_field_name):
-        """Renames any field values for in-memory sample instances that belong
-        to the specified collection.
-
-        Args:
-            collection_name: the name of the MongoDB collection
-            field_name: the name of the field to rename
-            new_field_name: the new field name
-        """
-        for sample in cls._instances[collection_name].values():
-            data = sample._doc._data
-            data[new_field_name] = data.pop(field_name, None)
-
-    @classmethod
-    def _purge_field(cls, collection_name, field_name):
-        """Removes values for the given field from all in-memory sample
-        instances that belong to the specified collection.
-
-        Args:
-            collection_name: the name of the MongoDB collection
-            field_name: the name of the field to purge
-        """
-        for sample in cls._instances[collection_name].values():
-            sample._doc._data.pop(field_name, None)
-
     def _set_backing_doc(self, doc, dataset=None):
-        """Sets the backing doc for the sample.
-
-        Args:
-            doc: a :class:`fiftyone.core.odm.SampleDocument`
-            dataset (None): the :class:`fiftyone.core.dataset.Dataset` to which
-                the sample belongs, if any
-        """
         if isinstance(self._doc, foo.DatasetSampleDocument):
             raise TypeError("Sample already belongs to a dataset")
 
@@ -321,60 +342,7 @@ class Sample(_DatasetSample):
                 % (foo.DatasetSampleDocument, type(doc))
             )
 
-        # Ensure the doc is saved to the database
-        if not doc.id:
-            doc.save()
-
-        self._doc = doc
-
-        # Save weak reference
-        dataset_instances = self._instances[doc.collection_name]
-        if self.id not in dataset_instances:
-            dataset_instances[self.id] = self
-
-        self._dataset = dataset
-
-    @classmethod
-    def _reset_backing_docs(cls, collection_name, sample_ids):
-        """Resets the samples' backing documents to
-        :class:`fiftyone.core.odm.NoDatasetSampleDocument` instances.
-
-        Args:
-            collection_name: the name of the MongoDB collection
-            sample_ids: a list of sample IDs
-        """
-        dataset_instances = cls._instances[collection_name]
-        for sample_id in sample_ids:
-            sample = dataset_instances.pop(sample_id, None)
-            if sample is not None:
-                sample._reset_backing_doc()
-
-    @classmethod
-    def _reset_all_backing_docs(cls, collection_name):
-        """Resets the sample's backing document to a
-        :class:`fiftyone.core.odm.NoDatasetSampleDocument` instance for all
-        samples in the specified collection.
-
-        Args:
-            collection_name: the name of the MongoDB collection
-        """
-        if collection_name not in cls._instances:
-            return
-
-        dataset_instances = cls._instances.pop(collection_name)
-        for sample in dataset_instances.values():
-            sample._reset_backing_doc()
-
-    def _reset_backing_doc(self):
-        self._doc = self.copy()._doc
-        self._dataset = None
-
-    def save(self):
-        """Saves the sample to the database."""
-        if self.media_type == fomm.VIDEO:
-            for frame in self.frames.values():
-                frame.save()  # @todo batch
-        super().save()
+        super()._set_backing_doc(doc, dataset=dataset)
 
 
 class SampleView(_DatasetSample):

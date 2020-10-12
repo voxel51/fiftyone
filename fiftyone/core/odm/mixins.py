@@ -85,7 +85,7 @@ def no_delete_default_field(func):
 
 class DatasetMixin(object):
     """Mixin for concrete :class:`fiftyone.core.odm.document.SampleDocument`
-    subtypes that are backed by a dataset
+    subtypes that are backed by a dataset.
     """
 
     def __setattr__(self, name, value):
