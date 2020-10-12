@@ -277,8 +277,7 @@ def add_labeled_videos(
         frames = sample_parser.get_frame_labels()
 
         if frames is not None:
-            sample.frames.update(frames)
-            # sample.frames.merge(frames, overwrite=True)
+            sample.frames.merge(frames, overwrite=True)
 
         return sample
 

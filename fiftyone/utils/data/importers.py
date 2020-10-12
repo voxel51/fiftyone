@@ -174,8 +174,7 @@ def import_samples(
                 )
 
                 if frames is not None:
-                    sample.frames.update(frames)
-                    # sample.frames.merge(frames, overwrite=True)
+                    sample.frames.merge(frames, overwrite=True)
 
                 return sample
 
