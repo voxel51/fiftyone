@@ -2448,6 +2448,7 @@ should implement is determined by the type of dataset that you are importing.
         dataset = fo.Dataset(...)
 
         importer = CustomLabeledImageDatasetImporter(dataset_dir, ...)
+        label_field = ...
 
         with importer:
             for image_path, image_metadata, label in importer:
