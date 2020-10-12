@@ -9,6 +9,7 @@ Utilities for working with datasets in
 from collections import defaultdict
 from copy import copy
 from datetime import datetime
+import itertools
 import logging
 import os
 import warnings
@@ -769,10 +770,11 @@ class CVATImage(object):
         """Returns an iterator over the annotations in the image.
 
         Returns:
-            an iterator that emits :class:`fiftyone.core.labels.ImageLabel`
-            instances
+            an iterator that emits :class:`CVATImageAnno` instances
         """
-        pass
+        return itertools.chain(
+            self.boxes, self.polygons, self.polylines, self.points
+        )
 
     def get_image_metadata(self):
         """Returns a :class:`fiftyone.core.metadata.ImageMetadata` instance for
@@ -921,9 +923,11 @@ class HasCVATPoints(object):
         points: a list of ``(x, y)`` pixel coordinates defining points
     """
 
+    def __init__(self, points):
+        self.points = points
+
     @property
     def points_str(self):
-        # pylint: disable=no-member
         return self._to_cvat_points_str(self.points)
 
     @staticmethod
@@ -942,6 +946,10 @@ class HasCVATPoints(object):
         return abs_points
 
     @staticmethod
+    def _to_cvat_points_str(points):
+        return ";".join("%g,%g" % (x, y) for x, y in points)
+
+    @staticmethod
     def _parse_cvat_points_str(points_str):
         points = []
         for xy_str in points_str.split(";"):
@@ -950,24 +958,24 @@ class HasCVATPoints(object):
 
         return points
 
-    @staticmethod
-    def _to_cvat_points_str(points):
-        points_str = ""
-        for x, y in points:
-            points_str += ";%g,%g" % (x, y)
-
-        return points_str
-
 
 class CVATImageAnno(object):
-    """Mixin for annotations in CVAT image format."""
+    """Mixin for annotations in CVAT image format.
 
-    @staticmethod
-    def _to_attributes(occluded, attributes):
-        attributes = {a.name: a.to_attribute() for a in attributes}
+    Args:
+        occluded (None): whether the object is occluded
+        attributes (None): a list of :class:`CVATAttribute` instances
+    """
 
-        if occluded is not None:
-            attributes["occluded"] = fol.BooleanAttribute(value=occluded)
+    def __init__(self, occluded=None, attributes=None):
+        self.occluded = occluded
+        self.attributes = attributes or []
+
+    def _to_attributes(self):
+        attributes = {a.name: a.to_attribute() for a in self.attributes}
+
+        if self.occluded is not None:
+            attributes["occluded"] = fol.BooleanAttribute(value=self.occluded)
 
         return attributes
 
@@ -1034,8 +1042,7 @@ class CVATImageBox(CVATImageAnno):
         self.ytl = ytl
         self.xbr = xbr
         self.ybr = ybr
-        self.occluded = occluded
-        self.attributes = attributes or []
+        CVATImageAnno.__init__(self, occluded=occluded, attributes=attributes)
 
     def to_detection(self, frame_size):
         """Returns a :class:`fiftyone.core.labels.Detection` representation of
@@ -1057,7 +1064,7 @@ class CVATImageBox(CVATImageAnno):
             (self.ybr - self.ytl) / height,
         ]
 
-        attributes = self._to_attributes(self.occluded, self.attributes)
+        attributes = self._to_attributes()
 
         return fol.Detection(
             label=label, bounding_box=bounding_box, attributes=attributes,
@@ -1130,9 +1137,8 @@ class CVATImagePolygon(CVATImageAnno, HasCVATPoints):
 
     def __init__(self, label, points, occluded=None, attributes=None):
         self.label = label
-        self.points = points
-        self.occluded = occluded
-        self.attributes = attributes or []
+        HasCVATPoints.__init__(self, points)
+        CVATImageAnno.__init__(self, occluded=occluded, attributes=attributes)
 
     def to_polyline(self, frame_size):
         """Returns a :class:`fiftyone.core.labels.Polyline` representation of
@@ -1146,7 +1152,7 @@ class CVATImagePolygon(CVATImageAnno, HasCVATPoints):
         """
         label = self.label
         points = self._to_rel_points(self.points, frame_size)
-        attributes = self._to_attributes(self.occluded, self.attributes)
+        attributes = self._to_attributes()
         return fol.Polyline(
             label=label,
             points=points,
@@ -1205,9 +1211,8 @@ class CVATImagePolyline(CVATImageAnno, HasCVATPoints):
 
     def __init__(self, label, points, occluded=None, attributes=None):
         self.label = label
-        self.points = points
-        self.occluded = occluded
-        self.attributes = attributes or []
+        HasCVATPoints.__init__(self, points)
+        CVATImageAnno.__init__(self, occluded=occluded, attributes=attributes)
 
     def to_polyline(self, frame_size):
         """Returns a :class:`fiftyone.core.labels.Polyline` representation of
@@ -1221,7 +1226,7 @@ class CVATImagePolyline(CVATImageAnno, HasCVATPoints):
         """
         label = self.label
         points = self._to_rel_points(self.points, frame_size)
-        attributes = self._to_attributes(self.occluded, self.attributes)
+        attributes = self._to_attributes()
         return fol.Polyline(
             label=label,
             points=points,
@@ -1285,9 +1290,8 @@ class CVATImagePoints(CVATImageAnno, HasCVATPoints):
 
     def __init__(self, label, points, occluded=None, attributes=None):
         self.label = label
-        self.points = points
-        self.occluded = occluded
-        self.attributes = attributes or []
+        HasCVATPoints.__init__(self, points)
+        CVATImageAnno.__init__(self, occluded=occluded, attributes=attributes)
 
     def to_keypoint(self, frame_size):
         """Returns a :class:`fiftyone.core.labels.Keypoint` representation of
@@ -1301,7 +1305,7 @@ class CVATImagePoints(CVATImageAnno, HasCVATPoints):
         """
         label = self.label
         points = self._to_rel_points(self.points, frame_size)
-        attributes = self._to_attributes(self.occluded, self.attributes)
+        attributes = self._to_attributes()
         return fol.Keypoint(label=label, points=points, attributes=attributes)
 
     @classmethod
@@ -1377,6 +1381,19 @@ class CVATTrack(object):
         self.polygons = polygons or {}
         self.polylines = polylines or {}
         self.points = points or {}
+
+    def iter_annos(self):
+        """Returns an iterator over the annotations in the track.
+
+        Returns:
+            an iterator that emits :class:`CVATVideoAnno` instances
+        """
+        return itertools.chain(
+            self.boxes.values(),
+            self.polygons.values(),
+            self.polylines.values(),
+            self.points.values(),
+        )
 
     def to_labels(self):
         """Returns :class:`fiftyone.core.labels.ImageLabel` representations of
@@ -1502,7 +1519,7 @@ class CVATTrack(object):
             polylines[polyline.frame] = polyline
 
         points = {}
-        for pd in _ensure_list(d.get("point", [])):
+        for pd in _ensure_list(d.get("points", [])):
             point = CVATVideoPoints.from_points_dict(label, pd)
             points[point.frame] = point
 
@@ -1519,20 +1536,34 @@ class CVATTrack(object):
 
 
 class CVATVideoAnno(object):
-    """Mixin for annotations in CVAT video format."""
+    """Mixin for annotations in CVAT video format.
 
-    @staticmethod
-    def _to_attributes(outside, occluded, keyframe, attributes):
-        attributes = {a.name: a.to_attribute() for a in attributes}
+    Args:
+        outside (None): whether the object is truncated by the frame edge
+        occluded (None): whether the object is occluded
+        keyframe (None): whether the frame is a key frame
+        attributes (None): a list of :class:`CVATAttribute` instances
+    """
 
-        if outside is not None:
-            attributes["outside"] = fol.BooleanAttribute(value=outside)
+    def __init__(
+        self, outside=None, occluded=None, keyframe=None, attributes=None
+    ):
+        self.outside = outside
+        self.occluded = occluded
+        self.keyframe = keyframe
+        self.attributes = attributes or []
 
-        if occluded is not None:
-            attributes["occluded"] = fol.BooleanAttribute(value=occluded)
+    def _to_attributes(self):
+        attributes = {a.name: a.to_attribute() for a in self.attributes}
 
-        if keyframe is not None:
-            attributes["keyframe"] = fol.BooleanAttribute(value=keyframe)
+        if self.outside is not None:
+            attributes["outside"] = fol.BooleanAttribute(value=self.outside)
+
+        if self.occluded is not None:
+            attributes["occluded"] = fol.BooleanAttribute(value=self.occluded)
+
+        if self.keyframe is not None:
+            attributes["keyframe"] = fol.BooleanAttribute(value=self.keyframe)
 
         return attributes
 
@@ -1627,10 +1658,13 @@ class CVATVideoBox(CVATVideoAnno):
         self.ytl = ytl
         self.xbr = xbr
         self.ybr = ybr
-        self.outside = outside
-        self.occluded = occluded
-        self.keyframe = keyframe
-        self.attributes = attributes or []
+        CVATVideoAnno.__init__(
+            self,
+            outside=outside,
+            occluded=occluded,
+            keyframe=keyframe,
+            attributes=attributes,
+        )
 
     def to_detection(self, frame_size):
         """Returns a :class:`fiftyone.core.labels.Detection` representation of
@@ -1652,9 +1686,7 @@ class CVATVideoBox(CVATVideoAnno):
             (self.ybr - self.ytl) / height,
         ]
 
-        attributes = self._to_attributes(
-            self.outside, self.occluded, self.keyframe, self.attributes
-        )
+        attributes = self._to_attributes()
 
         return fol.Detection(
             label=label, bounding_box=bounding_box, attributes=attributes,
@@ -1760,11 +1792,14 @@ class CVATVideoPolygon(CVATVideoAnno, HasCVATPoints):
     ):
         self.frame = frame
         self.label = label
-        self.points = points
-        self.outside = outside
-        self.occluded = occluded
-        self.keyframe = keyframe
-        self.attributes = attributes or []
+        HasCVATPoints.__init__(self, points)
+        CVATVideoAnno.__init__(
+            self,
+            outside=outside,
+            occluded=occluded,
+            keyframe=keyframe,
+            attributes=attributes,
+        )
 
     def to_polyline(self, frame_size):
         """Returns a :class:`fiftyone.core.labels.Polyline` representation of
@@ -1778,9 +1813,7 @@ class CVATVideoPolygon(CVATVideoAnno, HasCVATPoints):
         """
         label = self.label
         points = self._to_rel_points(self.points, frame_size)
-        attributes = self._to_attributes(
-            self.outside, self.occluded, self.keyframe, self.attributes
-        )
+        attributes = self._to_attributes()
         return fol.Polyline(
             label=label,
             points=points,
@@ -1869,11 +1902,14 @@ class CVATVideoPolyline(CVATVideoAnno, HasCVATPoints):
     ):
         self.frame = frame
         self.label = label
-        self.points = points
-        self.outside = outside
-        self.occluded = occluded
-        self.keyframe = keyframe
-        self.attributes = attributes or []
+        HasCVATPoints.__init__(self, points)
+        CVATVideoAnno.__init__(
+            self,
+            outside=outside,
+            occluded=occluded,
+            keyframe=keyframe,
+            attributes=attributes,
+        )
 
     def to_polyline(self, frame_size):
         """Returns a :class:`fiftyone.core.labels.Polyline` representation of
@@ -1887,9 +1923,7 @@ class CVATVideoPolyline(CVATVideoAnno, HasCVATPoints):
         """
         label = self.label
         points = self._to_rel_points(self.points, frame_size)
-        attributes = self._to_attributes(
-            self.outside, self.occluded, self.keyframe, self.attributes
-        )
+        attributes = self._to_attributes()
         return fol.Polyline(
             label=label,
             points=points,
@@ -1982,11 +2016,14 @@ class CVATVideoPoints(CVATVideoAnno, HasCVATPoints):
     ):
         self.frame = frame
         self.label = label
-        self.points = points
-        self.outside = outside
-        self.occluded = occluded
-        self.keyframe = keyframe
-        self.attributes = attributes or []
+        HasCVATPoints.__init__(self, points)
+        CVATVideoAnno.__init__(
+            self,
+            outside=outside,
+            occluded=occluded,
+            keyframe=keyframe,
+            attributes=attributes,
+        )
 
     def to_keypoint(self, frame_size):
         """Returns a :class:`fiftyone.core.labels.Keypoint` representation of
@@ -2000,9 +2037,7 @@ class CVATVideoPoints(CVATVideoAnno, HasCVATPoints):
         """
         label = self.label
         points = self._to_rel_points(self.points, frame_size)
-        attributes = self._to_attributes(
-            self.outside, self.occluded, self.keyframe, self.attributes
-        )
+        attributes = self._to_attributes()
         return fol.Keypoint(label=label, points=points, attributes=attributes)
 
     @classmethod
