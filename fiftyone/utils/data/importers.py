@@ -167,6 +167,12 @@ def import_samples(
         elif isinstance(dataset_importer, LabeledVideoDatasetImporter):
             # Labeled video dataset
 
+            if label_field is None:
+                raise ValueError(
+                    "A `label_field` must be provided when importing samples "
+                    "from a LabeledVideoDatasetImporter"
+                )
+
             def parse_sample(sample):
                 video_path, video_metadata, frames = sample
                 sample = fos.Sample(
@@ -174,7 +180,16 @@ def import_samples(
                 )
 
                 if frames is not None:
-                    sample.frames.merge(frames, overwrite=True)
+                    sample.frames.merge(
+                        {
+                            frame_number: {
+                                label_field + "_" + field_name: label
+                            }
+                            for frame_number, frame_dict in frames.items()
+                            for field_name, label in frame_dict.items()
+                        },
+                        overwrite=True,
+                    )
 
                 return sample
 
@@ -334,7 +349,7 @@ class GenericSampleDatasetImporter(DatasetImporter):
     .. automethod:: __len__
     .. automethod:: __next__
 
-    Example Usage::
+    FiftyOne imports datasets of this type using the pseudocode below::
 
         import fiftyone as fo
 
@@ -401,7 +416,7 @@ class UnlabeledImageDatasetImporter(DatasetImporter):
     .. automethod:: __len__
     .. automethod:: __next__
 
-    Example Usage::
+    FiftyOne imports datasets of this type using the pseudocode below::
 
         import fiftyone as fo
 
@@ -456,7 +471,7 @@ class UnlabeledVideoDatasetImporter(DatasetImporter):
     .. automethod:: __len__
     .. automethod:: __next__
 
-    Example Usage::
+    FiftyOne imports datasets of this type using the pseudocode below::
 
         import fiftyone as fo
 
@@ -511,7 +526,7 @@ class LabeledImageDatasetImporter(DatasetImporter):
     .. automethod:: __len__
     .. automethod:: __next__
 
-    Example Usage::
+    FiftyOne imports datasets of this type using the pseudocode below::
 
         import fiftyone as fo
 
@@ -526,7 +541,9 @@ class LabeledImageDatasetImporter(DatasetImporter):
                 )
 
                 if isinstance(label, dict):
-                    sample.update_fields(label)
+                    sample.update_fields(
+                        {label_field + "_" + k: v for k, v in label.items()}
+                    )
                 elif label is not None:
                     sample[label_field] = label
 
@@ -610,7 +627,7 @@ class LabeledVideoDatasetImporter(DatasetImporter):
     .. automethod:: __len__
     .. automethod:: __next__
 
-    Example Usage::
+    FiftyOne imports datasets of this type using the pseudocode below::
 
         import fiftyone as fo
 
@@ -624,7 +641,16 @@ class LabeledVideoDatasetImporter(DatasetImporter):
                 )
 
                 if frames is not None:
-                    sample.frames.merge(frames, overwrite=True)
+                    sample.frames.merge(
+                        {
+                            frame_number: {
+                                label_field + "_" + field_name: label
+                            }
+                            for frame_number, frame_dict in frames.items()
+                            for field_name, label in frame_dict.items()
+                        },
+                        overwrite=True,
+                    )
 
                 dataset.add_sample(sample)
 
@@ -665,9 +691,9 @@ class LabeledVideoDatasetImporter(DatasetImporter):
             -   ``video_metadata``: an
                 :class:`fiftyone.core.metadata.VideoMetadata` instances for the
                 video, or ``None`` if :meth:`has_video_metadata` is ``False``
-            -   ``frames``: a dictionary mapping frame numbers to
-                :class:`fiftyone.core.frame.Frame` instances containing the
-                labels for each video frame, or ``None`` if the sample is
+            -   ``frames``: a dictionary mapping frame numbers to dictionaries
+                that map label fields to :class:`fiftyone.core.labels.Label`
+                instances for each video frame, or ``None`` if the sample is
                 unlabeled
 
         Raises:

@@ -22,7 +22,6 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.constants as foc
-import fiftyone.core.frame as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
@@ -145,7 +144,7 @@ class CVATVideoSampleParser(foud.LabeledVideoSampleParser):
             return None
 
         _, _, cvat_tracks = load_cvat_video_annotations(labels_path)
-        return _cvat_tracks_to_frames(cvat_tracks)
+        return _cvat_tracks_to_frames_dict(cvat_tracks)
 
 
 class CVATImageDatasetImporter(foud.LabeledImageDatasetImporter):
@@ -320,7 +319,7 @@ class CVATVideoDatasetImporter(foud.LabeledVideoDatasetImporter):
             self._cvat_task_labels.merge_task_labels(cvat_task_labels)
             self._info["task_labels"] = self._cvat_task_labels.labels
 
-            frames = _cvat_tracks_to_frames(cvat_tracks)
+            frames = _cvat_tracks_to_frames_dict(cvat_tracks)
         else:
             # Unlabeled video
             frames = None
@@ -2359,16 +2358,12 @@ def load_cvat_video_annotations(xml_path):
     return info, cvat_task_labels, cvat_tracks
 
 
-def _cvat_tracks_to_frames(cvat_tracks):
-    frames = {}
+def _cvat_tracks_to_frames_dict(cvat_tracks):
+    frames = defaultdict(dict)
     for cvat_track in cvat_tracks:
         labels = cvat_track.to_labels()
         for frame_number, label in labels.items():
-            if frame_number not in frames:
-                frame = fof.Frame()
-                frames[frame_number] = frame
-            else:
-                frame = frames[frame_number]
+            frame = frames[frame_number]
 
             if isinstance(label, fol.Detection):
                 if "objects" not in frame.field_names:

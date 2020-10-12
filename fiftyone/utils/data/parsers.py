@@ -12,7 +12,6 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
 
-import fiftyone.core.frame as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.sample as fos
@@ -700,9 +699,9 @@ class LabeledVideoSampleParser(SampleParser):
         """Returns the frame labels for the current sample.
 
         Returns:
-            a dictionary mapping frame numbers to
-            :class:`fiftyone.core.frame.Frame` instances containing the frame
-            labels, or ``None`` if the sample is unlabeled
+            a dictionary mapping frame numbers to dictionaries that map label
+            fields to :class:`fiftyone.core.labels.Label` instances for each
+            video frame, or ``None`` if the sample is unlabeled
         """
         raise NotImplementedError("subclass must implement get_frame_labels()")
 
@@ -1211,7 +1210,7 @@ class VideoLabelsSampleParser(LabeledVideoSampleParser):
 
         frames = {}
         for frame_number in video_labels:
-            frame = fof.Frame()
+            frame = {}
 
             image_labels = fol.ImageLabels(
                 labels=etai.ImageLabels.from_frame_labels(
@@ -1220,7 +1219,7 @@ class VideoLabelsSampleParser(LabeledVideoSampleParser):
             )
 
             if self.expand:
-                frame.update_fields(
+                frame.update(
                     image_labels.expand(
                         prefix=self.prefix,
                         labels_dict=self.labels_dict,
@@ -1440,10 +1439,8 @@ class FiftyOneLabeledVideoSampleParser(LabeledVideoSampleParser):
         new_frames = {}
 
         for frame_number, frame in frames.items():
-            new_frame = fof.Frame()
-            for k, v in self.labels_dict.items():
-                new_frame[v] = frame[k]
-
-            new_frames[frame_number] = new_frame
+            new_frames[frame_number] = {
+                v: frame[k] for k, v in self.labels_dict.items()
+            }
 
         return new_frames
