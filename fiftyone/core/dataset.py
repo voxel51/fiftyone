@@ -745,8 +745,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_collection.delete_one({"_id": ObjectId(sample_id)})
 
         fos.Sample._reset_backing_docs(
-            collection_name=self._sample_collection_name,
-            sample_ids=[sample_id],
+            self._sample_collection_name, [sample_id]
         )
 
     def remove_samples(self, samples_or_ids):
@@ -773,7 +772,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
         fos.Sample._reset_backing_docs(
-            collection_name=self._sample_collection_name, sample_ids=sample_ids
+            self._sample_collection_name, sample_ids
         )
 
     def clone_field(self, field_name, new_field_name, samples=None):

@@ -8,7 +8,7 @@ Video frames.
 from collections import defaultdict
 import weakref
 
-from fiftyone.core._sample import _Sample
+from fiftyone.core.document import Document
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.utils as fou
 
@@ -187,7 +187,7 @@ class Frames(object):
         return self._sample._doc.frames.__class__
 
 
-class Frame(_Sample):
+class Frame(Document):
     """A frame in a video :class:`fiftyone.core.sample.Sample`.
 
     :class:`Frame` instances can hold any :class:`fiftyone.core.label.Label`
