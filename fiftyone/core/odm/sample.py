@@ -102,6 +102,7 @@ class DatasetSampleDocument(DatasetMixin, Document, SampleDocument):
     meta = {"abstract": True}
 
     media_type = fof.StringField()
+
     # The path to the data on disk
     filepath = fof.StringField(unique=True)
 
@@ -113,12 +114,6 @@ class DatasetSampleDocument(DatasetMixin, Document, SampleDocument):
 
     # Random float used for random dataset operations (e.g. shuffle)
     _rand = fof.FloatField(default=_generate_rand)
-
-    def set_field(self, field_name, value, create=True):
-        if field_name == "frames" and isinstance(value, fofr.Frames):
-            value = value.doc.frames
-
-        super().set_field(field_name, value, create=create)
 
 
 class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
@@ -138,13 +133,13 @@ class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
         media_type = fomm.get_media_type(filepath)
         if "media_type" in kwargs and kwargs["media_type"] != media_type:
             raise fomm.MediaTypeError("media_type cannot be set")
+
         kwargs["media_type"] = media_type
 
         if media_type == fomm.VIDEO:
             kwargs["frames"] = {}
 
         for field_name in self.default_fields_ordered:
-
             value = kwargs.pop(field_name, None)
 
             if field_name == "_rand":
@@ -159,9 +154,3 @@ class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
             self._data[field_name] = value
 
         self._data.update(kwargs)
-
-    def set_field(self, field_name, value, create=True):
-        if field_name == "frames" and isinstance(value, fofr.Frames):
-            value = value.doc.frames
-
-        super().set_field(field_name, value, create=create)
