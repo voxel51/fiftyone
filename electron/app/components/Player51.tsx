@@ -75,7 +75,7 @@ export default ({
         overlay,
         fps: metadata.fps,
         colorMap,
-        playerActiveLabels,
+        activeLabels: playerActiveLabels,
         filter,
         enableOverlayOptions: {
           attrRenderMode: false,
