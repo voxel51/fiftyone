@@ -151,10 +151,6 @@ class StateDescriptionWithDerivables(StateDescription):
 
         self.field_schema = self._get_field_schema()
         self.labels = self._get_label_fields(view)
-        if view.media_type == fom.VIDEO:
-            self.frame_labels = _get_field_count(
-                view, view.get_field_schema()["frames"]
-            )
         self.tags = list(sorted(view.get_tags()))
         self.view_stats = get_view_stats(view)
 
@@ -196,10 +192,12 @@ class StateDescriptionWithDerivables(StateDescription):
     @staticmethod
     def _get_label_fields(view):
         label_fields = []
+        if view.media_type == fom.VIDEO:
+            schema = view.get_frame_field_schema()
+        else:
+            schema = view.get_label_field_schema()
 
-        for k, v in view.get_field_schema().items():
-            if view.media_type == fom.VIDEO and k == "frames":
-                continue
+        for k, v in schema.items():
             d = {"field": k}
             if isinstance(v, fof.EmbeddedDocumentField):
                 d["cls"] = v.document_type.__name__
@@ -257,6 +255,7 @@ def get_view_stats(dataset_or_view):
 
 def _get_label_field_derivables(view):
     label_fields = _get_label_fields(view)
+    view = view._with_frames()
     confidence_bounds = _get_label_confidence_bounds(view)
     classes = {
         field.name: _get_label_classes(view, field) for field in label_fields
@@ -273,7 +272,12 @@ def _get_label_field_derivables(view):
 def _get_label_classes(view, field):
     pipeline = []
     is_list = False
-    path = "$%s" % field.name
+    path = field.name
+    if view.media_type == fom.VIDEO:
+        path = "$frames.%s" % path
+    else:
+        path = "$%s" % path
+
     if issubclass(field.document_type, fol.Classifications):
         path = "%s.classifications" % path
         is_list = True
@@ -305,7 +309,12 @@ def _get_label_fields(view):
 
         return False
 
-    return list(filter(_filter, view.get_field_schema().values()))
+    if view.media_type == fom.VIDEO:
+        schema = view.get_frame_field_schema()
+    else:
+        schema = view.get_label_field_schema()
+
+    return list(filter(_filter, schema.values()))
 
 
 def _get_bounds(fields, view, facets):
@@ -317,7 +326,7 @@ def _get_bounds(fields, view, facets):
     try:
         result = next(view.aggregate(pipeline))
     except StopIteration:
-        return {}
+        return {field.name: [None, None] for field in fields}
     bounds = {}
     for field in fields:
         try:
@@ -360,7 +369,11 @@ def _get_label_confidence_bounds(view):
     facets = {}
     for field in fields:
         is_list = False
-        path = "$%s" % field.name
+        path = field.name
+        if view.media_type == fom.VIDEO:
+            path = "$frames.%s" % path
+        else:
+            path = "$%s" % path
         if issubclass(field.document_type, fol.Classifications):
             path = "%s.classifications" % path
             is_list = True
