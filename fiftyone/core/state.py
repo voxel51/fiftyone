@@ -402,39 +402,39 @@ def _get_label_confidence_bounds(view):
     return _get_bounds(fields, view, facets)
 
 
-def _get_field_count(view, field):
+def _get_field_count(view, field, prefix=""):
     if view.media_type == fom.VIDEO and field.name == "frames":
-        pipeline = [
-            {
-                "$group": {
-                    "_id": None,
-                    "totalCount": {"$sum": "$frames.frame_count"},
-                }
-            }
-        ]
-        try:
-            return next(view.aggregate(pipeline))["totalCount"]
-        except StopIteration:
-            return 0
+        view = view._with_frames()
+        custom_fields_schema = view.get_frame_field_schema().copy()
+        for frame_field_name in fod.Dataset.get_default_frame_fields(
+            include_private=True
+        ):
+            custom_fields_schema.pop(frame_field_name, None)
+        return {
+            frame_field_name: _get_field_count(
+                view, frame_field, prefix="frames"
+            )
+            for frame_field_name, frame_field in custom_fields_schema.items()
+        }
     elif isinstance(field, fof.EmbeddedDocumentField):
         extra_stage = []
+        array_field = "$%s." % prefix
         if issubclass(field.document_type, fol.Classifications):
-            array_field = "$%s.classifications" % field.name
+            array_field += "%s.classifications" % field.name
         elif issubclass(field.document_type, fol.Detections):
-            array_field = "$%s.detections" % field.name
+            array_field += "%s.detections" % field.name
         elif issubclass(field.document_type, fol.Polylines):
-            array_field = "$%s.polylines" % field.name
+            array_field += "%s.polylines" % field.name
         elif issubclass(field.document_type, fol.Keypoint):
-            array_field = "$%s.points" % field.name
+            array_field += "%s.points" % field.name
         elif issubclass(field.document_type, fol.Keypoints):
-            array_field = "$%s.keypoints" % field.name
+            array_field += "%s.keypoints" % field.name
             extra_stage = [
                 {"$unwind": array_field},
             ]
-            array_field = "%s.points" % array_field
+            array_field += "%s.points" % array_field
         else:
             array_field = None
-
         if array_field:
             # sum of lengths of arrays for each document
             pipeline = [
@@ -454,9 +454,10 @@ def _get_field_count(view, field):
                 }
             ]
             pipeline = extra_stage + pipeline
+
             try:
                 return next(view.aggregate(pipeline))["totalCount"]
             except StopIteration:
                 return 0
 
-    return len(view.exists(field.name))
+    return len(view.exists(prefix + field.name))

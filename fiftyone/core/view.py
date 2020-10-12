@@ -291,11 +291,11 @@ class DatasetView(foc.SampleCollection):
         for s in self._stages:
             _pipeline.extend(s.to_mongo())
 
+        if self._flatten_frames is not None:
+            _pipeline.extend(self._flatten_frames)
+
         if pipeline is not None:
             _pipeline.extend(pipeline)
-
-        if self._flatten_frames is not None:
-            _pipeline += self._flatten_frames
 
         return self._dataset.aggregate(_pipeline)
 

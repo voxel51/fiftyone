@@ -109,13 +109,10 @@ export const labelNames = selector({
     if (!stateDescription.labels) {
       return [];
     }
+    console.log(stateDescription);
     return stateDescription.labels
       .map((label) => label.field)
-      .filter(
-        (name) =>
-          stats.custom_fields.hasOwnProperty(name) &&
-          !RESERVED_FIELDS.includes(name)
-      );
+      .filter((name) => stats.labels.hasOwnProperty(name));
   },
 });
 
@@ -147,7 +144,12 @@ export const labelClasses = selectorFamily({
 export const labelSampleCounts = selector({
   key: "labelSampleCounts",
   get: ({ get }) => {
-    return get(datasetStats).custom_fields || {};
+    const fields = get(datasetStats).custom_fields || {};
+    console.log(fields);
+    if (get(mediaType) === "video") {
+      return fields.frames || {};
+    }
+    return fields;
   },
 });
 
@@ -226,16 +228,12 @@ export const refreshColorMap = selector({
   key: "refreshColorMap",
   get: ({ get }) => get(atoms.colorMap),
   set: ({ get, set }, colorMap) => {
-    const frames = get(mediaType) == "video" ? ["frames"] : [];
     const colorLabelNames = Object.entries(get(labelTypes))
       .filter(([name, type]) => labelTypeHasColor(type))
       .map(([name]) => name);
     set(
       atoms.colorMap,
-      generateColorMap(
-        [...get(tagNames), ...colorLabelNames, ...frames],
-        colorMap
-      )
+      generateColorMap([...get(tagNames), ...colorLabelNames], colorMap)
     );
   },
 });

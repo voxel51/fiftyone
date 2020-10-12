@@ -415,9 +415,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return fov.DatasetView(self)
 
     @classmethod
-    def get_default_sample_fields(
-        cls, include_private=False, with_frames=False
-    ):
+    def get_default_sample_fields(cls, include_private=False):
         """Get the default fields present on any :class:`Dataset`.
 
         Args:
@@ -429,6 +427,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         return foos.default_sample_fields(
             foo.DatasetSampleDocument, include_private=include_private
+        )
+
+    @classmethod
+    def get_default_frame_fields(cls, include_private=False):
+        """Get the default fields present on any :class:`Frame`.
+
+        Args:
+            include_private (False): whether or not to return fields prefixed
+                with a `_`
+
+        Returns:
+            a tuple of field names
+        """
+        return foos.default_sample_fields(
+            foo.DatasetFrameSampleDocument, include_private=include_private
         )
 
     def get_field_schema(

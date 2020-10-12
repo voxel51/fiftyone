@@ -96,8 +96,6 @@ const Sample = ({ dispatch, sample, metadata, port, setView }) => {
   const activeLabels = useRecoilValue(atoms.activeLabels);
   const activeTags = useRecoilValue(atoms.activeTags);
   const activeOther = useRecoilValue(atoms.activeOther);
-  const frameLabelsActive = useRecoilValue(atoms.frameLabelsActive);
-
   const setVideoLabels = useSetRecoilState(atoms.sampleVideoLabels(sample._id));
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     atoms.selectedSamples
@@ -185,7 +183,6 @@ const Sample = ({ dispatch, sample, metadata, port, setView }) => {
         metadata={metadata}
         thumbnail={true}
         activeLabels={activeLabels}
-        frameLabelsActive={frameLabelsActive}
         {...eventHandlers}
         filterSelector={selectors.labelFilters}
         onMouseEnter={onMouseEnter}

@@ -128,6 +128,7 @@ export function makeLabelNameGroups(fieldSchema, labelNames, labelTypes) {
     scalars: [],
     unsupported: [],
   };
+  console.log(fieldSchema, labelNames, labelTypes);
   for (const name of labelNames) {
     if (VALID_LABEL_TYPES.includes(labelTypes[name])) {
       labelNameGroups.labels.push({ name, type: labelTypes[name] });
