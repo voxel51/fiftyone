@@ -14,13 +14,13 @@ from bson import ObjectId, json_util
 from pymongo import ReplaceOne
 
 import fiftyone as fo
+from fiftyone.core.document import Document
 import fiftyone.core.frame_utils as fofu
 from fiftyone.core.odm.frame import (
     NoDatasetFrameSampleDocument,
     DatasetFrameSampleDocument,
 )
 import fiftyone.core.utils as fou
-from fiftyone.core._sample import _Sample
 
 
 #
@@ -44,6 +44,9 @@ class Frames(object):
         self._iter = None
         self._iter_doc = None
         self._replacements = {}
+
+    def __str__(self):
+        return "<%s: %s>" % (self.__class__.__name__, fou.pformat(dict(self)))
 
     def __repr__(self):
         num_frames = len(self)
@@ -97,19 +100,26 @@ class Frames(object):
             self._iter_doc = None
             raise
 
-    def __getitem__(self, key):
-        fofu.validate_frame_number(key)
+    def __contains__(self, frame_number):
+        return str(frame_number) in self._sample._doc.frames
+
+    def __getitem__(self, frame_number):
+        fofu.validate_frame_number(frame_number)
 
         dataset = None
         doc = None
         d = None
-        default_d = {"_sample_id": self._sample._id, "frame_number": key}
-        if self._iter is not None and key == self._iter_doc.get_field(
-            "frame_number"
+        default_d = {
+            "_sample_id": self._sample._id,
+            "frame_number": frame_number,
+        }
+        if (
+            self._iter is not None
+            and frame_number == self._iter_doc.get_field("frame_number")
         ):
             doc = self._iter_doc
-        elif key in self._replacements:
-            doc = self._replacements[key]
+        elif frame_number in self._replacements:
+            doc = self._replacements[frame_number]
         elif self._sample._in_db:
             d = self._frame_collection.find_one(default_d)
             if d is None:
@@ -127,23 +137,27 @@ class Frames(object):
 
         return Frame.from_doc(doc, dataset=dataset)
 
-    def __setitem__(self, key, frame):
-        fofu.validate_frame_number(key)
+    def __setitem__(self, frame_number, frame):
+        fofu.validate_frame_number(frame_number)
 
         if not isinstance(frame, Frame):
             raise ValueError("Value must be a %s" % Frame.__name__)
 
         doc = frame._doc
-        doc.set_field("frame_number", key)
+        doc.set_field("frame_number", frame_number)
         doc._sample_id = self._sample._id
 
-        if not self._sample._in_db and key not in self._replacements:
+        if not self._sample._in_db and frame_number not in self._replacements:
             self._sample._doc.frames["frame_count"] += 1
         elif self._sample._in_db:
-            if self._iter is not None or key != self._iter_doc.get_field(
-                "frame_number"
+            if (
+                self._iter is not None
+                or frame_number != self._iter_doc.get_field("frame_number")
             ):
-                find_d = {"_sample_id": self._sample._id, "frame_number": key}
+                find_d = {
+                    "_sample_id": self._sample._id,
+                    "frame_number": frame_number,
+                }
                 exists = self._frame_collection.find(find_d)
                 if exists is None:
                     self._sample._doc.frames["frame_count"] += 1
@@ -198,16 +212,31 @@ class Frames(object):
         for doc in self._iter_docs():
             yield Frame.from_doc(doc, dataset=dataset)
 
-    def update(self, d):
-        """Adds the frame labels from the given dictionary to this instance.
-
-        Existing frames are overwritten.
+    def update(self, frames, overwrite=True):
+        """Adds the frame labels to this instance.
 
         Args:
-            d: a dictionary mapping frame numbers to :class:`Frame` instances
+            frames: a :class:`Frames` instance or dictionary mapping frame
+                numbers to :class:`Frame` instances
+            overwrite (True): whether to overwrite existing frames
         """
-        for frame_number, frame in d.items():
-            self[frame_number] = frame
+        for frame_number, frame in frames.items():
+            if overwrite or frame_number not in self:
+                self[frame_number] = frame
+
+    def merge(self, frames, overwrite=True):
+        """Merges the frame labels into this instance.
+
+        Args:
+            frames: a :class:`Frames` instance or dictionary mapping frame
+                numbers to :class:`Frame` instances
+            overwrite (True): whether to overwrite existing fields
+        """
+        for frame_number, frame in frames.items():
+            if frame_number in self:
+                self[frame_number].merge(frame, overwrite=overwrite)
+            else:
+                self[frame_number] = frame
 
     @property
     def _first_frame(self):
@@ -290,7 +319,7 @@ class Frames(object):
         return self
 
 
-class Frame(_Sample):
+class Frame(Document):
     """A frame in a video :class:`fiftyone.core.sample.Sample`.
 
     :class:`Frame` instances can hold any :class:`fiftyone.core.label.Label`

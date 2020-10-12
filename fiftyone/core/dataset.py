@@ -17,6 +17,7 @@ import reprlib
 
 from bson import ObjectId
 from mongoengine.errors import DoesNotExist, FieldDoesNotExist
+from pymongo.errors import BulkWriteError
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -653,7 +654,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dicts = [sample.to_mongo_dict() for sample in samples]
         for d in dicts:
             d.pop("_id", None)  # remove the ID if in DB
-        self._sample_collection.insert_many(dicts)  # adds `_id` to each dict
+
+        try:
+            # adds `_id` to each dict
+            self._sample_collection.insert_many(dicts)
+        except BulkWriteError as bwe:
+            msg = bwe.details["writeErrors"][0]["errmsg"]
+            raise ValueError(msg) from bwe
 
         for sample, d in zip(samples, dicts):
             if not sample._in_db:
@@ -692,34 +699,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if key_fcn is None:
             key_fcn = lambda k: k
 
-        existing_schema = self.get_field_schema()
-
         id_map = {}
         for sample in self.select_fields(key_field):
             id_map[key_fcn(sample[key_field])] = sample.id
 
         with fou.ProgressBar() as pb:
-            for new_sample in pb(samples):
-                key = key_fcn(new_sample[key_field])
+            for sample in pb(samples):
+                key = key_fcn(sample[key_field])
                 if key in id_map:
                     existing_sample = self[id_map[key]]
-
-                    for name, value in new_sample.iter_fields():
-                        if name == "media_type":
-                            continue
-
-                        if (
-                            not overwrite
-                            and name in existing_schema
-                            and existing_sample[name] is not None
-                        ):
-                            continue
-
-                        existing_sample[name] = value
-
+                    existing_sample.merge(sample, overwrite=overwrite)
                     existing_sample.save()
                 else:
-                    self.add_sample(new_sample)
+                    self.add_sample(sample)
 
     def remove_sample(self, sample_or_id):
         """Removes the given sample from the dataset.
@@ -739,8 +731,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_collection.delete_one({"_id": ObjectId(sample_id)})
 
         fos.Sample._reset_backing_docs(
-            collection_name=self._sample_collection_name,
-            sample_ids=[sample_id],
+            self._sample_collection_name, [sample_id]
         )
 
     def remove_samples(self, samples_or_ids):
@@ -767,7 +758,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
         fos.Sample._reset_backing_docs(
-            collection_name=self._sample_collection_name, sample_ids=sample_ids
+            self._sample_collection_name, sample_ids
         )
 
     def clone_field(self, field_name, new_field_name, samples=None):

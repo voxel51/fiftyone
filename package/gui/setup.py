@@ -54,7 +54,9 @@ class CustomBdistWheel(bdist_wheel):
             self.bdist_dir, self.data_dir, "purelib", "fiftyone", "gui", "bin"
         )
 
-        if self.plat_name.startswith("linux"):
+        if os.environ.get("FIFTYONE_GUI_EXE_PATH"):
+            apps = [os.environ["FIFTYONE_GUI_EXE_PATH"]]
+        elif self.plat_name.startswith("linux"):
             apps = glob.glob(os.path.join(release_dir, "FiftyOne*.AppImage"))
         elif self.plat_name.startswith("mac"):
             apps = glob.glob(os.path.join(release_dir, "mac", "FiftyOne*.app"))
