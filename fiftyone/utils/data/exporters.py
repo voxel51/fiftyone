@@ -639,8 +639,19 @@ class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
 
     @property
     def label_cls(self):
-        """The :class:`fiftyone.core.labels.Label` class exported by this
+        """The :class:`fiftyone.core.labels.Label` class(es) exported by this
         exporter.
+
+        This can be any of the following:
+
+        -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+            exporter directly exports labels of this type
+        -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+            In this case, the exporter can handle label dictionaries with
+            value-types specified by this dictionary. Not all keys need be
+            present in the exported label dicts
+        -   ``None``. In this case, the exporter makes no guarantees about the
+            labels that it can export
         """
         raise NotImplementedError("subclass must implement label_cls")
 
@@ -693,6 +704,25 @@ class LabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
         raise NotImplementedError(
             "subclass must implement requires_video_metadata"
         )
+
+    @property
+    def label_cls(self):
+        """The :class:`fiftyone.core.labels.Label` class(es) that can be
+        exported by this exporter within the :class:`fiftyone.core.frame.Frame`
+        instances that it is provided.
+
+        This can be any of the following:
+
+        -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+            exporter directly exports labels of this type
+        -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+            In this case, the exporter can export multiple label fields with
+            value-types specified by this dictionary. Not all keys need be
+            present in the exported frame labels
+        -   ``None``. In this case, the exporter makes no guarantees about the
+            labels that it can export
+        """
+        raise NotImplementedError("subclass must implement label_cls")
 
     def export_sample(self, video_path, frames, metadata=None):
         """Exports the given sample to the dataset.
@@ -1159,7 +1189,7 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
 
     @property
     def label_cls(self):
-        return fol.ImageLabels
+        return None
 
     def setup(self):
         self._labeled_dataset = etad.LabeledImageDataset.create_empty_dataset(
