@@ -160,23 +160,43 @@ class Frames(object):
         """Adds the frame labels to this instance.
 
         Args:
-            frames: a :class:`Frames` instance or dictionary mapping frame
-                numbers to :class:`Frame` instances
+            frames: can be any of the following
+
+                -   a :class:`Frames` instance
+                -   a dictionary mapping frame numbers to :class:`Frame`
+                    instances
+                -   a dictionary mapping frame numbers to dictionaries mapping
+                    label fields to :class:`fiftyone.core.labels.Label`
+                    instances
+
             overwrite (True): whether to overwrite existing frames
         """
         for frame_number, frame in frames.items():
             if overwrite or frame_number not in self:
+                if isinstance(frame, dict):
+                    frame = Frame(**frame)
+
                 self[frame_number] = frame
 
     def merge(self, frames, overwrite=True):
         """Merges the frame labels into this instance.
 
         Args:
-            frames: a :class:`Frames` instance or dictionary mapping frame
-                numbers to :class:`Frame` instances
+            frames: can be any of the following
+
+                -   a :class:`Frames` instance
+                -   a dictionary mapping frame numbers to :class:`Frame`
+                    instances
+                -   a dictionary mapping frame numbers to dictionaries mapping
+                    label fields to :class:`fiftyone.core.labels.Label`
+                    instances
+
             overwrite (True): whether to overwrite existing fields
         """
         for frame_number, frame in frames.items():
+            if isinstance(frame, dict):
+                frame = Frame(**frame)
+
             if frame_number in self:
                 self[frame_number].merge(frame, overwrite=overwrite)
             else:
@@ -224,6 +244,10 @@ class Frame(Document):
 
     def __setitem__(self, field_name, value):
         self.set_field(field_name, value=value)
+
+    @property
+    def _skip_iter_field_names(self):
+        return ("frame_number",)
 
     @classmethod
     def from_doc(cls, doc, dataset=None):
