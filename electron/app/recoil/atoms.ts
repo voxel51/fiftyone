@@ -30,6 +30,12 @@ export const selectedSamples = atom({
   default: new Set(),
 });
 
+// "object_id": "sample_id"
+export const selectedObjects = atom({
+  key: "selectedObjects",
+  default: {},
+});
+
 export const stageInfo = atom({
   key: "stageInfo",
   default: undefined,

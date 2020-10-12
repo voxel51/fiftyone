@@ -18,6 +18,7 @@ import {
   makeLabelNameGroups,
   stringify,
 } from "../utils/labels";
+import { useToggleSelectionObject } from "../utils/selection";
 
 type Props = {
   sample: object;
@@ -236,6 +237,10 @@ const SampleModal = ({
     atoms.modalFrameLabelsActive
   );
   const globalFrameLabelsActive = useRecoilValue(atoms.frameLabelsActive);
+
+  const toggleSelectedObject = useToggleSelectionObject(atoms.selectedObjects);
+  const selectedObjectIDs = Object.keys(useRecoilValue(atoms.selectedObjects));
+
   useEffect(() => {
     setActiveLabels(rest.activeLabels);
   }, [rest.activeLabels]);
@@ -426,6 +431,10 @@ const SampleModal = ({
             filterSelector={selectors.modalLabelFilters}
             playerRef={playerRef}
             defaultOverlayOptions={savedOverlayOptions}
+            selectedObjects={selectedObjectIDs}
+            onSelectObject={(id) => {
+              toggleSelectedObject(id, sample._id);
+            }}
           />
         )}
         {onPrevious ? (

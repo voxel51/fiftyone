@@ -46,6 +46,8 @@ export default ({
   filterSelector,
   playerRef,
   defaultOverlayOptions,
+  selectedObjects,
+  onSelectObject,
 }) => {
   const filter = useRecoilValue(filterSelector);
   const colorMap = useRecoilValue(atoms.colorMap);
@@ -124,6 +126,12 @@ export default ({
       `This video failed to load. Its type (${mimetype}) may be unsupported.`
     )
   );
+  useEventHandler(player, "select", (e) => {
+    const id = e.data?.id;
+    if (id && onSelectObject) {
+      onSelectObject(id);
+    }
+  });
 
   return (
     <div id={id} style={style} {...props}>
