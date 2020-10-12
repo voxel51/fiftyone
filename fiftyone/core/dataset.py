@@ -917,8 +917,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset_type (None): the
                 :class:`fiftyone.types.dataset_types.Dataset` type of the
                 dataset in ``dataset_dir``
-            label_field ("ground_truth"): the name of the field to use for the
-                labels (if applicable)
+            label_field ("ground_truth"): the name (or root name) of the
+                field(s) to use for the labels (if applicable)
             tags (None): an optional list of tags to attach to each sample
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
@@ -992,8 +992,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             dataset_importer: a
                 :class:`fiftyone.utils.data.importers.DatasetImporter`
-            label_field ("ground_truth"): the name of the field to use for the
-                labels (if applicable)
+            label_field ("ground_truth"): the name (or root name) of the
+                field(s) to use for the labels (if applicable)
             tags (None): an optional list of tags to attach to each sample
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
@@ -1057,8 +1057,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample_parser: a
                 :class:`fiftyone.utils.data.parsers.LabeledImageSampleParser`
                 instance to use to parse the samples
-            label_field ("ground_truth"): the name of the field to use for the
-                labels
+            label_field ("ground_truth"): the name (or root name) of the
+                field(s) to use for the labels (if applicable)
             tags (None): an optional list of tags to attach to each sample
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
@@ -1178,8 +1178,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample_parser: a
                 :class:`fiftyone.utils.data.parsers.LabeledImageSampleParser`
                 instance to use to parse the samples
-            label_field ("ground_truth"): the name of the field to use for the
-                labels
+            label_field ("ground_truth"): the name (or root name) of the
+                field(s) to use for the labels (if applicable)
             tags (None): an optional list of tags to attach to each sample
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
@@ -1234,7 +1234,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return foud.add_videos(self, samples, sample_parser, tags=tags)
 
     def add_labeled_videos(
-        self, samples, sample_parser, tags=None, expand_schema=True,
+        self,
+        samples,
+        sample_parser,
+        label_field="ground_truth",
+        tags=None,
+        expand_schema=True,
     ):
         """Adds the given labeled videos to the dataset.
 
@@ -1250,6 +1255,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample_parser: a
                 :class:`fiftyone.utils.data.parsers.LabeledVideoSampleParser`
                 instance to use to parse the samples
+            label_field ("ground_truth"): the name (or root name) of the
+                frame field(s) to use for the labels
             tags (None): an optional list of tags to attach to each sample
             expand_schema (True): whether to dynamically add new sample fields
                 encountered to the dataset schema. If False, an error is raised
@@ -1262,6 +1269,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self,
             samples,
             sample_parser,
+            label_field=label_field,
             tags=tags,
             expand_schema=expand_schema,
         )
@@ -1403,8 +1411,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 type of the dataset in ``dataset_dir``
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
-            label_field ("ground_truth"): the name of the field to use for the
-                labels (if applicable)
+            label_field ("ground_truth"): the name (or root name) of the
+                field(s) to use for the labels (if applicable)
             tags (None): an optional list of tags to attach to each sample
             **kwargs: optional keyword arguments to pass to the constructor of
                 the :class:`fiftyone.utils.data.importers.DatasetImporter` for
@@ -1441,8 +1449,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 :class:`fiftyone.utils.data.importers.DatasetImporter`
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
-            label_field ("ground_truth"): the name of the field to use for the
-                labels (if applicable)
+            label_field ("ground_truth"): the name (or root name) of the
+                field(s) to use for the labels (if applicable)
             tags (None): an optional list of tags to attach to each sample
 
         Returns:
@@ -1507,8 +1515,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 instance to use to parse the samples
             name (None): a name for the dataset. By default,
                 :func:`get_default_dataset_name` is used
-            label_field ("ground_truth"): the name of the field to use for the
-                labels
+            label_field ("ground_truth"): the name (or root name) of the
+                field(s) to use for the labels
             tags (None): an optional list of tags to attach to each sample
 
         Returns:
