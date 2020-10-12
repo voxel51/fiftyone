@@ -2366,17 +2366,17 @@ def _cvat_tracks_to_frames_dict(cvat_tracks):
             frame = frames[frame_number]
 
             if isinstance(label, fol.Detection):
-                if "objects" not in frame.field_names:
+                if "objects" not in frame:
                     frame["objects"] = fol.Detections()
 
                 frame["objects"].detections.append(label)
             elif isinstance(label, fol.Polyline):
-                if "polylines" not in frame.field_names:
+                if "polylines" not in frame:
                     frame["polylines"] = fol.Polylines()
 
                 frame["polylines"].polylines.append(label)
             elif isinstance(label, fol.Keypoint):
-                if "keypoints" not in frame.field_names:
+                if "keypoints" not in frame:
                     frame["keypoints"] = fol.Keypoints()
 
                 frame["keypoints"].keypoints.append(label)
@@ -2395,8 +2395,8 @@ def _frames_to_cvat_tracks(frames, frame_size):
             no_index_map[frame_number].append(label)
 
     # Convert from per-frame to per-object tracks
-    for frame_number, frame in frames.items():
-        for _, value in frame.iter_fields():
+    for frame_number, frame_dict in frames.items():
+        for _, value in frame_dict.items():
             if isinstance(value, (fol.Detection, fol.Polyline, fol.Keypoint)):
                 process_label(value, frame_number)
             elif isinstance(value, fol.Detections):

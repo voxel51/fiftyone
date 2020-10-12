@@ -332,7 +332,7 @@ class DatasetExporter(object):
     """Base interface for exporting collections of
     :class:`fiftyone.core.sample.Sample` instances to disk.
 
-    Example Usage::
+    Example usage::
 
         import fiftyone as fo
 
@@ -341,6 +341,7 @@ class DatasetExporter(object):
         exporter = GenericSampleDatasetExporter(export_dir, ...)
         with exporter:
             exporter.log_collection(samples)
+
             for sample in samples:
                 # Extract relevant information from `sample` and feed to
                 # `export_sample()`
@@ -484,7 +485,7 @@ class GenericSampleDatasetExporter(DatasetExporter):
     """Interface for exporting datasets of arbitrary
     :class:`fiftyone.core.sample.Sample` instances.
 
-    Example Usage::
+    Example usage::
 
         import fiftyone as fo
 
@@ -493,6 +494,7 @@ class GenericSampleDatasetExporter(DatasetExporter):
         exporter = GenericSampleDatasetExporter(export_dir, ...)
         with exporter:
             exporter.log_collection(samples)
+
             for sample in samples:
                 exporter.export_sample(sample)
 
@@ -512,7 +514,7 @@ class GenericSampleDatasetExporter(DatasetExporter):
 class UnlabeledImageDatasetExporter(DatasetExporter, ExportsImages):
     """Interface for exporting datasets of unlabeled image samples.
 
-    Example Usage::
+    Example usage::
 
         import fiftyone as fo
 
@@ -521,6 +523,7 @@ class UnlabeledImageDatasetExporter(DatasetExporter, ExportsImages):
         exporter = UnlabeledImageDatasetExporter(export_dir, ...)
         with exporter:
             exporter.log_collection(samples)
+
             for sample in samples:
                 image_path = sample.filepath
                 metadata = sample.metadata
@@ -558,7 +561,7 @@ class UnlabeledImageDatasetExporter(DatasetExporter, ExportsImages):
 class UnlabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
     """Interface for exporting datasets of unlabeled video samples.
 
-    Example Usage::
+    Example usage::
 
         import fiftyone as fo
 
@@ -567,6 +570,7 @@ class UnlabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
         exporter = UnlabeledVideoDatasetExporter(export_dir, ...)
         with exporter:
             exporter.log_collection(samples)
+
             for sample in samples:
                 video_path = sample.filepath
                 metadata = sample.metadata
@@ -604,7 +608,7 @@ class UnlabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
 class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
     """Interface for exporting datasets of labeled image samples.
 
-    Example Usage::
+    Example usage::
 
         import fiftyone as fo
 
@@ -614,6 +618,7 @@ class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
         exporter = LabeledImageDatasetExporter(export_dir, ...)
         with exporter:
             exporter.log_collection(samples)
+
             for sample in samples:
                 image_path = sample.filepath
                 label = sample[label_field]
@@ -673,7 +678,7 @@ class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
 class LabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
     """Interface for exporting datasets of labeled video samples.
 
-    Example Usage::
+    Example usage::
 
         import fiftyone as fo
 
@@ -682,12 +687,16 @@ class LabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
         exporter = LabeledVideoDatasetExporter(export_dir, ...)
         with exporter:
             exporter.log_collection(samples)
+
             for sample in samples:
                 video_path = sample.filepath
-                frames = sample.frames
+
                 metadata = sample.metadata
                 if exporter.requires_video_metadata and metadata is None:
                     metadata = fo.VideoMetadata.build_for(video_path)
+
+                # Extract relevant content from `sample.frames` to export
+                frames = ...
 
                 exporter.export_sample(video_path, frames, metadata=metadata)
 
@@ -729,9 +738,9 @@ class LabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
 
         Args:
             video_path: the path to a video on disk
-            frames: a dictionary mapping frame numbers to
-                :class:`fiftyone.core.frame.Frame` instances, or ``None`` if
-                the sample is unlabeled
+            frames: a dictionary mapping frame numbers to dictionaries that map
+                field names to :class:`fiftyone.core.labels.Label` instances,
+                or ``None`` is the sample is unlabeled
             metadata (None): a :class:`fiftyone.core.metadata.VideoMetadata`
                 instance for the sample. Only required when
                 :meth:`requires_video_metadata` is ``True``
@@ -1385,12 +1394,11 @@ def _parse_frame_labels(frames):
 def _parse_frame(frame, frame_number):
     frame_labels = etav.VideoFrameLabels(frame_number)
 
-    for name in frame.field_names:
-        _label = frame[name]
-        if not isinstance(_label, fol.ImageLabel):
+    for name, label in frame.items():
+        if not isinstance(label, fol.ImageLabel):
             continue
 
-        frame_labels.merge_labels(_label.to_image_labels(name=name))
+        frame_labels.merge_labels(label.to_image_labels(name=name))
 
     return frame_labels
 
