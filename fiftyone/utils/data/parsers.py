@@ -278,6 +278,7 @@ def add_labeled_videos(
 
         if frames is not None:
             sample.frames.update(frames)
+            # sample.frames.merge(frames, overwrite=True)
 
         return sample
 
@@ -653,6 +654,25 @@ class LabeledVideoSampleParser(SampleParser):
         """
         raise NotImplementedError("subclass must implement has_video_metadata")
 
+    @property
+    def label_cls(self):
+        """The :class:`fiftyone.core.labels.Label` class(es) returned by this
+        parser within the :class:`fiftyone.core.frame.Frame` instances that
+        it produces.
+
+        This can be any of the following:
+
+        -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+            parser is guaranteed to return labels of this type
+        -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+            In this case, the parser will return label dictionaries with keys
+            and value-types specified by this dictionary. Not all keys need be
+            present in the imported labels
+        -   ``None``. In this case, the parser makes no guarantees about the
+            labels that it may return
+        """
+        raise NotImplementedError("subclass must implement label_cls")
+
     def get_video_path(self):
         """Returns the video path for the current sample.
 
@@ -724,7 +744,7 @@ class LabeledImageTupleSampleParser(LabeledImageSampleParser):
 
     @property
     def label_cls(self):
-        return fol.Label
+        return None
 
     def get_image(self):
         return self._current_image
@@ -1168,6 +1188,10 @@ class VideoLabelsSampleParser(LabeledVideoSampleParser):
     def has_video_metadata(self):
         return False
 
+    @property
+    def label_cls(self):
+        return None
+
     def get_video_path(self):
         return self.current_sample[0]
 
@@ -1308,7 +1332,7 @@ class FiftyOneLabeledImageSampleParser(LabeledImageSampleParser):
 
     @property
     def label_cls(self):
-        return fol.Label
+        return None
 
     def get_image(self):
         return etai.read(self.current_sample.filepath)
@@ -1395,6 +1419,10 @@ class FiftyOneLabeledVideoSampleParser(LabeledVideoSampleParser):
     @property
     def has_video_metadata(self):
         return True
+
+    @property
+    def label_cls(self):
+        return None
 
     def get_video_path(self):
         return self.current_sample.filepath

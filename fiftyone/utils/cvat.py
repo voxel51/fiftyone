@@ -55,16 +55,16 @@ class CVATImageSampleParser(foud.LabeledImageTupleSampleParser):
         self._cvat_image_cache = None
 
     @property
+    def has_image_metadata(self):
+        return True
+
+    @property
     def label_cls(self):
         return {
             "objects": fol.Detections,
             "polylines": fol.Polylines,
             "keypoints": fol.Keypoints,
         }
-
-    @property
-    def has_image_metadata(self):
-        return True
 
     def get_image_metadata(self):
         cvat_image = self._cvat_image
@@ -125,6 +125,14 @@ class CVATVideoSampleParser(foud.LabeledVideoSampleParser):
     @property
     def has_video_metadata(self):
         return False
+
+    @property
+    def label_cls(self):
+        return {
+            "objects": fol.Detections,
+            "polylines": fol.Polylines,
+            "keypoints": fol.Keypoints,
+        }
 
     def get_video_path(self):
         return self.current_sample[0]
@@ -326,6 +334,14 @@ class CVATVideoDatasetImporter(foud.LabeledVideoDatasetImporter):
     def has_video_metadata(self):
         return False  # has (width, height) but not other important info
 
+    @property
+    def label_cls(self):
+        return {
+            "objects": fol.Detections,
+            "polylines": fol.Polylines,
+            "keypoints": fol.Keypoints,
+        }
+
     def setup(self):
         to_uuid = lambda p: os.path.splitext(os.path.basename(p))[0]
 
@@ -476,6 +492,14 @@ class CVATVideoDatasetExporter(foud.LabeledVideoDatasetExporter):
     @property
     def requires_video_metadata(self):
         return True
+
+    @property
+    def label_cls(self):
+        return {
+            "objects": fol.Detections,
+            "polylines": fol.Polylines,
+            "keypoints": fol.Keypoints,
+        }
 
     def setup(self):
         self._data_dir = os.path.join(self.export_dir, "data")

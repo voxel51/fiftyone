@@ -175,6 +175,7 @@ def import_samples(
 
                 if frames is not None:
                     sample.frames.update(frames)
+                    # sample.frames.merge(frames, overwrite=True)
 
                 return sample
 
@@ -624,7 +625,7 @@ class LabeledVideoDatasetImporter(DatasetImporter):
                 )
 
                 if frames is not None:
-                    sample.frames.update(frames)
+                    sample.frames.merge(frames, overwrite=True)
 
                 dataset.add_sample(sample)
 
@@ -685,12 +686,13 @@ class LabeledVideoDatasetImporter(DatasetImporter):
     @property
     def label_cls(self):
         """The :class:`fiftyone.core.labels.Label` class(es) returned by this
-        importer.
+        importer within the :class:`fiftyone.core.frame.Frame` instances that
+        it produces.
 
         This can be any of the following:
 
         -   a :class:`fiftyone.core.labels.Label` class. In this case, the
-            importer is guaranteed to return frames with labels of this type
+            importer is guaranteed to return labels of this type
         -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
             In this case, the importer will return label dictionaries with keys
             and value-types specified by this dictionary. Not all keys need be
@@ -1553,6 +1555,10 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
     @property
     def has_video_metadata(self):
         return self.compute_metadata
+
+    @property
+    def label_cls(self):
+        return None
 
     def setup(self):
         self._sample_parser = FiftyOneVideoLabelsSampleParser(
