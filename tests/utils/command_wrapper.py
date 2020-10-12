@@ -1,14 +1,14 @@
 """
-Wrapper around pytest that cleans up subprocesses
+Wrapper around an arbitrary command that cleans up subprocesses
 """
 
+import subprocess
 import sys
 
 import psutil
-import pytest
 
 try:
-    code = pytest.main(sys.argv[1:])
+    subprocess.check_call(sys.argv[1:])
 finally:
     for child in reversed(psutil.Process().children(recursive=True)):
         try:
@@ -16,5 +16,3 @@ finally:
             child.wait()
         except psutil.Error:
             pass
-
-exit(code)
