@@ -184,9 +184,9 @@ def import_samples(
                         {
                             frame_number: {
                                 label_field + "_" + field_name: label
+                                for field_name, label in frame_dict.items()
                             }
                             for frame_number, frame_dict in frames.items()
-                            for field_name, label in frame_dict.items()
                         },
                         overwrite=True,
                     )
@@ -645,9 +645,9 @@ class LabeledVideoDatasetImporter(DatasetImporter):
                         {
                             frame_number: {
                                 label_field + "_" + field_name: label
+                                for field_name, label in frame_dict.items()
                             }
                             for frame_number, frame_dict in frames.items()
-                            for field_name, label in frame_dict.items()
                         },
                         overwrite=True,
                     )
