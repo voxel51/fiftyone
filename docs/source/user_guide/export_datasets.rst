@@ -1909,8 +1909,10 @@ should implement is determined by the type of dataset that you are exporting.
             exporter = CustomUnlabeledImageDatasetExporter(dataset_dir, ...)
             with exporter:
                 exporter.log_collection(samples)
+
                 for sample in samples:
                     image_path = sample.filepath
+
                     metadata = sample.metadata
                     if exporter.requires_image_metadata and metadata is None:
                         metadata = fo.ImageMetadata.build_for(image_path)
@@ -1983,10 +1985,21 @@ should implement is determined by the type of dataset that you are exporting.
 
                 @property
                 def label_cls(self):
-                    """The :class:`fiftyone.core.labels.Label` class exported by this
+                    """The :class:`fiftyone.core.labels.Label` class(es) exported by this
                     exporter.
+
+                    This can be any of the following:
+
+                    -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+                        exporter directly exports labels of this type
+                    -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+                        In this case, the exporter can handle label dictionaries with
+                        value-types specified by this dictionary. Not all keys need be
+                        present in the exported label dicts
+                    -   ``None``. In this case, the exporter makes no guarantees about the
+                        labels that it can export
                     """
-                    # Return a Label subclass here
+                    # Return the appropriate value here
                     pass
 
                 def setup(self):
@@ -2063,17 +2076,21 @@ should implement is determined by the type of dataset that you are exporting.
             import fiftyone as fo
 
             samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
-            label_field = ...  # assumes single label field case
+            label_field = ...
 
             exporter = CustomLabeledImageDatasetExporter(dataset_dir, ...)
             with exporter:
                 exporter.log_collection(samples)
+
                 for sample in samples:
                     image_path = sample.filepath
-                    label = sample[label_field]
+
                     metadata = sample.metadata
                     if exporter.requires_image_metadata and metadata is None:
                         metadata = fo.ImageMetadata.build_for(image_path)
+
+                    # Assumes single label field case
+                    label = sample[label_field]
 
                     exporter.export_sample(image_path, label, metadata=metadata)
 
@@ -2100,8 +2117,8 @@ should implement is determined by the type of dataset that you are exporting.
 
         The
         :meth:`label_cls <fiftyone.utils.data.exporters.LabeledImageDatasetExporter.label_cls>`
-        property of the exporter declares the type of |Label| that the dataset
-        format expects (e.g., |Classification| or |Detections|).
+        property of the exporter declares the type of label(s) that the dataset
+        format expects.
 
         The
         :meth:`requires_image_metadata <fiftyone.utils.data.exporters.LabeledImageDatasetExporter.requires_image_metadata>`
@@ -2222,8 +2239,10 @@ should implement is determined by the type of dataset that you are exporting.
             exporter = CustomUnlabeledVideoDatasetExporter(dataset_dir, ...)
             with exporter:
                 exporter.log_collection(samples)
+
                 for sample in samples:
                     video_path = sample.filepath
+
                     metadata = sample.metadata
                     if exporter.requires_video_metadata and metadata is None:
                         metadata = fo.VideoMetadata.build_for(video_path)
@@ -2294,6 +2313,25 @@ should implement is determined by the type of dataset that you are exporting.
                     # Return True or False here
                     pass
 
+                @property
+                def label_cls(self):
+                    """The :class:`fiftyone.core.labels.Label` class(es) that can be
+                    exported by this exporter within the frame labels that it is provided.
+
+                    This can be any of the following:
+
+                    -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+                        exporter directly exports labels of this type
+                    -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+                        In this case, the exporter can export multiple label fields with
+                        value-types specified by this dictionary. Not all keys need be
+                        present in the exported frame labels
+                    -   ``None``. In this case, the exporter makes no guarantees about the
+                        labels that it can export
+                    """
+                    # Return the appropriate value here
+                    pass
+
                 def setup(self):
                     """Performs any necessary setup before exporting the first sample in
                     the dataset.
@@ -2335,9 +2373,9 @@ should implement is determined by the type of dataset that you are exporting.
 
                     Args:
                         video_path: the path to a video on disk
-                        frames: a dictionary mapping frame numbers to
-                            :class:`fiftyone.core.frame.Frame` instances, or ``None`` if
-                            the sample is unlabeled
+                        frames: a dictionary mapping frame numbers to dictionaries that map
+                            field names to :class:`fiftyone.core.labels.Label` instances,
+                            or ``None`` is the sample is unlabeled
                         metadata (None): a :class:`fiftyone.core.metadata.VideoMetadata`
                             instance for the sample. Only required when
                             :meth:`requires_video_metadata` is ``True``
@@ -2372,12 +2410,16 @@ should implement is determined by the type of dataset that you are exporting.
             exporter = CustomLabeledVideoDatasetExporter(dataset_dir, ...)
             with exporter:
                 exporter.log_collection(samples)
+
                 for sample in samples:
                     video_path = sample.filepath
-                    frames = sample.frames
+
                     metadata = sample.metadata
                     if exporter.requires_video_metadata and metadata is None:
                         metadata = fo.VideoMetadata.build_for(video_path)
+
+                    # Extract relevant content from `sample.frames` to export
+                    frames = ...
 
                     exporter.export_sample(video_path, frames, metadata=metadata)
 
@@ -2400,6 +2442,11 @@ should implement is determined by the type of dataset that you are exporting.
         The video and its corresponding frame labels are exported via the
         :meth:`export_sample() <fiftyone.utils.data.exporters.LabeledVideoDatasetExporter.export_sample>`
         method.
+
+        The
+        :meth:`label_cls <fiftyone.utils.data.exporters.LabeledVideoDatasetExporter.label_cls>`
+        property of the exporter declares the type of frame label(s) that the
+        dataset format expects.
 
         The
         :meth:`requires_video_metadata <fiftyone.utils.data.exporters.LabeledVideoDatasetExporter.requires_video_metadata>`

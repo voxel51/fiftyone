@@ -2385,10 +2385,21 @@ should implement is determined by the type of dataset that you are importing.
 
             @property
             def label_cls(self):
-                """The :class:`fiftyone.core.labels.Label` class returned by this
-                importer, or ``None`` if it returns a dictionary of labels.
+                """The :class:`fiftyone.core.labels.Label` class(es) returned by this
+                importer.
+
+                This can be any of the following:
+
+                -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+                    importer is guaranteed to return labels of this type
+                -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+                    In this case, the importer will return label dictionaries with keys
+                    and value-types specified by this dictionary. Not all keys need be
+                    present in the imported labels
+                -   ``None``. In this case, the importer makes no guarantees about the
+                    labels that it may return
                 """
-                # Return a Label subclass here
+                # Return the appropriate value here
                 pass
 
             def setup(self):
@@ -2443,7 +2454,9 @@ should implement is determined by the type of dataset that you are importing.
                 sample = fo.Sample(filepath=image_path, metadata=image_metadata)
 
                 if isinstance(label, dict):
-                    sample.update_fields(label)
+                    sample.update_fields(
+                        {label_field + "_" + k: v for k, v in label.items()}
+                    )
                 elif label is not None:
                     sample[label_field] = label
 
@@ -2475,8 +2488,8 @@ should implement is determined by the type of dataset that you are importing.
 
     The
     :meth:`label_cls <fiftyone.utils.data.importers.LabeledImageDatasetImporter.label_cls>`
-    property of the importer declares the type of |Label| that the dataset contains
-    (e.g., |Classification| or |Detections|).
+    property of the importer declares the type of label(s) that the importer
+    will produce.
 
     The
     :meth:`has_image_metadata <fiftyone.utils.data.importers.LabeledImageDatasetImporter.has_image_metadata>`
@@ -2704,9 +2717,9 @@ should implement is determined by the type of dataset that you are importing.
                     -   ``video_metadata``: an
                         :class:`fiftyone.core.metadata.VideoMetadata` instances for the
                         video, or ``None`` if :meth:`has_video_metadata` is ``False``
-                    -   ``frames``: a dictionary mapping frame numbers to
-                        :class:`fiftyone.core.frame.Frame` instances containing the
-                        labels for each video frame, or ``None`` if the sample is
+                    -   ``frames``: a dictionary mapping frame numbers to dictionaries
+                        that map label fields to :class:`fiftyone.core.labels.Label`
+                        instances for each video frame, or ``None`` if the sample is
                         unlabeled
 
                 Raises:
@@ -2727,6 +2740,25 @@ should implement is determined by the type of dataset that you are importing.
                 :class:`fiftyone.core.metadata.VideoMetadata` instances for each video.
                 """
                 # Return True or False here
+                pass
+
+            @property
+            def label_cls(self):
+                """The :class:`fiftyone.core.labels.Label` class(es) returned by this
+                importer within the frame labels that it produces.
+
+                This can be any of the following:
+
+                -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+                    importer is guaranteed to return labels of this type
+                -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+                    In this case, the importer will return label dictionaries with keys
+                    and value-types specified by this dictionary. Not all keys need be
+                    present in the imported labels
+                -   ``None``. In this case, the importer makes no guarantees about the
+                    labels that it may return
+                """
+                # Return the appropriate value here
                 pass
 
             def setup(self):
@@ -2775,13 +2807,22 @@ should implement is determined by the type of dataset that you are importing.
         dataset = fo.Dataset(...)
 
         importer = CustomLabeledVideoDatasetImporter(dataset_dir, ...)
+        label_field = ...
 
         with importer:
             for video_path, video_metadata, frames in importer:
                 sample = fo.Sample(filepath=video_path, metadata=video_metadata)
 
                 if frames is not None:
-                    sample.frames.update(frames)
+                    sample.frames.merge(
+                        {
+                            frame_number: {
+                                label_field + "_" + field_name: label
+                                for field_name, label in frame_dict.items()
+                            }
+                            for frame_number, frame_dict in frames.items()
+                        }
+                    )
 
                 dataset.add_sample(sample)
 
@@ -2810,6 +2851,11 @@ should implement is determined by the type of dataset that you are importing.
     dictionary of information to store in the
     :meth:`info <fiftyone.core.dataset.Dataset.info>` property of the FiftyOne
     dataset.
+
+    The
+    :meth:`label_cls <fiftyone.utils.data.importers.LabeledVideoDatasetImporter.label_cls>`
+    property of the importer declares the type of label(s) that the importer
+    will produce.
 
     The
     :meth:`has_video_metadata <fiftyone.utils.data.importers.LabeledVideoDatasetImporter.has_video_metadata>`
