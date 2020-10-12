@@ -213,13 +213,14 @@ class StateController(Namespace):
         }
 
     @_catch_errors
-    def on_get_current_state(self, _):
+    @_load_state(with_stats=True)
+    def on_get_current_state(self, state, _):
         """Gets the current state.
 
         Returns:
             a :class:`fiftyone.core.state.StateDescriptionWithDerivables`
         """
-        return self.state
+        return state
 
     @_catch_errors
     @_load_state()
