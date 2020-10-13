@@ -287,3 +287,27 @@ export const convertSampleToETA = (sample, fieldSchema) => {
   }
   return imgLabels;
 };
+
+export const listSampleObjects = (sample) => {
+  const objects = [];
+  for (const [fieldName, field] of Object.entries(sample)) {
+    if (
+      field === null ||
+      field === undefined ||
+      !VALID_OBJECT_TYPES.includes(field._cls)
+    )
+      continue;
+    if (FIFTYONE_TO_ETA_CONVERTERS[field._cls]) {
+      objects.push(
+        FIFTYONE_TO_ETA_CONVERTERS[field._cls].convert(fieldName, field)
+      );
+    } else if (VALID_LIST_TYPES.includes(field._cls)) {
+      for (const object of field[field._cls.toLowerCase()]) {
+        objects.push(
+          FIFTYONE_TO_ETA_CONVERTERS[object._cls].convert(fieldName, object)
+        );
+      }
+    }
+  }
+  return objects;
+};

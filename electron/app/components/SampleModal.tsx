@@ -8,6 +8,7 @@ import CheckboxGrid from "./CheckboxGrid";
 import DisplayOptionsSidebar from "./DisplayOptionsSidebar";
 import JSONView from "./JSONView";
 import Player51 from "./Player51";
+import SelectObjectsMenu from "./SelectObjectsMenu";
 import { Button, ModalFooter } from "./utils";
 import * as selectors from "../recoil/selectors";
 import * as atoms from "../recoil/atoms";
@@ -475,6 +476,7 @@ const SampleModal = ({
           {formatMetadata(sample.metadata).map(({ name, value }) => (
             <Row key={"metadata-" + name} name={name} value={value} />
           ))}
+          <SelectObjectsMenu sample={sample} />
           <h2>
             Display Options
             <span className="push-right" />
