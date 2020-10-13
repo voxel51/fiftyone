@@ -390,7 +390,7 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
             classes = sorted(self._classes)
             labels_map_rev = _to_labels_map_rev(classes)
             for anno in self._annotations:
-                anno.category_id = labels_map_rev[anno.category_id]
+                anno["category_id"] = labels_map_rev[anno["category_id"]]
         else:
             classes = self.classes
 
