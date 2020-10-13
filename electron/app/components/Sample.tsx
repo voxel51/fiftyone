@@ -16,7 +16,7 @@ import { useFastRerender } from "../utils/hooks";
 const SampleDiv = animated(styled.div`
   position: relative;
   overflow: hidden;
-  box-shadow: 0 2px 20px ${({ theme }) => theme.backgroundDark};
+  box-shadow: 0 2px 10px ${({ theme }) => theme.backgroundDark};
   background-color: ${({ theme }) => theme.backgroundLight};
 `);
 
@@ -75,7 +75,7 @@ const useHoverLoad = (socket, sample, setVideoLabels, setFrameData) => {
       right: "-100%",
     },
     onRest: (item) => {
-      setBarItem(!loaded ? [item + 1] : []);
+      setBarItem(!loaded && barItem.length ? [item + 1] : []);
     },
   });
 
