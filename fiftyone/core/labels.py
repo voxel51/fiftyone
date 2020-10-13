@@ -334,6 +334,31 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
     confidence = fof.FloatField()
     index = fof.IntField()
 
+    def to_polyline(self, tolerance=2, filled=True):
+        """Returns a :class:`Polyline` representation of this instance.
+
+        If the detection has a mask, the returned polyline will trace the
+        boundary of the mask; otherwise, the polyline will trace the bounding
+        box itself.
+
+        If the detection's mask contains multiple connected components, the
+        polyline will only describe the first component.
+
+        Args:
+            dobj: a DetectedObject
+            tolerance (2): a tolerance, in pixels, when generating an
+                approximate polyline for the instance mask
+            filled (True): whether the polyline should be filled
+
+        Returns:
+            a :class:`Polyline`
+        """
+        dobj = self.to_detected_object()
+        polyline = etai.convert_object_to_polygon(
+            dobj, tolerance=tolerance, filled=filled
+        )
+        return Polyline.from_eta_polyline(polyline)
+
     def to_detected_object(self, name=None):
         """Returns an ``eta.core.objects.DetectedObject`` representation of
         this instance.
