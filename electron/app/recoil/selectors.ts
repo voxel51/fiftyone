@@ -13,7 +13,6 @@ export const datasetName = selector({
   key: "datasetName",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
-    console.log(stateDescription);
     return stateDescription.dataset ? stateDescription.dataset.name : null;
   },
 });

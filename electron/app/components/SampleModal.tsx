@@ -233,6 +233,7 @@ const SampleModal = ({
     labelTypes
   );
   const videoLabels = useRecoilValue(atoms.sampleVideoLabels(sample._id));
+  const frameData = useRecoilValue(atoms.sampleFrameData(sample._id));
   useEffect(() => {
     setActiveLabels(rest.activeLabels);
   }, [rest.activeLabels]);
@@ -350,32 +351,25 @@ const SampleModal = ({
 
   const labelSampleValuesReducer = (s) => {
     const isVideo = s.media_type === "video";
-    const counts = {};
-    if (isVideo) {
-      const frames = (videoLabels || {}).frames || {};
-      console.log("FRAMES", frames);
-      for (const frame_number in frames) {
-        const frame = frames[frame_number];
-        console.log(frame_number, "ah", frames);
-        for (const kind in frame) {
-          console.log(kind, frame);
-          for (const obj of frame[kind][kind]) {
-            if (!(obj.name in counts)) {
-              counts[obj.name] = 0;
-            }
-            counts[obj.name] += 1;
-          }
-        }
-      }
-    }
 
     return labelNameGroups.labels.reduce((obj, { name, type }) => {
-      let value;
+      let value = 0;
+      const resolver = (s_or_f) =>
+        ["Detections", "Classifications", "Polylines"].includes(type)
+          ? s_or_f[name][type.toLowerCase()].length
+          : type === "Keypoints"
+          ? s_or_f[name].keypoints.reduce(
+              (acc, cur) => acc + cur.points.length,
+              0
+            )
+          : type === "Keypoint"
+          ? s_or_f[name].points.length
+          : 1;
       if (isVideo) {
-        return counts[name];
-      } else if (!s[name]) {
-        value = 0;
-      } else {
+        for (const frame of frameData) {
+          if (frame[name]) value += resolver(frame);
+        }
+      } else if (s[name]) {
         value = ["Detections", "Classifications", "Polylines"].includes(type)
           ? s[name][type.toLowerCase()].length
           : type === "Keypoints"
