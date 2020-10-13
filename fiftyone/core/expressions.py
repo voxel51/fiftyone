@@ -525,6 +525,39 @@ class ViewExpression(object):
             }
         )
 
+    def map(self, expr):
+        """Applies the expression to the elements of the expression, which must
+        resolve to an array.
+
+        The output will be an array with the applied results.
+
+        Args:
+            expr: a :class:`ViewExpression`
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression(
+            {"$map": {"input": self, "in": expr.to_mongo(prefix="$$this")}}
+        )
+
+    def sum(self):
+        """Returns the sum of the values in the expression, which must resolve
+        to a numeric array.
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression(
+            {
+                "$reduce": {
+                    "input": self,
+                    "initialValue": 0,
+                    "in": {"$add": ["$$value", "$$this"]},
+                }
+            }
+        )
+
     # String expression operators #############################################
 
     def re_match(self, regex, options=None):
