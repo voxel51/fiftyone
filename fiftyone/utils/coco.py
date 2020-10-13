@@ -487,6 +487,8 @@ class COCOObject(object):
             self.segmentation, frame_size
         )
 
+        # @todo store all polygons in single `Polyline` instance here, when
+        # the data model allows it
         polylines = []
         for points in polygon_points:
             polylines.append(
