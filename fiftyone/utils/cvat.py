@@ -1154,7 +1154,7 @@ class CVATImagePolygon(CVATImageAnno, HasCVATPoints):
         attributes = self._to_attributes()
         return fol.Polyline(
             label=label,
-            points=points,
+            points=[points],
             closed=True,
             filled=True,
             attributes=attributes,
@@ -1174,9 +1174,13 @@ class CVATImagePolygon(CVATImageAnno, HasCVATPoints):
             a :class:`CVATImagePolygon`
         """
         label = polyline.label
+
         frame_size = (metadata.width, metadata.height)
-        points = cls._to_abs_points(polyline.points, frame_size)
+        points = _get_single_polyline_points(polyline)
+        points = cls._to_abs_points(points, frame_size)
+
         occluded, attributes = cls._parse_attributes(polyline)
+
         return cls(label, points, occluded=occluded, attributes=attributes)
 
     @classmethod
@@ -1228,7 +1232,7 @@ class CVATImagePolyline(CVATImageAnno, HasCVATPoints):
         attributes = self._to_attributes()
         return fol.Polyline(
             label=label,
-            points=points,
+            points=[points],
             closed=False,
             filled=False,
             attributes=attributes,
@@ -1250,7 +1254,8 @@ class CVATImagePolyline(CVATImageAnno, HasCVATPoints):
         label = polyline.label
 
         frame_size = (metadata.width, metadata.height)
-        points = cls._to_abs_points(polyline.points, frame_size)
+        points = _get_single_polyline_points(polyline)
+        points = cls._to_abs_points(points, frame_size)
         if points and polyline.closed:
             points.append(copy(points[0]))
 
@@ -1321,9 +1326,12 @@ class CVATImagePoints(CVATImageAnno, HasCVATPoints):
             a :class:`CVATImagePoints`
         """
         label = keypoint.label
+
         frame_size = (metadata.width, metadata.height)
         points = cls._to_abs_points(keypoint.points, frame_size)
+
         occluded, attributes = cls._parse_attributes(keypoint)
+
         return cls(label, points, occluded=occluded, attributes=attributes)
 
     @classmethod
@@ -1815,7 +1823,7 @@ class CVATVideoPolygon(CVATVideoAnno, HasCVATPoints):
         attributes = self._to_attributes()
         return fol.Polyline(
             label=label,
-            points=points,
+            points=[points],
             closed=True,
             filled=True,
             attributes=attributes,
@@ -1835,10 +1843,14 @@ class CVATVideoPolygon(CVATVideoAnno, HasCVATPoints):
             a :class:`CVATVideoPolygon`
         """
         label = polyline.label
-        points = cls._to_abs_points(polyline.points, frame_size)
+
+        points = _get_single_polyline_points(polyline)
+        points = cls._to_abs_points(points, frame_size)
+
         outside, occluded, keyframe, attributes = cls._parse_attributes(
             polyline
         )
+
         return cls(
             frame_number,
             label,
@@ -1925,7 +1937,7 @@ class CVATVideoPolyline(CVATVideoAnno, HasCVATPoints):
         attributes = self._to_attributes()
         return fol.Polyline(
             label=label,
-            points=points,
+            points=[points],
             closed=False,
             filled=False,
             attributes=attributes,
@@ -1946,7 +1958,8 @@ class CVATVideoPolyline(CVATVideoAnno, HasCVATPoints):
         """
         label = polyline.label
 
-        points = cls._to_abs_points(polyline.points, frame_size)
+        points = _get_single_polyline_points(polyline)
+        points = cls._to_abs_points(points, frame_size)
         if points and polyline.closed:
             points.append(copy(points[0]))
 
@@ -2430,6 +2443,21 @@ def _frames_to_cvat_tracks(frames, frame_size):
             cvat_tracks.append(cvat_track)
 
     return cvat_tracks
+
+
+def _get_single_polyline_points(polyline):
+    num_polylines = len(polyline.points)
+    if num_polylines == 0:
+        return []
+
+    if num_polylines > 0:
+        msg = (
+            "Found polyline with more than one shape; only the first shape "
+            "will be kept"
+        )
+        warnings.warn(msg)
+
+    return polyline.points[0]
 
 
 def _ensure_list(value):

@@ -457,25 +457,26 @@ class Detections(ImageLabel):
 
 
 class Polyline(ImageLabel, _HasID, _HasAttributes):
-    """A polyline or polygon.
+    """A set of semantically related polylines or polygons.
 
     Args:
-        label (None): a label for the shape
-        points (None): a list of ``(x, y)`` points in ``[0, 1] x [0, 1]``
-            describing the vertexes of a polyline
+        label (None): a label for the polyline
+        points (None): a list of lists of ``(x, y)`` points in
+            ``[0, 1] x [0, 1]`` describing the vertices of each shape in the
+            polyline
         index (None): an index for the polyline
-        closed (False): whether the polyline is closed, i.e., and edge should
-            be drawn from the last vertex to the first vertex
-        filled (False): whether the polyline represents a shape that can be
-            filled when rendering it
+        closed (False): whether the shapes are closed, i.e., and edge should
+            be drawn from the last vertex to the first vertex of each shape
+        filled (False): whether the polyline represents polygons, i.e., shapes
+            that should be filled when rendering them
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
-            instances
+            instances for the polyline
     """
 
     meta = {"allow_inheritance": True}
 
     label = fof.StringField()
-    points = fof.ListField()
+    points = fof.ListField(fof.ListField())
     index = fof.IntField()
     closed = fof.BooleanField(default=False)
     filled = fof.BooleanField(default=False)
