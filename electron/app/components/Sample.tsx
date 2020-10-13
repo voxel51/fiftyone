@@ -41,32 +41,37 @@ const useHoverLoad = (socket, sample) => {
     return [[], null, null];
   }
   const [barItem, setBarItem] = useState([]);
-  const [loaded, setLoaded] = useState(false);
+  const [loaded, setLoaded] = useState(0);
+  const viewCounter = useRecoilValue(atoms.viewCounter);
 
   const [requested, requestLabels] = useFrameLabels(
     socket,
     sample._id,
-    ({ labels }, player) => {
-      setLoaded(true);
+    (data, player) => {
+      if (!data) return;
+      const { labels } = data;
+      setLoaded(viewCounter);
       setBarItem([]);
       player.updateOverlay(labels);
       if (player.isHovering()) player.play();
     }
   );
 
-  const onMouseEnter = !loaded
-    ? (event) => {
-        event.preventDefault();
-        const {
-          data: { player },
-        } = event;
-        if (requested) return;
-        setBarItem([0]);
-        requestLabels(player);
-      }
-    : () => {};
+  const onMouseEnter = (event) => {
+    event.preventDefault();
+    const {
+      data: { player },
+    } = event;
+    if (requested === viewCounter) {
+      barItem.length && setBarItem([]);
+      player.play();
+      return;
+    }
+    setBarItem([0]);
+    requestLabels(player);
+  };
 
-  const onMouseLeave = !loaded ? () => setBarItem([]) : () => {};
+  const onMouseLeave = () => setBarItem([]);
 
   const bar = useTransition(barItem, (item) => item, {
     from: { right: "100%" },
@@ -77,7 +82,7 @@ const useHoverLoad = (socket, sample) => {
       right: "-100%",
     },
     onRest: (item) => {
-      setBarItem(!loaded && barItem.length ? [item + 1] : []);
+      setBarItem(barItem.length ? [item + 1] : []);
     },
   });
 

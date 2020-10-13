@@ -109,9 +109,7 @@ export const labelNames = selector({
     if (!stateDescription.labels) {
       return [];
     }
-    return stateDescription.labels
-      .map((label) => label.field)
-      .filter((name) => stats.labels.hasOwnProperty(name));
+    return stateDescription.labels.map((label) => label.field);
   },
 });
 
@@ -356,17 +354,16 @@ export const sampleModalFilter = selector({
       return Object.entries(sample).reduce((acc, [key, value]) => {
         if (key === "tags") {
           acc[key] = value;
-        } else if (
-          filters[key] &&
-          value !== null &&
-          VALID_LIST_TYPES.includes(value._cls)
-        ) {
-          acc[key] = {
-            ...value,
-            [value._cls.toLowerCase()]: value[value._cls.toLowerCase()].filter(
-              filters[key]
-            ),
-          };
+        } else if (value && VALID_LIST_TYPES.includes(value._cls)) {
+          acc[key] =
+            filters[key] && value !== null
+              ? {
+                  ...value,
+                  [value._cls.toLowerCase()]: value[
+                    value._cls.toLowerCase()
+                  ].filter(filters[key]),
+                }
+              : value;
         } else if (value !== null && filters[key] && filters[key](value)) {
           acc[key] = value;
         } else if (RESERVED_FIELDS.includes(key)) {

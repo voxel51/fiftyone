@@ -364,8 +364,9 @@ const SampleModal = ({
 
     return labelNameGroups.labels.reduce((obj, { name, type }) => {
       let value = 0;
-      const resolver = (sOrF) =>
-        ["Detections", "Classifications", "Polylines"].includes(type)
+      const resolver = (sOrF) => {
+        if (!sOrF[name]) return 0;
+        return ["Detections", "Classifications", "Polylines"].includes(type)
           ? sOrF[name][type.toLowerCase()].length
           : type === "Keypoints"
           ? sOrF[name].keypoints.reduce(
@@ -375,21 +376,18 @@ const SampleModal = ({
           : type === "Keypoint"
           ? sOrF[name].points.length
           : 1;
+      };
+
       if (isVideo && frameData) {
         for (const frame of frameData) {
+          filterData && console.log(frame, filter(frame));
           if (frame[name])
             value += resolver(filterData ? filter(frame) : frame);
         }
       } else if (isVideo) {
         value = "-";
-      } else if (s[name]) {
-        value = ["Detections", "Classifications", "Polylines"].includes(type)
-          ? s[name][type.toLowerCase()].length
-          : type === "Keypoints"
-          ? s[name].keypoints.reduce((acc, cur) => acc + cur.points.length, 0)
-          : type === "Keypoint"
-          ? s[name].points.length
-          : 1;
+      } else {
+        value += resolver(s);
       }
       return {
         ...obj,

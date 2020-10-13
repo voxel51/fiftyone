@@ -104,15 +104,18 @@ export const useFrameLabels = (socket, sampleId, callback = null) => {
   const setFrameData = useSetRecoilState(atoms.sampleFrameData(sampleId));
   const viewCounter = useRecoilValue(atoms.viewCounter);
   return [
-    requested === viewCounter,
+    requested,
     (...args) => {
-      if (requested === viewCounter) return;
-      setRequested(viewCounter);
-      socket.emit("get_frame_labels", sampleId, ({ labels, frames }) => {
-        setVideoLabels(labels);
-        setFrameData(frames);
-        callback && callback({ labels, frames }, ...args);
-      });
+      if (requested !== viewCounter) {
+        setRequested(viewCounter);
+        socket.emit("get_frame_labels", sampleId, ({ labels, frames }) => {
+          setVideoLabels(labels);
+          setFrameData(frames);
+          callback && callback({ labels, frames }, ...args);
+        });
+      } else {
+        callback && callback(null, ...args);
+      }
     },
   ];
 };

@@ -1,5 +1,3 @@
-import { fieldSchema } from "../recoil/selectors";
-
 export const VALID_OBJECT_TYPES = [
   "Detection",
   "Detections",
@@ -48,6 +46,7 @@ export const RESERVED_FIELDS = [
   "tags",
   "filepath",
   "frames",
+  "frame_number",
 ];
 export const RESERVED_DETECTION_FIELDS = [
   "label",
@@ -129,7 +128,9 @@ export function makeLabelNameGroups(fieldSchema, labelNames, labelTypes) {
     unsupported: [],
   };
   for (const name of labelNames) {
-    if (VALID_LABEL_TYPES.includes(labelTypes[name])) {
+    if (RESERVED_FIELDS.includes(name)) {
+      continue;
+    } else if (VALID_LABEL_TYPES.includes(labelTypes[name])) {
       labelNameGroups.labels.push({ name, type: labelTypes[name] });
     } else if (VALID_SCALAR_TYPES.includes(fieldSchema[name])) {
       labelNameGroups.scalars.push({ name });
