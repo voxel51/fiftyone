@@ -468,7 +468,6 @@ def _get_field_count(view, field, prefix=""):
     if prefix != "":
         pipeline.append({"$project": {field.name: "$%s" % path}})
     pipeline.extend(fos.Exists(field.name).to_mongo())
-    print(next(view.aggregate(pipeline)))
     pipeline.append({"$count": "count"})
     try:
         return next(view.aggregate(pipeline))["count"]
