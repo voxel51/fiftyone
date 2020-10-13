@@ -341,9 +341,6 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
         boundary of the mask; otherwise, the polyline will trace the bounding
         box itself.
 
-        If the detection's mask contains multiple connected components, the
-        polyline will only describe the first component.
-
         Args:
             dobj: a DetectedObject
             tolerance (2): a tolerance, in pixels, when generating an
