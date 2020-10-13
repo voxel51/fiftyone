@@ -121,6 +121,7 @@ function Dataset(props) {
             metadata={modal.metadata}
             sampleUrl={src}
             onClose={handleHideModal}
+            port={port}
             {...modalProps}
           />
         </ModalWrapper>

@@ -4,15 +4,19 @@ import styled from "styled-components";
 import { Check, Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
 import { useRecoilState, useRecoilValue } from "recoil";
 
-import CheckboxGrid from "./CheckboxGrid";
 import DisplayOptionsSidebar from "./DisplayOptionsSidebar";
 import JSONView from "./JSONView";
 import Player51 from "./Player51";
 import { Button, ModalFooter } from "./utils";
 import * as selectors from "../recoil/selectors";
 import * as atoms from "../recoil/atoms";
+import { getSocket } from "../utils/socket";
 
-import { useKeydownHandler, useResizeHandler } from "../utils/hooks";
+import {
+  useKeydownHandler,
+  useResizeHandler,
+  useFrameLabels,
+} from "../utils/hooks";
 import {
   formatMetadata,
   makeLabelNameGroups,
@@ -207,6 +211,7 @@ const SampleModal = ({
   metadata,
   colorMap = {},
   onClose,
+  port,
   ...rest
 }: Props) => {
   const playerContainerRef = useRef();
@@ -220,7 +225,6 @@ const SampleModal = ({
   const [activeLabels, setActiveLabels] = useRecoilState(
     atoms.modalActiveLabels
   );
-  const mediaType = useRecoilValue(selectors.mediaType);
   const filter = useRecoilValue(selectors.sampleModalFilter);
   const activeTags = useRecoilValue(atoms.modalActiveTags);
   const tagNames = useRecoilValue(selectors.tagNames);
@@ -232,8 +236,14 @@ const SampleModal = ({
     labelNames,
     labelTypes
   );
-  const videoLabels = useRecoilValue(atoms.sampleVideoLabels(sample._id));
+  const socket = getSocket(port, "state");
+  const [requested, requestLabels] = useFrameLabels(socket, sample._id);
   const frameData = useRecoilValue(atoms.sampleFrameData(sample._id));
+  const videoLabels = useRecoilValue(atoms.sampleVideoLabels(sample._id));
+  useEffect(() => {
+    !requested && requestLabels();
+  }, [requested]);
+
   useEffect(() => {
     setActiveLabels(rest.activeLabels);
   }, [rest.activeLabels]);
@@ -354,16 +364,16 @@ const SampleModal = ({
 
     return labelNameGroups.labels.reduce((obj, { name, type }) => {
       let value = 0;
-      const resolver = (s_or_f) =>
+      const resolver = (sOrF) =>
         ["Detections", "Classifications", "Polylines"].includes(type)
-          ? s_or_f[name][type.toLowerCase()].length
+          ? sOrF[name][type.toLowerCase()].length
           : type === "Keypoints"
-          ? s_or_f[name].keypoints.reduce(
+          ? sOrF[name].keypoints.reduce(
               (acc, cur) => acc + cur.points.length,
               0
             )
           : type === "Keypoint"
-          ? s_or_f[name].points.length
+          ? sOrF[name].points.length
           : 1;
       if (isVideo && frameData) {
         for (const frame of frameData) {

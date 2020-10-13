@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { animated, useSpring, useTransition } from "react-spring";
 
@@ -11,7 +11,7 @@ import Tag from "./Tags/Tag";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { getLabelText, stringify } from "../utils/labels";
-import { useFastRerender } from "../utils/hooks";
+import { useFastRerender, useFrameLabels } from "../utils/hooks";
 
 const SampleDiv = animated(styled.div`
   position: relative;
@@ -36,13 +36,23 @@ const LoadingBar = animated(styled.div`
   height: 0.2em;
 `);
 
-const useHoverLoad = (socket, sample, setVideoLabels, setFrameData) => {
+const useHoverLoad = (socket, sample) => {
   if (sample.media_type !== "video") {
     return [[], null, null];
   }
   const [barItem, setBarItem] = useState([]);
-  const [requested, setRequested] = useState(false);
   const [loaded, setLoaded] = useState(false);
+
+  const [requested, requestLabels] = useFrameLabels(
+    socket,
+    sample._id,
+    ({ labels }, player) => {
+      setLoaded(true);
+      setBarItem([]);
+      player.updateOverlay(labels);
+      if (player.isHovering()) player.play();
+    }
+  );
 
   const onMouseEnter = !loaded
     ? (event) => {
@@ -51,16 +61,8 @@ const useHoverLoad = (socket, sample, setVideoLabels, setFrameData) => {
           data: { player },
         } = event;
         if (requested) return;
-        setRequested(true);
         setBarItem([0]);
-        socket.emit("get_frame_labels", sample._id, ({ labels, frames }) => {
-          setVideoLabels(labels);
-          setFrameData(frames);
-          setLoaded(true);
-          setBarItem([]);
-          player.updateOverlay(labels);
-          if (player.isHovering()) player.play();
-        });
+        requestLabels(player);
       }
     : () => {};
 
@@ -92,8 +94,7 @@ const Sample = ({ dispatch, sample, metadata, port, setView }) => {
   const activeLabels = useRecoilValue(atoms.activeLabels);
   const activeTags = useRecoilValue(atoms.activeTags);
   const activeOther = useRecoilValue(atoms.activeOther);
-  const setVideoLabels = useSetRecoilState(atoms.sampleVideoLabels(sample._id));
-  const setFrameData = useSetRecoilState(atoms.sampleFrameData(sample._id));
+
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     atoms.selectedSamples
   );
@@ -166,12 +167,7 @@ const Sample = ({ dispatch, sample, metadata, port, setView }) => {
     opacity: 1,
   });
 
-  const [bar, onMouseEnter, onMouseLeave] = useHoverLoad(
-    socket,
-    sample,
-    setVideoLabels,
-    setFrameData
-  );
+  const [bar, onMouseEnter, onMouseLeave] = useHoverLoad(socket, sample);
   return (
     <SampleDiv className="sample" style={showSamples} title={tooltip}>
       <Player51
