@@ -325,7 +325,7 @@ const CLS_TO_STAGE = {
 };
 
 const makeFilter = (fieldName, cls, labels, range, includeNone, hasBounds) => {
-  const fieldStr = VALID_LIST_TYPES.includes(cls) ? "$$this" : `$${fieldName}`;
+  let fieldStr = VALID_LIST_TYPES.includes(cls) ? "$$this" : `$${fieldName}`;
   const confidenceStr = `${fieldStr}.confidence`;
   const labelStr = `${fieldStr}.label`;
   let rangeExpr = null;
@@ -373,6 +373,7 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
   const bounds = useRecoilValue(rest.confidenceBounds(entry.name));
   const [labels, setLabels] = useRecoilState(rest.includeLabels(entry.name));
   const fieldIsFiltered = useRecoilValue(rest.fieldIsFiltered(entry.name));
+  const mediaType = useRecoilValue(selectors.mediaType);
 
   const [stateDescription, setStateDescription] = useRecoilState(
     atoms.stateDescription
@@ -413,8 +414,12 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
     useEffect(() => {
       const newState = JSON.parse(JSON.stringify(stateDescription));
       if (!fieldIsFiltered && !(entry.name in newState.filter_stages)) return;
+      let fieldName = entry.name;
+      if (mediaType === "video") {
+        fieldName = "frames." + entry.name;
+      }
       const filter = makeFilter(
-        entry.name,
+        fieldName,
         entry.type,
         labels,
         range,

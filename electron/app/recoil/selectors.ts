@@ -154,7 +154,11 @@ export const labelSampleCounts = selector({
 export const filteredLabelSampleCounts = selector({
   key: "filteredLabelSampleCounts",
   get: ({ get }) => {
-    return get(extendedDatasetStats).custom_fields || {};
+    const fields = get(extendedDatasetStats).custom_fields || {};
+    if (get(mediaType) === "video") {
+      return fields.frames || {};
+    }
+    return fields;
   },
 });
 

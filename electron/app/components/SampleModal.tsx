@@ -365,10 +365,12 @@ const SampleModal = ({
           : type === "Keypoint"
           ? s_or_f[name].points.length
           : 1;
-      if (isVideo) {
+      if (isVideo && frameData) {
         for (const frame of frameData) {
           if (frame[name]) value += resolver(frame);
         }
+      } else if (isVideo) {
+        value = "-";
       } else if (s[name]) {
         value = ["Detections", "Classifications", "Polylines"].includes(type)
           ? s[name][type.toLowerCase()].length
