@@ -26,6 +26,7 @@ const classFilterMachine = Machine({
     currentResult: null,
     errorId: null,
     results: [],
+    prevValue: "",
   },
   states: {
     init: {},
@@ -96,9 +97,9 @@ const classFilterMachine = Machine({
               if (currentResult === 0 || currentResult === null) return null;
               return currentResult - 1;
             },
-            inputValue: ({ currentResult, prevStage, results }) => {
+            inputValue: ({ currentResult, prevValue, results }) => {
               if (currentResult === 0 || currentResult === null)
-                return prevStage;
+                return prevValue;
               return results[currentResult - 1];
             },
           }),
@@ -139,6 +140,7 @@ const classFilterMachine = Machine({
                 classes.filter((c) =>
                   c.toLowerCase().includes(value.toLowerCase())
                 ),
+              prevValue: ({ inputValue }) => inputValue,
             }),
           ],
         },
