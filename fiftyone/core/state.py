@@ -404,6 +404,8 @@ def _get_label_confidence_bounds(view):
 
 
 def _get_field_count(view, field, prefix=""):
+    if prefix != "":
+        prefix += "."
     if view.media_type == fom.VIDEO and field.name == "frames":
         view = view._with_frames()
         custom_fields_schema = view.get_frame_field_schema().copy()
@@ -419,8 +421,6 @@ def _get_field_count(view, field, prefix=""):
         }
     elif isinstance(field, fof.EmbeddedDocumentField):
         extra_stage = []
-        if prefix != "":
-            prefix += "."
         array_field = "$%s" % prefix
         if issubclass(field.document_type, fol.Classifications):
             array_field += "%s.classifications" % field.name
@@ -463,4 +463,4 @@ def _get_field_count(view, field, prefix=""):
             except StopIteration:
                 return 0
 
-    return len(view.exists(field.name))
+    return len(view.exists(prefix + field.name))

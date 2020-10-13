@@ -120,7 +120,7 @@ export default ({
         filter,
         colorMap,
       });
-      player.updateOverlay(overlay);
+      !thumbnail && player.updateOverlay(overlay);
     }
   }, [player, filter, overlay, playerActiveLabels, colorMap]);
 

@@ -301,7 +301,9 @@ class SampleCollection(object):
         frames = self.media_type == fom.VIDEO and field_name.startswith(
             "frames."
         )
-        field_name = field_name[len("frames.") :]
+        if frames:
+            field_name = field_name[len("frames.") :]
+
         frame_schema = self.get_frame_field_schema()
         if not frames and field_name not in schema:
             raise ValueError("Field '%s' does not exist" % field_name)

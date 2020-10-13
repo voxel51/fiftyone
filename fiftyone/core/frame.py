@@ -135,8 +135,8 @@ class Frames(object):
             self._set_replacement(doc)
         else:
             doc = NoDatasetFrameSampleDocument(**default_d)
-            self._set_replacement(doc)
             self._sample._doc.frames["frame_count"] += 1
+            self._set_replacement(doc)
 
         if self._sample._in_db:
             dataset = self._sample._dataset
@@ -275,10 +275,12 @@ class Frames(object):
                     self._iter_doc = self._sample._dataset._frame_dict_to_doc(
                         d
                     )
+                self._set_replacement(self._iter_doc)
                 yield self._iter_doc
         else:
             for frame_number in sorted(self._replacements.keys()):
                 self._iter_doc = self._replacements[frame_number]
+                self._set_replacement(self._iter_doc)
                 yield self._iter_doc
 
     def _get_field_cls(self):
