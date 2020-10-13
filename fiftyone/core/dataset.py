@@ -1836,7 +1836,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self.media_type = samples[0].media_type
             if self.media_type == fom.VIDEO:
                 self._sample_doc_cls.add_field(
-                    "frames", fof.EmbeddedDocumentField, fol.Frames
+                    "frames", fof.EmbeddedDocumentField, fol._Frames
                 )
 
         fields = self.get_field_schema(include_private=True)

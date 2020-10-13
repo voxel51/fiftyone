@@ -40,14 +40,19 @@ class Label(DynamicEmbeddedDocument):
     meta = {"allow_inheritance": True}
 
 
-class FrameLabel(Label):
+class _FrameLabel(Label):
+    """Hidden label class strictly for storing the first frame in video samples"""
+
     pass
 
 
-class Frames(Label):
+class _Frames(Label):
+    """Hidden label class strictly for storing the first frame in and frame_count
+    video sample
+    s"""
 
     frame_count = fof.IntField(required=True, null=False, default=0)
-    first_frame = fof.EmbeddedDocumentField(FrameLabel, null=True)
+    first_frame = fof.EmbeddedDocumentField(_FrameLabel, null=True)
 
 
 class Attribute(DynamicEmbeddedDocument):
