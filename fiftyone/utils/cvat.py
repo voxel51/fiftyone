@@ -433,13 +433,16 @@ class CVATImageDatasetExporter(foud.LabeledImageDatasetExporter):
         )
 
         if labels is None:
-            return
+            return  # unlabeled
+
+        if not isinstance(labels, dict):
+            labels = {"labels": labels}
+
+        if all(v is None for v in labels.values()):
+            return  # unlabeled
 
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(out_image_path)
-
-        if isinstance(labels, fol.Label):
-            labels = {"labels": labels}
 
         cvat_image = CVATImage.from_labels(labels, metadata)
 
@@ -519,7 +522,7 @@ class CVATVideoDatasetExporter(foud.LabeledVideoDatasetExporter):
         out_video_path = self._export_video(video_path, self._filename_maker)
 
         if frames is None:
-            return
+            return  # unlabeled
 
         if metadata is None:
             metadata = fom.VideoMetadata.build_for(out_video_path)
@@ -531,6 +534,9 @@ class CVATVideoDatasetExporter(foud.LabeledVideoDatasetExporter):
         # Generate object tracks
         frame_size = (metadata.frame_width, metadata.frame_height)
         cvat_tracks = _frames_to_cvat_tracks(frames, frame_size)
+
+        if cvat_tracks is None:
+            return  # unlabeled
 
         # Get task labels
         if self._task_labels is None:
@@ -832,17 +838,26 @@ class CVATImage(object):
         _polylines = []
         _keypoints = []
         for _labels in labels.values():
-            if isinstance(_labels, fol.Detections):
+            if isinstance(_labels, fol.Detection):
+                _detections.extend(_labels)
+            elif isinstance(_labels, fol.Detections):
                 _detections.extend(_labels.detections)
+            elif isinstance(_labels, fol.Polyline):
+                if _labels.closed:
+                    _polygons.append(_labels)
+                else:
+                    _polylines.append(_labels)
             elif isinstance(_labels, fol.Polylines):
                 for poly in _labels.polylines:
                     if poly.closed:
                         _polygons.append(poly)
                     else:
                         _polylines.append(poly)
+            elif isinstance(_labels, fol.Keypoint):
+                _keypoints.extend(_labels)
             elif isinstance(_labels, fol.Keypoints):
                 _keypoints.extend(_labels.keypoints)
-            else:
+            elif _labels is not None:
                 msg = (
                     "Ignoring unsupported label type '%s'" % _labels.__class__
                 )
@@ -1470,7 +1485,7 @@ class CVATTrack(object):
                 points[frame_number] = CVATVideoPoints.from_keypoint(
                     frame_number, _label, frame_size
                 )
-            else:
+            elif _label is not None:
                 msg = "Ignoring unsupported label type '%s'" % _label.__class__
                 warnings.warn(msg)
 
@@ -2387,6 +2402,7 @@ def _cvat_tracks_to_frames_dict(cvat_tracks):
 def _frames_to_cvat_tracks(frames, frame_size):
     labels_map = defaultdict(dict)
     no_index_map = defaultdict(list)
+    found_label = False
 
     def process_label(label, frame_number):
         if label.index is not None:
@@ -2398,16 +2414,26 @@ def _frames_to_cvat_tracks(frames, frame_size):
     for frame_number, frame_dict in frames.items():
         for _, value in frame_dict.items():
             if isinstance(value, (fol.Detection, fol.Polyline, fol.Keypoint)):
+                found_label = True
                 process_label(value, frame_number)
             elif isinstance(value, fol.Detections):
+                found_label = True
                 for detection in value.detections:
                     process_label(detection, frame_number)
             elif isinstance(value, fol.Polylines):
+                found_label = True
                 for polyline in value.polylines:
                     process_label(polyline, frame_number)
             elif isinstance(value, fol.Keypoints):
+                found_label = True
                 for keypoint in value.keypoints:
                     process_label(keypoint, frame_number)
+            elif value is not None:
+                msg = "Ignoring unsupported label type '%s'" % value.__class__
+                warnings.warn(msg)
+
+    if not found_label:
+        return None  # unlabeled
 
     cvat_tracks = []
 

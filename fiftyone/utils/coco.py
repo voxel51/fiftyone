@@ -982,6 +982,9 @@ def _pairwise(x):
 
 
 def _coco_segmentation_to_mask(segmentation, bbox, frame_size):
+    if segmentation is None:
+        return None
+
     x, y, w, h = bbox
     width, height = frame_size
 
