@@ -1439,7 +1439,7 @@ def _get_image_label_fields(sample_collection):
 
 
 def _get_frame_label_fields(sample_collection):
-    label_fields = sample_collection.get_frames_field_schema(
+    label_fields = sample_collection.get_frame_field_schema(
         ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.ImageLabel
     )
     return list(label_fields.keys())
