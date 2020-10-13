@@ -963,7 +963,7 @@ def _get_polygons_for_segmentation(segmentation, frame_size):
             rle = segmentation
 
         mask = mask_utils.decode(rle)
-        abs_points = _mask_to_polygon(mask)
+        abs_points = _mask_to_polygons(mask)
 
     # Convert to [[(x1, y1), (x2, y2), ...]] in relative coordinates
 
@@ -1013,11 +1013,9 @@ def _make_coco_segmentation(detection, frame_size, iscrowd):
     mask = etai.render_instance_image(dobj.mask, dobj.bounding_box, frame_size)
 
     if iscrowd:
-        segmentation = _mask_to_rle(mask)
-    else:
-        segmentation = _mask_to_polygon(mask)
+        return _mask_to_rle(mask)
 
-    return segmentation
+    return _mask_to_polygons(mask)
 
 
 def _mask_to_rle(mask):
@@ -1031,7 +1029,7 @@ def _mask_to_rle(mask):
     return {"counts": counts, "size": list(mask.shape)}
 
 
-def _mask_to_polygon(mask, tolerance=2):
+def _mask_to_polygons(mask, tolerance=2):
     # Pad mask to close contours of shapes which start and end at an edge
     padded_binary_mask = np.pad(
         mask, pad_width=1, mode="constant", constant_values=0

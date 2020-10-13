@@ -1874,6 +1874,7 @@ where `labels.json` is a JSON file in the following format:
 
     [
         {
+            "name": "<filename0>.<ext>",
             "attributes": {
                 "scene": "city street",
                 "timeofday": "daytime",
@@ -1881,6 +1882,10 @@ where `labels.json` is a JSON file in the following format:
             },
             "labels": [
                 {
+                    "id": 0,
+                    "category": "traffic sign",
+                    "manualAttributes": true,
+                    "manualShape": true,
                     "attributes": {
                         "occluded": false,
                         "trafficLightColor": "none",
@@ -1891,15 +1896,55 @@ where `labels.json` is a JSON file in the following format:
                         "x2": 1040.626872,
                         "y1": 281.992415,
                         "y2": 326.91156
-                    },
-                    "category": "traffic sign",
-                    "id": 0,
-                    "manualAttributes": true,
-                    "manualShape": true
+                    }
                 },
-            ],
-            "name": "<filename0>.<ext>",
-        },
+                ...
+                {
+                    "id": 34,
+                    "category": "drivable area",
+                    "manualAttributes": true,
+                    "manualShape": true,
+                    "attributes": {
+                        "areaType": "direct"
+                    },
+                    "poly2d": [
+                        {
+                            "types": "LLLLCCC",
+                            "closed": true,
+                            "vertices": [
+                                [241.143645, 697.923453],
+                                [541.525255, 380.564983],
+                                ...
+                            ]
+                        }
+                    ]
+                },
+                ...
+                {
+                    "id": 109356,
+                    "category": "lane",
+                    "attributes": {
+                        "laneDirection": "parallel",
+                        "laneStyle": "dashed",
+                        "laneType": "single white"
+                    },
+                    "manualShape": true,
+                    "manualAttributes": true,
+                    "poly2d": [
+                        {
+                            "types": "LL",
+                            "closed": false,
+                            "vertices": [
+                                [492.879546, 331.939543],
+                                [0, 471.076658],
+                                ...
+                            ]
+                        }
+                    ],
+                },
+                ...
+            }
+        }
         ...
     ]
 
