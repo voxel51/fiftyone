@@ -489,6 +489,43 @@ class VideoSampleTests(unittest.TestCase):
         for f in s:
             self.assertEqual(s[f]["label"], label)
 
+    def test_frame_number_in_frames(self):
+        d = fo.Dataset()
+        s = fo.Sample(filepath="video.mp4")
+        s[1]["label"] = 1
+        self.assertTrue(1 in s.frames)
+        self.assertFalse(2 in s.frames)
+        d.add_sample(s)
+        self.assertTrue(1 in s.frames)
+        self.assertFalse(2 in s.frames)
+
+    def test_merge(self):
+        d = fo.Dataset()
+        s1 = fo.Sample(filepath="video.mp4")
+        s1[1]["one"] = "one"
+        s2 = fo.Sample(filepath="video.mp4")
+        s2[1]["two"] = "two"
+        other = fo.Sample(filepath="video_other.mp4")
+        d.add_sample(s1)
+        d.merge_samples([s2, other])
+        self.assertEqual(len(d), 2)
+        for s in d:
+            if s.filepath.endswith("video.mp4"):
+                self.assertEqual(s[1]["one"], "one")
+                self.assertEqual(s[1]["two"], "two")
+            else:
+                self.assertFalse(1 in s.frames)
+
+    def test_copy(self):
+        s = fo.Sample("video.mp4")
+        s[1]["label"] = "label"
+        s_copy = s.copy()
+        self.assertEqual(s_copy[1]["label"], "label")
+        d = fo.Dataset()
+        d.add_sample(s)
+        s_copy = s.copy()
+        self.assertEqual(s_copy[1]["label"], "label")
+
 
 class SampleFieldTests(unittest.TestCase):
     @drop_datasets
