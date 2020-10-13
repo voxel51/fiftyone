@@ -41,6 +41,7 @@ const classFilterMachine = Machine({
         assign({
           currentResult: null,
           errorId: null,
+          currentResult: null,
         }),
       ],
       type: "parallel",
@@ -77,6 +78,31 @@ const classFilterMachine = Machine({
         },
       },
       on: {
+        NEXT_RESULT: {
+          actions: assign({
+            currentResult: ({ currentResult, results }) => {
+              if (currentResult === null) return 0;
+              return Math.min(currentResult + 1, results.length - 1);
+            },
+            inputValue: ({ currentResult, results }) => {
+              if (currentResult === null) return results[0];
+              return results[Math.min(currentResult + 1, results.length - 1)];
+            },
+          }),
+        },
+        PREVIOUS_RESULT: {
+          actions: assign({
+            currentResult: ({ currentResult }) => {
+              if (currentResult === 0 || currentResult === null) return null;
+              return currentResult - 1;
+            },
+            inputValue: ({ currentResult, prevStage, results }) => {
+              if (currentResult === 0 || currentResult === null)
+                return prevStage;
+              return results[currentResult - 1];
+            },
+          }),
+        },
         BLUR: {
           target: "reading",
         },
