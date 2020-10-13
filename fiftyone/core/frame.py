@@ -78,7 +78,7 @@ class Frames(object):
     def _make_filter(self, frame_number, doc):
         doc._sample_id = self._sample._id
         return {
-            "frame_number": doc.get_field("frame_number"),
+            "frame_number": frame_number,
             "_sample_id": self._sample._id,
         }
 
@@ -101,7 +101,13 @@ class Frames(object):
             raise
 
     def __contains__(self, frame_number):
-        return str(frame_number) in self._sample._doc.frames
+        if frame_number in self._replacements:
+            return True
+        elif self._sample._in_db:
+            find_d = self._make_filter(frame_number, self._sample._doc)
+            return self._frame_collection.find_one(find_d) is not None
+
+        return False
 
     def __getitem__(self, frame_number):
         fofu.validate_frame_number(frame_number)
