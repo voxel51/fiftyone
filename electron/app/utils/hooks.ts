@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRecoilState, useSetRecoilState } from "recoil";
+import { useRecoilState, useSetRecoilState, useRecoilValue } from "recoil";
 import ResizeObserver from "resize-observer-polyfill";
 
 import * as atoms from "../recoil/atoms";
@@ -102,11 +102,12 @@ export const useFrameLabels = (socket, sampleId, callback = null) => {
   );
   const setVideoLabels = useSetRecoilState(atoms.sampleVideoLabels(sampleId));
   const setFrameData = useSetRecoilState(atoms.sampleFrameData(sampleId));
+  const viewCounter = useRecoilValue(atoms.viewCounter);
   return [
-    requested,
+    requested === viewCounter,
     (...args) => {
-      if (requested) return;
-      setRequested(true);
+      if (requested === viewCounter) return;
+      setRequested(viewCounter);
       socket.emit("get_frame_labels", sampleId, ({ labels, frames }) => {
         setVideoLabels(labels);
         setFrameData(frames);

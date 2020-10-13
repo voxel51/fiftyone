@@ -127,5 +127,10 @@ export const sampleFrameData = atomFamily({
 
 export const sampleVideoDataRequested = atomFamily({
   key: "sampleVideoDataRequested",
-  default: false,
+  default: null,
+});
+
+export const viewCounter = atom({
+  key: "viewCounter",
+  default: 0,
 });
