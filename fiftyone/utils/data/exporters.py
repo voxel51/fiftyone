@@ -1202,7 +1202,7 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
 
     @property
     def label_cls(self):
-        return None
+        return fol.ImageLabel
 
     def setup(self):
         self._labeled_dataset = etad.LabeledImageDataset.create_empty_dataset(
