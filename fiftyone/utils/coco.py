@@ -1034,12 +1034,10 @@ def _mask_to_rle(mask):
 
 def _mask_to_polygons(mask, tolerance=2):
     # Pad mask to close contours of shapes which start and end at an edge
-    padded_binary_mask = np.pad(
-        mask, pad_width=1, mode="constant", constant_values=0
-    )
+    padded_mask = np.pad(mask, pad_width=1, mode="constant", constant_values=0)
 
-    contours = measure.find_contours(padded_binary_mask, 0.5)
-    contours = np.subtract(contours, 1)
+    contours = measure.find_contours(padded_mask, 0.5)
+    contours = np.subtract(contours, 1)  # undo padding
 
     polygons = []
     for contour in contours:
