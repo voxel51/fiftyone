@@ -233,17 +233,9 @@ const SampleModal = ({
     labelTypes
   );
   const videoLabels = useRecoilValue(atoms.sampleVideoLabels(sample._id));
-  const [frameLabelsActive, setFrameLabelsActive] = useRecoilState(
-    atoms.modalFrameLabelsActive
-  );
-  const globalFrameLabelsActive = useRecoilValue(atoms.frameLabelsActive);
   useEffect(() => {
     setActiveLabels(rest.activeLabels);
   }, [rest.activeLabels]);
-
-  useEffect(() => {
-    setFrameLabelsActive(globalFrameLabelsActive);
-  }, [globalFrameLabelsActive]);
 
   // save overlay options when navigating - these are restored by passing them
   // in defaultOverlayOptions when the new player is created
@@ -357,9 +349,31 @@ const SampleModal = ({
   );
 
   const labelSampleValuesReducer = (s) => {
+    const isVideo = s.media_type === "video";
+    const counts = {};
+    if (isVideo) {
+      const frames = (videoLabels || {}).frames || {};
+      console.log("FRAMES", frames);
+      for (const frame_number in frames) {
+        const frame = frames[frame_number];
+        console.log(frame_number, "ah", frames);
+        for (const kind in frame) {
+          console.log(kind, frame);
+          for (const obj of frame[kind][kind]) {
+            if (!(obj.name in counts)) {
+              counts[obj.name] = 0;
+            }
+            counts[obj.name] += 1;
+          }
+        }
+      }
+    }
+
     return labelNameGroups.labels.reduce((obj, { name, type }) => {
       let value;
-      if (!s[name]) {
+      if (isVideo) {
+        return counts[name];
+      } else if (!s[name]) {
         value = 0;
       } else {
         value = ["Detections", "Classifications", "Polylines"].includes(type)
@@ -398,8 +412,6 @@ const SampleModal = ({
     };
   }, {});
 
-  const frameCount = sample.frames ? Object.keys(sample.frames).length : 0;
-
   return (
     <Container className={fullscreen ? "fullscreen" : ""}>
       <div className="player" ref={playerContainerRef}>
@@ -423,7 +435,6 @@ const SampleModal = ({
             metadata={metadata}
             colorMap={colorMap}
             activeLabels={activeLabels}
-            frameLabelsActive={frameLabelsActive}
             fieldSchema={fieldSchema}
             filterSelector={selectors.modalLabelFilters}
             playerRef={playerRef}
@@ -488,20 +499,6 @@ const SampleModal = ({
               filteredLabelSampleValues
             )}
             onSelectLabel={handleSetDisplayOption(setActiveLabels)}
-            frameLabels={
-              mediaType === "video"
-                ? [
-                    {
-                      name: "frames",
-                      totalCount: frameCount,
-                      filteredCount: frameCount,
-                      type: "frames",
-                      selected: frameLabelsActive,
-                    },
-                  ]
-                : []
-            }
-            onSelectFrameLabels={() => setFrameLabelsActive(!frameLabelsActive)}
             scalars={getDisplayOptions(
               labelNameGroups.scalars,
               scalarSampleValues,

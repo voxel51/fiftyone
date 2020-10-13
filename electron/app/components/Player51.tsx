@@ -42,6 +42,7 @@ export default ({
   overlay = null,
   onLoad = () => {},
   onMouseEnter = null,
+  onMouseLeave = null,
   activeLabels,
   frameLabelsActive,
   fieldSchema = {},
@@ -129,7 +130,8 @@ export default ({
       `This video failed to load. Its type (${mimetype}) may be unsupported.`
     )
   );
-  useEventHandler(player, "mouseenter", onMouseEnter);
+  onMouseEnter && useEventHandler(player, "mouseenter", onMouseEnter);
+  onMouseLeave && useEventHandler(player, "mouseleave", onMouseLeave);
 
   return (
     <div id={id} style={style} {...props}>

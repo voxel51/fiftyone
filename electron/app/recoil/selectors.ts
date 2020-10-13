@@ -13,6 +13,7 @@ export const datasetName = selector({
   key: "datasetName",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
+    console.log(stateDescription);
     return stateDescription.dataset ? stateDescription.dataset.name : null;
   },
 });
@@ -109,7 +110,6 @@ export const labelNames = selector({
     if (!stateDescription.labels) {
       return [];
     }
-    console.log(stateDescription);
     return stateDescription.labels
       .map((label) => label.field)
       .filter((name) => stats.labels.hasOwnProperty(name));
@@ -145,7 +145,6 @@ export const labelSampleCounts = selector({
   key: "labelSampleCounts",
   get: ({ get }) => {
     const fields = get(datasetStats).custom_fields || {};
-    console.log(fields);
     if (get(mediaType) === "video") {
       return fields.frames || {};
     }

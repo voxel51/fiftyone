@@ -119,3 +119,8 @@ export const sampleVideoLabels = atomFamily({
   key: "sampleVideoLabels",
   default: null,
 });
+
+export const sampleFrameData = atomFamily({
+  key: "sampleFrameData",
+  default: null,
+});

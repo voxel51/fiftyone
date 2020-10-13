@@ -36,39 +36,35 @@ const LoadingBar = animated(styled.div`
   height: 0.2em;
 `);
 
-const useMouseEnterLoad = (socket, sample, setVideoLabels) => {
+const useHoverLoad = (socket, sample, setVideoLabels, setFrameData) => {
+  if (sample.media_type !== "video") {
+    return [[], null, null];
+  }
   const [barItem, setBarItem] = useState([]);
   const [requested, setRequested] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  const onMouseEnter =
-    !loaded && sample.media_type === "video"
-      ? (event) => {
-          event.preventDefault();
-          if (!loaded && requested) return;
-          const {
-            data: { renderer },
-          } = event;
-          setRequested(true);
-          setBarItem([0]);
-          socket.emit("get_frame_labels", sample._id, (labels) => {
-            setVideoLabels(labels);
-            setLoaded(true);
-            setBarItem([]);
-            renderer._overlayData = labels;
-            renderer._isOverlayPrepared = false;
-            renderer.prepareOverlay(renderer._overlayData);
-            if (renderer.player._boolHovering) {
-              renderer._boolPlaying = true;
-              if (renderer._boolSingleFrame) {
-                renderer.processFrame();
-              }
-              renderer.updateFromDynamicState();
-            }
-          });
-          return;
-        }
-      : () => {};
+  const onMouseEnter = !loaded
+    ? (event) => {
+        event.preventDefault();
+        const {
+          data: { player },
+        } = event;
+        if (requested) return;
+        setRequested(true);
+        setBarItem([0]);
+        socket.emit("get_frame_labels", sample._id, ({ labels, frames }) => {
+          setVideoLabels(labels);
+          setFrameData(frames);
+          setLoaded(true);
+          setBarItem([]);
+          player.updateOverlay(labels);
+          if (player.isHovering()) player.play();
+        });
+      }
+    : () => {};
+
+  const onMouseLeave = !loaded ? () => setBarItem([]) : () => {};
 
   const bar = useTransition(barItem, (item) => item, {
     from: { right: "100%" },
@@ -79,11 +75,11 @@ const useMouseEnterLoad = (socket, sample, setVideoLabels) => {
       right: "-100%",
     },
     onRest: (item) => {
-      setBarItem(requested && !loaded ? [item + 1] : []);
+      setBarItem(!loaded ? [item + 1] : []);
     },
   });
 
-  return [bar, onMouseEnter];
+  return [bar, onMouseEnter, onMouseLeave];
 };
 
 const Sample = ({ dispatch, sample, metadata, port, setView }) => {
@@ -97,6 +93,7 @@ const Sample = ({ dispatch, sample, metadata, port, setView }) => {
   const activeTags = useRecoilValue(atoms.activeTags);
   const activeOther = useRecoilValue(atoms.activeOther);
   const setVideoLabels = useSetRecoilState(atoms.sampleVideoLabels(sample._id));
+  const setFrameData = useSetRecoilState(atoms.sampleFrameData(sample._id));
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     atoms.selectedSamples
   );
@@ -169,7 +166,12 @@ const Sample = ({ dispatch, sample, metadata, port, setView }) => {
     opacity: 1,
   });
 
-  const [bar, onMouseEnter] = useMouseEnterLoad(socket, sample, setVideoLabels);
+  const [bar, onMouseEnter, onMouseLeave] = useHoverLoad(
+    socket,
+    sample,
+    setVideoLabels,
+    setFrameData
+  );
   return (
     <SampleDiv className="sample" style={showSamples} title={tooltip}>
       <Player51
@@ -186,6 +188,7 @@ const Sample = ({ dispatch, sample, metadata, port, setView }) => {
         {...eventHandlers}
         filterSelector={selectors.labelFilters}
         onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
       />
       <div className="sample-info" {...eventHandlers}>
         {Object.keys(sample)
