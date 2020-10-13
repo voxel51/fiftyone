@@ -996,7 +996,7 @@ def _coco_segmentation_to_mask(segmentation, bbox, frame_size):
         # RLE
         rle = segmentation
 
-    mask = mask_utils.decode(rle)
+    mask = mask_utils.decode(rle).astype(bool)
 
     return mask[
         int(round(y)) : int(round(y + h)), int(round(x)) : int(round(x + w)),
