@@ -639,13 +639,16 @@ where `labels.json` is a JSON file in the following format:
                 "image_id": 0,
                 "category_id": 2,
                 "bbox": [260, 177, 231, 199],
+                "segmentation": [...],
                 "area": 45969,
-                "segmentation": [],
                 "iscrowd": 0
             },
             ...
         ]
     }
+
+See `this page <https://cocodataset.org/#format-data>`_ for a full
+specification of the `segmentation` field.
 
 For unlabeled datasets, `labels.json` does not contain an `annotations` field.
 

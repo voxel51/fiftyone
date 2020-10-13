@@ -53,7 +53,7 @@ class COCODetectionSampleParser(foud.LabeledImageTupleSampleParser):
                     "image_id": 183709,
                     "category_id": 3,
                     "bbox": [45.03, 236.82, 54.79, 30.91],
-                    "segmentation": [[...]],
+                    "segmentation": [...],
                     "area": 1193.6559000000002,
                     "iscrowd": 0,
                 },
