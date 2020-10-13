@@ -74,7 +74,7 @@ class COCODetectionSampleParser(foud.LabeledImageTupleSampleParser):
         supercategory_map (None): a dict mapping class labels to
             supercategories. If provided, ``supercategory`` attributes will be
             added to all parsed detections
-        load_segmentations (False): whether to load segmentation masks, if
+        load_segmentations (True): whether to load segmentation masks, if
             available
         return_polylines (False): whether to return
             :class:`fiftyone.core.labels.Polylines` instances rather than
@@ -85,7 +85,7 @@ class COCODetectionSampleParser(foud.LabeledImageTupleSampleParser):
         self,
         classes=None,
         supercategory_map=None,
-        load_segmentations=False,
+        load_segmentations=True,
         return_polylines=False,
     ):
         super().__init__()
@@ -139,7 +139,7 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
 
     Args:
         dataset_dir: the dataset directory
-        load_segmentations (False): whether to load segmentation masks, if
+        load_segmentations (True): whether to load segmentation masks, if
             available
         return_polylines (False): whether to return
             :class:`fiftyone.core.labels.Polylines` instances rather than
@@ -155,7 +155,7 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
     def __init__(
         self,
         dataset_dir,
-        load_segmentations=False,
+        load_segmentations=True,
         return_polylines=False,
         skip_unlabeled=False,
         shuffle=False,
