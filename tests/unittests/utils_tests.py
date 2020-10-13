@@ -1,3 +1,6 @@
+"""
+FiftyOne utilities unit tests.
+"""
 import unittest
 
 from mongoengine.errors import ValidationError

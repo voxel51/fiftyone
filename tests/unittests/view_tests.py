@@ -1,3 +1,6 @@
+"""
+FiftyOne view related unit tests.
+"""
 import math
 import unittest
 

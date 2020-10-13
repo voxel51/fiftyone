@@ -1,3 +1,6 @@
+"""
+FiftyOne synchronization related unit tests.
+"""
 import os
 import unittest
 
