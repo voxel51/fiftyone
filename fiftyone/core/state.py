@@ -195,7 +195,7 @@ class StateDescriptionWithDerivables(StateDescription):
         if view.media_type == fom.VIDEO:
             schema = view.get_frame_field_schema()
         else:
-            schema = view.get_label_field_schema()
+            schema = view.get_field_schema()
 
         for k, v in schema.items():
             d = {"field": k}
@@ -255,7 +255,8 @@ def get_view_stats(dataset_or_view):
 
 def _get_label_field_derivables(view):
     label_fields = _get_label_fields(view)
-    view = view._with_frames()
+    if view.media_type == fom.VIDEO:
+        view = view._with_frames()
     confidence_bounds = _get_label_confidence_bounds(view)
     classes = {
         field.name: _get_label_classes(view, field) for field in label_fields
@@ -312,7 +313,7 @@ def _get_label_fields(view):
     if view.media_type == fom.VIDEO:
         schema = view.get_frame_field_schema()
     else:
-        schema = view.get_label_field_schema()
+        schema = view.get_field_schema()
 
     return list(filter(_filter, schema.values()))
 
@@ -418,7 +419,9 @@ def _get_field_count(view, field, prefix=""):
         }
     elif isinstance(field, fof.EmbeddedDocumentField):
         extra_stage = []
-        array_field = "$%s." % prefix
+        if prefix != "":
+            prefix += "."
+        array_field = "$%s" % prefix
         if issubclass(field.document_type, fol.Classifications):
             array_field += "%s.classifications" % field.name
         elif issubclass(field.document_type, fol.Detections):
@@ -460,4 +463,4 @@ def _get_field_count(view, field, prefix=""):
             except StopIteration:
                 return 0
 
-    return len(view.exists(prefix + field.name))
+    return len(view.exists(field.name))
