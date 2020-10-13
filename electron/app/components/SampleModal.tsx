@@ -359,7 +359,7 @@ const SampleModal = ({
     {}
   );
 
-  const labelSampleValuesReducer = (s) => {
+  const labelSampleValuesReducer = (s, filterData = false) => {
     const isVideo = s.media_type === "video";
 
     return labelNameGroups.labels.reduce((obj, { name, type }) => {
@@ -377,7 +377,8 @@ const SampleModal = ({
           : 1;
       if (isVideo && frameData) {
         for (const frame of frameData) {
-          if (frame[name]) value += resolver(frame);
+          if (frame[name])
+            value += resolver(filterData ? filter(frame) : frame);
         }
       } else if (isVideo) {
         value = "-";
@@ -398,7 +399,10 @@ const SampleModal = ({
   };
 
   const labelSampleValues = labelSampleValuesReducer(sample);
-  const filteredLabelSampleValues = labelSampleValuesReducer(filter(sample));
+  const filteredLabelSampleValues = labelSampleValuesReducer(
+    filter(sample),
+    true
+  );
 
   const scalarSampleValues = labelNameGroups.scalars.reduce(
     (obj, { name }) => ({
