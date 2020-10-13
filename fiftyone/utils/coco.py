@@ -41,11 +41,11 @@ class COCODetectionSampleParser(foud.LabeledImageTupleSampleParser):
     This implementation supports samples that are
     ``(image_or_path, anno_dict_or_path)`` tuples, where:
 
-        -   ``image_or_path`` is either an image that can be converted to numpy
-            format via ``np.asarray()`` or the path to an image on disk
+        - ``image_or_path`` is either an image that can be converted to numpy
+          format via ``np.asarray()`` or the path to an image on disk
 
-        -   ``anno_dict_or_path`` is a list of detections in the following
-            format::
+        - ``anno_dict_or_path`` is a list of detections in the following
+          format::
 
             [
                 {
@@ -60,10 +60,9 @@ class COCODetectionSampleParser(foud.LabeledImageTupleSampleParser):
                 ...
             ]
 
-
-            or the path to such a JSON file on disk. It is assumed that all
-            detections correspond to the image in the sample. For unlabeled
-            images, ``anno_dict_or_path`` can be ``None``.
+          or the path to such a JSON file on disk. It is assumed that all
+          detections correspond to the image in the sample. For unlabeled
+          images, ``anno_dict_or_path`` can be ``None``.
 
     See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
     details.
