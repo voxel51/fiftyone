@@ -480,6 +480,32 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
     closed = fof.BooleanField(default=False)
     filled = fof.BooleanField(default=False)
 
+    def to_detection(self, mask_size):
+        """Returns a :class:`Detection` representation of this instance whose
+        bounding box tightly encloses the polyline and whose mask encodes the
+        polyline's shape.
+
+        Args:
+            mask_size: the ``(width, height)`` at which to render the instance
+                mask
+
+        Returns:
+            a :class:`Detection`
+        """
+        # Render bounding box and mask
+        polyline = self.to_eta_polyline()
+        bbox, mask = etai.render_bounding_box_and_mask(polyline, mask_size)
+        xtl, ytl, xbr, ybr = bbox.to_coords()
+        bounding_box = [xtl, ytl, (xbr - xtl), (ybr - ytl)]
+
+        return Detection(
+            label=self.label,
+            bounding_box=bounding_box,
+            mask=mask,
+            index=self.index,
+            attributes=self.attributes,
+        )
+
     def to_eta_polyline(self, name=None):
         """Returns an ``eta.core.polylines.Polyline`` representation of this
         instance.
