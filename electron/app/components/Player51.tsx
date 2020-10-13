@@ -59,7 +59,7 @@ export default ({
   const [mediaLoading, setMediaLoading] = useState(true);
   const [initLoad, setInitLoad] = useState(false);
   const [error, setError] = useState(null);
-  const id = uuid();
+  const [id] = useState(() => uuid());
   const mimetype =
     (sample.metadata && sample.metadata.mime_type) ||
     mime.lookup(sample.filepath) ||

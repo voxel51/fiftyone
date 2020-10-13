@@ -364,16 +364,16 @@ const SampleModal = ({
 
     return labelNameGroups.labels.reduce((obj, { name, type }) => {
       let value = 0;
-      const resolver = (sOrF) =>
+      const resolver = (frame) =>
         ["Detections", "Classifications", "Polylines"].includes(type)
-          ? sOrF[name][type.toLowerCase()].length
+          ? frame[name][type.toLowerCase()].length
           : type === "Keypoints"
-          ? sOrF[name].keypoints.reduce(
+          ? frame[name].keypoints.reduce(
               (acc, cur) => acc + cur.points.length,
               0
             )
           : type === "Keypoint"
-          ? sOrF[name].points.length
+          ? frame[name].points.length
           : 1;
       if (isVideo && frameData) {
         for (const frame of frameData) {
