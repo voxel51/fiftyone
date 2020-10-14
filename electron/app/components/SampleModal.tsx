@@ -225,6 +225,7 @@ const SampleModal = ({
   const [activeLabels, setActiveLabels] = useRecoilState(
     atoms.modalActiveLabels
   );
+  const mediaType = useRecoilValue(selectors.mediaType);
   const filter = useRecoilValue(selectors.sampleModalFilter);
   const activeTags = useRecoilValue(atoms.modalActiveTags);
   const tagNames = useRecoilValue(selectors.tagNames);
@@ -241,7 +242,7 @@ const SampleModal = ({
   const frameData = useRecoilValue(atoms.sampleFrameData(sample._id));
   const videoLabels = useRecoilValue(atoms.sampleVideoLabels(sample._id));
   useEffect(() => {
-    !requested && requestLabels();
+    mediaType === "video" && !requested && requestLabels();
   }, [requested]);
 
   useEffect(() => {
