@@ -198,7 +198,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement get_field_schema()")
 
-    def get_frames_field_schema(
+    def get_frame_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
     ):
         """Returns a schema dictionary describing the fields of the frames of
@@ -221,7 +221,7 @@ class SampleCollection(object):
             the collection is not a video collection
         """
         raise NotImplementedError(
-            "Subclass must implement get_frames_field_schema()"
+            "Subclass must implement get_frame_field_schema()"
         )
 
     def make_unique_field_name(self, root=""):
@@ -298,11 +298,20 @@ class SampleCollection(object):
                 expected type
         """
         schema = self.get_field_schema()
+        frames = self.media_type == fom.VIDEO and field_name.startswith(
+            "frames."
+        )
+        if frames:
+            field_name = field_name[len("frames.") :]
 
-        if field_name not in schema:
+        frame_schema = self.get_frame_field_schema()
+        if not frames and field_name not in schema:
             raise ValueError("Field '%s' does not exist" % field_name)
 
-        field = schema[field_name]
+        if frames and field_name not in frame_schema:
+            raise ValueError("Field '%s' does not exist" % field_name)
+
+        field = frame_schema[field_name] if frames else schema[field_name]
 
         if embedded_doc_type is not None:
             if not isinstance(field, fof.EmbeddedDocumentField) or (
@@ -1407,8 +1416,8 @@ class SampleCollection(object):
     def _serialize_field_schema(self):
         return self._serialize_schema(self.get_field_schema())
 
-    def _serialize_frames_field_schema(self):
-        return self._serialize_schema(self.get_frames_field_schema())
+    def _serialize_frame_field_schema(self):
+        return self._serialize_schema(self.get_frame_field_schema())
 
     def _serialize_schema(self, schema):
         return {field_name: str(field) for field_name, field in schema.items()}
@@ -1428,7 +1437,7 @@ def _get_image_label_fields(sample_collection):
 
 
 def _get_frame_label_fields(sample_collection):
-    label_fields = sample_collection.get_frames_field_schema(
+    label_fields = sample_collection.get_frame_field_schema(
         ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.ImageLabel
     )
     return list(label_fields.keys())
@@ -1436,7 +1445,7 @@ def _get_frame_label_fields(sample_collection):
 
 def _get_labels_dict_for_prefix(sample_collection, label_prefix):
     if sample_collection.media_type == fom.VIDEO:
-        label_fields = sample_collection.get_frames_field_schema(
+        label_fields = sample_collection.get_frame_field_schema(
             ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
         )
     else:
@@ -1505,7 +1514,7 @@ def _get_default_label_fields_for_exporter(
                 "a `label_cls`"
             )
 
-        label_fields = sample_collection.get_frames_field_schema(
+        label_fields = sample_collection.get_frame_field_schema(
             ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
         )
 

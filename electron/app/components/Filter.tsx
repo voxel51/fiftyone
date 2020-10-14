@@ -26,6 +26,7 @@ const classFilterMachine = Machine({
     currentResult: null,
     errorId: null,
     results: [],
+    prevValue: "",
   },
   states: {
     init: {},
@@ -41,6 +42,7 @@ const classFilterMachine = Machine({
         assign({
           currentResult: null,
           errorId: null,
+          currentResult: null,
         }),
       ],
       type: "parallel",
@@ -77,6 +79,31 @@ const classFilterMachine = Machine({
         },
       },
       on: {
+        NEXT_RESULT: {
+          actions: assign({
+            currentResult: ({ currentResult, results }) => {
+              if (currentResult === null) return 0;
+              return Math.min(currentResult + 1, results.length - 1);
+            },
+            inputValue: ({ currentResult, results }) => {
+              if (currentResult === null) return results[0];
+              return results[Math.min(currentResult + 1, results.length - 1)];
+            },
+          }),
+        },
+        PREVIOUS_RESULT: {
+          actions: assign({
+            currentResult: ({ currentResult }) => {
+              if (currentResult === 0 || currentResult === null) return null;
+              return currentResult - 1;
+            },
+            inputValue: ({ currentResult, prevValue, results }) => {
+              if (currentResult === 0 || currentResult === null)
+                return prevValue;
+              return results[currentResult - 1];
+            },
+          }),
+        },
         BLUR: {
           target: "reading",
         },
@@ -113,6 +140,7 @@ const classFilterMachine = Machine({
                 classes.filter((c) =>
                   c.toLowerCase().includes(value.toLowerCase())
                 ),
+              prevValue: ({ inputValue }) => inputValue,
             }),
           ],
         },
@@ -325,7 +353,7 @@ const CLS_TO_STAGE = {
 };
 
 const makeFilter = (fieldName, cls, labels, range, includeNone, hasBounds) => {
-  const fieldStr = VALID_LIST_TYPES.includes(cls) ? "$$this" : `$${fieldName}`;
+  let fieldStr = VALID_LIST_TYPES.includes(cls) ? "$$this" : `$${fieldName}`;
   const confidenceStr = `${fieldStr}.confidence`;
   const labelStr = `${fieldStr}.label`;
   let rangeExpr = null;
@@ -373,6 +401,7 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
   const bounds = useRecoilValue(rest.confidenceBounds(entry.name));
   const [labels, setLabels] = useRecoilState(rest.includeLabels(entry.name));
   const fieldIsFiltered = useRecoilValue(rest.fieldIsFiltered(entry.name));
+  const mediaType = useRecoilValue(selectors.mediaType);
 
   const [stateDescription, setStateDescription] = useRecoilState(
     atoms.stateDescription
@@ -413,8 +442,12 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
     useEffect(() => {
       const newState = JSON.parse(JSON.stringify(stateDescription));
       if (!fieldIsFiltered && !(entry.name in newState.filter_stages)) return;
+      let fieldName = entry.name;
+      if (mediaType === "video") {
+        fieldName = "frames." + entry.name;
+      }
       const filter = makeFilter(
-        entry.name,
+        fieldName,
         entry.type,
         labels,
         range,
