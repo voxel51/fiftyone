@@ -1191,15 +1191,17 @@ are stored in the
 :attr:`polylines <fiftyone.core.labels.Polylines.polylines>` attribute of the
 |Polylines| object.
 
-Each individual polyline is represented by a |Polyline| object. The
+Each individual polyline is represented by a |Polyline| object, which
+represents a set of one or more semantically related shapes in an image. The
 :attr:`points <fiftyone.core.labels.Polyline.points>` attribute contains a
-list of ``(x, y)`` coordinates defining the vertices of the polyline. If the
-polyline represents a closed curve, you can set the
+list of lists of ``(x, y)`` coordinates defining the vertices of each shape
+in the polyline. If the polyline represents a closed curve, you can set the
 :attr:`closed <fiftyone.core.labels.Polyline.closed>` attribute to ``True`` to
 indicate that a line segment should be drawn from the last vertex to the first
-vertex. If the polyline defines a simple region that can be filled, you can set
-the :attr:`filled <fiftyone.core.labels.Polyline.filled>` attribute to
-``True``. Polylines can also have string labels, which are stored in their
+vertex of each shape in the polyline. If the shapes should be filled when
+rendering them, you can set the
+:attr:`filled <fiftyone.core.labels.Polyline.filled>` attribute to ``True``.
+Polylines can also have string labels, which are stored in their
 :attr:`label <fiftyone.core.labels.Polyline.label>` attribute.
 
 .. note::
@@ -1215,7 +1217,7 @@ the :attr:`filled <fiftyone.core.labels.Polyline.filled>` attribute to
 
     # A simple polyline
     polyline1 = fo.Polyline(
-        points=[(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)],
+        points=[[(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)]],
         closed=False,
         filled=False
     )
@@ -1223,7 +1225,7 @@ the :attr:`filled <fiftyone.core.labels.Polyline.filled>` attribute to
     # A closed, filled polygon with a label
     polyline2 = fo.Polyline(
         label="triangle",
-        points=[(0.1, 0.1), (0.3, 0.1), (0.3, 0.3)],
+        points=[[(0.1, 0.1), (0.3, 0.1), (0.3, 0.3)]],
         closed=True,
         filled=True
     )
@@ -1245,7 +1247,7 @@ the :attr:`filled <fiftyone.core.labels.Polyline.filled>` attribute to
                     'id': '5f72ba1b9d80d726d8952d9b',
                     'attributes': BaseDict({}),
                     'label': None,
-                    'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)]),
+                    'points': BaseList([BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)])]),
                     'closed': False,
                     'filled': False,
                 }>,
@@ -1253,7 +1255,7 @@ the :attr:`filled <fiftyone.core.labels.Polyline.filled>` attribute to
                     'id': '5f72ba1b9d80d726d8952d9c',
                     'attributes': BaseDict({}),
                     'label': 'triangle',
-                    'points': BaseList([(0.1, 0.1), (0.3, 0.1), (0.3, 0.3)]),
+                    'points': BaseList([BaseList([(0.1, 0.1), (0.3, 0.1), (0.3, 0.3)])]),
                     'closed': True,
                     'filled': True,
                 }>,
@@ -1302,7 +1304,7 @@ schema of the attributes that you're storing.
 
     # A simple polyline
     polyline = fo.Polyline(
-        points=[(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)],
+        points=[[(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)]],
         closed=False,
         filled=False,
         attributes={
@@ -1331,7 +1333,7 @@ schema of the attributes that you're storing.
                         'shape': <CategoricalAttribute: {'value': 'L', 'confidence': None, 'logits': None}>,
                     }),
                     'label': None,
-                    'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)]),
+                    'points': BaseList([BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)])]),
                     'closed': False,
                     'filled': False,
                 }>,
