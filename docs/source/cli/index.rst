@@ -87,15 +87,17 @@ Launch a FiftyOne quickstart.
 
 .. code-block:: text
 
-    fiftyone quickstart [-h] [-v]
+    fiftyone quickstart [-h] [-v] [-p PORT] [-r]
 
 **Arguments**
 
 .. code-block:: text
 
     optional arguments:
-      -h, --help    show this help message and exit
-      -v, --video  launch the quickstart with a video dataset
+      -h, --help            show this help message and exit
+      -v, --video           launch the quickstart with a video dataset
+      -p PORT, --port PORT  the port number to use
+      -r, --remote          whether to launch a remote app session
 
 **Examples**
 
@@ -108,6 +110,11 @@ Launch a FiftyOne quickstart.
 
     # Launch the quickstart with a video dataset
     fiftyone quickstart --video
+
+.. code-block:: shell
+
+    # Launch the quickstart as a remote session
+    fiftyone quickstart --remote
 
 .. _cli-fiftyone-config:
 
