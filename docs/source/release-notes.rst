@@ -12,6 +12,7 @@ App
 - ~10x improvement on page and grid load times for video datasets
 - Added filtering, toggling, and statistics for labels with respect to the
   frame schema in the display options sidebars for video datasets
+- Added margins to the grid view for both image and video datasets
 - Fixed list parameter input submission in the view bar
 
 Core
