@@ -79,6 +79,8 @@ class COCODetectionSampleParser(foud.LabeledImageTupleSampleParser):
         return_polylines (False): whether to return
             :class:`fiftyone.core.labels.Polylines` instances rather than
             :class:`fiftyone.core.labels.Detections`
+        tolerance (None): a tolerance, in pixels, when generating approximate
+            polylines for instance masks. Typical values are 1-3 pixels
     """
 
     def __init__(
@@ -87,12 +89,14 @@ class COCODetectionSampleParser(foud.LabeledImageTupleSampleParser):
         supercategory_map=None,
         load_segmentations=True,
         return_polylines=False,
+        tolerance=None,
     ):
         super().__init__()
         self.classes = classes
         self.supercategory_map = supercategory_map
         self.load_segmentations = load_segmentations
         self.return_polylines = return_polylines
+        self.tolerance = tolerance
 
     @property
     def label_cls(self):
@@ -119,7 +123,11 @@ class COCODetectionSampleParser(foud.LabeledImageTupleSampleParser):
 
         if self.return_polylines:
             return _coco_objects_to_polylines(
-                coco_objects, frame_size, self.classes, self.supercategory_map
+                coco_objects,
+                frame_size,
+                self.classes,
+                self.supercategory_map,
+                self.tolerance,
             )
 
         return _coco_objects_to_detections(
@@ -144,6 +152,8 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         return_polylines (False): whether to return
             :class:`fiftyone.core.labels.Polylines` instances rather than
             :class:`fiftyone.core.labels.Detections`
+        tolerance (None): a tolerance, in pixels, when generating approximate
+            polylines for instance masks. Typical values are 1-3 pixels
         skip_unlabeled (False): whether to skip unlabeled images when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
@@ -157,6 +167,7 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         dataset_dir,
         load_segmentations=True,
         return_polylines=False,
+        tolerance=None,
         skip_unlabeled=False,
         shuffle=False,
         seed=None,
@@ -171,6 +182,7 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         )
         self.load_segmentations = load_segmentations
         self.return_polylines = return_polylines
+        self.tolerance = tolerance
         self._data_dir = None
         self._info = None
         self._classes = None
@@ -215,6 +227,7 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
                 frame_size,
                 self._classes,
                 self._supercategory_map,
+                self.tolerance,
             )
         else:
             label = _coco_objects_to_detections(
@@ -299,9 +312,18 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
+        tolerance (None): a tolerance, in pixels, when generating approximate
+            polylines for instance masks. Typical values are 1-3 pixels
     """
 
-    def __init__(self, export_dir, classes=None, info=None, image_format=None):
+    def __init__(
+        self,
+        export_dir,
+        classes=None,
+        info=None,
+        image_format=None,
+        tolerance=None,
+    ):
         if image_format is None:
             image_format = fo.config.default_image_ext
 
@@ -309,6 +331,7 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         self.classes = classes
         self.info = info
         self.image_format = image_format
+        self.tolerance = tolerance
         self._labels_map_rev = None
         self._data_dir = None
         self._labels_path = None
@@ -378,7 +401,10 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
             self._anno_id += 1
             self._classes.add(detection.label)
             obj = COCOObject.from_detection(
-                detection, metadata, labels_map_rev=self._labels_map_rev
+                detection,
+                metadata,
+                labels_map_rev=self._labels_map_rev,
+                tolerance=self.tolerance,
             )
             obj.id = self._anno_id
             obj.image_id = self._image_id
@@ -463,7 +489,7 @@ class COCOObject(object):
         self.iscrowd = iscrowd
 
     def to_polyline(
-        self, frame_size, classes=None, supercategory_map=None,
+        self, frame_size, classes=None, supercategory_map=None, tolerance=None
     ):
         """Returns a :class:`fiftyone.core.labels.Polyline` representation of
         the object.
@@ -473,6 +499,9 @@ class COCOObject(object):
             classes (None): the list of classes
             supercategory_map (None): a dict mapping class names to
                 supercategories
+            tolerance (None): a tolerance, in pixels, when generating
+                approximate polylines for instance masks. Typical values are
+                1-3 pixels
 
         Returns:
             a :class:`fiftyone.core.labels.Polyline`
@@ -484,7 +513,9 @@ class COCOObject(object):
             classes, supercategory_map
         )
 
-        points = _get_polygons_for_segmentation(self.segmentation, frame_size)
+        points = _get_polygons_for_segmentation(
+            self.segmentation, frame_size, tolerance
+        )
 
         return fol.Polyline(
             label=label,
@@ -558,7 +589,9 @@ class COCOObject(object):
         }
 
     @classmethod
-    def from_detection(cls, detection, metadata, labels_map_rev=None):
+    def from_detection(
+        cls, detection, metadata, labels_map_rev=None, tolerance=None
+    ):
         """Creates a :class:`COCOObject` from a
         :class:`fiftyone.core.labels.Detection`.
 
@@ -568,6 +601,9 @@ class COCOObject(object):
                 image
             labels_map_rev (None): an optional dict mapping labels to category
                 IDs
+            tolerance (None): a tolerance, in pixels, when generating
+                approximate polylines for instance masks. Typical values are
+                1-3 pixels
 
         Returns:
             a :class:`COCOObject`
@@ -599,7 +635,9 @@ class COCOObject(object):
             iscrowd = None
 
         frame_size = (width, height)
-        segmentation = _make_coco_segmentation(detection, frame_size, iscrowd)
+        segmentation = _make_coco_segmentation(
+            detection, frame_size, iscrowd, tolerance
+        )
 
         return cls(
             None,
@@ -905,7 +943,7 @@ def _to_labels_map_rev(classes):
 
 
 def _coco_objects_to_polylines(
-    coco_objects, frame_size, classes, supercategory_map
+    coco_objects, frame_size, classes, supercategory_map, tolerance
 ):
     polylines = []
     for coco_obj in coco_objects:
@@ -914,6 +952,7 @@ def _coco_objects_to_polylines(
                 frame_size,
                 classes=classes,
                 supercategory_map=supercategory_map,
+                tolerance=tolerance,
             )
         )
 
@@ -943,7 +982,7 @@ def _coco_objects_to_detections(
 #
 
 
-def _get_polygons_for_segmentation(segmentation, frame_size):
+def _get_polygons_for_segmentation(segmentation, frame_size, tolerance):
     width, height = frame_size
 
     # Convert to [[x1, y1, x2, y2, ...]] polygons
@@ -958,7 +997,7 @@ def _get_polygons_for_segmentation(segmentation, frame_size):
             rle = segmentation
 
         mask = mask_utils.decode(rle)
-        abs_points = _mask_to_polygons(mask)
+        abs_points = _mask_to_polygons(mask, tolerance)
 
     # Convert to [[(x1, y1), (x2, y2), ...]] in relative coordinates
 
@@ -1003,7 +1042,7 @@ def _coco_segmentation_to_mask(segmentation, bbox, frame_size):
     ]
 
 
-def _make_coco_segmentation(detection, frame_size, iscrowd):
+def _make_coco_segmentation(detection, frame_size, iscrowd, tolerance):
     if detection.mask is None:
         return None
 
@@ -1013,7 +1052,7 @@ def _make_coco_segmentation(detection, frame_size, iscrowd):
     if iscrowd:
         return _mask_to_rle(mask)
 
-    return _mask_to_polygons(mask)
+    return _mask_to_polygons(mask, tolerance)
 
 
 def _mask_to_rle(mask):
@@ -1027,7 +1066,10 @@ def _mask_to_rle(mask):
     return {"counts": counts, "size": list(mask.shape)}
 
 
-def _mask_to_polygons(mask, tolerance=2):
+def _mask_to_polygons(mask, tolerance):
+    if tolerance is None:
+        tolerance = 2
+
     # Pad mask to close contours of shapes which start and end at an edge
     padded_mask = np.pad(mask, pad_width=1, mode="constant", constant_values=0)
 
