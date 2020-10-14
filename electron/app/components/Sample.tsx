@@ -41,7 +41,7 @@ const useHoverLoad = (socket, sample) => {
     return [[], null, null];
   }
   const [barItem, setBarItem] = useState([]);
-  const [loaded, setLoaded] = useState(0);
+  const [loaded, setLoaded] = useState(null);
   const viewCounter = useRecoilValue(atoms.viewCounter);
 
   const [requested, requestLabels] = useFrameLabels(
@@ -62,7 +62,7 @@ const useHoverLoad = (socket, sample) => {
     const {
       data: { player },
     } = event;
-    if (requested === viewCounter) {
+    if (loaded === viewCounter) {
       barItem.length && setBarItem([]);
       player.play();
       return;

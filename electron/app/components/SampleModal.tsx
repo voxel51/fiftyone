@@ -238,11 +238,12 @@ const SampleModal = ({
     labelTypes
   );
   const socket = getSocket(port, "state");
+  const viewCounter = useRecoilValue(atoms.viewCounter);
   const [requested, requestLabels] = useFrameLabels(socket, sample._id);
   const frameData = useRecoilValue(atoms.sampleFrameData(sample._id));
   const videoLabels = useRecoilValue(atoms.sampleVideoLabels(sample._id));
   useEffect(() => {
-    mediaType === "video" && !requested && requestLabels();
+    mediaType === "video" && requested !== viewCounter && requestLabels();
   }, [requested]);
 
   useEffect(() => {
