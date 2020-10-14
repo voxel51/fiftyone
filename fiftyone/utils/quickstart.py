@@ -41,6 +41,8 @@ def _quickstart(interactive, port, remote):
     dataset = foz.load_zoo_dataset("quickstart")
     session = fos.launch_app(dataset=dataset, port=port, remote=remote)
 
+    # @todo improve readability of stdout when launching remote sessions
+
     if interactive:
         print(_QUICKSTART_GUIDE % _FILTER_DETECTIONS_IN_PYTHON)
         return dataset, session
@@ -53,6 +55,8 @@ def _quickstart(interactive, port, remote):
 def _video_quickstart(interactive, port, remote):
     dataset = foz.load_zoo_dataset("quickstart-video")
     session = fos.launch_app(dataset=dataset, port=port, remote=remote)
+
+    # @todo improve readability of stdout when launching remote sessions
 
     if interactive:
         print(_VIDEO_QUICKSTART_GUIDE)
