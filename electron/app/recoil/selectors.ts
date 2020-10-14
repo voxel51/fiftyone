@@ -109,13 +109,7 @@ export const labelNames = selector({
     if (!stateDescription.labels) {
       return [];
     }
-    return stateDescription.labels
-      .map((label) => label.field)
-      .filter(
-        (name) =>
-          stats.custom_fields.hasOwnProperty(name) &&
-          !RESERVED_FIELDS.includes(name)
-      );
+    return stateDescription.labels.map((label) => label.field);
   },
 });
 
@@ -147,14 +141,22 @@ export const labelClasses = selectorFamily({
 export const labelSampleCounts = selector({
   key: "labelSampleCounts",
   get: ({ get }) => {
-    return get(datasetStats).custom_fields || {};
+    const fields = get(datasetStats).custom_fields || {};
+    if (get(mediaType) === "video") {
+      return fields.frames || {};
+    }
+    return fields;
   },
 });
 
 export const filteredLabelSampleCounts = selector({
   key: "filteredLabelSampleCounts",
   get: ({ get }) => {
-    return get(extendedDatasetStats).custom_fields || {};
+    const fields = get(extendedDatasetStats).custom_fields || {};
+    if (get(mediaType) === "video") {
+      return fields.frames || {};
+    }
+    return fields;
   },
 });
 
@@ -167,12 +169,10 @@ export const labelFilters = selector({
       const range = get(atoms.filterLabelConfidenceRange(label));
       const none = get(atoms.filterLabelIncludeNoConfidence(label));
       const include = get(atoms.filterIncludeLabels(label));
-      filters[label] = (s, useValue = false) => {
+      filters[label] = (s) => {
         const inRange = range[0] <= s.confidence && s.confidence <= range[1];
         const noConfidence = none && s.confidence === undefined;
-        const isIncluded =
-          include.length === 0 ||
-          include.includes(useValue ? s.value : s.label);
+        const isIncluded = include.length === 0 || include.includes(s.label);
         return (inRange || noConfidence) && isIncluded;
       };
     }
@@ -189,12 +189,10 @@ export const modalLabelFilters = selector({
       const range = get(atoms.modalFilterLabelConfidenceRange(label));
       const none = get(atoms.modalFilterLabelIncludeNoConfidence(label));
       const include = get(atoms.modalFilterIncludeLabels(label));
-      filters[label] = (s, useValue = false) => {
+      filters[label] = (s) => {
         const inRange = range[0] <= s.confidence && s.confidence <= range[1];
         const noConfidence = none && s.confidence === undefined;
-        const isIncluded =
-          include.length === 0 ||
-          include.includes(useValue ? s.value : s.label);
+        const isIncluded = include.length === 0 || include.includes(s.label);
         return labels[label] && (inRange || noConfidence) && isIncluded;
       };
     }
@@ -226,16 +224,12 @@ export const refreshColorMap = selector({
   key: "refreshColorMap",
   get: ({ get }) => get(atoms.colorMap),
   set: ({ get, set }, colorMap) => {
-    const frames = get(mediaType) == "video" ? ["frames"] : [];
     const colorLabelNames = Object.entries(get(labelTypes))
       .filter(([name, type]) => labelTypeHasColor(type))
       .map(([name]) => name);
     set(
       atoms.colorMap,
-      generateColorMap(
-        [...get(tagNames), ...colorLabelNames, ...frames],
-        colorMap
-      )
+      generateColorMap([...get(tagNames), ...colorLabelNames], colorMap)
     );
   },
 });
@@ -356,17 +350,16 @@ export const sampleModalFilter = selector({
       return Object.entries(sample).reduce((acc, [key, value]) => {
         if (key === "tags") {
           acc[key] = value;
-        } else if (
-          filters[key] &&
-          value !== null &&
-          VALID_LIST_TYPES.includes(value._cls)
-        ) {
-          acc[key] = {
-            ...value,
-            [value._cls.toLowerCase()]: value[value._cls.toLowerCase()].filter(
-              filters[key]
-            ),
-          };
+        } else if (value && VALID_LIST_TYPES.includes(value._cls)) {
+          acc[key] =
+            filters[key] && value !== null
+              ? {
+                  ...value,
+                  [value._cls.toLowerCase()]: value[
+                    value._cls.toLowerCase()
+                  ].filter(filters[key]),
+                }
+              : value;
         } else if (value !== null && filters[key] && filters[key](value)) {
           acc[key] = value;
         } else if (RESERVED_FIELDS.includes(key)) {

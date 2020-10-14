@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRecoilState, useSetRecoilState, useRecoilValue } from "recoil";
 import ResizeObserver from "resize-observer-polyfill";
+
+import * as atoms from "../recoil/atoms";
 
 export const useEventHandler = (target, eventType, handler) => {
   // Adapted from https://reactjs.org/docs/hooks-faq.html#what-can-i-do-if-my-effect-dependencies-change-too-often
@@ -91,4 +94,28 @@ export const useFastRerender = () => {
     setCounter((prev) => prev + 1);
   }, []);
   return rerender;
+};
+
+export const useFrameLabels = (socket, sampleId, callback = null) => {
+  const [requested, setRequested] = useRecoilState(
+    atoms.sampleVideoDataRequested(sampleId)
+  );
+  const setVideoLabels = useSetRecoilState(atoms.sampleVideoLabels(sampleId));
+  const setFrameData = useSetRecoilState(atoms.sampleFrameData(sampleId));
+  const viewCounter = useRecoilValue(atoms.viewCounter);
+  return [
+    requested,
+    (...args) => {
+      if (requested !== viewCounter) {
+        setRequested(viewCounter);
+        socket.emit("get_frame_labels", sampleId, ({ labels, frames }) => {
+          setVideoLabels(labels);
+          setFrameData(frames);
+          callback && callback({ labels, frames }, ...args);
+        });
+      } else {
+        callback && callback(null, ...args);
+      }
+    },
+  ];
 };

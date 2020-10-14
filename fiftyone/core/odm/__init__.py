@@ -5,7 +5,7 @@ ODM package declaration.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from .database import get_db_conn, drop_database
+from .database import get_db_conn, drop_database, ASC
 from .dataset import SampleFieldDocument, DatasetDocument
 from .document import (
     Document,

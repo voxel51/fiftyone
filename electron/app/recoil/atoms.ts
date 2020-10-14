@@ -10,16 +10,6 @@ export const colorMap = atom({
   default: {},
 });
 
-export const frameLabelsActive = atom({
-  key: "frameLabelsActive",
-  default: true,
-});
-
-export const modalFrameLabelsActive = atom({
-  key: "modalFrameLabelsActive",
-  default: true,
-});
-
 export const stateDescription = atom({
   key: "stateDescription",
   default: {},
@@ -123,4 +113,24 @@ export const filterNumericFieldRange = atomFamily({
 export const filterNumericFieldIncludeNone = atomFamily({
   key: "filterNumericFieldIncludeNone",
   default: true,
+});
+
+export const sampleVideoLabels = atomFamily({
+  key: "sampleVideoLabels",
+  default: null,
+});
+
+export const sampleFrameData = atomFamily({
+  key: "sampleFrameData",
+  default: null,
+});
+
+export const sampleVideoDataRequested = atomFamily({
+  key: "sampleVideoDataRequested",
+  default: null,
+});
+
+export const viewCounter = atom({
+  key: "viewCounter",
+  default: 0,
 });

@@ -799,7 +799,7 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self._metadata["sample_fields"] = schema
 
         if self._is_video_dataset:
-            schema = sample_collection._serialize_frames_field_schema()
+            schema = sample_collection._serialize_frame_field_schema()
             self._metadata["frame_fields"] = schema
 
         self._metadata["info"] = sample_collection.info

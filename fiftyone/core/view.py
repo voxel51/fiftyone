@@ -52,6 +52,7 @@ class DatasetView(foc.SampleCollection):
     def __init__(self, dataset):
         self._dataset = dataset
         self._stages = []
+        self._flatten_frames = None
 
     def __len__(self):
         try:
@@ -131,7 +132,7 @@ class DatasetView(foc.SampleCollection):
                 [
                     "Frame fields:",
                     self._dataset._to_fields_str(
-                        self.get_frames_field_schema()
+                        self.get_frame_field_schema()
                     ),
                 ]
             )
@@ -221,7 +222,7 @@ class DatasetView(foc.SampleCollection):
 
         return field_schema
 
-    def get_frames_field_schema(
+    def get_frame_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
     ):
         """Returns a schema dictionary describing the fields of the frames of
@@ -243,7 +244,7 @@ class DatasetView(foc.SampleCollection):
             a dictionary mapping field names to field types, or ``None`` if
             the dataset is not a video dataset
         """
-        return self._dataset.get_frames_field_schema(
+        return self._dataset.get_frame_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             include_private=include_private,
@@ -287,6 +288,9 @@ class DatasetView(foc.SampleCollection):
             an iterable over the aggregation result
         """
         _pipeline = []
+        if self._flatten_frames is not None:
+            _pipeline.extend(self._flatten_frames)
+
         for s in self._stages:
             _pipeline.extend(s.to_mongo())
 
@@ -399,3 +403,17 @@ class DatasetView(foc.SampleCollection):
                 filtered_fields.update(_filtered_fields)
 
         return filtered_fields
+
+    def _with_frames(self):
+        view = copy(self)
+        lookup = {
+            "$lookup": {
+                "from": self._dataset._frame_collection_name,
+                "localField": "_id",
+                "foreignField": "_sample_id",
+                "as": "frames",
+            }
+        }
+        unwind = {"$unwind": "$frames"}
+        view._flatten_frames = [lookup, unwind]
+        return view
