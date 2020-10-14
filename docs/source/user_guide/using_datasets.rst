@@ -850,11 +850,21 @@ be visualized in the App or used by Brain methods, e.g., when
     <Sample: {
         'id': None,
         'media_type': 'image',
-        'filepath': 'path/to/image.png',
+        'filepath': '/path/to/image.png',
         'tags': [],
         'metadata': None,
-        'ground_truth': <Classification: {'label': 'sunny', 'confidence': None, 'logits': None}>,
-        'prediction': <Classification: {'label': 'sunny', 'confidence': 0.9, 'logits': None}>,
+        'ground_truth': <Classification: {
+            'id': '5f8708db2018186b6ef66821',
+            'label': 'sunny',
+            'confidence': None,
+            'logits': None,
+        }>,
+        'prediction': <Classification: {
+            'id': '5f8708db2018186b6ef66822',
+            'label': 'sunny',
+            'confidence': 0.9,
+            'logits': None,
+        }>,
     }>
 
 .. _multilabel-classification:
@@ -904,22 +914,52 @@ overarching model (if applicable) in the
     <Sample: {
         'id': None,
         'media_type': 'image',
-        'filepath': 'path/to/image.png',
+        'filepath': '/path/to/image.png',
         'tags': [],
         'metadata': None,
         'ground_truth': <Classifications: {
             'classifications': BaseList([
-                <Classification: {'label': 'animal', 'confidence': None, 'logits': None}>,
-                <Classification: {'label': 'cat', 'confidence': None, 'logits': None}>,
-                <Classification: {'label': 'tabby', 'confidence': None, 'logits': None}>,
+                <Classification: {
+                    'id': '5f8708f62018186b6ef66823',
+                    'label': 'animal',
+                    'confidence': None,
+                    'logits': None,
+                }>,
+                <Classification: {
+                    'id': '5f8708f62018186b6ef66824',
+                    'label': 'cat',
+                    'confidence': None,
+                    'logits': None,
+                }>,
+                <Classification: {
+                    'id': '5f8708f62018186b6ef66825',
+                    'label': 'tabby',
+                    'confidence': None,
+                    'logits': None,
+                }>,
             ]),
             'logits': None,
         }>,
         'prediction': <Classifications: {
             'classifications': BaseList([
-                <Classification: {'label': 'animal', 'confidence': 0.99, 'logits': None}>,
-                <Classification: {'label': 'cat', 'confidence': 0.98, 'logits': None}>,
-                <Classification: {'label': 'tabby', 'confidence': 0.72, 'logits': None}>,
+                <Classification: {
+                    'id': '5f8708f62018186b6ef66826',
+                    'label': 'animal',
+                    'confidence': 0.99,
+                    'logits': None,
+                }>,
+                <Classification: {
+                    'id': '5f8708f62018186b6ef66827',
+                    'label': 'cat',
+                    'confidence': 0.98,
+                    'logits': None,
+                }>,
+                <Classification: {
+                    'id': '5f8708f62018186b6ef66828',
+                    'label': 'tabby',
+                    'confidence': 0.72,
+                    'logits': None,
+                }>,
             ]),
             'logits': None,
         }>,
@@ -962,7 +1002,7 @@ detection can be stored in the
     sample = fo.Sample(filepath="/path/to/image.png")
 
     sample["ground_truth"] = fo.Detections(
-        detections=[fo.Detection(label="cat", bounding_box=[0.5, 0.5, 0.4, 0.3],),]
+        detections=[fo.Detection(label="cat", bounding_box=[0.5, 0.5, 0.4, 0.3])]
     )
     sample["prediction"] = fo.Detections(
         detections=[
@@ -981,26 +1021,32 @@ detection can be stored in the
     <Sample: {
         'id': None,
         'media_type': 'image',
-        'filepath': 'path/to/image.png',
+        'filepath': '/path/to/image.png',
         'tags': [],
         'metadata': None,
         'ground_truth': <Detections: {
             'detections': BaseList([
                 <Detection: {
+                    'id': '5f8709172018186b6ef66829',
+                    'attributes': BaseDict({}),
                     'label': 'cat',
                     'bounding_box': BaseList([0.5, 0.5, 0.4, 0.3]),
+                    'mask': None,
                     'confidence': None,
-                    'attributes': BaseDict({}),
+                    'index': None,
                 }>,
             ]),
         }>,
         'prediction': <Detections: {
             'detections': BaseList([
                 <Detection: {
-                    'label': 'cat',
-                    'bounding_box': BaseList([0.480, 0.513, 0.397, 0.288]),
-                    'confidence': 0.96,
+                    'id': '5f8709172018186b6ef6682a',
                     'attributes': BaseDict({}),
+                    'label': 'cat',
+                    'bounding_box': BaseList([0.48, 0.513, 0.397, 0.288]),
+                    'mask': None,
+                    'confidence': 0.96,
+                    'index': None,
                 }>,
             ]),
         }>,
@@ -1051,24 +1097,26 @@ object's bounding box when visualizing in the App.
 
     <Sample: {
         'id': None,
+        'media_type': 'image',
         'filepath': '/path/to/image.png',
         'tags': [],
         'metadata': None,
         'prediction': <Detections: {
             'detections': BaseList([
                 <Detection: {
-                    'id': '5f6cb35dd1d11965ad1a2717',
+                    'id': '5f8709282018186b6ef6682b',
+                    'attributes': BaseDict({}),
                     'label': 'cat',
                     'bounding_box': BaseList([0.48, 0.513, 0.397, 0.288]),
-                    'mask': array([[ True, False,  True, ...,  True, False,  True],
-                           [ True,  True,  True, ..., False,  True,  True],
-                           [False, False,  True, ...,  True, False, False],
+                    'mask': array([[False,  True, False, ...,  True,  True, False],
+                           [ True, False,  True, ..., False,  True,  True],
+                           [False,  True, False, ..., False,  True, False],
                            ...,
                            [ True,  True, False, ..., False, False,  True],
-                           [ True, False,  True, ..., False,  True,  True],
-                           [ True,  True,  True, ..., False, False, False]]),
+                           [ True,  True,  True, ...,  True,  True, False],
+                           [False,  True,  True, ..., False,  True,  True]]),
                     'confidence': 0.96,
-                    'attributes': BaseDict({}),
+                    'index': None,
                 }>,
             ]),
         }>,
@@ -1148,32 +1196,38 @@ schema of the attributes that you're storing.
     <Sample: {
         'id': None,
         'media_type': 'image',
-        'filepath': 'path/to/image.png',
+        'filepath': '/path/to/image.png',
         'tags': [],
         'metadata': None,
         'ground_truth': <Detections: {
             'detections': BaseList([
                 <Detection: {
-                    'label': 'cat',
-                    'bounding_box': BaseList([0.5, 0.5, 0.4, 0.3]),
-                    'confidence': None,
+                    'id': '5f87093a2018186b6ef6682c',
                     'attributes': BaseDict({
-                        'age': <NumericAttribute: {'value': 51.0}>,
+                        'age': <NumericAttribute: {'value': 51}>,
                         'mood': <CategoricalAttribute: {'value': 'salty', 'confidence': None, 'logits': None}>,
                     }),
+                    'label': 'cat',
+                    'bounding_box': BaseList([0.5, 0.5, 0.4, 0.3]),
+                    'mask': None,
+                    'confidence': None,
+                    'index': None,
                 }>,
             ]),
         }>,
         'prediction': <Detections: {
             'detections': BaseList([
                 <Detection: {
-                    'label': 'cat',
-                    'bounding_box': BaseList([0.480, 0.513, 0.397, 0.288]),
-                    'confidence': 0.96,
+                    'id': '5f87093a2018186b6ef6682d',
                     'attributes': BaseDict({
-                        'age': <NumericAttribute: {'value': 51.0}>,
+                        'age': <NumericAttribute: {'value': 51}>,
                         'mood': <CategoricalAttribute: {'value': 'surly', 'confidence': 0.95, 'logits': None}>,
                     }),
+                    'label': 'cat',
+                    'bounding_box': BaseList([0.48, 0.513, 0.397, 0.288]),
+                    'mask': None,
+                    'confidence': 0.96,
+                    'index': None,
                 }>,
             ]),
         }>,
@@ -1238,24 +1292,27 @@ Polylines can also have string labels, which are stored in their
 
     <Sample: {
         'id': None,
+        'media_type': 'image',
         'filepath': '/path/to/image.png',
         'tags': [],
         'metadata': None,
         'polylines': <Polylines: {
             'polylines': BaseList([
                 <Polyline: {
-                    'id': '5f72ba1b9d80d726d8952d9b',
+                    'id': '5f87094e2018186b6ef6682e',
                     'attributes': BaseDict({}),
                     'label': None,
                     'points': BaseList([BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)])]),
+                    'index': None,
                     'closed': False,
                     'filled': False,
                 }>,
                 <Polyline: {
-                    'id': '5f72ba1b9d80d726d8952d9c',
+                    'id': '5f87094e2018186b6ef6682f',
                     'attributes': BaseDict({}),
                     'label': 'triangle',
                     'points': BaseList([BaseList([(0.1, 0.1), (0.3, 0.1), (0.3, 0.3)])]),
+                    'index': None,
                     'closed': True,
                     'filled': True,
                 }>,
@@ -1286,13 +1343,13 @@ schema of the attributes that you're storing.
     +---------------------------------------------------------------------------+------------+---------------------------------+
     | Attribute class                                                           | Value type | Description                     |
     +===========================================================================+============+=================================+
-    | :class:`Attribute <fiftyone.core.labels.Attribute>`                       | arbitrary  | A generic attribute of any type |
-    +---------------------------------------------------------------------------+------------+---------------------------------+
     | :class:`BooleanAttribute <fiftyone.core.labels.BooleanAttribute>`         | `bool`     | A boolean attribute             |
     +---------------------------------------------------------------------------+------------+---------------------------------+
     | :class:`CategoricalAttribute <fiftyone.core.labels.CategoricalAttribute>` | `string`   | A categorical attribute         |
     +---------------------------------------------------------------------------+------------+---------------------------------+
     | :class:`NumericAttribute <fiftyone.core.labels.NumericAttribute>`         | `float`    | A numeric attribute             |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | :class:`Attribute <fiftyone.core.labels.Attribute>`                       | arbitrary  | A generic attribute of any type |
     +---------------------------------------------------------------------------+------------+---------------------------------+
 
 .. code-block:: python
@@ -1321,19 +1378,21 @@ schema of the attributes that you're storing.
 
     <Sample: {
         'id': None,
+        'media_type': 'image',
         'filepath': '/path/to/image.png',
         'tags': [],
         'metadata': None,
         'polylines': <Polylines: {
             'polylines': BaseList([
                 <Polyline: {
-                    'id': '5f72bb639d80d726d8952d9d',
+                    'id': '5f8709602018186b6ef66830',
                     'attributes': BaseDict({
                         'length': <NumericAttribute: {'value': 3}>,
                         'shape': <CategoricalAttribute: {'value': 'L', 'confidence': None, 'logits': None}>,
                     }),
                     'label': None,
                     'points': BaseList([BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.3)])]),
+                    'index': None,
                     'closed': False,
                     'filled': False,
                 }>,
@@ -1383,16 +1442,18 @@ list of ``(x, y)`` coordinates defining a set of keypoints in the image. Each
 
     <Sample: {
         'id': None,
+        'media_type': 'image',
         'filepath': '/path/to/image.png',
         'tags': [],
         'metadata': None,
         'keypoints': <Keypoints: {
             'keypoints': BaseList([
                 <Keypoint: {
-                    'id': '5f737fae2e5f75f7211b5d03',
+                    'id': '5f8709702018186b6ef66831',
                     'attributes': BaseDict({}),
                     'label': 'square',
                     'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)]),
+                    'index': None,
                 }>,
             ]),
         }>,
@@ -1421,13 +1482,13 @@ schema of the attributes that you're storing.
     +---------------------------------------------------------------------------+------------+---------------------------------+
     | Attribute class                                                           | Value type | Description                     |
     +===========================================================================+============+=================================+
-    | :class:`Attribute <fiftyone.core.labels.Attribute>`                       | arbitrary  | A generic attribute of any type |
-    +---------------------------------------------------------------------------+------------+---------------------------------+
     | :class:`BooleanAttribute <fiftyone.core.labels.BooleanAttribute>`         | `bool`     | A boolean attribute             |
     +---------------------------------------------------------------------------+------------+---------------------------------+
     | :class:`CategoricalAttribute <fiftyone.core.labels.CategoricalAttribute>` | `string`   | A categorical attribute         |
     +---------------------------------------------------------------------------+------------+---------------------------------+
     | :class:`NumericAttribute <fiftyone.core.labels.NumericAttribute>`         | `float`    | A numeric attribute             |
+    +---------------------------------------------------------------------------+------------+---------------------------------+
+    | :class:`Attribute <fiftyone.core.labels.Attribute>`                       | arbitrary  | A generic attribute of any type |
     +---------------------------------------------------------------------------+------------+---------------------------------+
 
 .. code-block:: python
@@ -1454,24 +1515,25 @@ schema of the attributes that you're storing.
 
     <Sample: {
         'id': None,
+        'media_type': 'image',
         'filepath': '/path/to/image.png',
         'tags': [],
         'metadata': None,
         'keypoints': <Keypoints: {
             'keypoints': BaseList([
                 <Keypoint: {
-                    'id': '5f73805f2e5f75f7211b5d05',
+                    'id': '5f87097e2018186b6ef66832',
                     'attributes': BaseDict({
                         'corners': <NumericAttribute: {'value': 4}>,
                         'convex': <BooleanAttribute: {'value': True}>,
                     }),
                     'label': 'square',
                     'points': BaseList([(0.3, 0.3), (0.7, 0.3), (0.7, 0.7), (0.3, 0.7)]),
+                    'index': None,
                 }>,
             ]),
         }>,
     }>
-
 
 .. _semantic-segmentation:
 
@@ -1507,17 +1569,18 @@ stretched as necessary to fit the image's extent when visualizing in the App.
 
     <Sample: {
         'id': None,
+        'media_type': 'image',
         'filepath': '/path/to/image.png',
         'tags': [],
         'metadata': None,
         'segmentation': <Segmentation: {
-            'mask': array([[4, 8, 2, ..., 8, 4, 6],
-                   [5, 1, 8, ..., 7, 0, 9],
-                   [9, 5, 3, ..., 3, 2, 0],
+            'mask': array([[3, 1, 0, ..., 1, 1, 9],
+                   [5, 5, 4, ..., 1, 8, 7],
+                   [7, 7, 7, ..., 2, 2, 4],
                    ...,
-                   [4, 8, 4, ..., 1, 2, 9],
-                   [3, 5, 2, ..., 0, 0, 7],
-                   [3, 4, 0, ..., 6, 0, 7]]),
+                   [1, 0, 4, ..., 8, 8, 5],
+                   [4, 3, 8, ..., 1, 9, 8],
+                   [0, 2, 5, ..., 5, 3, 2]]),
         }>,
     }>
 
