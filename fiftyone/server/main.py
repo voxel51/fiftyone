@@ -194,7 +194,7 @@ class StateController(Namespace):
         state = data["data"]
         state["with_stats"] = True
         self.state = fos.StateDescriptionWithDerivables.from_dict(
-            data["data"]
+            state
         ).serialize()
         emit(
             "update",
@@ -319,6 +319,7 @@ class StateController(Namespace):
         Returns:
             the list of sample dicts for the page
         """
+        self.state["with_stats"] = False
         state = fos.StateDescriptionWithDerivables.from_dict(self.state)
         if state.view is not None:
             view = state.view
