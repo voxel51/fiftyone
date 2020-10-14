@@ -91,6 +91,9 @@ class QuickstartCommand(Command):
 
         # Launch the quickstart with a video dataset
         fiftyone quickstart --video
+
+        # Launch the quickstart as a remote session
+        fiftyone quickstart --remote
     """
 
     @staticmethod
@@ -101,10 +104,29 @@ class QuickstartCommand(Command):
             action="store_true",
             help="launch the quickstart with a video dataset",
         )
+        parser.add_argument(
+            "-p",
+            "--port",
+            metavar="PORT",
+            default=5151,
+            type=int,
+            help="the port number to use",
+        )
+        parser.add_argument(
+            "-r",
+            "--remote",
+            action="store_true",
+            help="whether to launch a remote app session",
+        )
 
     @staticmethod
     def execute(parser, args):
-        fouq.quickstart(interactive=False, video=args.video)
+        fouq.quickstart(
+            interactive=False,
+            video=args.video,
+            port=args.port,
+            remote=args.remote,
+        )
 
 
 class ConfigCommand(Command):

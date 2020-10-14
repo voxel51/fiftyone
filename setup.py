@@ -58,6 +58,7 @@ setup(
         "python-engineio[client]",
         "python-socketio[client]",
         "retrying",
+        "scikit-image",
         "setuptools",
         "tabulate",
         "xmltodict",
