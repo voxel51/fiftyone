@@ -157,6 +157,7 @@ class KeypointsField(ListField):
         return etau.get_class_name(self)
 
     def validate(self, value):
+        # Only validate value[0], for efficiency
         if not isinstance(value, (list, tuple)) or (
             value
             and (not isinstance(value[0], (list, tuple)) or len(value[0]) != 2)
@@ -177,6 +178,7 @@ class PolylinePointsField(ListField):
         return etau.get_class_name(self)
 
     def validate(self, value):
+        # Only validate value[0] and value[0][0], for efficiency
         if (
             not isinstance(value, (list, tuple))
             or (value and not isinstance(value[0], (list, tuple)))
