@@ -11,6 +11,7 @@ psutil==5.7.0
 pymongo==3.10.1
 python-engineio[client]==3.12.1
 python-socketio[client]==4.5.1
+scikit-image==0.16.2
 setuptools==45.2.0
 tabulate==0.8.5
 xmltodict==0.12.0
