@@ -864,12 +864,15 @@ class CVATImage(object):
                 warnings.warn(msg)
 
         boxes = [CVATImageBox.from_detection(d, metadata) for d in _detections]
-        polygons = [
-            CVATImagePolygon.from_polyline(p, metadata) for p in _polygons
-        ]
-        polylines = [
-            CVATImagePolyline.from_polyline(p, metadata) for p in _polylines
-        ]
+
+        polygons = []
+        for p in _polygons:
+            polygons.extend(CVATImagePolygon.from_polyline(p, metadata))
+
+        polylines = []
+        for p in _polylines:
+            polylines.extend(CVATImagePolyline.from_polyline(p, metadata))
+
         points = [
             CVATImagePoints.from_keypoint(k, metadata) for k in _keypoints
         ]
@@ -1180,23 +1183,39 @@ class CVATImagePolygon(CVATImageAnno, HasCVATPoints):
         """Creates a :class:`CVATImagePolygon` from a
         :class:`fiftyone.core.labels.Polyline`.
 
+        If the :class:`fiftyone.core.labels.Polyline` is composed of multiple
+        shapes, one :class:`CVATImagePolygon` per shape will be generated.
+
         Args:
             polyline: a :class:`fiftyone.core.labels.Polyline`
             metadata: a :class:`fiftyone.core.metadata.ImageMetadata` for the
                 image
 
         Returns:
-            a :class:`CVATImagePolygon`
+            a list of :class:`CVATImagePolygon` instances
         """
         label = polyline.label
 
-        frame_size = (metadata.width, metadata.height)
-        points = _get_single_polyline_points(polyline)
-        points = cls._to_abs_points(points, frame_size)
+        if len(polyline.points) > 1:
+            msg = (
+                "Found polyline with more than one shape; generating separate "
+                "annotations for each shape"
+            )
+            warnings.warn(msg)
 
+        frame_size = (metadata.width, metadata.height)
         occluded, attributes = cls._parse_attributes(polyline)
 
-        return cls(label, points, occluded=occluded, attributes=attributes)
+        polylines = []
+        for points in polyline.points:
+            abs_points = cls._to_abs_points(points, frame_size)
+            polylines.append(
+                cls(
+                    label, abs_points, occluded=occluded, attributes=attributes
+                )
+            )
+
+        return polylines
 
     @classmethod
     def from_polygon_dict(cls, d):
@@ -1258,25 +1277,42 @@ class CVATImagePolyline(CVATImageAnno, HasCVATPoints):
         """Creates a :class:`CVATImagePolyline` from a
         :class:`fiftyone.core.labels.Polyline`.
 
+        If the :class:`fiftyone.core.labels.Polyline` is composed of multiple
+        shapes, one :class:`CVATImagePolyline` per shape will be generated.
+
         Args:
             polyline: a :class:`fiftyone.core.labels.Polyline`
             metadata: a :class:`fiftyone.core.metadata.ImageMetadata` for the
                 image
 
         Returns:
-            a :class:`CVATImagePolyline`
+            a list of :class:`CVATImagePolyline` instances
         """
         label = polyline.label
 
-        frame_size = (metadata.width, metadata.height)
-        points = _get_single_polyline_points(polyline)
-        points = cls._to_abs_points(points, frame_size)
-        if points and polyline.closed:
-            points.append(copy(points[0]))
+        if len(polyline.points) > 1:
+            msg = (
+                "Found polyline with more than one shape; generating separate "
+                "annotations for each shape"
+            )
+            warnings.warn(msg)
 
+        frame_size = (metadata.width, metadata.height)
         occluded, attributes = cls._parse_attributes(polyline)
 
-        return cls(label, points, occluded=occluded, attributes=attributes)
+        polylines = []
+        for points in polyline.points:
+            abs_points = cls._to_abs_points(points, frame_size)
+            if abs_points and polyline.closed:
+                abs_points.append(copy(abs_points[0]))
+
+            polylines.append(
+                cls(
+                    label, abs_points, occluded=occluded, attributes=attributes
+                )
+            )
+
+        return polylines
 
     @classmethod
     def from_polyline_dict(cls, d):
@@ -2479,7 +2515,7 @@ def _get_single_polyline_points(polyline):
     if num_polylines > 0:
         msg = (
             "Found polyline with more than one shape; only the first shape "
-            "will be kept"
+            "will be stored in CVAT format"
         )
         warnings.warn(msg)
 
