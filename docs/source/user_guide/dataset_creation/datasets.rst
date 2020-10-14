@@ -123,7 +123,7 @@ format when reading the dataset from disk.
     |                                                                                       | stored in a simple JSON format.                                                    |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`COCODetectionDataset <COCODetectionDataset-import>`                             | A labeled dataset consisting of images and their associated object detections      |
-    |                                                                                       | saved in `COCO format <http://cocodataset.org/#home>`_.                            |
+    |                                                                                       | saved in `COCO Object Detection Format <https://cocodataset.org/#format-data>`_.   |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`VOCDetectionDataset <VOCDetectionDataset-import>`                               | A labeled dataset consisting of images and their associated object detections      |
     |                                                                                       | saved in `VOC format <http://host.robots.ox.ac.uk/pascal/VOC>`_.                   |
@@ -728,7 +728,8 @@ COCODetectionDataset
 
 The :class:`fiftyone.types.COCODetectionDataset <fiftyone.types.dataset_types.COCODetectionDataset>`
 type represents a labeled dataset consisting of images and their associated
-object detections saved in `COCO format <http://cocodataset.org/#home>`_.
+object detections saved in
+`COCO Object Detection Format <https://cocodataset.org/#format-data>`_.
 
 Datasets of this type are read in the following format:
 
@@ -781,13 +782,16 @@ where ``labels.json`` is a JSON file in the following format:
                 "image_id": 0,
                 "category_id": 2,
                 "bbox": [260, 177, 231, 199],
+                "segmentation": [...],
                 "area": 45969,
-                "segmentation": [],
                 "iscrowd": 0
             },
             ...
         ]
     }
+
+See `this page <https://cocodataset.org/#format-data>`_ for a full
+specification of the `segmentation` field.
 
 For unlabeled datasets, `labels.json` does not contain an `annotations` field.
 
@@ -1870,6 +1874,7 @@ where `labels.json` is a JSON file in the following format:
 
     [
         {
+            "name": "<filename0>.<ext>",
             "attributes": {
                 "scene": "city street",
                 "timeofday": "daytime",
@@ -1877,6 +1882,10 @@ where `labels.json` is a JSON file in the following format:
             },
             "labels": [
                 {
+                    "id": 0,
+                    "category": "traffic sign",
+                    "manualAttributes": true,
+                    "manualShape": true,
                     "attributes": {
                         "occluded": false,
                         "trafficLightColor": "none",
@@ -1887,15 +1896,55 @@ where `labels.json` is a JSON file in the following format:
                         "x2": 1040.626872,
                         "y1": 281.992415,
                         "y2": 326.91156
-                    },
-                    "category": "traffic sign",
-                    "id": 0,
-                    "manualAttributes": true,
-                    "manualShape": true
+                    }
                 },
-            ],
-            "name": "<filename0>.<ext>",
-        },
+                ...
+                {
+                    "id": 34,
+                    "category": "drivable area",
+                    "manualAttributes": true,
+                    "manualShape": true,
+                    "attributes": {
+                        "areaType": "direct"
+                    },
+                    "poly2d": [
+                        {
+                            "types": "LLLLCCC",
+                            "closed": true,
+                            "vertices": [
+                                [241.143645, 697.923453],
+                                [541.525255, 380.564983],
+                                ...
+                            ]
+                        }
+                    ]
+                },
+                ...
+                {
+                    "id": 109356,
+                    "category": "lane",
+                    "attributes": {
+                        "laneDirection": "parallel",
+                        "laneStyle": "dashed",
+                        "laneType": "single white"
+                    },
+                    "manualShape": true,
+                    "manualAttributes": true,
+                    "poly2d": [
+                        {
+                            "types": "LL",
+                            "closed": false,
+                            "vertices": [
+                                [492.879546, 331.939543],
+                                [0, 471.076658],
+                                ...
+                            ]
+                        }
+                    ],
+                },
+                ...
+            }
+        }
         ...
     ]
 
@@ -2384,10 +2433,21 @@ should implement is determined by the type of dataset that you are importing.
 
             @property
             def label_cls(self):
-                """The :class:`fiftyone.core.labels.Label` class returned by this
-                importer, or ``None`` if it returns a dictionary of labels.
+                """The :class:`fiftyone.core.labels.Label` class(es) returned by this
+                importer.
+
+                This can be any of the following:
+
+                -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+                    importer is guaranteed to return labels of this type
+                -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+                    In this case, the importer will return label dictionaries with keys
+                    and value-types specified by this dictionary. Not all keys need be
+                    present in the imported labels
+                -   ``None``. In this case, the importer makes no guarantees about the
+                    labels that it may return
                 """
-                # Return a Label subclass here
+                # Return the appropriate value here
                 pass
 
             def setup(self):
@@ -2436,13 +2496,16 @@ should implement is determined by the type of dataset that you are importing.
         dataset = fo.Dataset(...)
 
         importer = CustomLabeledImageDatasetImporter(dataset_dir, ...)
+        label_field = ...
 
         with importer:
             for image_path, image_metadata, label in importer:
                 sample = fo.Sample(filepath=image_path, metadata=image_metadata)
 
                 if isinstance(label, dict):
-                    sample.update_fields(label)
+                    sample.update_fields(
+                        {label_field + "_" + k: v for k, v in label.items()}
+                    )
                 elif label is not None:
                     sample[label_field] = label
 
@@ -2474,8 +2537,8 @@ should implement is determined by the type of dataset that you are importing.
 
     The
     :meth:`label_cls <fiftyone.utils.data.importers.LabeledImageDatasetImporter.label_cls>`
-    property of the importer declares the type of |Label| that the dataset contains
-    (e.g., |Classification| or |Detections|).
+    property of the importer declares the type of label(s) that the importer
+    will produce.
 
     The
     :meth:`has_image_metadata <fiftyone.utils.data.importers.LabeledImageDatasetImporter.has_image_metadata>`
@@ -2703,9 +2766,9 @@ should implement is determined by the type of dataset that you are importing.
                     -   ``video_metadata``: an
                         :class:`fiftyone.core.metadata.VideoMetadata` instances for the
                         video, or ``None`` if :meth:`has_video_metadata` is ``False``
-                    -   ``frames``: a dictionary mapping frame numbers to
-                        :class:`fiftyone.core.frame.Frame` instances containing the
-                        labels for each video frame, or ``None`` if the sample is
+                    -   ``frames``: a dictionary mapping frame numbers to dictionaries
+                        that map label fields to :class:`fiftyone.core.labels.Label`
+                        instances for each video frame, or ``None`` if the sample is
                         unlabeled
 
                 Raises:
@@ -2726,6 +2789,25 @@ should implement is determined by the type of dataset that you are importing.
                 :class:`fiftyone.core.metadata.VideoMetadata` instances for each video.
                 """
                 # Return True or False here
+                pass
+
+            @property
+            def label_cls(self):
+                """The :class:`fiftyone.core.labels.Label` class(es) returned by this
+                importer within the frame labels that it produces.
+
+                This can be any of the following:
+
+                -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+                    importer is guaranteed to return labels of this type
+                -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+                    In this case, the importer will return label dictionaries with keys
+                    and value-types specified by this dictionary. Not all keys need be
+                    present in the imported labels
+                -   ``None``. In this case, the importer makes no guarantees about the
+                    labels that it may return
+                """
+                # Return the appropriate value here
                 pass
 
             def setup(self):
@@ -2774,13 +2856,22 @@ should implement is determined by the type of dataset that you are importing.
         dataset = fo.Dataset(...)
 
         importer = CustomLabeledVideoDatasetImporter(dataset_dir, ...)
+        label_field = ...
 
         with importer:
             for video_path, video_metadata, frames in importer:
                 sample = fo.Sample(filepath=video_path, metadata=video_metadata)
 
                 if frames is not None:
-                    sample.frames.update(frames)
+                    sample.frames.merge(
+                        {
+                            frame_number: {
+                                label_field + "_" + field_name: label
+                                for field_name, label in frame_dict.items()
+                            }
+                            for frame_number, frame_dict in frames.items()
+                        }
+                    )
 
                 dataset.add_sample(sample)
 
@@ -2809,6 +2900,11 @@ should implement is determined by the type of dataset that you are importing.
     dictionary of information to store in the
     :meth:`info <fiftyone.core.dataset.Dataset.info>` property of the FiftyOne
     dataset.
+
+    The
+    :meth:`label_cls <fiftyone.utils.data.importers.LabeledVideoDatasetImporter.label_cls>`
+    property of the importer declares the type of label(s) that the importer
+    will produce.
 
     The
     :meth:`has_video_metadata <fiftyone.utils.data.importers.LabeledVideoDatasetImporter.has_video_metadata>`

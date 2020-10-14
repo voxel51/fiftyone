@@ -237,9 +237,22 @@ class Sample(_DatasetSample):
         super().save()
 
     @classmethod
+    def from_frame(cls, frame, filepath):
+        """Creates an image :class:`Sample` from the given
+        :class:`fiftyone.core.frame.Frame`.
+
+        Args:
+            frame: a :class:`fiftyone.core.frame.Frame`
+            filepath: the path to the corresponding image frame on disk
+
+        Returns:
+            a :class:`Sample`
+        """
+        return cls(filepath=filepath, **{k: v for k, v in frame.iter_fields()})
+
+    @classmethod
     def from_doc(cls, doc, dataset=None):
-        """Creates an instance of the :class:`Sample` class backed by the given
-        document.
+        """Creates a :class:`Sample` backed by the given document.
 
         Args:
             doc: a :class:`fiftyone.core.odm.SampleDocument`
@@ -481,7 +494,6 @@ class SampleView(_DatasetSample):
         Returns:
             a :class:`Sample`
         """
-        skip_frames = self.media_type == fomm.VIDEO
         kwargs = {f: deepcopy(self[f]) for f in self.field_names}
         return Sample(**kwargs)
 

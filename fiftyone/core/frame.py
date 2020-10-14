@@ -6,6 +6,7 @@ Video frames.
 |
 """
 from collections import defaultdict
+from copy import deepcopy
 import json
 import weakref
 import six
@@ -222,23 +223,43 @@ class Frames(object):
         """Adds the frame labels to this instance.
 
         Args:
-            frames: a :class:`Frames` instance or dictionary mapping frame
-                numbers to :class:`Frame` instances
+            frames: can be any of the following
+
+                -   a :class:`Frames` instance
+                -   a dictionary mapping frame numbers to :class:`Frame`
+                    instances
+                -   a dictionary mapping frame numbers to dictionaries mapping
+                    label fields to :class:`fiftyone.core.labels.Label`
+                    instances
+
             overwrite (True): whether to overwrite existing frames
         """
         for frame_number, frame in frames.items():
             if overwrite or frame_number not in self:
+                if isinstance(frame, dict):
+                    frame = Frame(frame_number=frame_number, **frame)
+
                 self[frame_number] = frame
 
     def merge(self, frames, overwrite=True):
         """Merges the frame labels into this instance.
 
         Args:
-            frames: a :class:`Frames` instance or dictionary mapping frame
-                numbers to :class:`Frame` instances
+            frames: can be any of the following
+
+                -   a :class:`Frames` instance
+                -   a dictionary mapping frame numbers to :class:`Frame`
+                    instances
+                -   a dictionary mapping frame numbers to dictionaries mapping
+                    label fields to :class:`fiftyone.core.labels.Label`
+                    instances
+
             overwrite (True): whether to overwrite existing fields
         """
         for frame_number, frame in frames.items():
+            if isinstance(frame, dict):
+                frame = Frame(**frame)
+
             if frame_number in self:
                 self[frame_number].merge(frame, overwrite=overwrite)
             else:
@@ -361,6 +382,21 @@ class Frame(Document):
 
     def __setitem__(self, field_name, value):
         self.set_field(field_name, value=value)
+
+    @property
+    def _skip_iter_field_names(self):
+        return ("frame_number",)
+
+    def copy(self):
+        """Returns a deep copy of the frame that has not been added to the
+        database.
+
+        Returns:
+            a :class:`Frame`
+        """
+        kwargs = {k: deepcopy(v) for k, v in self.iter_fields()}
+        kwargs["frame_number"] = self.frame_number
+        return self.__class__(**kwargs)
 
     @classmethod
     def from_doc(cls, doc, dataset=None):
