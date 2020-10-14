@@ -38,7 +38,7 @@ function Samples({ setView }) {
         {scrollState.rows.map((r, i) => (
           <React.Fragment key={i}>
             <Grid
-              columns={r.samples.length * 2 - 1}
+              columns={r.columns}
               style={{ ...r.style, height: bounds.width / r.aspectRatio }}
               key={i}
             >
@@ -61,6 +61,12 @@ function Samples({ setView }) {
                     />
                   )}
                 </React.Fragment>
+              ))}
+              {Array.from(Array(r.extraMargins).keys()).map((i) => (
+                <Grid.Column
+                  key={`separator-${i}`}
+                  style={{ padding: 0, width: "100%" }}
+                />
               ))}
             </Grid>
             <div
