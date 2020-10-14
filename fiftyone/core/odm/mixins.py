@@ -505,6 +505,7 @@ class DatasetMixin(object):
     def _get_fields_ordered(cls, include_private=False):
         if include_private:
             return cls._fields_ordered
+
         return tuple(f for f in cls._fields_ordered if not f.startswith("_"))
 
 

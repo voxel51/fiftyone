@@ -334,6 +334,31 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
     confidence = fof.FloatField()
     index = fof.IntField()
 
+    def to_polyline(self, tolerance=2, filled=True):
+        """Returns a :class:`Polyline` representation of this instance.
+
+        If the detection has a mask, the returned polyline will trace the
+        boundary of the mask; otherwise, the polyline will trace the bounding
+        box itself.
+
+        If the detection's mask contains multiple connected components, the
+        polyline will only describe the first component.
+
+        Args:
+            dobj: a DetectedObject
+            tolerance (2): a tolerance, in pixels, when generating an
+                approximate polyline for the instance mask
+            filled (True): whether the polyline should be filled
+
+        Returns:
+            a :class:`Polyline`
+        """
+        dobj = self.to_detected_object()
+        polyline = etai.convert_object_to_polygon(
+            dobj, tolerance=tolerance, filled=filled
+        )
+        return Polyline.from_eta_polyline(polyline)
+
     def to_detected_object(self, name=None):
         """Returns an ``eta.core.objects.DetectedObject`` representation of
         this instance.
@@ -463,6 +488,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
         label (None): a label for the shape
         points (None): a list of ``(x, y)`` points in ``[0, 1] x [0, 1]``
             describing the vertexes of a polyline
+        index (None): an index for the polyline
         closed (False): whether the polyline is closed, i.e., and edge should
             be drawn from the last vertex to the first vertex
         filled (False): whether the polyline represents a shape that can be
@@ -475,8 +501,35 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
 
     label = fof.StringField()
     points = fof.ListField()
+    index = fof.IntField()
     closed = fof.BooleanField(default=False)
     filled = fof.BooleanField(default=False)
+
+    def to_detection(self, mask_size):
+        """Returns a :class:`Detection` representation of this instance whose
+        bounding box tightly encloses the polyline and whose mask encodes the
+        polyline's shape.
+
+        Args:
+            mask_size: the ``(width, height)`` at which to render the instance
+                mask
+
+        Returns:
+            a :class:`Detection`
+        """
+        # Render bounding box and mask
+        polyline = self.to_eta_polyline()
+        bbox, mask = etai.render_bounding_box_and_mask(polyline, mask_size)
+        xtl, ytl, xbr, ybr = bbox.to_coords()
+        bounding_box = [xtl, ytl, (xbr - xtl), (ybr - ytl)]
+
+        return Detection(
+            label=self.label,
+            bounding_box=bounding_box,
+            mask=mask,
+            index=self.index,
+            attributes=self.attributes,
+        )
 
     def to_eta_polyline(self, name=None):
         """Returns an ``eta.core.polylines.Polyline`` representation of this
@@ -493,6 +546,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
 
         return etap.Polyline(
             label=self.label,
+            index=self.index,
             name=name,
             points=self.points,
             closed=self.closed,
@@ -530,6 +584,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
         return cls(
             label=polyline.label,
             points=polyline.points,
+            index=polyline.index,
             closed=polyline.closed,
             filled=polyline.filled,
             attributes=attributes,
@@ -587,6 +642,7 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
     Args:
         label (None): a label for the points
         points (None): a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
+        index (None): an index for the keypoints
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
     """
@@ -595,6 +651,7 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
 
     label = fof.StringField()
     points = fof.ListField()
+    index = fof.IntField()
 
     def to_eta_keypoints(self, name=None):
         """Returns an ``eta.core.keypoints.Keypoints`` representation of this
@@ -610,7 +667,11 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
         attrs = _to_eta_attributes(self.attributes)
 
         return etak.Keypoints(
-            name=name, label=self.label, points=self.points, attrs=attrs,
+            name=name,
+            label=self.label,
+            index=self.index,
+            points=self.points,
+            attrs=attrs,
         )
 
     def to_image_labels(self, name=None):
@@ -643,6 +704,7 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
         return cls(
             label=keypoints.label,
             points=keypoints.points,
+            index=keypoints.index,
             attributes=attributes,
         )
 
