@@ -136,7 +136,7 @@ Here are some things you can do to explore the dataset:
 
 (a) Hover over the videos in the grid view to play their contents
 
-(b) Use the display options menu to toggle the frame labels on and off
+(b) Use the display options menu to toggle and filter detections
 
 (c) Double-click on a video to open the expanded view, and use the video player
     to scrub through the frames
