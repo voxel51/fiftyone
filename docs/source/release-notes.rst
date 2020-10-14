@@ -27,6 +27,8 @@ Core
 - Adding support for rendering annotated versions of video samples with their
   frame labels overlaid via
   :meth:`draw_labels() <fiftyone.core.collections.SampleCollection.draw_labels>`
+- Added support for :ref:`launching quickstarts <cli-fiftyone-quickstart>` as
+  remote sessions
 
 FiftyOne 0.6.1
 --------------
