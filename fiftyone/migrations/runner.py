@@ -35,7 +35,11 @@ class Runner(object):
         self._revisions_to_run, self._direction = self._get_revisions_to_run()
 
     def run(self, dataset_names=[]):
-        """Runs the revisions."""
+        """Runs the revisions.
+
+        Args:
+            dataset_names: a list of names of dataset to run the migration against
+        """
         conn = foo.get_db_conn()
         for dataset_name in dataset_names:
             for revision, module in self._revisions_to_run:
@@ -120,7 +124,6 @@ def get_migration_runner(head, destination):
     """Migrates a single dataset to the latest revision.
 
     Args:
-        dataset_name: the dataset's name
         head: the current version
         destination: the destination version
     """
