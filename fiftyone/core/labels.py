@@ -498,7 +498,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
     meta = {"allow_inheritance": True}
 
     label = fof.StringField()
-    points = fof.ListField(fof.ListField())
+    points = fof.PolylinePointsField()
     index = fof.IntField()
     closed = fof.BooleanField(default=False)
     filled = fof.BooleanField(default=False)
@@ -648,7 +648,7 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
     meta = {"allow_inheritance": True}
 
     label = fof.StringField()
-    points = fof.ListField()
+    points = fof.KeypointsField()
     index = fof.IntField()
 
     def to_eta_keypoints(self, name=None):
