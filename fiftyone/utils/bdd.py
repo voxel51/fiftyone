@@ -495,28 +495,32 @@ def _make_bdd_annotation(image_labels_or_dict, metadata, filename):
     for polyline in image_labels.polylines:
         types = polyline.attrs.get_attr_value_with_name("types", None)
         points = polyline.coords_in(frame_size=frame_size)
+
+        poly2d = []
         for vertices in points:
-            uuid += 1
-            labels.append(
+            poly2d.append(
                 {
-                    "id": uuid,
-                    "category": polyline.label,
-                    "manualAttributes": True,
-                    "manualShape": True,
-                    "attributes": {
-                        a.name: a.value
-                        for a in polyline.attrs
-                        if a.name != "types"
-                    },
-                    "poly2d": [
-                        {
-                            "types": types,
-                            "closed": polyline.closed,
-                            "vertices": vertices,
-                        }
-                    ],
+                    "types": types,
+                    "closed": polyline.closed,
+                    "vertices": vertices,
                 }
             )
+
+        uuid += 1
+        labels.append(
+            {
+                "id": uuid,
+                "category": polyline.label,
+                "manualAttributes": True,
+                "manualShape": True,
+                "attributes": {
+                    a.name: a.value
+                    for a in polyline.attrs
+                    if a.name != "types"
+                },
+                "poly2d": poly2d,
+            }
+        )
 
     return {
         "name": filename,
