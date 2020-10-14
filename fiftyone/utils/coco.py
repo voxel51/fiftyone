@@ -11,6 +11,7 @@ from datetime import datetime
 from itertools import groupby
 import logging
 import os
+import warnings
 
 import numpy as np
 from skimage import measure
@@ -522,12 +523,16 @@ class COCOObject(object):
         x, y, w, h = self.bbox
         bounding_box = [x / width, y / height, w / width, h / height]
 
+        mask = None
         if load_segmentation:
-            mask = _coco_segmentation_to_mask(
-                self.segmentation, self.bbox, frame_size
-            )
-        else:
-            mask = None
+            try:
+                mask = _coco_segmentation_to_mask(
+                    self.segmentation, self.bbox, frame_size
+                )
+            except:
+                warnings.warn(
+                    "Failed to convert segmentation to mask; skipping mask"
+                )
 
         return fol.Detection(
             label=label,
