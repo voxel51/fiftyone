@@ -36,21 +36,43 @@ function Samples({ setView }) {
         useWindow={true}
       >
         {scrollState.rows.map((r, i) => (
-          <Grid
-            columns={r.samples.length}
-            style={{ ...r.style, height: bounds.width / r.aspectRatio }}
-            key={i}
-          >
-            {r.samples.map((s, j) => (
-              <Grid.Column key={j} style={{ padding: 0, width: "100%" }}>
-                <Sample
-                  sample={s.sample}
-                  metadata={s.metadata}
-                  setView={setView}
+          <React.Fragment key={i}>
+            <Grid
+              columns={r.columns}
+              style={{ ...r.style, height: bounds.width / r.aspectRatio }}
+              key={i}
+            >
+              {r.samples.map((s, j) => (
+                <React.Fragment key={j}>
+                  <Grid.Column
+                    key={"column"}
+                    style={{ padding: 0, width: "100%" }}
+                  >
+                    <Sample
+                      sample={s.sample}
+                      metadata={s.metadata}
+                      setView={setView}
+                    />
+                  </Grid.Column>
+                  {j < r.samples.length - 1 && (
+                    <Grid.Column
+                      key={"separator"}
+                      style={{ padding: 0, width: "100%" }}
+                    />
+                  )}
+                </React.Fragment>
+              ))}
+              {Array.from(Array(r.extraMargins).keys()).map((i) => (
+                <Grid.Column
+                  key={`separator-${i}`}
+                  style={{ padding: 0, width: "100%" }}
                 />
-              </Grid.Column>
-            ))}
-          </Grid>
+              ))}
+            </Grid>
+            <div
+              style={{ width: "100%", display: "block", paddingTop: "0.5%" }}
+            />
+          </React.Fragment>
         ))}
         {scrollState.isLoading ? (
           <Grid columns={1}>

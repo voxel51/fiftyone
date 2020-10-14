@@ -13,6 +13,7 @@ import os
 import traceback
 import uuid
 
+from bson import ObjectId
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 from flask_socketio import emit, Namespace, SocketIO
@@ -120,10 +121,12 @@ def _catch_errors(func):
     return wrapper
 
 
-def _load_state(trigger_update=False):
+def _load_state(trigger_update=False, with_stats=False):
     def decorator(func):
         def wrapper(self, *args, **kwargs):
-            state = fos.StateDescriptionWithDerivables.from_dict(self.state)
+            state = self.state.copy()
+            state["with_stats"] = with_stats
+            state = fos.StateDescriptionWithDerivables.from_dict(state)
             state = func(self, state, *args, **kwargs)
             self.state = state.serialize()
             emit(
@@ -188,8 +191,10 @@ class StateController(Namespace):
             state_dict: a serialized
                 :class:`fiftyone.core.state.StateDescription`
         """
+        state = data["data"]
+        state["with_stats"] = True
         self.state = fos.StateDescriptionWithDerivables.from_dict(
-            data["data"]
+            state
         ).serialize()
         emit(
             "update",
@@ -208,13 +213,14 @@ class StateController(Namespace):
         }
 
     @_catch_errors
-    def on_get_current_state(self, _):
+    @_load_state(with_stats=True)
+    def on_get_current_state(self, state, _):
         """Gets the current state.
 
         Returns:
             a :class:`fiftyone.core.state.StateDescriptionWithDerivables`
         """
-        return self.state
+        return state
 
     @_catch_errors
     @_load_state()
@@ -271,6 +277,38 @@ class StateController(Namespace):
         return state
 
     @_catch_errors
+    def on_get_frame_labels(self, sample_id):
+        """Gets the frame labels for video samples
+
+        Args:
+            sample_id: the id of the video sample
+
+        Returns:
+            ...
+        """
+        state = self.state.copy()
+        state["with_stats"] = False
+        state = fos.StateDescriptionWithDerivables.from_dict(state)
+        find_d = {"_sample_id": ObjectId(sample_id)}
+        labels = etav.VideoLabels()
+        frames = list(state.dataset._frame_collection.find(find_d))
+
+        for frame_dict in frames:
+            frame_number = frame_dict["frame_number"]
+            frame_labels = etav.VideoFrameLabels(frame_number=frame_number)
+            for k, v in frame_dict.items():
+                if isinstance(v, dict) and "_cls" in v:
+                    field_labels = _make_image_labels(k, v, frame_number)
+                    for obj in field_labels.objects:
+                        obj.frame_number = frame_number
+
+                    frame_labels.merge_labels(field_labels)
+
+            labels.add_frame(frame_labels)
+
+        return {"frames": frames, "labels": labels.serialize()}
+
+    @_catch_errors
     def on_page(self, page, page_length=20):
         """Gets the requested page of samples.
 
@@ -281,6 +319,7 @@ class StateController(Namespace):
         Returns:
             the list of sample dicts for the page
         """
+        self.state["with_stats"] = False
         state = fos.StateDescriptionWithDerivables.from_dict(self.state)
         if state.view is not None:
             view = state.view
@@ -297,38 +336,6 @@ class StateController(Namespace):
 
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
         samples = [s.to_mongo_dict() for s in view]
-        if view.media_type == fom.VIDEO:
-            labels_dict = defaultdict(etav.VideoLabels)
-            frames_dict = defaultdict(dict)
-            frames = []
-            frames_map = {}
-            frames_coll = state.dataset._frames_collection
-            for idx, s in enumerate(samples):
-                frames += list(s["frames"].values())
-                for frame_number, _id in s["frames"].items():
-                    frames_map[_id] = (idx, int(frame_number))
-            cursor = frames_coll.find({"_id": {"$in": frames}})
-            sample_idx = 0
-            for frame in cursor:
-                _id = frame["_id"]
-                sample_idx, frame_number = frames_map[_id]
-                frames_dict[sample_idx][frame_number] = frame
-                labels = labels_dict[sample_idx]
-                frame_labels = etav.VideoFrameLabels(frame_number=frame_number)
-                for k, v in frame.items():
-                    if isinstance(v, dict) and "_cls" in v:
-                        frame_labels.merge_labels(
-                            _make_image_labels(k, v, frame_number)
-                        )
-                labels.add_frame(frame_labels)
-            for idx, sample in enumerate(samples):
-                labels = labels_dict[idx]
-                for frame in labels:
-                    for obj in labels[frame].objects:
-                        obj.frame_number = frame
-                sample["_eta_labels"] = labels.serialize()
-                sample["frames"] = frames_dict[idx]
-
         convert(samples)
 
         more = False

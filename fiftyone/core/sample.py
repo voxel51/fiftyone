@@ -152,6 +152,20 @@ class _DatasetSample(Document):
                 ),
             )
 
+    def to_mongo_dict(self):
+        """Serializes the sample to a BSON dictionary equivalent to the
+        representation that would be stored in the database.
+
+        Returns:
+            a BSON dict
+        """
+        d = super().to_mongo_dict()
+        if self.media_type == fomm.VIDEO:
+            first_frame = self.frames._get_first_frame()
+            if first_frame is not None:
+                d["frames"]["first_frame"] = first_frame
+        return d
+
 
 class Sample(_DatasetSample):
     """A sample in a :class:`fiftyone.core.dataset.Dataset`.
@@ -217,9 +231,8 @@ class Sample(_DatasetSample):
 
     def save(self):
         """Saves the sample to the database."""
-        if self.media_type == fomm.VIDEO:
-            for frame in self.frames.values():
-                frame.save()  # @todo batch
+        if self.media_type == fomm.VIDEO and self._in_db:
+            self.frames._save()
 
         super().save()
 
@@ -300,17 +313,6 @@ class Sample(_DatasetSample):
         """
         doc = foo.NoDatasetSampleDocument.from_json(s)
         return cls.from_doc(doc)
-
-    @classmethod
-    def _save_dataset_samples(cls, collection_name):
-        """Saves all changes to in-memory sample instances that belong to the
-        specified collection.
-
-        Args:
-            collection_name: the name of the MongoDB collection
-        """
-        for sample in cls._instances[collection_name].values():
-            sample.save()
 
     @classmethod
     def _reload_dataset_sample(cls, collection_name, sample_id):
@@ -492,7 +494,6 @@ class SampleView(_DatasetSample):
         Returns:
             a :class:`Sample`
         """
-        skip_frames = self.media_type == fomm.VIDEO
         kwargs = {f: deepcopy(self[f]) for f in self.field_names}
         return Sample(**kwargs)
 
@@ -502,9 +503,8 @@ class SampleView(_DatasetSample):
         Any modified fields are updated, and any in-memory :class:`Sample`
         instances of this sample are updated.
         """
-        if self.media_type == fomm.VIDEO:
-            for frame in self.frames.values():
-                frame.save()  # @todo batch
+        if self.media_type == fomm.VIDEO and self._in_db:
+            self.frames._save()
 
         self._doc.save(filtered_fields=self._filtered_fields)
 
