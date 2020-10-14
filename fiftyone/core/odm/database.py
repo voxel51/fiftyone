@@ -14,6 +14,10 @@ _client = None
 _default_port = 27017
 
 
+ASC = pymongo.ASCENDING
+DESC = pymongo.DESCENDING
+
+
 def _connect():
     global _client
     if _client is None:

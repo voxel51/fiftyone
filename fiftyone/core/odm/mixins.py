@@ -717,14 +717,6 @@ def get_implied_field_kwargs(value, **kwargs):
     if isinstance(value, dict):
         return {"ftype": fof.DictField}
 
-    from fiftyone.core.frame import Frames
-
-    if isinstance(value, Frames):
-        return {
-            "ftype": fof.FramesField,
-            "frame_doc_cls": kwargs["frame_doc_cls"],
-        }
-
     raise TypeError("Unsupported field value '%s'" % type(value))
 
 

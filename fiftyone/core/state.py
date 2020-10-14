@@ -151,10 +151,6 @@ class StateDescriptionWithDerivables(StateDescription):
 
         self.field_schema = self._get_field_schema()
         self.labels = self._get_label_fields(view)
-        if view.media_type == fom.VIDEO:
-            self.frame_labels = _get_field_count(
-                view, view.get_field_schema()["frames"]
-            )
         self.tags = list(sorted(view.get_tags()))
         self.view_stats = get_view_stats(view)
 
@@ -196,10 +192,12 @@ class StateDescriptionWithDerivables(StateDescription):
     @staticmethod
     def _get_label_fields(view):
         label_fields = []
+        if view.media_type == fom.VIDEO:
+            schema = view.get_frame_field_schema()
+        else:
+            schema = view.get_field_schema()
 
-        for k, v in view.get_field_schema().items():
-            if view.media_type == fom.VIDEO and k == "frames":
-                continue
+        for k, v in schema.items():
             d = {"field": k}
             if isinstance(v, fof.EmbeddedDocumentField):
                 d["cls"] = v.document_type.__name__
@@ -257,6 +255,8 @@ def get_view_stats(dataset_or_view):
 
 def _get_label_field_derivables(view):
     label_fields = _get_label_fields(view)
+    if view.media_type == fom.VIDEO:
+        view = view._with_frames()
     confidence_bounds = _get_label_confidence_bounds(view)
     classes = {
         field.name: _get_label_classes(view, field) for field in label_fields
@@ -273,7 +273,12 @@ def _get_label_field_derivables(view):
 def _get_label_classes(view, field):
     pipeline = []
     is_list = False
-    path = "$%s" % field.name
+    path = field.name
+    if view.media_type == fom.VIDEO:
+        path = "$frames.%s" % path
+    else:
+        path = "$%s" % path
+
     if issubclass(field.document_type, fol.Classifications):
         path = "%s.classifications" % path
         is_list = True
@@ -305,7 +310,12 @@ def _get_label_fields(view):
 
         return False
 
-    return list(filter(_filter, view.get_field_schema().values()))
+    if view.media_type == fom.VIDEO:
+        schema = view.get_frame_field_schema()
+    else:
+        schema = view.get_field_schema()
+
+    return list(filter(_filter, schema.values()))
 
 
 def _get_bounds(fields, view, facets):
@@ -317,7 +327,7 @@ def _get_bounds(fields, view, facets):
     try:
         result = next(view.aggregate(pipeline))
     except StopIteration:
-        return {}
+        return {field.name: [None, None] for field in fields}
     bounds = {}
     for field in fields:
         try:
@@ -360,7 +370,11 @@ def _get_label_confidence_bounds(view):
     facets = {}
     for field in fields:
         is_list = False
-        path = "$%s" % field.name
+        path = field.name
+        if view.media_type == fom.VIDEO:
+            path = "$frames.%s" % path
+        else:
+            path = "$%s" % path
         if issubclass(field.document_type, fol.Classifications):
             path = "%s.classifications" % path
             is_list = True
@@ -389,30 +403,41 @@ def _get_label_confidence_bounds(view):
     return _get_bounds(fields, view, facets)
 
 
-def _get_field_count(view, field):
-    if isinstance(field, fof.EmbeddedDocumentField) or (
-        view.media_type == fom.VIDEO and field.name == "frames"
-    ):
+def _get_field_count(view, field, prefix=""):
+    if prefix != "":
+        prefix += "."
+    if view.media_type == fom.VIDEO and field.name == "frames":
+        view = view._with_frames()
+        custom_fields_schema = view.get_frame_field_schema().copy()
+        for frame_field_name in fod.Dataset.get_default_frame_fields(
+            include_private=True
+        ):
+            custom_fields_schema.pop(frame_field_name, None)
+        return {
+            frame_field_name: _get_field_count(
+                view, frame_field, prefix="frames"
+            )
+            for frame_field_name, frame_field in custom_fields_schema.items()
+        }
+    elif isinstance(field, fof.EmbeddedDocumentField):
         extra_stage = []
-        if field.name == "frames":
-            array_field = {"$objectToArray": "$%s" % field.name}
-        elif issubclass(field.document_type, fol.Classifications):
-            array_field = "$%s.classifications" % field.name
+        array_field = "$%s" % prefix
+        if issubclass(field.document_type, fol.Classifications):
+            array_field += "%s.classifications" % field.name
         elif issubclass(field.document_type, fol.Detections):
-            array_field = "$%s.detections" % field.name
+            array_field += "%s.detections" % field.name
         elif issubclass(field.document_type, fol.Polylines):
-            array_field = "$%s.polylines" % field.name
+            array_field += "%s.polylines" % field.name
         elif issubclass(field.document_type, fol.Keypoint):
-            array_field = "$%s.points" % field.name
+            array_field += "%s.points" % field.name
         elif issubclass(field.document_type, fol.Keypoints):
-            array_field = "$%s.keypoints" % field.name
+            array_field += "%s.keypoints" % field.name
             extra_stage = [
                 {"$unwind": array_field},
             ]
-            array_field = "%s.points" % array_field
+            array_field += "%s.points" % array_field
         else:
             array_field = None
-
         if array_field:
             # sum of lengths of arrays for each document
             pipeline = [
@@ -432,9 +457,21 @@ def _get_field_count(view, field):
                 }
             ]
             pipeline = extra_stage + pipeline
+
             try:
                 return next(view.aggregate(pipeline))["totalCount"]
             except StopIteration:
                 return 0
 
-    return len(view.exists(field.name))
+    path = prefix + field.name
+    pipeline = []
+    if prefix != "":
+        pipeline.append({"$project": {field.name: "$%s" % path}})
+    pipeline.extend(fos.Exists(field.name).to_mongo())
+    pipeline.append({"$count": "count"})
+    try:
+        return next(view.aggregate(pipeline))["count"]
+    except StopIteration:
+        pass
+
+    return 0

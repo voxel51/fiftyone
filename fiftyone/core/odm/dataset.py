@@ -20,7 +20,6 @@ from .document import Document, EmbeddedDocument
 class SampleFieldDocument(EmbeddedDocument):
     """Backing document for sample fields."""
 
-    media_type = StringField()
     name = StringField()
     ftype = StringField()
     subfield = StringField(null=True)
@@ -106,3 +105,4 @@ class DatasetDocument(Document):
         document_type=SampleFieldDocument
     )
     frame_fields = EmbeddedDocumentListField(document_type=SampleFieldDocument)
+    version = StringField(required=True, null=True)

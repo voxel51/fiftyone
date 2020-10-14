@@ -5,6 +5,7 @@ FiftyOne datasets.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import defaultdict
 from copy import deepcopy
 import datetime
 import fnmatch
@@ -22,9 +23,12 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
+from fiftyone.constants import VERSION
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+from fiftyone.migrations import get_migration_runner
 import fiftyone.core.odm as foo
 import fiftyone.core.odm.sample as foos
 import fiftyone.core.sample as fos
@@ -155,9 +159,7 @@ def delete_non_persistent_datasets(verbose=False):
         verbose (False): whether to log the names of deleted datasets
     """
     for name in list_datasets():
-        dataset = load_dataset(name)
-        if not dataset.persistent:
-            dataset.delete()
+        if _drop_dataset(name, if_persistent=True):
             if verbose:
                 logger.info("Dataset '%s' deleted", name)
 
@@ -264,6 +266,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.save()
 
     @property
+    def version(self):
+        """The version of the dataset"""
+        return self._doc.version
+
+    @property
     def name(self):
         """The name of the dataset."""
         return self._doc.name
@@ -322,6 +329,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             "Persistent:     %s" % self.persistent,
             "Info:           %s" % _info_repr.repr(self.info),
             "Tags:           %s" % self.get_tags(),
+            "Version:        %s" % self.version,
             "Sample fields:",
             self._to_fields_str(self.get_field_schema()),
         ]
@@ -330,7 +338,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             elements.extend(
                 [
                     "Frame fields:",
-                    self._to_fields_str(self.get_frames_field_schema()),
+                    self._to_fields_str(self.get_frame_field_schema()),
                 ]
             )
 
@@ -407,9 +415,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return fov.DatasetView(self)
 
     @classmethod
-    def get_default_sample_fields(
-        cls, include_private=False, with_frames=False
-    ):
+    def get_default_sample_fields(cls, include_private=False):
         """Get the default fields present on any :class:`Dataset`.
 
         Args:
@@ -421,6 +427,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         return foos.default_sample_fields(
             foo.DatasetSampleDocument, include_private=include_private
+        )
+
+    @classmethod
+    def get_default_frame_fields(cls, include_private=False):
+        """Get the default fields present on any :class:`Frame`.
+
+        Args:
+            include_private (False): whether or not to return fields prefixed
+                with a `_`
+
+        Returns:
+            a tuple of field names
+        """
+        return foos.default_sample_fields(
+            foo.DatasetFrameSampleDocument, include_private=include_private
         )
 
     def get_field_schema(
@@ -448,7 +469,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             include_private=include_private,
         )
 
-    def get_frames_field_schema(
+    def get_frame_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
     ):
         """Returns a schema dictionary describing the fields of the frames of
@@ -576,10 +597,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample = sample.copy()
 
         self._validate_sample(sample)
-
         d = sample.to_mongo_dict()
-        if self.media_type == fom.VIDEO:
-            self._add_frame_samples([d])
         d.pop("_id", None)  # remove the ID if in DB
         self._sample_collection.insert_one(d)  # adds `_id` to `d`
 
@@ -587,40 +605,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             doc = self._sample_doc_cls.from_dict(d, extended=False)
             sample._set_backing_doc(doc, dataset=self)
 
+        if self.media_type == fom.VIDEO:
+            sample.frames._serve(self)
+            sample.frames._save()
+
         return str(d["_id"])
-
-    def _add_frame_samples(self, sample_dicts):
-        frames = []
-        frames_len = {}
-        frames_keys = {}
-        for idx, d in enumerate(sample_dicts):
-            sample_frames = d.pop("frames", None)
-            frames_keys[idx] = [
-                str(frame_number) for frame_number in sample_frames.keys()
-            ]
-            sample_frames = [
-                frame.to_dict() for frame in sample_frames.values()
-            ]
-            frames_len[idx] = len(sample_frames)
-            for frame in sample_frames:
-                frame.pop("_id", None)
-
-            frames += sample_frames
-        if len(frames) == 0:
-            return  # nothing to insert
-
-        result = self._frames_collection.insert_many(frames)
-        sample_idx = 0
-        result_start = 0
-        for sample_idx, num_frames in frames_len.items():
-            result_end = result_start + num_frames
-            sample_dicts[sample_idx]["frames"] = {
-                frames_keys[sample_idx][frame_key]: _id
-                for frame_key, _id in enumerate(
-                    result.inserted_ids[result_start:result_end]
-                )
-            }
-            result_start = result_end
 
     def add_samples(self, samples, expand_schema=True, num_samples=None):
         """Adds the given samples to the dataset.
@@ -676,10 +665,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._validate_sample(sample)
 
         dicts = [sample.to_mongo_dict() for sample in samples]
-        if self.media_type == fom.VIDEO:
-            # @todo improve batching behavior for frames
-            self._add_frame_samples(dicts)
-
         for d in dicts:
             d.pop("_id", None)  # remove the ID if in DB
 
@@ -694,6 +679,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if not sample._in_db:
                 doc = self._sample_doc_cls.from_dict(d, extended=False)
                 sample._set_backing_doc(doc, dataset=self)
+
+            if self.media_type == fom.VIDEO:
+                sample.frames._serve(self)
+                sample.frames._save()
 
         return [str(d["_id"]) for d in dicts]
 
@@ -887,10 +876,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         If reference to a sample exists in memory, the sample object will be
         updated such that ``sample.in_dataset == False``.
         """
-        if self.media_type == fom.VIDEO:
-            self._frame_doc_cls.drop_collection()
-            fos.Sample._reset_all_backing_docs(self._frames_collection_name)
-
+        self._frame_doc_cls.drop_collection()
+        fos.Sample._reset_all_backing_docs(self._frame_collection_name)
         self._sample_doc_cls.drop_collection()
         fos.Sample._reset_all_backing_docs(self._sample_collection_name)
 
@@ -1682,7 +1669,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             field: the name of the field to index
         """
-        if field not in self._indexes:
+        if field not in self._sample_indexes:
             self._sample_collection.create_index(field)
 
     def aggregate(self, pipeline=None):
@@ -1803,16 +1790,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return foo.get_db_conn()[self._sample_collection_name]
 
     @property
-    def _frames_collection_name(self):
+    def _sample_indexes(self):
+        index_info = self._sample_collection.index_information()
+        return [k["key"][0][0] for k in index_info.values()]
+
+    @property
+    def _frame_collection_name(self):
         return "frames." + self._sample_collection_name
 
     @property
-    def _frames_collection(self):
-        return foo.get_db_conn()[self._frames_collection_name]
+    def _frame_collection(self):
+        return foo.get_db_conn()[self._frame_collection_name]
 
     @property
-    def _indexes(self):
-        index_info = self._sample_collection.index_information()
+    def _frame_indexes(self):
+        index_info = self._frame_collection.index_information()
         return [k["key"][0][0] for k in index_info.values()]
 
     def _apply_field_schema(self, new_fields):
@@ -1848,31 +1840,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
     def _expand_schema(self, samples):
+        if self.media_type == None and len(samples):
+            self.media_type = samples[0].media_type
+            if self.media_type == fom.VIDEO:
+                self._sample_doc_cls.add_field(
+                    "frames", fof.EmbeddedDocumentField, fol._Frames
+                )
+
         fields = self.get_field_schema(include_private=True)
-        frames_fields = self.get_frames_field_schema(include_private=True)
         for sample in samples:
+            self._validate_media_type(sample)
+            if self.media_type == fom.VIDEO:
+                self._expand_frame_schema(sample.frames.values())
             for field_name in sample.to_mongo_dict():
                 if field_name == "_id":
                     continue
-
-                if field_name == "frames":
-                    if self.media_type is None:
-                        self.media_type = fom.VIDEO
-                        frames_fields = self.get_frames_field_schema(
-                            include_private=True
-                        )
-
-                    for frame_number in sample[field_name]:
-                        frame_obj = sample[field_name][frame_number]
-                        for frame_field_name in frame_obj.to_mongo_dict():
-                            if frame_field_name not in frames_fields:
-                                self._frame_doc_cls.add_implied_field(
-                                    frame_field_name,
-                                    frame_obj[frame_field_name],
-                                )
-                                frames_fields = self.get_frames_field_schema(
-                                    include_private=True
-                                )
 
                 if field_name not in fields:
                     self._sample_doc_cls.add_implied_field(
@@ -1882,8 +1864,35 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     )
                     fields = self.get_field_schema(include_private=True)
 
+        self._doc.reload()
+
+    def _expand_frame_schema(self, frames):
+        fields = self.get_frame_field_schema(include_private=True)
+        for frame in frames:
+            for field_name in frame.to_mongo_dict():
+                if field_name == "_id":
+                    continue
+
+                if field_name not in fields:
+                    self._frame_doc_cls.add_implied_field(
+                        field_name,
+                        frame[field_name],
+                        frame_doc_cls=self._frame_doc_cls,
+                    )
+                    fields = self.get_frame_field_schema(include_private=True)
+
+    def _validate_media_type(self, sample):
+        if self.media_type != sample.media_type:
+            raise fom.MediaTypeError(
+                "Sample media type '%s' does not match dataset media type '%s'"
+                % (sample.media_type, self.media_type)
+            )
+
     def _sample_dict_to_doc(self, d):
         return self._sample_doc_cls.from_dict(d, extended=False)
+
+    def _frame_dict_to_doc(self, d):
+        return self._frame_doc_cls.from_dict(d, extended=False)
 
     def _to_fields_str(self, field_schema):
         max_len = max([len(field_name) for field_name in field_schema]) + 1
@@ -1898,22 +1907,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         non_existest_fields = {
             fn for fn in sample.field_names if fn not in fields
         }
-
-        if self.media_type is None:
-            self.media_type = sample.media_type
-            if self.media_type == fom.VIDEO:
-                self._sample_doc_cls.add_field(
-                    "frames",
-                    fof.FramesField(
-                        frame_doc_cls=self._frame_doc_cls
-                    ).__class__,
-                    frame_doc_cls=self._frame_doc_cls,
-                )
-        elif self.media_type != sample.media_type:
-            raise fom.MediaTypeError(
-                "Sample media type '%s' does not match dataset media type '%s'"
-                % (sample.media_type, self.media_type)
-            )
 
         if non_existest_fields:
             msg = "The fields %s do not exist on the dataset '%s'" % (
@@ -1968,13 +1961,12 @@ def _create_dataset(name, persistent=False, media_type=None):
         )
 
     # Make a unique, permanent name for this sample collection
-    sample_collection_name = _make_sample_collection_name()
-
     # Create SampleDocument class for this dataset
-    frame_doc_cls = _create_frame_document_cls(
-        "frames." + sample_collection_name
-    )
+    sample_collection_name = _make_sample_collection_name()
     sample_doc_cls = _create_sample_document_cls(sample_collection_name)
+
+    frames_collection_name = "frames." + sample_collection_name
+    frame_doc_cls = _create_frame_document_cls(frames_collection_name)
 
     # Create DatasetDocument for this dataset
     dataset_doc = foo.DatasetDocument(
@@ -1985,6 +1977,7 @@ def _create_dataset(name, persistent=False, media_type=None):
         sample_fields=foo.SampleFieldDocument.list_from_field_schema(
             sample_doc_cls.get_field_schema(include_private=True)
         ),
+        version=VERSION,
     )
     dataset_doc.save()
 
@@ -1992,6 +1985,10 @@ def _create_dataset(name, persistent=False, media_type=None):
     conn = foo.get_db_conn()
     collection = conn[sample_collection_name]
     collection.create_index("filepath", unique=True)
+    frames_collection = conn[frames_collection_name]
+    frames_collection.create_index(
+        [("sample_id", foo.ASC), ("frame_number", foo.ASC)]
+    )
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
 
@@ -2014,6 +2011,29 @@ def _create_frame_document_cls(frame_collection_name):
     return type(frame_collection_name, (foo.DatasetFrameSampleDocument,), {})
 
 
+def _drop_dataset(name, if_persistent=True):
+    try:
+        # pylint: disable=no-member
+        dataset_doc = foo.DatasetDocument.objects.get(name=name)
+    except DoesNotExist:
+        raise DoesNotExistError("Dataset '%s' not found" % name)
+
+    if dataset_doc.persistent:
+        return False
+
+    sample_doc_cls = _create_sample_document_cls(
+        dataset_doc.sample_collection_name
+    )
+    sample_doc_cls.drop_collection()
+
+    frame_doc_cls = _create_frame_document_cls(
+        "frames." + dataset_doc.sample_collection_name
+    )
+    frame_doc_cls.drop_collection()
+    dataset_doc.delete()
+    return True
+
+
 def _load_dataset(name):
     # Load DatasetDocument for dataset
     try:
@@ -2021,6 +2041,19 @@ def _load_dataset(name):
         dataset_doc = foo.DatasetDocument.objects.get(name=name)
     except DoesNotExist:
         raise DoesNotExistError("Dataset '%s' not found" % name)
+
+    version = dataset_doc.version
+    if version is None or version != VERSION:
+        runner = get_migration_runner(dataset_doc.version, VERSION)
+        if runner.has_revisions:
+            logger.info(
+                "Migrating dataset '%s' to the current version (%s)"
+                % (dataset_doc.name, VERSION)
+            )
+            runner.run(dataset_names=[dataset_doc.name])
+        dataset_doc.reload()
+        dataset_doc.version = VERSION
+        dataset_doc.save()
 
     # Create SampleDocument class for this dataset
     sample_doc_cls = _create_sample_document_cls(

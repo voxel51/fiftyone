@@ -36,8 +36,6 @@ def _handle_numpy_array(raw, key=None):
 def convert(d):
     if isinstance(d, (dict, OrderedDict)):
         for k, v in d.items():
-            if k == "_eta_labels":
-                continue
             if isinstance(v, ObjectId):
                 d[k] = str(v)
             elif isinstance(v, (dict, OrderedDict, list)):
