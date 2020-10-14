@@ -45,8 +45,8 @@ def launch_app(dataset=None, view=None, port=5151, remote=False):
             load
         view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
-        port (5151): the port number of the server
-        remote (False): whether this is a remote session
+        port (5151): the port number to use
+        remote (False): whether to launch a remote session
 
     Returns:
         a :class:`Session`
@@ -124,7 +124,7 @@ class Session(foc.HasClient):
             load
         view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
-        port (5151): the port to use to connect the FiftyOne App
+        port (5151): the port number to use
         remote (False): whether this is a remote session. Remote sessions do
             not launch the FiftyOne App
     """
