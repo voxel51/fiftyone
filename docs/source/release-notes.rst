@@ -7,6 +7,13 @@ FiftyOne 0.6.2
 --------------
 *Released October 14, 2020*
 
+App
+^^^
+- ~10x improvement on page and grid load times for video datasets
+- Added filtering, toggling, and statistics for labels with respect to the
+  frame schema in the display options sidebars for video datasets
+- Fixed list parameter input submission in the view bar
+
 Core
 ^^^^
 - |Polyline| instances can now represent objects composed of multiple shapes
