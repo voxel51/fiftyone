@@ -3,6 +3,31 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne 0.6.2
+--------------
+*Released October 14, 2020*
+
+Core
+^^^^
+- |Polyline| instances can now represent objects composed of multiple shapes
+- Segmentations can now be :ref:`imported <COCODetectionDataset-import>` and
+  :ref:`exported <COCODetectionDataset-export>` when using
+  `COCO Object Detection Format <https://cocodataset.org/#format-data>`_.
+- Polylines and keypoints can now be :ref:`imported <CVATImageDataset-import>` and
+  :ref:`exported <CVATImageDataset-export>` when using
+  `CVAT image format <https://github.com/openvinotoolkit/cvat/blob/develop/cvat/apps/documentation/xml_format.md>`_
+- Polylines and keypoints can now be :ref:`imported <CVATVideoDataset-import>` and
+  :ref:`exported <CVATVideoDataset-export>` when using
+  `CVAT video format <https://github.com/openvinotoolkit/cvat/blob/develop/cvat/apps/documentation/xml_format.md>`_
+- Added support for filtering polylines and keypoints via new
+  :meth:`filter_polylines() <fiftyone.core.collections.SampleCollection.filter_polylines>`
+  and
+  :meth:`filter_keypoints() <fiftyone.core.collections.SampleCollection.filter_keypoints>`
+  view stages
+- Adding support for rendering annotated versions of video samples with their
+  frame labels overlaid via
+  :meth:`draw_labels() <fiftyone.core.collections.SampleCollection.draw_labels>`
+
 FiftyOne 0.6.1
 --------------
 *Released October 7, 2020*
