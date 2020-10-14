@@ -9,11 +9,14 @@ FiftyOne 0.6.2
 
 App
 ^^^
-- ~10x improvement on page and grid load times for video datasets
+- Improved page and grid load times for video datasets by around 10x
 - Added filtering, toggling, and statistics for labels with respect to the
   frame schema in the display options sidebars for video datasets
 - Added margins to the grid view for both image and video datasets
 - Fixed list parameter input submission in the view bar
+- Fixed an issue causing some label counts to be incorrect after filters are
+  applied
+- Added support for using the keyboard to select labels when filtering
 
 Core
 ^^^^
@@ -32,11 +35,18 @@ Core
   and
   :meth:`filter_keypoints() <fiftyone.core.collections.SampleCollection.filter_keypoints>`
   view stages
-- Adding support for rendering annotated versions of video samples with their
+- Added support for rendering annotated versions of video samples with their
   frame labels overlaid via
   :meth:`draw_labels() <fiftyone.core.collections.SampleCollection.draw_labels>`
 - Added support for :ref:`launching quickstarts <cli-fiftyone-quickstart>` as
   remote sessions
+- Added :meth:`Frames.update() <fiftyone.core.frame.Frames.update>` and
+  :meth:`Frames.merge() <fiftyone.core.frame.Frames.merge>` methods to replace
+  and merge video frames, respectively
+- Fixed :meth:`Dataset.merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>`
+  to properly merge the frame-by-frame contents of video samples
+- Fixed a bug where :meth:`sample.copy() <fiftyone.core.sample.Sample.copy>`
+  would not create a copy of the frames of a video sample
 
 FiftyOne 0.6.1
 --------------
