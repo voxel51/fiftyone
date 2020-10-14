@@ -435,7 +435,7 @@ Here are some examples for each task:
             :linenos:
 
             # Only include keypoints in the `my_keypoints`  field of each sample
-            # that have at most 10 vertices
+            # that have at least 10 vertices
             many_points_view = dataset.filter_keypoints(
                 "my_keypoints", F("points").length() >= 10
             )
