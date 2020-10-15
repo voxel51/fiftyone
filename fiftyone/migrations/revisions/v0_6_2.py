@@ -47,7 +47,7 @@ def up(db, dataset_name):
             frame_number = int(frame_number_str)
             if frame_number == 1:
                 first_frame = db[frame_coll].find_one({"_id": frame_id})
-                first_frame["_cls"] = "_FrameLabel"
+                first_frame["_cls"] = "_FrameLabels"
                 frames_d["first_frame"] = first_frame
             frame_updates.append(
                 pm.UpdateOne(

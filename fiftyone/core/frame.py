@@ -17,12 +17,12 @@ from pymongo import ReplaceOne
 import fiftyone as fo
 from fiftyone.core.document import Document
 import fiftyone.core.frame_utils as fofu
+from fiftyone.core.labels import _FrameLabels
 from fiftyone.core.odm.frame import (
     NoDatasetFrameSampleDocument,
     DatasetFrameSampleDocument,
 )
 import fiftyone.core.utils as fou
-
 
 #
 # This class is instantiated automatically and depends on an owning
@@ -320,7 +320,6 @@ class Frames(object):
             raise fofu.FrameError(
                 "Sample does not have a dataset, Frames cannot be saved"
             )
-        from fiftyone.core.labels import _FrameLabel
 
         d = self._get_first_frame()
         if d is not None:
@@ -341,7 +340,9 @@ class Frames(object):
                     d[k] = fou.deserialize_numpy_array(v)
                 else:
                     d[k] = v
-            self._sample._doc.frames.first_frame = _FrameLabel(**d)
+
+            self._sample._doc.frames.first_frame = _FrameLabels(**d)
+
         self._save_replacements()
 
     def _serve(self, sample):
