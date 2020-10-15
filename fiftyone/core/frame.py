@@ -260,7 +260,6 @@ class Frames(object):
         """
         for frame_number, frame in frames.items():
             if isinstance(frame, dict):
-
                 frame = Frame(frame_number=frame_number, **frame)
 
             if frame_number in self:

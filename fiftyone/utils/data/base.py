@@ -316,7 +316,7 @@ def load_video_labels(
 
         frames = foud.load_video_labels(video_labels_or_path)
 
-        sample.frames.update(frames)
+        sample.frames.merge(frames)
 
     Args:
         video_labels_or_path: can be a ``eta.core.video.VideoLabels`` instance,
