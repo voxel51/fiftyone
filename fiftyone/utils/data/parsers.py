@@ -221,8 +221,10 @@ def add_videos(dataset, samples, sample_parser, tags=None):
         num_samples = None
 
     _samples = map(parse_sample, samples)
+
+    # @todo: skip schema expansion and set media type before adding samples
     return dataset.add_samples(
-        _samples, num_samples=num_samples, expand_schema=False
+        _samples, num_samples=num_samples, expand_schema=True
     )
 
 
