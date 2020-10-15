@@ -61,8 +61,9 @@ class Frames(object):
         self._replacements[doc.get_field("frame_number")] = doc
 
     def _save_replacements(self):
-        if len(self._replacements) == 0:
+        if not self._replacements:
             return
+
         self._frame_collection.bulk_write(
             [
                 ReplaceOne(
@@ -104,7 +105,8 @@ class Frames(object):
     def __contains__(self, frame_number):
         if frame_number in self._replacements:
             return True
-        elif self._sample._in_db:
+
+        if self._sample._in_db:
             find_d = self._make_filter(frame_number, self._sample._doc)
             return self._frame_collection.find_one(find_d) is not None
 
@@ -271,6 +273,7 @@ class Frames(object):
         first_frame = self._replacements.get(1, None)
         if first_frame is None and self._sample._in_db:
             first_frame = self._sample._doc.frames["first_frame"]
+
         return first_frame
 
     def to_mongo_dict(self):
