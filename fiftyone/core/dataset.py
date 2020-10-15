@@ -326,7 +326,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         elements = [
             "Name:           %s" % self.name,
-            "Media type      %s" % self.media_type,
+            "Media type:     %s" % self.media_type,
             "Num samples:    %d" % len(self),
             "Persistent:     %s" % self.persistent,
             "Info:           %s" % _info_repr.repr(self.info),
@@ -464,11 +464,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
              an ``OrderedDict`` mapping field names to field types
         """
-        return self._sample_doc_cls.get_field_schema(
+        d = self._sample_doc_cls.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             include_private=include_private,
         )
+
+        if not include_private and self.media_type == fom.VIDEO:
+            d.pop("frames", None)
+
+        return d
 
     def get_frame_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
