@@ -139,7 +139,7 @@ Datasets are homogeneous; they must contain samples of the same media type:
     # MediaTypeError: Sample media type 'video' does not match dataset media type 'image'
 
 Dataset version
-------------------
+---------------
 
 The version of the `fiftyone` package for which a dataset is formatted is
 stored in the :meth:`version <fiftyone.core.dataset.Dataset.version>` property
