@@ -141,13 +141,13 @@ Datasets are homogeneous; they must contain samples of the same media type:
 Dataset version
 ------------------
 
-The version of the `fiftyone` package with which a dataset is created is stored
-in the :meth:`version <fiftyone.core.dataset.Dataset.version>` property of the
-dataset.
+The version of the `fiftyone` package for which a dataset is formatted is
+stored in the :meth:`version <fiftyone.core.dataset.Dataset.version>` property
+of the dataset.
 
 If you upgrade your `fiftyone` package and then load a dataset that was created
-with an older version of the library, it will be automatically migrated to the
-new library version (if necessary) the first time you load it.
+with an older version of the package, it will be automatically migrated to the
+new package version (if necessary) the first time you load it.
 
 Storing dataset information
 ---------------------------
@@ -471,7 +471,6 @@ printing it:
     Persistent:     False
     Info:           {}
     Tags:           []
-    Version:        0.6.2
     Sample fields:
         media_type: fiftyone.core.fields.StringField
         filepath:   fiftyone.core.fields.StringField
@@ -514,7 +513,6 @@ updated to reflect the new field:
     Persistent:     False
     Info:           {}
     Tags:           []
-    Version:        0.6.2
     Sample fields:
         media_type:    fiftyone.core.fields.StringField
         filepath:      fiftyone.core.fields.StringField

@@ -559,7 +559,6 @@ Let's say you have a dataset that looks like this:
     Persistent:     True
     Info:           {}
     Tags:           []
-    Version:        0.6.2
     Sample fields:
         filepath:                 StringField
         tags:                     ListField(StringField)

@@ -75,7 +75,6 @@ obtain a desired subset of the samples.
     Persistent:     False
     Info:           {}
     Tags:           []
-    Version:        0.6.2
     Sample fields:
         media_type: fiftyone.core.fields.StringField
         filepath:   fiftyone.core.fields.StringField
