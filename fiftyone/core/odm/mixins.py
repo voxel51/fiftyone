@@ -85,7 +85,7 @@ def no_delete_default_field(func):
 
 class DatasetMixin(object):
     """Mixin for concrete :class:`fiftyone.core.odm.document.SampleDocument`
-    subtypes that are backed by a dataset
+    subtypes that are backed by a dataset.
     """
 
     def __setattr__(self, name, value):
@@ -505,6 +505,7 @@ class DatasetMixin(object):
     def _get_fields_ordered(cls, include_private=False):
         if include_private:
             return cls._fields_ordered
+
         return tuple(f for f in cls._fields_ordered if not f.startswith("_"))
 
 
@@ -715,14 +716,6 @@ def get_implied_field_kwargs(value, **kwargs):
 
     if isinstance(value, dict):
         return {"ftype": fof.DictField}
-
-    from fiftyone.core.frame import Frames
-
-    if isinstance(value, Frames):
-        return {
-            "ftype": fof.FramesField,
-            "frame_doc_cls": kwargs["frame_doc_cls"],
-        }
 
     raise TypeError("Unsupported field value '%s'" % type(value))
 

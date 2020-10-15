@@ -129,7 +129,15 @@ def import_samples(
                     "from a LabeledImageDatasetImporter"
                 )
 
-            if expand_schema and dataset_importer.label_cls is not None:
+            # Check if a single label field is being imported
+            try:
+                single_label_field = issubclass(
+                    dataset_importer.label_cls, fol.Label
+                )
+            except:
+                single_label_field = False
+
+            if expand_schema and single_label_field:
                 # This has the benefit of ensuring that `label_field` exists,
                 # even if all of the imported samples are unlabeled (i.e.,
                 # return labels that are all `None`)
@@ -148,7 +156,9 @@ def import_samples(
                 )
 
                 if isinstance(label, dict):
-                    sample.update_fields(label)
+                    sample.update_fields(
+                        {label_field + "_" + k: v for k, v in label.items()}
+                    )
                 elif label is not None:
                     sample[label_field] = label
 
@@ -157,6 +167,12 @@ def import_samples(
         elif isinstance(dataset_importer, LabeledVideoDatasetImporter):
             # Labeled video dataset
 
+            if label_field is None:
+                raise ValueError(
+                    "A `label_field` must be provided when importing samples "
+                    "from a LabeledVideoDatasetImporter"
+                )
+
             def parse_sample(sample):
                 video_path, video_metadata, frames = sample
                 sample = fos.Sample(
@@ -164,7 +180,15 @@ def import_samples(
                 )
 
                 if frames is not None:
-                    sample.frames.update(frames)
+                    sample.frames.merge(
+                        {
+                            frame_number: {
+                                label_field + "_" + field_name: label
+                                for field_name, label in frame_dict.items()
+                            }
+                            for frame_number, frame_dict in frames.items()
+                        }
+                    )
 
                 return sample
 
@@ -324,7 +348,7 @@ class GenericSampleDatasetImporter(DatasetImporter):
     .. automethod:: __len__
     .. automethod:: __next__
 
-    Example Usage::
+    FiftyOne imports datasets of this type using the pseudocode below::
 
         import fiftyone as fo
 
@@ -391,7 +415,7 @@ class UnlabeledImageDatasetImporter(DatasetImporter):
     .. automethod:: __len__
     .. automethod:: __next__
 
-    Example Usage::
+    FiftyOne imports datasets of this type using the pseudocode below::
 
         import fiftyone as fo
 
@@ -446,7 +470,7 @@ class UnlabeledVideoDatasetImporter(DatasetImporter):
     .. automethod:: __len__
     .. automethod:: __next__
 
-    Example Usage::
+    FiftyOne imports datasets of this type using the pseudocode below::
 
         import fiftyone as fo
 
@@ -501,7 +525,7 @@ class LabeledImageDatasetImporter(DatasetImporter):
     .. automethod:: __len__
     .. automethod:: __next__
 
-    Example Usage::
+    FiftyOne imports datasets of this type using the pseudocode below::
 
         import fiftyone as fo
 
@@ -516,7 +540,9 @@ class LabeledImageDatasetImporter(DatasetImporter):
                 )
 
                 if isinstance(label, dict):
-                    sample.update_fields(label)
+                    sample.update_fields(
+                        {label_field + "_" + k: v for k, v in label.items()}
+                    )
                 elif label is not None:
                     sample[label_field] = label
 
@@ -577,8 +603,19 @@ class LabeledImageDatasetImporter(DatasetImporter):
 
     @property
     def label_cls(self):
-        """The :class:`fiftyone.core.labels.Label` class returned by this
-        importer, or ``None`` if it returns a dictionary of labels.
+        """The :class:`fiftyone.core.labels.Label` class(es) returned by this
+        importer.
+
+        This can be any of the following:
+
+        -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+            importer is guaranteed to return labels of this type
+        -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+            In this case, the importer will return label dictionaries with keys
+            and value-types specified by this dictionary. Not all keys need be
+            present in the imported labels
+        -   ``None``. In this case, the importer makes no guarantees about the
+            labels that it may return
         """
         raise NotImplementedError("subclass must implement label_cls")
 
@@ -589,11 +626,12 @@ class LabeledVideoDatasetImporter(DatasetImporter):
     .. automethod:: __len__
     .. automethod:: __next__
 
-    Example Usage::
+    FiftyOne imports datasets of this type using the pseudocode below::
 
         import fiftyone as fo
 
         dataset = fo.Dataset(...)
+        label_field = ...
 
         importer = LabeledVideoDatasetImporter(dataset_dir, ...)
         with importer:
@@ -603,7 +641,15 @@ class LabeledVideoDatasetImporter(DatasetImporter):
                 )
 
                 if frames is not None:
-                    sample.frames.update(frames)
+                    sample.frames.merge(
+                        {
+                            frame_number: {
+                                label_field + "_" + field_name: label
+                                for field_name, label in frame_dict.items()
+                            }
+                            for frame_number, frame_dict in frames.items()
+                        }
+                    )
 
                 dataset.add_sample(sample)
 
@@ -644,9 +690,9 @@ class LabeledVideoDatasetImporter(DatasetImporter):
             -   ``video_metadata``: an
                 :class:`fiftyone.core.metadata.VideoMetadata` instances for the
                 video, or ``None`` if :meth:`has_video_metadata` is ``False``
-            -   ``frames``: a dictionary mapping frame numbers to
-                :class:`fiftyone.core.frame.Frame` instances containing the
-                labels for each video frame, or ``None`` if the sample is
+            -   ``frames``: a dictionary mapping frame numbers to dictionaries
+                that map label fields to :class:`fiftyone.core.labels.Label`
+                instances for each video frame, or ``None`` if the sample is
                 unlabeled
 
         Raises:
@@ -660,6 +706,24 @@ class LabeledVideoDatasetImporter(DatasetImporter):
         :class:`fiftyone.core.metadata.VideoMetadata` instances for each video.
         """
         raise NotImplementedError("subclass must implement has_video_metadata")
+
+    @property
+    def label_cls(self):
+        """The :class:`fiftyone.core.labels.Label` class(es) returned by this
+        importer within the frame labels that it produces.
+
+        This can be any of the following:
+
+        -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+            importer is guaranteed to return frame labels of this type
+        -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+            In this case, the importer will return frame label dictionaries
+            with keys and value-types specified by this dictionary. Not all
+            keys need be present in each frame
+        -   ``None``. In this case, the importer makes no guarantees about the
+            labels that it may return
+        """
+        raise NotImplementedError("subclass must implement label_cls")
 
 
 class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
@@ -1514,6 +1578,10 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
     @property
     def has_video_metadata(self):
         return self.compute_metadata
+
+    @property
+    def label_cls(self):
+        return None
 
     def setup(self):
         self._sample_parser = FiftyOneVideoLabelsSampleParser(

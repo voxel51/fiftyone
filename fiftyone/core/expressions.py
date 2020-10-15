@@ -406,8 +406,8 @@ class ViewExpression(object):
     # Array expression operators ##############################################
 
     def __getitem__(self, idx_or_slice):
-        """Returns the element or slice of the given expression, which must
-        resolve to an array.
+        """Returns the element or slice of this expression, which must resolve
+        to an array.
 
         All of the typical array slicing operations are supported, except for
         specifying a non-unit step.
@@ -466,7 +466,7 @@ class ViewExpression(object):
         )
 
     def length(self):
-        """Computes the length of the expression, which must resolve to an
+        """Computes the length of this expression, which must resolve to an
         array.
 
         If the expression is null, 0 is returned.
@@ -504,8 +504,8 @@ class ViewExpression(object):
         return ViewExpression({"$in": [value, self]})
 
     def filter(self, expr):
-        """Applies the filter to the elements of the expression, which must
-        resolve to an array.
+        """Applies the given filter to the elements of this expression, which
+        must resolve to an array.
 
         The output array will only contain elements of the input array for
         which ``expr`` returns ``True``.
@@ -525,11 +525,44 @@ class ViewExpression(object):
             }
         )
 
+    def map(self, expr):
+        """Applies the given expression to the elements of this expression,
+        which must resolve to an array.
+
+        The output will be an array with the applied results.
+
+        Args:
+            expr: a :class:`ViewExpression`
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression(
+            {"$map": {"input": self, "in": expr.to_mongo(prefix="$$this")}}
+        )
+
+    def sum(self):
+        """Returns the sum of the values in this expression, which must resolve
+        to a numeric array.
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression(
+            {
+                "$reduce": {
+                    "input": self,
+                    "initialValue": 0,
+                    "in": {"$add": ["$$value", "$$this"]},
+                }
+            }
+        )
+
     # String expression operators #############################################
 
     def re_match(self, regex, options=None):
-        """Performs a regular expression pattern match on the expression, which
-        must resolve to a string.
+        """Performs a regular expression pattern match on this expression,
+        which must resolve to a string.
 
         The output of the expression will be ``True`` if the pattern matches
         and ``False`` otherwise.
@@ -565,7 +598,7 @@ class ViewExpression(object):
         )
 
     def starts_with(self, str_or_strs, case_sensitive=True):
-        """Determines whether the string expression starts with the given
+        """Determines whether this string expression starts with the given
         string (or any of a list of strings).
 
         Args:
@@ -586,7 +619,7 @@ class ViewExpression(object):
         return self.re_match(regex, options=options)
 
     def ends_with(self, str_or_strs, case_sensitive=True):
-        """Determines whether the string expression ends with the given string
+        """Determines whether this string expression ends with the given string
         (or any of a list of strings).
 
         Args:
@@ -607,7 +640,7 @@ class ViewExpression(object):
         return self.re_match(regex, options=options)
 
     def contains_str(self, str_or_strs, case_sensitive=True):
-        """Determines whether the string expression contains the given string
+        """Determines whether this string expression contains the given string
         (or any of a list of strings).
 
         Args:
@@ -628,7 +661,7 @@ class ViewExpression(object):
         return self.re_match(regex, options=options)
 
     def matches_str(self, str_or_strs, case_sensitive=True):
-        """Determines whether the string expression exactly matches the given
+        """Determines whether this string expression exactly matches the given
         string (or any of a list of strings).
 
         Args:

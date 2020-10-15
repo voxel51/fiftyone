@@ -525,6 +525,10 @@ class LabeledVideoDatasetIngestor(LabeledVideoDatasetImporter, VideoIngestor):
     def has_video_metadata(self):
         return self.sample_parser.has_video_metadata
 
+    @property
+    def label_cls(self):
+        return self.sample_parser.label_cls
+
     def setup(self):
         self._setup()
 

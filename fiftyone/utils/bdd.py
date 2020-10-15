@@ -506,11 +506,13 @@ def _make_bdd_annotation(image_labels_or_dict, metadata, filename):
                     for a in polyline.attrs
                     if a.name != "types"
                 },
-                "poly2d": {
-                    "types": types,
-                    "closed": polyline.closed,
-                    "vertices": vertices,
-                },
+                "poly2d": [
+                    {
+                        "types": types,
+                        "closed": polyline.closed,
+                        "vertices": vertices,
+                    }
+                ],
             }
         )
 

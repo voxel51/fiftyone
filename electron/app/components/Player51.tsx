@@ -39,7 +39,10 @@ export default ({
   style,
   onClick,
   onDoubleClick,
+  overlay = null,
   onLoad = () => {},
+  onMouseEnter = null,
+  onMouseLeave = null,
   activeLabels,
   frameLabelsActive,
   fieldSchema = {},
@@ -52,11 +55,13 @@ export default ({
   const filter = useRecoilValue(filterSelector);
   const colorMap = useRecoilValue(atoms.colorMap);
   const mediaType = useRecoilValue(selectors.mediaType);
-  const overlay = convertSampleToETA(sample, fieldSchema);
+  if (overlay === null) {
+    overlay = convertSampleToETA(sample, fieldSchema);
+  }
   const [mediaLoading, setMediaLoading] = useState(true);
   const [initLoad, setInitLoad] = useState(false);
   const [error, setError] = useState(null);
-  const id = uuid();
+  const [id] = useState(() => uuid());
   const mimetype =
     (sample.metadata && sample.metadata.mime_type) ||
     mime.lookup(sample.filepath) ||
@@ -67,6 +72,7 @@ export default ({
   if (mediaType === "video") {
     playerActiveLabels.frames = frameLabelsActive;
   }
+
   const [player] = useState(() => {
     try {
       return new Player51({
@@ -116,6 +122,9 @@ export default ({
         filter,
         colorMap,
       });
+      if (!thumbnail) {
+        player.updateOverlay(overlay);
+      }
     }
   }, [player, filter, overlay, playerActiveLabels, colorMap]);
 
@@ -126,6 +135,8 @@ export default ({
       `This video failed to load. Its type (${mimetype}) may be unsupported.`
     )
   );
+  onMouseEnter && useEventHandler(player, "mouseenter", onMouseEnter);
+  onMouseLeave && useEventHandler(player, "mouseleave", onMouseLeave);
   useEventHandler(player, "select", (e) => {
     const id = e.data?.id;
     if (id && onSelectObject) {

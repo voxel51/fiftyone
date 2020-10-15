@@ -9,7 +9,7 @@ import fiftyone.core.session as fos
 import fiftyone.zoo as foz
 
 
-def quickstart(interactive=True, video=False):
+def quickstart(interactive=True, video=False, port=5151, remote=False):
     """Runs the FiftyOne quickstart.
 
     This method loads an interesting dataset from the Dataset Zoo, launches the
@@ -19,6 +19,8 @@ def quickstart(interactive=True, video=False):
         interactive (True): whether to launch the session asynchronously and
             return a session
         video (False): whether to launch a video dataset
+        port (5151): the port number to serve the App
+        remote (False): whether to launch a remote session
 
     Returns:
         If ``interactive`` is ``True``, a tuple is returned containing:
@@ -30,14 +32,16 @@ def quickstart(interactive=True, video=False):
         If ``interactive`` is ``False``, ``None`` is returned
     """
     if video:
-        return _video_quickstart(interactive)
+        return _video_quickstart(interactive, port, remote)
     else:
-        return _quickstart(interactive)
+        return _quickstart(interactive, port, remote)
 
 
-def _quickstart(interactive):
+def _quickstart(interactive, port, remote):
     dataset = foz.load_zoo_dataset("quickstart")
-    session = fos.launch_app(dataset=dataset)
+    session = fos.launch_app(dataset=dataset, port=port, remote=remote)
+
+    # @todo improve readability of stdout when launching remote sessions
 
     if interactive:
         print(_QUICKSTART_GUIDE % _FILTER_DETECTIONS_IN_PYTHON)
@@ -48,9 +52,11 @@ def _quickstart(interactive):
     return None
 
 
-def _video_quickstart(interactive):
+def _video_quickstart(interactive, port, remote):
     dataset = foz.load_zoo_dataset("quickstart-video")
-    session = fos.launch_app(dataset=dataset)
+    session = fos.launch_app(dataset=dataset, port=port, remote=remote)
+
+    # @todo improve readability of stdout when launching remote sessions
 
     if interactive:
         print(_VIDEO_QUICKSTART_GUIDE)
@@ -136,7 +142,7 @@ Here are some things you can do to explore the dataset:
 
 (a) Hover over the videos in the grid view to play their contents
 
-(b) Use the display options menu to toggle the frame labels on and off
+(b) Use the display options menu to toggle and filter detections
 
 (c) Double-click on a video to open the expanded view, and use the video player
     to scrub through the frames

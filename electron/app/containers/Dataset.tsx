@@ -35,7 +35,6 @@ function Dataset(props) {
   });
   const colorMap = useRecoilValue(atoms.colorMap);
   const refreshColorMap = useSetRecoilState(selectors.refreshColorMap);
-
   const datasetName = useRecoilValue(selectors.datasetName);
   const currentSamples = useRecoilValue(atoms.currentSamples);
   const labelNames = useRecoilValue(selectors.labelNames);
@@ -122,6 +121,7 @@ function Dataset(props) {
             metadata={modal.metadata}
             sampleUrl={src}
             onClose={handleHideModal}
+            port={port}
             {...modalProps}
           />
         </ModalWrapper>

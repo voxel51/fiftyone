@@ -198,7 +198,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement get_field_schema()")
 
-    def get_frames_field_schema(
+    def get_frame_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
     ):
         """Returns a schema dictionary describing the fields of the frames of
@@ -221,7 +221,7 @@ class SampleCollection(object):
             the collection is not a video collection
         """
         raise NotImplementedError(
-            "Subclass must implement get_frames_field_schema()"
+            "Subclass must implement get_frame_field_schema()"
         )
 
     def make_unique_field_name(self, root=""):
@@ -298,11 +298,20 @@ class SampleCollection(object):
                 expected type
         """
         schema = self.get_field_schema()
+        frames = self.media_type == fom.VIDEO and field_name.startswith(
+            "frames."
+        )
+        if frames:
+            field_name = field_name[len("frames.") :]
 
-        if field_name not in schema:
+        frame_schema = self.get_frame_field_schema()
+        if not frames and field_name not in schema:
             raise ValueError("Field '%s' does not exist" % field_name)
 
-        field = schema[field_name]
+        if frames and field_name not in frame_schema:
+            raise ValueError("Field '%s' does not exist" % field_name)
+
+        field = frame_schema[field_name] if frames else schema[field_name]
 
         if embedded_doc_type is not None:
             if not isinstance(field, fof.EmbeddedDocumentField) or (
@@ -1259,9 +1268,7 @@ class SampleCollection(object):
         if labels_dict is not None:
             label_field_or_dict = labels_dict
         elif label_field is None:
-            # Choose the first label field that is compatible with the dataset
-            # exporter (if any)
-            label_field_or_dict = _get_default_label_field_for_exporter(
+            label_field_or_dict = _get_default_label_fields_for_exporter(
                 self, dataset_exporter
             )
         else:
@@ -1409,8 +1416,8 @@ class SampleCollection(object):
     def _serialize_field_schema(self):
         return self._serialize_schema(self.get_field_schema())
 
-    def _serialize_frames_field_schema(self):
-        return self._serialize_schema(self.get_frames_field_schema())
+    def _serialize_frame_field_schema(self):
+        return self._serialize_schema(self.get_frame_field_schema())
 
     def _serialize_schema(self, schema):
         return {field_name: str(field) for field_name, field in schema.items()}
@@ -1430,7 +1437,7 @@ def _get_image_label_fields(sample_collection):
 
 
 def _get_frame_label_fields(sample_collection):
-    label_fields = sample_collection.get_frames_field_schema(
+    label_fields = sample_collection.get_frame_field_schema(
         ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.ImageLabel
     )
     return list(label_fields.keys())
@@ -1438,7 +1445,7 @@ def _get_frame_label_fields(sample_collection):
 
 def _get_labels_dict_for_prefix(sample_collection, label_prefix):
     if sample_collection.media_type == fom.VIDEO:
-        label_fields = sample_collection.get_frames_field_schema(
+        label_fields = sample_collection.get_frame_field_schema(
             ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
         )
     else:
@@ -1454,19 +1461,30 @@ def _get_labels_dict_for_prefix(sample_collection, label_prefix):
     return labels_dict
 
 
-def _get_default_label_field_for_exporter(sample_collection, dataset_exporter):
+def _get_default_label_fields_for_exporter(
+    sample_collection, dataset_exporter
+):
     #
     # Labeled image datasets
     #
 
     if isinstance(dataset_exporter, foud.LabeledImageDatasetExporter):
         label_cls = dataset_exporter.label_cls
+
+        if label_cls is None:
+            raise ValueError(
+                "Cannot select a default field when exporter does not provide "
+                "a `label_cls`"
+            )
+
         label_fields = sample_collection.get_field_schema(
             ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
         )
-        for field, field_type in label_fields.items():
-            if issubclass(field_type.document_type, label_cls):
-                return field
+
+        label_field_or_dict = _get_fields_with_types(label_fields, label_cls)
+
+        if label_field_or_dict is not None:
+            return label_field_or_dict
 
         #
         # SPECIAL CASE
@@ -1475,29 +1493,63 @@ def _get_default_label_field_for_exporter(sample_collection, dataset_exporter):
         # format just-in-time, if necessary. So, allow a `Classification` field
         # to be returned here
         #
+
         if label_cls is fol.Detections:
             for field, field_type in label_fields.items():
                 if issubclass(field_type.document_type, fol.Classification):
                     return field
 
-        raise ValueError("No compatible field of type %s found" % label_cls)
+        raise ValueError("No compatible field(s) of type %s found" % label_cls)
 
     #
-    # Video datasets
+    # Labeled video datasets
     #
 
-    if sample_collection.media_type == fom.VIDEO:
-        label_fields = sample_collection.get_frames_field_schema(
+    if isinstance(dataset_exporter, foud.LabeledVideoDatasetExporter):
+        label_cls = dataset_exporter.label_cls
+
+        if label_cls is None:
+            raise ValueError(
+                "Cannot select a default field when exporter does not provide "
+                "a `label_cls`"
+            )
+
+        label_fields = sample_collection.get_frame_field_schema(
             ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
         )
 
-        for field, field_type in label_fields.items():
-            return field  # Just return first field
+        label_field_or_dict = _get_fields_with_types(label_fields, label_cls)
 
-        raise ValueError("No compatible field of type %s found" % label_cls)
+        if label_field_or_dict is not None:
+            return label_field_or_dict
+
+        raise ValueError("No compatible field(s) of type %s found" % label_cls)
 
     #
     # Other
     #
+
+    return None
+
+
+def _get_fields_with_types(label_fields, label_cls):
+    if isinstance(label_cls, dict):
+        # Return first matching field for all dict keys
+        labels_dict = {}
+        for name, _label_cls in label_cls.items():
+            field = _get_field_with_type(label_fields, _label_cls)
+            if field is not None:
+                labels_dict[field] = name
+
+        return labels_dict if labels_dict else None
+
+    # Return first matching field, if any
+    return _get_field_with_type(label_fields, label_cls)
+
+
+def _get_field_with_type(label_fields, label_cls):
+    for field, field_type in label_fields.items():
+        if issubclass(field_type.document_type, label_cls):
+            return field
 
     return None

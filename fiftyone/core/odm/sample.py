@@ -102,6 +102,7 @@ class DatasetSampleDocument(DatasetMixin, Document, SampleDocument):
     meta = {"abstract": True}
 
     media_type = fof.StringField()
+
     # The path to the data on disk
     filepath = fof.StringField(unique=True)
 
@@ -119,6 +120,31 @@ class DatasetSampleDocument(DatasetMixin, Document, SampleDocument):
             value = value.doc.frames
 
         super().set_field(field_name, value, create=create)
+
+    @classmethod
+    def from_dict(cls, d, extended=False):
+        try:
+            ff = d["frames"]["first_frame"]
+            for k, v in ff.items():
+                if isinstance(v, dict):
+                    if "_cls" in v:
+                        # Serialized embedded document
+                        _cls = getattr(fo, v["_cls"])
+                        ff[k] = _cls.from_dict(v)
+                    elif "$binary" in v:
+                        # Serialized array in extended format
+                        binary = json_util.loads(json.dumps(v))
+                        ff[k] = fou.deserialize_numpy_array(binary)
+                    else:
+                        ff[k] = v
+                elif isinstance(v, six.binary_type):
+                    # Serialized array in non-extended format
+                    ff[k] = fou.deserialize_numpy_array(v)
+                else:
+                    ff[k] = v
+        except:
+            pass
+        return super().from_dict(d, extended=extended)
 
 
 class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
@@ -138,13 +164,12 @@ class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
         media_type = fomm.get_media_type(filepath)
         if "media_type" in kwargs and kwargs["media_type"] != media_type:
             raise fomm.MediaTypeError("media_type cannot be set")
-        kwargs["media_type"] = media_type
 
+        kwargs["media_type"] = media_type
         if media_type == fomm.VIDEO:
-            kwargs["frames"] = {}
+            kwargs["frames"] = {"frame_count": 0}
 
         for field_name in self.default_fields_ordered:
-
             value = kwargs.pop(field_name, None)
 
             if field_name == "_rand":
@@ -159,9 +184,3 @@ class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
             self._data[field_name] = value
 
         self._data.update(kwargs)
-
-    def set_field(self, field_name, value, create=True):
-        if field_name == "frames" and isinstance(value, fofr.Frames):
-            value = value.doc.frames
-
-        super().set_field(field_name, value, create=create)

@@ -2,7 +2,7 @@ import { remote, ipcRenderer } from "electron";
 import React, { ReactNode, useState, useEffect, useRef } from "react";
 import ReactGA from "react-ga";
 import { Button, Modal } from "semantic-ui-react";
-import { useSetRecoilState } from "recoil";
+import { useRecoilState, useSetRecoilState } from "recoil";
 import { ErrorBoundary } from "react-error-boundary";
 import NotificationHub from "../components/NotificationHub";
 
@@ -13,7 +13,11 @@ import { updatePort } from "../actions/update";
 import { updateState, updateConnected, updateLoading } from "../actions/update";
 import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
-import { stateDescription, selectedSamples } from "../recoil/atoms";
+import {
+  stateDescription,
+  selectedSamples,
+  viewCounter,
+} from "../recoil/atoms";
 import gaConfig from "../constants/ga.json";
 import Error from "./Error";
 
@@ -31,6 +35,7 @@ function App(props: Props) {
   const [socket, setSocket] = useState(getSocket(result.port, "state"));
   const setStateDescription = useSetRecoilState(stateDescription);
   const setSelectedSamples = useSetRecoilState(selectedSamples);
+  const [viewCounterValue, setViewCounter] = useRecoilState(viewCounter);
 
   const handleStateUpdate = (data) => {
     setStateDescription(data);
@@ -79,6 +84,7 @@ function App(props: Props) {
     dispatch(updateConnected(true));
     dispatch(updateLoading(true));
     socket.emit("get_current_state", "", (data) => {
+      setViewCounter(viewCounterValue + 1);
       handleStateUpdate(data);
       dispatch(updateLoading(false));
     });
@@ -92,6 +98,7 @@ function App(props: Props) {
     dispatch(updateConnected(false));
   });
   useSubscribe(socket, "update", (data) => {
+    setViewCounter(viewCounterValue + 1);
     if (data.close) {
       remote.getCurrentWindow().close();
     }

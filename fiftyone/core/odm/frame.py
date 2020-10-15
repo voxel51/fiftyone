@@ -1,49 +1,6 @@
 """
 Backing document classes for :class:`fiftyone.core.frame.Frame` instances.
 
-Class hierarchy::
-
-    SampleDocument
-    ├── NoDatasetFrameSampleDocument
-    └── DatasetFrameSampleDocument
-        ├── my_custom_dataset
-        ├── another_dataset
-        └── ...
-
-Design invariants:
-
--   A :class:`fiftyone.core.frame.Frame` always has a backing
-    ``frame._doc``, which is an instance of a subclass of
-    :class:`SampleDocument`
-
--   A :class:`fiftyone.core.dataset.Dataset` of media_type "video" always has
-    a backing ``dataset._frame_doc_cls`` which is a subclass of
-    :class:`DatasetFrameSampleDocument``.
-
-**Implementation details**
-
-When a new :class:`fiftyone.core.frame.Frame` is created, its ``_doc``
-attribute is an instance of :class:`NoDatasetFrameSampleDocument`::
-
-    import fiftyone as fo
-
-    frame = fo.Frame()
-    frame._doc  # NoDatasetFrameSampleDocument
-
-When a new :class:`fiftyone.core.dataset.Dataset` is assigned the "video" media
-type, its ``_frame_doc_cls`` attribute holds a dynamically created subclass of
-:class:`DatasetFrameSampleDocument`::
-
-    dataset = fo.Dataset(name="my_dataset")
-    dataset._frame_doc_cls  # time stamped name
-
-When a frame is added to a sample that is in a dataset, its ``_doc`` attribute
-is changed from type :class:`NoDatasetSampleDocument` to type
-``dataset._frame_doc_cls``::
-
-    sample_in_dataset[frame_numer] = frame
-    frame._doc.__name__  # sample.dataset._frame_doc_cls
-
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -59,7 +16,8 @@ class DatasetFrameSampleDocument(DatasetMixin, Document, SampleDocument):
 
     meta = {"abstract": True}
 
-    frame_number = fof.FrameNumberField(default=None, null=True)
+    _sample_id = fof.ObjectIdField(default=None, required=True)
+    frame_number = fof.FrameNumberField(required=True)
 
     @classmethod
     def _sample_collection_name(cls):
@@ -84,7 +42,7 @@ class NoDatasetFrameSampleDocument(NoDatasetMixin, SampleDocument):
 
             value = kwargs.pop(field_name, None)
 
-            if value is None:
+            if value is None and field_name != "_sample_id":
                 value = self._get_default(self.default_fields[field_name])
 
             self._data[field_name] = value
