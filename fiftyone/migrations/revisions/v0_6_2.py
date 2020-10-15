@@ -43,6 +43,7 @@ def up(db, dataset_name):
     for field in dataset_dict["sample_fields"]:
         if "media_type" in field:
             del field["media_type"]
+
         if field["name"] == "frames" and dataset_dict["media_type"] == "video":
             field["ftype"] = "fiftyone.core.fields.EmbeddedDocumentField"
             field["subfield"] = None
@@ -83,7 +84,7 @@ def up(db, dataset_name):
             frame_d["_sample_id"] = s["_id"]
             if frame_number == 1:
                 first_frame = db[frame_coll].find_one({"_id": frame_id})
-                first_frame["_cls"] = "_FrameLabel"
+                first_frame["_cls"] = "_FrameLabels"
                 frames_d["first_frame"] = first_frame
             frame_updates.append(pm.ReplaceOne({"_id": frame_id}, frame_d))
         db[sample_coll].update_one(

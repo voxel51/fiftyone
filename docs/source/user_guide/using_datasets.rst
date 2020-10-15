@@ -138,6 +138,17 @@ Datasets are homogeneous; they must contain samples of the same media type:
     dataset.add_sample(fo.Sample(filepath="/path/to/video.mp4"))
     # MediaTypeError: Sample media type 'video' does not match dataset media type 'image'
 
+Dataset version
+---------------
+
+The version of the `fiftyone` package for which a dataset is formatted is
+stored in the :meth:`version <fiftyone.core.dataset.Dataset.version>` property
+of the dataset.
+
+If you upgrade your `fiftyone` package and then load a dataset that was created
+with an older version of the package, it will be automatically migrated to the
+new package version (if necessary) the first time you load it.
+
 Storing dataset information
 ---------------------------
 
@@ -455,7 +466,7 @@ printing it:
 .. code-block:: text
 
     Name:           a_dataset
-    Media type      image
+    Media type:     image
     Num samples:    0
     Persistent:     False
     Info:           {}
@@ -497,7 +508,7 @@ updated to reflect the new field:
 .. code-block:: text
 
     Name:           a_dataset
-    Media type      image
+    Media type:     image
     Num samples:    0
     Persistent:     False
     Info:           {}

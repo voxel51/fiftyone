@@ -1,7 +1,15 @@
+"""
+Interactive Python utils.
+
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 import os
 
 os.environ["FIFTYONE_DISABLE_SERVICES"] = "1"
 from fiftyone.service.ipc import IPCServer
+
 
 env = {}
 

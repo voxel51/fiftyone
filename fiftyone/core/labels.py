@@ -40,21 +40,6 @@ class Label(DynamicEmbeddedDocument):
     meta = {"allow_inheritance": True}
 
 
-class _FrameLabel(Label):
-    """Hidden label class strictly for storing the first frame in video samples"""
-
-    pass
-
-
-class _Frames(Label):
-    """Hidden label class strictly for storing the first frame in and frame_count
-    video sample
-    s"""
-
-    frame_count = fof.IntField(required=True, null=False, default=0)
-    first_frame = fof.EmbeddedDocumentField(_FrameLabel, null=True)
-
-
 class Attribute(DynamicEmbeddedDocument):
     """Base class for attributes.
 
@@ -870,6 +855,23 @@ class ImageLabels(ImageLabel):
         return _expand_with_prefix(
             self, prefix, multilabel, skip_non_categorical
         )
+
+
+class _FrameLabels(Label):
+    """Hidden label class strictly for storing labels for the first frame of
+    video samples.
+    """
+
+    pass
+
+
+class _Frames(Label):
+    """Hidden label class strictly for storing quick access information about
+    frame labels for video samples.
+    """
+
+    frame_count = fof.IntField(required=True, null=False, default=0)
+    first_frame = fof.EmbeddedDocumentField(_FrameLabels, null=True)
 
 
 def _from_eta_attributes(attrs):

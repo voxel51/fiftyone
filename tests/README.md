@@ -10,8 +10,7 @@ Tests do exist, but their coverage generally needs improvement...
 
 | File                 | Description                                                                                 |
 | -------------------- | ------------------------------------------------------------------------------------------- |
-| `db_conn_test.py`    | Tests connection to the MongoDB database                                                    |
-| `unittests.py`       | Unit tests checking expected behavior of `fiftyone`                                         |
+| `unittests/*.py`     | Unit tests checking expected behavior of FiftyOne                                           |
 | `benchmarking/*.py`  | Tests related to benchmarking the performance of FiftyOne                                   |
 | `import_export/*.py` | Tests for importing/exporting datasets                                                      |
 | `isolated/*.py`      | Tests that must be run in a separate `pytest` process to avoid interfering with other tests |
