@@ -60,9 +60,7 @@ def up(db, dataset_name):
         for s in db[sample_coll].find():
             converted = False
             for d in s.values():
-                r = _up_convert_polyline_points(d)
-                if r:
-                    converted = True
+                converted |= _up_convert_polyline_points(d)
             if converted:
                 writes.append(pm.ReplaceOne({"_id": s["_id"]}, s))
         if len(writes):
@@ -81,9 +79,7 @@ def up(db, dataset_name):
             frame_number = int(frame_number_str)
             frame_d = db[frame_coll].find_one({"_id": frame_id})
             for d in frame_d.values():
-                r = _up_convert_polyline_points(d)
-                if r:
-                    converted = True
+                _up_convert_polyline_points(d)
             frame_d["_sample_id"] = s["_id"]
             if frame_number == 1:
                 first_frame = db[frame_coll].find_one({"_id": frame_id})
@@ -142,9 +138,7 @@ def down(db, dataset_name):
             frames[str(f["frame_number"])] = f["_id"]
             converted = False
             for d in f.values():
-                r = _down_convert_polyline_points(d)
-                if r:
-                    converted = True
+                converted |= _down_convert_polyline_points(d)
             if converted:
                 frame_writes.append(pm.ReplaceOne({"_id": f["_id"]}, f))
 
