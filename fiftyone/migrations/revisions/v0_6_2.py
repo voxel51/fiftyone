@@ -57,8 +57,10 @@ def up(db, dataset_name):
         writes = []
         for s in db[sample_coll].find():
             converted = False
-            for d in s.items():
-                converted = _up_convert_polyline_points(s)
+            for d in s.values():
+                r = _up_convert_polyline_points(d)
+                if r:
+                    converted = True
             if converted:
                 writes.append(pm.ReplaceOne({"_id": s["_id"]}, s))
         if len(writes):
@@ -76,8 +78,10 @@ def up(db, dataset_name):
         for frame_number_str, frame_id in s["frames"].items():
             frame_number = int(frame_number_str)
             frame_d = db[frame_coll].find_one({"_id": frame_id})
-            for d in frame_d.items():
-                converted = _up_convert_polyline_points(d)
+            for d in frame_d.values():
+                r = _up_convert_polyline_points(d)
+                if r:
+                    converted = True
             if frame_number == 1:
                 first_frame = db[frame_coll].find_one({"_id": frame_id})
                 first_frame["_cls"] = "_FrameLabel"
@@ -127,21 +131,22 @@ def down(db, dataset_name):
 
     for s in db[sample_coll].find():
         frames = {}
-        writes = []
+        frame_writes = []
+        _down_convert_polyline_points(s)
         for f in db[frame_coll].find({"_sample_id": s["_id"]}):
             frames[str(f["frame_number"])] = f["_id"]
             converted = False
             for d in f.values():
-                converted = _down_convert_polyline_points(d)
+                r = _down_convert_polyline_points(d)
+                if r:
+                    converted = True
             if converted:
-                writes.append(pm.ReplaceOne({"_id": f["_id"]}, f))
+                frame_writes.append(pm.ReplaceOne({"_id": f["_id"]}, f))
 
-        if len(writes):
-            db[frame_coll].bulk_write(writes, ordered=False)
+        if len(frame_writes):
+            db[frame_coll].bulk_write(frame_writes, ordered=False)
 
-        db[sample_coll].update_one(
-            {"_id": s["_id"]}, {"$set": {"frames": frames}}
-        )
+        db[sample_coll].replace_one({"_id": s["_id"]}, s)
 
     db[frame_coll].update(
         {}, {"$unset": {"_sample_id": ""}}, multi=True, upsert=True
