@@ -466,7 +466,7 @@ printing it:
 .. code-block:: text
 
     Name:           a_dataset
-    Media type      image
+    Media type:     image
     Num samples:    0
     Persistent:     False
     Info:           {}
@@ -508,7 +508,7 @@ updated to reflect the new field:
 .. code-block:: text
 
     Name:           a_dataset
-    Media type      image
+    Media type:     image
     Num samples:    0
     Persistent:     False
     Info:           {}

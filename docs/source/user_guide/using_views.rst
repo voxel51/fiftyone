@@ -33,6 +33,7 @@ You can explicitly create a view that contains an entire dataset via
 .. code-block:: text
 
     Dataset:        cifar10-test
+    Media type:     image
     Num samples:    10000
     Tags:           ['test']
     Sample fields:
