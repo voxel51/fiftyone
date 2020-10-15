@@ -17,7 +17,6 @@ from pymongo import ReplaceOne
 import fiftyone as fo
 from fiftyone.core.document import Document
 import fiftyone.core.frame_utils as fofu
-from fiftyone.core.labels import _FrameLabels
 from fiftyone.core.odm.frame import (
     NoDatasetFrameSampleDocument,
     DatasetFrameSampleDocument,
@@ -322,6 +321,9 @@ class Frames(object):
             raise fofu.FrameError(
                 "Sample does not have a dataset, Frames cannot be saved"
             )
+
+        # @todo avoid local import?
+        from fiftyone.core.labels import _FrameLabels
 
         d = self._get_first_frame()
         if d is not None:
