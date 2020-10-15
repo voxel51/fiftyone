@@ -1,11 +1,15 @@
 """
-Wrapper around pytest that cleans up subprocesses
-"""
+Wrapper around pytest that cleans up subprocesses.
 
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 import sys
 
 import psutil
 import pytest
+
 
 try:
     code = pytest.main(sys.argv[1:])

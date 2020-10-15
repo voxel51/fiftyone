@@ -1,7 +1,10 @@
 """
-Decorator utils for unit tests
-"""
+Decorator utils for unit tests.
 
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 from functools import wraps
 
 import fiftyone as fo

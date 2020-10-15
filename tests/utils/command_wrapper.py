@@ -1,11 +1,15 @@
 """
-Wrapper around an arbitrary command that cleans up subprocesses
-"""
+Wrapper around an arbitrary command that cleans up subprocesses.
 
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 import subprocess
 import sys
 
 import psutil
+
 
 try:
     subprocess.check_call(sys.argv[1:])

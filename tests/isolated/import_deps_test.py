@@ -1,10 +1,14 @@
 """
 Test that the fiftyone core does not depend on Tensorflow or PyTorch.
-"""
 
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 import sys
 
 import pytest
+
 
 # raise an ImportError if any of these modules are imported
 # https://docs.python.org/3/reference/import.html#the-module-cache
