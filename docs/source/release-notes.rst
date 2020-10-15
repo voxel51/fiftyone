@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne 0.6.2
 --------------
-*Released October 14, 2020*
+*Released October 15, 2020*
 
 App
 ^^^
