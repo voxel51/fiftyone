@@ -331,7 +331,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             "Persistent:     %s" % self.persistent,
             "Info:           %s" % _info_repr.repr(self.info),
             "Tags:           %s" % self.get_tags(),
-            "Version:        %s" % self.version,
             "Sample fields:",
             self._to_fields_str(self.get_field_schema()),
         ]
