@@ -9,7 +9,9 @@ import pymongo as pm
 
 
 def _up_convert_polyline_points(d):
-    cls = d.get("cls", None)
+    if not isinstance(d, dict):
+        return False
+    cls = d.get("_cls", None)
     if cls == "Polyline":
         if "points" not in d:
             return False
@@ -86,7 +88,7 @@ def up(db, dataset_name):
                 first_frame = db[frame_coll].find_one({"_id": frame_id})
                 first_frame["_cls"] = "_FrameLabel"
                 frames_d["first_frame"] = first_frame
-            frame_updates.append(pm.ReplaceOne({"_id": frame_id}, d))
+            frame_updates.append(pm.ReplaceOne({"_id": frame_id}, frame_d))
         db[sample_coll].update_one(
             {"_id": s["_id"]}, {"$set": {"frames": frames_d}}
         )
@@ -95,7 +97,9 @@ def up(db, dataset_name):
 
 
 def _down_convert_polyline_points(d):
-    cls = d.get("cls", None)
+    if not isinstance(d, dict):
+        return False
+    cls = d.get("_cls", None)
     if cls == "Polyline":
         if "points" not in d:
             return False
