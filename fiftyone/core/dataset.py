@@ -1846,7 +1846,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
     def _expand_schema(self, samples):
-        if self.media_type == None and len(samples):
+        if self.media_type == None and len(samples) > 0:
             self.media_type = samples[0].media_type
             if self.media_type == fom.VIDEO:
                 self._sample_doc_cls.add_field(
@@ -1857,35 +1857,44 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for sample in samples:
             self._validate_media_type(sample)
             if self.media_type == fom.VIDEO:
-                self._expand_frame_schema(sample.frames.values())
+                self._expand_frame_schema(sample.frames)
+
             for field_name in sample.to_mongo_dict():
                 if field_name == "_id":
                     continue
 
-                if field_name not in fields:
-                    self._sample_doc_cls.add_implied_field(
-                        field_name,
-                        sample[field_name],
-                        frame_doc_cls=self._frame_doc_cls,
-                    )
-                    fields = self.get_field_schema(include_private=True)
+                if field_name in fields:
+                    continue
+
+                value = sample[field_name]
+                if value is None:
+                    continue
+
+                self._sample_doc_cls.add_implied_field(
+                    field_name, value, frame_doc_cls=self._frame_doc_cls,
+                )
+                fields = self.get_field_schema(include_private=True)
 
         self._doc.reload()
 
     def _expand_frame_schema(self, frames):
         fields = self.get_frame_field_schema(include_private=True)
-        for frame in frames:
+        for frame in frames.values():
             for field_name in frame.to_mongo_dict():
                 if field_name == "_id":
                     continue
 
-                if field_name not in fields:
-                    self._frame_doc_cls.add_implied_field(
-                        field_name,
-                        frame[field_name],
-                        frame_doc_cls=self._frame_doc_cls,
-                    )
-                    fields = self.get_frame_field_schema(include_private=True)
+                if field_name in fields:
+                    continue
+
+                value = frame[field_name]
+                if value is None:
+                    continue
+
+                self._frame_doc_cls.add_implied_field(
+                    field_name, value, frame_doc_cls=self._frame_doc_cls,
+                )
+                fields = self.get_frame_field_schema(include_private=True)
 
     def _validate_media_type(self, sample):
         if self.media_type != sample.media_type:
