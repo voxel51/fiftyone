@@ -84,6 +84,7 @@ def up(db, dataset_name):
                 r = _up_convert_polyline_points(d)
                 if r:
                     converted = True
+            frame_d["_sample_id"] = s["_id"]
             if frame_number == 1:
                 first_frame = db[frame_coll].find_one({"_id": frame_id})
                 first_frame["_cls"] = "_FrameLabel"
