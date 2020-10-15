@@ -121,6 +121,7 @@ class DatasetView(foc.SampleCollection):
         """
         elements = [
             "Dataset:        %s" % self.dataset_name,
+            "Media type:     %s" % self.media_type,
             "Num samples:    %d" % len(self),
             "Tags:           %s" % self.get_tags(),
             "Sample fields:",

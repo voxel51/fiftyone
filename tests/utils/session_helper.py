@@ -1,7 +1,15 @@
+"""
+Tests session helper.
+
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 import argparse
 import sys
 
 import fiftyone as fo
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--remote", action="store_true")
