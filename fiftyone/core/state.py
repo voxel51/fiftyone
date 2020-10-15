@@ -236,7 +236,7 @@ def get_view_stats(dataset_or_view):
     else:
         view = dataset_or_view
 
-    custom_fields_schema = view.get_field_schema().copy()
+    custom_fields_schema = view.get_field_schema(include_private=True).copy()
     for field_name in fod.Dataset.get_default_sample_fields(
         include_private=True
     ):
@@ -408,7 +408,9 @@ def _get_field_count(view, field, prefix=""):
         prefix += "."
     if view.media_type == fom.VIDEO and field.name == "frames":
         view = view._with_frames()
-        custom_fields_schema = view.get_frame_field_schema().copy()
+        custom_fields_schema = view.get_frame_field_schema(
+            include_private=True
+        ).copy()
         for frame_field_name in fod.Dataset.get_default_frame_fields(
             include_private=True
         ):
@@ -438,6 +440,7 @@ def _get_field_count(view, field, prefix=""):
             array_field += "%s.points" % array_field
         else:
             array_field = None
+
         if array_field:
             # sum of lengths of arrays for each document
             pipeline = [
