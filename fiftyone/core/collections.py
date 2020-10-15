@@ -666,7 +666,8 @@ class SampleCollection(object):
             # 10 vertices
             #
 
-            stage = FilterPolylines("predictions", F("points").length() >= 10)
+            num_vertices = F("points").map(F().length()).sum()
+            stage = FilterPolylines("predictions", num_vertices >= 10)
             view = dataset.add_stage(stage)
 
         Args:
