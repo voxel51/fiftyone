@@ -307,7 +307,7 @@ def load_video_labels(
 ):
     """Loads the ``eta.core.video.VideoLabels`` into a frame labels dictionary.
 
-    The returned frame labels can be added to a video sample as follows::
+    You can use this utility to add frame labels to a video sample as follows::
 
         import fiftyone as fo
         import fiftyone.utils.data as foud
