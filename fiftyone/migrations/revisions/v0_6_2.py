@@ -120,6 +120,9 @@ def down(db, dataset_name):
             field["subfield"] = "fiftyone.core.fields.ReferenceField"
             field["embedded_doc_type"] = None
 
+    if "version" in dataset_dict:
+        del dataset_dict["version"]
+
     db.datasets.replace_one(match_d, dataset_dict)
 
     for s in db[sample_coll].find():
