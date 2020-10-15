@@ -504,7 +504,7 @@ class COCOObject(object):
                 1-3 pixels
 
         Returns:
-            a list of :class:`fiftyone.core.labels.Polyline` instances
+            a :class:`fiftyone.core.labels.Polyline`
         """
         if self.segmentation is None:
             return []
@@ -513,25 +513,17 @@ class COCOObject(object):
             classes, supercategory_map
         )
 
-        polygon_points = _get_polygons_for_segmentation(
+        points = _get_polygons_for_segmentation(
             self.segmentation, frame_size, tolerance
         )
 
-        # @todo store all polygons in single `Polyline` instance here, when
-        # the data model allows it
-        polylines = []
-        for points in polygon_points:
-            polylines.append(
-                fol.Polyline(
-                    label=label,
-                    points=points,
-                    closed=False,
-                    filled=True,
-                    attributes=attributes,
-                )
-            )
-
-        return polylines
+        return fol.Polyline(
+            label=label,
+            points=points,
+            closed=False,
+            filled=True,
+            attributes=attributes,
+        )
 
     def to_detection(
         self,
@@ -955,7 +947,7 @@ def _coco_objects_to_polylines(
 ):
     polylines = []
     for coco_obj in coco_objects:
-        polylines.extend(
+        polylines.append(
             coco_obj.to_polyline(
                 frame_size,
                 classes=classes,
