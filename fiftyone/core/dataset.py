@@ -267,7 +267,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def version(self):
-        """The version of the dataset"""
+        """The version of the ``fiftyone`` package for which the dataset is
+        formatted.
+        """
         return self._doc.version
 
     @property
