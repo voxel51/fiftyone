@@ -41,8 +41,8 @@ export default ({
   onDoubleClick,
   overlay = null,
   onLoad = () => {},
-  onMouseEnter = null,
-  onMouseLeave = null,
+  onMouseEnter = () => {},
+  onMouseLeave = () => {},
   activeLabels,
   frameLabelsActive,
   fieldSchema = {},
@@ -135,8 +135,8 @@ export default ({
       `This video failed to load. Its type (${mimetype}) may be unsupported.`
     )
   );
-  onMouseEnter && useEventHandler(player, "mouseenter", onMouseEnter);
-  onMouseLeave && useEventHandler(player, "mouseleave", onMouseLeave);
+  useEventHandler(player, "mouseenter", onMouseEnter);
+  useEventHandler(player, "mouseleave", onMouseLeave);
   useEventHandler(player, "select", (e) => {
     const id = e.data?.id;
     if (id && onSelectObject) {
