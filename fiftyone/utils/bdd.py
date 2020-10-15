@@ -445,7 +445,7 @@ def _parse_bdd_polylines(d, frame_size):
 
         polylines.add(
             etap.Polyline.from_abs_coords(
-                points,
+                [points],
                 label=label,
                 closed=closed,
                 filled=filled,
@@ -477,8 +477,9 @@ def _make_bdd_annotation(image_labels_or_dict, metadata, filename):
 
     # Objects
     for obj in image_labels.objects:
-        uuid += 1
         tlx, tly, w, h = obj.bounding_box.coords_in(frame_size=frame_size)
+
+        uuid += 1
         labels.append(
             {
                 "id": uuid,
@@ -492,9 +493,20 @@ def _make_bdd_annotation(image_labels_or_dict, metadata, filename):
 
     # Polylines
     for polyline in image_labels.polylines:
-        uuid += 1
-        vertices = polyline.coords_in(frame_size=frame_size)
         types = polyline.attrs.get_attr_value_with_name("types", None)
+        points = polyline.coords_in(frame_size=frame_size)
+
+        poly2d = []
+        for vertices in points:
+            poly2d.append(
+                {
+                    "types": types,
+                    "closed": polyline.closed,
+                    "vertices": vertices,
+                }
+            )
+
+        uuid += 1
         labels.append(
             {
                 "id": uuid,
@@ -506,13 +518,7 @@ def _make_bdd_annotation(image_labels_or_dict, metadata, filename):
                     for a in polyline.attrs
                     if a.name != "types"
                 },
-                "poly2d": [
-                    {
-                        "types": types,
-                        "closed": polyline.closed,
-                        "vertices": vertices,
-                    }
-                ],
+                "poly2d": poly2d,
             }
         )
 
