@@ -48,6 +48,12 @@ Core
 - Fixed a bug where :meth:`sample.copy() <fiftyone.core.sample.Sample.copy>`
   would not create a copy of the frames of a video sample
 
+Brain
+^^^^^
+- :meth:`compute_uniqueness() <fiftyone.brain.uniqueness.compute_uniqueness>`
+  and :meth:`compute_hardness() <fiftyone.brain.hardness.compute_hardness>` now
+  support multilabel classification tasks
+
 FiftyOne 0.6.1
 --------------
 *Released October 7, 2020*
