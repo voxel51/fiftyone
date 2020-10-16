@@ -12,6 +12,7 @@ import uuid
 from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
 
+from fiftyone.core.aggregations import Aggregation
 from fiftyone.core.expressions import ViewExpression, ViewField
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -127,6 +128,43 @@ class ViewStageError(Exception):
     """
 
     pass
+
+
+class Aggregate(ViewStage):
+    """Aggregates a set or list of :class:`fiftyone.core.aggregations.Aggregation`s.
+
+    WIP API.
+
+    Examples:
+
+        @todo
+    """
+
+    def __init__(self, aggregations=[]):
+        self._aggregations = set(aggregations)
+
+    def __call__(self, view):
+        view = view.add_stage(self)
+
+    def add(self, aggregation):
+        self._aggregations.add(aggregation)
+
+    def to_mongo(self, view):
+        return {
+            "$facet": {
+                agg._output_field(view): agg.to_mongo()
+                for agg in self._aggregations
+            }
+        }
+
+    def validate(self, sample_collection):
+        for agg in self._aggregations:
+            if not isinstance(agg, Aggregation):
+                raise TypeError(
+                    "'%s' with name '%s' is not a an Aggregation"
+                    % (agg.__class__, agg.name)
+                )
+            agg.validate(sample_collection)
 
 
 class Exclude(ViewStage):
