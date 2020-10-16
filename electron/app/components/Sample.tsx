@@ -11,7 +11,7 @@ import Tag from "./Tags/Tag";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { getLabelText, stringify } from "../utils/labels";
-import { useFastRerender, useFrameLabels } from "../utils/hooks";
+import { useFastRerender, useVideoData } from "../utils/hooks";
 
 const SampleDiv = animated(styled.div`
   position: relative;
@@ -44,9 +44,9 @@ const useHoverLoad = (socket, sample) => {
   const [loaded, setLoaded] = useState(null);
   const viewCounter = useRecoilValue(atoms.viewCounter);
 
-  const [requested, requestLabels] = useFrameLabels(
+  const [requested, requestLabels] = useVideoData(
     socket,
-    sample._id,
+    sample,
     (data, player) => {
       if (!data) return;
       const { labels } = data;

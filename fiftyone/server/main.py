@@ -273,7 +273,7 @@ class StateController(Namespace):
         return state
 
     @_catch_errors
-    def on_get_frame_labels(self, sample_id):
+    def on_get_video_data(self, sample_d):
         """Gets the frame labels for video samples
 
         Args:
@@ -283,8 +283,8 @@ class StateController(Namespace):
             ...
         """
         state = self.state.copy()
-        state = fos.StateDescriptionWithDerivables.from_dict(state)
-        find_d = {"_sample_id": ObjectId(sample_id)}
+        state = fos.StateDescription.from_dict(state)
+        find_d = {"_sample_id": ObjectId(sample_d["_id"])}
         labels = etav.VideoLabels()
         frames = list(state.dataset._frame_collection.find(find_d))
 
@@ -301,7 +301,9 @@ class StateController(Namespace):
 
             labels.add_frame(frame_labels)
 
-        return {"frames": frames, "labels": labels.serialize()}
+        fps = etav.get_frame_rate(sample_d["filepath"])
+
+        return {"frames": frames, "labels": labels.serialize(), "fps": fps}
 
     @_catch_errors
     def on_page(self, page, page_length=20):
@@ -322,11 +324,11 @@ class StateController(Namespace):
         else:
             return []
 
-        # for stage_dict in state.filter_stages.values():
-        #    stage = fosg.ViewStage._from_dict(stage_dict)
-        #    if type(stage) in _WITHOUT_PAGINATION_EXTENDED_STAGES:
-        #        continue
-        #    view = view.add_stage(stage)
+        for stage_dict in state.filters.values():
+            stage = fosg.ViewStage._from_dict(stage_dict)
+            if type(stage) in _WITHOUT_PAGINATION_EXTENDED_STAGES:
+                continue
+            view = view.add_stage(stage)
 
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
         samples = [s.to_mongo_dict() for s in view]

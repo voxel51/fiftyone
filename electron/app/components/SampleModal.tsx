@@ -15,7 +15,7 @@ import { getSocket } from "../utils/socket";
 import {
   useKeydownHandler,
   useResizeHandler,
-  useFrameLabels,
+  useVideoData,
 } from "../utils/hooks";
 import {
   formatMetadata,
@@ -239,7 +239,7 @@ const SampleModal = ({
   );
   const socket = getSocket(port, "state");
   const viewCounter = useRecoilValue(atoms.viewCounter);
-  const [requested, requestLabels] = useFrameLabels(socket, sample._id);
+  const [requested, requestLabels] = useVideoData(socket, sample);
   const frameData = useRecoilValue(atoms.sampleFrameData(sample._id));
   const videoLabels = useRecoilValue(atoms.sampleVideoLabels(sample._id));
   useEffect(() => {

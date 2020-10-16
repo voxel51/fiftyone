@@ -130,6 +130,11 @@ export const sampleFrameData = atomFamily({
   default: null,
 });
 
+export const sampleFrameRate = atomFamily({
+  key: "sampleFrameRate",
+  default: null,
+});
+
 export const sampleVideoDataRequested = atomFamily({
   key: "sampleVideoDataRequested",
   default: null,

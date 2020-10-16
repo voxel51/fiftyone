@@ -49,12 +49,14 @@ class StateDescription(etas.Serializable):
         dataset=None,
         selected=None,
         view=None,
+        filters={},
     ):
         self.close = close
         self.connect = connected
         self.dataset = dataset
         self.view = view
         self.selected = selected or []
+        self.filters = filters
         super().__init__()
 
     def serialize(self, reflective=False):

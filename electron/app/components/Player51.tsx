@@ -34,7 +34,6 @@ const InfoWrapper = styled.div`
 export default ({
   thumbnail,
   sample,
-  metadata = {},
   src,
   style,
   onClick,
@@ -51,6 +50,7 @@ export default ({
   defaultOverlayOptions,
 }) => {
   const filter = useRecoilValue(filterSelector);
+  const fps = useRecoilValue(atoms.sampleFrameRate(sample._id));
   const colorMap = useRecoilValue(atoms.colorMap);
   const mediaType = useRecoilValue(selectors.mediaType);
   if (overlay === null) {
@@ -79,7 +79,6 @@ export default ({
           type: mimetype,
         },
         overlay,
-        fps: metadata.fps,
         colorMap,
         playerActiveLabels,
         filter,
@@ -119,12 +118,13 @@ export default ({
         activeLabels: playerActiveLabels,
         filter,
         colorMap,
+        fps,
       });
       if (!thumbnail) {
         player.updateOverlay(overlay);
       }
     }
-  }, [player, filter, overlay, playerActiveLabels, colorMap]);
+  }, [player, filter, overlay, playerActiveLabels, colorMap, fps]);
 
   useEventHandler(player, "load", () => setMediaLoading(false));
   useEventHandler(player, "load", onLoad);

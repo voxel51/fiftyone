@@ -74,7 +74,7 @@ export const totalCount = selector({
 export const filterStage = selectorFamily({
   key: "filterStage",
   get: (fieldName: string) => ({ get }) => {
-    const state = get(atoms.stateDescription).filters;
+    const state = get(atoms.stateDescription);
     return state.filters ? state.filters[fieldName] : null;
   },
 });
