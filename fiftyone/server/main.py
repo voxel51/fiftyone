@@ -161,7 +161,7 @@ class StateController(Namespace):
     """State controller.
 
     Attributes:
-        state: a :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+        state: a :class:`fiftyone.core.state.StateDescription`
                instance
 
     Args:
@@ -170,7 +170,7 @@ class StateController(Namespace):
     """
 
     def __init__(self, *args, **kwargs):
-        self.state = fos.StateDescriptionWithDerivables().serialize()
+        self.state = fos.StateDescription().serialize()
         self.prev_state = self.state
         super().__init__(*args, **kwargs)
 
@@ -214,7 +214,7 @@ class StateController(Namespace):
         """Gets the current state.
 
         Returns:
-            a :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+            a :class:`fiftyone.core.state.StateDescription`
         """
         return state
 
@@ -225,12 +225,12 @@ class StateController(Namespace):
 
         Args:
             state: the current
-                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+                :class:`fiftyone.core.state.StateDescription`
             _id: the sample ID
 
         Returns:
             the updated
-                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+                :class:`fiftyone.core.state.StateDescription`
         """
         selected = set(state.selected)
         selected.add(_id)
@@ -244,12 +244,12 @@ class StateController(Namespace):
 
         Args:
             state: the current
-                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+                :class:`fiftyone.core.state.StateDescription`
             _id: the sample ID
 
         Returns:
             the updated
-                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+                :class:`fiftyone.core.state.StateDescription`
         """
         selected = set(state.selected)
         selected.remove(_id)
@@ -263,17 +263,17 @@ class StateController(Namespace):
 
         Args:
             state: the current
-                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+                :class:`fiftyone.core.state.StateDescription`
 
         Returns:
             the updated
-                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+                :class:`fiftyone.core.state.StateDescription`
         """
         state.selected = []
         return state
 
     @_catch_errors
-    def on_get_video_data(self, sample_d):
+    def on_get_video_data(self, state, sample_d):
         """Gets the frame labels for video samples
 
         Args:
@@ -359,7 +359,7 @@ class StateController(Namespace):
         Returns:
             a list of distributions
         """
-        state = fos.StateDescriptionWithDerivables.from_dict(self.state)
+        state = fos.StateDescription.from_dict(self.state)
         if state.view is not None:
             view = state.view
         elif state.dataset is not None:
