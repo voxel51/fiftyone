@@ -28,6 +28,20 @@ export const mediaType = selector({
   },
 });
 
+export const view = selector({
+  key: "view",
+  get: ({ get }) => {
+    return get(atoms.stateDescription).view || [];
+  },
+  set: ({ get, set }, stages) => {
+    const state = get(atoms.stateDescription);
+    return {
+      ...state,
+      view: stages,
+    };
+  },
+});
+
 export const framesLabelsCount = selector({
   key: "frameLabelsCount",
   get: ({ get }) => {
