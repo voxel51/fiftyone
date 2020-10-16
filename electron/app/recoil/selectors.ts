@@ -3,6 +3,7 @@ import * as atoms from "./atoms";
 import { generateColorMap } from "../utils/colors";
 import {
   RESERVED_FIELDS,
+  VALID_LABEL_TYPES,
   VALID_LIST_TYPES,
   VALID_NUMERIC_TYPES,
   makeLabelNameGroups,
@@ -38,45 +39,44 @@ export const framesLabelsCount = selector({
 export const datasetStats = selector({
   key: "datasetStats",
   get: ({ get }) => {
-    const stateDescription = get(atoms.stateDescription);
-    return stateDescription.view_stats || {};
+    return get(atoms.stats).view || {};
   },
 });
 
 export const extendedDatasetStats = selector({
   key: "extendedDatasetStats",
   get: ({ get }) => {
-    const stateDescription = get(atoms.stateDescription);
-    return stateDescription.extended_view_stats || {};
+    return get(atoms.stats).extended_view || {};
   },
 });
 
 export const totalCount = selector({
   key: "totalCount",
   get: ({ get }): number => {
-    return get(atoms.stateDescription).view_count;
+    return get(datasetStats).count;
   },
 });
 
 export const filterStage = selectorFamily({
   key: "filterStage",
   get: (fieldName: string) => ({ get }) => {
-    const state = get(atoms.stateDescription);
-    return state.filter_stages ? state.filter_stages[fieldName] : null;
+    const state = get(atoms.stateDescription).filters;
+    return state.filters ? state.filters[fieldName] : null;
   },
 });
 
 export const filteredCount = selector({
   key: "filteredCount",
   get: ({ get }): number => {
-    return get(atoms.stateDescription).extended_view_count;
+    return get(extendedDatasetStats).count;
   },
 });
 
 export const tagNames = selector({
   key: "tagNames",
   get: ({ get }) => {
-    return get(atoms.stateDescription).tags || [];
+    const tags = get(datasetStats).tags || {};
+    return Object.keys(tags).sort();
   },
 });
 
@@ -97,35 +97,30 @@ export const filteredTagSampleCounts = selector({
 export const fieldSchema = selector({
   key: "fieldSchema",
   get: ({ get }) => {
-    return get(atoms.stateDescription).field_schema || {};
+    return get(atoms.stateDescription).sample_fields || [];
+  },
+});
+
+const labelFilter = (f) =>
+  f.embedded_doc_type &&
+  VALID_LABEL_TYPES.includes(f.embedded_doc_type.split(".").slice(-1)[0]);
+
+const labels = selector({
+  key: "labels",
+  get: ({ get }) => {
+    const schema = get(fieldSchema);
+    return schema.filter(labelFilter);
   },
 });
 
 export const labelNames = selector({
   key: "labelNames",
-  get: ({ get }) => {
-    const stateDescription = get(atoms.stateDescription);
-    const stats = get(datasetStats);
-    if (!stateDescription.labels) {
-      return [];
-    }
-    return stateDescription.labels.map((label) => label.field);
-  },
+  get: ({ get }) => get(labels).map((l) => l.name),
 });
 
 export const labelTypes = selector({
   key: "labelTypes",
-  get: ({ get }) => {
-    const labels = get(atoms.stateDescription).labels || [];
-    const names = get(labelNames);
-    const types = {};
-    for (const label of labels) {
-      if (names.includes(label.field)) {
-        types[label.field] = label.cls;
-      }
-    }
-    return types;
-  },
+  get: ({ get }) => get(labels).map((l) => l.split(".").slice(-1)[0]),
 });
 
 export const labelClasses = selectorFamily({
