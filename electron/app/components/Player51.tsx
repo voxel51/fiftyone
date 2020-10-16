@@ -128,6 +128,12 @@ export default ({
     }
   }, [player, filter, overlay, playerActiveLabels, colorMap]);
 
+  useEffect(() => {
+    if (player && selectedObjects) {
+      player.updateOptions({ selectedObjects });
+    }
+  }, [player, selectedObjects]);
+
   useEventHandler(player, "load", () => setMediaLoading(false));
   useEventHandler(player, "load", onLoad);
   useEventHandler(player, "error", () =>
