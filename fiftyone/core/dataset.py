@@ -267,7 +267,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def version(self):
-        """The version of the dataset"""
+        """The version of the ``fiftyone`` package for which the dataset is
+        formatted.
+        """
         return self._doc.version
 
     @property
@@ -324,12 +326,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         elements = [
             "Name:           %s" % self.name,
-            "Media type      %s" % self.media_type,
+            "Media type:     %s" % self.media_type,
             "Num samples:    %d" % len(self),
             "Persistent:     %s" % self.persistent,
             "Info:           %s" % _info_repr.repr(self.info),
             "Tags:           %s" % self.get_tags(),
-            "Version:        %s" % self.version,
             "Sample fields:",
             self._to_fields_str(self.get_field_schema()),
         ]
@@ -463,11 +464,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
              an ``OrderedDict`` mapping field names to field types
         """
-        return self._sample_doc_cls.get_field_schema(
+        d = self._sample_doc_cls.get_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             include_private=include_private,
         )
+
+        if not include_private and self.media_type == fom.VIDEO:
+            d.pop("frames", None)
+
+        return d
 
     def get_frame_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
@@ -1840,7 +1846,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
     def _expand_schema(self, samples):
-        if self.media_type == None and len(samples):
+        if self.media_type == None and len(samples) > 0:
             self.media_type = samples[0].media_type
             if self.media_type == fom.VIDEO:
                 self._sample_doc_cls.add_field(
@@ -1851,35 +1857,44 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for sample in samples:
             self._validate_media_type(sample)
             if self.media_type == fom.VIDEO:
-                self._expand_frame_schema(sample.frames.values())
+                self._expand_frame_schema(sample.frames)
+
             for field_name in sample.to_mongo_dict():
                 if field_name == "_id":
                     continue
 
-                if field_name not in fields:
-                    self._sample_doc_cls.add_implied_field(
-                        field_name,
-                        sample[field_name],
-                        frame_doc_cls=self._frame_doc_cls,
-                    )
-                    fields = self.get_field_schema(include_private=True)
+                if field_name in fields:
+                    continue
+
+                value = sample[field_name]
+                if value is None:
+                    continue
+
+                self._sample_doc_cls.add_implied_field(
+                    field_name, value, frame_doc_cls=self._frame_doc_cls,
+                )
+                fields = self.get_field_schema(include_private=True)
 
         self._doc.reload()
 
     def _expand_frame_schema(self, frames):
         fields = self.get_frame_field_schema(include_private=True)
-        for frame in frames:
+        for frame in frames.values():
             for field_name in frame.to_mongo_dict():
                 if field_name == "_id":
                     continue
 
-                if field_name not in fields:
-                    self._frame_doc_cls.add_implied_field(
-                        field_name,
-                        frame[field_name],
-                        frame_doc_cls=self._frame_doc_cls,
-                    )
-                    fields = self.get_frame_field_schema(include_private=True)
+                if field_name in fields:
+                    continue
+
+                value = frame[field_name]
+                if value is None:
+                    continue
+
+                self._frame_doc_cls.add_implied_field(
+                    field_name, value, frame_doc_cls=self._frame_doc_cls,
+                )
+                fields = self.get_frame_field_schema(include_private=True)
 
     def _validate_media_type(self, sample):
         if self.media_type != sample.media_type:

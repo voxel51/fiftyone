@@ -264,7 +264,7 @@ class SampleCollection(object):
         if etau.is_str(field_or_fields):
             field_or_fields = [field_or_fields]
 
-        schema = self.get_field_schema()
+        schema = self.get_field_schema(include_private=True)
         default_fields = set(
             default_sample_fields(
                 DatasetSampleDocument, include_private=True, include_id=True
@@ -666,7 +666,8 @@ class SampleCollection(object):
             # 10 vertices
             #
 
-            stage = FilterPolylines("predictions", F("points").length() >= 10)
+            num_vertices = F("points").map(F().length()).sum()
+            stage = FilterPolylines("predictions", num_vertices >= 10)
             view = dataset.add_stage(stage)
 
         Args:

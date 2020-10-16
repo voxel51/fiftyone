@@ -40,21 +40,6 @@ class Label(DynamicEmbeddedDocument):
     meta = {"allow_inheritance": True}
 
 
-class _FrameLabel(Label):
-    """Hidden label class strictly for storing the first frame in video samples"""
-
-    pass
-
-
-class _Frames(Label):
-    """Hidden label class strictly for storing the first frame in and frame_count
-    video sample
-    s"""
-
-    frame_count = fof.IntField(required=True, null=False, default=0)
-    first_frame = fof.EmbeddedDocumentField(_FrameLabel, null=True)
-
-
 class Attribute(DynamicEmbeddedDocument):
     """Base class for attributes.
 
@@ -356,9 +341,6 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
         boundary of the mask; otherwise, the polyline will trace the bounding
         box itself.
 
-        If the detection's mask contains multiple connected components, the
-        polyline will only describe the first component.
-
         Args:
             dobj: a DetectedObject
             tolerance (2): a tolerance, in pixels, when generating an
@@ -497,25 +479,26 @@ class Detections(ImageLabel):
 
 
 class Polyline(ImageLabel, _HasID, _HasAttributes):
-    """A polyline or polygon.
+    """A set of semantically related polylines or polygons.
 
     Args:
-        label (None): a label for the shape
-        points (None): a list of ``(x, y)`` points in ``[0, 1] x [0, 1]``
-            describing the vertexes of a polyline
+        label (None): a label for the polyline
+        points (None): a list of lists of ``(x, y)`` points in
+            ``[0, 1] x [0, 1]`` describing the vertices of each shape in the
+            polyline
         index (None): an index for the polyline
-        closed (False): whether the polyline is closed, i.e., and edge should
-            be drawn from the last vertex to the first vertex
-        filled (False): whether the polyline represents a shape that can be
-            filled when rendering it
+        closed (False): whether the shapes are closed, i.e., and edge should
+            be drawn from the last vertex to the first vertex of each shape
+        filled (False): whether the polyline represents polygons, i.e., shapes
+            that should be filled when rendering them
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
-            instances
+            instances for the polyline
     """
 
     meta = {"allow_inheritance": True}
 
     label = fof.StringField()
-    points = fof.ListField()
+    points = fof.PolylinePointsField()
     index = fof.IntField()
     closed = fof.BooleanField(default=False)
     filled = fof.BooleanField(default=False)
@@ -665,7 +648,7 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
     meta = {"allow_inheritance": True}
 
     label = fof.StringField()
-    points = fof.ListField()
+    points = fof.KeypointsField()
     index = fof.IntField()
 
     def to_eta_keypoints(self, name=None):
@@ -872,6 +855,23 @@ class ImageLabels(ImageLabel):
         return _expand_with_prefix(
             self, prefix, multilabel, skip_non_categorical
         )
+
+
+class _FrameLabels(Label):
+    """Hidden label class strictly for storing labels for the first frame of
+    video samples.
+    """
+
+    pass
+
+
+class _Frames(Label):
+    """Hidden label class strictly for storing quick access information about
+    frame labels for video samples.
+    """
+
+    frame_count = fof.IntField(required=True, null=False, default=0)
+    first_frame = fof.EmbeddedDocumentField(_FrameLabels, null=True)
 
 
 def _from_eta_attributes(attrs):

@@ -3,6 +3,57 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne 0.6.2
+--------------
+*Released October 15, 2020*
+
+App
+^^^
+- Improved page and grid load times for video datasets by around 10x
+- Added filtering, toggling, and statistics for labels with respect to the
+  frame schema in the display options sidebars for video datasets
+- Added margins to the grid view for both image and video datasets
+- Fixed list parameter input submission in the view bar
+- Fixed an issue causing some label counts to be incorrect after filters are
+  applied
+- Added support for using the keyboard to select labels when filtering
+
+Core
+^^^^
+- |Polyline| instances can now represent objects composed of multiple shapes
+- Segmentations can now be :ref:`imported <COCODetectionDataset-import>` and
+  :ref:`exported <COCODetectionDataset-export>` when using
+  `COCO Object Detection Format <https://cocodataset.org/#format-data>`_.
+- Polylines and keypoints can now be :ref:`imported <CVATImageDataset-import>` and
+  :ref:`exported <CVATImageDataset-export>` when using
+  `CVAT image format <https://github.com/openvinotoolkit/cvat/blob/develop/cvat/apps/documentation/xml_format.md>`_
+- Polylines and keypoints can now be :ref:`imported <CVATVideoDataset-import>` and
+  :ref:`exported <CVATVideoDataset-export>` when using
+  `CVAT video format <https://github.com/openvinotoolkit/cvat/blob/develop/cvat/apps/documentation/xml_format.md>`_
+- Added support for filtering polylines and keypoints via new
+  :meth:`filter_polylines() <fiftyone.core.collections.SampleCollection.filter_polylines>`
+  and
+  :meth:`filter_keypoints() <fiftyone.core.collections.SampleCollection.filter_keypoints>`
+  view stages
+- Added support for rendering annotated versions of video samples with their
+  frame labels overlaid via
+  :meth:`draw_labels() <fiftyone.core.collections.SampleCollection.draw_labels>`
+- Added support for :ref:`launching quickstarts <cli-fiftyone-quickstart>` as
+  remote sessions
+- Added :meth:`Frames.update() <fiftyone.core.frame.Frames.update>` and
+  :meth:`Frames.merge() <fiftyone.core.frame.Frames.merge>` methods to replace
+  and merge video frames, respectively
+- Fixed :meth:`Dataset.merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>`
+  to properly merge the frame-by-frame contents of video samples
+- Fixed a bug where :meth:`sample.copy() <fiftyone.core.sample.Sample.copy>`
+  would not create a copy of the frames of a video sample
+
+Brain
+^^^^^
+- :meth:`compute_uniqueness() <fiftyone.brain.uniqueness.compute_uniqueness>`
+  and :meth:`compute_hardness() <fiftyone.brain.hardness.compute_hardness>` now
+  support multilabel classification tasks
+
 FiftyOne 0.6.1
 --------------
 *Released October 7, 2020*

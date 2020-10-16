@@ -1,8 +1,12 @@
 """
 Sets up flags used by GitHub Actions to determine which tests to run.
-"""
 
+| Copyright 2017-2020, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 import os
+
 
 flags = {"run_integration": False}
 ref = os.environ.get("GITHUB_REF", "")

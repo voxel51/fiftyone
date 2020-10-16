@@ -16,6 +16,8 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 
+from .parsers import VideoLabelsSampleParser
+
 
 logger = logging.getLogger(__name__)
 
@@ -294,6 +296,59 @@ def condense_image_labels_field(
     if not keep_label_fields:
         for field_name in labels_dict:
             dataset.delete_sample_field(field_name)
+
+
+def load_video_labels(
+    video_labels_or_path,
+    prefix=None,
+    labels_dict=None,
+    multilabel=False,
+    skip_non_categorical=False,
+):
+    """Loads the ``eta.core.video.VideoLabels`` into a frame labels dictionary.
+
+    You can use this utility to add frame labels to a video sample as follows::
+
+        import fiftyone as fo
+        import fiftyone.utils.data as foud
+
+        sample = fo.Sample(filepath="/path/to/video.mp4")
+
+        frames = foud.load_video_labels(video_labels_or_path)
+
+        sample.frames.merge(frames)
+
+    Args:
+        video_labels_or_path: can be a ``eta.core.video.VideoLabels`` instance,
+            a serialized dict representation of one, or the path to one on disk
+        prefix (None): a string prefix to prepend to each label name in the
+            expanded frame label dictionaries. Only applicable when ``expand``
+            is True
+        labels_dict (None): a dictionary mapping names of attributes/objects
+            in the frame labels to field names into which to expand them. Only
+            applicable when ``expand`` is True
+        multilabel (False): whether to store frame attributes in a single
+            :class:`fiftyone.core.labels.Classifications` instance. Only
+            applicable when ``expand`` is True
+        skip_non_categorical (False): whether to skip non-categorical frame
+            attributes (True) or cast them to strings (False). Only applicable
+            when ``expand`` is True
+
+    Returns:
+        a dictionary mapping frame numbers to dictionaries that map label
+        fields to :class:`fiftyone.core.labels.Label` instances for each video
+        frame
+    """
+    sample_parser = VideoLabelsSampleParser(
+        expand=True,
+        prefix=prefix,
+        labels_dict=labels_dict,
+        multilabel=multilabel,
+        skip_non_categorical=skip_non_categorical,
+    )
+
+    sample_parser.with_sample((None, video_labels_or_path))
+    return sample_parser.get_frame_labels()
 
 
 def _get_label_dict_for_prefix(dataset, prefix):

@@ -23,7 +23,6 @@ from fiftyone.core.odm.frame import (
 )
 import fiftyone.core.utils as fou
 
-
 #
 # This class is instantiated automatically and depends on an owning
 # :class:`fiftyone.core.sample.Sample`. Not for independent use or direct
@@ -61,8 +60,9 @@ class Frames(object):
         self._replacements[doc.get_field("frame_number")] = doc
 
     def _save_replacements(self):
-        if len(self._replacements) == 0:
+        if not self._replacements:
             return
+
         self._frame_collection.bulk_write(
             [
                 ReplaceOne(
@@ -104,7 +104,8 @@ class Frames(object):
     def __contains__(self, frame_number):
         if frame_number in self._replacements:
             return True
-        elif self._sample._in_db:
+
+        if self._sample._in_db:
             find_d = self._make_filter(frame_number, self._sample._doc)
             return self._frame_collection.find_one(find_d) is not None
 
@@ -258,7 +259,6 @@ class Frames(object):
         """
         for frame_number, frame in frames.items():
             if isinstance(frame, dict):
-
                 frame = Frame(frame_number=frame_number, **frame)
 
             if frame_number in self:
@@ -271,6 +271,7 @@ class Frames(object):
         first_frame = self._replacements.get(1, None)
         if first_frame is None and self._sample._in_db:
             first_frame = self._sample._doc.frames["first_frame"]
+
         return first_frame
 
     def to_mongo_dict(self):
@@ -320,7 +321,9 @@ class Frames(object):
             raise fofu.FrameError(
                 "Sample does not have a dataset, Frames cannot be saved"
             )
-        from fiftyone.core.labels import _FrameLabel
+
+        # @todo avoid local import?
+        from fiftyone.core.labels import _FrameLabels
 
         d = self._get_first_frame()
         if d is not None:
@@ -341,7 +344,9 @@ class Frames(object):
                     d[k] = fou.deserialize_numpy_array(v)
                 else:
                     d[k] = v
-            self._sample._doc.frames.first_frame = _FrameLabel(**d)
+
+            self._sample._doc.frames.first_frame = _FrameLabels(**d)
+
         self._save_replacements()
 
     def _serve(self, sample):

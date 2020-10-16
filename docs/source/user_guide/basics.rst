@@ -70,7 +70,7 @@ obtain a desired subset of the samples.
 .. code-block:: text
 
     Name:           test-dataset
-    Media type      None
+    Media type:     None
     Num samples:    0
     Persistent:     False
     Info:           {}

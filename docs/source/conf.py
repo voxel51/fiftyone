@@ -175,6 +175,7 @@ html_context = {
     "link_voxel51_linkedin": "https://www.linkedin.com/company/voxel51/",
     "link_voxel51_slack": "https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg",
     "link_voxel51_twitter": "https://twitter.com/voxel51",
+    "link_voxel51_medium": "https://medium.com/voxel51/",
 }
 
 # -- Custom app setup --------------------------------------------------------
