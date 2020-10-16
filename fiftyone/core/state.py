@@ -120,25 +120,41 @@ class StateDescription(etas.Serializable):
         )
 
 
-class StateDescriptionWithDerivables(StateDescription):
-    """This class extends :class:`StateDescription` to include information that
-    does not define the state but needs to be fetched/computed and passed to
-    the frontend application, such as derived statistics (number of sample
-    occurrences with a given tag, etc.)
+class Aggregation(object):
+    def __init__(self, name, stages):
+        self.name = name
+        self._stages = stages
 
-    The python process should only ever see instances of
-    :class:`StateDescription` and the app should only ever see instances of
-    :class:`StateDescriptionWithDerivables` with the server acting as the
-    broker.
-    """
+    def to_mongo(self):
+        return [stage.to_mongo() for stage in self._stages]
 
-    def __init__(self, filter_stages={}, with_stats=True, *args, **kwargs):
-        super().__init__(*args, **kwargs)
 
-        self.filter_stages = filter_stages
-        view = self.view if self.view is not None else self.dataset
-        if view is None or not with_stats:
-            return
+class Aggregate(fos.ViewStage):
+    def __init__(self, aggregations):
+        self._aggregations = aggregations
+
+    def to_mongo(self):
+        return {
+            "$facet": {
+                agg.name: [s.to_mongo() for s in agg]
+                for agg in self._aggregations
+            }
+        }
+
+    def validate(self, sample_collection):
+        for agg in self._aggregations:
+            if not isinstance(agg, Aggregation):
+                raise TypeError(
+                    "'%s' with name '%s' is not a an Aggregation"
+                    % (agg.__class__, agg.name)
+                )
+
+
+class DatasetStatistics(etas.Serializable):
+    """@todo"""
+
+    def __init__(self, view):
+        super().__init__()
 
         self.field_schema = self._get_field_schema()
         self.labels = self._get_label_fields(view)

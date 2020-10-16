@@ -50,33 +50,6 @@ class ViewStage(object):
 
         return "%s(%s)" % (self.__class__.__name__, kwargs_str)
 
-    def get_filtered_list_fields(self):
-        """Returns a list of names of fields or subfields that contain arrays
-        that may have been filtered by the stage, if any.
-
-        Returns:
-            a list of fields, or ``None`` if no fields have been filtered
-        """
-        return None
-
-    def get_selected_fields(self):
-        """Returns a list of fields that have been selected by the stage, if
-        any.
-
-        Returns:
-            a list of fields, or ``None`` if no fields have been selected
-        """
-        return None
-
-    def get_excluded_fields(self):
-        """Returns a list of fields that have been excluded by the stage, if
-        any.
-
-        Returns:
-            a list of fields, or ``None`` if no fields have been selected
-        """
-        return None
-
     def to_mongo(self):
         """Returns the MongoDB version of the stage.
 
