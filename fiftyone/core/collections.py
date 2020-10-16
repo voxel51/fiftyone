@@ -1414,6 +1414,10 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
 
+    def _serialize(self):
+        # pylint: disable=no-member
+        return self._doc.to_dict(extended=True)
+
     def _serialize_field_schema(self):
         return self._serialize_schema(self.get_field_schema())
 
