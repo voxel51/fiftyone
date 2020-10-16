@@ -172,7 +172,7 @@ const SamplesContainer = (props) => {
         />
       </Sticky>
       <Grid>
-        {showSidebar ? (
+        {showSidebar && false ? (
           <DisplayOptionsWrapper
             sidebarRef={sidebarRef}
             stickyHeaderRef={stickyHeaderRef}

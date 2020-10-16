@@ -55,13 +55,6 @@ class StateDescription(etas.Serializable):
         self.dataset = dataset
         self.view = view
         self.selected = selected or []
-        self.view_count = (
-            len(view)
-            if view is not None
-            else len(dataset)
-            if dataset is not None
-            else 0
-        )
         super().__init__()
 
     def serialize(self, reflective=False):
@@ -103,21 +96,17 @@ class StateDescription(etas.Serializable):
         """
         close = d.get("close", False)
         connected = d.get("connected", False)
+        selected = d.get("selected", [])
 
         dataset = d.get("dataset", None)
         if dataset is not None:
             dataset = fod.load_dataset(dataset.get("name"))
-
-        view_ = d.get("view", None)
-        view = None
-        if dataset is not None:
+        stages = d.get("view", [])
+        if dataset is not None and stages:
             view = fov.DatasetView(dataset)
-            if view_ is not None:
-                view._stages = [
-                    fos.ViewStage._from_dict(s) for s in view_["view"]
-                ]
-
-        selected = d.get("selected", [])
+            view._stages = [fos.ViewStage._from_dict(s) for s in stages]
+        else:
+            view = None
 
         return cls(
             close=close,
@@ -166,6 +155,13 @@ class StateDescriptionWithDerivables(StateDescription):
             self.extended_view_stats = get_view_stats(extended_view)
         self.extended_view_count = (
             len(extended_view) if extended_view != view else None
+        )
+        self.view_count = (
+            len(view)
+            if view is not None
+            else len(self.dataset)
+            if self.dataset is not None
+            else 0
         )
 
     @classmethod

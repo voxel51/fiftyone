@@ -125,8 +125,7 @@ def _load_state(trigger_update=False, with_stats=False):
     def decorator(func):
         def wrapper(self, *args, **kwargs):
             state = self.state.copy()
-            state["with_stats"] = with_stats
-            state = fos.StateDescriptionWithDerivables.from_dict(state)
+            state = fos.StateDescription.from_dict(state)
             state = func(self, state, *args, **kwargs)
             self.state = state.serialize()
             emit(
@@ -192,10 +191,7 @@ class StateController(Namespace):
                 :class:`fiftyone.core.state.StateDescription`
         """
         state = data["data"]
-        state["with_stats"] = True
-        self.state = fos.StateDescriptionWithDerivables.from_dict(
-            state
-        ).serialize()
+        self.state = fos.StateDescription.from_dict(state).serialize()
         emit(
             "update",
             self.state,
@@ -287,7 +283,6 @@ class StateController(Namespace):
             ...
         """
         state = self.state.copy()
-        state["with_stats"] = False
         state = fos.StateDescriptionWithDerivables.from_dict(state)
         find_d = {"_sample_id": ObjectId(sample_id)}
         labels = etav.VideoLabels()
@@ -319,8 +314,7 @@ class StateController(Namespace):
         Returns:
             the list of sample dicts for the page
         """
-        self.state["with_stats"] = False
-        state = fos.StateDescriptionWithDerivables.from_dict(self.state)
+        state = fos.StateDescription.from_dict(self.state)
         if state.view is not None:
             view = state.view
         elif state.dataset is not None:
@@ -328,11 +322,11 @@ class StateController(Namespace):
         else:
             return []
 
-        for stage_dict in state.filter_stages.values():
-            stage = fosg.ViewStage._from_dict(stage_dict)
-            if type(stage) in _WITHOUT_PAGINATION_EXTENDED_STAGES:
-                continue
-            view = view.add_stage(stage)
+        # for stage_dict in state.filter_stages.values():
+        #    stage = fosg.ViewStage._from_dict(stage_dict)
+        #    if type(stage) in _WITHOUT_PAGINATION_EXTENDED_STAGES:
+        #        continue
+        #    view = view.add_stage(stage)
 
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
         samples = [s.to_mongo_dict() for s in view]
@@ -349,8 +343,6 @@ class StateController(Namespace):
             r["width"] = w
             r["height"] = h
             # default to image
-            if r["sample"].get("media_type", fom.IMAGE) == fom.VIDEO:
-                r["fps"] = etav.get_frame_rate(r["sample"]["filepath"])
 
         return {"results": results, "more": more}
 
