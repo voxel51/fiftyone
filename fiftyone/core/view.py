@@ -322,15 +322,12 @@ class DatasetView(foc.SampleCollection):
         return d
 
     def _serialize(self):
-        """Serializes the view.
+        """Serializes the stages of the view
 
         Returns:
-            a JSON representation of the view
+            a list of stages in JSON representation of the view
         """
-        return {
-            "dataset": self._dataset._serialize(),
-            "view": [s._serialize() for s in self._stages],
-        }
+        return [s._serialize() for s in self._stages]
 
     def _slice(self, s):
         if s.step is not None and s.step != 1:
