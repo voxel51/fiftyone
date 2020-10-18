@@ -1965,7 +1965,6 @@ _info_repr.maxother = 63
 
 
 def _create_dataset(name, persistent=False, media_type=None):
-    # Ensure dataset with given `name` does not already exist
     if dataset_exists(name):
         raise ValueError(
             (
@@ -1975,15 +1974,12 @@ def _create_dataset(name, persistent=False, media_type=None):
             % name
         )
 
-    # Make a unique, permanent name for this sample collection
-    # Create SampleDocument class for this dataset
     sample_collection_name = _make_sample_collection_name()
     sample_doc_cls = _create_sample_document_cls(sample_collection_name)
 
     frames_collection_name = "frames." + sample_collection_name
     frame_doc_cls = _create_frame_document_cls(frames_collection_name)
 
-    # Create DatasetDocument for this dataset
     dataset_doc = foo.DatasetDocument(
         media_type=media_type,
         name=name,
@@ -2050,7 +2046,6 @@ def _drop_dataset(name, if_persistent=True):
 
 
 def _load_dataset(name):
-    # Load DatasetDocument for dataset
     try:
         # pylint: disable=no-member
         dataset_doc = foo.DatasetDocument.objects.get(name=name)
@@ -2066,11 +2061,11 @@ def _load_dataset(name):
                 % (dataset_doc.name, VERSION)
             )
             runner.run(dataset_names=[dataset_doc.name])
+
         dataset_doc.reload()
         dataset_doc.version = VERSION
         dataset_doc.save()
 
-    # Create SampleDocument class for this dataset
     sample_doc_cls = _create_sample_document_cls(
         dataset_doc.sample_collection_name
     )
@@ -2081,7 +2076,6 @@ def _load_dataset(name):
 
     is_video = dataset_doc.media_type == fom.VIDEO
 
-    # Populate sample field schema
     kwargs = {}
     default_fields = Dataset.get_default_sample_fields(include_private=True)
 
