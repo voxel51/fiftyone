@@ -823,8 +823,8 @@ class ImageLabels(ImageLabel):
         :class:`Classifications` field called ``prefix + "attrs"``.
 
         Objects are expanded into fields with names ``prefix + obj.name``, or
-        ``prefix + "objs"`` for objects that do not have their ``name`` field
-        populated.
+        ``prefix + "detections"`` for objects that do not have their ``name``
+        field populated.
 
         Polylines are expanded into fields with names
         ``prefix + polyline.name``, or ``prefix + "polylines"`` for polylines
@@ -942,7 +942,7 @@ def _expand_with_prefix(
     objects_map = defaultdict(etao.DetectedObjectContainer)
 
     for dobj in _image_labels.objects:
-        objects_map[prefix + (dobj.name or "objs")].add(dobj)
+        objects_map[prefix + (dobj.name or "detections")].add(dobj)
 
     for name, objects in objects_map.items():
         # pylint: disable=no-member
