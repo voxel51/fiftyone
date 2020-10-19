@@ -20,11 +20,7 @@ Tests do exist, but their coverage generally needs improvement...
 To run all unit tests, run:
 
 ```shell
-# Run all tests
-python -m unittest discover unittests/
-
-# Run tests matching a glob pattern
-python -m unittest discover -s unittests/ -p '*_test.py'
+python -m unittest discover -s unittests/ -p '*_tests.py'
 ```
 
 To run a specific set of tests, run:
