@@ -207,8 +207,8 @@ def import_samples(
                     sample.frames.merge(
                         {
                             frame_number: {
-                                label_key(field_name): label
-                                for field_name, label in frame_dict.items()
+                                label_key(fname): flabel
+                                for fname, flabel in frame_dict.items()
                             }
                             for frame_number, frame_dict in frames.items()
                         }
@@ -659,24 +659,24 @@ class LabeledVideoDatasetImporter(DatasetImporter):
 
         importer = LabeledVideoDatasetImporter(dataset_dir, ...)
         with importer:
-            for video_path, video_metadata, labels, frames in importer:
+            for video_path, video_metadata, label, frames in importer:
                 sample = fo.Sample(
                     filepath=video_path, metadata=video_metadata
                 )
 
-                if isinstance(labels, dict):
+                if isinstance(label, dict):
                     sample.update_fields(
-                        {label_field + "_" + k: v for k, v in labels.items()}
+                        {label_field + "_" + k: v for k, v in label.items()}
                     )
-                elif labels is not None:
-                    sample[label_field] = labels
+                elif label is not None:
+                    sample[label_field] = label
 
                 if frames is not None:
                     sample.frames.merge(
                         {
                             frame_number: {
-                                label_field + "_" + field_name: label
-                                for field_name, label in frame_dict.items()
+                                label_field + "_" + fname: flabel
+                                for fname, flabel in frame_dict.items()
                             }
                             for frame_number, frame_dict in frames.items()
                         }
@@ -768,7 +768,7 @@ class LabeledVideoDatasetImporter(DatasetImporter):
         raise NotImplementedError("subclass must implement label_cls")
 
     @property
-    def frame_label_cls(self):
+    def frame_labels_cls(self):
         """The :class:`fiftyone.core.labels.Label` class(es) returned by this
         importer within the frame labels that it produces.
 
@@ -783,7 +783,7 @@ class LabeledVideoDatasetImporter(DatasetImporter):
         -   ``None``. In this case, the importer makes no guarantees about the
             frame labels that it may return
         """
-        raise NotImplementedError("subclass must implement frame_label_cls")
+        raise NotImplementedError("subclass must implement frame_labels_cls")
 
 
 class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
@@ -1345,7 +1345,7 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
         return fol.Classification
 
     @property
-    def frame_label_cls(self):
+    def frame_labels_cls(self):
         return None
 
     def setup(self):

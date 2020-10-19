@@ -720,13 +720,13 @@ class LabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
                     metadata = fo.VideoMetadata.build_for(video_path)
 
                 # Extract relevant sample-level labels to export
-                labels = ...
+                label = ...
 
                 # Extract relevant frame-level labels to export
                 frames = ...
 
                 exporter.export_sample(
-                    video_path, labels, frames, metadata=metadata
+                    video_path, label, frames, metadata=metadata
                 )
 
     Args:
@@ -779,12 +779,12 @@ class LabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
         """
         raise NotImplementedError("subclass must implement frame_labels_cls")
 
-    def export_sample(self, video_path, labels, frames, metadata=None):
+    def export_sample(self, video_path, label, frames, metadata=None):
         """Exports the given sample to the dataset.
 
         Args:
             video_path: the path to a video on disk
-            labels: an instance of :meth:`label_cls`, or a dictionary mapping
+            label: an instance of :meth:`label_cls`, or a dictionary mapping
                 field names to :class:`fiftyone.core.labels.Label` instances,
                 or ``None`` if the sample has no sample-level labels
             frames: a dictionary mapping frame numbers to dictionaries that map
