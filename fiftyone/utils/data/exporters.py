@@ -1305,7 +1305,12 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
 
     @property
     def label_cls(self):
-        return fol.ImageLabel
+        return {
+            "attributes": fol.Classifications,
+            "detections": fol.Detections,
+            "polylines": fol.Polylines,
+            "keypoints": fol.Keypoints,
+        }
 
     def setup(self):
         self._labeled_dataset = etad.LabeledImageDataset.create_empty_dataset(
@@ -1322,9 +1327,7 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
     def log_collection(self, sample_collection):
         self._description = sample_collection.info.get("description", None)
 
-    def export_sample(
-        self, image_or_path, image_labels_or_dict, metadata=None
-    ):
+    def export_sample(self, image_or_path, labels, metadata=None):
         is_image_path = self._is_image_path(image_or_path)
 
         if is_image_path:
@@ -1338,7 +1341,7 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
         new_image_filename = name + ext
         new_labels_filename = name + ".json"
 
-        _image_labels = _parse_image_labels(image_labels_or_dict)
+        _image_labels = _parse_image_labels(labels)
 
         if etau.is_str(image_or_path):
             image_labels_path = os.path.join(
@@ -1485,19 +1488,20 @@ def _parse_detections(detections, labels_map_rev=None):
     return _detections
 
 
-def _parse_image_labels(label):
-    if label is None:
-        return etai.ImageLabels()
+def _parse_image_labels(labels):
+    if not isinstance(labels, dict):
+        labels = {labels: labels}
 
-    if isinstance(label, dict):
-        image_labels = etai.ImageLabels()
-        for name, _label in label.items():
-            if _label is not None:
-                image_labels.merge_labels(_label.to_image_labels(name=name))
+    image_labels = etai.ImageLabels()
 
-        return image_labels
+    for name, label in labels.items():
+        if isinstance(label, fol.ImageLabel):
+            image_labels.merge_labels(label.to_image_labels(name=name))
+        elif label is not None:
+            msg = "Ignoring unsupported label type '%s'" % label.__class__
+            warnings.warn(msg)
 
-    return label.labels
+    return image_labels
 
 
 def _parse_frames(frames):

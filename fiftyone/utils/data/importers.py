@@ -1220,6 +1220,8 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
         else:
             image_metadata = None
 
+        label = fol.Classification(label=label)
+
         return image_path, image_metadata, label
 
     @property
@@ -1329,6 +1331,8 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
             video_metadata = fom.VideoMetadata.build_for(video_path)
         else:
             video_metadata = None
+
+        label = fol.Classification(label=label)
 
         return video_path, video_metadata, label, None
 
@@ -1615,7 +1619,12 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
 
     @property
     def label_cls(self):
-        return None
+        return {
+            "attributes": fol.Classifications,
+            "detections": fol.Detections,
+            "polylines": fol.Polylines,
+            "keypoints": fol.Keypoints,
+        }
 
     def setup(self):
         self._sample_parser = FiftyOneImageLabelsSampleParser(
