@@ -121,17 +121,20 @@ class SampleCollection(object):
         pipelines = {}
         agg_map = {}
         # pylint: disable=no-member
-        schema = {f["name"]: f for f in self._doc.sample_fields}
+        schema = self.get_field_schema()
+        if self.media_type == fom.VIDEO:
+            frame_schema = self.get_frame_field_schema()
+        else:
+            frame_schema = None
         for agg in aggregations:
             if not isinstance(agg, Aggregation):
                 raise TypeError(
                     "'%s' with name '%s' is not a an Aggregation"
                     % (agg.__class__, agg.name)
                 )
-            agg.validate(self)
             field = agg._get_output_field(self)
             agg_map[field] = agg
-            pipelines[field] = agg._to_mongo(schema)
+            pipelines[field] = agg._to_mongo(schema, frame_schema)
 
         try:
             # pylint: disable=no-member

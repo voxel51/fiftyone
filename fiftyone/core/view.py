@@ -252,7 +252,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a list of tags
         """
-        return self.aggregate([foa.Distinct("tags")])[0]
+        return self.aggregate([foa.Distinct("tags")])[0].values
 
     def create_index(self, field):
         """Creates a database index on the given field, enabling efficient

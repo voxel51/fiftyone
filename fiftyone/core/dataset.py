@@ -23,6 +23,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.aggregations as foa
 from fiftyone.constants import VERSION
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
@@ -548,7 +549,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of tags
         """
-        return list(self.distinct("tags"))
+        return self.aggregate([foa.Distinct("tags")])[0].values
 
     def distinct(self, field):
         """Finds all distinct values of a sample field across the dataset.
