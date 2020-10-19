@@ -14,6 +14,7 @@ import string
 import eta.core.serial as etas
 import eta.core.utils as etau
 
+from fiftyone.core.aggregations import Aggregation
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -104,6 +105,48 @@ class SampleCollection(object):
         underlying the collection.
         """
         raise NotImplementedError("Subclass must implement info")
+
+    def aggregate(self, aggregations):
+        """Aggregates an iterable of
+        :class:`Aggregations <fiftyone.core.aggregations.Aggregation>`
+
+        Args:
+            aggregations: an iterable of 
+                :class:`Aggregations <fiftyone.core.aggregations.Aggregation>`
+
+        Returns:
+            a list of 
+            :class:`AggregationResults <fiftyone.core.aggregations.AggregationResult>`
+        """
+        pipelines = {}
+        agg_map = {}
+        # pylint: disable=no-member
+        schema = {f["name"]: f for f in self._doc.sample_fields}
+        for agg in aggregations:
+            if not isinstance(agg, Aggregation):
+                raise TypeError(
+                    "'%s' with name '%s' is not a an Aggregation"
+                    % (agg.__class__, agg.name)
+                )
+            agg.validate(self)
+            field = agg._get_output_field(self)
+            agg_map[field] = agg
+            pipelines[field] = agg._to_mongo(schema)
+
+        try:
+            # pylint: disable=no-member
+            result_d = next(self._aggregate([{"$facet": pipelines}]))
+        except StopIteration:
+            pass
+
+        results = []
+        for field, agg in agg_map.items():
+            try:
+                results.append(agg_map[field]._get_result(result_d[field][0]))
+            except:
+                results.append(agg_map[field]._get_default_result())
+
+        return results
 
     def summary(self):
         """Returns a string summary of the collection.
@@ -1290,20 +1333,6 @@ class SampleCollection(object):
             field: the name of the field to index
         """
         raise NotImplementedError("Subclass must implement make_index()")
-
-    def aggregate(self, aggregations):
-        """Aggregates an iterable of
-        :class:`Aggregations <fiftyone.core.aggregations.Aggregation>`
-
-        Args:
-            aggregations: an iterable of 
-                :class:`Aggregations <fiftyone.core.aggregations.Aggregation>`
-
-        Returns:
-            an iterable of 
-            :class:`AggregationResults <fiftyone.core.aggregations.AggregationResult>`
-        """
-        raise NotImplementedError("Subclass must implement aggregate()")
 
     def to_dict(self, rel_dir=None):
         """Returns a JSON dictionary representation of the collection.

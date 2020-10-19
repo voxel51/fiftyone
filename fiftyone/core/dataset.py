@@ -23,7 +23,6 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
-from fiftyone.core.aggregations import Aggregation
 from fiftyone.constants import VERSION
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
@@ -1678,42 +1677,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         if field not in self._sample_indexes:
             self._sample_collection.create_index(field)
-
-    def aggregate(self, aggregations):
-        """Aggregates an iterable of
-        :class:`Aggregations <fiftyone.core.aggregations.Aggregation>`
-
-        Args:
-            aggregations: an iterable of 
-                :class:`Aggregations <fiftyone.core.aggregations.Aggregation>`
-
-        Returns:
-            an iterable of 
-            :class:`AggregationResults <fiftyone.core.aggregations.AggregationResult>`
-        """
-        pipelines = {}
-        agg_map = {}
-        for agg in aggregations:
-            if not isinstance(agg, Aggregation):
-                raise TypeError(
-                    "'%s' with name '%s' is not a an Aggregation"
-                    % (agg.__class__, agg.name)
-                )
-            agg.validate(self)
-            field = agg._get_output_field(self)
-            agg_map[field] = agg
-            pipelines[field] = agg.to_mongo()
-
-        try:
-            result = next(self._aggregate([{"$facet": pipelines}]))
-        except StopIteration:
-            pass
-
-        for field, agg in agg_map.items():
-            try:
-                yield agg_map[field]._get_result(result[field])
-            except:
-                yield agg_map[field]._get_default_result()
 
     @classmethod
     def from_dict(cls, d, name=None, rel_dir=None):

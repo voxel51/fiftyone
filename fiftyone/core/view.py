@@ -11,6 +11,7 @@ import numbers
 
 from bson import ObjectId
 
+import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
@@ -55,13 +56,7 @@ class DatasetView(foc.SampleCollection):
         self._flatten_frames = None
 
     def __len__(self):
-        try:
-            result = self.aggregate([{"$count": "count"}])
-            return next(result)["count"]
-        except StopIteration:
-            pass
-
-        return 0
+        return self.aggregate([foa.Count()])[0]
 
     def __getitem__(self, sample_id):
         if isinstance(sample_id, numbers.Integral):
@@ -257,17 +252,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a list of tags
         """
-        pipeline = [
-            {"$project": {"tags": "$tags"}},
-            {"$unwind": "$tags"},
-            {"$group": {"_id": "None", "all_tags": {"$addToSet": "$tags"}}},
-        ]
-        try:
-            return next(self.aggregate(pipeline))["all_tags"]
-        except StopIteration:
-            pass
-
-        return []
+        return self.aggregate([foa.Distinct("tags")])[0]
 
     def create_index(self, field):
         """Creates a database index on the given field, enabling efficient
@@ -315,7 +300,11 @@ class DatasetView(foc.SampleCollection):
         if pipeline is not None:
             _pipeline.extend(pipeline)
 
-        return self._dataset.aggregate(_pipeline)
+        return self._dataset._aggregate(_pipeline)
+
+    @property
+    def _doc(self):
+        return self._dataset._doc
 
     def _serialize(self):
         """Serializes the stages of the view

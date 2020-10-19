@@ -6,6 +6,11 @@ Aggregations.
 |
 """
 
+import eta.core.utils as etau
+
+import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
+
 
 class Aggregation(object):
     """Abstract base class for all aggregations.
@@ -15,7 +20,7 @@ class Aggregation(object):
     def __init__(self, field_name):
         self._field_name = field_name
 
-    def to_mongo(self):
+    def _to_mongo(self):
         pass
 
     def validate(self, sample_collection):
@@ -37,14 +42,14 @@ class Count(Aggregation):
         if self._field_name is None:
             return "count"
 
-    def to_mongo(self):
+    def _to_mongo(self, doc):
         if self._field_name is None:
             return [{"$count": "count"}]
 
     def _get_result(self, d):
-        return d[0]["count"]
+        return d["count"]
 
-    def _get_default(self):
+    def _get_default_result(self):
         return 0
 
 
@@ -63,6 +68,45 @@ class Labels(Aggregation):
         pass
 
 
-class Values(Aggregation):
+class Distinct(Aggregation):
     def __init__(self, field_name):
-        pass
+        super().__init__(field_name)
+
+    def _get_output_field(self, view):
+        return "%s-distinct" % self._field_name
+
+    def _to_mongo(self, schema):
+        field = schema[self._field_name]
+        if field.ftype == etau.get_class_name(fof.ListField):
+            if field.subfield == etau.get_class_name(fof.StringField):
+                path = "$%s" % self._field_name
+                pipeline = [
+                    {"$project": {self._field_name: path}},
+                    {"$unwind": path},
+                    {
+                        "$group": {
+                            "_id": "None",
+                            self._field_name: {"$addToSet": path},
+                        }
+                    },
+                ]
+                return pipeline
+
+        if field.ftype == etau.get_class_name(fof.StringField):
+            path = "$%s" % self._field_name
+            pipeline = [
+                {"$project": {self._field_name: path}},
+                {
+                    "$group": {
+                        "_id": "None",
+                        self._field_name: {"$addToSet": path},
+                    }
+                },
+            ]
+            return pipeline
+
+    def _get_result(self, d):
+        return d[self._field_name]
+
+    def _get_default_result(self):
+        return []
