@@ -20,13 +20,13 @@ Tests do exist, but their coverage generally needs improvement...
 To run all unit tests, run:
 
 ```shell
-python -m unittest discover -s unittests/ -p '*_tests.py'
+bash unittests/run_all.bash
 ```
 
-To run a specific set of tests, run:
+To run a specific test, do:
 
 ```shell
-python /path/to/tests_file.py
+python unittests/<file>.py
 ```
 
 ## Copyright
