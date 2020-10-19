@@ -27,7 +27,6 @@ from .parsers import (
     FiftyOneImageDetectionSampleParser,
     FiftyOneImageLabelsSampleParser,
     FiftyOneVideoLabelsSampleParser,
-    ImageClassificationSampleParser,
 )
 
 
@@ -123,17 +122,17 @@ def import_samples(
         elif isinstance(dataset_importer, LabeledImageDatasetImporter):
             # Labeled image dataset
 
-            if label_field is None:
-                raise ValueError(
-                    "A `label_field` must be provided when importing samples "
-                    "from a LabeledImageDatasetImporter"
-                )
-
             # Check if a single label field is being imported
             try:
                 single_label_field = issubclass(
                     dataset_importer.label_cls, fol.Label
                 )
+
+                if label_field is None:
+                    raise ValueError(
+                        "A `label_field` must be provided when importing "
+                        "labeled image samples with a single label field"
+                    )
             except:
                 single_label_field = False
 
@@ -149,6 +148,11 @@ def import_samples(
                 # ensured that `label_field` exists, if necessary
                 expand_schema = False
 
+            if label_field:
+                label_key = lambda k: label_field + "_" + k
+            else:
+                label_key = lambda k: k
+
             def parse_sample(sample):
                 image_path, image_metadata, label = sample
                 sample = fos.Sample(
@@ -157,7 +161,7 @@ def import_samples(
 
                 if isinstance(label, dict):
                     sample.update_fields(
-                        {label_field + "_" + k: v for k, v in label.items()}
+                        {label_key(k): v for k, v in label.items()}
                     )
                 elif label is not None:
                     sample[label_field] = label
@@ -167,23 +171,43 @@ def import_samples(
         elif isinstance(dataset_importer, LabeledVideoDatasetImporter):
             # Labeled video dataset
 
-            if label_field is None:
-                raise ValueError(
-                    "A `label_field` must be provided when importing samples "
-                    "from a LabeledVideoDatasetImporter"
-                )
+            # Check if a single sample-level label field is being imported
+            try:
+                if (
+                    issubclass(dataset_importer.label_cls, fol.Label)
+                    and label_field is None
+                ):
+                    raise ValueError(
+                        "A `label_field` must be provided when importing "
+                        "labeled video samples with a single sample-level "
+                        "field"
+                    )
+            except:
+                pass
+
+            if label_field:
+                label_key = lambda k: label_field + "_" + k
+            else:
+                label_key = lambda k: k
 
             def parse_sample(sample):
-                video_path, video_metadata, frames = sample
+                video_path, video_metadata, label, frames = sample
                 sample = fos.Sample(
                     filepath=video_path, metadata=video_metadata, tags=tags,
                 )
+
+                if isinstance(label, dict):
+                    sample.update_fields(
+                        {label_key(k): v for k, v in label.items()}
+                    )
+                elif label is not None:
+                    sample[label_field] = label
 
                 if frames is not None:
                     sample.frames.merge(
                         {
                             frame_number: {
-                                label_field + "_" + field_name: label
+                                label_key(field_name): label
                                 for field_name, label in frame_dict.items()
                             }
                             for frame_number, frame_dict in frames.items()
@@ -635,10 +659,17 @@ class LabeledVideoDatasetImporter(DatasetImporter):
 
         importer = LabeledVideoDatasetImporter(dataset_dir, ...)
         with importer:
-            for video_path, video_metadata, frames in importer:
+            for video_path, video_metadata, labels, frames in importer:
                 sample = fo.Sample(
                     filepath=video_path, metadata=video_metadata
                 )
+
+                if isinstance(labels, dict):
+                    sample.update_fields(
+                        {label_field + "_" + k: v for k, v in labels.items()}
+                    )
+                elif labels is not None:
+                    sample[label_field] = labels
 
                 if frames is not None:
                     sample.frames.merge(
@@ -684,16 +715,27 @@ class LabeledVideoDatasetImporter(DatasetImporter):
         """Returns information about the next sample in the dataset.
 
         Returns:
-            an  ``(video_path, video_metadata, frames)`` tuple, where
+            an  ``(video_path, video_metadata, labels, frames)`` tuple, where
 
             -   ``video_path``: the path to the video on disk
             -   ``video_metadata``: an
                 :class:`fiftyone.core.metadata.VideoMetadata` instances for the
                 video, or ``None`` if :meth:`has_video_metadata` is ``False``
-            -   ``frames``: a dictionary mapping frame numbers to dictionaries
-                that map label fields to :class:`fiftyone.core.labels.Label`
-                instances for each video frame, or ``None`` if the sample is
-                unlabeled
+            -   ``labels``: sample-level labels for the video, which can be any
+                of the following::
+
+                -   a :class:`fiftyone.core.labels.Label` instance
+                -   a dictionary mapping label fields to
+                    :class:`fiftyone.core.labels.Label` instances
+                -   ``None`` if the sample has no sample-level labels
+
+            -   ``frames``: frame-level labels for the video, which can
+                be any of the following::
+
+                -   a dictionary mapping frame numbers to dictionaries that
+                    map label fields to :class:`fiftyone.core.labels.Label`
+                    instances for each video frame
+                -   ``None`` if the sample has no frame-level labels
 
         Raises:
             StopIteration: if there are no more samples to import
@@ -710,6 +752,24 @@ class LabeledVideoDatasetImporter(DatasetImporter):
     @property
     def label_cls(self):
         """The :class:`fiftyone.core.labels.Label` class(es) returned by this
+        importer within the sample-level labels that it produces.
+
+        This can be any of the following:
+
+        -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+            importer is guaranteed to return sample-level labels of this type
+        -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+            In this case, the importer will return sample-level label
+            dictionaries with keys and value-types specified by this
+            dictionary. Not all keys need be present in the imported labels
+        -   ``None``. In this case, the importer makes no guarantees about the
+            sample-level labels that it may return
+        """
+        raise NotImplementedError("subclass must implement label_cls")
+
+    @property
+    def frame_label_cls(self):
+        """The :class:`fiftyone.core.labels.Label` class(es) returned by this
         importer within the frame labels that it produces.
 
         This can be any of the following:
@@ -721,9 +781,9 @@ class LabeledVideoDatasetImporter(DatasetImporter):
             with keys and value-types specified by this dictionary. Not all
             keys need be present in each frame
         -   ``None``. In this case, the importer makes no guarantees about the
-            labels that it may return
+            frame labels that it may return
         """
-        raise NotImplementedError("subclass must implement label_cls")
+        raise NotImplementedError("subclass must implement frame_label_cls")
 
 
 class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
@@ -1141,7 +1201,6 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
         )
         self.compute_metadata = compute_metadata
         self._classes = None
-        self._sample_parser = None
         self._samples = None
         self._iter_samples = None
         self._num_samples = None
@@ -1154,11 +1213,7 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
         return self._num_samples
 
     def __next__(self):
-        sample = next(self._iter_samples)
-
-        self._sample_parser.with_sample(sample)
-        image_path = self._sample_parser.get_image_path()
-        label = self._sample_parser.get_label()
+        image_path, label = next(self._iter_samples)
 
         if self.compute_metadata:
             image_metadata = fom.ImageMetadata.build_for(image_path)
@@ -1180,8 +1235,6 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
         return fol.Classification
 
     def setup(self):
-        self._sample_parser = ImageClassificationSampleParser()
-
         samples = []
         classes = set()
         glob_patt = os.path.join(self.dataset_dir, "*", "*")
@@ -1207,6 +1260,132 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
 
     def get_dataset_info(self):
         return {"classes": self._classes}
+
+    @staticmethod
+    def get_classes(dataset_dir):
+        return sorted(etau.list_subdirs(dataset_dir))
+
+    @staticmethod
+    def get_num_samples(dataset_dir):
+        num_samples = 0
+        for class_dir in etau.list_subdirs(dataset_dir, abs_paths=True):
+            num_samples += len(etau.list_files(class_dir))
+
+        return num_samples
+
+
+class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
+    """Importer for a viideo classification directory tree stored on disk.
+
+    See :class:`fiftyone.types.dataset_types.VideoClassificationDirectoryTree`
+    for format details.
+
+    Args:
+        dataset_dir: the dataset directory
+        compute_metadata (False): whether to produce
+            :class:`fiftyone.core.metadata.VideoMetadata` instances for each
+            video when importing
+        skip_unlabeled (False): whether to skip unlabeled videos when importing
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
+    """
+
+    def __init__(
+        self,
+        dataset_dir,
+        compute_metadata=False,
+        skip_unlabeled=False,
+        shuffle=False,
+        seed=None,
+        max_samples=None,
+    ):
+        super().__init__(
+            dataset_dir,
+            skip_unlabeled=skip_unlabeled,
+            shuffle=shuffle,
+            seed=seed,
+            max_samples=max_samples,
+        )
+        self.compute_metadata = compute_metadata
+        self._classes = None
+        self._samples = None
+        self._iter_samples = None
+        self._num_samples = None
+
+    def __iter__(self):
+        self._iter_samples = iter(self._samples)
+        return self
+
+    def __len__(self):
+        return self._num_samples
+
+    def __next__(self):
+        video_path, label = next(self._iter_samples)
+
+        if self.compute_metadata:
+            video_metadata = fom.VideoMetadata.build_for(video_path)
+        else:
+            video_metadata = None
+
+        return video_path, video_metadata, label, None
+
+    @property
+    def has_video_metadata(self):
+        return self.compute_metadata
+
+    @property
+    def has_dataset_info(self):
+        return True
+
+    @property
+    def label_cls(self):
+        return fol.Classification
+
+    @property
+    def frame_label_cls(self):
+        return None
+
+    def setup(self):
+        samples = []
+        classes = set()
+        glob_patt = os.path.join(self.dataset_dir, "*", "*")
+        for path in etau.get_glob_matches(glob_patt):
+            chunks = path.split(os.path.sep)
+            if any(s.startswith(".") for s in chunks[-2:]):
+                continue
+
+            label = chunks[-2]
+            if label == "_unlabeled":
+                if self.skip_unlabeled:
+                    continue
+
+                label = None
+            else:
+                classes.add(label)
+
+            samples.append((path, label))
+
+        self._samples = self._preprocess_list(samples)
+        self._num_samples = len(self._samples)
+        self._classes = sorted(classes)
+
+    def get_dataset_info(self):
+        return {"classes": self._classes}
+
+    @staticmethod
+    def get_classes(dataset_dir):
+        return sorted(etau.list_subdirs(dataset_dir))
+
+    @staticmethod
+    def get_num_samples(dataset_dir):
+        num_samples = 0
+        for class_dir in etau.list_subdirs(dataset_dir, abs_paths=True):
+            num_samples += len(etau.list_files(class_dir))
+
+        return num_samples
 
 
 class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
@@ -1339,19 +1518,14 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.ImageMetadata` instances for each
             image when importing
-        expand (True): whether to expand the image labels into a dictionary of
-            :class:`fiftyone.core.labels.Label` instances
         prefix (None): a string prefix to prepend to each label name in the
-            expanded label dictionary. Only applicable when ``expand`` is True
+            expanded label dictionary
         labels_dict (None): a dictionary mapping names of attributes/objects
-            in the image labels to field names into which to expand them. Only
-            applicable when ``expand`` is True
+            in the image labels to field names into which to expand them
         multilabel (False): whether to store frame attributes in a single
-            :class:`fiftyone.core.labels.Classifications` instance. Only
-            applicable when ``expand`` is True
+            :class:`fiftyone.core.labels.Classifications` instance
         skip_non_categorical (False): whether to skip non-categorical frame
-            attributes (True) or cast them to strings (False). Only applicable
-            when ``expand`` is True
+            attributes (True) or cast them to strings (False)
         skip_unlabeled (False): whether to skip unlabeled images when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
@@ -1364,7 +1538,6 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         self,
         dataset_dir,
         compute_metadata=False,
-        expand=True,
         prefix=None,
         labels_dict=None,
         multilabel=False,
@@ -1380,7 +1553,6 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
             dataset_dir, skip_unlabeled=skip_unlabeled, max_samples=max_samples
         )
         self.compute_metadata = compute_metadata
-        self.expand = expand
         self.prefix = prefix
         self.labels_dict = labels_dict
         self.multilabel = multilabel
@@ -1443,11 +1615,10 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
 
     @property
     def label_cls(self):
-        return fol.ImageLabels if not self.expand else None
+        return None
 
     def setup(self):
         self._sample_parser = FiftyOneImageLabelsSampleParser(
-            expand=self.expand,
             prefix=self.prefix,
             labels_dict=self.labels_dict,
             multilabel=self.multilabel,
@@ -1476,20 +1647,14 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
         compute_metadata (False): whether to produce
             :class:`fiftyone.core.metadata.VideoMetadata` instances for each
             video when importing
-        expand (True): whether to expand the labels for each frame into
-            separate :class:`fiftyone.core.labels.Label` instances
         prefix (None): a string prefix to prepend to each label name in the
-            expanded frame label dictionaries. Only applicable when ``expand``
-            is True
+            expanded frame label dictionaries
         labels_dict (None): a dictionary mapping names of attributes/objects
-            in the frame labels to field names into which to expand them. Only
-            applicable when ``expand`` is True
+            in the frame labels to field names into which to expand them
         multilabel (False): whether to store frame attributes in a single
-            :class:`fiftyone.core.labels.Classifications` instance. Only
-            applicable when ``expand`` is True
+            :class:`fiftyone.core.labels.Classifications` instance
         skip_non_categorical (False): whether to skip non-categorical frame
-            attributes (True) or cast them to strings (False). Only applicable
-            when ``expand`` is True
+            attributes (True) or cast them to strings (False)
         skip_unlabeled (False): whether to skip unlabeled videos when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
@@ -1502,23 +1667,17 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
         self,
         dataset_dir,
         compute_metadata=False,
-        expand=True,
         prefix=None,
         labels_dict=None,
         multilabel=False,
         skip_non_categorical=False,
         skip_unlabeled=False,
         max_samples=None,
-        **kwargs
     ):
-        for arg in kwargs:
-            logger.warning("Ignoring unsupported parameter '%s'", arg)
-
         super().__init__(
             dataset_dir, skip_unlabeled=skip_unlabeled, max_samples=max_samples
         )
         self.compute_metadata = compute_metadata
-        self.expand = expand
         self.prefix = prefix
         self.labels_dict = labels_dict
         self.multilabel = multilabel
@@ -1560,7 +1719,7 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
             video_metadata = None
 
         self._num_imported += 1
-        return video_path, video_metadata, frames
+        return video_path, video_metadata, None, frames
 
     def _parse_next_sample(self):
         sample = next(self._iter_labeled_dataset)
@@ -1583,9 +1742,12 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
     def label_cls(self):
         return None
 
+    @property
+    def frame_labels_cls(self):
+        return None
+
     def setup(self):
         self._sample_parser = FiftyOneVideoLabelsSampleParser(
-            expand=self.expand,
             prefix=self.prefix,
             labels_dict=self.labels_dict,
             multilabel=self.multilabel,

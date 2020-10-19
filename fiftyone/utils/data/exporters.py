@@ -38,6 +38,7 @@ def export_samples(
     dataset_type=None,
     dataset_exporter=None,
     label_field_or_dict=None,
+    frame_labels_field_or_dict=None,
     num_samples=None,
     **kwargs
 ):
@@ -59,9 +60,13 @@ def export_samples(
             write the dataset
         label_field_or_dict (None): the name of the label field to export, or
             a dictionary mapping field names to output keys describing the
-            label fields to export. This is required if and only if
-            ``dataset_exporter`` is a :class:`LabeledImageDatasetExporter` or a
+            label fields to export. Only applicable if ``dataset_exporter`` is
+            a :class:`LabeledImageDatasetExporter` or
             :class:`LabeledVideoDatasetExporter`
+        frame_labels_field_or_dict (None): the name of the frame label field to
+            export, or a dictionary mapping field names to output keys
+            describing the frame label fields to export. Only applicable if
+            ``dataset_exporter`` is a :class:`LabeledVideoDatasetExporter`
         num_samples (None): the number of samples in ``samples``. If omitted,
             this is computed (if possible) via ``len(samples)``
         **kwargs: optional keyword arguments to pass to
@@ -87,7 +92,9 @@ def export_samples(
         )
     elif isinstance(dataset_exporter, LabeledVideoDatasetExporter):
         sample_parser = FiftyOneLabeledVideoSampleParser(
-            label_field_or_dict, compute_metadata=True
+            label_field_or_dict=label_field_or_dict,
+            frame_labels_field_or_dict=frame_labels_field_or_dict,
+            compute_metadata=True,
         )
     else:
         raise ValueError(
@@ -260,31 +267,6 @@ def _write_image_dataset(
                     )
 
 
-def _check_classification_to_detections(dataset_exporter, label):
-    if dataset_exporter.label_cls is not fol.Detections:
-        return label
-
-    if not isinstance(label, fol.Classification):
-        return label
-
-    msg = (
-        "Dataset exporter expects labels in %s format, but found %s. "
-        "Converting labels to detections whose bounding boxes span the entire "
-        "image" % (fol.Detections, label.__class__)
-    )
-    warnings.warn(msg)
-
-    return fol.Detections(
-        detections=[
-            fol.Detection(
-                label=label.label,
-                bounding_box=[0, 0, 1, 1],  # entire image
-                confidence=label.confidence,
-            )
-        ]
-    )
-
-
 def _write_video_dataset(
     dataset_exporter, samples, sample_parser, num_samples
 ):
@@ -315,17 +297,54 @@ def _write_video_dataset(
 
                 if labeled_videos:
                     # Parse labels
+                    label = sample_parser.get_label()
+
+                    #
+                    # SPECIAL CASE
+                    #
+                    # Convert `Classification` labels to `Detections` format,
+                    # if necessary
+                    #
+                    label = _check_classification_to_detections(
+                        dataset_exporter, label
+                    )
+
                     frames = sample_parser.get_frame_labels()
 
                     # Export sample
                     dataset_exporter.export_sample(
-                        video_path, frames, metadata=metadata
+                        video_path, label, frames, metadata=metadata
                     )
                 else:
                     # Export sample
                     dataset_exporter.export_sample(
                         video_path, metadata=metadata
                     )
+
+
+def _check_classification_to_detections(dataset_exporter, label):
+    if dataset_exporter.label_cls is not fol.Detections:
+        return label
+
+    if not isinstance(label, fol.Classification):
+        return label
+
+    msg = (
+        "Dataset exporter expects labels in %s format, but found %s. "
+        "Converting labels to detections whose bounding boxes span the entire "
+        "image" % (fol.Detections, label.__class__)
+    )
+    warnings.warn(msg)
+
+    return fol.Detections(
+        detections=[
+            fol.Detection(
+                label=label.label,
+                bounding_box=[0, 0, 1, 1],  # entire image
+                confidence=label.confidence,
+            )
+        ]
+    )
 
 
 class DatasetExporter(object):
@@ -700,10 +719,15 @@ class LabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
                 if exporter.requires_video_metadata and metadata is None:
                     metadata = fo.VideoMetadata.build_for(video_path)
 
-                # Extract relevant content from `sample.frames` to export
+                # Extract relevant sample-level labels to export
+                labels = ...
+
+                # Extract relevant frame-level labels to export
                 frames = ...
 
-                exporter.export_sample(video_path, frames, metadata=metadata)
+                exporter.export_sample(
+                    video_path, labels, frames, metadata=metadata
+                )
 
     Args:
         export_dir: the directory to write the export
@@ -722,29 +746,50 @@ class LabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
     @property
     def label_cls(self):
         """The :class:`fiftyone.core.labels.Label` class(es) that can be
-        exported by this exporter within the frame labels that it is provided.
+        exported at the sample-level.
 
         This can be any of the following:
 
         -   a :class:`fiftyone.core.labels.Label` class. In this case, the
-            exporter directly exports labels of this type
+            exporter directly exports sample-level labels of this type
         -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
             In this case, the exporter can export multiple label fields with
             value-types specified by this dictionary. Not all keys need be
-            present in the exported frame labels
+            present in the exported sample-level labels
         -   ``None``. In this case, the exporter makes no guarantees about the
-            labels that it can export
+            sample-level labels that it can export
         """
         raise NotImplementedError("subclass must implement label_cls")
 
-    def export_sample(self, video_path, frames, metadata=None):
+    @property
+    def frame_labels_cls(self):
+        """The :class:`fiftyone.core.labels.Label` class(es) that can be
+        exported by this exporter at the frame-level.
+
+        This can be any of the following:
+
+        -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+            exporter directly exports frame labels of this type
+        -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+            In this case, the exporter can export multiple frame label fields
+            with value-types specified by this dictionary. Not all keys need be
+            present in the exported frame labels
+        -   ``None``. In this case, the exporter makes no guarantees about the
+            frame labels that it can export
+        """
+        raise NotImplementedError("subclass must implement frame_labels_cls")
+
+    def export_sample(self, video_path, labels, frames, metadata=None):
         """Exports the given sample to the dataset.
 
         Args:
             video_path: the path to a video on disk
+            labels: an instance of :meth:`label_cls`, or a dictionary mapping
+                field names to :class:`fiftyone.core.labels.Label` instances,
+                or ``None`` if the sample has no sample-level labels
             frames: a dictionary mapping frame numbers to dictionaries that map
                 field names to :class:`fiftyone.core.labels.Label` instances,
-                or ``None`` is the sample is unlabeled
+                or ``None`` if the sample has no frame-level labels
             metadata (None): a :class:`fiftyone.core.metadata.VideoMetadata`
                 instance for the sample. Only required when
                 :meth:`requires_video_metadata` is ``True``
@@ -1075,6 +1120,64 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
             etai.write(img, out_image_path)
 
 
+class VideoClassificationDirectoryTreeExporter(LabeledVideoDatasetExporter):
+    """Exporter that writes a video classification directory tree to disk.
+
+    See :class:`fiftyone.types.dataset_types.VideoClassificationDirectoryTree`
+    for format details.
+
+    The source videos are directly copied to their export destination,
+    maintaining the original filename, unless a name conflict would occur, in
+    which case an index of the form ``"-%d" % count`` is appended to the base
+    filename.
+
+    Args:
+        export_dir: the directory to write the export
+    """
+
+    def __init__(self, export_dir):
+        super().__init__(export_dir)
+        self._class_counts = None
+        self._filename_counts = None
+
+    @property
+    def requires_video_metadata(self):
+        return False
+
+    @property
+    def label_cls(self):
+        return fol.Classification
+
+    @property
+    def frame_labels_cls(self):
+        return None
+
+    def setup(self):
+        self._class_counts = defaultdict(int)
+        self._filename_counts = defaultdict(int)
+        etau.ensure_dir(self.export_dir)
+
+    def export_sample(self, video_path, classification, _, metadata=None):
+        _label = _parse_classification(classification)
+        if _label is None:
+            _label = "_unlabeled"
+
+        self._class_counts[_label] += 1
+
+        filename = os.path.basename(video_path)
+        name, ext = os.path.splitext(filename)
+
+        key = (_label, filename)
+        self._filename_counts[key] += 1
+        count = self._filename_counts[key]
+        if count > 1:
+            filename = name + ("-%d" % count) + ext
+
+        out_video_path = os.path.join(self.export_dir, _label, filename)
+
+        etau.copy_file(video_path, out_video_path)
+
+
 class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
     """Exporter that writes an image detection dataset to disk in FiftyOne's
     default format.
@@ -1292,6 +1395,19 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
     def requires_video_metadata(self):
         return False
 
+    @property
+    def label_cls(self):
+        return None
+
+    @property
+    def frame_labels_cls(self):
+        return {
+            "attributes": fol.Classifications,
+            "detections": fol.Detections,
+            "polylines": fol.Polylines,
+            "keypoints": fol.Keypoints,
+        }
+
     def setup(self):
         self._labeled_dataset = etad.LabeledVideoDataset.create_empty_dataset(
             self.export_dir
@@ -1305,14 +1421,14 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
     def log_collection(self, sample_collection):
         self._description = sample_collection.info.get("description", None)
 
-    def export_sample(self, video_path, frames, metadata=None):
+    def export_sample(self, video_path, _, frames, metadata=None):
         out_video_path = self._filename_maker.get_output_path(video_path)
 
         name, ext = os.path.splitext(os.path.basename(out_video_path))
         new_image_filename = name + ext
         new_labels_filename = name + ".json"
 
-        _video_labels = _parse_frame_labels(frames)
+        _video_labels = _parse_frames(frames)
 
         video_labels_path = os.path.join(self._labels_dir, new_labels_filename)
         _video_labels.write_json(
@@ -1384,7 +1500,7 @@ def _parse_image_labels(label):
     return label.labels
 
 
-def _parse_frame_labels(frames):
+def _parse_frames(frames):
     video_labels = etav.VideoLabels()
     if frames is None:
         return video_labels
