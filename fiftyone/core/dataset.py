@@ -319,6 +319,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """Whether the dataset is deleted."""
         return self._deleted
 
+    @property
+    def _dataset(self):
+        return self
+
     def summary(self):
         """Returns a string summary of the dataset.
 

@@ -138,7 +138,9 @@ class SampleCollection(object):
                 )
             field = agg._get_output_field(self)
             agg_map[field] = agg
-            pipelines[field] = agg._to_mongo(schema, frame_schema)
+            pipelines[field] = agg._to_mongo(
+                self._dataset, schema, frame_schema
+            )
 
         try:
             # pylint: disable=no-member

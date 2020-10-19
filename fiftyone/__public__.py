@@ -11,7 +11,13 @@ import fiftyone.core.service as fos
 _database_service = fos.DatabaseService()
 config = foc.load_config()
 
-from .core.aggregations import Count, Distinct
+from .core.aggregations import (
+    Bounds,
+    ConfidenceBounds,
+    Count,
+    Distinct,
+    DistinctLabels,
+)
 from .core.dataset import (
     Dataset,
     list_datasets,

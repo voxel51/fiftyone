@@ -386,17 +386,3 @@ class DatasetView(foc.SampleCollection):
                 filtered_fields.update(_filtered_fields)
 
         return filtered_fields
-
-    def _with_frames(self):
-        view = copy(self)
-        lookup = {
-            "$lookup": {
-                "from": self._dataset._frame_collection_name,
-                "localField": "_id",
-                "foreignField": "_sample_id",
-                "as": "frames",
-            }
-        }
-        unwind = {"$unwind": "$frames"}
-        view._flatten_frames = [lookup, unwind]
-        return view
