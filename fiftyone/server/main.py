@@ -18,6 +18,7 @@ from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 from flask_socketio import emit, Namespace, SocketIO
 
+import eta.core.labels as etal
 import eta.core.utils as etau
 import eta.core.video as etav
 
@@ -151,11 +152,25 @@ _WITHOUT_PAGINATION_EXTENDED_STAGES = {
 }
 
 
-def _make_image_labels(name, label, frame_number):
-    return etav.VideoFrameLabels.from_image_labels(
+def _make_frame_labels(name, label, frame_number):
+    labels = etav.VideoFrameLabels.from_image_labels(
         fol.ImageLabel.from_dict(label).to_image_labels(name=name),
         frame_number,
     )
+
+    for obj in labels.objects:
+        obj.frame_number = frame_number
+
+    for attr in labels.attributes():
+        container = getattr(labels, attr)
+        if isinstance(container, etal.LabelsContainer):
+            for obj in container:
+                # force _id to be serialized
+                obj._id = str(label["_id"])
+                attrs = obj.attributes() + ["_id"]
+                obj.attributes = lambda: attrs
+
+    return labels
 
 
 class StateController(Namespace):
@@ -298,10 +313,7 @@ class StateController(Namespace):
             frame_labels = etav.VideoFrameLabels(frame_number=frame_number)
             for k, v in frame_dict.items():
                 if isinstance(v, dict) and "_cls" in v:
-                    field_labels = _make_image_labels(k, v, frame_number)
-                    for obj in field_labels.objects:
-                        obj.frame_number = frame_number
-
+                    field_labels = _make_frame_labels(k, v, frame_number)
                     frame_labels.merge_labels(field_labels)
 
             labels.add_frame(frame_labels)
