@@ -56,7 +56,7 @@ class DatasetView(foc.SampleCollection):
         self._flatten_frames = None
 
     def __len__(self):
-        return self.aggregate([foa.Count()])[0]
+        return self.aggregate(foa.Count()).count
 
     def __getitem__(self, sample_id):
         if isinstance(sample_id, numbers.Integral):
@@ -252,7 +252,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a list of tags
         """
-        return self.aggregate([foa.Distinct("tags")])[0].values
+        return self.aggregate(foa.Distinct("tags")).values
 
     def create_index(self, field):
         """Creates a database index on the given field, enabling efficient

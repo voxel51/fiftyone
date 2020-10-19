@@ -118,6 +118,10 @@ class SampleCollection(object):
             a list of 
             :class:`AggregationResults <fiftyone.core.aggregations.AggregationResult>`
         """
+        scalar_result = isinstance(aggregations, Aggregation)
+        if scalar_result:
+            aggregations = [aggregations]
+
         pipelines = {}
         agg_map = {}
         # pylint: disable=no-member
@@ -149,7 +153,7 @@ class SampleCollection(object):
             except:
                 results.append(agg_map[field]._get_default_result())
 
-        return results
+        return results[0] if scalar_result else results
 
     def summary(self):
         """Returns a string summary of the collection.
