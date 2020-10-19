@@ -446,7 +446,7 @@ def test_multilabel_dataset(basedir, multilabel_img):
         label_prefix="gt_",
     )
     dataset2 = fo.Dataset.from_dir(
-        export_dir, fo.types.BDDDataset, expand=True, prefix="gt_"
+        export_dir, fo.types.BDDDataset, label_field="gt"
     )
 
     # Multilabel FiftyOneImageLabelsDataset
@@ -457,10 +457,7 @@ def test_multilabel_dataset(basedir, multilabel_img):
         label_prefix="gt_",
     )
     dataset3 = fo.Dataset.from_dir(
-        export_dir,
-        fo.types.FiftyOneImageLabelsDataset,
-        expand=True,
-        prefix="gt_",
+        export_dir, fo.types.FiftyOneImageLabelsDataset, label_field="gt",
     )
 
 
