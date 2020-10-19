@@ -1692,6 +1692,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             :class:`AggregationResults <fiftyone.core.aggregations.AggregationResult>`
         """
         pipelines = {}
+        agg_map = {}
         for agg in aggregations:
             if not isinstance(agg, Aggregation):
                 raise TypeError(
@@ -1699,10 +1700,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     % (agg.__class__, agg.name)
                 )
             agg.validate(self)
-            pipelines[agg._output_field(self)] = agg.to_mongo()
+            field = agg._get_output_field(self)
+            agg_map[field] = agg
+            pipelines[field] = agg.to_mongo()
 
-        result = self._aggregate([{"$facet": pipelines}])
-        return result
+        try:
+            result = next(self._aggregate([{"$facet": pipelines}]))
+        except StopIteration:
+            pass
+
+        for field, agg in agg_map.items():
+            try:
+                yield agg_map[field]._get_result(result[field])
+            except:
+                yield agg_map[field]._get_default_result()
 
     @classmethod
     def from_dict(cls, d, name=None, rel_dir=None):

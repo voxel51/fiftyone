@@ -33,7 +33,7 @@ class Count(Aggregation):
     def __init__(self, field_name=None):
         super().__init__(field_name)
 
-    def _output_field(self, view):
+    def _get_output_field(self, view):
         if self._field_name is None:
             return "count"
 
@@ -41,8 +41,11 @@ class Count(Aggregation):
         if self._field_name is None:
             return [{"$count": "count"}]
 
-    def _from_result(self, result_dict):
-        return result_dict["count"]
+    def _get_result(self, d):
+        return d[0]["count"]
+
+    def _get_default(self):
+        return 0
 
 
 class Bounds(Aggregation):
