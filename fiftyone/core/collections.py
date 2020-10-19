@@ -1291,15 +1291,17 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement make_index()")
 
-    def aggregate(self, pipeline=None):
-        """Calls the collection's current MongoDB aggregation pipeline.
+    def aggregate(self, aggregations):
+        """Aggregates an iterable of
+        :class:`Aggregations <fiftyone.core.aggregations.Aggregation>`
 
         Args:
-            pipeline (None): an optional aggregation pipeline (list of dicts)
-                to append to the collections's pipeline before calling it
+            aggregations: an iterable of 
+                :class:`Aggregations <fiftyone.core.aggregations.Aggregation>`
 
         Returns:
-            an iterable over the aggregation result
+            an iterable of 
+            :class:`AggregationResults <fiftyone.core.aggregations.AggregationResult>`
         """
         raise NotImplementedError("Subclass must implement aggregate()")
 

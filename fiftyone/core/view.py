@@ -161,7 +161,7 @@ class DatasetView(foc.SampleCollection):
         selected_fields, excluded_fields = self._get_selected_excluded_fields()
         filtered_fields = self._get_filtered_fields()
 
-        for d in self.aggregate():
+        for d in self._aggregate():
             try:
                 doc = self._dataset._sample_dict_to_doc(d)
                 yield fos.SampleView(
@@ -278,28 +278,6 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset.create_index(field)
 
-    def aggregate(self, pipeline=None):
-        """Calls the view's current MongoDB aggregation pipeline.
-
-        Args:
-            pipeline (None): an optional aggregation pipeline (list of dicts)
-                to append to the view's pipeline before calling it
-
-        Returns:
-            an iterable over the aggregation result
-        """
-        _pipeline = []
-        if self._flatten_frames is not None:
-            _pipeline.extend(self._flatten_frames)
-
-        for s in self._stages:
-            _pipeline.extend(s.to_mongo())
-
-        if pipeline is not None:
-            _pipeline.extend(pipeline)
-
-        return self._dataset.aggregate(_pipeline)
-
     def to_dict(self, rel_dir=None):
         """Returns a JSON dictionary representation of the view.
 
@@ -320,6 +298,24 @@ class DatasetView(foc.SampleCollection):
         d["stages"] = [s._serialize() for s in self._stages]
         d["samples"] = samples
         return d
+
+    def _aggregate(self, pipeline=None):
+        """Calls the view's current MongoDB aggregation pipeline.
+        Args:
+            pipeline (None): an optional aggregation pipeline (list of dicts)
+                to append to the view's pipeline before calling it
+        Returns:
+            an iterable over the aggregation result
+        """
+        _pipeline = []
+
+        for s in self._stages:
+            _pipeline.extend(s.to_mongo())
+
+        if pipeline is not None:
+            _pipeline.extend(pipeline)
+
+        return self._dataset.aggregate(_pipeline)
 
     def _serialize(self):
         """Serializes the stages of the view
