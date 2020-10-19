@@ -203,8 +203,8 @@ def expand_image_labels_field(
     ``prefix + "attrs"``.
 
     Objects are stored in :class:`fiftyone.core.labels.Detections` fields whose
-    names are ``prefix + obj.name``, or ``prefix + "objs"`` for objects that
-    do not have their ``name`` field populated.
+    names are ``prefix + obj.name``, or ``prefix + "detections"`` for objects
+    that do not have their ``name`` field populated.
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
@@ -340,7 +340,6 @@ def load_video_labels(
         frame
     """
     sample_parser = VideoLabelsSampleParser(
-        expand=True,
         prefix=prefix,
         labels_dict=labels_dict,
         multilabel=multilabel,
