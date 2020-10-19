@@ -35,13 +35,9 @@ def validate_field_against_media_type(
         type
     """
     # @todo avoid circular dependency
-    import fiftyone.core.fields as fof
     import fiftyone.core.labels as fol
 
     is_image_field = False
-
-    if issubclass(ftype, fof.ImageLabelsField):
-        is_image_field = True
 
     if embedded_doc_type is not None and issubclass(
         embedded_doc_type, fol.ImageLabel

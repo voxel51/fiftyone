@@ -8,10 +8,12 @@ Sample parsers.
 import numpy as np
 
 import eta.core.image as etai
+import eta.core.frames as etaf
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
 
+import fiftyone.core.eta_utils as foe
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.sample as fos
@@ -1051,7 +1053,7 @@ class ImageDetectionSampleParser(LabeledImageTupleSampleParser):
 
 class ImageLabelsSampleParser(LabeledImageTupleSampleParser):
     """Generic parser for multitask image prediction samples whose labels are
-    represented in :class:`fiftyone.core.labels.ImageLabels` format.
+    stored in ``eta.core.image.ImageLabels`` format.
 
     This implementation provided by this class supports samples that are
     ``(image_or_path, image_labels_or_path)`` tuples, where:
@@ -1060,8 +1062,8 @@ class ImageLabelsSampleParser(LabeledImageTupleSampleParser):
           format via ``np.asarray()`` or the path to an image on disk
 
         - ``image_labels_or_path`` is an ``eta.core.image.ImageLabels``
-          instance, a serialized dict representation of one, or the path to one
-          on disk
+          instance, an ``eta.core.frames.FrameLabels`` instance, a serialized
+          dict representation of either, or the path to either on disk
 
     Args:
         prefix (None): a string prefix to prepend to each label name in the
@@ -1101,20 +1103,13 @@ class ImageLabelsSampleParser(LabeledImageTupleSampleParser):
         return self._parse_label(labels)
 
     def _parse_label(self, labels):
-        if etau.is_str(labels):
-            labels = etai.ImageLabels.from_json(labels)
-        elif isinstance(labels, dict):
-            labels = etai.ImageLabels.from_dict(labels)
-
-        if labels is not None:
-            labels = fol.ImageLabels(labels=labels).expand(
-                prefix=self.prefix,
-                labels_dict=self.labels_dict,
-                multilabel=self.multilabel,
-                skip_non_categorical=self.skip_non_categorical,
-            )
-
-        return labels
+        return foe.load_image_labels(
+            labels,
+            prefix=self.prefix,
+            labels_dict=self.labels_dict,
+            multilabel=self.multilabel,
+            skip_non_categorical=self.skip_non_categorical,
+        )
 
 
 class FiftyOneImageClassificationSampleParser(ImageClassificationSampleParser):
@@ -1236,32 +1231,13 @@ class VideoLabelsSampleParser(LabeledVideoSampleParser):
         return self._parse_labels(labels)
 
     def _parse_labels(self, labels):
-        if etau.is_str(labels):
-            video_labels = etav.VideoLabels.from_json(labels)
-        elif isinstance(labels, dict):
-            video_labels = etav.VideoLabels.from_dict(labels)
-        else:
-            video_labels = labels
-
-        if video_labels is None:
-            return None
-
-        frames = {}
-        for frame_number in video_labels:
-            image_labels = fol.ImageLabels(
-                labels=etai.ImageLabels.from_frame_labels(
-                    video_labels[frame_number]
-                )
-            )
-
-            frames[frame_number] = image_labels.expand(
-                prefix=self.prefix,
-                labels_dict=self.labels_dict,
-                multilabel=self.multilabel,
-                skip_non_categorical=self.skip_non_categorical,
-            )
-
-        return frames
+        return foe.load_video_labels(
+            labels,
+            prefix=self.prefix,
+            labels_dict=self.labels_dict,
+            multilabel=self.multilabel,
+            skip_non_categorical=self.skip_non_categorical,
+        )
 
 
 class FiftyOneVideoLabelsSampleParser(VideoLabelsSampleParser):

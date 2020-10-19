@@ -428,12 +428,6 @@ def test_multilabel_dataset(basedir, multilabel_img):
     images_dir = os.path.join(basedir, "source-images")
     dataset = _make_multilabel_dataset(multilabel_img, images_dir)
 
-    # Test condense
-    foud.condense_image_labels_field(dataset, "ground_truth", prefix="gt_")
-
-    # Test expand
-    foud.expand_image_labels_field(dataset, "ground_truth", prefix="gt_")
-
     # Multilabel BDDDataset
     export_dir = os.path.join(basedir, "bdd")
     dataset.export(

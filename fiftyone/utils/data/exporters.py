@@ -14,10 +14,10 @@ import eta.core.datasets as etad
 import eta.core.image as etai
 import eta.core.serial as etas
 import eta.core.utils as etau
-import eta.core.video as etav
 
 import fiftyone as fo
 import fiftyone.core.collections as foc
+import fiftyone.core.eta_utils as foe
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
@@ -1341,7 +1341,7 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
         new_image_filename = name + ext
         new_labels_filename = name + ".json"
 
-        _image_labels = _parse_image_labels(labels)
+        _image_labels = foe.to_image_labels(labels)
 
         if etau.is_str(image_or_path):
             image_labels_path = os.path.join(
@@ -1431,7 +1431,7 @@ class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
         new_image_filename = name + ext
         new_labels_filename = name + ".json"
 
-        _video_labels = _parse_frames(frames)
+        _video_labels = foe.to_video_labels(frames)
 
         video_labels_path = os.path.join(self._labels_dir, new_labels_filename)
         _video_labels.write_json(
@@ -1486,45 +1486,6 @@ def _parse_detections(detections, labels_map_rev=None):
         _detections.append(_detection)
 
     return _detections
-
-
-def _parse_image_labels(labels):
-    if not isinstance(labels, dict):
-        labels = {labels: labels}
-
-    image_labels = etai.ImageLabels()
-
-    for name, label in labels.items():
-        if isinstance(label, fol.ImageLabel):
-            image_labels.merge_labels(label.to_image_labels(name=name))
-        elif label is not None:
-            msg = "Ignoring unsupported label type '%s'" % label.__class__
-            warnings.warn(msg)
-
-    return image_labels
-
-
-def _parse_frames(frames):
-    video_labels = etav.VideoLabels()
-    if frames is None:
-        return video_labels
-
-    for frame_number, frame in frames.items():
-        video_labels[frame_number] = _parse_frame(frame, frame_number)
-
-    return video_labels
-
-
-def _parse_frame(frame, frame_number):
-    frame_labels = etav.VideoFrameLabels(frame_number)
-
-    for name, label in frame.items():
-        if not isinstance(label, fol.ImageLabel):
-            continue
-
-        frame_labels.merge_labels(label.to_image_labels(name=name))
-
-    return frame_labels
 
 
 def _to_labels_map_rev(classes):
