@@ -17,7 +17,21 @@ Tests do exist, but their coverage generally needs improvement...
 
 ## Running a test
 
-To run a test, simply run `python <name-of-file>.py`
+To run all unit tests, run:
+
+```shell
+# Run all tests
+python -m unittest discover unittests/
+
+# Run tests matching a glob pattern
+python -m unittest discover -s unittests/ -p '*_test.py'
+```
+
+To run a specific set of tests, run:
+
+```shell
+python /path/to/tests_file.py
+```
 
 ## Copyright
 
