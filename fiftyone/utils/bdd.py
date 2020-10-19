@@ -6,13 +6,12 @@ Utilities for working with datasets in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from copy import deepcopy
+import logging
 import os
+import warnings
 
-import eta.core.data as etad
-import eta.core.geometry as etag
 import eta.core.image as etai
-import eta.core.objects as etao
-import eta.core.polylines as etap
 import eta.core.utils as etau
 import eta.core.serial as etas
 
@@ -21,6 +20,9 @@ import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
+
+
+logger = logging.getLogger(__name__)
 
 
 class BDDSampleParser(foud.LabeledImageTupleSampleParser):
@@ -113,41 +115,15 @@ class BDDSampleParser(foud.LabeledImageTupleSampleParser):
 
     See :class:`fiftyone.types.dataset_types.BDDDataset` for more format
     details.
-
-    Args:
-        expand (True): whether to expand the image labels into a dictionary of
-            :class:`fiftyone.core.labels.Label` instances
-        prefix (None): a string prefix to prepend to each label name in the
-            expanded label dictionary. Only applicable when ``expand`` is True
-        labels_dict (None): a dictionary mapping names of attributes/objects
-            in the image labels to field names into which to expand them. Only
-            applicable when ``expand`` is True
-        multilabel (False): whether to store frame attributes in a single
-            :class:`fiftyone.core.labels.Classifications` instance. Only
-            applicable when ``expand`` is True
-        skip_non_categorical (False): whether to skip non-categorical frame
-            attributes (True) or cast them to strings (False). Only applicable
-            when ``expand`` is True
     """
-
-    def __init__(
-        self,
-        expand=True,
-        prefix=None,
-        labels_dict=None,
-        multilabel=False,
-        skip_non_categorical=False,
-    ):
-        super().__init__()
-        self.expand = expand
-        self.prefix = prefix
-        self.labels_dict = labels_dict
-        self.multilabel = multilabel
-        self.skip_non_categorical = skip_non_categorical
 
     @property
     def label_cls(self):
-        return fol.ImageLabels if not self.expand else None
+        return {
+            "attributes": fol.Classifications,
+            "detections": fol.Detections,
+            "polylines": fol.Polylines,
+        }
 
     def get_label(self):
         """Returns the label for the current sample.
@@ -156,7 +132,7 @@ class BDDSampleParser(foud.LabeledImageTupleSampleParser):
             sample: the sample
 
         Returns:
-            a :class:`fiftyone.core.labels.ImageLabels` instance
+            a labels dictionary
         """
         labels = self.current_sample[1]
 
@@ -173,17 +149,7 @@ class BDDSampleParser(foud.LabeledImageTupleSampleParser):
             labels = etas.load_json(labels)
 
         frame_size = etai.to_frame_size(img=img)
-        label = _parse_bdd_annotation(labels, frame_size)
-
-        if label is not None and self.expand:
-            label = label.expand(
-                prefix=self.prefix,
-                labels_dict=self.labels_dict,
-                multilabel=self.multilabel,
-                skip_non_categorical=self.skip_non_categorical,
-            )
-
-        return label
+        return _parse_bdd_annotation(labels, frame_size)
 
 
 class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
@@ -193,19 +159,6 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
 
     Args:
         dataset_dir: the dataset directory
-        expand (True): whether to expand the image labels into a dictionary of
-            :class:`fiftyone.core.labels.Label` instances
-        prefix (None): a string prefix to prepend to each label name in the
-            expanded label dictionary. Only applicable when ``expand`` is True
-        labels_dict (None): a dictionary mapping names of attributes/objects
-            in the image labels to field names into which to expand them. Only
-            applicable when ``expand`` is True
-        multilabel (False): whether to store frame attributes in a single
-            :class:`fiftyone.core.labels.Classifications` instance. Only
-            applicable when ``expand`` is True
-        skip_non_categorical (False): whether to skip non-categorical frame
-            attributes (True) or cast them to strings (False). Only applicable
-            when ``expand`` is True
         skip_unlabeled (False): whether to skip unlabeled images when importing
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
@@ -217,11 +170,6 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
     def __init__(
         self,
         dataset_dir,
-        expand=True,
-        prefix=None,
-        labels_dict=None,
-        multilabel=False,
-        skip_non_categorical=False,
         skip_unlabeled=False,
         shuffle=False,
         seed=None,
@@ -234,11 +182,6 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
             seed=seed,
             max_samples=max_samples,
         )
-        self.expand = expand
-        self.prefix = prefix
-        self.labels_dict = labels_dict
-        self.multilabel = multilabel
-        self.skip_non_categorical = skip_non_categorical
         self._data_dir = None
         self._labels_path = None
         self._anno_dict_map = None
@@ -269,14 +212,6 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
             # Unlabeled image
             label = None
 
-        if label is not None and self.expand:
-            label = label.expand(
-                prefix=self.prefix,
-                labels_dict=self.labels_dict,
-                multilabel=self.multilabel,
-                skip_non_categorical=self.skip_non_categorical,
-            )
-
         return image_path, image_metadata, label
 
     @property
@@ -289,7 +224,11 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
 
     @property
     def label_cls(self):
-        return fol.ImageLabels if not self.expand else None
+        return {
+            "attributes": fol.Classifications,
+            "detections": fol.Detections,
+            "polylines": fol.Polylines,
+        }
 
     def setup(self):
         self._data_dir = os.path.join(self.dataset_dir, "data")
@@ -306,6 +245,10 @@ class BDDDatasetImporter(foud.LabeledImageDatasetImporter):
 
         self._filenames = self._preprocess_list(filenames)
         self._num_samples = len(self._filenames)
+
+    @staticmethod
+    def get_num_samples(dataset_dir):
+        return len(etau.list_files(os.path.join(dataset_dir, "data")))
 
 
 class BDDDatasetExporter(foud.LabeledImageDatasetExporter):
@@ -337,7 +280,11 @@ class BDDDatasetExporter(foud.LabeledImageDatasetExporter):
 
     @property
     def label_cls(self):
-        return fol.ImageLabels
+        return {
+            "attributes": fol.Classifications,
+            "detections": fol.Detections,
+            "polylines": fol.Polylines,
+        }
 
     def setup(self):
         self._data_dir = os.path.join(self.export_dir, "data")
@@ -347,22 +294,26 @@ class BDDDatasetExporter(foud.LabeledImageDatasetExporter):
             output_dir=self._data_dir, default_ext=self.image_format
         )
 
-    def export_sample(
-        self, image_or_path, image_labels_or_dict, metadata=None
-    ):
+    def export_sample(self, image_or_path, labels, metadata=None):
         out_image_path = self._export_image_or_path(
             image_or_path, self._filename_maker
         )
 
+        if labels is None:
+            return  # unlabeled
+
+        if not isinstance(labels, dict):
+            labels = {"labels": labels}
+
+        if all(v is None for v in labels.values()):
+            return  # unlabeled
+
         if metadata is None:
             metadata = fom.ImageMetadata.build_for(out_image_path)
 
-        if image_labels_or_dict is not None:
-            filename = os.path.basename(out_image_path)
-            annotation = _make_bdd_annotation(
-                image_labels_or_dict, metadata, filename
-            )
-            self._annotations.append(annotation)
+        filename = os.path.basename(out_image_path)
+        annotation = _make_bdd_annotation(labels, metadata, filename)
+        self._annotations.append(annotation)
 
     def close(self, *args):
         etas.write_json(self._annotations, self._labels_path)
@@ -384,143 +335,291 @@ def load_bdd_annotations(json_path):
     return {d["name"]: d for d in annotations}
 
 
+def wrangle_bdd100k_download(
+    bdd100k_dir, dataset_dir, copy_files=True, overwrite=False
+):
+    """Wrangles a raw download of the BDD100k dataset into per-split
+    directories in :class:`BDDDataset` format.
+
+    This function assumes that the input ``bdd100k_dir`` contains the following
+    contents::
+
+        bdd100k_dir/
+            labels/
+                bdd100k_labels_images_train.json
+                bdd100k_labels_images_val.json
+            images/
+                100k/
+                    train/
+                    test/
+                    val/
+            ...
+
+    and will populate ``dataset_dir`` as follows::
+
+        dataset_dir/
+            train/
+                data/
+                labels.json
+            validation/
+                data/
+                labels.json
+            test/
+                data/
+
+    Args:
+        bdd100k_dir: the source directory containing the BDD100k download
+        dataset_dir: the directory to construct the output split directories
+        copy_files (True): whether to move (False) or create copies (True) of
+            the source files when populating ``dataset_dir``
+        overwrite (False): whether to overwrite existing files/directories in
+            the output location, if they exist
+    """
+    put_dir = etau.copy_dir if copy_files else etau.move_dir
+    put_file = etau.copy_file if copy_files else etau.move_file
+
+    _ensure_bdd100k_root(bdd100k_dir)
+
+    # Train images
+    logger.info("Preparing training images...")
+    in_train_data_dir = os.path.join(bdd100k_dir, "images", "100k", "train")
+    out_train_data_dir = os.path.join(dataset_dir, "train", "data")
+    if overwrite or not os.path.isdir(out_train_data_dir):
+        _ensure_bdd100k_dir(bdd100k_dir, in_train_data_dir)
+        put_dir(in_train_data_dir, out_train_data_dir)
+
+    # Train labels
+    logger.info("Preparing training labels...")
+    in_train_labels_path = os.path.join(
+        bdd100k_dir, "labels", "bdd100k_labels_images_train.json"
+    )
+    out_train_labels_path = os.path.join(dataset_dir, "train", "labels.json")
+    if overwrite or not os.path.isfile(out_train_labels_path):
+        _ensure_bdd100k_file(bdd100k_dir, in_train_labels_path)
+        put_file(in_train_labels_path, out_train_labels_path)
+
+    # Validation images
+    logger.info("Preparing validation images...")
+    in_val_data_dir = os.path.join(bdd100k_dir, "images", "100k", "val")
+    out_val_data_dir = os.path.join(dataset_dir, "validation", "data")
+    if overwrite or not os.path.isdir(out_val_data_dir):
+        _ensure_bdd100k_dir(bdd100k_dir, in_val_data_dir)
+        put_dir(in_val_data_dir, out_val_data_dir)
+
+    # Validation labels
+    logger.info("Preparing validation labels...")
+    in_val_labels_path = os.path.join(
+        bdd100k_dir, "labels", "bdd100k_labels_images_val.json"
+    )
+    out_val_labels_path = os.path.join(
+        dataset_dir, "validation", "labels.json"
+    )
+    if overwrite or not os.path.isfile(out_val_labels_path):
+        _ensure_bdd100k_file(bdd100k_dir, in_val_labels_path)
+        put_file(in_val_labels_path, out_val_labels_path)
+
+    # Test images
+    logger.info("Preparing test images...")
+    in_test_data_dir = os.path.join(bdd100k_dir, "images", "100k", "test")
+    out_test_data_dir = os.path.join(dataset_dir, "test", "data")
+    if overwrite or not os.path.isdir(out_test_data_dir):
+        _ensure_bdd100k_dir(bdd100k_dir, in_test_data_dir)
+        put_dir(in_test_data_dir, out_test_data_dir)
+
+
+def _ensure_bdd100k_root(bdd100k_dir):
+    if not os.path.isdir(bdd100k_dir):
+        msg = "\n\nDirectory '%s' not found." % bdd100k_dir
+        msg += _ROOT_BDD100K_ERROR_MESSAGE % bdd100k_dir
+        raise OSError(msg)
+
+
+def _ensure_bdd100k_dir(bdd100k_dir, dirpath):
+    if not os.path.isdir(dirpath):
+        relpath = os.path.relpath(dirpath, bdd100k_dir)
+        msg = "\n\nDirectory '%s' not found within '%s'." % (
+            relpath,
+            bdd100k_dir,
+        )
+        msg += _ROOT_BDD100K_ERROR_MESSAGE % bdd100k_dir
+        raise OSError(msg)
+
+
+def _ensure_bdd100k_file(bdd100k_dir, filepath):
+    if not os.path.isfile(filepath):
+        relpath = os.path.relpath(filepath, bdd100k_dir)
+        msg = "\n\nFile '%s' not found within '%s'." % (relpath, bdd100k_dir)
+        msg += _ROOT_BDD100K_ERROR_MESSAGE % bdd100k_dir
+        raise OSError(msg)
+
+
+_ROOT_BDD100K_ERROR_MESSAGE = """
+
+You must download the source files for the BDD100k dataset manually and ensure
+that the following contents are present:
+
+%s/
+    labels/
+        bdd100k_labels_images_train.json
+        bdd100k_labels_images_val.json
+    images/
+        100k/
+            train/
+            test/
+            val/
+"""
+
+
 def _parse_bdd_annotation(d, frame_size):
-    image_labels = etai.ImageLabels()
+    labels = {}
 
     # Frame attributes
-    frame_attrs = d.get("attributes", {})
-    image_labels.attrs = _make_attributes(frame_attrs)
+    # NOTE: problems may occur if frame attributes have names "detections" or
+    # "polylines", but we cross our fingers and proceeed
+    labels.update(_parse_frame_attributes(d.get("attributes", {})))
 
     # Objects and polylines
-    labels = d.get("labels", [])
-    for label in labels:
+    for label in d.get("labels", []):
         if "box2d" in label:
-            dobj = _parse_bdd_object(label, frame_size)
-            image_labels.add_object(dobj)
+            if "detections" not in labels:
+                labels["detections"] = fol.Detections()
+
+            detection = _parse_bdd_detection(label, frame_size)
+            labels["detections"].detections.append(detection)
 
         if "poly2d" in label:
+            if "polylines" not in labels:
+                labels["polylines"] = fol.Polylines()
+
             polylines = _parse_bdd_polylines(label, frame_size)
-            image_labels.add_polylines(polylines)
+            labels["polylines"].polylines.extend(polylines)
 
-    return fol.ImageLabels(labels=image_labels)
+    return labels
 
 
-def _parse_bdd_object(d, frame_size):
+def _parse_frame_attributes(attrs_dict):
+    labels = {}
+    for name, value in attrs_dict.items():
+        if isinstance(value, list):
+            labels[name] = fol.Classifications(
+                classifications=[fo.Classification(label=v) for v in value]
+            )
+        else:
+            labels[name] = fo.Classification(label=value)
+
+    return labels
+
+
+def _parse_attributes(attrs_dict):
+    return {
+        name: _parse_attribute(value) for name, value in attrs_dict.items()
+    }
+
+
+def _parse_attribute(value):
+    if etau.is_str(value):
+        return fol.CategoricalAttribute(value=value)
+
+    if isinstance(value, bool):
+        return fol.BooleanAttribute(value=value)
+
+    if etau.is_numeric(value):
+        return fol.NumericAttribute(value=value)
+
+    return fol.Attribute(value=value)
+
+
+def _parse_bdd_detection(d, frame_size):
     label = d["category"]
 
+    width, height = frame_size
     box2d = d["box2d"]
-    bounding_box = etag.BoundingBox.from_abs_coords(
-        box2d["x1"],
-        box2d["y1"],
-        box2d["x2"],
-        box2d["y2"],
-        frame_size=frame_size,
-        clamp=False,
+    bounding_box = (
+        box2d["x1"] / width,
+        box2d["y1"] / height,
+        (box2d["x2"] - box2d["x1"]) / width,
+        (box2d["y2"] - box2d["y1"]) / height,
     )
 
-    obj_attrs = d.get("attributes", {})
-    attrs = _make_attributes(obj_attrs)
+    attrs_dict = d.get("attributes", {})
+    attributes = _parse_attributes(attrs_dict)
 
-    return etao.DetectedObject(
-        label=label, bounding_box=bounding_box, attrs=attrs,
+    return fol.Detection(
+        label=label, bounding_box=bounding_box, attributes=attributes,
     )
 
 
 def _parse_bdd_polylines(d, frame_size):
     label = d["category"]
 
-    attributes = d.get("attributes", {})
-    attrs = _make_attributes(attributes)
-    polylines = etap.PolylineContainer()
+    attributes = _parse_attributes(d.get("attributes", {}))
+
+    polylines = []
+    width, height = frame_size
     for poly2d in d.get("poly2d", []):
-        points = poly2d.get("vertices", [])
+        vertices = poly2d.get("vertices", [])
+        points = [(x / width, y / height) for (x, y) in vertices]
         closed = poly2d.get("closed", False)
         filled = closed  # assume that closed figures should be filled
 
-        _attrs = attrs.copy()
+        _attributes = deepcopy(attributes)
 
         types = poly2d.get("types", None)
         if types is not None:
-            _attrs.add(_make_attribute("types", types))
+            _attributes["types"] = _parse_attribute(types)
 
-        polylines.add(
-            etap.Polyline.from_abs_coords(
-                [points],
+        polylines.append(
+            fol.Polyline(
                 label=label,
+                points=[points],
                 closed=closed,
                 filled=filled,
-                attrs=_attrs,
-                frame_size=frame_size,
-                clamp=False,
+                attributes=_attributes,
             )
         )
 
     return polylines
 
 
-def _make_bdd_annotation(image_labels_or_dict, metadata, filename):
-    # Convert to `eta.core.image.ImageLabels` format
-    if isinstance(image_labels_or_dict, dict):
-        image_labels = etai.ImageLabels()
-        for name, label in image_labels_or_dict.items():
-            if label is not None:
-                image_labels.merge_labels(label.to_image_labels(name=name))
-    else:
-        image_labels = image_labels_or_dict.labels
-
-    labels = []
+def _make_bdd_annotation(labels, metadata, filename):
     frame_size = (metadata.width, metadata.height)
+
+    # Convert labels to BDD format
+    frame_attrs = {}
+    objects = []
+    polylines = []
+    for name, _labels in labels.items():
+        if isinstance(_labels, fol.Classification):
+            frame_attrs[name] = _labels.label
+        if isinstance(_labels, fol.Classifications):
+            frame_attrs[name] = [l.label for l in _labels]
+        elif isinstance(_labels, fol.Detection):
+            objects.append(_detection_to_bdd(_labels, frame_size))
+        elif isinstance(_labels, fol.Detections):
+            for detection in _labels.detections:
+                objects.append(_detection_to_bdd(detection, frame_size))
+        elif isinstance(_labels, fol.Polyline):
+            polylines.append(_polyline_to_bdd(_labels, frame_size))
+        elif isinstance(_labels, fol.Polylines):
+            for polyline in _labels.polylines:
+                polylines.append(_polyline_to_bdd(polyline, frame_size))
+        elif _labels is not None:
+            msg = "Ignoring unsupported label type '%s'" % _labels.__class__
+            warnings.warn(msg)
+
+    # Build labels list
+    labels = []
     uuid = -1
 
-    # Frame attributes
-    frame_attrs = {a.name: a.value for a in image_labels.attrs}
-
-    # Objects
-    for obj in image_labels.objects:
-        tlx, tly, w, h = obj.bounding_box.coords_in(frame_size=frame_size)
-
+    for obj in objects:
         uuid += 1
-        labels.append(
-            {
-                "id": uuid,
-                "category": obj.label,
-                "manualAttributes": True,
-                "manualShape": True,
-                "attributes": {a.name: a.value for a in obj.attrs},
-                "box2d": {"x1": tlx, "x2": tlx + w, "y1": tly, "y2": tly + h},
-            }
-        )
+        obj["id"] = uuid
+        labels.append(obj)
 
-    # Polylines
-    for polyline in image_labels.polylines:
-        types = polyline.attrs.get_attr_value_with_name("types", None)
-        points = polyline.coords_in(frame_size=frame_size)
-
-        poly2d = []
-        for vertices in points:
-            poly2d.append(
-                {
-                    "types": types,
-                    "closed": polyline.closed,
-                    "vertices": vertices,
-                }
-            )
-
+    for polyline in polylines:
         uuid += 1
-        labels.append(
-            {
-                "id": uuid,
-                "category": polyline.label,
-                "manualAttributes": True,
-                "manualShape": True,
-                "attributes": {
-                    a.name: a.value
-                    for a in polyline.attrs
-                    if a.name != "types"
-                },
-                "poly2d": poly2d,
-            }
-        )
+        polyline["id"] = uuid
+        labels.append(polyline)
 
     return {
         "name": filename,
@@ -529,20 +628,56 @@ def _make_bdd_annotation(image_labels_or_dict, metadata, filename):
     }
 
 
-def _make_attributes(d):
-    attrs = etad.AttributeContainer()
-    for name, value in d.items():
-        attr = _make_attribute(name, value)
-        attrs.add(attr)
+def _detection_to_bdd(detection, frame_size):
+    width, height = frame_size
+    x, y, w, h = detection.bounding_box
 
-    return attrs
+    box2d = {
+        "x1": round(x * width, 1),
+        "x2": round((x + w) * width, 1),
+        "y1": round(y * height, 1),
+        "y2": round((y + h) * height, 1),
+    }
+
+    attributes = {
+        name: attr.value for name, attr in detection.attributes.items()
+    }
+
+    return {
+        "id": None,
+        "category": detection.label,
+        "manualAttributes": True,
+        "manualShape": True,
+        "attributes": attributes,
+        "box2d": box2d,
+    }
 
 
-def _make_attribute(name, value):
-    if isinstance(value, bool):
-        return etad.BooleanAttribute(name, value)
+def _polyline_to_bdd(polyline, frame_size):
+    width, height = frame_size
 
-    if etau.is_numeric(value):
-        return etad.NumericAttribute(name, value)
+    types = polyline.get_attribute_value("types", None)
 
-    return etad.CategoricalAttribute(name, value)
+    attributes = {
+        name: attr.value
+        for name, attr in polyline.attributes.items()
+        if name != "types"
+    }
+
+    poly2d = []
+    for points in polyline.points:
+        vertices = [
+            (round(width * x, 1), round(height * y, 1)) for (x, y) in points
+        ]
+        poly2d.append(
+            {"types": types, "closed": polyline.closed, "vertices": vertices,}
+        )
+
+    return {
+        "id": None,
+        "category": polyline.label,
+        "manualAttributes": True,
+        "manualShape": True,
+        "attributes": attributes,
+        "poly2d": poly2d,
+    }
