@@ -292,6 +292,7 @@ class StateController(Namespace):
         find_d = {"_sample_id": ObjectId(sample_id)}
         labels = etav.VideoLabels()
         frames = list(state.dataset._frame_collection.find(find_d))
+        sample = state.dataset[sample_id].to_mongo_dict()
 
         for frame_dict in frames:
             frame_number = frame_dict["frame_number"]
@@ -305,6 +306,20 @@ class StateController(Namespace):
                     frame_labels.merge_labels(field_labels)
 
             labels.add_frame(frame_labels)
+
+        for frame_number in range(
+            1, etav.get_frame_count(sample["filepath"]) + 1
+        ):
+            frame_labels = etav.VideoFrameLabels(frame_number=frame_number)
+            for k, v in sample.items():
+                if isinstance(v, dict) and k != "frames" and "_cls" in v:
+                    field_labels = _make_image_labels(k, v, frame_number)
+                    for obj in field_labels.objects:
+                        obj.frame_number = frame_number
+
+                    frame_labels.merge_labels(field_labels)
+
+            labels.add_frame(frame_labels, overwrite=False)
 
         return {"frames": frames, "labels": labels.serialize()}
 
