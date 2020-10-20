@@ -164,8 +164,8 @@ class Frames(object):
             self._sample._doc.frames["frame_count"] += 1
         elif self._sample._in_db:
             if (
-                self._iter is not None
-                or frame_number != self._iter_doc.get_field("frame_number")
+                self._iter_doc is not None
+                and frame_number != self._iter_doc.get_field("frame_number")
             ):
                 find_d = {
                     "_sample_id": self._sample._id,
