@@ -157,6 +157,7 @@ class _DatasetSample(Document):
             first_frame = self.frames._get_first_frame()
             if first_frame is not None:
                 d["frames"]["first_frame"] = first_frame
+
         return d
 
 
