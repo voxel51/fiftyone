@@ -37,6 +37,7 @@ below to figure out which option is best for you.
         - :ref:`VideoDirectory <VideoDirectory-import>`
         - :ref:`FiftyOneImageClassificationDataset <FiftyOneImageClassificationDataset-import>`
         - :ref:`ImageClassificationDirectoryTree <ImageClassificationDirectoryTree-import>`
+        - :ref:`VideoClassificationDirectoryTree <VideoClassificationDirectoryTree-import>`
         - :ref:`TFImageClassificationDataset <TFImageClassificationDataset-import>`
         - :ref:`FiftyOneImageDetectionDataset <FiftyOneImageDetectionDataset-import>`
         - :ref:`COCODetectionDataset <COCODetectionDataset-import>`

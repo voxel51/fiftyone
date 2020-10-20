@@ -267,8 +267,6 @@ FiftyOne provides a |Label| subclass for common tasks:
 - :ref:`Keypoints <keypoints>`: a list of keypoints in an image
 - :ref:`Segmentation <semantic-segmentation>`: a semantic segmentation mask for
   an image
-- :ref:`ImageLabels <multitask-predictions>`: a generic collection of multitask
-  predictions for an image
 
 .. custombutton::
     :button_text: Learn more about storing labels in your samples

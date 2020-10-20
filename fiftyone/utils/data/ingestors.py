@@ -492,14 +492,19 @@ class LabeledVideoDatasetIngestor(LabeledVideoDatasetImporter, VideoIngestor):
         ):
             raise StopIteration
 
-        video_path, video_metadata, frames = self._parse_next_sample()
+        video_path, video_metadata, label, frames = self._parse_next_sample()
 
         if self.skip_unlabeled:
-            while frames is None:
-                video_path, video_metadata, frames = self._parse_next_sample()
+            while label is None and frames is None:
+                (
+                    video_path,
+                    video_metadata,
+                    label,
+                    frames,
+                ) = self._parse_next_sample()
 
         self._num_imported += 1
-        return video_path, video_metadata, frames
+        return video_path, video_metadata, label, frames
 
     def _parse_next_sample(self):
         sample = next(self._iter_samples)
@@ -513,9 +518,10 @@ class LabeledVideoDatasetIngestor(LabeledVideoDatasetImporter, VideoIngestor):
         else:
             video_metadata = None
 
+        label = self.sample_parser.get_label()
         frames = self.sample_parser.get_frame_labels()
 
-        return video_path, video_metadata, frames
+        return video_path, video_metadata, label, frames
 
     @property
     def has_dataset_info(self):
@@ -528,6 +534,10 @@ class LabeledVideoDatasetIngestor(LabeledVideoDatasetImporter, VideoIngestor):
     @property
     def label_cls(self):
         return self.sample_parser.label_cls
+
+    @property
+    def frame_labels_cls(self):
+        return self.sample_parser.frame_labels_cls
 
     def setup(self):
         self._setup()

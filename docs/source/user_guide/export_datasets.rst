@@ -105,6 +105,9 @@ format when writing the dataset to disk.
     | :ref:`ImageClassificationDirectoryTree                             | A directory tree whose subfolders define an image classification dataset.          |
     | <ImageClassificationDirectoryTree-export>`                         |                                                                                    |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`VideoClassificationDirectoryTree                             | A directory tree whose subfolders define a video classification dataset.           |
+    | <VideoClassificationDirectoryTree-export>`                         |                                                                                    |
+    +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`TFImageClassificationDataset                                 | A labeled dataset consisting of images and their associated classification labels  |
     | <TFImageClassificationDataset-export>`                             | stored as TFRecords.                                                               |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
@@ -399,6 +402,71 @@ stored on disk in the above format as follows:
             --export-dir $EXPORT_DIR \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.ImageClassificationDirectoryTree
+
+.. _VideoClassificationDirectoryTree-export:
+
+VideoClassificationDirectoryTree
+--------------------------------
+
+The :class:`fiftyone.types.VideoClassificationDirectoryTree <fiftyone.types.dataset_types.VideoClassificationDirectoryTree>`
+type represents a directory tree whose subfolders define a video classification
+dataset.
+
+Datasets of this type are exported in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        <classA>/
+            <video1>.<ext>
+            <video2>.<ext>
+            ...
+        <classB>/
+            <video1>.<ext>
+            <video2>.<ext>
+            ...
+        ...
+
+Unlabeled videos are stored in a subdirectory named `_unlabeled`.
+
+You can export a FiftyOne dataset as a video classification directory tree
+stored on disk in the above format as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        export_dir = "/path/for/video-classification-dir-tree"
+        label_field = "ground_truth"  # for example
+
+        # The Dataset or DatasetView to export
+        dataset_or_view = fo.Dataset(...)
+
+        # Export the dataset
+        dataset_or_view.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.VideoClassificationDirectoryTree,
+            label_field=label_field,
+        )
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        EXPORT_DIR=/path/for/video-classification-dir-tree
+        LABEL_FIELD=ground_truth  # for example
+
+        # Export the dataset
+        fiftyone datasets export $NAME \
+            --export-dir $EXPORT_DIR \
+            --label-field $LABEL_FIELD \
+            --type fiftyone.types.VideoClassificationDirectoryTree
 
 .. _TFImageClassificationDataset-export:
 
@@ -2363,18 +2431,37 @@ should implement is determined by the type of dataset that you are exporting.
                 @property
                 def label_cls(self):
                     """The :class:`fiftyone.core.labels.Label` class(es) that can be
-                    exported by this exporter within the frame labels that it is provided.
+                    exported at the sample-level.
 
                     This can be any of the following:
 
                     -   a :class:`fiftyone.core.labels.Label` class. In this case, the
-                        exporter directly exports labels of this type
+                        exporter directly exports sample-level labels of this type
                     -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
                         In this case, the exporter can export multiple label fields with
                         value-types specified by this dictionary. Not all keys need be
+                        present in the exported sample-level labels
+                    -   ``None``. In this case, the exporter makes no guarantees about the
+                        sample-level labels that it can export
+                    """
+                    # Return the appropriate value here
+                    pass
+
+                @property
+                def frame_labels_cls(self):
+                    """The :class:`fiftyone.core.labels.Label` class(es) that can be
+                    exported by this exporter at the frame-level.
+
+                    This can be any of the following:
+
+                    -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+                        exporter directly exports frame labels of this type
+                    -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+                        In this case, the exporter can export multiple frame label fields
+                        with value-types specified by this dictionary. Not all keys need be
                         present in the exported frame labels
                     -   ``None``. In this case, the exporter makes no guarantees about the
-                        labels that it can export
+                        frame labels that it can export
                     """
                     # Return the appropriate value here
                     pass
@@ -2415,14 +2502,17 @@ should implement is determined by the type of dataset that you are exporting.
                     # Log any information from the sample collection here
                     pass
 
-                def export_sample(self, video_path, frames, metadata=None):
+                def export_sample(self, video_path, label, frames, metadata=None):
                     """Exports the given sample to the dataset.
 
                     Args:
                         video_path: the path to a video on disk
+                        label: an instance of :meth:`label_cls`, or a dictionary mapping
+                            field names to :class:`fiftyone.core.labels.Label` instances,
+                            or ``None`` if the sample has no sample-level labels
                         frames: a dictionary mapping frame numbers to dictionaries that map
                             field names to :class:`fiftyone.core.labels.Label` instances,
-                            or ``None`` is the sample is unlabeled
+                            or ``None`` if the sample has no frame-level labels
                         metadata (None): a :class:`fiftyone.core.metadata.VideoMetadata`
                             instance for the sample. Only required when
                             :meth:`requires_video_metadata` is ``True``
@@ -2465,10 +2555,15 @@ should implement is determined by the type of dataset that you are exporting.
                     if exporter.requires_video_metadata and metadata is None:
                         metadata = fo.VideoMetadata.build_for(video_path)
 
-                    # Extract relevant content from `sample.frames` to export
+                    # Extract relevant sample-level labels to export
+                    label = ...
+
+                    # Extract relevant frame-level labels to export
                     frames = ...
 
-                    exporter.export_sample(video_path, frames, metadata=metadata)
+                    exporter.export_sample(
+                        video_path, label, frames, metadata=metadata
+                    )
 
         Note that the exporter is invoked via its context manager interface,
         which automatically calls the
@@ -2486,14 +2581,18 @@ should implement is determined by the type of dataset that you are exporting.
         :meth:`info <fiftyone.core.collections.SampleCollection.info>` from the
         collection being exported.
 
-        The video and its corresponding frame labels are exported via the
+        The video and its corresponding sample and frame-level labels are
+        exported via the
         :meth:`export_sample() <fiftyone.utils.data.exporters.LabeledVideoDatasetExporter.export_sample>`
         method.
 
         The
         :meth:`label_cls <fiftyone.utils.data.exporters.LabeledVideoDatasetExporter.label_cls>`
-        property of the exporter declares the type of frame label(s) that the
-        dataset format expects.
+        property of the exporter declares the type of sample-level label(s)
+        that the dataset format expects (if any), and the
+        :meth:`frame_labels_cls <fiftyone.utils.data.exporters.LabeledVideoDatasetExporter.frame_labels_cls>`
+        property of the exporter declares the type of frame-level label(s) that
+        the dataset format expects (if any),
 
         The
         :meth:`requires_video_metadata <fiftyone.utils.data.exporters.LabeledVideoDatasetExporter.requires_video_metadata>`

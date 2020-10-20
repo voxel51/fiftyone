@@ -38,7 +38,6 @@ from .core.fields import (
     EmbeddedDocumentField,
     VectorField,
     ArrayField,
-    ImageLabelsField,
 )
 from .core.frame import Frame
 from .core.labels import (
@@ -58,7 +57,6 @@ from .core.labels import (
     Keypoint,
     Keypoints,
     Segmentation,
-    ImageLabels,
 )
 from .core.metadata import (
     Metadata,

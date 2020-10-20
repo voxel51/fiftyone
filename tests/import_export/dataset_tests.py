@@ -11,10 +11,7 @@ import os
 import numpy as np
 import pytest
 
-import eta.core.data as etad
-import eta.core.geometry as etag
 import eta.core.image as etai
-import eta.core.objects as etao
 import eta.core.utils as etau
 
 import fiftyone as fo
@@ -111,28 +108,27 @@ def _make_image_labels_dataset(
         )
         etai.write(img, filepath)
 
-        image_labels = etai.ImageLabels()
+        sample = fo.Sample(filepath=filepath)
 
-        _label = random.choice(["sun", "rain", "snow"])
-        image_labels.add_attribute(etad.CategoricalAttribute("label", _label))
+        label = random.choice(["sun", "rain", "snow"])
+        sample["gt_weather"] = fo.Classification(label=label)
 
+        detections = []
         for _ in range(num_objects_per_sample):
-            _label = random.choice(["cat", "dog", "bird", "rabbit"])
-            _xtl = 0.8 * random.random()
-            _ytl = 0.8 * random.random()
-            _bounding_box = etag.BoundingBox.from_coords(
-                _xtl, _ytl, _xtl + 0.2, _ytl + 0.2
-            )
-            image_labels.add_object(
-                etao.DetectedObject(label=_label, bounding_box=_bounding_box)
+            label = random.choice(["cat", "dog", "bird", "rabbit"])
+            bounding_box = [
+                0.8 * random.random(),
+                0.8 * random.random(),
+                0.2,
+                0.2,
+            ]
+            detections.append(
+                fo.Detection(label=label, bounding_box=bounding_box)
             )
 
-        samples.append(
-            fo.Sample(
-                filepath=filepath,
-                ground_truth=fo.ImageLabels(labels=image_labels),
-            )
-        )
+        sample["gt_objects"] = fo.Detections(detections=detections)
+
+        samples.append(sample)
 
     dataset = fo.Dataset()
     dataset.add_samples(samples)
@@ -432,12 +428,6 @@ def test_multilabel_dataset(basedir, multilabel_img):
     images_dir = os.path.join(basedir, "source-images")
     dataset = _make_multilabel_dataset(multilabel_img, images_dir)
 
-    # Test condense
-    foud.condense_image_labels_field(dataset, "ground_truth", prefix="gt_")
-
-    # Test expand
-    foud.expand_image_labels_field(dataset, "ground_truth", prefix="gt_")
-
     # Multilabel BDDDataset
     export_dir = os.path.join(basedir, "bdd")
     dataset.export(
@@ -446,7 +436,7 @@ def test_multilabel_dataset(basedir, multilabel_img):
         label_prefix="gt_",
     )
     dataset2 = fo.Dataset.from_dir(
-        export_dir, fo.types.BDDDataset, expand=True, prefix="gt_"
+        export_dir, fo.types.BDDDataset, label_field="gt"
     )
 
     # Multilabel FiftyOneImageLabelsDataset
@@ -457,10 +447,7 @@ def test_multilabel_dataset(basedir, multilabel_img):
         label_prefix="gt_",
     )
     dataset3 = fo.Dataset.from_dir(
-        export_dir,
-        fo.types.FiftyOneImageLabelsDataset,
-        expand=True,
-        prefix="gt_",
+        export_dir, fo.types.FiftyOneImageLabelsDataset, label_field="gt",
     )
 
 
