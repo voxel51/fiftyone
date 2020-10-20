@@ -81,7 +81,8 @@ class AggregationResult(etas.Serializable):
     """Abstract base class for all aggregation results.
     
     :class:`AggregationResult` instances represent the result of the execution
-    of an :class:`Aggregation` on a :class:`fiftyone.core.collection.SampleCollection`.
+    of an :class:`Aggregation` instance on a
+    :class:`fiftyone.core.collection.SampleCollection`.
     """
 
     def __init__(self, *args, **kwargs):
@@ -195,7 +196,8 @@ class Bounds(Aggregation):
 
 
 class BoundsResult(AggregationResult):
-    """The result of the execution of a :class:`Bounds` by a dataset or view.
+    """The result of the execution of a :class:`Bounds` instance by a dataset
+    or view.
 
     Attributes:
         name: the name of the field
@@ -279,8 +281,8 @@ class ConfidenceBounds(Aggregation):
 
 
 class ConfidenceBoundsResult(AggregationResult):
-    """The result of the execution of a :class:`ConfidenceBounds` by a dataset
-    or view.
+    """The result of the execution of a :class:`ConfidenceBounds` instance by a
+    dataset or view.
 
     Attributes:
         name: the name of the field
@@ -359,7 +361,8 @@ class Count(Aggregation):
 
 
 class CountResult(AggregationResult):
-    """The result of the execution of a :class:`Count` by a dataset or view.
+    """The result of the execution of a :class:`Count` instance by a dataset or
+    view.
 
     Attributes:
         name: the name of the field, or "count" if samples were counted
@@ -374,6 +377,31 @@ class CountResult(AggregationResult):
 
 
 class CountValues(Aggregation):
+    """Counts the occurrences of values with for a countable field.
+
+    Countable fields are:
+        - :class:`fiftyone.core.fields.BooleanField`
+        - :class:`fiftyone.core.fields.IntField`
+        - :class:`fiftyone.core.fields.StringField`
+
+    Examples::
+        import fiftyone as fo
+        from fiftyone.core.aggregations import Count
+
+        dataset = fo.load_dataset(...)
+        
+        #
+        # Compute the tag counts in the dataset
+        #
+
+        count_values = CountValues("tags")
+        count_values_result = dataset.aggregate(count_values)
+        count_values_result.counts
+    
+    Args:
+        field_name: the name of the countable field
+    """
+
     def _get_default_result(self):
         return CountValuesResult(self._field_name, {})
 
@@ -413,6 +441,14 @@ class CountValues(Aggregation):
 
 
 class CountValuesResult(AggregationResult):
+    """The result of the execution of a :class:`CountValues` instance by a
+    dataset or view.
+
+    Attributes:
+        name: the name of the field whose values were counted
+        counts: a dict mapping the value to the number of occurrences
+    """
+
     def __init__(self, field_name, counts):
         self.name = field_name
         self.counts = counts
@@ -502,7 +538,8 @@ class Distinct(Aggregation):
 
 
 class DistinctResult(AggregationResult):
-    """The result of the execution of a :class:`Distinct` by a dataset or view.
+    """The result of the execution of a :class:`Distinct` instance by a dataset
+    or view.
 
     Attributes:
         name: the name of the field
@@ -580,8 +617,8 @@ class DistinctLabels(Aggregation):
 
 
 class DistinctLabelsResult(AggregationResult):
-    """The result of the execution of a :class:`DistinctLabels` by a dataset or
-    view.
+    """The result of the execution of a :class:`DistinctLabels` instance by a
+    dataset or view.
 
     Attributes:
         name: the name of the field
