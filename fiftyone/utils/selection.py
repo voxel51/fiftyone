@@ -75,7 +75,7 @@ def select_objects(sample_collection, objects):
         a :class:`fiftyone.core.view.DatasetView` containing only the specified
         objects
     """
-    sample_ids, object_ids = _parses_objects(objects)
+    sample_ids, object_ids = _parse_objects(objects)
 
     label_schema = sample_collection.get_field_schema(
         ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
@@ -120,7 +120,7 @@ def exclude_objects(sample_collection, objects):
         a :class:`fiftyone.core.view.DatasetView` that excludes the specified
         objects
     """
-    _, object_ids = _parses_objects(objects)
+    _, object_ids = _parse_objects(objects)
 
     label_schema = sample_collection.get_field_schema(
         ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
@@ -134,7 +134,7 @@ def exclude_objects(sample_collection, objects):
     return view
 
 
-def _parses_objects(objects):
+def _parse_objects(objects):
     sample_ids = set()
     object_ids = defaultdict(set)
     for obj in objects:
