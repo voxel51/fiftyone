@@ -722,7 +722,7 @@ class LabeledVideoDatasetImporter(DatasetImporter):
                 :class:`fiftyone.core.metadata.VideoMetadata` instances for the
                 video, or ``None`` if :meth:`has_video_metadata` is ``False``
             -   ``labels``: sample-level labels for the video, which can be any
-                of the following::
+                of the following:
 
                 -   a :class:`fiftyone.core.labels.Label` instance
                 -   a dictionary mapping label fields to
@@ -730,7 +730,7 @@ class LabeledVideoDatasetImporter(DatasetImporter):
                 -   ``None`` if the sample has no sample-level labels
 
             -   ``frames``: frame-level labels for the video, which can
-                be any of the following::
+                be any of the following:
 
                 -   a dictionary mapping frame numbers to dictionaries that
                     map label fields to :class:`fiftyone.core.labels.Label`
