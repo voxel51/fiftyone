@@ -12,6 +12,7 @@ FiftyOne currently uses both
 | `benchmarking/*.py`  | Tests related to benchmarking the performance of FiftyOne                                   |
 | `import_export/*.py` | Tests for importing/exporting datasets                                                      |
 | `isolated/*.py`      | Tests that must be run in a separate `pytest` process to avoid interfering with other tests |
+| `misc/*.py`          | Miscellaneous tests that have not been upgraded to official unit tests                      |
 
 ## Running tests
 
