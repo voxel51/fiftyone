@@ -186,6 +186,14 @@ class ImageClassificationDataset(LabeledImageDataset):
     pass
 
 
+class VideoClassificationDataset(LabeledVideoDataset):
+    """Base type for datasets that represent a collection of videos and a set
+    of associated classification labels.
+    """
+
+    pass
+
+
 class ImageDetectionDataset(LabeledImageDataset):
     """Base type for datasets that represent a collection of images and a set
     of associated object detections.
@@ -194,8 +202,24 @@ class ImageDetectionDataset(LabeledImageDataset):
     pass
 
 
+class VideoDetectionDataset(LabeledVideoDataset):
+    """Base type for datasets that represent a collection of videos and a set
+    of associated video object detections.
+    """
+
+    pass
+
+
 class ImageLabelsDataset(LabeledImageDataset):
     """Base type for datasets that represent a collection of images and a set
+    of associated multitask predictions.
+    """
+
+    pass
+
+
+class VideoLabelsDataset(LabeledVideoDataset):
+    """Base type for datasets that represent a collection of videos and a set
     of associated multitask predictions.
     """
 
@@ -328,6 +352,36 @@ class ImageClassificationDirectoryTree(ImageClassificationDataset):
         import fiftyone.utils.data as foud
 
         return foud.ImageClassificationDirectoryTreeExporter
+
+
+class VideoClassificationDirectoryTree(VideoClassificationDataset):
+    """A directory tree whose subfolders define a video classification dataset.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            <classA>/
+                <video1>.<ext>
+                <video2>.<ext>
+                ...
+            <classB>/
+                <video1>.<ext>
+                <video2>.<ext>
+                ...
+            ...
+
+    Unlabeled videos are stored in a subdirectory named ``_unlabeled``.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.VideoClassificationDirectoryTreeImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.VideoClassificationDirectoryTreeExporter
 
 
 class TFImageClassificationDataset(ImageClassificationDataset):
@@ -891,7 +945,7 @@ class CVATImageDataset(ImageDetectionDataset):
         return fouc.CVATImageDatasetExporter
 
 
-class CVATVideoDataset(LabeledVideoDataset):
+class CVATVideoDataset(VideoLabelsDataset):
     """A labeled dataset consisting of images and their associated object
     detections stored in `CVAT video format <https://github.com/opencv/cvat>`_.
 
@@ -1173,7 +1227,7 @@ class BDDDataset(ImageLabelsDataset):
         return foub.BDDDatasetExporter
 
 
-class FiftyOneVideoLabelsDataset(LabeledVideoDataset):
+class FiftyOneVideoLabelsDataset(VideoLabelsDataset):
     """A labeled dataset consisting of videos and their associated labels
     stored in
     `ETA VideoLabels format <https://voxel51.com/docs/api/#types-videolabels>`_.

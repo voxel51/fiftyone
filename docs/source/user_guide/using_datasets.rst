@@ -1595,30 +1595,6 @@ stretched as necessary to fit the image's extent when visualizing in the App.
         }>,
     }>
 
-.. _multitask-predictions:
-
-Multitask predictions
----------------------
-
-The |ImageLabels| class represents a collection of multitask labels for an
-image. The labels are stored in the
-:attr:`labels <fiftyone.core.labels.ImageLabels.labels>` attribute of the
-|ImageLabels| object, which should contain labels in
-`ETA ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_.
-
-|ImageLabels| instances can contain one or more of the following:
-
-- Frame-level classifications
-- Semantic segmentation masks
-- Object detections, optionally with attributes and/or instance segmentations
-- Polylines and polygons, optionally with attributes
-- Image keypoints, optionally with attributes
-
-The labels can be ground truth annotations or model predictions; in the
-latter case, additional metadata such as prediction confidences can be store.
-See the `ETA ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_
-for more details.
-
 .. _video-frame-labels:
 
 Video frame labels

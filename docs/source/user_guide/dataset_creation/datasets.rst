@@ -116,6 +116,8 @@ format when reading the dataset from disk.
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`ImageClassificationDirectoryTree <ImageClassificationDirectoryTree-import>`     | A directory tree whose subfolders define an image classification dataset.          |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`VideoClassificationDirectoryTree <VideoClassificationDirectoryTree-import>`     | A directory tree whose subfolders define a video classification dataset.           |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`TFImageClassificationDataset <TFImageClassificationDataset-import>`             | A labeled dataset consisting of images and their associated classification labels  |
     |                                                                                       | stored as TFRecords.                                                               |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
@@ -490,6 +492,89 @@ stored in the above format as follows:
         fiftyone app view \
             --dataset-dir $DATASET_DIR \
             --type fiftyone.types.ImageClassificationDirectoryTree
+
+.. _VideoClassificationDirectoryTree-import:
+
+VideoClassificationDirectoryTree
+--------------------------------
+
+The :class:`fiftyone.types.VideoClassificationDirectoryTree <fiftyone.types.dataset_types.VideoClassificationDirectoryTree>`
+type represents a directory tree whose subfolders define a video classification
+dataset.
+
+Datasets of this type are read in the following format:
+
+.. code-block:: text
+
+    <dataset_dir>/
+        <classA>/
+            <video1>.<ext>
+            <video2>.<ext>
+            ...
+        <classB>/
+            <video1>.<ext>
+            <video2>.<ext>
+            ...
+        ...
+
+Unlabeled videos are stored in a subdirectory named `_unlabeled`.
+
+You can create a FiftyOne dataset from a video classification directory tree
+stored in the above format as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-video-classification-dir-tree"
+        dataset_dir = "/path/to/video-classification-dir-tree"
+
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_dir, fo.types.VideoClassificationDirectoryTree, name=name
+        )
+
+        # View summary info about the dataset
+        print(dataset)
+
+        # Print the first few samples in the dataset
+        print(dataset.head())
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-video-classification-dir-tree
+        DATASET_DIR=/path/to/video-classification-dir-tree
+
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.VideoClassificationDirectoryTree
+
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
+
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
+
+    To view a video classification directory tree in the FiftyOne App without
+    creating a persistent FiftyOne dataset, you can execute:
+
+    .. code-block:: shell
+
+        DATASET_DIR=/path/to/video-classification-dir-tree
+
+        # View the dataset in the app
+        fiftyone app view \
+            --dataset-dir $DATASET_DIR \
+            --type fiftyone.types.VideoClassificationDirectoryTree
 
 .. _TFImageClassificationDataset-import:
 
@@ -2757,19 +2842,30 @@ should implement is determined by the type of dataset that you are importing.
                 pass
 
             def __next__(self):
-                """Returns information about the next sample in the dataset.
+            """Returns information about the next sample in the dataset.
 
                 Returns:
-                    an  ``(video_path, video_metadata, frames)`` tuple, where
+                    an  ``(video_path, video_metadata, labels, frames)`` tuple, where
 
-                    -   ``video_path``: the path to the image on disk
+                    -   ``video_path``: the path to the video on disk
                     -   ``video_metadata``: an
                         :class:`fiftyone.core.metadata.VideoMetadata` instances for the
                         video, or ``None`` if :meth:`has_video_metadata` is ``False``
-                    -   ``frames``: a dictionary mapping frame numbers to dictionaries
-                        that map label fields to :class:`fiftyone.core.labels.Label`
-                        instances for each video frame, or ``None`` if the sample is
-                        unlabeled
+                    -   ``labels``: sample-level labels for the video, which can be any
+                        of the following::
+
+                        -   a :class:`fiftyone.core.labels.Label` instance
+                        -   a dictionary mapping label fields to
+                            :class:`fiftyone.core.labels.Label` instances
+                        -   ``None`` if the sample has no sample-level labels
+
+                    -   ``frames``: frame-level labels for the video, which can
+                        be any of the following::
+
+                        -   a dictionary mapping frame numbers to dictionaries that
+                            map label fields to :class:`fiftyone.core.labels.Label`
+                            instances for each video frame
+                        -   ``None`` if the sample has no frame-level labels
 
                 Raises:
                     StopIteration: if there are no more samples to import
@@ -2794,18 +2890,37 @@ should implement is determined by the type of dataset that you are importing.
             @property
             def label_cls(self):
                 """The :class:`fiftyone.core.labels.Label` class(es) returned by this
+                importer within the sample-level labels that it produces.
+
+                This can be any of the following:
+
+                -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+                    importer is guaranteed to return sample-level labels of this type
+                -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+                    In this case, the importer will return sample-level label
+                    dictionaries with keys and value-types specified by this
+                    dictionary. Not all keys need be present in the imported labels
+                -   ``None``. In this case, the importer makes no guarantees about the
+                    sample-level labels that it may return
+                """
+                # Return the appropriate value here
+                pass
+
+            @property
+            def frame_label_cls(self):
+                """The :class:`fiftyone.core.labels.Label` class(es) returned by this
                 importer within the frame labels that it produces.
 
                 This can be any of the following:
 
                 -   a :class:`fiftyone.core.labels.Label` class. In this case, the
-                    importer is guaranteed to return labels of this type
+                    importer is guaranteed to return frame labels of this type
                 -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
-                    In this case, the importer will return label dictionaries with keys
-                    and value-types specified by this dictionary. Not all keys need be
-                    present in the imported labels
+                    In this case, the importer will return frame label dictionaries
+                    with keys and value-types specified by this dictionary. Not all
+                    keys need be present in each frame
                 -   ``None``. In this case, the importer makes no guarantees about the
-                    labels that it may return
+                    frame labels that it may return
                 """
                 # Return the appropriate value here
                 pass
@@ -2859,15 +2974,22 @@ should implement is determined by the type of dataset that you are importing.
         label_field = ...
 
         with importer:
-            for video_path, video_metadata, frames in importer:
+            for video_path, video_metadata, label, frames in importer:
                 sample = fo.Sample(filepath=video_path, metadata=video_metadata)
+
+                if isinstance(label, dict):
+                    sample.update_fields(
+                        {label_field + "_" + k: v for k, v in label.items()}
+                    )
+                elif label is not None:
+                    sample[label_field] = label
 
                 if frames is not None:
                     sample.frames.merge(
                         {
                             frame_number: {
-                                label_field + "_" + field_name: label
-                                for field_name, label in frame_dict.items()
+                                label_field + "_" + fname: flabel
+                                for fname, flabel in frame_dict.items()
                             }
                             for frame_number, frame_dict in frames.items()
                         }
@@ -2888,9 +3010,11 @@ should implement is determined by the type of dataset that you are importing.
     The videos and their corresponding labels in the dataset are iteratively
     loaded by invoking the
     :meth:`__next__() <fiftyone.utils.data.importers.LabeledVideoDatasetImporter.__next__>`
-    method of the importer. In particular, the labels are returned in a `frames`
-    dictionary that maps frame numbers to |Frame| instances that contain the
-    labels for the frame.
+    method of the importer. In particular, sample-level labels for the video
+    may be returned in a ``label`` value (which may contain a single |Label|
+    value or a dictionary that maps field names to labels), and frame-level
+    labels may be returned in a ``frames`` dictionary that maps frame numbers
+    to dictionaries of field names and labels.
 
     The
     :meth:`has_dataset_info <fiftyone.utils.data.importers.LabeledVideoDatasetImporter.has_dataset_info>`
@@ -2903,8 +3027,11 @@ should implement is determined by the type of dataset that you are importing.
 
     The
     :meth:`label_cls <fiftyone.utils.data.importers.LabeledVideoDatasetImporter.label_cls>`
-    property of the importer declares the type of label(s) that the importer
-    will produce.
+    property of the importer declares the type of sample-level label(s) that
+    the importer will produce (if any), and the
+    :meth:`frame_labels_cls <fiftyone.utils.data.importers.LabeledVideoDatasetImporter.frame_labels_cls>`
+    property of the importer declares the type of frame-level label(s) that the
+    importer will produce (if any).
 
     The
     :meth:`has_video_metadata <fiftyone.utils.data.importers.LabeledVideoDatasetImporter.has_video_metadata>`

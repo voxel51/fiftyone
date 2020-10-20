@@ -145,13 +145,6 @@ class _DatasetSample(Document):
             except:
                 frame_doc_cls = None
 
-            fomm.validate_field_against_media_type(
-                self.media_type,
-                **foo.get_implied_field_kwargs(
-                    value, frame_doc_cls=frame_doc_cls
-                ),
-            )
-
     def to_mongo_dict(self):
         """Serializes the sample to a BSON dictionary equivalent to the
         representation that would be stored in the database.
@@ -164,6 +157,7 @@ class _DatasetSample(Document):
             first_frame = self.frames._get_first_frame()
             if first_frame is not None:
                 d["frames"]["first_frame"] = first_frame
+
         return d
 
 
@@ -504,7 +498,11 @@ class SampleView(_DatasetSample):
         instances of this sample are updated.
         """
         if self.media_type == fomm.VIDEO and self._in_db:
-            self.frames._save()
+            try:
+                self.frames._save()
+            except AttributeError:
+                # frames is not selected, so we don't need to save it
+                pass
 
         self._doc.save(filtered_fields=self._filtered_fields)
 

@@ -178,12 +178,6 @@ class MediaTypeTests(unittest.TestCase):
         with self.assertRaises(fom.MediaTypeError):
             self.vid_sample.filepath = "image.png"
 
-    def test_img_label_on_vid_sample(self):
-        with self.assertRaises(fom.MediaTypeError):
-            self.vid_sample["img_label"] = fo.Classification(label="label")
-        with self.assertRaises(KeyError):
-            self.vid_sample["img_label"]
-
 
 class MigrationTests(unittest.TestCase):
     def test_runner(self):

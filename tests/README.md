@@ -4,8 +4,6 @@ FiftyOne currently uses both
 [unittest](https://docs.python.org/3/library/unittest.html) and
 [pytest](https://docs.pytest.org/en/stable) to implement its tests.
 
-Tests do exist, but their coverage generally needs improvement...
-
 ## Contents
 
 | File                 | Description                                                                                 |
@@ -14,10 +12,21 @@ Tests do exist, but their coverage generally needs improvement...
 | `benchmarking/*.py`  | Tests related to benchmarking the performance of FiftyOne                                   |
 | `import_export/*.py` | Tests for importing/exporting datasets                                                      |
 | `isolated/*.py`      | Tests that must be run in a separate `pytest` process to avoid interfering with other tests |
+| `misc/*.py`          | Miscellaneous tests that have not been upgraded to official unit tests                      |
 
-## Running a test
+## Running tests
 
-To run a test, simply run `python <name-of-file>.py`
+To run all unit tests, execute:
+
+```shell
+pytest unittests/
+```
+
+To run a specific test, execute:
+
+```shell
+pytest unittests/<file>.py
+```
 
 ## Copyright
 

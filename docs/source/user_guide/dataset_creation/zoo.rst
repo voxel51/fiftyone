@@ -14,8 +14,8 @@ that you can download and load into FiftyOne via a few simple commands.
     Behind the scenes, FiftyOne's Dataset Zoo uses the
     `TorchVision Datasets <https://pytorch.org/docs/stable/torchvision/datasets.html>`_ or
     `TensorFlow Datasets <https://www.tensorflow.org/datasets>`_
-    libraries to wrangle certain datasets, depending on which ML library you
-    have installed.
+    libraries to wrangle some datasets, depending on which ML library you have
+    installed.
 
     If you do not have the proper packages installed when attempting to
     download a zoo dataset, you will receive an error message that will help
@@ -60,17 +60,22 @@ Listing zoo datasets
 
     .. code-block:: text
 
-        ['caltech101',
+        ['bdd100k',
+        'caltech101',
         'cifar10',
         'cifar100',
         'coco-2014',
+        'coco-2014-segmentation',
         'coco-2017',
+        'coco-2017-segmentation',
         'fashion-mnist',
+        'hmdb51',
         'imagenet-2012',
         'kitti',
         'mnist',
         'quickstart',
         'quickstart-video',
+        'ucf101',
         'voc-2007',
         'voc-2012']
 
@@ -80,11 +85,11 @@ Listing zoo datasets
     .. code-block:: python
         :linenos:
 
-        from pprintpp import pprint
+        import fiftyone as fo
         import fiftyone.zoo as foz
 
         downloaded_datasets = foz.list_downloaded_zoo_datasets()
-        pprint(downloaded_datasets)
+        fo.pprint(downloaded_datasets)
 
     .. code-block:: text
 
@@ -112,46 +117,62 @@ Listing zoo datasets
 
         $ fiftyone zoo list
 
-        name             split       downloaded    dataset_dir                     torch (*)    tensorflow    base
-        -------------    ----------  ------------  ------------------------------  -----------  ------------  ------
-        caltech101       test                                                      ✓
-        caltech101       train                                                     ✓
-        cifar10          test        ✓             ~/fiftyone/cifar10/test         ✓            ✓
-        cifar10          train       ✓             ~/fiftyone/cifar10/train        ✓            ✓
-        cifar100         test        ✓             ~/fiftyone/cifar100/test        ✓            ✓
-        cifar100         train       ✓             ~/fiftyone/cifar100/train       ✓            ✓
-        coco-2014        test                                                      ✓            ✓
-        coco-2014        train                                                     ✓            ✓
-        coco-2014        validation                                                ✓            ✓
-        coco-2017        test                                                      ✓            ✓
-        coco-2017        train                                                     ✓            ✓
-        coco-2017        validation                                                ✓            ✓
-        fashion-mnist    test                                                      ✓            ✓
-        fashion-mnist    train                                                     ✓            ✓
-        imagenet-2012    train                                                     ✓            ✓
-        imagenet-2012    validation                                                ✓            ✓
-        kitti            test        ✓             ~/fiftyone/kitti/test                        ✓
-        kitti            train       ✓             ~/fiftyone/kitti/train                       ✓
-        kitti            validation  ✓             ~/fiftyone/kitti/validation                  ✓
-        mnist            test        ✓             ~/fiftyone/mnist/test           ✓            ✓
-        mnist            train       ✓             ~/fiftyone/mnist/train          ✓            ✓
-        quickstart                   ✓             ~/quickstart                                               ✓
-        quickstart-video             ✓             ~/quickstart-video                                         ✓
-        voc-2007       test                                                                     ✓
-        voc-2007       train         ✓             ~/fiftyone/voc-2007/train       ✓            ✓
-        voc-2007       validation    ✓             ~/fiftyone/voc-2007/validation  ✓            ✓
-        voc-2012       test                                                                     ✓
-        voc-2012       train                                                       ✓            ✓
-        voc-2012       validation                                                  ✓            ✓
+        name                    split       downloaded    dataset_dir                                   torch (*)    tensorflow    base
+        ----------------------  ----------  ------------  --------------------------------------------  -----------  ------------  ------
+        bdd100k                 test        ✓             ~/fiftyone/bdd100k/test                                                  ✓
+        bdd100k                 train       ✓             ~/fiftyone/bdd100k/train                                                 ✓
+        bdd100k                 validation  ✓             ~/fiftyone/bdd100k/validation                                            ✓
+        caltech101              test        ✓             ~/fiftyone/caltech101/test                                 ✓
+        caltech101              train                                                                                           ✓
+        cifar10                 test        ✓             ~/fiftyone/cifar10/test                       ✓            ✓
+        cifar10                 train       ✓             ~/fiftyone/cifar10/train                      ✓            ✓
+        cifar100                test        ✓             ~/fiftyone/cifar100/test                      ✓            ✓
+        cifar100                train                                                                   ✓            ✓
+        coco-2014               test                                                                    ✓            ✓
+        coco-2014               train                                                                   ✓            ✓
+        coco-2014               validation                                                              ✓            ✓
+        coco-2014-segmentation  test                                                                                               ✓
+        coco-2014-segmentation  train                                                                                              ✓
+        coco-2014-segmentation  validation                                                                                         ✓
+        coco-2017               test                                                                    ✓            ✓
+        coco-2017               train                                                                   ✓            ✓
+        coco-2017               validation  ✓             ~/fiftyone/coco-2017/validation               ✓            ✓
+        coco-2017-segmentation  test                                                                                               ✓
+        coco-2017-segmentation  train                                                                                              ✓
+        coco-2017-segmentation  validation  ✓             ~/fiftyone/coco-2017-segmentation/validation                             ✓
+        fashion-mnist           test                                                                    ✓            ✓
+        fashion-mnist           train                                                                   ✓            ✓
+        hmdb51                  other       ✓             ~/fiftyone/hmdb51/other                                                  ✓
+        hmdb51                  test        ✓             ~/fiftyone/hmdb51/test                                                   ✓
+        hmdb51                  train       ✓             ~/fiftyone/hmdb51/train                                                  ✓
+        imagenet-2012           train                                                                   ✓            ✓
+        imagenet-2012           validation                                                              ✓            ✓
+        kitti                   test                                                                                 ✓
+        kitti                   train                                                                                ✓
+        kitti                   validation  ✓             ~/fiftyone/kitti/validation                                ✓
+        mnist                   test        ✓             ~/fiftyone/mnist/test                         ✓            ✓
+        mnist                   train       ✓             ~/fiftyone/mnist/train                        ✓            ✓
+        quickstart                          ✓             ~/fiftyone/quickstart                                                    ✓
+        quickstart-video                    ✓             ~/fiftyone/quickstart-video                                              ✓
+        ucf101                  test        ✓             ~/fiftyone/ucf101/test                                                   ✓
+        ucf101                  train       ✓             ~/fiftyone/ucf101/train                                                  ✓
+        voc-2007                test                                                                                 ✓
+        voc-2007                train       ✓             ~/fiftyone/voc-2007/train                     ✓            ✓
+        voc-2007                validation  ✓             ~/fiftyone/voc-2007/validation                ✓            ✓
+        voc-2012                test                                                                                 ✓
+        voc-2012                train                                                                   ✓            ✓
+        voc-2012                validation                                                              ✓            ✓
 
     Dataset splits that have been downloaded are indicated by a checkmark in
     the ``downloaded`` column, and their location on disk is indicated by
     the ``dataset_dir`` column.
 
     The ``torch`` and ``tensorflow`` columns indicate whether the particular
-    dataset split is available in the respective ML backends. The ``(*)``
+    dataset split is provided via the respective ML backend. The ``(*)``
     indicates your default ML backend, which will be used in case a given
-    split is available through multiple sources.
+    split is available through multiple ML backends. The ``base`` column
+    indicates datasets that are available directly via FiftyOne without
+    requiring an ML backend.
 
 Getting information about zoo datasets
 --------------------------------------
@@ -491,22 +512,22 @@ of your :doc:`FiftyOne config </user_guide/config>`.
 Customizing your ML backend
 ---------------------------
 
-Behind the scenes, FiftyOne uses the
+Behind the scenes, FiftyOne uses either
 `TensorFlow Datasets <https://www.tensorflow.org/datasets>`_ or
 `TorchVision Datasets <https://pytorch.org/docs/stable/torchvision/datasets.html>`_
-libraries to wrangle the datasets, depending on which ML library you have
-installed. In order to load datasets using TF, you must have the
-`tensorflow-datasets <https://pypi.org/project/tensorflow-datasets>`_
+libraries to download and wrangle some zoo datasets, depending on which ML
+library you have installed. In order to load datasets using TF, you must have
+the `tensorflow-datasets <https://pypi.org/project/tensorflow-datasets>`_
 package installed on your machine. In order to load datasets using PyTorch, you
 must have the `torch <https://pypi.org/project/torch>`_ and
 `torchvision <https://pypi.org/project/torchvision>`_ packages installed.
 
 Note that the ML backends may expose different datasets.
 
-By default, FiftyOne will use whichever ML backend is necessary to download the
-requested zoo dataset. If a dataset is available through both backends, it will
-use the backend specified by the `fo.config.default_ml_backend` setting in your
-FiftyOne config.
+For datasets that require an ML backend, FiftyOne will use whichever ML backend
+is necessary to download the requested zoo dataset. If a dataset is available
+through both backends, it will use the backend specified by the
+`fo.config.default_ml_backend` setting in your FiftyOne config.
 
 You can customize this backend by modifying the `default_ml_backend` setting
 of your :doc:`FiftyOne config </user_guide/config>`.

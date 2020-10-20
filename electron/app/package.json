@@ -1,7 +1,7 @@
 {
   "name": "FiftyOne",
   "productName": "FiftyOne",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "license": "Apache-2.0",
   "description": "FiftyOne by Voxel51",
   "main": "./main.prod.js",

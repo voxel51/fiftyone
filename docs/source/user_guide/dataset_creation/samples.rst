@@ -871,8 +871,8 @@ You can use a |SampleParser| to
 | :class:`ImageDetectionSampleParser                                     | Generic parser for image detection samples whose labels are represented as |Detections| instances.              |
 | <fiftyone.utils.data.parsers.ImageDetectionSampleParser>`              |                                                                                                                 |
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
-| :class:`ImageLabelsSampleParser                                        | Generic parser for image detection samples whose labels are represented as |ImageLabels| instances.             |
-| <fiftyone.utils.data.parsers.ImageLabelsSampleParser>`                 |                                                                                                                 |
+| :class:`ImageLabelsSampleParser                                        | Generic parser for image detection samples whose labels are stored in                                           |
+| <fiftyone.utils.data.parsers.ImageLabelsSampleParser>`                 | `ETA ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_.                                    |
 +------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------+
 | :class:`FiftyOneImageClassificationSampleParser                        | Parser for samples in FiftyOne image classification datasets. See                                               |
 | <fiftyone.utils.data.parsers.FiftyOneImageClassificationSampleParser>` | :class:`FiftyOneImageClassificationDataset <fiftyone.types.dataset_types.FiftyOneImageClassificationDataset>`   |
@@ -1331,6 +1331,25 @@ classification or object detections) associated with the image.
                 @property
                 def label_cls(self):
                     """The :class:`fiftyone.core.labels.Label` class(es) returned by this
+                    parser within the sample-level labels that it produces.
+
+                    This can be any of the following:
+
+                    -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+                        parser is guaranteed to return sample-level labels of this type
+                    -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+                        In this case, the parser will return sample-level label
+                        dictionaries with keys and value-types specified by this
+                        dictionary. Not all keys need be present in the imported labels
+                    -   ``None``. In this case, the parser makes no guarantees about the
+                        sample-level labels that it may return
+                    """
+                    # Return the appropriate value here
+                    pass
+
+                @property
+                def frame_labels_cls(self):
+                    """The :class:`fiftyone.core.labels.Label` class(es) returned by this
                     parser within the frame labels that it produces.
 
                     This can be any of the following:
@@ -1342,7 +1361,7 @@ classification or object detections) associated with the image.
                         keys and value-types specified by this dictionary. Not all keys
                         need be present in each frame
                     -   ``None``. In this case, the parser makes no guarantees about the
-                        labels that it may return
+                        frame labels that it may return
                     """
                     # Return the appropriate value here
                     pass
@@ -1366,13 +1385,24 @@ classification or object detections) associated with the image.
                     # raise an error if `has_video_metadata == False`
                     pass
 
+                def get_label(self):
+                    """Returns the sample-level labels for the current sample.
+
+                    Returns:
+                        a :class:`fiftyone.core.labels.Label` instance, or a dictionary
+                        mapping field names to :class:`fiftyone.core.labels.Label`
+                        instances, or ``None`` if the sample has no sample-level labels
+                    """
+                    # Return the sample labels for `self.current_sample` here
+                    pass
+
                 def get_frame_labels(self):
                     """Returns the frame labels for the current sample.
 
                     Returns:
                         a dictionary mapping frame numbers to dictionaries that map label
                         fields to :class:`fiftyone.core.labels.Label` instances for each
-                        video frame, or ``None`` if the sample is unlabeled
+                        video frame, or ``None`` if the sample has no frame labels
                     """
                     # Return the frame labels for `self.current_sample` here
                     pass
@@ -1405,16 +1435,24 @@ classification or object detections) associated with the image.
                 else:
                     metadata = None
 
+                label = sample_parser.get_label()
                 frames = sample_parser.get_frame_labels()
 
                 sample = fo.Sample(filepath=video_path, metadata=metadata)
+
+                if isinstance(label, dict):
+                    sample.update_fields(
+                        {label_field + "_" + k: v for k, v in label.items()}
+                    )
+                elif label is not None:
+                    sample[label_field] = label
 
                 if frames is not None:
                     sample.frames.merge(
                         {
                             frame_number: {
-                                label_field + "_" + field_name: label
-                                for field_name, label in frame_dict.items()
+                                label_field + "_" + fname: flabel
+                                for fname, flabel in frame_dict.items()
                             }
                             for frame_number, frame_dict in frames.items()
                         }
@@ -1436,11 +1474,16 @@ classification or object detections) associated with the image.
         property that declares whether the sample parser can return a |VideoMetadata|
         for the current sample's video via
         :meth:`get_video_metadata() <fiftyone.utils.data.parsers.LabeledVideoSampleParser.get_video_metadata>`.
-        Additionality, the
-        :meth:`label_cls <fiftyone.utils.data.parsers.LabeledVideoSampleParser.label_cls>`
-        property of the parser declares the type of frame label(s) that the
-        parser will produce.
 
-        By convention, all |LabeledVideoSampleParser| implementations must make the
-        current sample's frame labels available via
+        The
+        :meth:`label_cls <fiftyone.utils.data.parsers.LabeledVideoSampleParser.label_cls>`
+        property of the parser declares the type of sample-level label(s) that
+        the parser may produce (if any). The
+        :meth:`frame_labels_cls <fiftyone.utils.data.parsers.LabeledVideoSampleParser.frame_labels_cls>`
+        property of the parser declares the type of frame-level label(s) that
+        the parser may produce (if any). By convention, all
+        |LabeledVideoSampleParser| implementations must make the current
+        sample's sample-level labels available via
+        :meth:`get_label() <fiftyone.utils.data.parsers.LabeledVideoSampleParser.get_label>`
+        and its frame-level labels available via
         :meth:`get_frame_labels() <fiftyone.utils.data.parsers.LabeledVideoSampleParser.get_frame_labels>`.
