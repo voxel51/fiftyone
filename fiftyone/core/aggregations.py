@@ -169,7 +169,7 @@ class Bounds(Aggregation):
             unwind = False
         else:
             raise AggregationError(
-                "unsupported field '%s' of type '%s' for this Dataset"
+                "unsupported field '%s' of type '%s'"
                 % (self._field_name, type(field))
             )
 
@@ -381,16 +381,41 @@ class CountValues(Aggregation):
         return "%s-count-values" % self._field_name
 
     def _get_result(self, d):
-        return CountValuesResult(self._field_name, d["count"])
+        d = {i["k"]: i["count"] for i in d["result"]}
+        return CountValuesResult(self._field_name, d)
 
     def _to_mongo(self, dataset, schema, frame_schema):
-        pass
+        field, path, pipeline = self._get_field_path_pipeline(
+            self._field_name, schema, frame_schema, dataset
+        )
+        if isinstance(field, _VALUE_FIELDS):
+            pass
+        elif isinstance(field, fof.ListField) and isinstance(
+            field.field, _VALUE_FIELDS
+        ):
+            pipeline.append({"$unwind": path})
+        else:
+            raise AggregationError(
+                "unsupported field '%s' of type '%s'"
+                % (self._field_name, type(field))
+            )
+
+        pipeline += [
+            {"$group": {"_id": path, "count": {"$sum": 1}}},
+            {
+                "$group": {
+                    "_id": None,
+                    "result": {"$push": {"k": "$_id", "count": "$count"}},
+                }
+            },
+        ]
+        return pipeline
 
 
 class CountValuesResult(AggregationResult):
-    def __init__(self, field_name, values):
+    def __init__(self, field_name, counts):
         self.name = field_name
-        self.values = values
+        self.counts = counts
 
 
 class Distinct(Aggregation):
@@ -452,7 +477,7 @@ class Distinct(Aggregation):
             unwind = False
         else:
             raise AggregationError(
-                "unsupported field '%s' of type '%s' for this Dataset"
+                "unsupported field '%s' of type '%s'"
                 % (self._field_name, type(field))
             )
 

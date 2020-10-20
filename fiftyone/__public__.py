@@ -15,6 +15,7 @@ from .core.aggregations import (
     Bounds,
     ConfidenceBounds,
     Count,
+    CountValues,
     Distinct,
     DistinctLabels,
 )
