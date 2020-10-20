@@ -169,8 +169,8 @@ class Bounds(Aggregation):
             unwind = False
         else:
             raise AggregationError(
-                "%s: unsupported field '%s' of type '%s' for this Dataset"
-                % (self.__class__.__name__, self._field_name, type(field))
+                "unsupported field '%s' of type '%s' for this Dataset"
+                % (self._field_name, type(field))
             )
 
         path = "$%s" % self._field_name
@@ -259,7 +259,7 @@ class ConfidenceBounds(Aggregation):
         if not isinstance(field, fof.EmbeddedDocumentField) or not issubclass(
             field.document_type, fol.Label
         ):
-            raise AggregationError("not a label")
+            raise AggregationError("field '%s' is not a label")
 
         if field.document_type in _LABELS:
             path = "%s.%s" % (path, field.document_type.__name__.lower())
@@ -371,8 +371,8 @@ class Distinct(Aggregation):
             unwind = False
         else:
             raise AggregationError(
-                "%s: unsupported field '%s' of type '%s' for this Dataset"
-                % (self.__class__.__name__, self._field_name, type(field))
+                "unsupported field '%s' of type '%s' for this Dataset"
+                % (self._field_name, type(field))
             )
 
         pipeline += [
@@ -421,7 +421,7 @@ class DistinctLabels(Aggregation):
         if not isinstance(field, fof.EmbeddedDocumentField) or not issubclass(
             field.document_type, fol.Label
         ):
-            raise AggregationError("not a label")
+            raise AggregationError("field '%s' is not a label")
 
         if field.document_type in _LABELS:
             path = "%s.%s" % (path, field.document_type.__name__.lower())
