@@ -63,7 +63,7 @@ setup(
         "tabulate",
         "xmltodict",
         # internal packages
-        "voxel51-eta>=0.1.9,<0.2",
+        "voxel51-eta>=0.1.10,<0.2",
         # ETA dependency - restricted to a maximum version known to provide
         # wheels here because it tends to publish sdists several hours before
         # wheels. When users install FiftyOne in this window, they will need to
