@@ -613,7 +613,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if self.media_type == fom.VIDEO:
             sample.frames._serve(self)
-            sample.frames._save()
+            sample.frames._save(insert=True)
 
         return str(d["_id"])
 
@@ -688,7 +688,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             if self.media_type == fom.VIDEO:
                 sample.frames._serve(self)
-                sample.frames._save()
+                sample.frames._save(insert=True)
 
         return [str(d["_id"]) for d in dicts]
 
