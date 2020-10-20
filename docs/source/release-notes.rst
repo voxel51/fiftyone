@@ -3,6 +3,19 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne 0.6.3
+--------------
+*Released October 20, 2020*
+
+App
+^^^
+- Added sample-level display options stats, filtering, and toggling for video
+  datasets
+
+Core
+^^^^
+- Fixed speed regression for ingesting video datasets
+
 FiftyOne 0.6.2
 --------------
 *Released October 15, 2020*
