@@ -3,6 +3,39 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne 0.6.3
+--------------
+*Released October 20, 2020*
+
+App
+^^^
+- Added sample-level display options stats, filtering, and toggling for video
+  datasets
+
+Core
+^^^^
+- Added support for :ref:`importing <VideoClassificationDirectoryTree-import>`
+  and :ref:`exporting <VideoClassificationDirectoryTree-export>` video
+  classification datasets organized as directory trees on disk
+- Added `BDD100K <https://deepdrive.berkeley.edu/>`_,
+  `HMDB51 <https://serre-lab.clps.brown.edu/resource/hmdb-a-large-human-motion-database>`_,
+  and `UCF101 <https://www.crcv.ucf.edu/research/data-sets/ucf101>`_ to
+  the :ref:`Dataset Zoo <dataset-zoo>`
+- Added new versions of `COCO <https://cocodataset.org/#home>`_ that contain
+  instance segmentations to the :ref:`Dataset Zoo <dataset-zoo>`
+- Added :mod:`utilities <fiftyone.utils.selection>` for selecting objects from
+  datasets via the Python library
+- Added a boolean `only_matches` parameter to all filter stages that enables
+  the user to specify that a view should only contain samples that match the
+  given filter
+- Improved performance when ingesting video datasets with frame-level labels
+
+Utils
+^^^^^
+- Added a :meth:`reencode_videos() <fiftyone.utils.video.reencode_videos>`
+  utility to re-encode the videos in a sample collection so that they are
+  visualizable in the FiftyOne App
+
 FiftyOne 0.6.2
 --------------
 *Released October 15, 2020*

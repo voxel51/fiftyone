@@ -7,6 +7,18 @@
 
 {% block custom_header %}
 <div class="container-fluid header-holder tutorials-header" id="header-holder">
+  {% if banner_link %}
+  <a href="{{ banner_link }}" style="color:white">
+  {% endif %}
+  {% if banner_message %}
+    <div class="banner show">
+      {{ banner_message }}
+    </div>
+  {% endif %}
+  {% if banner_link %}
+  </a>
+  {% endif %}
+
   <nav id="nav__main" class="nav__main">
     <div class="nav__main__logo">
       <a href="{{link_home}}">
