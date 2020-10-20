@@ -15,6 +15,19 @@ App
 Core
 ^^^^
 - Fixed speed regression for ingesting video datasets
+- Added a
+  :class:`VideoClassificationDirectoryTree <fiftyone.types.dataset_types.VideoClassificationDirectoryTree>`
+  dataset format that can be used to load video classification datasets stored
+  on disk as directory trees.
+- Added BDD100K, HMDB51, and UCF101 to the FiftyOne Zoo
+- Added new versions of COCO 2014/2017 that contain instance segmentations to
+  the FiftyOne Zoo
+
+Utils
+^^^^^
+- Added a :meth:`reencode_video() <fiftyone.utils.video.reencode_videos>`
+  utility to re-encode the videos in a sample collection so that they are
+  visualizable in the FiftyOne App
 
 FiftyOne 0.6.2
 --------------
