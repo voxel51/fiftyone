@@ -367,11 +367,30 @@ class CountResult(AggregationResult):
     """
 
     def __init__(self, field_name, count):
-        self._field_name = field_name
         self.name = field_name
         if field_name is None:
             self.name = "count"
         self.count = count
+
+
+class CountValues(Aggregation):
+    def _get_default_result(self):
+        return CountValuesResult(self._field_name, {})
+
+    def _get_output_field(self, view):
+        return "%s-count-values" % self._field_name
+
+    def _get_result(self, d):
+        return CountValuesResult(self._field_name, d["count"])
+
+    def _to_mongo(self, dataset, schema, frame_schema):
+        pass
+
+
+class CountValuesResult(AggregationResult):
+    def __init__(self, field_name, values):
+        self.name = field_name
+        self.values = values
 
 
 class Distinct(Aggregation):
