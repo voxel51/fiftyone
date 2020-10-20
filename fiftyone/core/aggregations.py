@@ -84,8 +84,8 @@ class AggregationResult(etas.Serializable):
     of an :class:`Aggregation` on a :class:`fiftyone.core.collection.SampleCollection`.
     """
 
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, *args, **kwargs):
+        raise NotImplementedError("Subclass must implement __init__()")
 
     def __repr__(self):
         d = {}
@@ -146,9 +146,6 @@ class Bounds(Aggregation):
         field_name: the name of the field to compute bounds for
     """
 
-    def __init__(self, field_name):
-        super().__init__(field_name)
-
     def _get_default_result(self):
         return BoundsResult(self._field_name, (None, None))
 
@@ -198,7 +195,7 @@ class Bounds(Aggregation):
 
 
 class BoundsResult(AggregationResult):
-    """The result of the execution :class:`Bounds` by a dataset.
+    """The result of the execution of a :class:`Bounds` by a dataset or view.
 
     Attributes:
         name: the name of the field
@@ -241,9 +238,6 @@ class ConfidenceBounds(Aggregation):
             for
     """
 
-    def __init__(self, field_name):
-        super().__init__(field_name)
-
     def _get_default_result(self):
         return ConfidenceBoundsResult(self._field_name, (None, None))
 
@@ -285,7 +279,8 @@ class ConfidenceBounds(Aggregation):
 
 
 class ConfidenceBoundsResult(AggregationResult):
-    """The result of the execution :class:`ConfidenceBounds` by a dataset.
+    """The result of the execution of a :class:`ConfidenceBounds` by a dataset
+    or view.
 
     Attributes:
         name: the name of the field
@@ -364,7 +359,7 @@ class Count(Aggregation):
 
 
 class CountResult(AggregationResult):
-    """The result of the execution :class:`ConfidenceBounds` by a dataset.
+    """The result of the execution of a :class:`Count` by a dataset or view.
 
     Attributes:
         name: the name of the field, or "count" if samples were counted
@@ -375,13 +370,47 @@ class CountResult(AggregationResult):
         self._field_name = field_name
         self.name = field_name
         if field_name is None:
-            self.name = "TotalCount"
+            self.name = "count"
         self.count = count
 
 
 class Distinct(Aggregation):
-    def __init__(self, field_name):
-        super().__init__(field_name)
+    """Computes the distinct values of a countable field or a list field of a
+    countable field.
+
+    Countable fields are:
+        - :class:`fiftyone.core.fields.BooleanField`
+        - :class:`fiftyone.core.fields.IntField`
+        - :class:`fiftyone.core.fields.StringField`
+
+    Note that to compute distinct values for a list field of countable fields,
+    the countable subfield must be explicitly defined.
+
+    Examples::
+        import fiftyone as fo
+        from fiftyone.core.aggregations import Distinct
+
+        dataset = fo.load_dataset(...)
+        
+        #
+        # Compute the distinct values of string field
+        #
+
+        distinct = Distinct("kind")
+        distinct_result = dataset.aggregate(distinct)
+        distinct_result.values
+
+        #
+        # Compute the a bounds of a list field of string fields
+        #
+
+        tags = Distinct("tags")
+        tags_result = dataset.aggregate(tags)
+        tags_result.values
+    
+    Args:
+        field_name: the name of the field to compute distinct values for
+    """
 
     def _get_default_result(self):
         return DistinctResult(self._field_name, [])
@@ -429,12 +458,48 @@ class Distinct(Aggregation):
 
 
 class DistinctResult(AggregationResult):
+    """The result of the execution of a :class:`Distinct` by a dataset or view.
+
+    Attributes:
+        name: the name of the field
+        values: a sorted list of distinct values
+    """
+
     def __init__(self, field_name, values):
         self.name = field_name
         self.values = values
 
 
 class DistinctLabels(Aggregation):
+    """Computes the distinct label values of a
+    :class:`fiftyone.core.labels.Label`.
+
+    Examples::
+        import fiftyone as fo
+        from fiftyone.core.aggregations import DistinctLabels
+
+        dataset = fo.load_dataset(...)
+        
+        #
+        # Compute the distinct labels of a fo.Classification label field
+        #
+
+        distinct_labels = DistinctLabels("predictions")
+        distinct_labels_result = dataset.aggregate(distinct_labels)
+        distinct_labels_result.labels
+
+        #
+        # Compute the distinct labels of a fo.Detections label field
+        #
+
+        detections_labels = DistinctLabels("detections")
+        detections_labels_result = dataset.aggregate(detections_labels)
+        detections_labels_result.labels
+    
+    Args:
+        field_name: the name of the label field to compute distinct labels for
+    """
+
     def __init__(self, field_name):
         super().__init__(field_name)
 
@@ -471,6 +536,14 @@ class DistinctLabels(Aggregation):
 
 
 class DistinctLabelsResult(AggregationResult):
+    """The result of the execution of a :class:`DistinctLabels` by a dataset or
+    view.
+
+    Attributes:
+        name: the name of the field
+        labels: a sorted list of distinct labels
+    """
+
     def __init__(self, field_name, labels):
         self.name = field_name
         self.labels = labels
