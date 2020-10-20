@@ -613,7 +613,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if self.media_type == fom.VIDEO:
             sample.frames._serve(self)
-            sample.frames._save()
+            sample.frames._save(insert=True)
 
         return str(d["_id"])
 
@@ -688,7 +688,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             if self.media_type == fom.VIDEO:
                 sample.frames._serve(self)
-                sample.frames._save()
+                sample.frames._save(insert=True)
 
         return [str(d["_id"]) for d in dicts]
 
@@ -1857,7 +1857,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for sample in samples:
             self._validate_media_type(sample)
             if self.media_type == fom.VIDEO:
-                self._expand_frame_schema(sample.frames)
+                frame_schema = self._expand_frame_schema(sample.frames, fields)
+            else:
+                frame_schema = {}
 
             for field_name in sample.to_mongo_dict():
                 if field_name == "_id":
@@ -1870,6 +1872,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if value is None:
                     continue
 
+                if field_name in frame_schema:
+                    raise ValueError(
+                        "field name collision: '%s' is already a field name at the frame-level"
+                    )
+
                 self._sample_doc_cls.add_implied_field(
                     field_name, value, frame_doc_cls=self._frame_doc_cls,
                 )
@@ -1877,7 +1884,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._doc.reload()
 
-    def _expand_frame_schema(self, frames):
+    def _expand_frame_schema(self, frames, field_schema):
         fields = self.get_frame_field_schema(include_private=True)
         for frame in frames.values():
             for field_name in frame.to_mongo_dict():
@@ -1891,10 +1898,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if value is None:
                     continue
 
+                if field_name in field_schema:
+                    raise ValueError(
+                        "field name collision: '%s' is already a field name at the sample-level"
+                    )
+
                 self._frame_doc_cls.add_implied_field(
                     field_name, value, frame_doc_cls=self._frame_doc_cls,
                 )
                 fields = self.get_frame_field_schema(include_private=True)
+
+        return fields
 
     def _validate_media_type(self, sample):
         if self.media_type != sample.media_type:

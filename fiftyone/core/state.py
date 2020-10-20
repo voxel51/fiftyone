@@ -192,10 +192,9 @@ class StateDescriptionWithDerivables(StateDescription):
     @staticmethod
     def _get_label_fields(view):
         label_fields = []
+        schema = view.get_field_schema()
         if view.media_type == fom.VIDEO:
-            schema = view.get_frame_field_schema()
-        else:
-            schema = view.get_field_schema()
+            schema.update(view.get_frame_field_schema())
 
         for k, v in schema.items():
             d = {"field": k}
@@ -255,8 +254,6 @@ def get_view_stats(dataset_or_view):
 
 def _get_label_field_derivables(view):
     label_fields = _get_label_fields(view)
-    if view.media_type == fom.VIDEO:
-        view = view._with_frames()
     confidence_bounds = _get_label_confidence_bounds(view)
     classes = {
         field.name: _get_label_classes(view, field) for field in label_fields
@@ -274,8 +271,12 @@ def _get_label_classes(view, field):
     pipeline = []
     is_list = False
     path = field.name
-    if view.media_type == fom.VIDEO:
+    if (
+        view.media_type == fom.VIDEO
+        and field.name in view.get_frame_field_schema()
+    ):
         path = "$frames.%s" % path
+        view = view._with_frames()
     else:
         path = "$%s" % path
 
@@ -310,10 +311,10 @@ def _get_label_fields(view):
 
         return False
 
+    schema = view.get_field_schema()
+
     if view.media_type == fom.VIDEO:
-        schema = view.get_frame_field_schema()
-    else:
-        schema = view.get_field_schema()
+        schema.update(view.get_frame_field_schema())
 
     return list(filter(_filter, schema.values()))
 
@@ -368,13 +369,19 @@ def _get_numeric_field_bounds(view):
 def _get_label_confidence_bounds(view):
     fields = _get_label_fields(view)
     facets = {}
+    bounds = {}
     for field in fields:
         is_list = False
         path = field.name
-        if view.media_type == fom.VIDEO:
+        if (
+            view.media_type == fom.VIDEO
+            and field.name in view.get_frame_field_schema()
+        ):
             path = "$frames.%s" % path
+            local_view = view._with_frames()
         else:
             path = "$%s" % path
+            local_view = view
         if issubclass(field.document_type, fol.Classifications):
             path = "%s.classifications" % path
             is_list = True
@@ -399,8 +406,9 @@ def _get_label_confidence_bounds(view):
             },
         )
         facets[field.name] = facet_pipeline
+        bounds.update(_get_bounds(fields, local_view, facets))
 
-    return _get_bounds(fields, view, facets)
+    return bounds
 
 
 def _get_field_count(view, field, prefix=""):

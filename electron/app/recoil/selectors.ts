@@ -143,7 +143,11 @@ export const labelSampleCounts = selector({
   get: ({ get }) => {
     const fields = get(datasetStats).custom_fields || {};
     if (get(mediaType) === "video") {
-      return fields.frames || {};
+      const frames = fields.frames || {};
+      return {
+        ...fields,
+        ...frames,
+      };
     }
     return fields;
   },
@@ -154,7 +158,11 @@ export const filteredLabelSampleCounts = selector({
   get: ({ get }) => {
     const fields = get(extendedDatasetStats).custom_fields || {};
     if (get(mediaType) === "video") {
-      return fields.frames || {};
+      const frames = fields.frames || {};
+      return {
+        ...fields,
+        ...frames,
+      };
     }
     return fields;
   },
