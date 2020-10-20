@@ -155,8 +155,7 @@ def _apply_label_filter(sample_collection, label_schema, field, label_filter):
             )
         )
 
-    field_type = label_schema[field]
-    label_type = field_type.document_type
+    label_type = label_schema[field].document_type
 
     if label_type in (
         fol.Classification,
