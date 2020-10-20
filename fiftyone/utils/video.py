@@ -35,10 +35,10 @@ def reencode_videos(
     By default, the re-encoding is performed via the following ``ffmpeg``
     command::
 
-        ffmpeg \
-            -loglevel error -vsync 0 -i $INPUT \
-            -c:v libx264 -preset medium -crf 23 -pix_fmt yuv420p -vsync 0 -an \
-            $OUTPUT
+        ffmpeg \\
+            -loglevel error -vsync 0 -i $INPUT_PATH \\
+            -c:v libx264 -preset medium -crf 23 -pix_fmt yuv420p -vsync 0 -an \\
+            $OUTPUT_PATH
 
     Args:
         sample_collection: a
