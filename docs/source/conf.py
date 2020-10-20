@@ -137,12 +137,12 @@ html_js_files = ["js/voxel51-website.js", "js/custom.js"]
 # Prevent RST source files from being included in output
 html_copy_source = False
 
-# Links - copied from website config
 html_context = {
     "address_main_line1": "410 N 4th Ave, 3rd Floor",
     "address_main_line2": "Ann Arbor, MI 48104",
     "phone_main": "+1 734-489-1134",
     "email_info": "info@voxel51.com",
+    # Links - copied from website config
     "link_blog": "https://blog.voxel51.com/",
     "link_careers": "https://voxel51.com/careers/",
     "link_contactus": "mailto:solutions@voxel51.com?subject=[Voxel51]%20Contact%20us",
@@ -176,6 +176,9 @@ html_context = {
     "link_voxel51_slack": "https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg",
     "link_voxel51_twitter": "https://twitter.com/voxel51",
     "link_voxel51_medium": "https://medium.com/voxel51/",
+    # Banner - set to None or empty string to disable
+    "banner_link": "https://us02web.zoom.us/meeting/register/tZ0kd-GppzsrHNeJEEYcCKsE_t_lI_7iB6Sy",
+    "banner_message": "Register for <b>the biweekly FiftyOne webinar series</b> on Wednesdays at 1PM EST!",
 }
 
 # -- Custom app setup --------------------------------------------------------

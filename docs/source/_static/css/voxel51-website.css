@@ -45,6 +45,24 @@
   --padding-y: 10rem;
 }
 
+.banner.show {
+  opacity: 1;
+  transition-delay: 0s;
+  margin-top: 0;
+  border-bottom: 1px;
+}
+
+.banner {
+  background: var(--color-secondary);
+  color: var(--text-primary-on-dark);
+  padding: 2.5rem 2.5rem;
+  opacity: 0;
+  display: block;
+  position: center;
+  text-align: center;
+  line-height: 120%;
+}
+
 /*  NAV  */
 
 .nav__main {
