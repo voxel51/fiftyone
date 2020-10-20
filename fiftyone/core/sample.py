@@ -145,13 +145,6 @@ class _DatasetSample(Document):
             except:
                 frame_doc_cls = None
 
-            fomm.validate_field_against_media_type(
-                self.media_type,
-                **foo.get_implied_field_kwargs(
-                    value, frame_doc_cls=frame_doc_cls
-                ),
-            )
-
     def to_mongo_dict(self):
         """Serializes the sample to a BSON dictionary equivalent to the
         representation that would be stored in the database.
