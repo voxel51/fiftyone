@@ -1,5 +1,5 @@
 """
-Unit tests for the :mod:`fiftyone.utils.selections` module.
+Unit tests for the :mod:`fiftyone.utils.selection` module.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -10,30 +10,32 @@ import unittest
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
-import fiftyone.utils.selections as fous
+import fiftyone.utils.selection as fous
 import fiftyone.zoo as foz
 
 
 class SelectionTests(unittest.TestCase):
     def test_list_datasets(self):
-        num_samples_to_select = 3
-        max_objects_per_sample_to_select = 5
+        num_samples_to_select = 5
+        max_objects_per_sample_to_select = 3
 
         dataset = foz.load_zoo_dataset(
-            "coco-2017",
-            split="validation",
-            dataset_name=fod.get_default_dataset_name(),
-            shuffle=True,
-            max_samples=100,
+            "quickstart", dataset_name=fod.get_default_dataset_name(),
         )
 
         # Generate some random selections
         selected_objects = []
         for sample in dataset.take(num_samples_to_select):
             detections = sample.ground_truth.detections
-            num_objects = random.randint(
-                1, min(len(detections), max_objects_per_sample_to_select)
+
+            max_num_objects = min(
+                len(detections), max_objects_per_sample_to_select
             )
+            if max_num_objects >= 1:
+                num_objects = random.randint(1, max_num_objects)
+            else:
+                num_objects = 0
+
             for detection in random.sample(detections, num_objects):
                 selected_objects.append(
                     {
