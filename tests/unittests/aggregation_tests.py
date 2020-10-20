@@ -65,6 +65,16 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(d.aggregate(fo.Count("list")).count, 2)
         self.assertEqual(d.aggregate(fo.Count("empty")).count, 0)
 
+    def test_count_values(self):
+        d = fo.Dataset()
+        s = fo.Sample("image.jpeg")
+        # pylint: disable=no-member
+        s.tags += ["one", "two"]
+        d.add_sample(s)
+        self.assertEqual(
+            d.aggregate(fo.CountValues("tags")).counts, {"one": 1, "two": 1}
+        )
+
     @drop_datasets
     def test_distinct(self):
         d = fo.Dataset()
