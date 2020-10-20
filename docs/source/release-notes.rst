@@ -14,7 +14,6 @@ App
 
 Core
 ^^^^
-- Fixed speed regression for ingesting video datasets
 - Added a
   :class:`VideoClassificationDirectoryTree <fiftyone.types.dataset_types.VideoClassificationDirectoryTree>`
   dataset format that can be used to load video classification datasets stored
@@ -22,6 +21,10 @@ Core
 - Added BDD100K, HMDB51, and UCF101 to the FiftyOne Zoo
 - Added new versions of COCO 2014/2017 that contain instance segmentations to
   the FiftyOne Zoo
+- Added a boolean only_matches parameter to all filter stages that enables the
+  user to specify that a view should only contain samples that match the given
+  filter
+- Fixed speed regression for ingesting video datasets
 
 Utils
 ^^^^^
