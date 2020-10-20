@@ -55,6 +55,15 @@ class DatasetTests(unittest.TestCase):
         d.add_sample(s)
         self.assertEqual(d.aggregate(fo.Count()).count, 1)
         self.assertEqual(d.aggregate(fo.Count()).count, 1)
+        s["single"] = fo.Classification()
+        s["list"] = fo.Classifications(
+            classifications=[fo.Classification()] * 2
+        )
+        s["empty"] = fo.Classifications()
+        s.save()
+        self.assertEqual(d.aggregate(fo.Count("single")).count, 1)
+        self.assertEqual(d.aggregate(fo.Count("list")).count, 2)
+        self.assertEqual(d.aggregate(fo.Count("empty")).count, 0)
 
     @drop_datasets
     def test_distinct(self):
