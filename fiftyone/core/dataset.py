@@ -1858,6 +1858,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._validate_media_type(sample)
             if self.media_type == fom.VIDEO:
                 frame_schema = self._expand_frame_schema(sample.frames, fields)
+            else:
+                frame_schema = {}
 
             for field_name in sample.to_mongo_dict():
                 if field_name == "_id":
