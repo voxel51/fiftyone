@@ -65,10 +65,7 @@ class Frames(object):
 
         if insert:
             self._frame_collection.insert_many(
-                [
-                    self._make_dict(doc)
-                    for frame_number, doc in self._replacements.items()
-                ]
+                [self._make_dict(doc) for doc in self._replacements.values()]
             )
         else:
             self._frame_collection.bulk_write(
