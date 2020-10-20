@@ -110,6 +110,10 @@ class SampleCollection(object):
         """Aggregates an iterable of
         :class:`Aggregations <fiftyone.core.aggregations.Aggregation>`
 
+        Note that it is best practice to group aggregations into a single
+        aggregate call. Calling this method repeatedly will not be performant
+        for larger datasets.
+
         Args:
             aggregations: a single
                 :class:`fiftyone.core.aggregations.Aggregation` or an iterable

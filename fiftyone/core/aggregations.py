@@ -102,6 +102,9 @@ class AggregationResult(etas.Serializable):
 
 
 class AggregationError(RuntimeError):
+    """An error raised during the execution of an :class:`Aggregation` by a
+    dataset or view.
+    """
 
     pass
 
@@ -123,7 +126,7 @@ class Bounds(Aggregation):
         # Compute the bounds of a numeric field
         #
 
-        bounds = fo.Bounds("uniqueness")
+        bounds = Bounds("uniqueness")
         bounds_result = dataset.aggregate(bounds)
         bounds_result.bounds # (min, max) inclusive bounds tuple
 
@@ -135,7 +138,7 @@ class Bounds(Aggregation):
         #
 
         dataset.add_sample_field(fo.ListField, subfield=fo.FloatField())
-        list_bounds = fo.Bounds("uniqueness_trials")
+        list_bounds = Bounds("uniqueness_trials")
         list_bounds_result = dataset.aggregate(list_bounds)
         list_bounds_result.bounds # (min, max) inclusive bounds tuple
     
@@ -213,7 +216,7 @@ class ConfidenceBounds(Aggregation):
 
     Examples::
         import fiftyone as fo
-        from fiftyone.core.aggregations import Bounds
+        from fiftyone.core.aggregations import ConfidenceBounds
 
         dataset = fo.load_dataset(...)
 
@@ -221,7 +224,7 @@ class ConfidenceBounds(Aggregation):
         # Compute the confidence bounds of a fo.Classification label field
         #
 
-        bounds = fo.ConfidenceBounds("predictions")
+        bounds = ConfidenceBounds("predictions")
         bounds_result = dataset.aggregate(bounds)
         bounds_result.bounds # (min, max) inclusive confidence bounds tuple
 
@@ -229,7 +232,7 @@ class ConfidenceBounds(Aggregation):
         # Compute the a confidence bounds a fo.Detections label field
         #
 
-        detections_bounds = fo.Bounds("detections")
+        detections_bounds = ConfidenceBounds("detections")
         detections_bounds_result = dataset.aggregate(detections_bounds)
         detections_bounds_result.bounds # (min, max) inclusive bounds tuple
     
@@ -259,7 +262,7 @@ class ConfidenceBounds(Aggregation):
         if not isinstance(field, fof.EmbeddedDocumentField) or not issubclass(
             field.document_type, fol.Label
         ):
-            raise AggregationError("field '%s' is not a label")
+            raise AggregationError("field '%s' is not a Label")
 
         if field.document_type in _LABELS:
             path = "%s.%s" % (path, field.document_type.__name__.lower())
@@ -298,8 +301,31 @@ class Count(Aggregation):
     """Counts the items with respect to a field, or the number of samples if
     no field_name is provided.
 
-    Examples:
-        @todo
+    Examples::
+        import fiftyone as fo
+        from fiftyone.core.aggregations import Count
+
+        dataset = fo.load_dataset(...)
+        
+        #
+        # Compute the number of samples in a dataset
+        #
+
+        count = Count()
+        count_result = dataset.aggregate(count)
+        count_result.count
+
+        #
+        # Compute the number of detections in a fo.Detections label field
+        #
+
+        detections = Count("detections")
+        detections_result = dataset.aggregate(detections)
+        detections_result.count
+    
+    Args:
+        field_name: the name of the field to have its items counted. If no
+            field name is provided, samples themselves are counted
     """
 
     def __init__(self, field_name=None):
@@ -338,6 +364,13 @@ class Count(Aggregation):
 
 
 class CountResult(AggregationResult):
+    """The result of the execution :class:`ConfidenceBounds` by a dataset.
+
+    Attributes:
+        name: the name of the field, or "count" if samples were counted
+        count: the count
+    """
+
     def __init__(self, field_name, count):
         self._field_name = field_name
         self.name = field_name
@@ -421,7 +454,7 @@ class DistinctLabels(Aggregation):
         if not isinstance(field, fof.EmbeddedDocumentField) or not issubclass(
             field.document_type, fol.Label
         ):
-            raise AggregationError("field '%s' is not a label")
+            raise AggregationError("field '%s' is not a Label")
 
         if field.document_type in _LABELS:
             path = "%s.%s" % (path, field.document_type.__name__.lower())
