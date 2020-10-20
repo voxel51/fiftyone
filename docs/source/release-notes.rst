@@ -14,17 +14,21 @@ App
 
 Core
 ^^^^
-- Added a
-  :class:`VideoClassificationDirectoryTree <fiftyone.types.dataset_types.VideoClassificationDirectoryTree>`
-  dataset format that can be used to load video classification datasets stored
-  on disk as directory trees.
-- Added BDD100K, HMDB51, and UCF101 to the FiftyOne Zoo
-- Added new versions of COCO 2014/2017 that contain instance segmentations to
-  the FiftyOne Zoo
-- Added a boolean only_matches parameter to all filter stages that enables the
-  user to specify that a view should only contain samples that match the given
-  filter
-- Fixed speed regression for ingesting video datasets
+- Added support for :ref:`importing <VideoClassificationDirectoryTree-import>`
+  and :ref:`exporting <VideoClassificationDirectoryTree-export>` video
+  classification datasets organized as directory trees on disk
+- Added `BDD100K <https://deepdrive.berkeley.edu/>`_,
+  `HMDB51 <https://serre-lab.clps.brown.edu/resource/hmdb-a-large-human-motion-database>`_,
+  and `UCF101 <https://www.crcv.ucf.edu/research/data-sets/ucf101>`_ to
+  the :ref:`Dataset Zoo <dataset-zoo>`
+- Added new versions of `COCO <https://cocodataset.org/#home>`_ that contain
+  instance segmentations to the :ref:`Dataset Zoo <dataset-zoo>`
+- Added :mod:`utilities <fiftyone.utils.selection>` for selecting objects from
+  datasets via the Python library
+- Added a boolean `only_matches` parameter to all filter stages that enables
+  the user to specify that a view should only contain samples that match the
+  given filter
+- Improved performance when ingesting video datasets with frame-level labels
 
 Utils
 ^^^^^
