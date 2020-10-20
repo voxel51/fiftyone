@@ -408,6 +408,14 @@ Here are some examples for each task:
                 "my_classifications", (F("confidence") > 0.5) & (F("label") == "friend")
             )
 
+            # Same as above, but only include samples with at least one classification
+            # after filtering
+            confident_friends_view = dataset.filter_classifications(
+                "my_classifications",
+                (F("confidence") > 0.5) & (F("label") == "friend"),
+                only_matches=True,
+            )
+
     .. tab:: Detections
 
         .. code-block:: python
@@ -417,6 +425,14 @@ Here are some examples for each task:
             # whose bounding boxes have an area of at least 0.5
             large_boxes_view = dataset.filter_detections(
                 "my_detections", F("bounding_box")[2] * F("bounding_box")[3] >= 0.5
+            )
+
+            # Same as above, but only include samples with at least one detection
+            # after filtering
+            large_boxes_view = dataset.filter_detections(
+                "my_detections",
+                F("bounding_box")[2] * F("bounding_box")[3] >= 0.5,
+                only_matches=True,
             )
 
     .. tab:: Polylines
@@ -430,6 +446,12 @@ Here are some examples for each task:
                 "my_polylines", F("filled")
             )
 
+            # Same as above, but only include samples with at least one polyline
+            # after filtering
+            filled_polygons_view = dataset.filter_polylines(
+                "my_polylines", F("filled"), only_matches=True
+            )
+
     .. tab:: Keypoints
 
         .. code-block:: python
@@ -439,6 +461,12 @@ Here are some examples for each task:
             # that have at least 10 vertices
             many_points_view = dataset.filter_keypoints(
                 "my_keypoints", F("points").length() >= 10
+            )
+
+            # Same as above, but only include samples with at least one keypoint
+            # after filtering
+            many_points_view = dataset.filter_keypoints(
+                "my_keypoints", F("points").length() >= 10, only_matches=True
             )
 
 You can also use the :meth:`filter_field() <fiftyone.core.view.DatasetView.filter_field>`
