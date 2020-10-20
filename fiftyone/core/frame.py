@@ -59,21 +59,29 @@ class Frames(object):
     def _set_replacement(self, doc):
         self._replacements[doc.get_field("frame_number")] = doc
 
-    def _save_replacements(self):
+    def _save_replacements(self, insert=False):
         if not self._replacements:
             return
 
-        self._frame_collection.bulk_write(
-            [
-                ReplaceOne(
-                    self._make_filter(frame_number, doc),
-                    self._make_dict(doc),
-                    upsert=True,
-                )
-                for frame_number, doc in self._replacements.items()
-            ],
-            ordered=False,
-        )
+        if insert:
+            self._frame_collection.insert_many(
+                [
+                    self._make_dict(doc)
+                    for frame_number, doc in self._replacements.items()
+                ]
+            )
+        else:
+            self._frame_collection.bulk_write(
+                [
+                    ReplaceOne(
+                        self._make_filter(frame_number, doc),
+                        self._make_dict(doc),
+                        upsert=True,
+                    )
+                    for frame_number, doc in self._replacements.items()
+                ],
+                ordered=False,
+            )
         self._replacements = {}
 
     def _make_filter(self, frame_number, doc):
@@ -316,7 +324,7 @@ class Frames(object):
             return d
         return None
 
-    def _save(self):
+    def _save(self, insert=False):
         if not self._sample._in_db:
             raise fofu.FrameError(
                 "Sample does not have a dataset, Frames cannot be saved"
@@ -347,7 +355,7 @@ class Frames(object):
 
             self._sample._doc.frames.first_frame = _FrameLabels(**d)
 
-        self._save_replacements()
+        self._save_replacements(insert)
 
     def _serve(self, sample):
         self._sample = sample
