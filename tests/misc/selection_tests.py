@@ -15,7 +15,7 @@ import fiftyone.zoo as foz
 
 
 class SelectionTests(unittest.TestCase):
-    def test_list_datasets(self):
+    def test_select_objects(self):
         num_samples_to_select = 5
         max_objects_per_sample_to_select = 3
 
