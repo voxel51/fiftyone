@@ -498,7 +498,11 @@ class SampleView(_DatasetSample):
         instances of this sample are updated.
         """
         if self.media_type == fomm.VIDEO and self._in_db:
-            self.frames._save()
+            try:
+                self.frames._save()
+            except AttributeError:
+                # frames is not selected, so we don't need to save it
+                pass
 
         self._doc.save(filtered_fields=self._filtered_fields)
 
