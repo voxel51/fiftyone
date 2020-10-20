@@ -35,6 +35,8 @@ def _attach_and_unwind_frames(dataset):
 class Aggregation(object):
     """Abstract base class for all aggregations.
 
+    :class:`Aggregation` instances represent an aggregation or reduction
+    of a :class:`fiftyone.core.collections.SampleCollection` instance.
     """
 
     def __init__(self, field_name):
@@ -70,12 +72,16 @@ class Aggregation(object):
             except:
                 pass
 
-        raise AggregationError("field not found")
+        raise AggregationError(
+            "field `%s` does not exist on this Dataset" % field_name
+        )
 
 
 class AggregationResult(etas.Serializable):
     """Abstract base class for all aggregation results.
-
+    
+    :class:`AggregationResult` instances represent the result of the execution
+    of an :class:`Aggregation` on a :class:`fiftyone.core.collection.SampleCollection`.
     """
 
     def __init__(self, name):
@@ -101,6 +107,42 @@ class AggregationError(RuntimeError):
 
 
 class Bounds(Aggregation):
+    """Computes the inclusive bounds of a numeric field or a list field of
+    numeric field in a view.
+
+    Note that to compute bounds on a list field of numeric fields, the
+    numeric subfield must be explicitly defined.
+
+    Examples::
+        import fiftyone as fo
+        from fiftyone.core.aggregations import Bounds
+
+        dataset = fo.load_dataset(...)
+
+        #
+        # Compute the bounds of a numeric field
+        #
+
+        bounds = fo.Bounds("uniqueness")
+        bounds_result = dataset.aggregate(bounds)
+        bounds_result.bounds # (min, max) inclusive bounds tuple
+
+        #
+        # Compute the a bounds of a list field of a numeric field
+        #
+        # assume the list field was instantiated on the dataset with a call to
+        # dataset.add_sample_field()
+        #
+
+        dataset.add_sample_field(fo.ListField, subfield=fo.FloatField())
+        list_bounds = fo.Bounds("uniqueness_trials")
+        list_bounds_result = dataset.aggregate(list_bounds)
+        list_bounds_result.bounds # (min, max) inclusive bounds tuple
+    
+    Args:
+        field_name: the name of the field to compute bounds for
+    """
+
     def __init__(self, field_name):
         super().__init__(field_name)
 
@@ -127,7 +169,8 @@ class Bounds(Aggregation):
             unwind = False
         else:
             raise AggregationError(
-                "Bounds: unsupported field '%s' for view" % self._field_name
+                "%s: unsupported field '%s' of type '%s' for this Dataset"
+                % (self.__class__.__name__, self._field_name, type(field))
             )
 
         path = "$%s" % self._field_name
@@ -152,12 +195,49 @@ class Bounds(Aggregation):
 
 
 class BoundsResult(AggregationResult):
+    """The result of the execution :class:`Bounds` by a dataset.
+
+    Attributes:
+        name: the name of the field
+        bounds: the inclusive (min, max) bounds tuple
+    """
+
     def __init__(self, field_name, bounds):
         self.name = field_name
         self.bounds = bounds
 
 
 class ConfidenceBounds(Aggregation):
+    """Computes the inclusive bounds of the confidences of
+    :class:`fiftyone.core.labels.Label`
+
+    Examples::
+        import fiftyone as fo
+        from fiftyone.core.aggregations import Bounds
+
+        dataset = fo.load_dataset(...)
+
+        #
+        # Compute the confidence bounds of a fo.Classification label field
+        #
+
+        bounds = fo.ConfidenceBounds("predictions")
+        bounds_result = dataset.aggregate(bounds)
+        bounds_result.bounds # (min, max) inclusive confidence bounds tuple
+
+        #
+        # Compute the a confidence bounds a fo.Detections label field
+        #
+
+        detections_bounds = fo.Bounds("detections")
+        detections_bounds_result = dataset.aggregate(detections_bounds)
+        detections_bounds_result.bounds # (min, max) inclusive bounds tuple
+    
+    Args:
+        field_name: the name of the label field to compute confidence bounds
+            for
+    """
+
     def __init__(self, field_name):
         super().__init__(field_name)
 
@@ -202,6 +282,13 @@ class ConfidenceBounds(Aggregation):
 
 
 class ConfidenceBoundsResult(AggregationResult):
+    """The result of the execution :class:`ConfidenceBounds` by a dataset.
+
+    Attributes:
+        name: the name of the field
+        bounds: the inclusive (min, max) confidence bounds tuple
+    """
+
     def __init__(self, field_name, bounds):
         self.name = field_name
         self.bounds = bounds
@@ -238,12 +325,13 @@ class Count(Aggregation):
             self._field_name, schema, frame_schema, dataset
         )
 
-        if isinstance(field, fof.EmbeddedDocumentField) and isinstance(
-            field, fol.Label
+        if (
+            isinstance(field, fof.EmbeddedDocumentField)
+            and field.document_type in _LABELS
         ):
-            raise AggregationError("@todo")
-
-        if isinstance(field, fof.ListField):
+            path = "%s.%s" % (path, field.document_type.__name__.lower())
+            pipeline.append({"$unwind": path})
+        elif isinstance(field, fof.ListField):
             pipeline.append({"$unwind": path})
 
         return pipeline + [{"$count": "count"}]
@@ -283,7 +371,8 @@ class Distinct(Aggregation):
             unwind = False
         else:
             raise AggregationError(
-                "Distinct: unsupported field '%s' for view" % self._field_name
+                "%s: unsupported field '%s' of type '%s' for this Dataset"
+                % (self.__class__.__name__, self._field_name, type(field))
             )
 
         pipeline += [

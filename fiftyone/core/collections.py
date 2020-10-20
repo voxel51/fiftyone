@@ -111,12 +111,18 @@ class SampleCollection(object):
         :class:`Aggregations <fiftyone.core.aggregations.Aggregation>`
 
         Args:
-            aggregations: an iterable of 
+            aggregations: a single
+                :class:`fiftyone.core.aggregations.Aggregation` or an iterable
+                of
                 :class:`Aggregations <fiftyone.core.aggregations.Aggregation>`
 
         Returns:
-            a list of 
+            an :class:`AggregationResult` if a single
+            :class:`fiftyone.core.aggregations.Aggregation` was provided or a list of 
             :class:`AggregationResults <fiftyone.core.aggregations.AggregationResult>`
+            if an iterable of
+            :class:`Aggregations <fiftyone.core.aggregations.Aggregation>` was
+            provided.
         """
         scalar_result = isinstance(aggregations, Aggregation)
         if scalar_result:
