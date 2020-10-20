@@ -16,7 +16,7 @@ import fiftyone.core.utils as fou
 
 
 def reencode_videos(sample_collection, delete_originals=False, **kwargs):
-    """Re-encodes the videos in the given sample collection as MP4s that can be
+    """Re-encodes the videos in the sample collection as MP4s that can be
     visualized in the FiftyOne App.
 
     The ``filepath`` of the samples are updated to point to the re-encoded
