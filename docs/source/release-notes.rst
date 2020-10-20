@@ -28,7 +28,7 @@ Core
 
 Utils
 ^^^^^
-- Added a :meth:`reencode_video() <fiftyone.utils.video.reencode_videos>`
+- Added a :meth:`reencode_videos() <fiftyone.utils.video.reencode_videos>`
   utility to re-encode the videos in a sample collection so that they are
   visualizable in the FiftyOne App
 
