@@ -27,6 +27,7 @@ import fiftyone.core.aggregations as foa
 from fiftyone.constants import VERSION
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
+import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 from fiftyone.migrations import get_migration_runner
@@ -535,6 +536,35 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             subfield=subfield,
         )
 
+    def add_frame_field(
+        self, field_name, ftype, embedded_doc_type=None, subfield=None
+    ):
+        """Adds a new frame-level field to the dataset.
+
+        Only applicable to video datasets.
+
+        Args:
+            field_name: the field name
+            ftype: the field type to create. Must be a subclass of
+                :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): the
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the
+                field. Used only when ``ftype`` is an embedded
+                :class:`fiftyone.core.fields.EmbeddedDocumentField`
+            subfield (None): the type of the contained field. Used only when
+                ``ftype`` is a :class:`fiftyone.core.fields.ListField` or
+                :class:`fiftyone.core.fields.DictField`
+        """
+        if self.media_type != fom.VIDEO:
+            raise ValueError("Only video datasets have frame fields")
+
+        self._frame_doc_cls.add_field(
+            field_name,
+            ftype,
+            embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
+        )
+
     def delete_sample_field(self, field_name):
         """Deletes the field from all samples in the dataset.
 
@@ -546,6 +576,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._sample_doc_cls.delete_field(field_name)
         fos.Sample._purge_field(self._sample_collection_name, field_name)
+
+    def delete_frame_field(self, field_name):
+        """Deletes the frame-level field from all samples in the dataset.
+
+        Only applicable to video datasets.
+
+        Args:
+            field_name: the field name
+
+        Raises:
+            AttributeError: if the field does not exist
+        """
+        if self.media_type != fom.VIDEO:
+            raise ValueError("Only video datasets have frame fields")
+
+        self._frame_doc_cls.delete_field(field_name, is_frame_field=True)
+        fofr.Frame._purge_field(self._frame_collection_name, field_name)
 
     def get_tags(self):
         """Returns the list of unique tags of samples in the dataset.
@@ -577,8 +624,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
         for d in self._aggregate(hide_frames=True):
-            if self.media_type == fom.VIDEO:
-                frames = d.pop("_frames", [])
+            frames = d.pop("_frames", [])
             doc = self._sample_dict_to_doc(d)
             sample = fos.Sample.from_doc(doc, dataset=self)
             if self.media_type == fom.VIDEO:
@@ -842,6 +888,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_doc_cls.rename_field(field_name, new_field_name)
         fos.Sample._rename_field(
             self._sample_collection_name, field_name, new_field_name
+        )
+
+    def rename_frame_field(self, field_name, new_field_name):
+        """Renames the frame-level field to the given new name.
+
+        Only applicable to video datasets.
+
+        Args:
+            field_name: the field name
+            new_field_name: the new field name
+        """
+        if self.media_type != fom.VIDEO:
+            raise ValueError("Only video datasets have frame fields")
+
+        self._frame_doc_cls.rename_field(
+            field_name, new_field_name, is_frame_field=True
+        )
+        fofr.Frame._rename_field(
+            self._frame_collection_name, field_name, new_field_name
         )
 
     def save(self):
@@ -1771,6 +1836,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         d = etas.load_json(path_or_str)
         return cls.from_dict(d, name=name, rel_dir=rel_dir)
 
+    def _serialize(self):
+        return {"name": self.name, "media_type": self.media_type}
+
     def _add_view_stage(self, stage):
         return self.view().add_stage(stage)
 
@@ -1855,7 +1923,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for sample in samples:
             self._validate_media_type(sample)
             if self.media_type == fom.VIDEO:
-                self._expand_frame_schema(sample.frames)
+                frame_schema = self._expand_frame_schema(sample.frames, fields)
+            else:
+                frame_schema = {}
 
             for field_name in sample.to_mongo_dict():
                 if field_name == "_id":
@@ -1868,6 +1938,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if value is None:
                     continue
 
+                if field_name in frame_schema:
+                    raise ValueError(
+                        "Field collision error: '%s' is already a field name "
+                        " at the frame level" % field_name
+                    )
+
                 self._sample_doc_cls.add_implied_field(
                     field_name, value, frame_doc_cls=self._frame_doc_cls,
                 )
@@ -1875,7 +1951,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._doc.reload()
 
-    def _expand_frame_schema(self, frames):
+    def _expand_frame_schema(self, frames, field_schema):
         fields = self.get_frame_field_schema(include_private=True)
         for frame in frames.values():
             for field_name in frame.to_mongo_dict():
@@ -1889,10 +1965,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if value is None:
                     continue
 
+                if field_name in field_schema:
+                    raise ValueError(
+                        "Field collision error: '%s' is already a field name "
+                        "at the sample level" % field_name
+                    )
+
                 self._frame_doc_cls.add_implied_field(
                     field_name, value, frame_doc_cls=self._frame_doc_cls,
                 )
                 fields = self.get_frame_field_schema(include_private=True)
+
+        return fields
 
     def _validate_media_type(self, sample):
         if self.media_type != sample.media_type:
@@ -1978,6 +2062,7 @@ def _create_dataset(name, persistent=False, media_type=None):
     frames_collection_name = "frames." + sample_collection_name
     frame_doc_cls = _create_frame_document_cls(frames_collection_name)
 
+    # @todo add `frames_collection_name` to dataset document too
     dataset_doc = foo.DatasetDocument(
         media_type=media_type,
         name=name,

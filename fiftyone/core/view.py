@@ -158,14 +158,18 @@ class DatasetView(foc.SampleCollection):
 
         for d in self._aggregate(hide_frames=True):
             try:
+                frames = d.pop("_frames", [])
                 doc = self._dataset._sample_dict_to_doc(d)
-                yield fos.SampleView(
+                sample = fos.SampleView(
                     doc,
                     self._dataset,
                     selected_fields=selected_fields,
                     excluded_fields=excluded_fields,
                     filtered_fields=filtered_fields,
                 )
+                if self.media_type == fom.VIDEO:
+                    sample.frames._set_replacements(frames)
+                yield sample
             except Exception as e:
                 raise ValueError(
                     "Failed to load sample from the database. This is likely "
@@ -288,7 +292,7 @@ class DatasetView(foc.SampleCollection):
         _pipeline = []
 
         for s in self._stages:
-            _pipeline.extend(s.to_mongo())
+            _pipeline.extend(s.to_mongo(self))
 
         if pipeline is not None:
             _pipeline.extend(pipeline)
@@ -300,11 +304,6 @@ class DatasetView(foc.SampleCollection):
         return self._dataset._doc
 
     def _serialize(self):
-        """Serializes the stages of the view
-
-        Returns:
-            a list of stages in JSON representation of the view
-        """
         return [s._serialize() for s in self._stages]
 
     def _slice(self, s):

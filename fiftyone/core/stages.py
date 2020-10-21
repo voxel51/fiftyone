@@ -16,6 +16,7 @@ from fiftyone.core.aggregations import Aggregation
 from fiftyone.core.expressions import ViewExpression, ViewField
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
+import fiftyone.core.media as fom
 from fiftyone.core.odm.sample import (
     DatasetSampleDocument,
     default_sample_fields,
@@ -75,8 +76,11 @@ class ViewStage(object):
         """
         return None
 
-    def to_mongo(self):
+    def to_mongo(self, view):
         """Returns the MongoDB version of the stage.
+
+        Args:
+            view: the view
 
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
@@ -104,6 +108,7 @@ class ViewStage(object):
         """
         if self._uuid is None:
             self._uuid = str(uuid.uuid4())
+
         return {
             "kwargs": self._kwargs(),
             "_cls": etau.get_class_name(self),
@@ -198,7 +203,7 @@ class Exclude(ViewStage):
         """The list of sample IDs to exclude."""
         return self._sample_ids
 
-    def to_mongo(self):
+    def to_mongo(self, view):
         """Returns the MongoDB version of the stage.
 
         Returns:
@@ -222,7 +227,8 @@ class Exclude(ViewStage):
 
     def _validate_params(self):
         # Ensures that ObjectIDs are valid
-        self.to_mongo()
+        for id in self._sample_ids:
+            ObjectId(id)
 
 
 class ExcludeFields(ViewStage):
@@ -270,7 +276,7 @@ class ExcludeFields(ViewStage):
     def get_excluded_fields(self):
         return self._field_names
 
-    def to_mongo(self):
+    def to_mongo(self, view):
         """Returns the MongoDB version of the stage.
 
         Returns:
@@ -356,7 +362,7 @@ class Exists(ViewStage):
         """
         return self._bool
 
-    def to_mongo(self):
+    def to_mongo(self, view):
         """Returns the MongoDB version of the stage.
 
         Returns:
@@ -452,7 +458,7 @@ class FilterField(ViewStage):
         """Whether to only include samples that match the filter."""
         return self._only_matches
 
-    def to_mongo(self):
+    def to_mongo(self, view):
         """Returns the MongoDB version of the stage.
 
         Returns:
@@ -527,22 +533,17 @@ class _FilterListField(FilterField):
     def get_filtered_list_fields(self):
         return [self._filter_field]
 
-    def to_mongo(self):
+    def to_mongo(self, view):
         """Returns the MongoDB version of the stage.
 
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
+        if view.media_type == fom.VIDEO and self._filter_field.startswith("frames."):
+            return self._get_frames_pipeline()
+
         pipeline = [
             {
-                "$addFields": {
-                    self._filter_field: {
-                        "$filter": {
-                            "input": "$" + self._filter_field,
-                            "cond": self._get_mongo_filter(),
-                        }
-                    }
-                }
             }
         ]
 
@@ -566,6 +567,41 @@ class _FilterListField(FilterField):
                     }
                 }
             )
+
+        return pipeline
+
+    @property
+    def _frame_filter_field(self):
+        return self._filter_field[len("frames."):]
+
+    def _get_frames_pipeline(self):
+        field, array = self._filter_field.split(".")[1:]
+        pipeline = [
+            {
+                "$addFields": {
+                    "_frames": {
+                        "$map": {
+                            "input": "$_frames",
+                            "as": "frame",
+                            "in": {
+                                "$mergeObjects": ["$$frame", 
+                                    {field: {
+                                        array: {
+                                        "$filter": {
+                                            "input": "$$frame." + self._frame_filter_field,
+                                            "cond": self._get_mongo_filter(),
+                                        }
+                                        }
+                                    }
+                                }]
+                            }
+                         }
+                    }
+                }
+            }
+        ]
+
+        # todo only matches
 
         return pipeline
 
@@ -844,7 +880,7 @@ class Limit(ViewStage):
         """The maximum number of samples to return."""
         return self._limit
 
-    def to_mongo(self):
+    def to_mongo(self, view):
         """Returns the MongoDB version of the stage.
 
         Returns:
@@ -925,7 +961,7 @@ class Match(ViewStage):
         """The filter expression."""
         return self._filter
 
-    def to_mongo(self):
+    def to_mongo(self, view):
         """Returns the MongoDB version of the stage.
 
         Returns:
@@ -983,7 +1019,7 @@ class MatchTag(ViewStage):
         """The tag to match."""
         return self._tag
 
-    def to_mongo(self):
+    def to_mongo(self, view):
         """Returns the MongoDB version of the stage.
 
         Returns:
@@ -1031,7 +1067,7 @@ class MatchTags(ViewStage):
         """The list of tags to match."""
         return self._tags
 
-    def to_mongo(self):
+    def to_mongo(self, view):
         """Returns the MongoDB version of the stage.
 
         Returns:
@@ -1103,7 +1139,7 @@ class Mongo(ViewStage):
         """The MongoDB aggregation pipeline."""
         return self._pipeline
 
-    def to_mongo(self):
+    def to_mongo(self, view):
         """Returns the MongoDB version of the stage.
 
         Returns:
@@ -1168,7 +1204,7 @@ class Select(ViewStage):
         """The list of sample IDs to select."""
         return self._sample_ids
 
-    def to_mongo(self):
+    def to_mongo(self, view):
         """Returns the MongoDB version of the stage.
 
         Returns:
@@ -1243,7 +1279,7 @@ class SelectFields(ViewStage):
         default_fields = default_sample_fields(DatasetSampleDocument)
         return list(set(self.field_names) | set(default_fields))
 
-    def to_mongo(self):
+    def to_mongo(self, view):
         """Returns the MongoDB version of the stage.
 
         Returns:
@@ -1318,7 +1354,7 @@ class Shuffle(ViewStage):
         """The random seed to use, or ``None``."""
         return self._seed
 
-    def to_mongo(self):
+    def to_mongo(self, view):
         """Returns the MongoDB version of the stage.
 
         Returns:
@@ -1377,7 +1413,7 @@ class Skip(ViewStage):
         """The number of samples to skip."""
         return self._skip
 
-    def to_mongo(self):
+    def to_mongo(self, view):
         """Returns the MongoDB version of the stage.
 
         Returns:
@@ -1452,7 +1488,7 @@ class SortBy(ViewStage):
         """Whether to return the results in descending order."""
         return self._reverse
 
-    def to_mongo(self):
+    def to_mongo(self, view):
         """Returns the MongoDB version of the stage.
 
         Returns:
@@ -1556,7 +1592,7 @@ class Take(ViewStage):
         """The random seed to use, or ``None``."""
         return self._seed
 
-    def to_mongo(self):
+    def to_mongo(self, view):
         """Returns the MongoDB version of the stage.
 
         Returns:

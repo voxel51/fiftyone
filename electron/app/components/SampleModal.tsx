@@ -380,12 +380,12 @@ const SampleModal = ({
           : 1;
       };
 
-      if (isVideo && frameData) {
+      if (!(name in s) && isVideo && frameData) {
         for (const frame of frameData) {
           if (frame[name])
             value += resolver(filterData ? filter(frame) : frame);
         }
-      } else if (isVideo) {
+      } else if (!(name in s) && isVideo) {
         value = "-";
       } else {
         value += resolver(s);

@@ -722,7 +722,7 @@ class LabeledVideoDatasetImporter(DatasetImporter):
                 :class:`fiftyone.core.metadata.VideoMetadata` instances for the
                 video, or ``None`` if :meth:`has_video_metadata` is ``False``
             -   ``labels``: sample-level labels for the video, which can be any
-                of the following::
+                of the following:
 
                 -   a :class:`fiftyone.core.labels.Label` instance
                 -   a dictionary mapping label fields to
@@ -730,7 +730,7 @@ class LabeledVideoDatasetImporter(DatasetImporter):
                 -   ``None`` if the sample has no sample-level labels
 
             -   ``frames``: frame-level labels for the video, which can
-                be any of the following::
+                be any of the following:
 
                 -   a dictionary mapping frame numbers to dictionaries that
                     map label fields to :class:`fiftyone.core.labels.Label`
@@ -1531,9 +1531,6 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         skip_non_categorical (False): whether to skip non-categorical frame
             attributes (True) or cast them to strings (False)
         skip_unlabeled (False): whether to skip unlabeled images when importing
-        shuffle (False): whether to randomly shuffle the order in which the
-            samples are imported
-        seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
@@ -1665,9 +1662,6 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
         skip_non_categorical (False): whether to skip non-categorical frame
             attributes (True) or cast them to strings (False)
         skip_unlabeled (False): whether to skip unlabeled videos when importing
-        shuffle (False): whether to randomly shuffle the order in which the
-            samples are imported
-        seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
@@ -1682,7 +1676,11 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
         skip_non_categorical=False,
         skip_unlabeled=False,
         max_samples=None,
+        **kwargs
     ):
+        for arg in kwargs:
+            logger.warning("Ignoring unsupported parameter '%s'", arg)
+
         super().__init__(
             dataset_dir, skip_unlabeled=skip_unlabeled, max_samples=max_samples
         )

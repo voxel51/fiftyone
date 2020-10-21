@@ -23,6 +23,7 @@ from fiftyone.core.odm.frame import (
 )
 import fiftyone.core.utils as fou
 
+
 #
 # This class is instantiated automatically and depends on an owning
 # :class:`fiftyone.core.sample.Sample`. Not for independent use or direct
@@ -147,6 +148,7 @@ class Frames(object):
             if d is None:
                 d = default_d
                 self._sample._doc.frames["frame_count"] += 1
+
             doc = self._sample._dataset._frame_dict_to_doc(d)
             self._set_replacement(doc)
         else:
@@ -173,8 +175,8 @@ class Frames(object):
             self._sample._doc.frames["frame_count"] += 1
         elif self._sample._in_db:
             if (
-                self._iter is not None
-                or frame_number != self._iter_doc.get_field("frame_number")
+                self._iter_doc is not None
+                and frame_number != self._iter_doc.get_field("frame_number")
             ):
                 find_d = {
                     "_sample_id": self._sample._id,
@@ -312,6 +314,7 @@ class Frames(object):
                     self._iter_doc = self._sample._dataset._frame_dict_to_doc(
                         d
                     )
+
                 self._set_replacement(self._iter_doc)
                 yield self._iter_doc
         else:
@@ -328,13 +331,12 @@ class Frames(object):
             d = self._make_dict(self._replacements[1])
             d.pop("_sample_id")
             return d
+
         return None
 
     def _save(self, insert=False):
         if not self._sample._in_db:
-            raise fofu.FrameError(
-                "Sample does not have a dataset, Frames cannot be saved"
-            )
+            return
 
         # @todo avoid local import?
         from fiftyone.core.labels import _FrameLabels
@@ -449,9 +451,23 @@ class Frame(Document):
                 raise ValueError(
                     "`dataset` arg must be provided if frame is in a dataset"
                 )
+
             sample._set_backing_doc(doc, dataset=dataset)
 
         return sample
+
+    @classmethod
+    def _rename_field(cls, collection_name, field_name, new_field_name):
+        for sample_collection in cls._instances[collection_name].values():
+            for document in sample_collection.values():
+                data = document._doc._data
+                data[new_field_name] = data.pop(field_name, None)
+
+    @classmethod
+    def _purge_field(cls, collection_name, field_name):
+        for sample_collection in cls._instances[collection_name].values():
+            for document in sample_collection.values():
+                document._doc._data.pop(field_name, None)
 
     def _set_backing_doc(self, doc, dataset=None):
         """Sets the backing doc for the sample.
