@@ -307,6 +307,7 @@ class StateController(Namespace):
         find_d = {"_sample_id": ObjectId(sample_id)}
         labels = etav.VideoLabels()
         frames = list(state.dataset._frame_collection.find(find_d))
+        convert(frames)
         sample = state.dataset[sample_id].to_mongo_dict()
 
         for frame_dict in frames:
