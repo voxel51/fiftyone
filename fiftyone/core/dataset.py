@@ -5,7 +5,6 @@ FiftyOne datasets.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
 from copy import deepcopy
 import datetime
 import fnmatch
@@ -2092,8 +2091,9 @@ def _load_dataset(name):
         runner = get_migration_runner(dataset_doc.version, VERSION)
         if runner.has_revisions:
             logger.info(
-                "Migrating dataset '%s' to the current version (%s)"
-                % (dataset_doc.name, VERSION)
+                "Migrating dataset '%s' to the current version (%s)",
+                dataset_doc.name,
+                VERSION,
             )
             runner.run(dataset_names=[dataset_doc.name])
 
