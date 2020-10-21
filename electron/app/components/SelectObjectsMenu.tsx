@@ -1,7 +1,8 @@
 import React from "react";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 
 import * as atoms from "../recoil/atoms";
+import * as selectors from "../recoil/selectors";
 import { listSampleObjects } from "../utils/labels";
 
 import DropdownTag from "./Tags/DropdownTag";
@@ -10,7 +11,14 @@ const SelectObjectsMenu = ({ sample }) => {
   const [selectedObjects, setSelectedObjects] = useRecoilState(
     atoms.selectedObjects
   );
-  const sampleObjects = listSampleObjects(sample);
+  const sampleFrameData =
+    useRecoilValue(atoms.sampleFrameData(sample._id)) || [];
+  const isVideo = useRecoilValue(selectors.mediaType) == "video";
+
+  const sampleObjects = !isVideo
+    ? listSampleObjects(sample)
+    : sampleFrameData.map(listSampleObjects).flat();
+
   const numTotalSelectedObjects = Object.keys(selectedObjects).length;
   const numSampleObjects = sampleObjects.length;
   const numSampleSelectedObjects = Object.entries(selectedObjects).reduce(
