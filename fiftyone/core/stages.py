@@ -539,13 +539,12 @@ class _FilterListField(FilterField):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        if view.media_type == fom.VIDEO and self._filter_field.startswith("frames."):
+        if view.media_type == fom.VIDEO and self._filter_field.startswith(
+            "frames."
+        ):
             return self._get_frames_pipeline()
 
-        pipeline = [
-            {
-            }
-        ]
+        pipeline = [{}]
 
         if self._only_matches:
             pipeline.append(
@@ -572,7 +571,7 @@ class _FilterListField(FilterField):
 
     @property
     def _frame_filter_field(self):
-        return self._filter_field[len("frames."):]
+        return self._filter_field[len("frames.") :]
 
     def _get_frames_pipeline(self):
         field, array = self._filter_field.split(".")[1:]
@@ -584,18 +583,22 @@ class _FilterListField(FilterField):
                             "input": "$_frames",
                             "as": "frame",
                             "in": {
-                                "$mergeObjects": ["$$frame", 
-                                    {field: {
-                                        array: {
-                                        "$filter": {
-                                            "input": "$$frame." + self._frame_filter_field,
-                                            "cond": self._get_mongo_filter(),
+                                "$mergeObjects": [
+                                    "$$frame",
+                                    {
+                                        field: {
+                                            array: {
+                                                "$filter": {
+                                                    "input": "$$frame."
+                                                    + self._frame_filter_field,
+                                                    "cond": self._get_mongo_filter(),
+                                                }
+                                            }
                                         }
-                                        }
-                                    }
-                                }]
-                            }
-                         }
+                                    },
+                                ]
+                            },
+                        }
                     }
                 }
             }
@@ -1228,7 +1231,8 @@ class Select(ViewStage):
 
     def _validate_params(self):
         # Ensures that ObjectIDs are valid
-        self.to_mongo()
+        for id in self._sample_ids:
+            ObjectId(id)
 
 
 class SelectFields(ViewStage):
