@@ -1551,15 +1551,17 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
 
-    def _attach_frames(self, hide_frames=False):
+    def _attach_frames(self, pipeline, hide_frames=False):
         key = "_frames" if hide_frames else "frames"
+
         # pylint: disable=no-member
         return [
             {
                 "$lookup": {
                     "from": self._frame_collection_name,
-                    "localField": "_id",
-                    "foreignField": "_sample_id",
+                    "let": {"_sample_id": "$_id"},
+                    "pipeline": [{"$match": {"$_sample_id": "$$_sample_id"}}]
+                    + pipeline,
                     "as": key,
                 }
             }

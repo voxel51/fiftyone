@@ -21,8 +21,12 @@ from fiftyone.core.odm.sample import (
     DatasetSampleDocument,
     default_sample_fields,
 )
+from fiftyone.core.odm.frame import DatasetFrameSampleDocument
 
 import eta.core.utils as etau
+
+
+_FRAMES_PREFIX = "frames."
 
 
 class ViewStage(object):
@@ -60,7 +64,7 @@ class ViewStage(object):
         """
         return None
 
-    def get_selected_fields(self):
+    def get_selected_fields(self, frames=False):
         """Returns a list of fields that have been selected by the stage, if
         any.
         Returns:
@@ -68,7 +72,7 @@ class ViewStage(object):
         """
         return None
 
-    def get_excluded_fields(self):
+    def get_excluded_fields(self, frames=False):
         """Returns a list of fields that have been excluded by the stage, if
         any.
         Returns:
@@ -86,6 +90,18 @@ class ViewStage(object):
             a MongoDB aggregation pipeline (list of dicts)
         """
         raise NotImplementedError("subclasses must implement `to_mongo()`")
+
+    def to_frames_mongo(self, view):
+        """Returns the MongoDB version of the stage for the frames pipeline, if
+        any.
+
+        Args:
+            view: the view
+
+        Returns:
+            a MongoDB aggregation pipeline (list of dicts)
+        """
+        return []
 
     def validate(self, sample_collection):
         """Validates that the stage can be applied to the given collection.
@@ -273,8 +289,13 @@ class ExcludeFields(ViewStage):
         """The list of field names to exclude."""
         return self._field_names
 
-    def get_excluded_fields(self):
-        return self._field_names
+    def get_excluded_fields(self, frames=False):
+        if frames:
+            fn = lambda n: n.startswith(_FRAMES_PREFIX)
+        else:
+            fn = lambda n: not n.startswith(_FRAMES_PREFIX)
+
+        return list(filter(fn, self._field_names))
 
     def to_mongo(self, view):
         """Returns the MongoDB version of the stage.
@@ -282,7 +303,10 @@ class ExcludeFields(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        return [{"$unset": self._field_names}]
+        return [{"$unset": self.get_excluded_fields()}]
+
+    def to_frames_mongo(self, view):
+        return [{"$unset": self.get_excluded_fields(frames=True)}]
 
     def _kwargs(self):
         return [["field_names", self._field_names]]
@@ -458,12 +482,22 @@ class FilterField(ViewStage):
         """Whether to only include samples that match the filter."""
         return self._only_matches
 
+    @property
+    def _frame_filter_field(self):
+        return self._field[len(_FRAMES_PREFIX) :]
+
     def to_mongo(self, view):
         """Returns the MongoDB version of the stage.
 
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
+        if view.media_type == fom.VIDEO and self._field.startswith(
+            _FRAMES_PREFIX
+        ):
+            pass
+            # return self._get_frames_pipeline()
+
         pipeline = [
             {
                 "$addFields": {
@@ -540,7 +574,7 @@ class _FilterListField(FilterField):
             a MongoDB aggregation pipeline (list of dicts)
         """
         if view.media_type == fom.VIDEO and self._filter_field.startswith(
-            "frames."
+            _FRAMES_PREFIX
         ):
             return self._get_frames_pipeline()
 
@@ -579,10 +613,6 @@ class _FilterListField(FilterField):
             )
 
         return pipeline
-
-    @property
-    def _frame_filter_field(self):
-        return self._filter_field[len("frames.") :]
 
     def _get_frames_pipeline(self):
         field, array = self._filter_field.split(".")[1:]
@@ -1328,9 +1358,18 @@ class SelectFields(ViewStage):
         """The list of field names to select."""
         return self._field_names or []
 
-    def get_selected_fields(self):
-        default_fields = default_sample_fields(DatasetSampleDocument)
-        return list(set(self.field_names) | set(default_fields))
+    def get_selected_fields(self, frames=False):
+        doc_cls = (
+            DatasetFrameSampleDocument if frames else DatasetSampleDocument
+        )
+        default_fields = default_sample_fields(doc_cls)
+
+        if frames:
+            fn = lambda n: n.startswith(_FRAMES_PREFIX)
+        else:
+            fn = lambda n: not n.startswith(_FRAMES_PREFIX)
+
+        return list(set(filter(fn, self._field_names)) | set(default_fields))
 
     def to_mongo(self, view):
         """Returns the MongoDB version of the stage.
@@ -1341,7 +1380,11 @@ class SelectFields(ViewStage):
         default_fields = default_sample_fields(
             DatasetSampleDocument, include_private=True
         )
-        selected_fields = list(set(self.field_names) | set(default_fields))
+        selected_fields = self.get_selected_fields()
+        return [{"$project": {fn: True for fn in selected_fields}}]
+
+    def to_frames_mongo(self, view):
+        selected_fields = self.get_selected_fields(frames=True)
         return [{"$project": {fn: True for fn in selected_fields}}]
 
     def _kwargs(self):
