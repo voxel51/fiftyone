@@ -14,6 +14,7 @@ import * as atoms from "../recoil/atoms";
 import { getSocket } from "../utils/socket";
 
 import {
+  useEventHandler,
   useKeydownHandler,
   useResizeHandler,
   useFrameLabels,
@@ -337,6 +338,11 @@ const SampleModal = ({
     }
   });
 
+  const frameNumberRef = useRef(null);
+  useEventHandler(playerRef.current, "timeupdate", (e) => {
+    frameNumberRef.current = e.data.frame_number;
+  });
+
   const getDisplayOptions = (
     values,
     countOrExists,
@@ -500,7 +506,10 @@ const SampleModal = ({
       <div className="sidebar">
         <div className="sidebar-content">
           <div className="select-objects-wrapper">
-            <SelectObjectsMenu sample={sample} />
+            <SelectObjectsMenu
+              sample={sample}
+              frameNumberRef={frameNumberRef}
+            />
           </div>
           <h2>
             Metadata
