@@ -23,6 +23,7 @@ from fiftyone.core.odm.frame import (
 )
 import fiftyone.core.utils as fou
 
+
 #
 # This class is instantiated automatically and depends on an owning
 # :class:`fiftyone.core.sample.Sample`. Not for independent use or direct
@@ -445,6 +446,19 @@ class Frame(Document):
             sample._set_backing_doc(doc, dataset=dataset)
 
         return sample
+
+    @classmethod
+    def _rename_field(cls, collection_name, field_name, new_field_name):
+        for sample_collection in cls._instances[collection_name].values():
+            for document in sample_collection.values():
+                data = document._doc._data
+                data[new_field_name] = data.pop(field_name, None)
+
+    @classmethod
+    def _purge_field(cls, collection_name, field_name):
+        for sample_collection in cls._instances[collection_name].values():
+            for document in sample_collection.values():
+                document._doc._data.pop(field_name, None)
 
     def _set_backing_doc(self, doc, dataset=None):
         """Sets the backing doc for the sample.
