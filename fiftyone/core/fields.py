@@ -286,35 +286,6 @@ class ArrayField(mongoengine.fields.BinaryField, Field):
             self.error("Only numpy arrays may be used in an array field")
 
 
-class ImageLabelsField(Field):
-    """A field that stores an ``eta.core.image.ImageLabels`` instance.
-
-    :class:`ImageLabelsField` instances accept ``eta.core.image.ImageLabels``
-    instances or serialized dict representations of them. The underlying data
-    is stored as a serialized dictionary in the dataset and always retrieved as
-    an ``eta.core.image.ImageLabels`` instance.
-    """
-
-    def to_mongo(self, value):
-        if value is None:
-            return None
-
-        return value.serialize()
-
-    def to_python(self, value):
-        if value is None or isinstance(value, etai.ImageLabels):
-            return value
-
-        return etai.ImageLabels.from_dict(value)
-
-    def validate(self, value):
-        if not isinstance(value, (dict, etai.ImageLabels)):
-            self.error(
-                "Only dicts and `eta.core.image.ImageLabels` instances may be "
-                "used in an ImageLabels field"
-            )
-
-
 class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
     """A field that stores instances of a given type of
     :class:`fiftyone.core.odm.BaseEmbeddedDocument` object.

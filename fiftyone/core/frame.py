@@ -59,21 +59,26 @@ class Frames(object):
     def _set_replacement(self, doc):
         self._replacements[doc.get_field("frame_number")] = doc
 
-    def _save_replacements(self):
+    def _save_replacements(self, insert=False):
         if not self._replacements:
             return
 
-        self._frame_collection.bulk_write(
-            [
-                ReplaceOne(
-                    self._make_filter(frame_number, doc),
-                    self._make_dict(doc),
-                    upsert=True,
-                )
-                for frame_number, doc in self._replacements.items()
-            ],
-            ordered=False,
-        )
+        if insert:
+            self._frame_collection.insert_many(
+                [self._make_dict(doc) for doc in self._replacements.values()]
+            )
+        else:
+            self._frame_collection.bulk_write(
+                [
+                    ReplaceOne(
+                        self._make_filter(frame_number, doc),
+                        self._make_dict(doc),
+                        upsert=True,
+                    )
+                    for frame_number, doc in self._replacements.items()
+                ],
+                ordered=False,
+            )
         self._replacements = {}
 
     def _make_filter(self, frame_number, doc):
@@ -133,6 +138,7 @@ class Frames(object):
             if d is None:
                 d = default_d
                 self._sample._doc.frames["frame_count"] += 1
+
             doc = self._sample._dataset._frame_dict_to_doc(d)
             self._set_replacement(doc)
         else:
@@ -159,8 +165,8 @@ class Frames(object):
             self._sample._doc.frames["frame_count"] += 1
         elif self._sample._in_db:
             if (
-                self._iter is not None
-                or frame_number != self._iter_doc.get_field("frame_number")
+                self._iter_doc is not None
+                and frame_number != self._iter_doc.get_field("frame_number")
             ):
                 find_d = {
                     "_sample_id": self._sample._id,
@@ -298,6 +304,7 @@ class Frames(object):
                     self._iter_doc = self._sample._dataset._frame_dict_to_doc(
                         d
                     )
+
                 self._set_replacement(self._iter_doc)
                 yield self._iter_doc
         else:
@@ -314,13 +321,12 @@ class Frames(object):
             d = self._make_dict(self._replacements[1])
             d.pop("_sample_id")
             return d
+
         return None
 
-    def _save(self):
+    def _save(self, insert=False):
         if not self._sample._in_db:
-            raise fofu.FrameError(
-                "Sample does not have a dataset, Frames cannot be saved"
-            )
+            return
 
         # @todo avoid local import?
         from fiftyone.core.labels import _FrameLabels
@@ -347,7 +353,7 @@ class Frames(object):
 
             self._sample._doc.frames.first_frame = _FrameLabels(**d)
 
-        self._save_replacements()
+        self._save_replacements(insert)
 
     def _serve(self, sample):
         self._sample = sample
@@ -435,6 +441,7 @@ class Frame(Document):
                 raise ValueError(
                     "`dataset` arg must be provided if frame is in a dataset"
                 )
+
             sample._set_backing_doc(doc, dataset=dataset)
 
         return sample

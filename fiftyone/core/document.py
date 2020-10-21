@@ -292,8 +292,8 @@ class Document(object):
 
     @classmethod
     def _rename_field(cls, collection_name, field_name, new_field_name):
-        """Renames any field values for in-memory document instances that belong
-        to the specified collection.
+        """Renames any field values for in-memory document instances that
+        belong to the specified collection.
 
         Args:
             collection_name: the name of the MongoDB collection

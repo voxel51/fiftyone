@@ -14,7 +14,11 @@ import eta.core.utils as etau
 import eta.core.web as etaw
 
 import fiftyone.types as fot
+import fiftyone.utils.bdd as foub
+import fiftyone.utils.coco as fouc
 import fiftyone.utils.data as foud
+import fiftyone.utils.hmdb51 as fouh
+import fiftyone.utils.ucf101 as fouu
 import fiftyone.zoo as foz
 
 
@@ -61,11 +65,11 @@ class QuickstartDataset(FiftyOneDataset):
 
         # Get metadata
         logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
         classes = foud.FiftyOneDatasetImporter.get_classes(dataset_dir)
         num_samples = foud.FiftyOneDatasetImporter.get_num_samples(dataset_dir)
         logger.info("Found %d samples", num_samples)
 
-        dataset_type = fot.FiftyOneDataset()
         return dataset_type, num_samples, classes
 
 
@@ -102,18 +106,356 @@ class VideoQuickstartDataset(FiftyOneDataset):
 
         # Get metadata
         logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneVideoLabelsDataset()
         num_samples = foud.FiftyOneVideoLabelsDatasetImporter.get_num_samples(
             dataset_dir
         )
         logger.info("Found %d samples", num_samples)
 
-        dataset_type = fot.FiftyOneVideoLabelsDataset()
         return dataset_type, num_samples, None
+
+
+class COCO2014Dataset(FiftyOneDataset):
+    """COCO is a large-scale object detection, segmentation, and captioning
+    dataset.
+
+    This version contains images, bounding boxes, segmentations, and labels for
+    the 2014 version of the dataset.
+
+    Notes:
+        - COCO defines 91 classes but the data only uses 80 classes
+        - some images from the train and validation sets don't have annotations
+        - the test set does not have annotations
+        - COCO 2014 and 2017 uses the same images, but different train/val/test
+            splits
+
+    Dataset size:
+        37.57 GiB
+
+    Source:
+        http://cocodataset.org/#home
+    """
+
+    @property
+    def name(self):
+        return "coco-2014-segmentation"
+
+    @property
+    def supported_splits(self):
+        return ("test", "train", "validation")
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        # Download dataset
+        images_dir, anno_path = fouc.download_coco_dataset_split(
+            scratch_dir, split, year="2014", cleanup=True
+        )
+
+        # Build dataset
+        logger.info("Organizing dataset")
+        data_dir = os.path.join(dataset_dir, "data")
+        labels_path = os.path.join(dataset_dir, "labels.json")
+        etau.move_dir(images_dir, data_dir)
+        etau.move_file(anno_path, labels_path)
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.COCODetectionDataset()
+        _, classes, _, images, _ = fouc.load_coco_detection_annotations(
+            labels_path
+        )
+        num_samples = len(images)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, classes
+
+
+class COCO2017Dataset(FiftyOneDataset):
+    """COCO is a large-scale object detection, segmentation, and captioning
+    dataset.
+
+    This version contains images, bounding boxes, segmentations, and labels for
+    the 2017 version of the dataset.
+
+    Notes:
+        - COCO defines 91 classes but the data only uses 80 classes
+        - some images from the train and validation sets don't have annotations
+        - the test set does not have annotations
+        - COCO 2014 and 2017 uses the same images, but different train/val/test
+            splits
+
+    Dataset size:
+        25.20 GiB
+
+    Source:
+        http://cocodataset.org/#home
+    """
+
+    @property
+    def name(self):
+        return "coco-2017-segmentation"
+
+    @property
+    def supported_splits(self):
+        return ("test", "train", "validation")
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        # Download dataset
+        images_dir, anno_path = fouc.download_coco_dataset_split(
+            scratch_dir, split, year="2017", cleanup=True
+        )
+
+        # Build dataset
+        logger.info("Organizing dataset")
+        data_dir = os.path.join(dataset_dir, "data")
+        labels_path = os.path.join(dataset_dir, "labels.json")
+        etau.move_dir(images_dir, data_dir)
+        etau.move_file(anno_path, labels_path)
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.COCODetectionDataset()
+        _, classes, _, images, _ = fouc.load_coco_detection_annotations(
+            labels_path
+        )
+        num_samples = len(images)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, classes
+
+
+class BDD100KDataset(FiftyOneDataset):
+    """The Berkeley Deep Drive (BDD) dataset is one of the largest and most
+    diverese video datasets for autonomous vehicles.
+
+    The BDD100k dataset contains 100,000 video clips collected from more than
+    50,000 rides covering New York, San Francisco Bay Area, and other regions.
+    The dataset contains diverse scene types such as city streets, residential
+    areas, and highways. Furthermore, the videos were recorded in diverse
+    weather conditions at different times of the day.
+
+    The videos are split into training (70K), validation (10K) and testing
+    (20K) sets. Each video is 40 seconds long with 720p resolution and a frame
+    rate of 30fps. The frame at the 10th second of each video is annotated for
+    image classification, detection, and segmentation tasks.
+
+    This version of the dataset contains only the 100K images extracted from
+    the videos as described above, together with the image classification,
+    detection, and segmentation labels.
+
+    **Manual download instructions**
+
+    This dataset requires you to download the source data manually. You must
+    register at https://bdd-data.berkeley.edu/ in order to get the link to
+    download the dataset.
+
+    After extracting the download, you will find contents similar to::
+
+        bdd100k/
+            labels/
+                bdd100k_labels_images_train.json
+                bdd100k_labels_images_val.json
+            images/
+                100k/
+                    train/
+                    test/
+                    val/
+            ...
+
+    You must provide the path to the above ``bdd100k/`` folder when loading
+    this dataset.
+
+    Dataset size:
+        7.1GB
+
+    Source:
+        https://bdd-data.berkeley.edu
+
+    Args:
+        source_dir (None): the path to the downloaded ``bdd100k/`` folder on
+            disk
+        copy_files (True): whether to move (False) or create copies (True) of
+            the source files when populating the dataset directory
+    """
+
+    def __init__(self, source_dir=None, copy_files=True):
+        self.source_dir = source_dir
+        self.copy_files = copy_files
+
+    @property
+    def name(self):
+        return "bdd100k"
+
+    @property
+    def supported_splits(self):
+        return ("train", "validation", "test")
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        #
+        # BDD100k must be manually downloaded by the user and placed in
+        # `self.source_dir` or `scratch_dir`
+        #
+        # The download contains all splits, so we remove the split from
+        # `dataset_dir` and download the whole
+        # dataset (only if necessary)
+        #
+        dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
+        split_dir = os.path.join(dataset_dir, split)
+        if not os.path.exists(split_dir):
+            bdd100k_dir = self.source_dir or scratch_dir
+            foub.wrangle_bdd100k_download(
+                bdd100k_dir, dataset_dir, copy_files=self.copy_files
+            )
+
+        # Get metadata
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.BDDDataset()
+        num_samples = foub.BDDDatasetImporter.get_num_samples(split_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
+class HMDB51Dataset(FiftyOneDataset):
+    """HMDB51 is an action recognition dataset containing a total of 6,766
+    clips distributed across 51 action classes.
+
+    Dataset size:
+        2.16 GB
+
+    Source:
+        https://serre-lab.clps.brown.edu/resource/hmdb-a-large-human-motion-database
+
+    Args:
+        fold (1): the test/train fold to use to arrange the files on disk. The
+            supported values are ``(1, 2, 3)``
+    """
+
+    def __init__(self, fold=1):
+        self.fold = fold
+
+    @property
+    def name(self):
+        return "hmdb51"
+
+    @property
+    def parameters(self):
+        return {"fold": self.fold}
+
+    @property
+    def supported_splits(self):
+        return ("train", "test", "other")
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        #
+        # HMDB51 is distributed as a single download that contains all splits,
+        # so we remove the split from `dataset_dir` and download the whole
+        # dataset (only if necessary)
+        #
+        dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
+        split_dir = os.path.join(dataset_dir, split)
+        if not os.path.exists(split_dir):
+            fouh.download_hmdb51_dataset(
+                dataset_dir,
+                scratch_dir=scratch_dir,
+                fold=self.fold,
+                cleanup=False,
+            )
+
+        # Get metadata
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.VideoClassificationDirectoryTree()
+        classes = foud.VideoClassificationDirectoryTreeImporter.get_classes(
+            split_dir
+        )
+        num_samples = foud.VideoClassificationDirectoryTreeImporter.get_num_samples(
+            split_dir
+        )
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, classes
+
+
+class UCF101Dataset(FiftyOneDataset):
+    """UCF101 is an action recognition data set of realistic action videos,
+    collected from YouTube, having 101 action categories. This data set is an
+    extension of UCF50 data set which has 50 action categories.
+
+    With 13,320 videos from 101 action categories, UCF101 gives the largest
+    diversity in terms of actions and with the presence of large variations in
+    camera motion, object appearance and pose, object scale, viewpoint,
+    cluttered background, illumination conditions, etc, it is the most
+    challenging data set to date. As most of the available action recognition
+    data sets are not realistic and are staged by actors, UCF101 aims to
+    encourage further research into action recognition by learning and
+    exploring new realistic action categories.
+
+    The videos in 101 action categories are grouped into 25 groups, where each
+    group can consist of 4-7 videos of an action. The videos from the same
+    group may share some common features, such as similar background, similar
+    viewpoint, etc.
+
+    Dataset size:
+        6.48 GiB
+
+    Source:
+        https://www.crcv.ucf.edu/research/data-sets/ucf101
+
+    Args:
+        fold (1): the test/train fold to use to arrange the files on disk. The
+            supported values are ``(1, 2, 3)``
+    """
+
+    def __init__(self, fold=1):
+        self.fold = fold
+
+    @property
+    def name(self):
+        return "ucf101"
+
+    @property
+    def parameters(self):
+        return {"fold": self.fold}
+
+    @property
+    def supported_splits(self):
+        return ("train", "test")
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        #
+        # UCF101 is distributed as a single download that contains all splits,
+        # so we remove the split from `dataset_dir` and download the whole
+        # dataset (only if necessary)
+        #
+        dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
+        split_dir = os.path.join(dataset_dir, split)
+        if not os.path.exists(split_dir):
+            fouu.download_ucf101_dataset(
+                dataset_dir,
+                scratch_dir=scratch_dir,
+                fold=self.fold,
+                cleanup=False,
+            )
+
+        # Get metadata
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.VideoClassificationDirectoryTree()
+        classes = foud.VideoClassificationDirectoryTreeImporter.get_classes(
+            split_dir
+        )
+        num_samples = foud.VideoClassificationDirectoryTreeImporter.get_num_samples(
+            split_dir
+        )
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, classes
 
 
 AVAILABLE_DATASETS = {
     "quickstart": QuickstartDataset,
     "quickstart-video": VideoQuickstartDataset,
+    "coco-2014-segmentation": COCO2014Dataset,
+    "coco-2017-segmentation": COCO2017Dataset,
+    "bdd100k": BDD100KDataset,
+    "hmdb51": HMDB51Dataset,
+    "ucf101": UCF101Dataset,
 }
 
 
