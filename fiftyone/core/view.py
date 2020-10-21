@@ -201,26 +201,7 @@ class DatasetView(foc.SampleCollection):
             include_private=include_private,
         )
 
-        selected_fields, excluded_fields = self._get_selected_excluded_fields()
-        if selected_fields is not None:
-            field_schema = OrderedDict(
-                {
-                    fn: f
-                    for fn, f in field_schema.items()
-                    if fn in selected_fields
-                }
-            )
-
-        if excluded_fields is not None:
-            field_schema = OrderedDict(
-                {
-                    fn: f
-                    for fn, f in field_schema.items()
-                    if fn not in excluded_fields
-                }
-            )
-
-        return field_schema
+        return self._get_filtered_schema(field_schema)
 
     def get_frame_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
@@ -244,11 +225,13 @@ class DatasetView(foc.SampleCollection):
             a dictionary mapping field names to field types, or ``None`` if
             the dataset is not a video dataset
         """
-        return self._dataset.get_frame_field_schema(
+        field_schema = self._dataset.get_frame_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             include_private=include_private,
         )
+
+        return self._get_filtered_schema(field_schema, frames=True)
 
     def get_tags(self):
         """Returns the list of unique tags of samples in the view.
@@ -348,19 +331,39 @@ class DatasetView(foc.SampleCollection):
         view._stages.append(stage)
         return view
 
-    def _get_selected_excluded_fields(self):
+    def _get_filtered_schema(self, schema, frames=False):
+        selected_fields, excluded_fields = self._get_selected_excluded_fields(
+            frames
+        )
+        if selected_fields is not None:
+            schema = OrderedDict(
+                {fn: f for fn, f in schema.items() if fn in selected_fields}
+            )
+
+        if excluded_fields is not None:
+            schema = OrderedDict(
+                {
+                    fn: f
+                    for fn, f in schema.items()
+                    if fn not in excluded_fields
+                }
+            )
+
+        return schema
+
+    def _get_selected_excluded_fields(self, frames=False):
         selected_fields = None
         excluded_fields = set()
 
         for stage in self._stages:
-            _selected_fields = stage.get_selected_fields()
+            _selected_fields = stage.get_selected_fields(frames)
             if _selected_fields:
                 if selected_fields is None:
                     selected_fields = set(_selected_fields)
                 else:
                     selected_fields.intersection_update(_selected_fields)
 
-            _excluded_fields = stage.get_excluded_fields()
+            _excluded_fields = stage.get_excluded_fields(frames)
             if _excluded_fields:
                 excluded_fields.update(_excluded_fields)
 
