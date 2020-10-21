@@ -341,7 +341,6 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
         box itself.
 
         Args:
-            dobj: a DetectedObject
             tolerance (2): a tolerance, in pixels, when generating an
                 approximate polyline for the instance mask
             filled (True): whether the polyline should be filled
@@ -441,6 +440,29 @@ class Detections(ImageLabel):
 
     detections = fof.ListField(fof.EmbeddedDocumentField(Detection))
 
+    def to_polylines(self, tolerance=2, filled=True):
+        """Returns a :class:`Polylines` representation of this instance.
+
+        For detections with masks, the returned polylines will trace the
+        boundaries of the masks; otherwise, the polylines will trace the
+        bounding boxes themselves.
+
+        Args:
+            tolerance (2): a tolerance, in pixels, when generating approximate
+                polylines for the instance masks
+            filled (True): whether the polylines should be filled
+
+        Returns:
+            a :class:`Polylines`
+        """
+        # pylint: disable=not-an-iterable
+        return Polylines(
+            polylines=[
+                d.to_polyline(tolerance=tolerance, filled=filled)
+                for d in self.detections
+            ]
+        )
+
     def to_image_labels(self, name=None):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
         instance.
@@ -502,21 +524,27 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
     closed = fof.BooleanField(default=False)
     filled = fof.BooleanField(default=False)
 
-    def to_detection(self, mask_size):
+    def to_detection(self, mask_size=None):
         """Returns a :class:`Detection` representation of this instance whose
-        bounding box tightly encloses the polyline and whose mask encodes the
-        polyline's shape.
+        bounding box tightly encloses the polyline.
+
+        If a ``mask_size`` is provided, an instance mask of the specified size
+        encoding the polyline's shape is included.
 
         Args:
-            mask_size: the ``(width, height)`` at which to render the instance
-                mask
+            mask_size (None): an optional ``(width, height)`` at which to
+                render an instance mask for the polyline
 
         Returns:
             a :class:`Detection`
         """
-        # Render bounding box and mask
         polyline = self.to_eta_polyline()
-        bbox, mask = etai.render_bounding_box_and_mask(polyline, mask_size)
+        if mask_size is not None:
+            bbox, mask = etai.render_bounding_box_and_mask(polyline, mask_size)
+        else:
+            bbox = etai.render_bounding_box(polyline)
+            mask = None
+
         xtl, ytl, xbr, ybr = bbox.to_coords()
         bounding_box = [xtl, ytl, (xbr - xtl), (ybr - ytl)]
 
@@ -598,6 +626,27 @@ class Polylines(ImageLabel):
     meta = {"allow_inheritance": True}
 
     polylines = fof.ListField(fof.EmbeddedDocumentField(Polyline))
+
+    def to_detections(self, mask_size=None):
+        """Returns a :class:`Detections` representation of this instance whose
+        bounding boxes tightly enclose the polylines.
+
+        If a ``mask_size`` is provided, instance masks of the specified size
+        encoding the polyline's shape are included in each :class:`Detection`.
+
+        Args:
+            mask_size (None): an optional ``(width, height)`` at which to
+                render instance masks for the polylines
+
+        Returns:
+            a :class:`Detections`
+        """
+        # pylint: disable=not-an-iterable
+        return Detections(
+            detections=[
+                p.to_detection(mask_size=mask_size) for p in self.polylines
+            ]
+        )
 
     def to_image_labels(self, name=None):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
