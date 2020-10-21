@@ -17,11 +17,11 @@ from fiftyone.core.expressions import ViewExpression, ViewField
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+from fiftyone.core.odm.frame import DatasetFrameSampleDocument
 from fiftyone.core.odm.sample import (
     DatasetSampleDocument,
     default_sample_fields,
 )
-from fiftyone.core.odm.frame import DatasetFrameSampleDocument
 
 import eta.core.utils as etau
 
@@ -303,10 +303,18 @@ class ExcludeFields(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        return [{"$unset": self.get_excluded_fields()}]
+        fields = self.get_excluded_fields()
+        if len(fields) == 0:
+            return []
+
+        return [{"$unset": fields}]
 
     def to_frames_mongo(self, view):
-        return [{"$unset": self.get_excluded_fields(frames=True)}]
+        fields = self.get_excluded_fields(frames=True)
+        if len(fields) == 0:
+            return []
+
+        return [{"$unset": [".".join(f.split(".", 1)[1:]) for f in fields]}]
 
     def _kwargs(self):
         return [["field_names", self._field_names]]
@@ -1385,7 +1393,14 @@ class SelectFields(ViewStage):
 
     def to_frames_mongo(self, view):
         selected_fields = self.get_selected_fields(frames=True)
-        return [{"$project": {fn: True for fn in selected_fields}}]
+        return [
+            {
+                "$project": {
+                    ".".join(fn.split(".", 1)[1:]): True
+                    for fn in selected_fields
+                }
+            }
+        ]
 
     def _kwargs(self):
         return [["field_names", self._field_names]]

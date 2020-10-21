@@ -18,6 +18,7 @@ from fiftyone.core.aggregations import Aggregation
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+from fiftyone.core.odm.frame import DatasetFrameSampleDocument
 from fiftyone.core.odm.sample import (
     DatasetSampleDocument,
     default_sample_fields,
@@ -326,6 +327,16 @@ class SampleCollection(object):
         if etau.is_str(field_or_fields):
             field_or_fields = [field_or_fields]
 
+        if self.media_type == fom.VIDEO:
+            frame_fields = list(
+                filter(lambda n: n.startswith("frames."), field_or_fields)
+            )
+            field_or_fields = list(
+                filter(lambda n: not n.startswith("frames."), field_or_fields)
+            )
+        else:
+            frame_fields = []
+
         schema = self.get_field_schema(include_private=True)
         default_fields = set(
             default_sample_fields(
@@ -336,6 +347,23 @@ class SampleCollection(object):
             # We only validate that the root field exists
             field_name = field.split(".", 1)[0]
             if field_name not in schema and field_name not in default_fields:
+                raise ValueError("Field '%s' does not exist" % field_name)
+
+        frame_schema = self.get_frame_field_schema(include_private=True)
+        default_frame_fields = set(
+            default_sample_fields(
+                DatasetFrameSampleDocument,
+                include_private=True,
+                include_id=True,
+            )
+        )
+        for field in frame_fields:
+            # We only validate that the root field exists
+            field_name = field.split(".", 2)[1]
+            if (
+                field_name not in frame_schema
+                and field_name not in default_frame_fields
+            ):
                 raise ValueError("Field '%s' does not exist" % field_name)
 
     def validate_field_type(
@@ -1559,8 +1587,8 @@ class SampleCollection(object):
             {
                 "$lookup": {
                     "from": self._frame_collection_name,
-                    "let": {"_sample_id": "$_id"},
-                    "pipeline": [{"$match": {"$_sample_id": "$$_sample_id"}}]
+                    "let": {"sample_id": "$_id"},
+                    "pipeline": [{"$match": {"_sample_id": "$$sample_id"}}]
                     + pipeline,
                     "as": key,
                 }
