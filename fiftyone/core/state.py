@@ -12,6 +12,7 @@ from bson import json_util
 
 import eta.core.serial as etas
 
+import fiftyone.core.aggregations as foa
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -120,8 +121,44 @@ class StateDescription(etas.Serializable):
         )
 
 
+_IGNORE = ("media_type", "filepath")
+
+
 class DatasetStatistics(etas.Serializable):
-    """@todo"""
+    """Encapsulates the aggregation statistics required by the App's dataset
+    view.
+
+    Attributes:
+        stats: a list of
+            :class:`AggregationResults <fiftyone.core.aggregation.AggregationResult>`
+    """
 
     def __init__(self, view):
-        pass
+        aggregations = [foa.CountValues("tags")]
+        for field_name, field in view.get_field_schema().items():
+            aggregations.append(foa.Count(field_name))
+            if _is_label(field):
+                aggregations.extend(
+                    [
+                        foa.DistinctLabels(field_name),
+                        foa.ConfidenceBounds(field_name),
+                    ]
+                )
+            elif _meets_type(field, foa._VALUE_FIELDS):
+                aggregations.append(foa.CountValues(field_name))
+            elif _meets_type(field, foa._NUMBER_FIELDS):
+                aggregations.append(foa.Bounds(field_name))
+
+        self.stats = view.aggregate(aggregations)
+
+
+def _meets_type(field, t):
+    return isinstance(field, t) or (
+        isinstance(field, fof.ListField) and isinstance(field.field, t)
+    )
+
+
+def _is_label(field):
+    return isinstance(field, fof.EmbeddedDocumentField) and issubclass(
+        field.document_type, fol.Label
+    )

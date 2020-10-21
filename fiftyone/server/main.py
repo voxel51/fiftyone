@@ -219,6 +219,17 @@ class StateController(Namespace):
         return state
 
     @_catch_errors
+    @_load_state(with_stats=True)
+    def on_get_statistics(self, state, _):
+        """Gets the current statistics.
+
+        Returns:
+            a :class:`fiftyone.core.state.DatasetStatistics`
+        """
+        view = state.view if state.view is not None else state.dataset.view()
+        return fos.DatasetStatistics(view)
+
+    @_catch_errors
     @_load_state()
     def on_add_selection(self, state, _id):
         """Adds a sample to the selected samples list.
@@ -273,7 +284,7 @@ class StateController(Namespace):
         return state
 
     @_catch_errors
-    def on_get_video_data(self, state, sample_d):
+    def on_get_video_data(self, sample_d):
         """Gets the frame labels for video samples
 
         Args:

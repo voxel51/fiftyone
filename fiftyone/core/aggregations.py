@@ -15,7 +15,7 @@ import fiftyone.core.utils as fou
 
 _LABELS = (fol.Classifications, fol.Detections, fol.Keypoints, fol.Polylines)
 _NUMBER_FIELDS = (fof.IntField, fof.FloatField)
-_VALUE_FIELDS = (fof.BooleanField, fof.IntField, fof.StringField)
+_VALUE_FIELDS = (fof.BooleanField, fof.StringField)
 
 
 def _attach_and_unwind_frames(dataset):
