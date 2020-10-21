@@ -106,6 +106,9 @@ const Container = styled.div`
     &.right {
       right: 0;
     }
+    &:hover {
+      background-color: ${({ theme }) => theme.overlayButtonHover};
+    }
   }
 
   .sidebar {
@@ -187,6 +190,9 @@ const TopRightNavButtonContainer = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
+  &:hover {
+    background-color: ${({ theme }) => theme.overlayButtonHover};
+  }
 `;
 
 const TopRightNavButton = ({ icon, title, onClick, ...rest }) => {
