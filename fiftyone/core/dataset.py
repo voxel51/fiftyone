@@ -553,7 +553,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of tags
         """
-        return self.aggregate([foa.Distinct("tags")])[0].values
+        return self.aggregate(foa.Distinct("tags")).values
 
     def distinct(self, field):
         """Finds all distinct values of a sample field across the dataset.
@@ -576,9 +576,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
-        for d in self._sample_collection.find():
+        for d in self._aggregate(hide_frames=True):
+            if self.media_type == fom.VIDEO:
+                frames = d.pop("_frames", [])
             doc = self._sample_dict_to_doc(d)
-            yield fos.Sample.from_doc(doc, dataset=self)
+            sample = fos.Sample.from_doc(doc, dataset=self)
+            if self.media_type == fom.VIDEO:
+                sample.frames._set_replacements(frames)
+            yield sample
 
     def add_sample(self, sample, expand_schema=True):
         """Adds the given sample to the dataset.
@@ -1769,9 +1774,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _add_view_stage(self, stage):
         return self.view().add_stage(stage)
 
-    def _aggregate(self, pipeline=None):
+    def _aggregate(self, pipeline=None, hide_frames=False):
         if self.media_type == fom.VIDEO:
-            _pipeline = self._attach_frames()
+            _pipeline = self._attach_frames(hide_frames)
         else:
             _pipeline = []
 

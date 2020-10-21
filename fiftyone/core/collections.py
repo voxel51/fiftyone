@@ -1551,16 +1551,19 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
 
-    def _attach_frames(self):
+    def _attach_frames(self, hide_frames=False):
+        key = "_frames" if hide_frames else "frames"
         # pylint: disable=no-member
-        return {
-            "$lookup": {
-                "from": self._frame_collection_name,
-                "localField": "_id",
-                "foreignField": "_sample_id",
-                "as": "frames",
+        return [
+            {
+                "$lookup": {
+                    "from": self._frame_collection_name,
+                    "localField": "_id",
+                    "foreignField": "_sample_id",
+                    "as": key,
+                }
             }
-        }
+        ]
 
     def _serialize(self):
         # pylint: disable=no-member

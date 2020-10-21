@@ -156,7 +156,7 @@ class DatasetView(foc.SampleCollection):
         selected_fields, excluded_fields = self._get_selected_excluded_fields()
         filtered_fields = self._get_filtered_fields()
 
-        for d in self._aggregate():
+        for d in self._aggregate(hide_frames=True):
             try:
                 doc = self._dataset._sample_dict_to_doc(d)
                 yield fos.SampleView(
@@ -284,14 +284,7 @@ class DatasetView(foc.SampleCollection):
         d["samples"] = samples
         return d
 
-    def _aggregate(self, pipeline=None):
-        """Calls the view's current MongoDB aggregation pipeline.
-        Args:
-            pipeline (None): an optional aggregation pipeline (list of dicts)
-                to append to the view's pipeline before calling it
-        Returns:
-            an iterable over the aggregation result
-        """
+    def _aggregate(self, pipeline=None, hide_frames=False):
         _pipeline = []
 
         for s in self._stages:
@@ -300,7 +293,7 @@ class DatasetView(foc.SampleCollection):
         if pipeline is not None:
             _pipeline.extend(pipeline)
 
-        return self._dataset._aggregate(_pipeline)
+        return self._dataset._aggregate(_pipeline, hide_frames)
 
     @property
     def _doc(self):
