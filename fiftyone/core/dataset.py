@@ -26,6 +26,7 @@ import fiftyone as fo
 from fiftyone.constants import VERSION
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
+import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 from fiftyone.migrations import get_migration_runner
@@ -530,6 +531,35 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             subfield=subfield,
         )
 
+    def add_frame_field(
+        self, field_name, ftype, embedded_doc_type=None, subfield=None
+    ):
+        """Adds a new frame-level field to the dataset.
+
+        Only applicable to video datasets.
+
+        Args:
+            field_name: the field name
+            ftype: the field type to create. Must be a subclass of
+                :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): the
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the
+                field. Used only when ``ftype`` is an embedded
+                :class:`fiftyone.core.fields.EmbeddedDocumentField`
+            subfield (None): the type of the contained field. Used only when
+                ``ftype`` is a :class:`fiftyone.core.fields.ListField` or
+                :class:`fiftyone.core.fields.DictField`
+        """
+        if self.media_type != fom.VIDEO:
+            raise ValueError("Only video datasets have frame fields")
+
+        self._frame_doc_cls.add_field(
+            field_name,
+            ftype,
+            embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
+        )
+
     def delete_sample_field(self, field_name):
         """Deletes the field from all samples in the dataset.
 
@@ -541,6 +571,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._sample_doc_cls.delete_field(field_name)
         fos.Sample._purge_field(self._sample_collection_name, field_name)
+
+    def delete_frame_field(self, field_name):
+        """Deletes the frame-level field from all samples in the dataset.
+
+        Only applicable to video datasets.
+
+        Args:
+            field_name: the field name
+
+        Raises:
+            AttributeError: if the field does not exist
+        """
+        if self.media_type != fom.VIDEO:
+            raise ValueError("Only video datasets have frame fields")
+
+        self._frame_doc_cls.delete_field(field_name, is_frame_field=True)
+        fofr.Frame._purge_field(self._frame_collection_name, field_name)
 
     def get_tags(self):
         """Returns the list of unique tags of samples in the dataset.
@@ -832,6 +879,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_doc_cls.rename_field(field_name, new_field_name)
         fos.Sample._rename_field(
             self._sample_collection_name, field_name, new_field_name
+        )
+
+    def rename_frame_field(self, field_name, new_field_name):
+        """Renames the frame-level field to the given new name.
+
+        Only applicable to video datasets.
+
+        Args:
+            field_name: the field name
+            new_field_name: the new field name
+        """
+        if self.media_type != fom.VIDEO:
+            raise ValueError("Only video datasets have frame fields")
+
+        self._frame_doc_cls.rename_field(
+            field_name, new_field_name, is_frame_field=True
+        )
+        fofr.Frame._rename_field(
+            self._frame_collection_name, field_name, new_field_name
         )
 
     def save(self):
@@ -1991,6 +2057,7 @@ def _create_dataset(name, persistent=False, media_type=None):
     frames_collection_name = "frames." + sample_collection_name
     frame_doc_cls = _create_frame_document_cls(frames_collection_name)
 
+    # @todo add `frames_collection_name` to dataset document too
     dataset_doc = foo.DatasetDocument(
         media_type=media_type,
         name=name,
