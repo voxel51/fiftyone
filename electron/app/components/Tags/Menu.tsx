@@ -37,6 +37,7 @@ const Menu = ({ items, onClose, onSelect, ...rest }) => {
           {items.map((item, i) => (
             <MenuItem
               key={i}
+              disabled={item.disabled}
               onClick={() => onSelect(item)}
               classes={{ root: "item" }}
             >

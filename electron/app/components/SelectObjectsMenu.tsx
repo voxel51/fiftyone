@@ -71,25 +71,31 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
       } selected`}
       onSelect={(item) => item.action()}
       onOpen={() => refresh()}
+      title="Click on objects in the media viewer to select them"
       menuItems={[
-        numSampleSelectedObjects < sampleObjects.length && {
+        sampleObjects.length && {
           name: "Select all (current sample)",
+          disabled: numSampleSelectedObjects >= sampleObjects.length,
           action: () => selectAllInSample(),
         },
-        numSampleSelectedObjects > 0 && {
+        sampleObjects.length && {
           name: "Unselect all (current sample)",
+          disabled: !numSampleSelectedObjects,
           action: () => unselectAllInSample(),
         },
-        numFrameSelectedObjects < frameObjects.length && {
+        frameObjects.length && {
           name: "Select all (current frame)",
+          disabled: numFrameSelectedObjects >= frameObjects.length,
           action: () => selectAllInFrame(),
         },
-        numFrameSelectedObjects > 0 && {
+        frameObjects.length && {
           name: "Unselect all (current frame)",
+          disabled: !numFrameSelectedObjects,
           action: () => unselectAllInFrame(),
         },
-        numTotalSelectedObjects && {
+        {
           name: "Clear selection",
+          disabled: !numTotalSelectedObjects,
           action: () => setSelectedObjects({}),
         },
       ].filter(Boolean)}
