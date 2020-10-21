@@ -1531,9 +1531,6 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         skip_non_categorical (False): whether to skip non-categorical frame
             attributes (True) or cast them to strings (False)
         skip_unlabeled (False): whether to skip unlabeled images when importing
-        shuffle (False): whether to randomly shuffle the order in which the
-            samples are imported
-        seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
@@ -1665,9 +1662,6 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
         skip_non_categorical (False): whether to skip non-categorical frame
             attributes (True) or cast them to strings (False)
         skip_unlabeled (False): whether to skip unlabeled videos when importing
-        shuffle (False): whether to randomly shuffle the order in which the
-            samples are imported
-        seed (None): a random seed to use when shuffling
         max_samples (None): a maximum number of samples to import. By default,
             all samples are imported
     """
@@ -1682,7 +1676,11 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
         skip_non_categorical=False,
         skip_unlabeled=False,
         max_samples=None,
+        **kwargs
     ):
+        for arg in kwargs:
+            logger.warning("Ignoring unsupported parameter '%s'", arg)
+
         super().__init__(
             dataset_dir, skip_unlabeled=skip_unlabeled, max_samples=max_samples
         )
