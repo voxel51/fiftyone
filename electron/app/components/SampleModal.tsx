@@ -163,6 +163,11 @@ const Container = styled.div`
       vertical-align: middle;
     }
   }
+
+  .select-objects-wrapper {
+    margin-top: 1em;
+    margin-bottom: -1em;
+  }
 `;
 
 const TopRightNavButtonsContainer = styled.div`
@@ -494,6 +499,9 @@ const SampleModal = ({
       </div>
       <div className="sidebar">
         <div className="sidebar-content">
+          <div className="select-objects-wrapper">
+            <SelectObjectsMenu sample={sample} />
+          </div>
           <h2>
             Metadata
             <span className="push-right" />
@@ -504,7 +512,6 @@ const SampleModal = ({
           {formatMetadata(sample.metadata).map(({ name, value }) => (
             <Row key={"metadata-" + name} name={name} value={value} />
           ))}
-          <SelectObjectsMenu sample={sample} />
           <h2>
             Display Options
             <span className="push-right" />
