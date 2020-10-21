@@ -1551,6 +1551,17 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
 
+    def _attach_frames(self):
+        # pylint: disable=no-member
+        return {
+            "$lookup": {
+                "from": self._frame_collection_name,
+                "localField": "_id",
+                "foreignField": "_sample_id",
+                "as": "frames",
+            }
+        }
+
     def _serialize(self):
         # pylint: disable=no-member
         return self._doc.to_dict(extended=True)

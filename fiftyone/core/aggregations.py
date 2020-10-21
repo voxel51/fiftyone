@@ -18,16 +18,8 @@ _NUMBER_FIELDS = (fof.IntField, fof.FloatField)
 _VALUE_FIELDS = (fof.BooleanField, fof.StringField)
 
 
-def _attach_and_unwind_frames(dataset):
+def _unwind_frames(dataset):
     return [
-        {
-            "$lookup": {
-                "from": dataset._frame_collection_name,
-                "localField": "_id",
-                "foreignField": "_sample_id",
-                "as": "frames",
-            }
-        },
         {"$unwind": "frames"},
     ]
 
@@ -68,7 +60,7 @@ class Aggregation(object):
             try:
                 field = frame_schema["frames"][field_name]
                 path = "$frames.%s" % field_name
-                return field, path, _attach_and_unwind_frames(dataset)
+                return field, path, _unwind_frames(dataset)
             except:
                 pass
 

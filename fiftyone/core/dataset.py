@@ -1770,17 +1770,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self.view().add_stage(stage)
 
     def _aggregate(self, pipeline=None):
-        """Calls the current MongoDB aggregation pipeline on the dataset.
-        Args:
-            pipeline (None): an optional aggregation pipeline (list of dicts)
-                to aggregate on
-        Returns:
-            an iterable over the aggregation result
-        """
-        if pipeline is None:
-            pipeline = []
+        if self.media_type == fom.VIDEO:
+            _pipeline = self._attach_frames()
+        else:
+            _pipeline = []
 
-        return self._sample_collection.aggregate(pipeline, allowDiskUse=True)
+        if pipeline is not None:
+            _pipeline += pipeline
+
+        return self._sample_collection.aggregate(_pipeline, allowDiskUse=True)
 
     @property
     def _sample_collection_name(self):
