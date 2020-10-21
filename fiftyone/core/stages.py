@@ -544,7 +544,18 @@ class _FilterListField(FilterField):
         ):
             return self._get_frames_pipeline()
 
-        pipeline = [{}]
+        pipeline = [
+            {
+                "$addFields": {
+                    self._filter_field: {
+                        "$filter": {
+                            "input": "$" + self._filter_field,
+                            "cond": self._get_mongo_filter(),
+                        }
+                    }
+                }
+            }
+        ]
 
         if self._only_matches:
             pipeline.append(
@@ -604,7 +615,45 @@ class _FilterListField(FilterField):
             }
         ]
 
-        # todo only matches
+        if self._only_matches:
+            pipeline.append(
+                {
+                    "$match": {
+                        "$expr": {
+                            "$gt": [
+                                {
+                                    "$size": {
+                                        "$ifNull": [
+                                            {
+                                                "$filter": {
+                                                    "input": "$_frames",
+                                                    "as": "frame",
+                                                    "cond": {
+                                                        "$gt": [
+                                                            {
+                                                                "$size": {
+                                                                    "$ifNull": [
+                                                                        "$$frame."
+                                                                        + self._frame_filter_field,
+                                                                        [],
+                                                                    ]
+                                                                }
+                                                            },
+                                                            0,
+                                                        ]
+                                                    },
+                                                }
+                                            },
+                                            [],
+                                        ]
+                                    }
+                                },
+                                0,
+                            ]
+                        }
+                    }
+                }
+            )
 
         return pipeline
 
