@@ -473,7 +473,10 @@ const SampleModal = ({
             defaultOverlayOptions={savedOverlayOptions}
             selectedObjects={selectedObjectIDs}
             onSelectObject={(id) => {
-              toggleSelectedObject(id, sample._id);
+              toggleSelectedObject(id, {
+                sample_id: sample._id,
+                frame_number: frameNumberRef.current,
+              });
             }}
           />
         )}

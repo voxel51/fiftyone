@@ -5,24 +5,30 @@ import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { useFastRerender } from "../utils/hooks";
 import { listSampleObjects } from "../utils/labels";
+import {
+  SelectedObjectMap,
+  addObjectsToSelection,
+  removeMatchingObjectsFromSelection,
+} from "../utils/selection";
 
 import DropdownTag from "./Tags/DropdownTag";
 
 const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
-  const [selectedObjects, setSelectedObjects] = useRecoilState(
-    atoms.selectedObjects
-  );
+  const [selectedObjects, setSelectedObjects] = useRecoilState<
+    SelectedObjectMap
+  >(atoms.selectedObjects);
   const sampleFrameData =
     useRecoilValue(atoms.sampleFrameData(sample._id)) || [];
   const isVideo = useRecoilValue(selectors.mediaType) == "video";
   const frameNumber = isVideo ? frameNumberRef.current : null;
 
-  const sampleObjects = !isVideo
-    ? listSampleObjects(sample)
-    : sampleFrameData.map(listSampleObjects).flat();
-  const frameObjects = !isVideo
-    ? []
-    : listSampleObjects(sampleFrameData[frameNumber - 1]);
+  const sampleObjects = isVideo
+    ? sampleFrameData.map(listSampleObjects).flat()
+    : listSampleObjects(sample);
+  const frameObjects =
+    isVideo && frameNumber
+      ? listSampleObjects(sampleFrameData[frameNumber - 1])
+      : [];
 
   const numTotalSelectedObjects = Object.keys(selectedObjects).length;
   const numSampleSelectedObjects = sampleObjects.filter(
@@ -33,34 +39,35 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
   ).length;
 
   const _selectAll = (objects) => {
-    const newSelection = { ...selectedObjects };
-    for (const obj of objects) {
-      newSelection[obj._id] = sample._id;
-    }
-    setSelectedObjects(newSelection);
+    setSelectedObjects((selection) =>
+      addObjectsToSelection(
+        selection,
+        objects.map((obj) => ({
+          object_id: obj._id,
+          sample_id: sample._id,
+          field: null, // todo: populate
+          frame_number: frameNumberRef.current, // todo: fix for objects from other frames
+        }))
+      )
+    );
   };
 
   const selectAllInSample = () => _selectAll(sampleObjects);
 
-  const unselectAllInSample = () => {
-    const newSelection = { ...selectedObjects };
-    for (const [objectID, sampleID] of Object.entries(selectedObjects)) {
-      if (sampleID == sample._id) {
-        delete newSelection[objectID];
-      }
-    }
-    setSelectedObjects(newSelection);
-  };
+  const unselectAllInSample = () =>
+    setSelectedObjects((selection) =>
+      removeMatchingObjectsFromSelection(selection, { sample_id: sample._id })
+    );
 
   const selectAllInFrame = () => _selectAll(frameObjects);
 
-  const unselectAllInFrame = () => {
-    const newSelection = { ...selectedObjects };
-    for (const obj of frameObjects) {
-      delete newSelection[obj._id];
-    }
-    setSelectedObjects(newSelection);
-  };
+  const unselectAllInFrame = () =>
+    setSelectedObjects((selection) =>
+      removeMatchingObjectsFromSelection(selection, {
+        sample_id: sample._id,
+        frame_number: frameNumberRef.current,
+      })
+    );
 
   const refresh = useFastRerender();
 
