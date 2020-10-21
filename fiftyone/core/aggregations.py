@@ -88,6 +88,9 @@ class AggregationResult(etas.Serializable):
     def __init__(self, *args, **kwargs):
         raise NotImplementedError("Subclass must implement __init__()")
 
+    def __str__(self):
+        return repr(self)
+
     def __repr__(self):
         d = {}
         for f in self.attributes():

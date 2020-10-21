@@ -121,7 +121,7 @@ class StateDescription(etas.Serializable):
         )
 
 
-_IGNORE = ("media_type", "filepath")
+_IGNORE = ("media_type", "filepath", "tags")
 
 
 class DatasetStatistics(etas.Serializable):
@@ -136,6 +136,8 @@ class DatasetStatistics(etas.Serializable):
     def __init__(self, view):
         aggregations = [foa.CountValues("tags")]
         for field_name, field in view.get_field_schema().items():
+            if field_name in _IGNORE:
+                continue
             aggregations.append(foa.Count(field_name))
             if _is_label(field):
                 aggregations.extend(
