@@ -48,14 +48,26 @@ const DropdownTag = ({
   disabled = false,
   title,
   onSelect,
+  onOpen = () => {},
+  onClose = () => {},
   ...rest
 }) => {
   // adapted from https://material-ui.com/components/menus/#menulist-composition
   const [isOpen, setOpen] = useState(false);
   const anchorRef = useRef(null);
 
-  const handleToggle = () => setOpen(!isOpen);
-  const handleClose = () => setOpen(false);
+  const handleToggle = () => {
+    setOpen(!isOpen);
+    if (isOpen) {
+      onClose();
+    } else {
+      onOpen();
+    }
+  };
+  const handleClose = () => {
+    setOpen(false);
+    onClose();
+  };
   const handleSelect = (item) => {
     onSelect(item);
     setOpen(false);
