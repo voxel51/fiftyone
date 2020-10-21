@@ -138,6 +138,7 @@ class Frames(object):
             if d is None:
                 d = default_d
                 self._sample._doc.frames["frame_count"] += 1
+
             doc = self._sample._dataset._frame_dict_to_doc(d)
             self._set_replacement(doc)
         else:
@@ -303,6 +304,7 @@ class Frames(object):
                     self._iter_doc = self._sample._dataset._frame_dict_to_doc(
                         d
                     )
+
                 self._set_replacement(self._iter_doc)
                 yield self._iter_doc
         else:
@@ -319,13 +321,12 @@ class Frames(object):
             d = self._make_dict(self._replacements[1])
             d.pop("_sample_id")
             return d
+
         return None
 
     def _save(self, insert=False):
         if not self._sample._in_db:
-            raise fofu.FrameError(
-                "Sample does not have a dataset, Frames cannot be saved"
-            )
+            return
 
         # @todo avoid local import?
         from fiftyone.core.labels import _FrameLabels
@@ -440,6 +441,7 @@ class Frame(Document):
                 raise ValueError(
                     "`dataset` arg must be provided if frame is in a dataset"
                 )
+
             sample._set_backing_doc(doc, dataset=dataset)
 
         return sample

@@ -106,6 +106,7 @@ class ViewStage(object):
         """
         if self._uuid is None:
             self._uuid = str(uuid.uuid4())
+
         return {
             "kwargs": self._kwargs(),
             "_cls": etau.get_class_name(self),
