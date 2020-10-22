@@ -80,6 +80,7 @@ class Frames(object):
                 ],
                 ordered=False,
             )
+
         self._replacements = {}
 
     def _make_filter(self, frame_number, doc):
@@ -369,7 +370,7 @@ class Frame(Document):
     directly to :class:`fiftyone.core.sample.Sample` instances.
     """
 
-    # Instance references keyed by [collection_name][_sample_id]
+    # Instance references keyed by [collection_name][sample_id][frame_number]
     _instances = defaultdict(lambda: defaultdict(weakref.WeakValueDictionary))
 
     _COLL_CLS = DatasetFrameSampleDocument
@@ -449,15 +450,15 @@ class Frame(Document):
 
     @classmethod
     def _rename_field(cls, collection_name, field_name, new_field_name):
-        for sample_collection in cls._instances[collection_name].values():
-            for document in sample_collection.values():
+        for samples in cls._instances[collection_name].values():
+            for document in samples.values():
                 data = document._doc._data
                 data[new_field_name] = data.pop(field_name, None)
 
     @classmethod
     def _purge_field(cls, collection_name, field_name):
-        for sample_collection in cls._instances[collection_name].values():
-            for document in sample_collection.values():
+        for samples in cls._instances[collection_name].values():
+            for document in samples.values():
                 document._doc._data.pop(field_name, None)
 
     def _set_backing_doc(self, doc, dataset=None):
