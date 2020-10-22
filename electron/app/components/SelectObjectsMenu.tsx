@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 
 import * as atoms from "../recoil/atoms";
@@ -9,7 +9,9 @@ import {
   SelectedObjectMap,
   addObjectsToSelection,
   removeMatchingObjectsFromSelection,
+  convertSelectedObjectsMapToList,
 } from "../utils/selection";
+import { getSocket } from "../utils/socket";
 
 import DropdownTag from "./Tags/DropdownTag";
 
@@ -24,6 +26,14 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
     useRecoilValue(atoms.sampleFrameData(sample._id)) || [];
   const isVideo = useRecoilValue(selectors.mediaType) == "video";
   const frameNumber = isVideo ? frameNumberRef.current : null;
+
+  const socket = getSocket(useRecoilValue(atoms.port), "state");
+  useEffect(() => {
+    socket.emit(
+      "set_selected_objects",
+      convertSelectedObjectsMapToList(selectedObjects)
+    );
+  }, [selectedObjects]);
 
   const sampleObjects = isVideo
     ? sampleFrameData

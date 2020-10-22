@@ -48,6 +48,7 @@ class StateDescription(etas.Serializable):
         connected=False,
         dataset=None,
         selected=None,
+        selected_objects=None,
         view=None,
     ):
         self.close = close
@@ -55,6 +56,7 @@ class StateDescription(etas.Serializable):
         self.dataset = dataset
         self.view = view
         self.selected = selected or []
+        self.selected_objects = selected_objects or []
         self.view_count = (
             len(view)
             if view is not None
@@ -118,12 +120,14 @@ class StateDescription(etas.Serializable):
                 ]
 
         selected = d.get("selected", [])
+        selected_objects = d.get("selected_objects", [])
 
         return cls(
             close=close,
             connected=connected,
             dataset=dataset,
             selected=selected,
+            selected_objects=selected_objects,
             view=view,
             **kwargs
         )

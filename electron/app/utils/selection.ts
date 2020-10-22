@@ -68,3 +68,21 @@ export const removeMatchingObjectsFromSelection = (
   }
   return newSelection;
 };
+
+export const convertSelectedObjectsMapToList = (
+  map: SelectedObjectMap
+): SelectedObject[] => {
+  return Object.entries(map).map(([object_id, data]) => ({
+    object_id,
+    ...data,
+  }));
+};
+
+export const convertSelectedObjectsListToMap = (
+  list: SelectedObject[]
+): SelectedObjectMap => {
+  return list.reduce((map, { object_id, ...data }) => {
+    map[object_id] = data;
+    return map;
+  }, {});
+};

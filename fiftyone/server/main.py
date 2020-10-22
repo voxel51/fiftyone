@@ -292,6 +292,23 @@ class StateController(Namespace):
         return state
 
     @_catch_errors
+    @_load_state()
+    def on_set_selected_objects(self, state, selected_objects):
+        """Sets the entire selected object list.
+
+        Args:
+            state: the current
+                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+            selected_objects: a list of objects in the format used by
+                :mod:`fiftyone.utils.selection`
+        """
+        if not isinstance(selected_objects, list):
+            raise TypeError("selected_objects must be a list")
+
+        state.selected_objects = selected_objects
+        return state
+
+    @_catch_errors
     def on_get_frame_labels(self, sample_id):
         """Gets the frame labels for video samples
 
