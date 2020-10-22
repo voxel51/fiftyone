@@ -65,6 +65,13 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(d.aggregate(fo.Count("list")).count, 2)
         self.assertEqual(d.aggregate(fo.Count("empty")).count, 0)
 
+        d = fo.Dataset()
+        s = fo.Sample("video.mp4")
+        s[1]["value"] = "value"
+        s[2]["value"] = "value"
+        d.add_sample(s)
+        self.assertEqual(d.aggregate(fo.Count("frames")).count, 2)
+
     def test_count_values(self):
         d = fo.Dataset()
         s = fo.Sample("image.jpeg")
