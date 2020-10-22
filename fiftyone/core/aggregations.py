@@ -75,7 +75,7 @@ class Aggregation(object):
                 and dataset.media_type == fom.VIDEO
             ):
                 return "frames", "$frames", _unwind_frames(dataset)
-            print(field_name, dataset.media_type)
+
             raise AggregationError(
                 "field `%s` does not exist on this Dataset" % self._field_name
             )
