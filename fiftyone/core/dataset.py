@@ -1836,9 +1836,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         d = etas.load_json(path_or_str)
         return cls.from_dict(d, name=name, rel_dir=rel_dir)
 
-    def _serialize(self):
-        return {"name": self.name, "media_type": self.media_type}
-
     def _add_view_stage(self, stage):
         return self.view().add_stage(stage)
 
@@ -1850,7 +1847,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if pipeline is not None:
             _pipeline += pipeline
-
+        print(_pipeline)
         return self._sample_collection.aggregate(_pipeline, allowDiskUse=True)
 
     @property

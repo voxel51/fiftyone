@@ -153,6 +153,7 @@ class SampleCollection(object):
                 self._dataset, schema, frame_schema
             )
 
+        result_d = {}
         try:
             # pylint: disable=no-member
             result_d = next(self._aggregate([{"$facet": pipelines}]))
@@ -162,9 +163,9 @@ class SampleCollection(object):
         results = []
         for field, agg in agg_map.items():
             try:
-                results.append(agg_map[field]._get_result(result_d[field][0]))
+                results.append(agg._get_result(result_d[field][0]))
             except:
-                results.append(agg_map[field]._get_default_result())
+                results.append(agg._get_default_result())
 
         return results[0] if scalar_result else results
 
@@ -1588,7 +1589,15 @@ class SampleCollection(object):
                 "$lookup": {
                     "from": self._frame_collection_name,
                     "let": {"sample_id": "$_id"},
-                    "pipeline": [{"$match": {"_sample_id": "$$sample_id"}}]
+                    "pipeline": [
+                        {
+                            "$match": {
+                                "$expr": {
+                                    "$eq": {"$_sample_id": "$$sample_id"}
+                                }
+                            }
+                        }
+                    ]
                     + pipeline,
                     "as": key,
                 }

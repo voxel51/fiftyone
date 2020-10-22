@@ -11,16 +11,18 @@ import eta.core.serial as etas
 
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
+import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
 _LABELS = (fol.Classifications, fol.Detections, fol.Keypoints, fol.Polylines)
 _NUMBER_FIELDS = (fof.IntField, fof.FloatField)
 _VALUE_FIELDS = (fof.BooleanField, fof.StringField)
+_FRAMES_PREFIX = "frames."
 
 
 def _unwind_frames(dataset):
     return [
-        {"$unwind": "frames"},
+        {"$unwind": "$frames"},
     ]
 
 
@@ -31,9 +33,8 @@ class Aggregation(object):
     of a :class:`fiftyone.core.collections.SampleCollection` instance.
     """
 
-    def __init__(self, field_name, dimension="sample"):
+    def __init__(self, field_name):
         self._field_name = field_name
-        self._dimension = dimension
 
     def _get_default_result(self):
         raise NotImplementedError(
@@ -52,18 +53,27 @@ class Aggregation(object):
         raise NotImplementedError("Subclass must implement _to_mongo()")
 
     def _get_field_path_pipeline(self, schema, frame_schema, dataset):
-        if self._dimension == "frame":
+        if (
+            self._field_name.startswith("frames.")
+            and dataset.media_type == fom.VIDEO
+        ):
             schema = frame_schema
+            pipeline = _unwind_frames(dataset)
+        else:
+            pipeline = []
         try:
-            field = schema[field_name]
-            path = "$%s" % field_name
-            return field, path, []
-        except:
-            pass
-
-        raise AggregationError(
-            "field `%s` does not exist on this Dataset" % self._field_name
-        )
+            field = schema[self._field_name]
+            path = "$%s" % self._field_name
+            return field, path, pipeline
+        except KeyError:
+            if (
+                self._field_name == "frames"
+                and dataset.media_type == fom.VIDEO
+            ):
+                return "frames", "$frames", _unwind_frames(dataset)
+            raise AggregationError(
+                "field `%s` does not exist on this Dataset" % self._field_name
+            )
 
 
 class AggregationResult(etas.Serializable):
@@ -140,7 +150,7 @@ class Bounds(Aggregation):
     """
 
     def _get_default_result(self):
-        return BoundsResult(self._field_name, self._dimension, (None, None))
+        return BoundsResult(self._field_name, (None, None))
 
     def _get_output_field(self, view):
         return "%s-bounds" % self._field_name
@@ -148,9 +158,7 @@ class Bounds(Aggregation):
     def _get_result(self, d):
         mn = d["min"]
         mx = d["max"]
-        return ConfidenceBoundsResult(
-            self._field_name, self._dimension, (mn, mx)
-        )
+        return ConfidenceBoundsResult(self._field_name, (mn, mx))
 
     def _to_mongo(self, dataset, schema, frame_schema):
         field, path, pipeline = self._get_field_path_pipeline(
@@ -198,9 +206,8 @@ class BoundsResult(AggregationResult):
         bounds: the inclusive (min, max) bounds tuple
     """
 
-    def __init__(self, field_name, dimension, bounds):
+    def __init__(self, field_name, bounds):
         self.name = field_name
-        self.dimension = dimension
         self.bounds = bounds
 
 
@@ -236,9 +243,7 @@ class ConfidenceBounds(Aggregation):
     """
 
     def _get_default_result(self):
-        return ConfidenceBoundsResult(
-            self._field_name, self._dimension, (None, None)
-        )
+        return ConfidenceBoundsResult(self._field_name, (None, None))
 
     def _get_output_field(self, view):
         return "%s-confidence-bounds" % self._field_name
@@ -246,9 +251,7 @@ class ConfidenceBounds(Aggregation):
     def _get_result(self, d):
         mn = d["min"]
         mx = d["max"]
-        return ConfidenceBoundsResult(
-            self._field_name, self._dimension, (mn, mx)
-        )
+        return ConfidenceBoundsResult(self._field_name, (mn, mx))
 
     def _to_mongo(self, dataset, schema, frame_schema):
         field, path, pipeline = self._get_field_path_pipeline(
@@ -288,9 +291,8 @@ class ConfidenceBoundsResult(AggregationResult):
         bounds: the inclusive (min, max) confidence bounds tuple
     """
 
-    def __init__(self, field_name, dimension, bounds):
+    def __init__(self, field_name, bounds):
         self.name = field_name
-        self.dimension = dimension
         self.bounds = bounds
 
 
@@ -325,11 +327,11 @@ class Count(Aggregation):
             field name is provided, samples themselves are counted
     """
 
-    def __init__(self, field_name=None, dimension="sample"):
-        super().__init__(field_name, dimension)
+    def __init__(self, field_name=None):
+        super().__init__(field_name)
 
     def _get_default_result(self):
-        return CountResult(self._field_name, self._dimension, 0)
+        return CountResult(self._field_name, 0)
 
     def _get_output_field(self, view):
         if self._field_name is None:
@@ -338,7 +340,7 @@ class Count(Aggregation):
         return "%s-count" % self._field_name
 
     def _get_result(self, d):
-        return CountResult(self._field_name, self._dimension, d["count"])
+        return CountResult(self._field_name, d["count"])
 
     def _to_mongo(self, dataset, schema, frame_schema):
         if self._field_name is None:
@@ -357,7 +359,7 @@ class Count(Aggregation):
         elif isinstance(field, fof.ListField):
             pipeline.append({"$unwind": path})
 
-        return pipeline + [{"$count": "count"}]
+        return pipeline + []
 
 
 class CountResult(AggregationResult):
@@ -369,11 +371,10 @@ class CountResult(AggregationResult):
         count: the count
     """
 
-    def __init__(self, field_name, dimension, count):
+    def __init__(self, field_name, count):
         self.name = field_name
         if field_name is None:
             self.name = "count"
-        self.dimension = dimension
         self.count = count
 
 
@@ -404,14 +405,14 @@ class CountValues(Aggregation):
     """
 
     def _get_default_result(self):
-        return CountValuesResult(self._field_name, self._dimension, {})
+        return CountValuesResult(self._field_name, {})
 
     def _get_output_field(self, view):
         return "%s-count-values" % self._field_name
 
     def _get_result(self, d):
         d = {i["k"]: i["count"] for i in d["result"]}
-        return CountValuesResult(self._field_name, self._dimension, d)
+        return CountValuesResult(self._field_name, d)
 
     def _to_mongo(self, dataset, schema, frame_schema):
         field, path, pipeline = self._get_field_path_pipeline(
@@ -450,9 +451,8 @@ class CountValuesResult(AggregationResult):
         counts: a dict mapping the value to the number of occurrences
     """
 
-    def __init__(self, field_name, dimension, counts):
+    def __init__(self, field_name, counts):
         self.name = field_name
-        self.dimension = dimension
         self.counts = counts
 
 
@@ -495,15 +495,13 @@ class Distinct(Aggregation):
     """
 
     def _get_default_result(self):
-        return DistinctResult(self._field_name, self._dimension, [])
+        return DistinctResult(self._field_name, [])
 
     def _get_output_field(self, view):
         return "%s-distinct" % self._field_name
 
     def _get_result(self, d):
-        return DistinctResult(
-            self._field_name, self._dimension, sorted(d[self._field_name])
-        )
+        return DistinctResult(self._field_name, sorted(d[self._field_name]))
 
     def _to_mongo(self, dataset, schema, frame_schema):
         field, path, pipeline = self._get_field_path_pipeline(
@@ -550,9 +548,8 @@ class DistinctResult(AggregationResult):
         values: a sorted list of distinct values
     """
 
-    def __init__(self, field_name, dimension, values):
+    def __init__(self, field_name, values):
         self.name = field_name
-        self.dimension = dimension
         self.values = values
 
 
@@ -590,15 +587,13 @@ class DistinctLabels(Aggregation):
         super().__init__(field_name)
 
     def _get_default_result(self):
-        return DistinctLabelsResult(self._field_name, self._dimension, [])
+        return DistinctLabelsResult(self._field_name, [])
 
     def _get_output_field(self, view):
         return "%s-distinct-labels" % self._field_name
 
     def _get_result(self, d):
-        return DistinctLabelsResult(
-            self._field_name, self._dimension, sorted(d["labels"])
-        )
+        return DistinctLabelsResult(self._field_name, sorted(d["labels"]))
 
     def _to_mongo(self, dataset, schema, frame_schema):
         field, path, pipeline = self._get_field_path_pipeline(
@@ -632,7 +627,6 @@ class DistinctLabelsResult(AggregationResult):
         labels: a sorted list of distinct labels
     """
 
-    def __init__(self, field_name, dimension, labels):
+    def __init__(self, field_name, labels):
         self.name = field_name
-        self.dimension = dimension
         self.labels = labels
