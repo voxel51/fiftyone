@@ -1580,7 +1580,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
 
-    def _attach_frames(self, pipeline, hide_frames=False):
+    def _attach_frames(self, hide_frames=False):
         key = "_frames" if hide_frames else "frames"
 
         # pylint: disable=no-member
