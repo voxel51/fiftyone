@@ -121,7 +121,7 @@ class StateDescription(etas.Serializable):
         )
 
 
-_IGNORE = ("media_type", "filepath", "tags")
+_IGNORE = ("filepath", "media_type", "metadata", "tags")
 
 
 class DatasetStatistics(etas.Serializable):
@@ -134,24 +134,37 @@ class DatasetStatistics(etas.Serializable):
     """
 
     def __init__(self, view):
-        aggregations = [foa.CountValues("tags")]
-        for field_name, field in view.get_field_schema().items():
-            if field_name in _IGNORE:
-                continue
-            aggregations.append(foa.Count(field_name))
-            if _is_label(field):
-                aggregations.extend(
-                    [
-                        foa.DistinctLabels(field_name),
-                        foa.ConfidenceBounds(field_name),
-                    ]
-                )
-            elif _meets_type(field, foa._VALUE_FIELDS):
-                aggregations.append(foa.CountValues(field_name))
-            elif _meets_type(field, foa._NUMBER_FIELDS):
-                aggregations.append(foa.Bounds(field_name))
+        dimensions = [
+            ("sample", view.get_field_schema()),
+        ]
+        if view.media_type == fom.VIDEO:
+            dimensions.append(("frame", view.get_frame_field_schema()))
 
-        self.stats = view.aggregate(aggregations)
+        for dimension, schema in dimensions:
+            aggregations = [
+                foa.Count(dimension=dimension),
+                foa.CountValues("tags"),
+            ]
+            for field_name, field in schema:
+                if field_name in _IGNORE:
+                    continue
+                aggregations.append(foa.Count(field_name))
+                if _is_label(field):
+                    aggregations.extend(
+                        [
+                            foa.DistinctLabels(field_name),
+                            foa.ConfidenceBounds(field_name),
+                        ]
+                    )
+                elif _meets_type(field, foa._VALUE_FIELDS):
+                    aggregations.append(foa.CountValues(field_name))
+                elif _meets_type(field, foa._NUMBER_FIELDS):
+                    aggregations.append(foa.Bounds(field_name))
+
+            setattr(self, dimension, view.aggregate(aggregations))
+
+    def serialize(self):
+        return super().serialize(reflective=True)
 
 
 def _meets_type(field, t):
