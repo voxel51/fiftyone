@@ -1588,17 +1588,8 @@ class SampleCollection(object):
             {
                 "$lookup": {
                     "from": self._frame_collection_name,
-                    "let": {"sample_id": "$_id"},
-                    "pipeline": [
-                        {
-                            "$match": {
-                                "$expr": {
-                                    "$eq": ["$_sample_id", "$$sample_id"]
-                                }
-                            }
-                        }
-                    ]
-                    + pipeline,
+                    "localField": "_id",
+                    "foreignField": "_sample_id",
                     "as": key,
                 }
             }
