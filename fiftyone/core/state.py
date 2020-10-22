@@ -134,20 +134,19 @@ class DatasetStatistics(etas.Serializable):
     """
 
     def __init__(self, view):
-        dimensions = [
-            ("sample", view.get_field_schema()),
-        ]
+        schemas = [("", view.get_field_schema())]
+        aggregations = [foa.Count()]
         if view.media_type == fom.VIDEO:
-            dimensions.append(("frame", view.get_frame_field_schema()))
-
-        for dimension, schema in dimensions:
-            aggregations = [
-                foa.Count(dimension=dimension),
-                foa.CountValues("tags"),
-            ]
+            schemas.append(("frames.", view.get_frame_field_schema()))
+            aggregations.extend(
+                [foa.Count("frames"),]
+            )
+        for prefix, schema in schemas:
             for field_name, field in schema:
                 if field_name in _IGNORE:
                     continue
+
+                field_name = prefix + field_name
                 aggregations.append(foa.Count(field_name))
                 if _is_label(field):
                     aggregations.extend(
@@ -161,7 +160,7 @@ class DatasetStatistics(etas.Serializable):
                 elif _meets_type(field, foa._NUMBER_FIELDS):
                     aggregations.append(foa.Bounds(field_name))
 
-            setattr(self, dimension, view.aggregate(aggregations))
+        self.stats = view.aggregate(aggregations)
 
     def serialize(self):
         return super().serialize(reflective=True)

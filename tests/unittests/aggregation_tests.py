@@ -24,13 +24,26 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(d.aggregate(fo.Bounds("number")).bounds, (0, 0))
         self.assertEqual(d.aggregate(fo.Bounds("numbers")).bounds, (0, 1))
 
+        d = fo.Dataset()
+        s = fo.Sample("video.mp4")
+        d.add_sample(s)
+        d.add_frame_field("numbers", fo.ListField, subfield=fo.IntField())
+        s[1]["number"] = 0
+        s[1]["numbers"] = [0, 1]
+        s.save()
+        self.assertEqual(
+            d.aggregate(fo.Bounds("frames.number")).bounds, (0, 0)
+        )
+        self.assertEqual(
+            d.aggregate(fo.Bounds("frames.numbers")).bounds, (0, 1)
+        )
+
     @drop_datasets
     def test_confidence_bounds(self):
         d = fo.Dataset()
         s = fo.Sample("image.jpeg")
-        d.add_sample(s)
         s["detection"] = fo.Detection(label="label", confidence=1)
-        s.save()
+        d.add_sample(s)
         self.assertEqual(
             d.aggregate(fo.ConfidenceBounds("detection")).bounds, (1, 1)
         )
@@ -43,6 +56,14 @@ class DatasetTests(unittest.TestCase):
         s.save()
         self.assertEqual(
             d.aggregate(fo.ConfidenceBounds("detections")).bounds, (0, 1)
+        )
+
+        d = fo.Dataset()
+        s = fo.Sample("video.mp4")
+        s[1]["detection"] = fo.Detection(label="label", confidence=1)
+        d.add_sample(s)
+        self.assertEqual(
+            d.aggregate(fo.ConfidenceBounds("frames.detection")).bounds, (1, 1)
         )
 
     @drop_datasets
@@ -95,6 +116,14 @@ class DatasetTests(unittest.TestCase):
             d.aggregate(fo.Distinct("strings")).values, ["one", "two"]
         )
 
+        d = fo.Dataset()
+        s = fo.Sample("video.mp4")
+        s[1].tags = ["one", "two"]
+        d.add_sample(s)
+        self.assertEqual(
+            d.aggregate(fo.Distinct("frames.tags")).values, ["one", "two"]
+        )
+
     @drop_datasets
     def test_distinct_labels(self):
         d = fo.Dataset()
@@ -115,6 +144,15 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(
             d.aggregate(fo.DistinctLabels("classifications")).labels,
             ["one", "two"],
+        )
+
+        d = fo.Dataset()
+        s = fo.Sample("video.mp4")
+        s[1]["classification"] = fo.Classification(label="label", confidence=1)
+        d.add_sample(s)
+        self.assertEqual(
+            d.aggregate(fo.DistinctLabels("frames.classification")).labels,
+            ["label"],
         )
 
 

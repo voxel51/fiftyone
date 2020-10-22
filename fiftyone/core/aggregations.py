@@ -21,9 +21,7 @@ _FRAMES_PREFIX = "frames."
 
 
 def _unwind_frames(dataset):
-    return [
-        {"$unwind": "$frames"},
-    ]
+    return [{"$unwind": "$frames"}, {"$replaceRoot": {"newRoot": "$frames"}}]
 
 
 class Aggregation(object):
@@ -35,6 +33,10 @@ class Aggregation(object):
 
     def __init__(self, field_name):
         self._field_name = field_name
+
+    @property
+    def _field_name_path(self):
+        return self._field_name.replace(".", "__")
 
     def _get_default_result(self):
         raise NotImplementedError(
@@ -58,12 +60,14 @@ class Aggregation(object):
             and dataset.media_type == fom.VIDEO
         ):
             schema = frame_schema
+            field_name = self._field_name[len("frames.") :]
             pipeline = _unwind_frames(dataset)
         else:
+            field_name = self._field_name
             pipeline = []
         try:
-            field = schema[self._field_name]
-            path = "$%s" % self._field_name
+            field = schema[field_name]
+            path = "$%s" % field_name
             return field, path, pipeline
         except KeyError:
             if (
@@ -71,6 +75,7 @@ class Aggregation(object):
                 and dataset.media_type == fom.VIDEO
             ):
                 return "frames", "$frames", _unwind_frames(dataset)
+            print(field_name, dataset.media_type)
             raise AggregationError(
                 "field `%s` does not exist on this Dataset" % self._field_name
             )
@@ -153,7 +158,7 @@ class Bounds(Aggregation):
         return BoundsResult(self._field_name, (None, None))
 
     def _get_output_field(self, view):
-        return "%s-bounds" % self._field_name
+        return "%s-bounds" % self._field_name_path
 
     def _get_result(self, d):
         mn = d["min"]
@@ -176,9 +181,7 @@ class Bounds(Aggregation):
                 % (self._field_name, type(field))
             )
 
-        path = "$%s" % self._field_name
         pipeline += [
-            {"$project": {self._field_name: path}},
             {
                 "$group": {
                     "_id": None,
@@ -246,7 +249,7 @@ class ConfidenceBounds(Aggregation):
         return ConfidenceBoundsResult(self._field_name, (None, None))
 
     def _get_output_field(self, view):
-        return "%s-confidence-bounds" % self._field_name
+        return "%s-confidence-bounds" % self._field_name_path
 
     def _get_result(self, d):
         mn = d["min"]
@@ -337,7 +340,7 @@ class Count(Aggregation):
         if self._field_name is None:
             return "count"
 
-        return "%s-count" % self._field_name
+        return "%s-count" % self._field_name_path
 
     def _get_result(self, d):
         return CountResult(self._field_name, d["count"])
@@ -408,7 +411,7 @@ class CountValues(Aggregation):
         return CountValuesResult(self._field_name, {})
 
     def _get_output_field(self, view):
-        return "%s-count-values" % self._field_name
+        return "%s-count-values" % self._field_name_path
 
     def _get_result(self, d):
         d = {i["k"]: i["count"] for i in d["result"]}
@@ -498,10 +501,12 @@ class Distinct(Aggregation):
         return DistinctResult(self._field_name, [])
 
     def _get_output_field(self, view):
-        return "%s-distinct" % self._field_name
+        return "%s-distinct" % self._field_name_path
 
     def _get_result(self, d):
-        return DistinctResult(self._field_name, sorted(d[self._field_name]))
+        return DistinctResult(
+            self._field_name, sorted(d[self._field_name_path])
+        )
 
     def _to_mongo(self, dataset, schema, frame_schema):
         field, path, pipeline = self._get_field_path_pipeline(
@@ -520,11 +525,10 @@ class Distinct(Aggregation):
             )
 
         pipeline += [
-            {"$project": {self._field_name: path}},
             {
                 "$group": {
                     "_id": "None",
-                    self._field_name: {"$addToSet": path},
+                    self._field_name_path: {"$addToSet": path},
                 }
             },
         ]
@@ -590,7 +594,7 @@ class DistinctLabels(Aggregation):
         return DistinctLabelsResult(self._field_name, [])
 
     def _get_output_field(self, view):
-        return "%s-distinct-labels" % self._field_name
+        return "%s-distinct-labels" % self._field_name_path
 
     def _get_result(self, d):
         return DistinctLabelsResult(self._field_name, sorted(d["labels"]))
