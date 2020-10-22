@@ -101,6 +101,7 @@ class DatasetMixin(object):
                 "Adding sample fields using the `sample.field = value` syntax "
                 "is not allowed; use `sample['field'] = value` instead"
             )
+
         if value is not None:
             self._fields[name].validate(value)
 
@@ -313,11 +314,19 @@ class DatasetMixin(object):
             AttributeError: if the field does not exist
         """
         try:
+            # https://docs.mongoengine.org/guide/querying.html#filtering-queries
+            _field_name = field_name.replace(".", "__")
+            _new_field_name = new_field_name.replace(".", "__")
+
             # Rename field on all samples
             # pylint: disable=no-member
-            cls.objects.update(**{"rename__%s" % field_name: new_field_name})
+
+            cls.objects.update(**{"rename__%s" % _field_name: _new_field_name})
         except InvalidQueryError:
             raise AttributeError("Sample has no field '%s'" % field_name)
+
+        if "." in field_name:
+            return
 
         # Rename field on dataset
         # pylint: disable=no-member
@@ -378,11 +387,17 @@ class DatasetMixin(object):
             AttributeError: if the field does not exist
         """
         try:
+            # https://docs.mongoengine.org/guide/querying.html#filtering-queries
+            _field_name = field_name.replace(".", "__")
+
             # Delete from all samples
             # pylint: disable=no-member
-            cls.objects.update(**{"unset__%s" % field_name: None})
+            cls.objects.update(**{"unset__%s" % _field_name: None})
         except InvalidQueryError:
             raise AttributeError("Sample has no field '%s'" % field_name)
+
+        if "." in field_name:
+            return
 
         # Remove from dataset
         # pylint: disable=no-member
