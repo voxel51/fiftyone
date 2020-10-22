@@ -11,6 +11,7 @@ import PortForm from "../components/PortForm";
 import { updatePort } from "../actions/update";
 
 import { updateState, updateConnected, updateLoading } from "../actions/update";
+import { useHashChangeHandler } from "../utils/hooks";
 import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
 import {
@@ -66,11 +67,11 @@ function App(props: Props) {
       ReactGA.pageview(window.location.hash.replace(/^#/, ""));
     });
   }, []);
-  useEffect(() => {
+  useHashChangeHandler(() => {
     if (gaInitialized) {
       ReactGA.pageview(window.location.hash.replace(/^#/, ""));
     }
-  }, [window.location.hash]);
+  });
   useSubscribe(socket, "connect", () => {
     dispatch(updateConnected(true));
     if (loading) {
