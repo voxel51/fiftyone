@@ -472,9 +472,10 @@ const SampleModal = ({
             playerRef={playerRef}
             defaultOverlayOptions={savedOverlayOptions}
             selectedObjects={selectedObjectIDs}
-            onSelectObject={(id) => {
+            onSelectObject={({ id, name }) => {
               toggleSelectedObject(id, {
                 sample_id: sample._id,
+                field: name,
                 frame_number: frameNumberRef.current,
               });
             }}

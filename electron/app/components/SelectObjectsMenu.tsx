@@ -45,7 +45,7 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
         objects.map((obj) => ({
           object_id: obj._id,
           sample_id: sample._id,
-          field: null, // todo: populate
+          field: obj.name,
           frame_number: frameNumberRef.current, // todo: fix for objects from other frames
         }))
       )

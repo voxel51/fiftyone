@@ -164,8 +164,9 @@ export default ({
   useEventHandler(player, "mouseleave", onMouseLeave);
   useEventHandler(player, "select", (e) => {
     const id = e.data?.id;
+    const name = e.data?.name;
     if (id && onSelectObject) {
-      onSelectObject(id);
+      onSelectObject({ id, name });
     }
   });
 
