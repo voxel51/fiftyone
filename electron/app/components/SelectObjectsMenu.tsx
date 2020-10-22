@@ -13,6 +13,9 @@ import {
 
 import DropdownTag from "./Tags/DropdownTag";
 
+const _addFrameNumberToObjects = (objects, frame_number) =>
+  objects.map((obj) => ({ ...obj, frame_number }));
+
 const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
   const [selectedObjects, setSelectedObjects] = useRecoilState<
     SelectedObjectMap
@@ -23,11 +26,17 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
   const frameNumber = isVideo ? frameNumberRef.current : null;
 
   const sampleObjects = isVideo
-    ? sampleFrameData.map(listSampleObjects).flat()
+    ? sampleFrameData
+        .map(listSampleObjects)
+        .map((arr, i) => _addFrameNumberToObjects(arr, i + 1))
+        .flat()
     : listSampleObjects(sample);
   const frameObjects =
     isVideo && frameNumber
-      ? listSampleObjects(sampleFrameData[frameNumber - 1])
+      ? _addFrameNumberToObjects(
+          listSampleObjects(sampleFrameData[frameNumber - 1]),
+          frameNumber
+        )
       : [];
 
   const numTotalSelectedObjects = Object.keys(selectedObjects).length;
@@ -46,7 +55,7 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
           object_id: obj._id,
           sample_id: sample._id,
           field: obj.name,
-          frame_number: frameNumberRef.current, // todo: fix for objects from other frames
+          frame_number: obj.frame_number,
         }))
       )
     );
