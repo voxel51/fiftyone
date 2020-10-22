@@ -14,6 +14,7 @@ export const datasetName = selector({
   key: "datasetName",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
+    console.log(stateDescription);
     return stateDescription.dataset ? stateDescription.dataset.name : null;
   },
 });
@@ -108,33 +109,39 @@ export const filteredTagSampleCounts = selector({
   },
 });
 
-export const fieldSchema = selector({
+export const fieldSchema = selectorFamily({
   key: "fieldSchema",
-  get: ({ get }) => {
-    return get(atoms.stateDescription).sample_fields || [];
+  get: (dimension: string) => ({ get }) => {
+    const d = get(atoms.stateDescription).dataset || {};
+    return d[dimension + "_fields"] || [];
   },
 });
 
-const labelFilter = (f) =>
-  f.embedded_doc_type &&
-  VALID_LABEL_TYPES.includes(f.embedded_doc_type.split(".").slice(-1)[0]);
+const labelFilter = (f) => {
+  return (
+    f.embedded_doc_type &&
+    VALID_LABEL_TYPES.includes(f.embedded_doc_type.split(".").slice(-1)[0])
+  );
+};
 
-const labels = selector({
+const labels = selectorFamily({
   key: "labels",
-  get: ({ get }) => {
-    const schema = get(fieldSchema);
+  get: (dimension: string) => ({ get }) => {
+    const schema = get(fieldSchema(dimension));
     return schema.filter(labelFilter);
   },
 });
 
-export const labelNames = selector({
+export const labelNames = selectorFamily({
   key: "labelNames",
-  get: ({ get }) => get(labels).map((l) => l.name),
+  get: (dimension: string) => ({ get }) =>
+    get(labels(dimension)).map((l) => l.name),
 });
 
-export const labelTypes = selector({
+export const labelTypes = selectorFamily({
   key: "labelTypes",
-  get: ({ get }) => get(labels).map((l) => l.split(".").slice(-1)[0]),
+  get: (dimension: string) => ({ get }) =>
+    get(labels(dimension)).map((l) => l.split(".").slice(-1)[0]),
 });
 
 export const labelClasses = selectorFamily({
