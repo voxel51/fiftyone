@@ -1370,7 +1370,7 @@ class SelectFields(ViewStage):
         doc_cls = (
             DatasetFrameSampleDocument if frames else DatasetSampleDocument
         )
-        default_fields = default_sample_fields(doc_cls)
+        default_fields = default_sample_fields(doc_cls, include_private=True)
 
         if frames:
             fn = lambda n: n.startswith(_FRAMES_PREFIX)
@@ -1385,14 +1385,17 @@ class SelectFields(ViewStage):
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
-        default_fields = default_sample_fields(
-            DatasetSampleDocument, include_private=True
-        )
         selected_fields = self.get_selected_fields()
+        if len(selected_fields) == 0:
+            return []
+
         return [{"$project": {fn: True for fn in selected_fields}}]
 
     def to_frames_mongo(self, view):
         selected_fields = self.get_selected_fields(frames=True)
+        if len(selected_fields) == 0:
+            return []
+
         return [
             {
                 "$project": {

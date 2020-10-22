@@ -1593,7 +1593,7 @@ class SampleCollection(object):
                         {
                             "$match": {
                                 "$expr": {
-                                    "$eq": {"$_sample_id": "$$sample_id"}
+                                    "$eq": ["$_sample_id", "$$sample_id"]
                                 }
                             }
                         }

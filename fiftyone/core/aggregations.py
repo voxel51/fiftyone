@@ -359,7 +359,7 @@ class Count(Aggregation):
         elif isinstance(field, fof.ListField):
             pipeline.append({"$unwind": path})
 
-        return pipeline + []
+        return pipeline + [{"$count": "count"}]
 
 
 class CountResult(AggregationResult):

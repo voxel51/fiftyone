@@ -1847,7 +1847,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if pipeline is not None:
             _pipeline += pipeline
-        print(_pipeline)
+
         return self._sample_collection.aggregate(_pipeline, allowDiskUse=True)
 
     @property
