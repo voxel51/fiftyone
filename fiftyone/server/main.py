@@ -7,6 +7,7 @@ FiftyOne Flask server.
 """
 import argparse
 from collections import defaultdict
+from copy import copy
 import json
 import logging
 import os
@@ -121,7 +122,7 @@ def _catch_errors(func):
     return wrapper
 
 
-def _load_state(trigger_update=False, with_stats=False):
+def _load_state(trigger_update=False):
     def decorator(func):
         def wrapper(self, *args, **kwargs):
             state = self.state.copy()
@@ -209,7 +210,7 @@ class StateController(Namespace):
         }
 
     @_catch_errors
-    @_load_state(with_stats=True)
+    @_load_state()
     def on_get_current_state(self, state, _):
         """Gets the current state.
 
@@ -219,15 +220,27 @@ class StateController(Namespace):
         return state
 
     @_catch_errors
-    @_load_state(with_stats=True)
-    def on_get_statistics(self, state, _):
+    def on_get_statistics(self, _):
         """Gets the current statistics.
 
         Returns:
             a :class:`fiftyone.core.state.DatasetStatistics`
         """
+        state = fos.StateDescription.from_dict(self.state)
         view = state.view if state.view is not None else state.dataset.view()
-        return fos.DatasetStatistics(view)
+        if view is None:
+            return {"view": {}, "extended_view": {}}
+
+        ext_view = copy(view)
+        for stage_dict in state.filters.values():
+            stage = fosg.ViewStage._from_dict(stage_dict)
+            if type(stage) in _WITHOUT_PAGINATION_EXTENDED_STAGES:
+                continue
+            ext_view = ext_view.add_stage(stage)
+        return {
+            "view": fos.DatasetStatistics(view).serialize(),
+            "extended_view": fos.DatasetStatistics(view).serialize(),
+        }
 
     @_catch_errors
     @_load_state()
@@ -328,7 +341,6 @@ class StateController(Namespace):
             labels.add_frame(frame_labels, overwrite=False)
 
         fps = etav.get_frame_rate(sample_d["filepath"])
-
         return {"frames": frames, "labels": labels.serialize(), "fps": fps}
 
     @_catch_errors
