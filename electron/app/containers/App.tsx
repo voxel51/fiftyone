@@ -9,6 +9,7 @@ import ReactGA from "react-ga";
 import Header from "../components/Header";
 import PortForm from "../components/PortForm";
 
+import { useHashChangeHandler } from "../utils/hooks";
 import connect from "../utils/connect";
 import { useSubscribe } from "../utils/socket";
 import * as atoms from "../recoil/atoms";
@@ -45,7 +46,7 @@ const useGA = (socket) => {
       ReactGA.pageview(window.location.hash.replace(/^#/, ""));
     });
   }, []);
-  useEffect(() => {
+  useHashChangeHandler(() => {
     if (gaInitialized) {
       ReactGA.pageview(window.location.hash.replace(/^#/, ""));
     }
@@ -74,6 +75,7 @@ function App(props: Props) {
     setStateDescription(data);
     setSelectedSamples(new Set(data.selected));
   };
+
   useSubscribe(socket, "connect", () => {
     setConnected(true);
     if (loading) {

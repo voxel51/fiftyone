@@ -46,6 +46,9 @@ export const useResizeHandler = (handler) =>
 export const useScrollHandler = (handler) =>
   useEventHandler(window, "scroll", handler);
 
+export const useHashChangeHandler = (handler) =>
+  useEventHandler(window, "hashchange", handler);
+
 export const useKeydownHandler = (handler) =>
   useEventHandler(document.body, "keydown", handler);
 
