@@ -103,6 +103,8 @@ class _DatasetSample(Document):
     def merge(self, sample, overwrite=True):
         """Merges the fields of the sample into this sample.
 
+        ``None``-valued fields are always omitted.
+
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
             overwrite (True): whether to overwrite existing fields. Note that

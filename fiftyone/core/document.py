@@ -192,6 +192,8 @@ class Document(object):
     def merge(self, document, overwrite=True):
         """Merges the fields of the document into this document.
 
+        ``None``-valued fields are always omitted.
+
         Args:
             document: a :class:`Document` of the same type
             overwrite (True): whether to overwrite existing fields. Note that
