@@ -1,48 +1,27 @@
 import { remote, ipcRenderer } from "electron";
 import React, { ReactNode, useState, useEffect, useRef } from "react";
-import ReactGA from "react-ga";
 import { Button, Modal } from "semantic-ui-react";
-import { useRecoilState, useSetRecoilState } from "recoil";
+import { useRecoilState, useSetRecoilState, useRecoilValue } from "recoil";
 import { ErrorBoundary } from "react-error-boundary";
 import NotificationHub from "../components/NotificationHub";
+import ReactGA from "react-ga";
 
 import Header from "../components/Header";
 import PortForm from "../components/PortForm";
-import { updatePort } from "../actions/update";
 
-import { updateState, updateConnected, updateLoading } from "../actions/update";
-import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
-import {
-  stateDescription,
-  selectedSamples,
-  viewCounter,
-} from "../recoil/atoms";
-import gaConfig from "../constants/ga.json";
+import { useSubscribe } from "../utils/socket";
+import * as atoms from "../recoil/atoms";
+import * as selectors from "../recoil/selectors";
 import Error from "./Error";
+
+import gaConfig from "../constants/ga.json";
 
 type Props = {
   children: ReactNode;
 };
 
-function App(props: Props) {
-  const [showInfo, setShowInfo] = useState(true);
-  const addNotification = useRef(null);
-  const [reset, setReset] = useState(false);
-  const { loading, children, dispatch, connected, port } = props;
-  const portRef = useRef();
-  const [result, setResultFromForm] = useState({ port, connected });
-  const [socket, setSocket] = useState(getSocket(result.port, "state"));
-  const setStateDescription = useSetRecoilState(stateDescription);
-  const setSelectedSamples = useSetRecoilState(selectedSamples);
-  const [viewCounterValue, setViewCounter] = useRecoilState(viewCounter);
-
-  const handleStateUpdate = (data) => {
-    setStateDescription(data);
-    setSelectedSamples(new Set(data.selected));
-    dispatch(updateState(data));
-  };
-
+const useGA = (socket) => {
   const [gaInitialized, setGAInitialized] = useState(false);
   useEffect(() => {
     const dev = process.env.NODE_ENV == "development";
@@ -71,31 +50,61 @@ function App(props: Props) {
       ReactGA.pageview(window.location.hash.replace(/^#/, ""));
     }
   }, [window.location.hash]);
+};
+
+function App(props: Props) {
+  const [showInfo] = useState(true);
+  const addNotification = useRef(null);
+  const [reset, setReset] = useState(false);
+  const { children } = props;
+  console.log(children);
+  const portRef = useRef();
+  const [port, setPort] = useRecoilState(atoms.port);
+  const [connected, setConnected] = useRecoilState(atoms.connected);
+  const [loading, setLoading] = useRecoilState(atoms.loading);
+  const socket = useRecoilValue(selectors.socket);
+  const setStateDescription = useSetRecoilState(atoms.stateDescription);
+  const setSelectedSamples = useSetRecoilState(atoms.selectedSamples);
+  const setStats = useSetRecoilState(atoms.stats);
+  const [viewCounterValue, setViewCounter] = useRecoilState(atoms.viewCounter);
+  const [result, setResultFromForm] = useState({ port, connected });
+
+  useGA(socket);
+  const handleStateUpdate = (data) => {
+    setStateDescription(data);
+    setSelectedSamples(new Set(data.selected));
+  };
   useSubscribe(socket, "connect", () => {
-    dispatch(updateConnected(true));
+    setConnected(true);
     if (loading) {
       socket.emit("get_current_state", "", (data) => {
         handleStateUpdate(data);
-        dispatch(updateLoading(false));
+        setLoading(false);
+      });
+      socket.emit("get_statistics", "", (data) => {
+        setStats(data);
       });
     }
   });
   if (socket.connected && !connected) {
-    dispatch(updateConnected(true));
-    dispatch(updateLoading(true));
+    setConnected(true);
+    setLoading(true);
     socket.emit("get_current_state", "", (data) => {
       setViewCounter(viewCounterValue + 1);
       handleStateUpdate(data);
-      dispatch(updateLoading(false));
+      setLoading(false);
+    });
+    socket.emit("get_statistics", "", (data) => {
+      setStats(data);
     });
   }
   setTimeout(() => {
     if (loading && !connected) {
-      dispatch(updateLoading(false));
+      setLoading(false);
     }
   }, 250);
   useSubscribe(socket, "disconnect", () => {
-    dispatch(updateConnected(false));
+    setConnected(false);
   });
   useSubscribe(socket, "update", (data) => {
     setViewCounter(viewCounterValue + 1);
@@ -113,7 +122,7 @@ function App(props: Props) {
     if (reset) {
       socket.emit("get_current_state", "", (data) => {
         handleStateUpdate(data);
-        dispatch(updateLoading(false));
+        setLoading(false);
       });
     }
   }, [reset]);
@@ -142,10 +151,7 @@ function App(props: Props) {
             ></Button>
           }
           size="tiny"
-          onClose={() => {
-            dispatch(updatePort(result.port));
-            setSocket(getSocket(result.port, "state"));
-          }}
+          onClose={() => setPort(result.port)}
         >
           <Modal.Header>Port number</Modal.Header>
           <Modal.Content>

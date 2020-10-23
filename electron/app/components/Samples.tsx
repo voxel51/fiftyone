@@ -7,7 +7,6 @@ import styled, { ThemeContext } from "styled-components";
 import CircularProgress from "@material-ui/core/CircularProgress";
 
 import Sample from "./Sample";
-import connect from "../utils/connect";
 import tile from "./Samples.hooks";
 import * as atoms from "../recoil/atoms";
 

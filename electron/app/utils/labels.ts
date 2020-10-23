@@ -122,6 +122,7 @@ export const formatMetadata = (metadata) => {
 };
 
 export function makeLabelNameGroups(fieldSchema, labelNames, labelTypes) {
+  console.log(fieldSchema, labelNames, labelTypes);
   const labelNameGroups = {
     labels: [],
     scalars: [],

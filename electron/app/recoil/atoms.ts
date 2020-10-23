@@ -5,6 +5,16 @@ export const port = atom({
   default: parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151,
 });
 
+export const connected = atom({
+  key: "connected",
+  default: false,
+});
+
+export const loading = atom({
+  key: "loading",
+  default: true,
+});
+
 export const colorMap = atom({
   key: "colorMap",
   default: {},

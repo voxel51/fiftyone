@@ -33,28 +33,19 @@ const Root = styled.div`
 `;
 
 const DisplayOptionsWrapper = (props) => {
-  const {
-    containerRef,
-    sidebarRef,
-    sidebarHeight,
-    displayProps,
-    headerHeight,
-  } = props;
-  const {
-    activeTags,
-    activeLabels,
-    activeOther,
-    setActiveTags,
-    setActiveLabels,
-    setActiveOther,
-  } = displayProps;
+  const { containerRef, sidebarRef, sidebarHeight, headerHeight } = props;
+  const [activeTags, setActiveTags] = useRecoilState(atoms.activeTags);
+  const [activeLabels, setActiveLabels] = useRecoilState(atoms.activeLabels);
+  const [activeOther, setActiveOther] = useRecoilState(atoms.activeOther);
 
   const labelSampleCounts = useRecoilValue(selectors.labelSampleCounts);
   const filteredLabelSampleCounts = useRecoilValue(
     selectors.filteredLabelSampleCounts
   );
+
   const tagNames = useRecoilValue(selectors.tagNames);
   const tagSampleCounts = useRecoilValue(selectors.tagSampleCounts);
+
   const filters = useRecoilValue(selectors.labelFilters);
   const setModalFilters = useSetRecoilState(selectors.modalLabelFilters);
   const labelNameGroups = useRecoilValue(selectors.labelNameGroups);
@@ -172,7 +163,7 @@ const SamplesContainer = (props) => {
         />
       </Sticky>
       <Grid>
-        {showSidebar && false ? (
+        {showSidebar ? (
           <DisplayOptionsWrapper
             sidebarRef={sidebarRef}
             stickyHeaderRef={stickyHeaderRef}

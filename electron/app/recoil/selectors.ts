@@ -9,6 +9,15 @@ import {
   makeLabelNameGroups,
   labelTypeHasColor,
 } from "../utils/labels";
+import { getSocket } from "../utils/socket";
+
+export const socket = selector({
+  key: "socket",
+  get: ({ get }) => {
+    return getSocket(get(atoms.port), "state");
+  },
+  dangerouslyAllowMutability: true,
+});
 
 export const datasetName = selector({
   key: "datasetName",
@@ -16,6 +25,11 @@ export const datasetName = selector({
     const stateDescription = get(atoms.stateDescription);
     return stateDescription.dataset ? stateDescription.dataset.name : null;
   },
+});
+
+export const hasDataset = selector({
+  key: "hasDataset",
+  get: ({ get }) => Boolean(get(datasetName)),
 });
 
 export const mediaType = selector({
@@ -140,15 +154,10 @@ const fields = selector({
 const labels = selector({
   key: "labels",
   get: ({ get }) => {
-    const sample_schema = get(fieldSchema("sample"));
-    const frame_schema = get(fieldSchema("frame"));
-    return sample_schema
-      .filter(labelFilter)
-      .concat(
-        frame_schema
-          .filter(labelFilter)
-          .map((f) => ({ ...f, name: "frames." + f.name }))
-      );
+    const fieldsValue = get(fields);
+    return Object.keys(fieldsValue)
+      .map((k) => fieldsValue[k])
+      .filter(labelFilter);
   },
 });
 

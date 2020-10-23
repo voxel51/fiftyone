@@ -97,7 +97,7 @@ export const useFastRerender = () => {
 };
 
 export const useVideoData = (socket, sample, callback = null) => {
-  const { _id: sampleId } = sample;
+  const { _id: sampleId, filepath } = sample;
   const [requested, setRequested] = useRecoilState(
     atoms.sampleVideoDataRequested(sampleId)
   );
@@ -110,12 +110,16 @@ export const useVideoData = (socket, sample, callback = null) => {
     (...args) => {
       if (requested !== viewCounter) {
         setRequested(viewCounter);
-        socket.emit("get_video_data", sample, ({ labels, frames, fps }) => {
-          setVideoLabels(labels);
-          setFrameData(frames);
-          setFrameRate(fps);
-          callback && callback({ labels, frames }, ...args);
-        });
+        socket.emit(
+          "get_video_data",
+          { _id: sampleId, filepath },
+          ({ labels, frames, fps }) => {
+            setVideoLabels(labels);
+            setFrameData(frames);
+            setFrameRate(fps);
+            callback && callback({ labels, frames }, ...args);
+          }
+        );
       } else {
         callback && callback(null, ...args);
       }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Switch, Route, Redirect, useRouteMatch } from "react-router-dom";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { Switch, Route, Redirect } from "react-router-dom";
+import { useRecoilValue, useSetRecoilState, useRecoilState } from "recoil";
 import { Container, Message, Segment } from "semantic-ui-react";
 
 import SamplesContainer from "./SamplesContainer";
@@ -23,9 +23,6 @@ function NoDataset() {
 }
 
 function Dataset(props) {
-  const { path, url } = useRouteMatch();
-  const { connected, loading, port, state, displayProps } = props;
-  const hasDataset = Boolean(state && state.dataset);
   const tabs = [routes.SAMPLES, routes.TAGS, routes.LABELS, routes.SCALARS];
   const [modal, setModal] = useState({
     visible: false,
@@ -33,6 +30,9 @@ function Dataset(props) {
     metadata: null,
     activeLabels: {},
   });
+  const connected = useRecoilValue(atoms.connected);
+  const loading = useRecoilValue(atoms.loading);
+  const hasDataset = useRecoilValue(selectors.hasDataset);
   const colorMap = useRecoilValue(atoms.colorMap);
   const refreshColorMap = useSetRecoilState(selectors.refreshColorMap);
   const datasetName = useRecoilValue(selectors.datasetName);
@@ -40,7 +40,8 @@ function Dataset(props) {
   const labelNames = useRecoilValue(selectors.labelNames);
   const tagNames = useRecoilValue(selectors.tagNames);
   const labelTypes = useRecoilValue(selectors.labelTypes);
-  const fieldSchema = useRecoilValue(selectors.fieldSchema);
+  const [activeLabels, setActiveLabels] = useRecoilState(atoms.activeLabels);
+  const activeOther = useRecoilValue(atoms.activeOther);
 
   // update color map
   useEffect(() => {
@@ -49,7 +50,7 @@ function Dataset(props) {
 
   // select any new labels by default
   useEffect(() => {
-    const newSelection = { ...displayProps.activeLabels };
+    const newSelection = { ...activeLabels };
     for (const label of labelNames) {
       if (
         newSelection[label] === undefined &&
@@ -58,7 +59,7 @@ function Dataset(props) {
         newSelection[label] = true;
       }
     }
-    displayProps.setActiveLabels(newSelection);
+    setActiveLabels(newSelection);
   }, [datasetName, labelNames]);
 
   const handleHideModal = () => setModal({ visible: false, sample: null });
@@ -69,8 +70,8 @@ function Dataset(props) {
       ...modal,
       activeLabels: modal.visible
         ? {
-            ...displayProps.activeLabels,
-            ...displayProps.activeOther,
+            activeLabels,
+            activeOther,
           }
         : {},
     });
@@ -115,13 +116,11 @@ function Dataset(props) {
           <Overlay onClick={handleHideModal} />
           <SampleModal
             activeLabels={modal.activeLabels}
-            fieldSchema={fieldSchema}
             colorMap={colorMap}
             sample={modal.sample}
             metadata={modal.metadata}
             sampleUrl={src}
             onClose={handleHideModal}
-            port={port}
             {...modalProps}
           />
         </ModalWrapper>
@@ -148,7 +147,6 @@ function Dataset(props) {
                       metadata,
                     })
                   }
-                  displayProps={displayProps}
                   colorMap={colorMap}
                 />
               </Route>
