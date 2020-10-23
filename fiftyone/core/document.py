@@ -200,10 +200,13 @@ class Document(object):
         """
         existing_field_names = self.field_names
         for field_name, value in document.iter_fields():
+            if value is None:
+                continue
+
             if (
                 not overwrite
-                and field_name in existing_field_names
-                and self[field_name] is not None
+                and (field_name in existing_field_names)
+                and (self[field_name] is not None)
             ):
                 continue
 
