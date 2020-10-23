@@ -227,7 +227,11 @@ class StateController(Namespace):
             a :class:`fiftyone.core.state.DatasetStatistics`
         """
         state = fos.StateDescription.from_dict(self.state)
-        view = state.view if state.view is not None else state.dataset.view()
+        view = (
+            state.view
+            if state and state.view is not None
+            else state.dataset.view()
+        )
         if view is None:
             return {"view": {}, "extended_view": {}}
 
@@ -237,10 +241,7 @@ class StateController(Namespace):
             if type(stage) in _WITHOUT_PAGINATION_EXTENDED_STAGES:
                 continue
             ext_view = ext_view.add_stage(stage)
-        return {
-            "view": fos.DatasetStatistics(view).serialize(),
-            "extended_view": fos.DatasetStatistics(view).serialize(),
-        }
+        return {"view": [], "extended_view": []}
 
     @_catch_errors
     @_load_state()
@@ -369,7 +370,9 @@ class StateController(Namespace):
             view = view.add_stage(stage)
 
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
-        samples = [s.to_mongo_dict() for s in view]
+        samples = [
+            s for s in view._aggregate(hide_frames=True, squash_frames=True)
+        ]
         convert(samples)
 
         more = False
