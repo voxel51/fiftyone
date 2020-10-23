@@ -4,7 +4,6 @@ import { Dimmer, Header, Loader, Message, Segment } from "semantic-ui-react";
 import _ from "lodash";
 
 import { getSocket, useSubscribe } from "../utils/socket";
-import connect from "../utils/connect";
 import { isFloat } from "../utils/generic";
 
 class CustomizedAxisTick extends PureComponent {
@@ -28,7 +27,7 @@ class CustomizedAxisTick extends PureComponent {
   }
 }
 
-const Distribution = connect(({ distribution }) => {
+const Distribution = ({ distribution }) => {
   const { name, type, data } = distribution;
   const barWidth = 30;
   const [rightMargin, setRightMargin] = useState(0);
@@ -79,7 +78,7 @@ const Distribution = connect(({ distribution }) => {
       </BarChart>
     </Segment>
   );
-});
+};
 
 function NoDistributions({ name }) {
   return (
@@ -133,4 +132,4 @@ const Distributions = ({ group, port }) => {
   );
 };
 
-export default connect(Distributions);
+export default Distributions;

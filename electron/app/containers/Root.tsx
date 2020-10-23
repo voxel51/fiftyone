@@ -1,9 +1,6 @@
 import React from "react";
-import { Provider } from "react-redux";
 import { RecoilRoot } from "recoil";
-import { ConnectedRouter } from "connected-react-router";
 import { hot } from "react-hot-loader/root";
-import { History } from "history";
 import { ThemeProvider } from "styled-components";
 
 import { GlobalStyle } from "../shared/global";
@@ -16,17 +13,13 @@ type Props = {
   history: History;
 };
 
-const Root = ({ store, history }: Props) => {
+const Root = ({ store }: Props) => {
   return (
     <ThemeProvider theme={darkTheme}>
       <GlobalStyle />
-      <Provider store={store}>
-        <ConnectedRouter history={history}>
-          <RecoilRoot>
-            <Routes />
-          </RecoilRoot>
-        </ConnectedRouter>
-      </Provider>
+      <RecoilRoot>
+        <Routes />
+      </RecoilRoot>
     </ThemeProvider>
   );
 };

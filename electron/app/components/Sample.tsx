@@ -3,9 +3,6 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { animated, useSpring, useTransition } from "react-spring";
 
-import { updateState } from "../actions/update";
-import { getSocket } from "../utils/socket";
-import connect from "../utils/connect";
 import Player51 from "./Player51";
 import Tag from "./Tags/Tag";
 import * as atoms from "../recoil/atoms";
@@ -89,11 +86,12 @@ const useHoverLoad = (socket, sample) => {
   return [bar, onMouseEnter, onMouseLeave];
 };
 
-const Sample = ({ dispatch, sample, metadata, port, setView }) => {
+const Sample = ({ sample, metadata, setView }) => {
+  const port = useRecoilValue(atoms.port);
   const host = `http://127.0.0.1:${port}`;
   const id = sample._id;
   const src = `${host}?path=${sample.filepath}&id=${id}`;
-  const socket = getSocket(port, "state");
+  const socket = useRecoilValue(selectors.socket);
   const filter = useRecoilValue(selectors.labelFilters);
   const colorMap = useRecoilValue(atoms.colorMap);
   const activeLabels = useRecoilValue(atoms.activeLabels);
@@ -117,9 +115,6 @@ const Sample = ({ dispatch, sample, metadata, port, setView }) => {
     }
     setSelectedSamples(newSelected);
     rerender();
-    socket.emit(event, id, (data) => {
-      dispatch(updateState(data));
-    });
   };
   const eventHandlers = {
     onClick: () => handleClick(),
@@ -236,4 +231,4 @@ const Sample = ({ dispatch, sample, metadata, port, setView }) => {
   );
 };
 
-export default connect(Sample);
+export default Sample;

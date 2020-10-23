@@ -10,7 +10,6 @@ import Header from "../components/Header";
 import PortForm from "../components/PortForm";
 
 import { useHashChangeHandler } from "../utils/hooks";
-import connect from "../utils/connect";
 import { useSubscribe } from "../utils/socket";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
@@ -58,7 +57,6 @@ function App(props: Props) {
   const addNotification = useRef(null);
   const [reset, setReset] = useState(false);
   const { children } = props;
-  console.log(children);
   const portRef = useRef();
   const [port, setPort] = useRecoilState(atoms.port);
   const [connected, setConnected] = useRecoilState(atoms.connected);
@@ -135,7 +133,6 @@ function App(props: Props) {
   const bodyStyle = {
     padding: "0 2rem 2rem 2rem",
   };
-
   return (
     <ErrorBoundary
       FallbackComponent={Error}
@@ -173,4 +170,4 @@ function App(props: Props) {
   );
 }
 
-export default connect(App);
+export default App;

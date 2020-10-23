@@ -11,7 +11,6 @@ import { ModalWrapper, Overlay } from "../components/utils";
 import routes from "../constants/routes.json";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import connect from "../utils/connect";
 import { VALID_LABEL_TYPES } from "../utils/labels";
 
 function NoDataset() {
@@ -169,4 +168,4 @@ function Dataset(props) {
   );
 }
 
-export default connect(Dataset);
+export default Dataset;

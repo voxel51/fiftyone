@@ -1,12 +1,15 @@
-import React, { createRef, useState } from "react";
+import React from "react";
+import { useRecoilValue } from "recoil";
 import { Loader, Dimmer } from "semantic-ui-react";
 import { Redirect } from "react-router-dom";
 
 import routes from "../constants/routes.json";
-import connect from "../utils/connect";
+import * as atoms from "../recoil/atoms";
 
-function Loading(props) {
-  const { loading, connected } = props;
+function Loading() {
+  const connected = useRecoilValue(atoms.connected);
+  const loading = useRecoilValue(atoms.loading);
+
   if (!loading && connected) {
     return <Redirect to={routes.DATASET} />;
   } else if (!loading && !connected) {
@@ -19,4 +22,4 @@ function Loading(props) {
   );
 }
 
-export default connect(Loading);
+export default Loading;

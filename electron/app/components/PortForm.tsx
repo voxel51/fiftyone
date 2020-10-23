@@ -1,10 +1,9 @@
 import React, { useState } from "react";
 import { Input, Label } from "semantic-ui-react";
 
-import connect from "../utils/connect";
 import { getSocket } from "../utils/socket";
 
-export default connect(({ connected, port, setResult }) => {
+export default ({ connected, port, setResult }) => {
   const [initialState] = useState({ port, connected });
   const [formState, setFormState] = useState({
     port: port,
@@ -56,4 +55,4 @@ export default connect(({ connected, port, setResult }) => {
       </Label>
     </Input>
   );
-});
+};
