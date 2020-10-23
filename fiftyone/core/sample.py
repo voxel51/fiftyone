@@ -493,6 +493,21 @@ class SampleView(_DatasetSample):
         kwargs = {f: deepcopy(self[f]) for f in self.field_names}
         return Sample(**kwargs)
 
+    def to_dict(self):
+        """Serializes the sample to a JSON dictionary.
+
+        Sample IDs and private fields are excluded in this representation.
+
+        Returns:
+            a JSON dict
+        """
+        d = super().to_dict()
+
+        if self.selected_field_names or self.excluded_field_names:
+            d = {k: v for k, v in d.items() if k in self.field_names}
+
+        return d
+
     def save(self):
         """Saves the sample to the database.
 
