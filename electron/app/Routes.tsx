@@ -6,14 +6,11 @@ import App from "./containers/App";
 import Dataset from "./containers/Dataset";
 import Setup from "./containers/Setup";
 import Loading from "./containers/Loading";
-import { createHashHistory } from "history";
-
-const history = createHashHistory();
 
 function Routes() {
   return (
     <App>
-      <HashRouter history={history}>
+      <HashRouter>
         <Switch>
           <Route path={routes.LOADING} exact component={Loading} />
           <Route path={routes.SETUP} exact component={Setup} />

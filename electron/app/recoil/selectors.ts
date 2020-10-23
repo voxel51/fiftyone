@@ -9,7 +9,7 @@ import {
   makeLabelNameGroups,
   labelTypeHasColor,
 } from "../utils/labels";
-import { getSocket } from "../utils/socket";
+import { getSocket, request } from "../utils/socket";
 
 export const socket = selector({
   key: "socket",
@@ -56,25 +56,27 @@ export const view = selector({
   },
 });
 
-export const framesLabelsCount = selector({
-  key: "frameLabelsCount",
-  get: ({ get }) => {
-    const stateDescription = get(atoms.stateDescription);
-    return stateDescription.frame_labels ? stateDescription.frame_labels : null;
+export const stats = selector({
+  key: "stats",
+  get: async ({ get }) => {
+    const state = get(atoms.stateDescription);
+    const response = await request(get(socket), "get_statistics", "");
+    console.log(response);
+    return response;
   },
 });
 
 export const datasetStats = selector({
   key: "datasetStats",
   get: ({ get }) => {
-    return get(atoms.stats).view || {};
+    return get(stats).view || {};
   },
 });
 
 export const extendedDatasetStats = selector({
   key: "extendedDatasetStats",
   get: ({ get }) => {
-    return get(atoms.stats).extended_view || {};
+    return get(stats).extended_view || {};
   },
 });
 

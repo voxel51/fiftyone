@@ -64,7 +64,6 @@ function App(props: Props) {
   const socket = useRecoilValue(selectors.socket);
   const setStateDescription = useSetRecoilState(atoms.stateDescription);
   const setSelectedSamples = useSetRecoilState(atoms.selectedSamples);
-  const setStats = useSetRecoilState(atoms.stats);
   const [viewCounterValue, setViewCounter] = useRecoilState(atoms.viewCounter);
   const [result, setResultFromForm] = useState({ port, connected });
 
@@ -81,9 +80,6 @@ function App(props: Props) {
         handleStateUpdate(data);
         setLoading(false);
       });
-      socket.emit("get_statistics", "", (data) => {
-        setStats(data);
-      });
     }
   });
   if (socket.connected && !connected) {
@@ -93,9 +89,6 @@ function App(props: Props) {
       setViewCounter(viewCounterValue + 1);
       handleStateUpdate(data);
       setLoading(false);
-    });
-    socket.emit("get_statistics", "", (data) => {
-      setStats(data);
     });
   }
   setTimeout(() => {

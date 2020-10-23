@@ -25,11 +25,6 @@ export const stateDescription = atom({
   default: {},
 });
 
-export const stats = atom({
-  key: "stats",
-  default: {},
-});
-
 export const selectedSamples = atom({
   key: "selectedSamples",
   default: new Set(),

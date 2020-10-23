@@ -227,11 +227,12 @@ class StateController(Namespace):
             a :class:`fiftyone.core.state.DatasetStatistics`
         """
         state = fos.StateDescription.from_dict(self.state)
-        view = (
-            state.view
-            if state and state.view is not None
-            else state.dataset.view()
-        )
+        view = None
+        if state.view:
+            view = state.view
+        elif state.dataset:
+            view = state.dataset.view()
+
         if view is None:
             return {"view": {}, "extended_view": {}}
 
