@@ -14,7 +14,6 @@ export const datasetName = selector({
   key: "datasetName",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
-    console.log(stateDescription);
     return stateDescription.dataset ? stateDescription.dataset.name : null;
   },
 });
@@ -124,29 +123,56 @@ const labelFilter = (f) => {
   );
 };
 
-const labels = selectorFamily({
-  key: "labels",
-  get: (dimension: string) => ({ get }) => {
-    const schema = get(fieldSchema(dimension));
-    return schema.filter(labelFilter);
+const fields = selector({
+  key: "fields",
+  get: ({ get }) => {
+    const sample_schema = get(fieldSchema("sample"));
+    const frame_schema = get(fieldSchema("frame"));
+    return sample_schema
+      .concat(frame_schema.map((f) => ({ ...f, name: "frames." + f.name })))
+      .reduce((acc, cur) => {
+        acc[cur.name] = cur;
+        return acc;
+      }, {});
   },
 });
 
-export const labelNames = selectorFamily({
-  key: "labelNames",
-  get: (dimension: string) => ({ get }) =>
-    get(labels(dimension)).map((l) => l.name),
+const labels = selector({
+  key: "labels",
+  get: ({ get }) => {
+    const sample_schema = get(fieldSchema("sample"));
+    const frame_schema = get(fieldSchema("frame"));
+    return sample_schema
+      .filter(labelFilter)
+      .concat(
+        frame_schema
+          .filter(labelFilter)
+          .map((f) => ({ ...f, name: "frames." + f.name }))
+      );
+  },
 });
 
-export const labelTypes = selectorFamily({
+export const labelNames = selector({
+  key: "labelNames",
+  get: ({ get }) => {
+    const l = get(labels);
+    return l.map((l) => l.name);
+  },
+});
+
+export const labelTypes = selector({
   key: "labelTypes",
-  get: (dimension: string) => ({ get }) =>
-    get(labels(dimension)).map((l) => l.split(".").slice(-1)[0]),
+  get: ({ get }) => {
+    return get(labels).map((l) => {
+      return l.embedded_doc_type.split(".").slice(-1)[0];
+    });
+  },
 });
 
 export const labelClasses = selectorFamily({
   key: "labelClasses",
   get: (label) => ({ get }) => {
+    return [];
     const stats = get(datasetStats);
     return stats.labels && stats.labels[label]
       ? stats.labels[label].classes
@@ -157,6 +183,7 @@ export const labelClasses = selectorFamily({
 export const labelSampleCounts = selector({
   key: "labelSampleCounts",
   get: ({ get }) => {
+    return {};
     const fields = get(datasetStats).custom_fields || {};
     if (get(mediaType) === "video") {
       const frames = fields.frames || {};
@@ -172,6 +199,7 @@ export const labelSampleCounts = selector({
 export const filteredLabelSampleCounts = selector({
   key: "filteredLabelSampleCounts",
   get: ({ get }) => {
+    return {};
     const fields = get(extendedDatasetStats).custom_fields || {};
     if (get(mediaType) === "video") {
       const frames = fields.frames || {};
@@ -355,13 +383,13 @@ export const numericFieldBounds = selectorFamily({
 export const labelNameGroups = selector({
   key: "labelNameGroups",
   get: ({ get }) =>
-    makeLabelNameGroups(get(fieldSchema), get(labelNames), get(labelTypes)),
+    makeLabelNameGroups(get(fields), get(labelNames), get(labelTypes)),
 });
 
 export const isNumericField = selectorFamily({
   key: "isNumericField",
   get: (name) => ({ get }) => {
-    return VALID_NUMERIC_TYPES.includes(get(fieldSchema)[name]);
+    return VALID_NUMERIC_TYPES.includes(get(fields)[name]);
   },
 });
 
