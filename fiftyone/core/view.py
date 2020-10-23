@@ -276,15 +276,12 @@ class DatasetView(foc.SampleCollection):
 
         _frames_pipeline = []
         for s in self._stages:
-            _frames_pipeline.extend(s.to_frames_mongo(self))
             _pipeline.extend(s.to_mongo(self))
 
         if pipeline is not None:
             _pipeline.extend(pipeline)
 
-        return self._dataset._aggregate(
-            _pipeline, _frames_pipeline, hide_frames
-        )
+        return self._dataset._aggregate(_pipeline, hide_frames)
 
     @property
     def _doc(self):
