@@ -408,7 +408,7 @@ class CountLabels(Aggregation):
         return CountLabelsResult(self._field_name, {})
 
     def _get_output_field(self, view):
-        return "%s-count-values" % self._field_name_path
+        return "%s-count-labels" % self._field_name_path
 
     def _get_result(self, d):
         d = {i["k"]: i["count"] for i in d["result"]}
