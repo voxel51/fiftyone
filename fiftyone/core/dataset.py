@@ -1941,12 +1941,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if value is None:
                     continue
 
-                if field_name in frame_schema:
-                    raise ValueError(
-                        "Field collision error: '%s' is already a field name "
-                        " at the frame level" % field_name
-                    )
-
                 self._sample_doc_cls.add_implied_field(
                     field_name, value, frame_doc_cls=self._frame_doc_cls,
                 )
@@ -1967,12 +1961,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 value = frame[field_name]
                 if value is None:
                     continue
-
-                if field_name in field_schema:
-                    raise ValueError(
-                        "Field collision error: '%s' is already a field name "
-                        "at the sample level" % field_name
-                    )
 
                 self._frame_doc_cls.add_implied_field(
                     field_name, value, frame_doc_cls=self._frame_doc_cls,

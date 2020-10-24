@@ -381,6 +381,81 @@ class CountResult(AggregationResult):
         self.count = count
 
 
+class CountLabels(Aggregation):
+    """Counts the occurrences of label values with for a
+    :class:`fiftyone.core.labels.Label` field.
+
+    Examples::
+        import fiftyone as fo
+        from fiftyone.core.aggregations import CountLabels
+
+        dataset = fo.load_dataset(...)
+        
+        #
+        # Compute the label counts for "ground_truth" fo.Classifications field
+        # in the dataset
+        #
+
+        count_labels = CountLabels("ground_truth")
+        count_labels_result = dataset.aggregate(count_labels)
+        count_labels_result.labels
+    
+    Args:
+        field_name: the name of the countable field
+    """
+
+    def _get_default_result(self):
+        return CountLabelsResult(self._field_name, {})
+
+    def _get_output_field(self, view):
+        return "%s-count-values" % self._field_name_path
+
+    def _get_result(self, d):
+        d = {i["k"]: i["count"] for i in d["result"]}
+        return CountLabelsResult(self._field_name, d)
+
+    def _to_mongo(self, dataset, schema, frame_schema):
+        field, path, pipeline = self._get_field_path_pipeline(
+            schema, frame_schema, dataset
+        )
+        if not isinstance(field, fof.EmbeddedDocumentField) or not issubclass(
+            field.document_type, fol.Label
+        ):
+            raise AggregationError("field '%s' is not a Label")
+
+        if field.document_type in _LABELS:
+            path = "%s.%s" % (path, field.document_type.__name__.lower())
+            pipeline.append(
+                {"$unwind": {"path": path, "preserveNullAndEmptyArrays": True}}
+            )
+
+        path = "%s.label" % path
+        pipeline += [
+            {"$group": {"_id": path, "count": {"$sum": 1}}},
+            {
+                "$group": {
+                    "_id": None,
+                    "result": {"$push": {"k": "$_id", "count": "$count"}},
+                }
+            },
+        ]
+        return pipeline
+
+
+class CountLabelsResult(AggregationResult):
+    """The result of the execution of a :class:`CountLabels` instance by a
+    dataset or view.
+
+    Attributes:
+        name: the name of the field whose values were counted
+        labels: a dict mapping the label to the number of occurrences
+    """
+
+    def __init__(self, field_name, labels):
+        self.name = field_name
+        self.labels = labels
+
+
 class CountValues(Aggregation):
     """Counts the occurrences of values with for a countable field.
 
@@ -391,7 +466,7 @@ class CountValues(Aggregation):
 
     Examples::
         import fiftyone as fo
-        from fiftyone.core.aggregations import Count
+        from fiftyone.core.aggregations import CountValues
 
         dataset = fo.load_dataset(...)
         
@@ -401,7 +476,7 @@ class CountValues(Aggregation):
 
         count_values = CountValues("tags")
         count_values_result = dataset.aggregate(count_values)
-        count_values_result.counts
+        count_values_result.values
     
     Args:
         field_name: the name of the countable field
@@ -451,12 +526,12 @@ class CountValuesResult(AggregationResult):
 
     Attributes:
         name: the name of the field whose values were counted
-        counts: a dict mapping the value to the number of occurrences
+        values: a dict mapping the value to the number of occurrences
     """
 
-    def __init__(self, field_name, counts):
+    def __init__(self, field_name, values):
         self.name = field_name
-        self.counts = counts
+        self.values = values
 
 
 class Distinct(Aggregation):
