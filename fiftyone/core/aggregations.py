@@ -382,7 +382,7 @@ class CountResult(AggregationResult):
 
 
 class CountLabels(Aggregation):
-    """Counts the occurrences of label values with for a
+    """Counts the occurrences of label values for a
     :class:`fiftyone.core.labels.Label` field.
 
     Examples::
@@ -401,7 +401,7 @@ class CountLabels(Aggregation):
         count_labels_result.labels
     
     Args:
-        field_name: the name of the countable field
+        field_name: the name of the label field
     """
 
     def _get_default_result(self):
@@ -457,7 +457,7 @@ class CountLabelsResult(AggregationResult):
 
 
 class CountValues(Aggregation):
-    """Counts the occurrences of values with for a countable field.
+    """Counts the occurrences of values or a countable field.
 
     Countable fields are:
         - :class:`fiftyone.core.fields.BooleanField`
