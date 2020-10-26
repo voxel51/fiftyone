@@ -237,9 +237,9 @@ const ClassFilterContainer = styled.div`
   margin: 0.25rem 0;
 `;
 
-const ClassFilter = ({ name, atoms }) => {
+const ClassFilter = ({ name, atoms, path }) => {
   const theme = useContext(ThemeContext);
-  const classes = useRecoilValue(selectors.labelClasses(name));
+  const classes = useRecoilValue(selectors.labelClasses(path));
   const [selectedClasses, setSelectedClasses] = useRecoilState(
     atoms.includeLabels(name)
   );
@@ -479,7 +479,7 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
     <animated.div style={{ ...props, overflow }}>
       <div ref={ref}>
         <div style={{ margin: 3 }}>
-          <ClassFilter name={entry.name} atoms={rest} />
+          <ClassFilter name={entry.name} atoms={rest} path={entry.path} />
           <NamedRangeSlider
             color={entry.color}
             name={"Confidence"}

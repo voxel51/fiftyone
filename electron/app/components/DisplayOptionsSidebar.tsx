@@ -25,6 +25,7 @@ export type Entry = {
   selected: boolean;
   count: number;
   type: string;
+  path: string;
 };
 
 type Props = {
@@ -76,7 +77,16 @@ const Container = styled.div`
   }
 `;
 
-const Cell = ({ label, icon, entries, onSelect, colorMap, title, modal }) => {
+const Cell = ({
+  label,
+  icon,
+  entries,
+  onSelect,
+  colorMap,
+  title,
+  modal,
+  prefix = "",
+}) => {
   const theme = useContext(ThemeContext);
   const [expanded, setExpanded] = useState(true);
   const numSelected = entries.filter((e) => e.selected).length;
@@ -124,13 +134,15 @@ const Cell = ({ label, icon, entries, onSelect, colorMap, title, modal }) => {
             totalCount: e.totalCount,
             filteredCount: e.filteredCount,
             color: labelTypeHasColor(e.type)
-              ? colorMap[e.name]
+              ? colorMap[prefix + e.name]
               : theme.backgroundLight,
             hideCheckbox: e.hideCheckbox,
             disabled: Boolean(e.disabled),
+            path: prefix + e.name,
           }))}
           onCheck={onSelect}
           modal={modal}
+          prefix={prefix}
         />
       ) : (
         <span>No options available</span>
@@ -198,6 +210,7 @@ const DisplayOptionsSidebar = React.forwardRef(
             entries={frameLabels}
             onSelect={onSelectFrameLabel}
             {...cellRest}
+            prefix="frames."
           />
         )}
         <Cell

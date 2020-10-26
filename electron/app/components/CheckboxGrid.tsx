@@ -137,6 +137,7 @@ export type Entry = {
   color: string;
   disabled: boolean;
   type?: string;
+  prefix: string;
 };
 
 type Props = {
@@ -149,9 +150,8 @@ const Entry = ({ entry, onCheck, modal }) => {
   const [expanded, setExpanded] = useState(false);
   const theme = useContext(ThemeContext);
   const atoms = modal ? MODAL_ATOMS : GLOBAL_ATOMS;
-  const fieldIsFiltered = useRecoilValue(atoms.fieldIsFiltered(entry.name));
-  const isNumericField = useRecoilValue(selectors.isNumericField(entry.name));
-  const mediaType = useRecoilValue(selectors.mediaType);
+  const fieldIsFiltered = useRecoilValue(atoms.fieldIsFiltered(entry.path));
+  const isNumericField = useRecoilValue(selectors.isNumericField(entry.path));
 
   const handleCheck = (entry) => {
     if (onCheck) {
