@@ -156,15 +156,17 @@ export const labelTypes = selectorFamily({
 });
 
 const COUNT_CLS = "fiftyone.core.aggregations.CountResult";
+const LABELS_CLS = "fiftyone.core.aggregations.DistinctLabelsResult";
 
 export const labelClasses = selectorFamily({
   key: "labelClasses",
   get: (label) => ({ get }) => {
-    return [];
-    const stats = get(atoms.datasetStats);
-    return stats.labels && stats.labels[label]
-      ? stats.labels[label].classes
-      : [];
+    return get(atoms.datasetStats).reduce((acc, cur) => {
+      if (cur.name === label && cur._CLS === LABELS_CLS) {
+        return cur.labels;
+      }
+      return acc;
+    }, []);
   },
 });
 
@@ -270,9 +272,15 @@ export const refreshColorMap = selector({
     const colorLabelNames = Object.entries(get(labelTypes("sample")))
       .filter(([name, type]) => labelTypeHasColor(type))
       .map(([name]) => name);
+    const colorFrameLabelNames = Object.entries(get(labelTypes("frame")))
+      .filter(([name, type]) => labelTypeHasColor(type))
+      .map(([name]) => "frames." + name);
     set(
       atoms.colorMap,
-      generateColorMap([...get(tagNames), ...colorLabelNames], colorMap)
+      generateColorMap(
+        [...get(tagNames), ...colorLabelNames, ...colorFrameLabelNames],
+        colorMap
+      )
     );
   },
 });
