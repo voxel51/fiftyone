@@ -19,9 +19,6 @@ class DatasetFrameSampleDocument(DatasetMixin, Document, SampleDocument):
     _sample_id = fof.ObjectIdField(default=None, required=True)
     frame_number = fof.FrameNumberField(required=True)
 
-    # The set of tags associated with the frame
-    tags = fof.ListField(fof.StringField())
-
     @classmethod
     def _sample_collection_name(cls):
         return ".".join(cls.__name__.split(".")[1:])

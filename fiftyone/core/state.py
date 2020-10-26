@@ -141,8 +141,8 @@ class DatasetStatistics(etas.Serializable):
             aggregations.extend(
                 [foa.Count("frames"),]
             )
+        aggregations.append(foa.CountValues("tags"))
         for prefix, schema in schemas:
-            aggregations.append(foa.CountValues(prefix + "tags"))
             for field_name, field in schema.items():
                 if (
                     field_name in _IGNORE

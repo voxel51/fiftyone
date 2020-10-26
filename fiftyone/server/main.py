@@ -242,7 +242,7 @@ class StateController(Namespace):
                 if type(stage) in _WITHOUT_PAGINATION_EXTENDED_STAGES:
                     continue
                 view = view.add_stage(stage)
-        return fos.DatasetStatistics(view)
+        return fos.DatasetStatistics(view).serialize()["stats"]
 
     @_catch_errors
     @_load_state()
