@@ -5,7 +5,7 @@ Labels stored in dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from bson.objectid import ObjectId
+from bson import ObjectId
 
 import eta.core.data as etad
 import eta.core.geometry as etag
