@@ -152,10 +152,27 @@ _WITHOUT_PAGINATION_EXTENDED_STAGES = {
 }
 
 
+def _get_label_object_ids(label):
+    """Returns a list of all object IDs contained in the label.
+
+    Args:
+        label: an ImageLabel instance
+
+    Returns:
+        list of IDs as strings
+    """
+    list_field_name = type(label).__name__.lower()
+    if hasattr(label, "id"):
+        return [label.id]
+    elif list_field_name in label:
+        return [obj.id for obj in label[list_field_name]]
+    raise TypeError("Cannot serialize label type: " + str(type(label)))
+
+
 def _make_frame_labels(name, label, frame_number):
+    label = fol.ImageLabel.from_dict(label)
     labels = etav.VideoFrameLabels.from_image_labels(
-        fol.ImageLabel.from_dict(label).to_image_labels(name=name),
-        frame_number,
+        label.to_image_labels(name=name), frame_number,
     )
 
     for obj in labels.objects:
@@ -164,9 +181,11 @@ def _make_frame_labels(name, label, frame_number):
     for attr in labels.attributes():
         container = getattr(labels, attr)
         if isinstance(container, etal.LabelsContainer):
-            for obj in container:
+            object_ids = _get_label_object_ids(label)
+            assert len(container) == len(object_ids)
+            for (obj, object_id) in zip(container, object_ids):
                 # force _id to be serialized
-                obj._id = str(label["_id"])
+                obj._id = object_id
                 attrs = obj.attributes() + ["_id"]
                 obj.attributes = lambda: attrs
 
