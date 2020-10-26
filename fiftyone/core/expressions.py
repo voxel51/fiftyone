@@ -8,6 +8,8 @@ Expressions for :class:`fiftyone.core.stages.ViewStage` definitions.
 from copy import deepcopy
 import re
 
+import bson
+
 import eta.core.utils as etau
 
 import fiftyone.core.utils as fou
@@ -793,6 +795,42 @@ class ViewField(ViewExpression, metaclass=_MetaViewField):
             return prefix + "." + self._expr if self._expr else prefix
 
         return "$" + self._expr if self._expr else "$this"
+
+
+class ObjectId(ViewExpression, metaclass=_MetaViewField):
+    """A :class:`ViewExpression` that refers to an
+    `ObjectId <https://docs.mongodb.com/manual/reference/method/ObjectId>`_ of
+    a document.
+
+    The typical use case for this class is writing an expression that involves
+    checking if the ID of a document matches a particular known ID.
+
+    Example::
+
+        from fiftyone import ViewField as F
+        from fiftyone.core.expressions import ObjectId
+
+        # Check if the ID of the document matches the given ID
+        expr = F("_id") == ObjectId("5f452489ef00e6374aad384a")
+
+    Args:
+        oid: the object ID string
+    """
+
+    def __init__(self, oid):
+        _ = bson.ObjectId(oid)  # validates that `oid` is valid value
+        super().__init__(oid)
+
+    def to_mongo(self, prefix=None):
+        """Returns a MongoDB representation of the ObjectId.
+
+        Args:
+            prefix (None): unused
+
+        Returns:
+            a string
+        """
+        return {"$toObjectId": self._expr}
 
 
 def _escape_regex_chars(str_or_strs):

@@ -9,8 +9,7 @@ from copy import deepcopy
 import json
 import re
 
-from bson import json_util
-from bson.objectid import ObjectId
+from bson import json_util, ObjectId
 import mongoengine
 import pymongo
 

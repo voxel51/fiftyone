@@ -8,10 +8,9 @@ Utilities for selecting content from datasets.
 from collections import defaultdict
 import warnings
 
-from bson import ObjectId
-
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
+from fiftyone.core.expressions import ObjectId
 from fiftyone.core.expressions import ViewField as F
 
 
@@ -85,7 +84,7 @@ def select_objects(sample_collection, objects):
     view = view.select_fields(list(object_ids.keys()))
 
     for field, object_ids in object_ids.items():
-        label_filter = F("_id").is_in(object_ids)
+        label_filter = F("_id").is_in([ObjectId(oid) for oid in object_ids])
         view = _apply_label_filter(view, label_schema, field, label_filter)
 
     return view
@@ -128,7 +127,7 @@ def exclude_objects(sample_collection, objects):
 
     view = sample_collection
     for field, object_ids in object_ids.items():
-        label_filter = ~F("_id").is_in(object_ids)
+        label_filter = ~F("_id").is_in([ObjectId(oid) for oid in object_ids])
         view = _apply_label_filter(view, label_schema, field, label_filter)
 
     return view
@@ -139,7 +138,7 @@ def _parse_objects(objects):
     object_ids = defaultdict(set)
     for obj in objects:
         sample_ids.add(obj["sample_id"])
-        object_ids[obj["field"]].add(ObjectId(obj["object_id"]))
+        object_ids[obj["field"]].add(obj["object_id"])
 
     return sample_ids, object_ids
 
