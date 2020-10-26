@@ -155,6 +155,8 @@ export const labelTypes = selectorFamily({
   },
 });
 
+const COUNT_CLS = "fiftyone.core.aggregations.CountResult";
+
 export const labelClasses = selectorFamily({
   key: "labelClasses",
   get: (label) => ({ get }) => {
@@ -169,16 +171,35 @@ export const labelClasses = selectorFamily({
 export const labelSampleCounts = selectorFamily({
   key: "labelSampleCounts",
   get: (dimension: string) => ({ get }) => {
-    console.log(get(atoms.datasetStats));
-    return {};
+    const names = get(labelNames(dimension));
+    const prefix = dimension === "sample" ? "" : "frames.";
+    return get(atoms.datasetStats).reduce((acc, cur) => {
+      if (
+        names.includes(cur.name.slice(prefix.length)) &&
+        cur._CLS === COUNT_CLS
+      ) {
+        console.log(cur, prefix);
+        acc[cur.name.slice(prefix.length)] = cur.count;
+      }
+      return acc;
+    }, {});
   },
 });
 
 export const filteredLabelSampleCounts = selectorFamily({
   key: "filteredLabelSampleCounts",
   get: (dimension: string) => ({ get }) => {
-    console.log(get(atoms.extendedDatasetStats));
-    return {};
+    const names = get(labelNames(dimension));
+    const prefix = dimension === "sample" ? "" : "frames.";
+    return get(atoms.datasetStats).reduce((acc, cur) => {
+      if (
+        names.includes(cur.name.slice(prefix.length)) &&
+        cur._CLS === COUNT_CLS
+      ) {
+        acc[cur.name.slice(prefix.length)] = cur.count;
+      }
+      return acc;
+    }, {});
   },
 });
 
