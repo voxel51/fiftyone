@@ -66,8 +66,15 @@ function App(props: Props) {
   const setSelectedSamples = useSetRecoilState(atoms.selectedSamples);
   const [viewCounterValue, setViewCounter] = useRecoilState(atoms.viewCounter);
   const [result, setResultFromForm] = useState({ port, connected });
+  const setDatasetStats = useSetRecoilState(atoms.datasetStats);
+  const setExtendedDatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
 
   useGA(socket);
+  const getStats = (extended) => {
+    socket.emit("get_statistics", extended, (d) => {
+      extended ? setExtendedDatasetStats(d) : setDatasetStats(d);
+    });
+  };
   const handleStateUpdate = (data) => {
     setStateDescription(data);
     setSelectedSamples(new Set(data.selected));
@@ -75,7 +82,9 @@ function App(props: Props) {
 
   useSubscribe(socket, "connect", () => {
     setConnected(true);
-    if (loading) {
+    if (!loading) {
+      setLoading(true);
+      getStats(false);
       socket.emit("get_current_state", "", (data) => {
         handleStateUpdate(data);
         setLoading(false);
@@ -85,6 +94,7 @@ function App(props: Props) {
   if (socket.connected && !connected) {
     setConnected(true);
     setLoading(true);
+    getStats(false);
     socket.emit("get_current_state", "", (data) => {
       setViewCounter(viewCounterValue + 1);
       handleStateUpdate(data);
@@ -104,6 +114,7 @@ function App(props: Props) {
     if (data.close) {
       remote.getCurrentWindow().close();
     }
+    getStats(false);
     handleStateUpdate(data);
   });
 
@@ -113,6 +124,7 @@ function App(props: Props) {
 
   useEffect(() => {
     if (reset) {
+      getStats(false);
       socket.emit("get_current_state", "", (data) => {
         handleStateUpdate(data);
         setLoading(false);

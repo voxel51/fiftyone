@@ -22,7 +22,7 @@ export const extendedDatasetStats = atom({
 
 export const loading = atom({
   key: "loading",
-  default: true,
+  default: false,
 });
 
 export const colorMap = atom({

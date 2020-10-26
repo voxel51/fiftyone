@@ -180,7 +180,6 @@ export const labelSampleCounts = selectorFamily({
         names.includes(cur.name.slice(prefix.length)) &&
         cur._CLS === COUNT_CLS
       ) {
-        console.log(cur, prefix);
         acc[cur.name.slice(prefix.length)] = cur.count;
       }
       return acc;
@@ -265,14 +264,22 @@ export const modalLabelFilters = selector({
   },
 });
 
+export const labelTuples = selectorFamily({
+  key: "labelTuples",
+  get: (dimension: string) => ({ get }) => {
+    const types = get(labelTypes(dimension));
+    return get(labelNames(dimension)).map((n, i) => [n, types[i]]);
+  },
+});
+
 export const refreshColorMap = selector({
   key: "refreshColorMap",
   get: ({ get }) => get(atoms.colorMap),
   set: ({ get, set }, colorMap) => {
-    const colorLabelNames = Object.entries(get(labelTypes("sample")))
+    const colorLabelNames = get(labelTuples("sample"))
       .filter(([name, type]) => labelTypeHasColor(type))
       .map(([name]) => name);
-    const colorFrameLabelNames = Object.entries(get(labelTypes("frame")))
+    const colorFrameLabelNames = get(labelTuples("frame"))
       .filter(([name, type]) => labelTypeHasColor(type))
       .map(([name]) => "frames." + name);
     set(

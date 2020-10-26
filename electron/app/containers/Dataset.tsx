@@ -22,6 +22,16 @@ function NoDataset() {
   );
 }
 
+const applyActiveLabels = (tuples, current, setter) => {
+  const newSelection = { ...current };
+  for (const [label, type] of tuples) {
+    if (newSelection[label] === undefined && VALID_LABEL_TYPES.includes(type)) {
+      newSelection[label] = true;
+    }
+  }
+  setter(newSelection);
+};
+
 function Dataset(props) {
   const tabs = [routes.SAMPLES, routes.TAGS, routes.LABELS, routes.SCALARS];
   const [modal, setModal] = useState({
@@ -38,32 +48,32 @@ function Dataset(props) {
   const refreshColorMap = useSetRecoilState(selectors.refreshColorMap);
   const datasetName = useRecoilValue(selectors.datasetName);
   const currentSamples = useRecoilValue(atoms.currentSamples);
-  const labelNames = useRecoilValue(selectors.labelNames("sample"));
+  const labelTuples = useRecoilValue(selectors.labelTuples("sample"));
+  const frameLabelTuples = useRecoilValue(selectors.labelTuples("frame"));
   const tagNames = useRecoilValue(selectors.tagNames);
-  const labelTypes = useRecoilValue(selectors.labelTypes("sample"));
   const [activeLabels, setActiveLabels] = useRecoilState(
     atoms.activeLabels("sample")
+  );
+  const [activeFrameLabels, setActiveFrameLabels] = useRecoilState(
+    atoms.activeLabels("frame")
   );
   const activeOther = useRecoilValue(atoms.activeOther("sample"));
 
   // update color map
   useEffect(() => {
     refreshColorMap(colorMap);
-  }, [labelNames, tagNames]);
+  }, [labelTuples, frameLabelTuples, tagNames]);
 
   // select any new labels by default
+
   useEffect(() => {
-    const newSelection = { ...activeLabels };
-    for (const label of labelNames) {
-      if (
-        newSelection[label] === undefined &&
-        VALID_LABEL_TYPES.includes(labelTypes[label])
-      ) {
-        newSelection[label] = true;
-      }
-    }
-    setActiveLabels(newSelection);
-  }, [datasetName, labelNames]);
+    applyActiveLabels(labelTuples, activeLabels, setActiveLabels);
+    applyActiveLabels(
+      frameLabelTuples,
+      activeFrameLabels,
+      setActiveFrameLabels
+    );
+  }, [datasetName, labelTuples, frameLabelTuples]);
 
   const handleHideModal = () => setModal({ visible: false, sample: null });
   useEffect(() => {
