@@ -828,7 +828,7 @@ class ObjectId(ViewExpression, metaclass=_MetaViewField):
             prefix (None): unused
 
         Returns:
-            a string
+            a MongoDB expression
         """
         return {"$toObjectId": self._expr}
 
