@@ -69,6 +69,12 @@ resources:
 -   [CLI Documentation](https://voxel51.com/docs/fiftyone/cli/index.html)
 -   [API Reference](https://voxel51.com/docs/fiftyone/api/fiftyone.html)
 
+## Examples
+
+Check out the [fiftyone-examples](https://github.com/voxel51/fiftyone-examples)
+repository for open source and community-contributed examples of using
+FiftyOne.
+
 ## Contributing to FiftyOne
 
 FiftyOne is open source and community contributions are welcome!

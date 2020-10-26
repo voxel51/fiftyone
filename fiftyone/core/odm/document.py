@@ -235,9 +235,7 @@ class MongoEngineBaseDocument(SerializableDocument):
         # pylint: disable=no-member
         return self._fields_ordered
 
-    def to_dict(
-        self, extended=False,
-    ):
+    def to_dict(self, extended=False):
         if extended:
             return json.loads(self._to_json())
 
