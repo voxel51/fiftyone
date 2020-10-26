@@ -30,6 +30,7 @@ export type Entry = {
 type Props = {
   tags: Entry[];
   labels: Entry[];
+  frameLabels: Entry[];
   scalars: Entry[];
   unsupported: Entry[];
   onSelectTag: (entry: Entry) => void;
@@ -155,10 +156,12 @@ const DisplayOptionsSidebar = React.forwardRef(
       modal = false,
       tags = [],
       labels = [],
+      frameLabels = [],
       scalars = [],
       unsupported = [],
       onSelectTag,
       onSelectLabel,
+      onSelectFrameLabel,
       onSelectScalar,
       ...rest
     }: Props,
@@ -167,6 +170,8 @@ const DisplayOptionsSidebar = React.forwardRef(
     const refreshColorMap = useSetRecoilState(refreshColorMapSelector);
     const colorMap = useRecoilValue(atoms.colorMap);
     const cellRest = { modal };
+    const mediaType = useRecoilValue(selectors.mediaType);
+    const isVideo = mediaType === "video";
     return (
       <Container ref={ref} {...rest}>
         <Cell
@@ -185,6 +190,16 @@ const DisplayOptionsSidebar = React.forwardRef(
           onSelect={onSelectLabel}
           {...cellRest}
         />
+        {isVideo && (
+          <Cell
+            colorMap={colorMap}
+            label="Frame Labels"
+            icon={<PhotoLibrary />}
+            entries={frameLabels}
+            onSelect={onSelectFrameLabel}
+            {...cellRest}
+          />
+        )}
         <Cell
           colorMap={colorMap}
           label="Scalars"

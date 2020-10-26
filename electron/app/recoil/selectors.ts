@@ -166,42 +166,26 @@ export const labelClasses = selectorFamily({
   },
 });
 
-export const labelSampleCounts = selector({
+export const labelSampleCounts = selectorFamily({
   key: "labelSampleCounts",
-  get: ({ get }) => {
+  get: (dimension: string) => ({ get }) => {
+    console.log(get(atoms.datasetStats));
     return {};
-    const fields = get(atoms.datasetStats).custom_fields || {};
-    if (get(mediaType) === "video") {
-      const frames = fields.frames || {};
-      return {
-        ...fields,
-        ...frames,
-      };
-    }
-    return fields;
   },
 });
 
-export const filteredLabelSampleCounts = selector({
+export const filteredLabelSampleCounts = selectorFamily({
   key: "filteredLabelSampleCounts",
-  get: ({ get }) => {
+  get: (dimension: string) => ({ get }) => {
+    console.log(get(atoms.extendedDatasetStats));
     return {};
-    const fields = get(extendedDatasetStats).custom_fields || {};
-    if (get(mediaType) === "video") {
-      const frames = fields.frames || {};
-      return {
-        ...fields,
-        ...frames,
-      };
-    }
-    return fields;
   },
 });
 
 export const labelFilters = selector({
   key: "labelFilters",
   get: ({ get }) => {
-    const labels = get(atoms.activeLabels);
+    const labels = get(atoms.activeLabels("sample"));
     const filters = {};
     for (const label in labels) {
       const range = get(atoms.filterLabelConfidenceRange(label));
@@ -221,7 +205,7 @@ export const labelFilters = selector({
 export const modalLabelFilters = selector({
   key: "modalLabelFilters",
   get: ({ get }) => {
-    const labels = get(atoms.modalActiveLabels);
+    const labels = get(atoms.modalActiveLabels("sample"));
     const filters = {};
     for (const label in labels) {
       const range = get(atoms.modalFilterLabelConfidenceRange(label));
@@ -237,8 +221,8 @@ export const modalLabelFilters = selector({
     return filters;
   },
   set: ({ get, set }, _) => {
-    const active = get(atoms.activeLabels);
-    set(atoms.modalActiveLabels, active);
+    const active = get(atoms.activeLabels("sample"));
+    set(atoms.modalActiveLabels("sample"), active);
     for (const label in active) {
       set(
         atoms.modalFilterLabelConfidenceRange(label),
@@ -262,7 +246,7 @@ export const refreshColorMap = selector({
   key: "refreshColorMap",
   get: ({ get }) => get(atoms.colorMap),
   set: ({ get, set }, colorMap) => {
-    const colorLabelNames = Object.entries(get(labelTypes))
+    const colorLabelNames = Object.entries(get(labelTypes("sample")))
       .filter(([name, type]) => labelTypeHasColor(type))
       .map(([name]) => name);
     set(
@@ -275,7 +259,7 @@ export const refreshColorMap = selector({
 export const isLabel = selectorFamily({
   key: "isLabel",
   get: (field) => ({ get }) => {
-    const types = get(labelTypes);
+    const types = get(labelTypes("sample"));
     return Boolean(types[field]);
   },
 });
@@ -379,7 +363,7 @@ export const labelNameGroups = selectorFamily({
 export const isNumericField = selectorFamily({
   key: "isNumericField",
   get: (name) => ({ get }) => {
-    return VALID_NUMERIC_TYPES.includes(get(fields)[name]);
+    return VALID_NUMERIC_TYPES.includes(get(fields("sample"))[name]);
   },
 });
 
@@ -387,7 +371,7 @@ export const sampleModalFilter = selector({
   key: "sampleModalFilter",
   get: ({ get }) => {
     const filters = get(modalLabelFilters);
-    const activeLabels = get(atoms.modalActiveLabels);
+    const activeLabels = get(atoms.modalActiveLabels("sample"));
     return (sample) => {
       return Object.entries(sample).reduce((acc, [key, value]) => {
         if (key === "tags") {

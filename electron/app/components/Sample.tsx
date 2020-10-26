@@ -94,9 +94,9 @@ const Sample = ({ sample, metadata, setView }) => {
   const socket = useRecoilValue(selectors.socket);
   const filter = useRecoilValue(selectors.labelFilters);
   const colorMap = useRecoilValue(atoms.colorMap);
-  const activeLabels = useRecoilValue(atoms.activeLabels);
+  const activeLabels = useRecoilValue(atoms.activeLabels("sample"));
   const activeTags = useRecoilValue(atoms.activeTags);
-  const activeOther = useRecoilValue(atoms.activeOther);
+  const activeOther = useRecoilValue(atoms.activeOther("sample"));
 
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     atoms.selectedSamples

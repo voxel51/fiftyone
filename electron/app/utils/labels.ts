@@ -121,18 +121,8 @@ export const formatMetadata = (metadata) => {
   })).filter(({ value }) => value !== undefined);
 };
 
-export function makeLabelNameGroups(
-  mediaType,
-  fieldSchema,
-  labelNames,
-  labelTypes
-) {
+export function makeLabelNameGroups(fieldSchema, labelNames, labelTypes) {
   const labelNameGroups = {
-    labels: [],
-    scalars: [],
-    unsupported: [],
-  };
-  const frameLabelNameGroups = {
     labels: [],
     scalars: [],
     unsupported: [],

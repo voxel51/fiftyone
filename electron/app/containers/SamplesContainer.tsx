@@ -35,12 +35,21 @@ const Root = styled.div`
 const DisplayOptionsWrapper = (props) => {
   const { containerRef, sidebarRef, sidebarHeight, headerHeight } = props;
   const [activeTags, setActiveTags] = useRecoilState(atoms.activeTags);
-  const [activeLabels, setActiveLabels] = useRecoilState(atoms.activeLabels);
-  const [activeOther, setActiveOther] = useRecoilState(atoms.activeOther);
+  const [activeLabels, setActiveLabels] = useRecoilState(
+    atoms.activeLabels("sample")
+  );
+  const [activeFrameLabels, setActiveFrameLabels] = useRecoilState(
+    atoms.activeLabels("frame")
+  );
+  const [activeOther, setActiveOther] = useRecoilState(
+    atoms.activeOther("sample")
+  );
 
-  const labelSampleCounts = useRecoilValue(selectors.labelSampleCounts);
+  const labelSampleCounts = useRecoilValue(
+    selectors.labelSampleCounts("sample")
+  );
   const filteredLabelSampleCounts = useRecoilValue(
-    selectors.filteredLabelSampleCounts
+    selectors.filteredLabelSampleCounts("sample")
   );
 
   const tagNames = useRecoilValue(selectors.tagNames);
@@ -48,7 +57,10 @@ const DisplayOptionsWrapper = (props) => {
 
   const filters = useRecoilValue(selectors.labelFilters);
   const setModalFilters = useSetRecoilState(selectors.modalLabelFilters);
-  const labelNameGroups = useRecoilValue(selectors.labelNameGroups);
+  const labelNameGroups = useRecoilValue(selectors.labelNameGroups("sample"));
+  const frameLabelNameGroups = useRecoilValue(
+    selectors.labelNameGroups("frame")
+  );
 
   useEffect(() => {
     setModalFilters(filters);
@@ -87,6 +99,12 @@ const DisplayOptionsWrapper = (props) => {
             tagSampleCounts,
             activeTags
           )}
+          frameLabels={getDisplayOptions(
+            frameLabelNameGroups.labels,
+            filteredLabelSampleCounts,
+            labelSampleCounts,
+            activeFrameLabels
+          )}
           labels={getDisplayOptions(
             labelNameGroups.labels,
             filteredLabelSampleCounts,
@@ -95,6 +113,7 @@ const DisplayOptionsWrapper = (props) => {
           )}
           onSelectTag={handleSetDisplayOption(setActiveTags)}
           onSelectLabel={handleSetDisplayOption(setActiveLabels)}
+          onSelectFrameLabel={handleSetDisplayOption(setActiveFrameLabels)}
           scalars={getDisplayOptions(
             labelNameGroups.scalars,
             filteredLabelSampleCounts,

@@ -12,7 +12,7 @@ import routes from "../constants/routes.json";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { VALID_LABEL_TYPES } from "../utils/labels";
-import { request } from "../utils/socket";
+import { useSubscribe } from "../utils/socket";
 
 function NoDataset() {
   return (
@@ -30,6 +30,7 @@ function Dataset(props) {
     metadata: null,
     activeLabels: {},
   });
+  const port = useRecoilValue(atoms.port);
   const connected = useRecoilValue(atoms.connected);
   const loading = useRecoilValue(atoms.loading);
   const hasDataset = useRecoilValue(selectors.hasDataset);
@@ -37,24 +38,13 @@ function Dataset(props) {
   const refreshColorMap = useSetRecoilState(selectors.refreshColorMap);
   const datasetName = useRecoilValue(selectors.datasetName);
   const currentSamples = useRecoilValue(atoms.currentSamples);
-  const labelNames = useRecoilValue(selectors.labelNames);
+  const labelNames = useRecoilValue(selectors.labelNames("sample"));
   const tagNames = useRecoilValue(selectors.tagNames);
-  const labelTypes = useRecoilValue(selectors.labelTypes);
-  const [activeLabels, setActiveLabels] = useRecoilState(atoms.activeLabels);
-  const activeOther = useRecoilValue(atoms.activeOther);
-  const view = useRecoilValue(selectors.view);
-  const socket = useRecoilValue(selectors.socket);
-  const setDatasetStats = useSetRecoilState(atoms.datasetStats);
-  const setExtendedDatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
-
-  useEffect(async () => {
-    const response = await request(socket, "get_statistics");
-    setDatasetStats(response);
-  }, [view]);
-  useEffect(async () => {
-    const response = await request(socket, "get_statistics", true);
-    setExtendedDatasetStats(response);
-  }, [view]);
+  const labelTypes = useRecoilValue(selectors.labelTypes("sample"));
+  const [activeLabels, setActiveLabels] = useRecoilState(
+    atoms.activeLabels("sample")
+  );
+  const activeOther = useRecoilValue(atoms.activeOther("sample"));
 
   // update color map
   useEffect(() => {
@@ -182,4 +172,4 @@ function Dataset(props) {
   );
 }
 
-export default Dataset;
+export default React.memo(Dataset);
