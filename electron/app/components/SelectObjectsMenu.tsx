@@ -13,6 +13,7 @@ import {
 } from "../utils/selection";
 import { getSocket } from "../utils/socket";
 
+import Menu from "./Menu";
 import DropdownTag from "./Tags/DropdownTag";
 
 const _addFrameNumberToObjects = (objects, frame_number) =>
