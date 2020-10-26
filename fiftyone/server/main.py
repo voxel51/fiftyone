@@ -220,7 +220,7 @@ class StateController(Namespace):
         return state
 
     @_catch_errors
-    def on_get_statistics(self, _):
+    def on_get_statistics(self, extended=False):
         """Gets the current statistics.
 
         Returns:
@@ -234,15 +234,15 @@ class StateController(Namespace):
             view = state.dataset.view()
 
         if view is None:
-            return {"view": {}, "extended_view": {}}
+            return {"view": [], "extended_view": []}
 
-        ext_view = copy(view)
-        for stage_dict in state.filters.values():
-            stage = fosg.ViewStage._from_dict(stage_dict)
-            if type(stage) in _WITHOUT_PAGINATION_EXTENDED_STAGES:
-                continue
-            ext_view = ext_view.add_stage(stage)
-        return {"view": [], "extended_view": []}
+        if extended:
+            for stage_dict in state.filters.values():
+                stage = fosg.ViewStage._from_dict(stage_dict)
+                if type(stage) in _WITHOUT_PAGINATION_EXTENDED_STAGES:
+                    continue
+                view = view.add_stage(stage)
+        return fos.DatasetStatistics(view)
 
     @_catch_errors
     @_load_state()
