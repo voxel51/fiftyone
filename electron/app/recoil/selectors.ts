@@ -47,7 +47,7 @@ export const view = selector({
   get: ({ get }) => {
     return get(atoms.stateDescription).view || [];
   },
-  set: ({ get, set }, stages) => {
+  set: ({ get }, stages) => {
     const state = get(atoms.stateDescription);
     return {
       ...state,
@@ -56,34 +56,10 @@ export const view = selector({
   },
 });
 
-export const stats = selector({
-  key: "stats",
-  get: async ({ get }) => {
-    const state = get(atoms.stateDescription);
-    const response = await request(get(socket), "get_statistics", "");
-    console.log(response);
-    return response;
-  },
-});
-
-export const datasetStats = selector({
-  key: "datasetStats",
-  get: ({ get }) => {
-    return get(stats).view || {};
-  },
-});
-
-export const extendedDatasetStats = selector({
-  key: "extendedDatasetStats",
-  get: ({ get }) => {
-    return get(stats).extended_view || {};
-  },
-});
-
 export const totalCount = selector({
   key: "totalCount",
   get: ({ get }): number => {
-    return get(datasetStats).count;
+    return get(atoms.datasetStats).count;
   },
 });
 
@@ -98,14 +74,14 @@ export const filterStage = selectorFamily({
 export const filteredCount = selector({
   key: "filteredCount",
   get: ({ get }): number => {
-    return get(extendedDatasetStats).count;
+    return get(atoms.extendedDatasetStats).count;
   },
 });
 
 export const tagNames = selector({
   key: "tagNames",
   get: ({ get }) => {
-    const tags = get(datasetStats).tags || {};
+    const tags = get(atoms.datasetStats).tags || {};
     return Object.keys(tags).sort();
   },
 });
@@ -113,14 +89,14 @@ export const tagNames = selector({
 export const tagSampleCounts = selector({
   key: "tagSampleCounts",
   get: ({ get }) => {
-    return get(datasetStats).tags || {};
+    return get(atoms.datasetStats).tags || {};
   },
 });
 
 export const filteredTagSampleCounts = selector({
   key: "filteredTagSampleCounts",
   get: ({ get }) => {
-    return get(extendedDatasetStats).tags || {};
+    return get(atoms.extendedDatasetStats).tags || {};
   },
 });
 
@@ -184,7 +160,7 @@ export const labelClasses = selectorFamily({
   key: "labelClasses",
   get: (label) => ({ get }) => {
     return [];
-    const stats = get(datasetStats);
+    const stats = get(atoms.datasetStats);
     return stats.labels && stats.labels[label]
       ? stats.labels[label].classes
       : [];
@@ -195,7 +171,7 @@ export const labelSampleCounts = selector({
   key: "labelSampleCounts",
   get: ({ get }) => {
     return {};
-    const fields = get(datasetStats).custom_fields || {};
+    const fields = get(atoms.datasetStats).custom_fields || {};
     if (get(mediaType) === "video") {
       const frames = fields.frames || {};
       return {
@@ -376,7 +352,7 @@ export const fieldIsFiltered = selectorFamily({
 export const labelConfidenceBounds = selectorFamily({
   key: "labelConfidenceBounds",
   get: (label) => ({ get }) => {
-    const labels = get(datasetStats).labels;
+    const labels = get(atoms.datasetStats).labels;
     return labels && labels[label]
       ? labels[label].confidence_bounds
       : [null, null];
@@ -386,7 +362,7 @@ export const labelConfidenceBounds = selectorFamily({
 export const numericFieldBounds = selectorFamily({
   key: "numericFieldBounds",
   get: (label) => ({ get }) => {
-    const bounds = get(datasetStats).numeric_field_bounds;
+    const bounds = get(atoms.datasetStats).numeric_field_bounds;
     return bounds && bounds[label] ? bounds[label] : [null, null];
   },
 });
@@ -394,7 +370,12 @@ export const numericFieldBounds = selectorFamily({
 export const labelNameGroups = selector({
   key: "labelNameGroups",
   get: ({ get }) =>
-    makeLabelNameGroups(get(fields), get(labelNames), get(labelTypes)),
+    makeLabelNameGroups(
+      get(mediaType),
+      get(fields),
+      get(labelNames),
+      get(labelTypes)
+    ),
 });
 
 export const isNumericField = selectorFamily({

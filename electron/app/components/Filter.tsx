@@ -441,7 +441,7 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
   if (!modal) {
     useEffect(() => {
       const newState = JSON.parse(JSON.stringify(stateDescription));
-      if (!fieldIsFiltered && !(entry.name in newState.filter_stages)) return;
+      if (!fieldIsFiltered && !(entry.name in newState.filters)) return;
       let fieldName = entry.name;
       if (mediaType === "video") {
         fieldName = "frames." + entry.name;
@@ -455,14 +455,13 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
         hasBounds
       );
       if (
-        JSON.stringify(filter) ===
-        JSON.stringify(newState.filter_stages[entry.name])
+        JSON.stringify(filter) === JSON.stringify(newState.filters[entry.name])
       )
         return;
-      if (!fieldIsFiltered && entry.name in newState.filter_stages) {
-        delete newState.filter_stages[entry.name];
+      if (!fieldIsFiltered && entry.name in newState.filters) {
+        delete newState.filters[entry.name];
       } else {
-        newState.filter_stages[entry.name] = filter;
+        newState.filters[entry.name] = filter;
       }
       setStateDescription(newState);
       socket.emit(

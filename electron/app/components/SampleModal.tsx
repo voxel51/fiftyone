@@ -233,6 +233,7 @@ const SampleModal = ({
   const labelNames = useRecoilValue(selectors.labelNames);
   const labelTypes = useRecoilValue(selectors.labelTypes);
   const labelNameGroups = makeLabelNameGroups(
+    mediaType,
     fieldSchema,
     labelNames,
     labelTypes

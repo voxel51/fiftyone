@@ -121,19 +121,31 @@ export const formatMetadata = (metadata) => {
   })).filter(({ value }) => value !== undefined);
 };
 
-export function makeLabelNameGroups(fieldSchema, labelNames, labelTypes) {
-  console.log(fieldSchema, labelNames, labelTypes);
+export function makeLabelNameGroups(
+  mediaType,
+  fieldSchema,
+  labelNames,
+  labelTypes
+) {
   const labelNameGroups = {
     labels: [],
     scalars: [],
     unsupported: [],
   };
-  for (const name of labelNames) {
+  const frameLabelNameGroups = {
+    labels: [],
+    scalars: [],
+    unsupported: [],
+  };
+  console.log(fieldSchema);
+  for (let i = 0; i < labelNames.length; i++) {
+    const name = labelNames[i];
+    const type = labelTypes[i];
     if (RESERVED_FIELDS.includes(name)) {
       continue;
-    } else if (VALID_LABEL_TYPES.includes(labelTypes[name])) {
-      labelNameGroups.labels.push({ name, type: labelTypes[name] });
-    } else if (VALID_SCALAR_TYPES.includes(fieldSchema[name])) {
+    } else if (VALID_LABEL_TYPES.includes(type)) {
+      labelNameGroups.labels.push({ name, type });
+    } else if (VALID_SCALAR_TYPES.includes(fieldSchema[name].ftype)) {
       labelNameGroups.scalars.push({ name });
     } else {
       labelNameGroups.unsupported.push({ name });

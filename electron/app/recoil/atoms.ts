@@ -10,6 +10,16 @@ export const connected = atom({
   default: false,
 });
 
+export const datasetStats = atom({
+  key: "datasetStats",
+  default: {},
+});
+
+export const extendedDatasetStats = atom({
+  key: "extendedDatasetStats",
+  default: {},
+});
+
 export const loading = atom({
   key: "loading",
   default: true,

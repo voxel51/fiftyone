@@ -12,6 +12,7 @@ import routes from "../constants/routes.json";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { VALID_LABEL_TYPES } from "../utils/labels";
+import { request } from "../utils/socket";
 
 function NoDataset() {
   return (
@@ -22,7 +23,6 @@ function NoDataset() {
 }
 
 function Dataset(props) {
-  alert("ee");
   const tabs = [routes.SAMPLES, routes.TAGS, routes.LABELS, routes.SCALARS];
   const [modal, setModal] = useState({
     visible: false,
@@ -42,6 +42,19 @@ function Dataset(props) {
   const labelTypes = useRecoilValue(selectors.labelTypes);
   const [activeLabels, setActiveLabels] = useRecoilState(atoms.activeLabels);
   const activeOther = useRecoilValue(atoms.activeOther);
+  const view = useRecoilValue(selectors.view);
+  const socket = useRecoilValue(selectors.socket);
+  const setDatasetStats = useSetRecoilState(atoms.datasetStats);
+  const setExtendedDatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
+
+  useEffect(async () => {
+    const response = await request(socket, "get_statistics");
+    setDatasetStats(response);
+  }, [view]);
+  useEffect(async () => {
+    const response = await request(socket, "get_statistics", true);
+    setExtendedDatasetStats(response);
+  }, [view]);
 
   // update color map
   useEffect(() => {
