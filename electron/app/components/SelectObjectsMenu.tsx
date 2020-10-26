@@ -43,7 +43,7 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
         .flat()
     : listSampleObjects(sample);
   const frameObjects =
-    isVideo && frameNumber
+    isVideo && frameNumber && sampleFrameData[frameNumber - 1]
       ? _addFrameNumberToObjects(
           listSampleObjects(sampleFrameData[frameNumber - 1]),
           frameNumber
