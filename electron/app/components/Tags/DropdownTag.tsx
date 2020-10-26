@@ -12,7 +12,7 @@ import {
 } from "@material-ui/core";
 import { ArrowDropDown } from "@material-ui/icons";
 
-import Menu from "./Menu";
+import Menu from "../Menu";
 import SelectionTag from "./SelectionTag";
 
 const Container = styled.div`
