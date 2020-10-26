@@ -9,7 +9,7 @@ import {
   makeLabelNameGroups,
   labelTypeHasColor,
 } from "../utils/labels";
-import { getSocket, request } from "../utils/socket";
+import { getSocket } from "../utils/socket";
 
 export const socket = selector({
   key: "socket",
@@ -59,7 +59,10 @@ export const view = selector({
 export const totalCount = selector({
   key: "totalCount",
   get: ({ get }): number => {
-    return get(atoms.datasetStats).count;
+    return get(atoms.datasetStats).reduce(
+      (acc, cur) => (cur.name === "count" ? cur.count : acc),
+      0
+    );
   },
 });
 
@@ -115,42 +118,38 @@ const labelFilter = (f) => {
   );
 };
 
-const fields = selector({
+const fields = selectorFamily({
   key: "fields",
-  get: ({ get }) => {
-    const sample_schema = get(fieldSchema("sample"));
-    const frame_schema = get(fieldSchema("frame"));
-    return sample_schema
-      .concat(frame_schema.map((f) => ({ ...f, name: "frames." + f.name })))
-      .reduce((acc, cur) => {
-        acc[cur.name] = cur;
-        return acc;
-      }, {});
+  get: (dimension: string) => ({ get }) => {
+    return get(fieldSchema(dimension)).reduce((acc, cur) => {
+      acc[cur.name] = cur;
+      return acc;
+    }, {});
   },
 });
 
-const labels = selector({
+const labels = selectorFamily({
   key: "labels",
-  get: ({ get }) => {
-    const fieldsValue = get(fields);
+  get: (dimension: string) => ({ get }) => {
+    const fieldsValue = get(fields(dimension));
     return Object.keys(fieldsValue)
       .map((k) => fieldsValue[k])
       .filter(labelFilter);
   },
 });
 
-export const labelNames = selector({
+export const labelNames = selectorFamily({
   key: "labelNames",
-  get: ({ get }) => {
-    const l = get(labels);
+  get: (dimension: string) => ({ get }) => {
+    const l = get(labels(dimension));
     return l.map((l) => l.name);
   },
 });
 
-export const labelTypes = selector({
+export const labelTypes = selectorFamily({
   key: "labelTypes",
-  get: ({ get }) => {
-    return get(labels).map((l) => {
+  get: (dimension: string) => ({ get }) => {
+    return get(labels(dimension)).map((l) => {
       return l.embedded_doc_type.split(".").slice(-1)[0];
     });
   },
@@ -367,14 +366,13 @@ export const numericFieldBounds = selectorFamily({
   },
 });
 
-export const labelNameGroups = selector({
+export const labelNameGroups = selectorFamily({
   key: "labelNameGroups",
-  get: ({ get }) =>
+  get: (dimension: string) => ({ get }) =>
     makeLabelNameGroups(
-      get(mediaType),
-      get(fields),
-      get(labelNames),
-      get(labelTypes)
+      get(fields(dimension)),
+      get(labelNames(dimension)),
+      get(labelTypes(dimension))
     ),
 });
 

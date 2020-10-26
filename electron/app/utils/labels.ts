@@ -137,7 +137,7 @@ export function makeLabelNameGroups(
     scalars: [],
     unsupported: [],
   };
-  console.log(fieldSchema);
+
   for (let i = 0; i < labelNames.length; i++) {
     const name = labelNames[i];
     const type = labelTypes[i];

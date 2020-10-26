@@ -12,12 +12,12 @@ export const connected = atom({
 
 export const datasetStats = atom({
   key: "datasetStats",
-  default: {},
+  default: [],
 });
 
 export const extendedDatasetStats = atom({
   key: "extendedDatasetStats",
-  default: {},
+  default: [],
 });
 
 export const loading = atom({
@@ -95,22 +95,22 @@ export const modalFilterLabelIncludeNoConfidence = atomFamily({
   default: true,
 });
 
-export const activeLabels = atom({
+export const activeLabels = atomFamily({
   key: "activeLabels",
   default: {},
 });
 
-export const modalActiveLabels = atom({
+export const modalActiveLabels = atomFamily({
   key: "modalActiveLabels",
   default: {},
 });
 
-export const activeOther = atom({
+export const activeOther = atomFamily({
   key: "activeOther",
   default: {},
 });
 
-export const modalActiveOther = atom({
+export const modalActiveOther = atomFamily({
   key: "modalActiveOther",
   default: {},
 });
