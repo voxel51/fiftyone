@@ -32,6 +32,9 @@ export const addObjectsToSelection = (
 ): SelectedObjectMap => {
   const newSelection = { ...selection };
   for (const { object_id, ...data } of objects) {
+    if (data.frame_number === null) {
+      delete data.frame_number;
+    }
     newSelection[object_id] = data;
   }
   return newSelection;
