@@ -4,6 +4,7 @@ import styled from "styled-components";
 import {
   Button,
   ClickAwayListener,
+  Divider,
   Grow,
   Paper,
   Popper,
@@ -26,6 +27,12 @@ const Container = styled.div`
       padding-top: 0;
       padding-bottom: 0;
     }
+
+    .divider {
+      height: 2px;
+      background-color: ${({ theme }) => theme.menuBorder};
+      margin: 3px 0;
+    }
   }
 `;
 
@@ -34,19 +41,26 @@ const Menu = ({ items, onClose, onSelect, ...rest }) => {
     <Container>
       <ClickAwayListener onClickAway={onClose}>
         <MenuList classes={{ root: "menu" }} {...rest}>
-          {items.map((item, i) => (
-            <MenuItem
-              key={i}
-              onClick={() => onSelect(item)}
-              classes={{ root: "item" }}
-            >
-              {item.name}
-            </MenuItem>
-          ))}
+          {items.map((item, i) =>
+            item === Menu.DIVIDER ? (
+              <Divider key={i} classes={{ root: "divider" }} />
+            ) : (
+              <MenuItem
+                key={i}
+                disabled={item.disabled}
+                onClick={() => onSelect(item)}
+                classes={{ root: "item" }}
+              >
+                {item.name}
+              </MenuItem>
+            )
+          )}
         </MenuList>
       </ClickAwayListener>
     </Container>
   );
 };
+
+Menu.DIVIDER = "-";
 
 export default Menu;

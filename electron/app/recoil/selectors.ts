@@ -215,7 +215,8 @@ export const labelFilters = selector({
       const none = get(atoms.filterLabelIncludeNoConfidence(label));
       const include = get(atoms.filterIncludeLabels(label));
       filters[label] = (s) => {
-        const inRange = range[0] <= s.confidence && s.confidence <= range[1];
+        const inRange =
+          range[0] - 0.005 <= s.confidence && s.confidence <= range[1] + 0.005;
         const noConfidence = none && s.confidence === undefined;
         const isIncluded = include.length === 0 || include.includes(s.label);
         return (inRange || noConfidence) && isIncluded;
@@ -235,7 +236,8 @@ export const modalLabelFilters = selector({
       const none = get(atoms.modalFilterLabelIncludeNoConfidence(label));
       const include = get(atoms.modalFilterIncludeLabels(label));
       filters[label] = (s) => {
-        const inRange = range[0] <= s.confidence && s.confidence <= range[1];
+        const inRange =
+          range[0] - 0.005 <= s.confidence && s.confidence <= range[1] + 0.005;
         const noConfidence = none && s.confidence === undefined;
         const isIncluded = include.length === 0 || include.includes(s.label);
         return labels[label] && (inRange || noConfidence) && isIncluded;

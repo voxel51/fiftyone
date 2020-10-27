@@ -13,6 +13,8 @@ import { useHashChangeHandler } from "../utils/hooks";
 import { useSubscribe } from "../utils/socket";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+import { convertSelectedObjectsListToMap } from "../utils/selection";
+import gaConfig from "../constants/ga.json";
 import Error from "./Error";
 
 import gaConfig from "../constants/ga.json";
@@ -67,6 +69,7 @@ function App(props: Props) {
   const [viewCounterValue, setViewCounter] = useRecoilState(atoms.viewCounter);
   const [result, setResultFromForm] = useState({ port, connected });
   const setDatasetStats = useSetRecoilState(atoms.datasetStats);
+  const setSelectedObjects = useSetRecoilState(atoms.selectedObjects);
   const setExtendedDatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
 
   useGA(socket);
@@ -78,6 +81,7 @@ function App(props: Props) {
   const handleStateUpdate = (data) => {
     setStateDescription(data);
     setSelectedSamples(new Set(data.selected));
+    setSelectedObjects(convertSelectedObjectsListToMap(data.selected_objects));
   };
 
   useSubscribe(socket, "connect", () => {

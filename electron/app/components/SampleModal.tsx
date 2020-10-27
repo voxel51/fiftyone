@@ -7,17 +7,19 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import DisplayOptionsSidebar from "./DisplayOptionsSidebar";
 import JSONView from "./JSONView";
 import Player51 from "./Player51";
+import SelectObjectsMenu from "./SelectObjectsMenu";
 import { Button, ModalFooter } from "./utils";
 import * as selectors from "../recoil/selectors";
 import * as atoms from "../recoil/atoms";
-import { getSocket } from "../utils/socket";
 
 import {
+  useEventHandler,
   useKeydownHandler,
   useResizeHandler,
   useVideoData,
 } from "../utils/hooks";
 import { formatMetadata, stringify } from "../utils/labels";
+import { useToggleSelectionObject } from "../utils/selection";
 
 type Props = {
   sample: object;
@@ -100,6 +102,9 @@ const Container = styled.div`
     &.right {
       right: 0;
     }
+    &:hover {
+      background-color: ${({ theme }) => theme.overlayButtonHover};
+    }
   }
 
   .sidebar {
@@ -154,6 +159,11 @@ const Container = styled.div`
       vertical-align: middle;
     }
   }
+
+  .select-objects-wrapper {
+    margin-top: 1em;
+    margin-bottom: -1em;
+  }
 `;
 
 const TopRightNavButtonsContainer = styled.div`
@@ -181,6 +191,9 @@ const TopRightNavButtonContainer = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
+  &:hover {
+    background-color: ${({ theme }) => theme.overlayButtonHover};
+  }
 `;
 
 const TopRightNavButton = ({ icon, title, onClick, ...rest }) => {
@@ -248,6 +261,9 @@ const SampleModal = ({
   useEffect(() => {
     setActiveFrameLabels(rest.activeFrameLabels);
   }, [rest.activeFrameLabels]);
+
+  const toggleSelectedObject = useToggleSelectionObject(atoms.selectedObjects);
+  const selectedObjectIDs = Object.keys(useRecoilValue(atoms.selectedObjects));
 
   // save overlay options when navigating - these are restored by passing them
   // in defaultOverlayOptions when the new player is created
@@ -317,6 +333,11 @@ const SampleModal = ({
     } else if (e.key == "ArrowRight" && onNext) {
       onNext();
     }
+  });
+
+  const frameNumberRef = useRef(null);
+  useEventHandler(playerRef.current, "timeupdate", (e) => {
+    frameNumberRef.current = e.data.frame_number;
   });
 
   const getDisplayOptions = (
@@ -448,6 +469,14 @@ const SampleModal = ({
             filterSelector={selectors.modalLabelFilters}
             playerRef={playerRef}
             defaultOverlayOptions={savedOverlayOptions}
+            selectedObjects={selectedObjectIDs}
+            onSelectObject={({ id, name }) => {
+              toggleSelectedObject(id, {
+                sample_id: sample._id,
+                field: name,
+                frame_number: frameNumberRef.current,
+              });
+            }}
           />
         )}
         {onPrevious ? (
@@ -478,6 +507,12 @@ const SampleModal = ({
       </div>
       <div className="sidebar">
         <div className="sidebar-content">
+          <div className="select-objects-wrapper">
+            <SelectObjectsMenu
+              sample={sample}
+              frameNumberRef={frameNumberRef}
+            />
+          </div>
           <h2>
             Metadata
             <span className="push-right" />

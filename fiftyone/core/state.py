@@ -49,6 +49,7 @@ class StateDescription(etas.Serializable):
         connected=False,
         dataset=None,
         selected=None,
+        selected_objects=None,
         view=None,
         filters={},
     ):
@@ -100,6 +101,7 @@ class StateDescription(etas.Serializable):
         close = d.get("close", False)
         connected = d.get("connected", False)
         selected = d.get("selected", [])
+        selected_objects = d.get("selected_objects", [])
 
         dataset = d.get("dataset", None)
         if dataset is not None:
@@ -116,6 +118,7 @@ class StateDescription(etas.Serializable):
             connected=connected,
             dataset=dataset,
             selected=selected,
+            selected_objects=selected_objects,
             view=view,
             **kwargs
         )
