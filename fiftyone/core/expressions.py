@@ -505,6 +505,32 @@ class ViewExpression(object):
         """
         return ViewExpression({"$in": [value, self]})
 
+    def first(self):
+        """Returns the first value in the expression, which must resolve to an
+        array.
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$first": self})
+
+    def last(self):
+        """Returns the last value in the expression, which must resolve to an
+        array.
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$last": self})
+
+    def reverse(self):
+        """Reverses the order of the elements in the array expression.
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$reverseArray": self})
+
     def filter(self, expr):
         """Applies the given filter to the elements of this expression, which
         must resolve to an array.
@@ -543,12 +569,40 @@ class ViewExpression(object):
             {"$map": {"input": self, "in": expr.to_mongo(prefix="$$this")}}
         )
 
+    def min(self):
+        """Returns the minimum value in this expression, which must resolve to
+        a numeric array.
+
+        Missing or ``None``-valued elements are ignored.
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$min": self})
+
+    def max(self):
+        """Returns the maximum value in this expression, which must resolve to
+        a numeric array.
+
+        Missing or ``None``-valued elements are ignored.
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$max": self})
+
     def sum(self):
         """Returns the sum of the values in this expression, which must resolve
         to a numeric array.
 
+        Missing, non-numeric, or ``None``-valued elements are ignored.
+
         Returns:
             a :class:`ViewExpression`
+        """
+        return ViewExpression({"$sum": self})
+
+        # @todo is this version needed?
         """
         return ViewExpression(
             {
@@ -559,6 +613,7 @@ class ViewExpression(object):
                 }
             }
         )
+        """
 
     # String expression operators #############################################
 
