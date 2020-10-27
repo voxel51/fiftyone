@@ -193,12 +193,16 @@ export const modalLabelFilters = selector({
   key: "modalLabelFilters",
   get: ({ get }) => {
     const labels = get(atoms.modalActiveLabels);
+    const hiddenObjects = get(atoms.hiddenObjects);
     const filters = {};
     for (const label in labels) {
       const range = get(atoms.modalFilterLabelConfidenceRange(label));
       const none = get(atoms.modalFilterLabelIncludeNoConfidence(label));
       const include = get(atoms.modalFilterIncludeLabels(label));
       filters[label] = (s) => {
+        if (hiddenObjects.has(s.id)) {
+          return false;
+        }
         const inRange =
           range[0] - 0.005 <= s.confidence && s.confidence <= range[1] + 0.005;
         const noConfidence = none && s.confidence === undefined;

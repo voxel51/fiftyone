@@ -1,5 +1,7 @@
 import { atom, atomFamily } from "recoil";
 
+import { SelectedObjectMap } from "../utils/selection";
+
 export const port = atom({
   key: "port",
   default: parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151,
@@ -20,10 +22,14 @@ export const selectedSamples = atom({
   default: new Set(),
 });
 
-// "object_id": "sample_id"
-export const selectedObjects = atom({
+export const selectedObjects = atom<SelectedObjectMap>({
   key: "selectedObjects",
   default: {},
+});
+
+export const hiddenObjects = atom<Set<string>>({
+  key: "hiddenObjects",
+  default: new Set(),
 });
 
 export const stageInfo = atom({

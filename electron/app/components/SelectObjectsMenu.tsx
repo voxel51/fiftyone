@@ -23,6 +23,9 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
   const [selectedObjects, setSelectedObjects] = useRecoilState<
     SelectedObjectMap
   >(atoms.selectedObjects);
+  const [hiddenObjects, setHiddenObjects] = useRecoilState<Set<string>>(
+    atoms.hiddenObjects
+  );
   const sampleFrameData =
     useRecoilValue(atoms.sampleFrameData(sample._id)) || [];
   const isVideo = useRecoilValue(selectors.mediaType) == "video";
@@ -89,6 +92,30 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
       })
     );
 
+  const hideSelected = () => {
+    const ids = Object.keys(selectedObjects);
+    setSelectedObjects({});
+    setHiddenObjects((hiddenObjects) => {
+      const newHidden = new Set(hiddenObjects);
+      for (const id of ids) {
+        newHidden.add(id);
+      }
+      return newHidden;
+    });
+  };
+
+  const hideOthers = (objects) => {
+    setHiddenObjects((hiddenObjects) => {
+      const newHidden = new Set(hiddenObjects);
+      for (const obj of objects) {
+        if (!selectedObjects[obj._id]) {
+          newHidden.add(obj._id);
+        }
+      }
+      return newHidden;
+    });
+  };
+
   const refresh = useFastRerender();
 
   return (
@@ -124,6 +151,27 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
           name: "Clear selection",
           disabled: !numTotalSelectedObjects,
           action: () => setSelectedObjects({}),
+        },
+        Menu.DIVIDER,
+        {
+          name: "Hide selected",
+          disabled: numTotalSelectedObjects == 0,
+          action: () => hideSelected(),
+        },
+        sampleObjects.length && {
+          name: "Hide others (current sample)",
+          disabled: numSampleSelectedObjects == 0,
+          action: () => hideOthers(sampleObjects),
+        },
+        frameObjects.length && {
+          name: "Hide others (current frame)",
+          disabled: numFrameSelectedObjects == 0,
+          action: () => hideOthers(frameObjects),
+        },
+        {
+          name: "Show all objects",
+          disabled: hiddenObjects.size == 0,
+          action: () => setHiddenObjects(new Set()),
         },
       ].filter(Boolean)}
       menuZIndex={10}
