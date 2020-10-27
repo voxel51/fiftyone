@@ -40,6 +40,7 @@ class StateDescription(etas.Serializable):
         connected (False): whether the session is connected to an app
         dataset (None): the current :class:`fiftyone.core.dataset.Dataset`
         selected (None): the list of currently selected samples
+        selected_objects (None): the list of currently selected objects
         view (None): the current :class:`fiftyone.core.view.DatasetView`
     """
 
@@ -58,6 +59,7 @@ class StateDescription(etas.Serializable):
         self.dataset = dataset
         self.view = view
         self.selected = selected or []
+        self.selected_objects = selected_objects or []
         self.filters = filters
         super().__init__()
 

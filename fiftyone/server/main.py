@@ -37,7 +37,7 @@ import fiftyone.core.state as fos
 
 from json_util import convert, FiftyOneJSONEncoder
 from util import get_file_dimensions
-from pipelines import DISTRIBUTION_PIPELINES, LABELS, SCALARS
+from pipelines import DISTRIBUTION_PIPELINES, TAGS, LABELS, SCALARS
 
 
 logger = logging.getLogger(__name__)
@@ -483,7 +483,7 @@ class StateController(Namespace):
             for idx, result in enumerate(view.aggregate(aggregations)):
                 results.append(
                     {
-                        "type": field.document_type.__name__,
+                        "type": fields[idx].document_type.__name__,
                         "name": result.name,
                         "data": sorted(
                             [
@@ -497,6 +497,23 @@ class StateController(Namespace):
                 )
 
             return results
+
+        if group == TAGS:
+            result = view.aggregate(foa.CountValues("tags"))
+            return [
+                {
+                    "type": "list",
+                    "name": result.name,
+                    "data": sorted(
+                        [
+                            {"key": k, "count": v}
+                            for k, v in result.values.items()
+                        ],
+                        key=lambda i: i["count"],
+                        reverse=True,
+                    ),
+                }
+            ]
 
         return _get_distributions(view, group)
 
