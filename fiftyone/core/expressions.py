@@ -405,6 +405,36 @@ class ViewExpression(object):
         """
         return ViewExpression({"$trunc": [self, place]})
 
+    # Field expression operators ##############################################
+
+    def apply(self, expr):
+        """Applies the given expression to this expression.
+
+        Examples::
+
+            from fiftyone import ViewField as F
+
+            # Show samples whose first detection in the `predictions` field
+            # has confidence > 0.95
+            view = dataset.match(
+                F("predictions.detections")[0].apply(F("confidence") > 0.95)
+            )
+
+        Args:
+            expr: a :class:`ViewExpression`
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression(
+            {
+                "$let": {
+                    "vars": {"field": self},
+                    "in": expr.to_mongo(prefix="$$field"),
+                }
+            }
+        )
+
     # Array expression operators ##############################################
 
     def __getitem__(self, idx_or_slice):
@@ -505,24 +535,6 @@ class ViewExpression(object):
         """
         return ViewExpression({"$in": [value, self]})
 
-    def first(self):
-        """Returns the first value in the expression, which must resolve to an
-        array.
-
-        Returns:
-            a :class:`ViewExpression`
-        """
-        return ViewExpression({"$first": self})
-
-    def last(self):
-        """Returns the last value in the expression, which must resolve to an
-        array.
-
-        Returns:
-            a :class:`ViewExpression`
-        """
-        return ViewExpression({"$last": self})
-
     def reverse(self):
         """Reverses the order of the elements in the array expression.
 
@@ -614,6 +626,17 @@ class ViewExpression(object):
             }
         )
         """
+
+    def mean(self):
+        """Returns the average value in this expression, which must resolve to
+        a numeric array.
+
+        Missing or ``None``-valued elements are ignored.
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$avg": self})
 
     # String expression operators #############################################
 
