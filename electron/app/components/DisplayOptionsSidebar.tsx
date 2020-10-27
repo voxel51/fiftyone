@@ -75,7 +75,16 @@ const Container = styled.div`
   }
 `;
 
-const Cell = ({ label, icon, entries, onSelect, colorMap, title, modal }) => {
+const Cell = ({
+  label,
+  icon,
+  entries,
+  headerContent = null,
+  onSelect,
+  colorMap,
+  title,
+  modal,
+}) => {
   const theme = useContext(ThemeContext);
   const [expanded, setExpanded] = useState(true);
   const numSelected = entries.filter((e) => e.selected).length;
@@ -112,6 +121,7 @@ const Cell = ({ label, icon, entries, onSelect, colorMap, title, modal }) => {
       expanded={expanded}
       onExpand={setExpanded}
     >
+      {headerContent}
       {entries.length ? (
         <CheckboxGrid
           columnWidths={[3, 2]}
@@ -160,6 +170,7 @@ const DisplayOptionsSidebar = React.forwardRef(
       onSelectTag,
       onSelectLabel,
       onSelectScalar,
+      headerContent = {},
       ...rest
     }: Props,
     ref
@@ -174,6 +185,7 @@ const DisplayOptionsSidebar = React.forwardRef(
           label="Tags"
           icon={<PhotoLibrary />}
           entries={tags}
+          headerContent={headerContent.tags}
           onSelect={onSelectTag}
           {...cellRest}
         />
@@ -182,6 +194,7 @@ const DisplayOptionsSidebar = React.forwardRef(
           label="Labels"
           icon={<Label style={{ transform: "rotate(180deg)" }} />}
           entries={labels}
+          headerContent={headerContent.labels}
           onSelect={onSelectLabel}
           {...cellRest}
         />
@@ -190,6 +203,7 @@ const DisplayOptionsSidebar = React.forwardRef(
           label="Scalars"
           icon={<BarChart />}
           entries={scalars}
+          headerContent={headerContent.scalars}
           onSelect={onSelectScalar}
           {...cellRest}
         />
@@ -204,6 +218,7 @@ const DisplayOptionsSidebar = React.forwardRef(
               selected: false,
               disabled: true,
             }))}
+            headerContent={headerContent.unsupported}
             {...cellRest}
           />
         ) : null}
