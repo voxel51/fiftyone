@@ -173,7 +173,7 @@ def _get_label_object_ids(label):
 def _make_frame_labels(name, label, frame_number, prefix=""):
     label = fol.ImageLabel.from_dict(label)
     labels = etav.VideoFrameLabels.from_image_labels(
-        label.to_image_labels(name=name), frame_number,
+        label.to_image_labels(name=prefix + name), frame_number,
     )
 
     for obj in labels.objects:
