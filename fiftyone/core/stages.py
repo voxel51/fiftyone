@@ -582,6 +582,53 @@ class _FilterListField(FilterField):
         raise NotImplementedError("subclasses must implement `validate()`")
 
 
+class FilterLabels(_FilterListField):
+    """Filters the :class:`fiftyone.core.labels.Label` elements in the
+    specified labels list field of the samples in a view.
+
+    The specified ``field`` must be one of the following types:
+
+    -   :class:`fiftyone.core.labels.Classifications`
+    -   :class:`fiftyone.core.labels.Detections`
+    -   :class:`fiftyone.core.labels.Polylines`
+    -   :class:`fiftyone.core.labels.Keypoints`
+
+    Examples::
+
+        @todo add these
+
+    Args:
+        field: the labels list field to filter
+        filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that returns a boolean describing the filter to apply
+        only_matches (False): whether to only include samples with at least
+            one label after filtering
+    """
+
+    def __init__(self, field, filter, only_matches=False):
+        self._field = field
+        self._filter = filter
+        self._only_matches = only_matches
+        self._labels_list_field = None
+        self._validate_params()
+
+    @property
+    def _filter_field(self):
+        if self._labels_list_field is None:
+            raise ValueError(
+                "`validate()` must be called before using a %s stage"
+                % self.__class__
+            )
+
+        return self._labels_list_field
+
+    def validate(self, sample_collection):
+        self._labels_list_field = _get_labels_list_field(
+            self._field, sample_collection
+        )
+
+
 class FilterClassifications(_FilterListField):
     """Filters the :class:`fiftyone.core.labels.Classification` elements in the
     specified :class:`fiftyone.core.labels.Classifications` field of the
@@ -864,6 +911,94 @@ class Limit(ViewStage):
     @classmethod
     def _params(cls):
         return [{"name": "limit", "type": "int", "placeholder": "int"}]
+
+
+class LimitLabels(ViewStage):
+    """Limits the number of :class:`fiftyone.core.labels.Label` instances in
+    the specified field of the samples in a view.
+
+    The specified ``field`` must be one of the following types:
+
+    -   :class:`fiftyone.core.labels.Classifications`
+    -   :class:`fiftyone.core.labels.Detections`
+    -   :class:`fiftyone.core.labels.Polylines`
+    -   :class:`fiftyone.core.labels.Keypoints`
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone.core.stages import LimitLabels
+
+        dataset = fo.load_dataset(...)
+
+        #
+        # Only include the first 5 detections in the `ground_truth` field of
+        # the view
+        #
+
+        stage = LimitLabels("ground_truth", 5)
+        view = dataset.add_stage(stage)
+
+    Args:
+        field: the labels field to filter
+        num: the maximum number of samples to return. If a non-positive
+            number is provided, an empty view is returned
+    """
+
+    def __init__(self, field, limit):
+        self._field = field
+        self._limit = limit
+        self._labels_list_field = None
+
+    @property
+    def field(self):
+        """The labels field to limit."""
+        return self._field
+
+    @property
+    def limit(self):
+        """The maximum number of labels to return in each sample."""
+        return self._limit
+
+    def to_mongo(self):
+        """Returns the MongoDB version of the stage.
+
+        Returns:
+            a MongoDB aggregation pipeline (list of dicts)
+        """
+        if self._labels_list_field is None:
+            raise ValueError(
+                "`validate()` must be called before using a %s stage"
+                % self.__class__
+            )
+
+        return [
+            {
+                "$addFields": {
+                    self._labels_list_field: {
+                        "$slice": ["$" + self._labels_list_field, self._limit]
+                    }
+                }
+            }
+        ]
+
+    def _kwargs(self):
+        return [
+            ["field", self._field],
+            ["limit", self._limit],
+        ]
+
+    @classmethod
+    def _params(self):
+        return [
+            {"name": "field", "type": "field"},
+            {"name": "limit", "type": "int", "placeholder": "int"},
+        ]
+
+    def validate(self, sample_collection):
+        self._labels_list_field = _get_labels_list_field(
+            self._field, sample_collection
+        )
 
 
 class Match(ViewStage):
@@ -1606,6 +1741,40 @@ def _get_rng(seed):
     return _random
 
 
+def _get_labels_list_field(field_name, sample_collection):
+    schema = sample_collection.get_field_schema()
+    field = schema.get(field_name, None)
+
+    if field is None:
+        raise ValueError("Field '%s' does not exist" % field_name)
+
+    if isinstance(field, fof.EmbeddedDocumentField):
+        document_type = field.document_type
+        if document_type is fol.Classifications:
+            return field_name + ".classifications"
+
+        if document_type is fol.Detections:
+            return field_name + ".detections"
+
+        if document_type is fol.Polylines:
+            return field_name + ".polylines"
+
+        if document_type is fol.Keypoints:
+            return field_name + ".keypoints"
+
+    allowed_types = (
+        fol.Classifications,
+        fol.Detections,
+        fol.Polylines,
+        fol.Keypoints,
+    )
+
+    raise ValueError(
+        "Field '%s' must be a labels list type %s; found '%s'"
+        % (field_name, allowed_types, field)
+    )
+
+
 class _ViewStageRepr(reprlib.Repr):
     def repr_ViewExpression(self, expr, level):
         return self.repr1(expr.to_mongo(), level=level - 1)
@@ -1627,11 +1796,13 @@ _STAGES = [
     ExcludeFields,
     Exists,
     FilterField,
+    FilterLabels,
     FilterClassifications,
     FilterDetections,
     FilterPolylines,
     FilterKeypoints,
     Limit,
+    LimitLabels,
     Match,
     MatchTag,
     MatchTags,
