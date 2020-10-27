@@ -17,11 +17,7 @@ import {
   useResizeHandler,
   useVideoData,
 } from "../utils/hooks";
-import {
-  formatMetadata,
-  makeLabelNameGroups,
-  stringify,
-} from "../utils/labels";
+import { formatMetadata, stringify } from "../utils/labels";
 
 type Props = {
   sample: object;
@@ -223,22 +219,21 @@ const SampleModal = ({
   const [enableJSONFilter, setEnableJSONFilter] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const [activeLabels, setActiveLabels] = useRecoilState(
-    atoms.modalActiveLabels
+    atoms.modalActiveLabels("sample")
+  );
+  const [activeFrameLabels, setActiveFrameLabels] = useRecoilState(
+    atoms.modalActiveLabels("frame")
   );
   const mediaType = useRecoilValue(selectors.mediaType);
   const filter = useRecoilValue(selectors.sampleModalFilter);
   const activeTags = useRecoilValue(atoms.modalActiveTags);
   const tagNames = useRecoilValue(selectors.tagNames);
-  const fieldSchema = useRecoilValue(selectors.fieldSchema);
-  const labelNames = useRecoilValue(selectors.labelNames);
-  const labelTypes = useRecoilValue(selectors.labelTypes);
-  const labelNameGroups = makeLabelNameGroups(
-    mediaType,
-    fieldSchema,
-    labelNames,
-    labelTypes
+  const fieldSchema = useRecoilValue(selectors.fieldSchema("sample"));
+  const labelNameGroups = useRecoilValue(selectors.labelNameGroups("sample"));
+  const frameLabelNameGroups = useRecoilValue(
+    selectors.labelNameGroups("frame")
   );
-  const socket = getSocket(port, "state");
+  const socket = useRecoilValue(selectors.socket);
   const viewCounter = useRecoilValue(atoms.viewCounter);
   const [requested, requestLabels] = useVideoData(socket, sample);
   const frameData = useRecoilValue(atoms.sampleFrameData(sample._id));
@@ -250,6 +245,9 @@ const SampleModal = ({
   useEffect(() => {
     setActiveLabels(rest.activeLabels);
   }, [rest.activeLabels]);
+  useEffect(() => {
+    setActiveFrameLabels(rest.activeFrameLabels);
+  }, [rest.activeFrameLabels]);
 
   // save overlay options when navigating - these are restored by passing them
   // in defaultOverlayOptions when the new player is created
@@ -328,6 +326,7 @@ const SampleModal = ({
     hideCheckbox = false,
     filteredCountOrExists
   ) => {
+    console.log(values, selected);
     return [...values].sort().map(({ name, type }) => ({
       hideCheckbox,
       name,
@@ -508,7 +507,15 @@ const SampleModal = ({
               false,
               filteredLabelSampleValues
             )}
+            frameLabels={getDisplayOptions(
+              frameLabelNameGroups.labels,
+              labelSampleValues,
+              activeFrameLabels,
+              false,
+              filteredLabelSampleValues
+            )}
             onSelectLabel={handleSetDisplayOption(setActiveLabels)}
+            onSelectFrameLabel={handleSetDisplayOption(setActiveFrameLabels)}
             scalars={getDisplayOptions(
               labelNameGroups.scalars,
               scalarSampleValues,

@@ -58,6 +58,7 @@ function Dataset(props) {
     atoms.activeLabels("frame")
   );
   const activeOther = useRecoilValue(atoms.activeOther("sample"));
+  const activeFrameOther = useRecoilValue(atoms.activeOther("frame"));
 
   // update color map
   useEffect(() => {
@@ -83,8 +84,14 @@ function Dataset(props) {
       ...modal,
       activeLabels: modal.visible
         ? {
-            activeLabels,
-            activeOther,
+            ...activeLabels,
+            ...activeOther,
+          }
+        : {},
+      activeFrameLabels: modal.visible
+        ? {
+            ...activeFrameLabels,
+            ...activeFrameOther,
           }
         : {},
     });
@@ -129,6 +136,7 @@ function Dataset(props) {
           <Overlay onClick={handleHideModal} />
           <SampleModal
             activeLabels={modal.activeLabels}
+            activeFrameLabels={modal.activeFrameLabels}
             colorMap={colorMap}
             sample={modal.sample}
             metadata={modal.metadata}
