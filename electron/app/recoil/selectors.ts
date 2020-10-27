@@ -6,6 +6,7 @@ import {
   VALID_LABEL_TYPES,
   VALID_LIST_TYPES,
   VALID_NUMERIC_TYPES,
+  VALID_SCALAR_TYPES,
   makeLabelNameGroups,
   labelTypeHasColor,
 } from "../utils/labels";
@@ -133,6 +134,10 @@ const labelFilter = (f) => {
   );
 };
 
+const scalarFilter = (f) => {
+  return VALID_SCALAR_TYPES.includes(f.ftype);
+};
+
 const fields = selectorFamily({
   key: "fields",
   get: (dimension: string) => ({ get }) => {
@@ -170,6 +175,24 @@ export const labelTypes = selectorFamily({
   },
 });
 
+const scalars = selectorFamily({
+  key: "scalars",
+  get: (dimension: string) => ({ get }) => {
+    const fieldsValue = get(fields(dimension));
+    return Object.keys(fieldsValue)
+      .map((k) => fieldsValue[k])
+      .filter(scalarFilter);
+  },
+});
+
+export const scalarNames = selectorFamily({
+  key: "scalarNames",
+  get: (dimension: string) => ({ get }) => {
+    const l = get(scalars(dimension));
+    return l.map((l) => l.name);
+  },
+});
+
 const COUNT_CLS = "fiftyone.core.aggregations.CountResult";
 const LABELS_CLS = "fiftyone.core.aggregations.DistinctLabelsResult";
 const BOUNDS_CLS = "fiftyone.core.aggregations.BoundsResult";
@@ -191,7 +214,9 @@ export const labelClasses = selectorFamily({
 export const labelSampleCounts = selectorFamily({
   key: "labelSampleCounts",
   get: (dimension: string) => ({ get }) => {
-    const names = get(labelNames(dimension));
+    const names = get(labelNames(dimension)).concat(
+      get(scalarNames(dimension))
+    );
     const prefix = dimension === "sample" ? "" : "frames.";
     return get(atoms.datasetStats).reduce((acc, cur) => {
       if (
@@ -208,7 +233,9 @@ export const labelSampleCounts = selectorFamily({
 export const filteredLabelSampleCounts = selectorFamily({
   key: "filteredLabelSampleCounts",
   get: (dimension: string) => ({ get }) => {
-    const names = get(labelNames(dimension));
+    const names = get(labelNames(dimension)).concat(
+      get(scalarNames(dimension))
+    );
     const prefix = dimension === "sample" ? "" : "frames.";
     return get(atoms.datasetStats).reduce((acc, cur) => {
       if (
@@ -302,10 +329,19 @@ export const refreshColorMap = selector({
     const colorFrameLabelNames = get(labelTuples("frame"))
       .filter(([name, type]) => labelTypeHasColor(type))
       .map(([name]) => "frames." + name);
+    const scalarsList = [
+      ...get(scalarNames("sample")),
+      ...get(scalarNames("frame")),
+    ];
     set(
       atoms.colorMap,
       generateColorMap(
-        [...get(tagNames), ...colorLabelNames, ...colorFrameLabelNames],
+        [
+          ...get(tagNames),
+          ...scalarsList,
+          ...colorLabelNames,
+          ...colorFrameLabelNames,
+        ],
         colorMap
       )
     );

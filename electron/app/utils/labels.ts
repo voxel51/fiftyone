@@ -137,7 +137,6 @@ export function makeLabelNameGroups(fieldSchema, labelNames, labelTypes) {
     }
   }
   for (const field in fieldSchema) {
-    console.log(field);
     if (RESERVED_FIELDS.includes(field)) {
       continue;
     } else if (labelNames.includes(field)) {
