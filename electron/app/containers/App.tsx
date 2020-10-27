@@ -17,8 +17,6 @@ import { convertSelectedObjectsListToMap } from "../utils/selection";
 import gaConfig from "../constants/ga.json";
 import Error from "./Error";
 
-import gaConfig from "../constants/ga.json";
-
 type Props = {
   children: ReactNode;
 };

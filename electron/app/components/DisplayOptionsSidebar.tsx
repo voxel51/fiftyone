@@ -101,7 +101,6 @@ const Cell = ({
       }
     }
   };
-  console.log(entries);
 
   return (
     <DropdownCell

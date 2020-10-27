@@ -40,9 +40,10 @@ export const VALID_NUMERIC_TYPES = [
 ];
 
 export const RESERVED_FIELDS = [
+  "_id",
+  "_rand",
   "metadata",
   "media_type",
-  "_id",
   "tags",
   "filepath",
   "frames",
@@ -131,14 +132,20 @@ export function makeLabelNameGroups(fieldSchema, labelNames, labelTypes) {
   for (let i = 0; i < labelNames.length; i++) {
     const name = labelNames[i];
     const type = labelTypes[i];
-    if (RESERVED_FIELDS.includes(name)) {
-      continue;
-    } else if (VALID_LABEL_TYPES.includes(type)) {
+    if (VALID_LABEL_TYPES.includes(type)) {
       labelNameGroups.labels.push({ name, type });
-    } else if (VALID_SCALAR_TYPES.includes(fieldSchema[name].ftype)) {
-      labelNameGroups.scalars.push({ name });
+    }
+  }
+  for (const field in fieldSchema) {
+    console.log(field);
+    if (RESERVED_FIELDS.includes(field)) {
+      continue;
+    } else if (labelNames.includes(field)) {
+      continue;
+    } else if (VALID_SCALAR_TYPES.includes(fieldSchema[field].ftype)) {
+      labelNameGroups.scalars.push({ name: field });
     } else {
-      labelNameGroups.unsupported.push({ name });
+      labelNameGroups.unsupported.push({ name: field });
     }
   }
   return labelNameGroups;

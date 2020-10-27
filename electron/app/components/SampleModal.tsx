@@ -347,7 +347,6 @@ const SampleModal = ({
     hideCheckbox = false,
     filteredCountOrExists
   ) => {
-    console.log(values, selected);
     return [...values].sort().map(({ name, type }) => ({
       hideCheckbox,
       name,

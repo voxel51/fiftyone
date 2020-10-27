@@ -172,6 +172,9 @@ export const labelTypes = selectorFamily({
 
 const COUNT_CLS = "fiftyone.core.aggregations.CountResult";
 const LABELS_CLS = "fiftyone.core.aggregations.DistinctLabelsResult";
+const BOUNDS_CLS = "fiftyone.core.aggregations.BoundsResult";
+const CONFIDENCE_BOUNDS_CLS =
+  "fiftyone.core.aggregations.ConfidenceBoundsResult";
 
 export const labelClasses = selectorFamily({
   key: "labelClasses",
@@ -388,18 +391,30 @@ export const fieldIsFiltered = selectorFamily({
 export const labelConfidenceBounds = selectorFamily({
   key: "labelConfidenceBounds",
   get: (label) => ({ get }) => {
-    const labels = get(atoms.datasetStats).labels;
-    return labels && labels[label]
-      ? labels[label].confidence_bounds
-      : [null, null];
+    return get(atoms.datasetStats).reduce(
+      (acc, cur) => {
+        if (cur.name === label && cur._CLS === CONFIDENCE_BOUNDS_CLS) {
+          return cur.bounds;
+        }
+        return acc;
+      },
+      [null, null]
+    );
   },
 });
 
 export const numericFieldBounds = selectorFamily({
   key: "numericFieldBounds",
   get: (label) => ({ get }) => {
-    const bounds = get(atoms.datasetStats).numeric_field_bounds;
-    return bounds && bounds[label] ? bounds[label] : [null, null];
+    return get(atoms.datasetStats).reduce(
+      (acc, cur) => {
+        if (cur.name === label && cur._CLS === BOUNDS_CLS) {
+          return cur.bounds;
+        }
+        return acc;
+      },
+      [null, null]
+    );
   },
 });
 

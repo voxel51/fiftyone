@@ -64,6 +64,7 @@ const DisplayOptionsWrapper = (props) => {
   const filters = useRecoilValue(selectors.labelFilters);
   const setModalFilters = useSetRecoilState(selectors.modalLabelFilters);
   const labelNameGroups = useRecoilValue(selectors.labelNameGroups("sample"));
+
   const frameLabelNameGroups = useRecoilValue(
     selectors.labelNameGroups("frame")
   );
