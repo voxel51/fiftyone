@@ -59,7 +59,8 @@ export const view = selector({
 export const totalCount = selector({
   key: "totalCount",
   get: ({ get }): number => {
-    return get(atoms.datasetStats).reduce(
+    const stats = get(atoms.datasetStats) || [];
+    return stats.reduce(
       (acc, cur) => (cur.name === "count" ? cur.count : acc),
       0
     );

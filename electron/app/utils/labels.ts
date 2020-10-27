@@ -263,7 +263,8 @@ export const convertSampleToETA = (sample, fieldSchema) => {
       first_frame = convertImageSampleToETA(
         sample.frames.first_frame,
         fieldSchema,
-        1
+        1,
+        "frames."
       );
     }
     first_frame.frame_number = 1;
@@ -275,7 +276,12 @@ export const convertSampleToETA = (sample, fieldSchema) => {
   }
 };
 
-const convertImageSampleToETA = (sample, fieldSchema, frame_number) => {
+const convertImageSampleToETA = (
+  sample,
+  fieldSchema,
+  frame_number,
+  prefix = ""
+) => {
   const imgLabels = {
     masks: [],
   };
@@ -291,7 +297,7 @@ const convertImageSampleToETA = (sample, fieldSchema, frame_number) => {
       _addToETAContainer(
         imgLabels,
         key,
-        convert(sampleField, field, frame_number)
+        convert(prefix + sampleField, field, frame_number)
       );
     } else if (VALID_LIST_TYPES.includes(field._cls)) {
       for (const object of field[field._cls.toLowerCase()]) {
@@ -299,18 +305,18 @@ const convertImageSampleToETA = (sample, fieldSchema, frame_number) => {
         _addToETAContainer(
           imgLabels,
           key,
-          convert(sampleField, object, frame_number)
+          convert(prefix + sampleField, object, frame_number)
         );
       }
       continue;
     } else if (VALID_MASK_TYPES.includes(field._cls)) {
       imgLabels.masks.push({
-        name: sampleField,
+        name: prefix + sampleField,
         mask: field.mask,
       });
     } else if (VALID_SCALAR_TYPES.includes(fieldSchema[sampleField])) {
       _addToETAContainer(imgLabels, "attrs", {
-        name: sampleField,
+        name: prefix + sampleField,
         value: stringify(field),
       });
     }

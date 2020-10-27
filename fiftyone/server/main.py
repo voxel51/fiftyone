@@ -23,6 +23,7 @@ import eta.core.utils as etau
 import eta.core.video as etav
 
 os.environ["FIFTYONE_SERVER"] = "1"
+import fiftyone.core.aggregations as foa
 import fiftyone.constants as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -234,7 +235,7 @@ class StateController(Namespace):
             view = state.dataset.view()
 
         if view is None:
-            return {"view": [], "extended_view": []}
+            return []
 
         if extended:
             for stage_dict in state.filters.values():
@@ -323,6 +324,7 @@ class StateController(Namespace):
                     field_labels = _make_image_labels(k, v, frame_number)
                     for obj in field_labels.objects:
                         obj.frame_number = frame_number
+                        obj.name = "frames." + obj.name
 
                     frame_labels.merge_labels(field_labels)
 
@@ -409,6 +411,43 @@ class StateController(Namespace):
         else:
             return []
 
+        if group == LABELS:
+            aggregations = []
+            fields = []
+            for name, field in view.get_field_schema().items():
+                if isinstance(field, fof.EmbeddedDocumentField) and issubclass(
+                    field.document_type, fol.Label
+                ):
+                    aggregations.append(foa.CountLabels(name))
+                    fields.append(field)
+
+            if view.media_type == fom.VIDEO:
+                for name, field in view.get_frame_field_schema().items():
+                    if isinstance(
+                        field, fof.EmbeddedDocumentField
+                    ) and issubclass(field.document_type, fol.Label):
+                        aggregations.append(foa.CountLabels("frames." + name))
+                        fields.append(field)
+
+            results = []
+            for idx, result in enumerate(view.aggregate(aggregations)):
+                results.append(
+                    {
+                        "type": field.document_type.__name__,
+                        "name": result.name,
+                        "data": sorted(
+                            [
+                                {"key": k, "count": v}
+                                for k, v in result.labels.items()
+                            ],
+                            key=lambda i: i["count"],
+                            reverse=True,
+                        ),
+                    }
+                )
+
+            return results
+
         return _get_distributions(view, group)
 
 
@@ -420,7 +459,7 @@ def _get_distributions(view, group):
     if group == SCALARS:
         _numeric_distribution_pipelines(view, pipeline)
 
-    result = list(view.aggregate(pipeline))
+    result = list(view._aggregate(pipeline))
 
     if group in {LABELS, SCALARS}:
         new_result = []
@@ -450,7 +489,7 @@ def _numeric_bounds(view, numerics):
             }
         ]
 
-    return list(view.aggregate(bounds_pipeline))[0] if len(numerics) else {}
+    return list(view._aggregate(bounds_pipeline))[0] if len(numerics) else {}
 
 
 def _numeric_distribution_pipelines(view, pipeline, buckets=50):

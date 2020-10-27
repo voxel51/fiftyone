@@ -132,6 +132,8 @@ class SampleCollection(object):
         scalar_result = isinstance(aggregations, Aggregation)
         if scalar_result:
             aggregations = [aggregations]
+        elif len(aggregations) == 0:
+            return []
 
         pipelines = {}
         agg_map = {}
