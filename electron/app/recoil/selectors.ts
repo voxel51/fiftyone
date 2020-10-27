@@ -85,22 +85,36 @@ export const filteredCount = selector({
 export const tagNames = selector({
   key: "tagNames",
   get: ({ get }) => {
-    const tags = get(atoms.datasetStats).tags || {};
-    return Object.keys(tags).sort();
+    return get(atoms.datasetStats).reduce((acc, cur) => {
+      if (cur.name === "tags") {
+        return Object.keys(cur.values).sort();
+      }
+      return acc;
+    }, []);
   },
 });
 
 export const tagSampleCounts = selector({
   key: "tagSampleCounts",
   get: ({ get }) => {
-    return get(atoms.datasetStats).tags || {};
+    return get(atoms.datasetStats).reduce((acc, cur) => {
+      if (cur.name === "tags") {
+        return cur.values;
+      }
+      return acc;
+    }, {});
   },
 });
 
 export const filteredTagSampleCounts = selector({
   key: "filteredTagSampleCounts",
   get: ({ get }) => {
-    return get(atoms.extendedDatasetStats).tags || {};
+    return get(atoms.extendedDatasetStats).reduce((acc, cur) => {
+      if (cur.name === "tags") {
+        return cur.values;
+      }
+      return acc;
+    }, {});
   },
 });
 
