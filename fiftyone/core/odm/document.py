@@ -9,8 +9,7 @@ from copy import deepcopy
 import json
 import re
 
-from bson import json_util
-from bson.objectid import ObjectId
+from bson import json_util, ObjectId
 import mongoengine
 import pymongo
 
@@ -235,9 +234,7 @@ class MongoEngineBaseDocument(SerializableDocument):
         # pylint: disable=no-member
         return self._fields_ordered
 
-    def to_dict(
-        self, extended=False,
-    ):
+    def to_dict(self, extended=False):
         if extended:
             return json.loads(self._to_json())
 

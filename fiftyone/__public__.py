@@ -28,6 +28,8 @@ from .core.dataset import (
     delete_dataset,
     delete_datasets,
     delete_non_persistent_datasets,
+    get_default_dataset_name,
+    get_default_dataset_dir,
 )
 from .core.expressions import (
     ViewField,

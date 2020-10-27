@@ -1,9 +1,9 @@
 # Getting Started with FiftyOne
 
-Welcome to this walkthrough of [FiftyOne](https://voxel51.com/fiftyone): a
-powerful package for dataset curation, analysis, and visualization.
+<img alt="01-overivew" src="https://user-images.githubusercontent.com/25985824/97196947-7372f380-1783-11eb-961f-5a33ea8cc21d.png">
 
-<img alt="01-overivew" src="https://user-images.githubusercontent.com/25985824/90993132-ac26fe80-e581-11ea-9efc-c3e1a0f876d8.png">
+Welcome to this walkthrough of [FiftyOne](https://voxel51.com/fiftyone), a
+powerful package for dataset curation, analysis, and visualization.
 
 We designed FiftyOne to help CV/ML engineers curate better datasets and train
 better models. Based on our own experience and other CV teams we've had the
@@ -55,9 +55,6 @@ Installing FiftyOne is easy via `pip`:
 pip install --index https://pypi.voxel51.com fiftyone
 ```
 
-> FiftyOne is currently in public beta, so you download it from our PyPI
-> server. Soon, it will be available on the global PyPI index.
-
 If you run into any issues with installation, check out the
 [installation page](https://voxel51.com/docs/fiftyone/getting_started/install.html).
 
@@ -95,11 +92,13 @@ print(dataset)
 
 ```
 Name:           coco-2017-validation
+Media type:     None
 Num samples:    5000
 Persistent:     False
 Info:           {'classes': ['0', 'person', 'bicycle', ...]}
 Tags:           ['validation']
 Sample fields:
+    media_type:   fiftyone.core.fields.StringField
     filepath:     fiftyone.core.fields.StringField
     tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
     metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
@@ -126,13 +125,13 @@ to visually explore the dataset:
 session = fo.launch_app(dataset=dataset)
 ```
 
-<img alt="02-dataset" src="https://user-images.githubusercontent.com/25985824/90993147-b9dc8400-e581-11ea-81ba-3c48527c55da.png">
+<img alt="02-dataset" src="https://user-images.githubusercontent.com/25985824/97196960-77067a80-1783-11eb-8a57-c28768aed2f0.png">
 
 With the App, you can visualize your samples and their fields either in image
 grid view, or by double-clicking an image to enter an expanded sample view,
 where you can study individual samples in more detail.
 
-<img alt="03-detail" src="https://user-images.githubusercontent.com/25985824/90993152-be08a180-e581-11ea-96a8-1d7b2e4fe702.png">
+<img alt="03-detail" src="https://user-images.githubusercontent.com/25985824/97196964-779f1100-1783-11eb-8620-cbd867504991.png">
 
 The
 [view bar](https://voxel51.com/docs/fiftyone/user_guide/app.html#using-the-view-bar)
@@ -184,19 +183,21 @@ session.view = person_view
 
 ```
 Dataset:        coco-2017-validation
+Media type:     None
 Num samples:    5000
 Tags:           ['validation']
 Sample fields:
+    media_type:   fiftyone.core.fields.StringField
     filepath:     fiftyone.core.fields.StringField
     tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
     metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
     ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
 Pipeline stages:
-    1. FilterDetections(field='ground_truth', filter={'$eq': ['$$this.label', 'person']})
+    1. FilterDetections(field='ground_truth', filter={'$eq': ['$$this.label', 'person']}, only_matches=False)
     2. SortBy(field_or_expr={'$size': {'$ifNull': [...]}}, reverse=True)
 ```
 
-<img alt="04-person" src="https://user-images.githubusercontent.com/25985824/90993172-c6f97300-e581-11ea-93ff-7e1a39a651d9.png">
+<img alt="04-person" src="https://user-images.githubusercontent.com/25985824/97196969-7837a780-1783-11eb-8d48-c1cc95ee33aa.png">
 
 ## Index images by uniqueness
 
@@ -220,16 +221,17 @@ samples in the dataset:
 
 ```py
 print(dataset)
-print(dataset.first())
 ```
 
 ```
 Name:           coco-2017-validation
+Media type:     None
 Num samples:    5000
 Persistent:     False
 Info:           {'classes': ['0', 'person', 'bicycle', ...]}
 Tags:           ['validation']
 Sample fields:
+    media_type:   fiftyone.core.fields.StringField
     filepath:     fiftyone.core.fields.StringField
     tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
     metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
@@ -237,23 +239,35 @@ Sample fields:
     uniqueness:   fiftyone.core.fields.FloatField
 ```
 
+```py
+print(dataset.first())
+```
+
 ```
 <Sample: {
-    'id': '5f42f54c9fff295adf837efc',
+    'id': '5f96eb010b36b7786fbc74f1',
+    'media_type': 'image',
     'filepath': '/Users/Brian/fiftyone/coco-2017/validation/data/000001.jpg',
     'tags': BaseList(['validation']),
     'metadata': None,
     'ground_truth': <Detections: {
         'detections': BaseList([
             <Detection: {
-                'id': '5f42f54b9fff295adf837b72',
-                'label': 'potted plant',
-                'bounding_box': BaseList([0.37028125, 0.33453052, 0.03859375, 0.16314554]),
-                'confidence': None,
+                'id': '5f96eb010b36b7786fbc74dd',
                 'attributes': BaseDict({
                     'area': <NumericAttribute: {'value': 531.8071000000001}>,
                     'iscrowd': <NumericAttribute: {'value': 0.0}>,
                 }),
+                'label': 'potted plant',
+                'bounding_box': BaseList([
+                    0.37028125,
+                    0.3345305164319249,
+                    0.038593749999999996,
+                    0.16314553990610328,
+                ]),
+                'mask': None,
+                'confidence': None,
+                'index': None,
             }>,
             ...
         ]),
@@ -270,7 +284,7 @@ samples first:
 session.view = dataset.sort_by("uniqueness", reverse=True)
 ```
 
-<img alt="05-unique" src="https://user-images.githubusercontent.com/25985824/90993177-cd87ea80-e581-11ea-9ebe-c59dbd3cbdde.png">
+<img alt="05-unique" src="https://user-images.githubusercontent.com/25985824/97196971-78d03e00-1783-11eb-83ee-05254e13b663.png">
 
 Sorting by **least unique** can help us identify near duplicate samples in our
 dataset. This can be useful in situations where you need to send a dataset for
@@ -281,7 +295,7 @@ annotation and need to select a diverse set of images.
 session.view = dataset.sort_by("uniqueness")
 ```
 
-<img alt="06-similar" src="https://user-images.githubusercontent.com/25985824/90993183-d11b7180-e581-11ea-8183-1f02a3943804.png">
+<img alt="06-similar" src="https://user-images.githubusercontent.com/25985824/97196973-78d03e00-1783-11eb-81af-523e0063f4b6.png">
 
 ## Add some model predictions
 
@@ -292,13 +306,17 @@ First, let's select some samples to process:
 ```py
 # Select the 15 least unique samples to process
 predictions_view = dataset.sort_by("uniqueness").limit(15)
+
+print(predictions_view)
 ```
 
 ```
 Dataset:        coco-2017-validation
+Media type:     None
 Num samples:    15
 Tags:           ['validation']
 Sample fields:
+    media_type:   fiftyone.core.fields.StringField
     filepath:     fiftyone.core.fields.StringField
     tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
     metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
@@ -393,38 +411,53 @@ print(predictions_view.first())
 
 ```
 <SampleView: {
-    'id': '5f42f5539fff295adf83bd71',
+    'id': '5f96eb0b0b36b7786fbcba15',
+    'media_type': 'image',
     'filepath': '/Users/Brian/fiftyone/coco-2017/validation/data/001147.jpg',
     'tags': BaseList(['validation']),
     'metadata': None,
     'ground_truth': <Detections: {
         'detections': BaseList([
             <Detection: {
-                'id': '5f42f5539fff295adf83bcbe',
-                'label': 'horse',
-                'bounding_box': BaseList([0.460625  , 0.79220833, 0.03951562, 0.04891667]),
-                'confidence': None,
+                'id': '5f96eb0b0b36b7786fbcba0f',
                 'attributes': BaseDict({
                     'area': <NumericAttribute: {'value': 207.45490000000035}>,
                     'iscrowd': <NumericAttribute: {'value': 0.0}>,
                 }),
-            }>,
-            ...
-        ]),
-    }>,
-    'faster_rcnn': <Detections: {
-        'detections': BaseList([
-            <Detection: {
-                'id': '5f42f73a9fff295adf84aece',
                 'label': 'horse',
-                'bounding_box': BaseList([0.46101789, 0.79770222, 0.03865576, 0.04035403]),
-                'confidence': 0.9759229421615601,
-                'attributes': BaseDict({}),
+                'bounding_box': BaseList([
+                    0.460625,
+                    0.7922083333333333,
+                    0.039515625,
+                    0.04891666666666667,
+                ]),
+                'mask': None,
+                'confidence': None,
+                'index': None,
             }>,
             ...
         ]),
     }>,
     'uniqueness': 0.2221618218183157,
+    'faster_rcnn': <Detections: {
+        'detections': BaseList([
+            <Detection: {
+                'id': '5f96f0de0b36b7786fbda7d9',
+                'attributes': BaseDict({}),
+                'label': 'horse',
+                'bounding_box': BaseList([
+                    0.46101789474487304,
+                    0.7977022171020508,
+                    0.038655757904052734,
+                    0.04035402933756511,
+                ]),
+                'mask': None,
+                'confidence': 0.9759229421615601,
+                'index': None,
+            }>,
+            ...
+        ]),
+    }>,
 }>
 ```
 
@@ -440,24 +473,24 @@ As usual, we can create the same view via Python code:
 session.view = dataset.exists("faster_rcnn")
 ```
 
-<img alt="07-pred-grid" src="https://user-images.githubusercontent.com/25985824/90993211-ebede600-e581-11ea-8d28-252a94a93c54.png">
+<img alt="07-pred-grid" src="https://user-images.githubusercontent.com/25985824/97196975-7968d480-1783-11eb-9738-8506078372d2.png">
 
 ## Perform some evaluation
 
 With the FiftyOne App, you can visualize the predictions and qualitatively
 compare them with the ground truth:
 
-<img alt="08-pred-expanded" src="https://user-images.githubusercontent.com/25985824/90993217-f314f400-e581-11ea-927f-826ca608511c.png">
+<img alt="08-pred-expanded" src="https://user-images.githubusercontent.com/25985824/97196976-7968d480-1783-11eb-81a6-fd0c9ab424ea.png">
 
 FiftyOne also provides utilities out-of-the-box that let you compute common
 quantiative evaluation measures on your detections.
 
-For example, the snippet below uses the `evaluate_detections()` utility to
-compute COCO-style evaluation of the predictions, including per-sample true
-positives (TP), false positives (FP), and false negatives (FN) at an
-[IoU](https://en.wikipedia.org/wiki/Jaccard_index) of 0.75 (customizable), and
-per-sample
-[COCO mAP @ IoU(.50:.05:.95)](https://medium.com/@jonathan_hui/map-mean-average-precision-for-object-detection-45c121a31173):
+For example, the snippet below uses the
+[evaluate_detections()](https://voxel51.com/docs/fiftyone/api/fiftyone.utils.eval.coco.html?highlight=evaluate_detections#fiftyone.utils.eval.coco.evaluate_detections)
+utility to compute COCO-style evaluation of the predictions, including
+per-sample true positives (TP), false positives (FP), and false negatives (FN)
+at an [IoU](https://en.wikipedia.org/wiki/Jaccard_index) of 0.75 (this value is
+customizable).
 
 ```py
 import fiftyone.utils.eval as foue
@@ -476,7 +509,7 @@ to each sample to tabulate the evaluation metrics:
 session.view = predictions_view
 ```
 
-<img alt="09-eval-all-grid" src="https://user-images.githubusercontent.com/25985824/90993233-f8723e80-e581-11ea-9166-6d4c059f4dca.png">
+<img alt="09-eval-all-grid" src="https://user-images.githubusercontent.com/25985824/97196977-7a016b00-1783-11eb-8d3c-5f822a26b47a.png">
 
 Both visually and quantitatively, we see that the model is generating too many
 false positive predictions.
@@ -497,9 +530,11 @@ print(high_conf_predictions_view)
 
 ```
 Dataset:        coco-2017-validation
+Media type:     None
 Num samples:    15
 Tags:           ['validation']
 Sample fields:
+    media_type:   fiftyone.core.fields.StringField
     filepath:     fiftyone.core.fields.StringField
     tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
     metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
@@ -510,8 +545,8 @@ Sample fields:
     fp_iou_0_75:  fiftyone.core.fields.IntField
     fn_iou_0_75:  fiftyone.core.fields.IntField
 Pipeline stages:
-    1. Exists(field='faster_rcnn')
-    2. FilterDetections(field='faster_rcnn', filter={'$gt': ['$$this.confidence', 0.8]})
+    1. Exists(field='faster_rcnn', bool=True)
+    2. FilterDetections(field='faster_rcnn', filter={'$gt': ['$$this.confidence', 0.8]}, only_matches=False)
 ```
 
 Don't worry, the lower confidence predictions have not been deleted! They are
@@ -531,9 +566,9 @@ session.view = high_conf_predictions_view
 As we can now see, both visually and quantitatively, the false positive rate of
 the model has been decreased!
 
-<img alt="10-eval-high-conf-grid" src="https://user-images.githubusercontent.com/25985824/90993235-00ca7980-e582-11ea-9b79-cfea5d8978a3.png">
+<img alt="10-eval-high-conf-grid" src="https://user-images.githubusercontent.com/25985824/97196978-7a016b00-1783-11eb-8d6b-5c94611372e6.png">
 
-<img alt="11-eval-high-conf-expanded" src="https://user-images.githubusercontent.com/25985824/90993239-032cd380-e582-11ea-9ac5-d6dc076d9651.png">
+<img alt="11-eval-high-conf-expanded" src="https://user-images.githubusercontent.com/25985824/97196981-7a016b00-1783-11eb-8f00-0a772d1b92bd.png">
 
 ## Next steps
 

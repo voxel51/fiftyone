@@ -126,9 +126,9 @@ class ViewStage(object):
             self._uuid = str(uuid.uuid4())
 
         return {
-            "kwargs": self._kwargs(),
             "_cls": etau.get_class_name(self),
             "_uuid": self._uuid,
+            "kwargs": self._kwargs(),
         }
 
     def _kwargs(self):
