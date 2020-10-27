@@ -241,7 +241,7 @@ const ClassFilter = ({ name, atoms, path }) => {
   const theme = useContext(ThemeContext);
   const classes = useRecoilValue(selectors.labelClasses(path));
   const [selectedClasses, setSelectedClasses] = useRecoilState(
-    atoms.includeLabels(name)
+    atoms.includeLabels(path)
   );
   const [state, send] = useMachine(classFilterMachine);
   const inputRef = useRef();
@@ -394,19 +394,19 @@ const makeFilter = (fieldName, cls, labels, range, includeNone, hasBounds) => {
 const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
   const port = useRecoilValue(atoms.port);
   const socket = getSocket(port, "state");
-  const [range, setRange] = useRecoilState(rest.confidenceRange(entry.name));
+  const [range, setRange] = useRecoilState(rest.confidenceRange(entry.path));
   const [includeNone, setIncludeNone] = useRecoilState(
-    rest.includeNoConfidence(entry.name)
+    rest.includeNoConfidence(entry.path)
   );
-  const bounds = useRecoilValue(rest.confidenceBounds(entry.name));
-  const [labels, setLabels] = useRecoilState(rest.includeLabels(entry.name));
-  const fieldIsFiltered = useRecoilValue(rest.fieldIsFiltered(entry.name));
+  const bounds = useRecoilValue(rest.confidenceBounds(entry.path));
+  const [labels, setLabels] = useRecoilState(rest.includeLabels(entry.path));
+  const fieldIsFiltered = useRecoilValue(rest.fieldIsFiltered(entry.path));
   const mediaType = useRecoilValue(selectors.mediaType);
 
   const [stateDescription, setStateDescription] = useRecoilState(
     atoms.stateDescription
   );
-  const filterStage = useRecoilValue(selectors.filterStage(entry.name));
+  const filterStage = useRecoilValue(selectors.filterStage(entry.path));
   useEffect(() => {
     if (filterStage) return;
     setLabels([]);

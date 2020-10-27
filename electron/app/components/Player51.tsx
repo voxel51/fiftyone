@@ -49,7 +49,7 @@ export default ({
   onMouseEnter = () => {},
   onMouseLeave = () => {},
   activeLabels,
-  frameLabelsActive,
+  activeFrameLabels,
   fieldSchema = {},
   filterSelector,
   playerRef,
@@ -74,10 +74,13 @@ export default ({
     "image/jpg";
   const playerActiveLabels = {
     ...activeLabels,
+    ...Object.keys(activeFrameLabels).reduce((acc, cur) => {
+      return {
+        ...acc,
+        ["frames." + cur]: activeFrameLabels[cur],
+      };
+    }, {}),
   };
-  if (mediaType === "video") {
-    playerActiveLabels.frames = frameLabelsActive;
-  }
 
   const [player] = useState(() => {
     try {

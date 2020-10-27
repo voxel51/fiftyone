@@ -381,10 +381,10 @@ const SampleModal = ({
     {}
   );
 
-  const labelSampleValuesReducer = (s, filterData = false) => {
+  const labelSampleValuesReducer = (s, groups, filterData = false) => {
     const isVideo = s.media_type === "video";
 
-    return labelNameGroups.labels.reduce((obj, { name, type }) => {
+    return groups.labels.reduce((obj, { name, type }) => {
       let value = 0;
       const resolver = (frame) => {
         if (!frame[name]) return 0;
@@ -417,9 +417,19 @@ const SampleModal = ({
     }, {});
   };
 
-  const labelSampleValues = labelSampleValuesReducer(sample);
+  const labelSampleValues = labelSampleValuesReducer(sample, labelNameGroups);
   const filteredLabelSampleValues = labelSampleValuesReducer(
     filter(sample),
+    labelNameGroups,
+    true
+  );
+  const frameLabelSampleValues = labelSampleValuesReducer(
+    sample,
+    frameLabelNameGroups
+  );
+  const filteredFrameLabelSampleValues = labelSampleValuesReducer(
+    filter(sample),
+    frameLabelNameGroups,
     true
   );
 
@@ -464,6 +474,7 @@ const SampleModal = ({
             metadata={metadata}
             colorMap={colorMap}
             activeLabels={activeLabels}
+            activeFrameLabels={activeFrameLabels}
             fieldSchema={fieldSchema}
             filterSelector={selectors.modalLabelFilters}
             playerRef={playerRef}
@@ -543,10 +554,10 @@ const SampleModal = ({
             )}
             frameLabels={getDisplayOptions(
               frameLabelNameGroups.labels,
-              labelSampleValues,
+              frameLabelSampleValues,
               activeFrameLabels,
               false,
-              filteredLabelSampleValues
+              filteredFrameLabelSampleValues
             )}
             onSelectLabel={handleSetDisplayOption(setActiveLabels)}
             onSelectFrameLabel={handleSetDisplayOption(setActiveFrameLabels)}

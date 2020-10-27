@@ -252,7 +252,16 @@ export const filteredLabelSampleCounts = selectorFamily({
 export const labelFilters = selector({
   key: "labelFilters",
   get: ({ get }) => {
-    const labels = get(atoms.activeLabels("sample"));
+    const frameLabels = get(atoms.activeLabels("frame"));
+    const labels = {
+      ...get(atoms.activeLabels("sample")),
+      ...Object.keys(frameLabels).reduce((acc, cur) => {
+        return {
+          ...acc,
+          ["frames." + cur]: frameLabels[cur],
+        };
+      }, {}),
+    };
     const filters = {};
     for (const label in labels) {
       const range = get(atoms.filterLabelConfidenceRange(label));
@@ -273,7 +282,16 @@ export const labelFilters = selector({
 export const modalLabelFilters = selector({
   key: "modalLabelFilters",
   get: ({ get }) => {
-    const labels = get(atoms.modalActiveLabels("sample"));
+    const frameLabels = get(atoms.activeLabels("frame"));
+    const labels = {
+      ...get(atoms.activeLabels("sample")),
+      ...Object.keys(frameLabels).reduce((acc, cur) => {
+        return {
+          ...acc,
+          ["frames." + cur]: frameLabels[cur],
+        };
+      }, {}),
+    };
     const filters = {};
     for (const label in labels) {
       const range = get(atoms.modalFilterLabelConfidenceRange(label));
