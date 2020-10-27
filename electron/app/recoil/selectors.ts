@@ -57,6 +57,25 @@ export const view = selector({
   },
 });
 
+export const filterStages = selector({
+  key: "filterStages",
+  get: ({ get }) => {
+    return get(atoms.stateDescription).filters;
+  },
+});
+
+export const extendedView = selector({
+  key: "extendedView",
+  get: ({ get }) => {
+    const viewValue = get(view);
+    const stages = [];
+    for (const filter in get(filterStages)) {
+      stages.push(filter);
+    }
+    return [...viewValue, ...stages];
+  },
+});
+
 export const totalCount = selector({
   key: "totalCount",
   get: ({ get }): number => {
@@ -79,7 +98,11 @@ export const filterStage = selectorFamily({
 export const filteredCount = selector({
   key: "filteredCount",
   get: ({ get }): number => {
-    return get(atoms.extendedDatasetStats).count;
+    const stats = get(atoms.datasetStats) || [];
+    return stats.reduce(
+      (acc, cur) => (cur.name === "count" ? cur.count : acc),
+      get(totalCount)
+    );
   },
 });
 

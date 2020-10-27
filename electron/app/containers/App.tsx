@@ -67,14 +67,24 @@ function App(props: Props) {
   const [viewCounterValue, setViewCounter] = useRecoilState(atoms.viewCounter);
   const [result, setResultFromForm] = useState({ port, connected });
   const setDatasetStats = useSetRecoilState(atoms.datasetStats);
+  const view = useRecoilValue(selectors.view);
   const setSelectedObjects = useSetRecoilState(atoms.selectedObjects);
   const setExtendedDatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
+  const extendedView = useRecoilValue(selectors.extendedView);
 
   useGA(socket);
-  const getStats = (extended) => {
-    socket.emit("get_statistics", extended, (d) => {
-      extended ? setExtendedDatasetStats(d) : setDatasetStats(d);
-    });
+  const getStats = (view, setter) => {
+    socket.emit("get_statistics", view, (d) => setter(d));
+  };
+
+  const getAllStats = () => {
+    setDatasetStats([]);
+    getStats(view, setDatasetStats);
+    if (extendedView.length > view.length) {
+      getStats(extendedView, setExtendedDatasetStats);
+    } else {
+      setExtendedDatasetStats([]);
+    }
   };
   const handleStateUpdate = (data) => {
     setStateDescription(data);
@@ -86,7 +96,7 @@ function App(props: Props) {
     setConnected(true);
     if (!loading) {
       setLoading(true);
-      getStats(false);
+      getAllStats();
       socket.emit("get_current_state", "", (data) => {
         handleStateUpdate(data);
         setLoading(false);
@@ -96,7 +106,7 @@ function App(props: Props) {
   if (socket.connected && !connected) {
     setConnected(true);
     setLoading(true);
-    getStats(false);
+    getAllStats();
     socket.emit("get_current_state", "", (data) => {
       setViewCounter(viewCounterValue + 1);
       handleStateUpdate(data);
@@ -116,7 +126,7 @@ function App(props: Props) {
     if (data.close) {
       remote.getCurrentWindow().close();
     }
-    getStats(false);
+    getAllStats();
     handleStateUpdate(data);
   });
 
@@ -126,7 +136,7 @@ function App(props: Props) {
 
   useEffect(() => {
     if (reset) {
-      getStats(false);
+      getAllStats();
       socket.emit("get_current_state", "", (data) => {
         handleStateUpdate(data);
         setLoading(false);

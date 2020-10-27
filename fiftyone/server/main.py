@@ -34,6 +34,7 @@ from fiftyone.core.service import DatabaseService
 from fiftyone.core.stages import _STAGES
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
+import fiftyone.core.view as fov
 
 from json_util import convert, FiftyOneJSONEncoder
 from util import get_file_dimensions
@@ -137,6 +138,7 @@ def _load_state(trigger_update=False):
                 broadcast=True,
                 include_self=trigger_update,
             )
+            print(self.state["selected"])
             return self.state
 
         return wrapper
@@ -255,28 +257,15 @@ class StateController(Namespace):
         return state
 
     @_catch_errors
-    def on_get_statistics(self, extended=False):
-        """Gets the current statistics.
+    def on_get_statistics(self, stages):
+        """Gets the statistics for a view.
 
         Returns:
             a :class:`fiftyone.core.state.DatasetStatistics`
         """
         state = fos.StateDescription.from_dict(self.state)
-        view = None
-        if state.view:
-            view = state.view
-        elif state.dataset:
-            view = state.dataset.view()
-
-        if view is None:
-            return []
-
-        if extended:
-            for stage_dict in state.filters.values():
-                stage = fosg.ViewStage._from_dict(stage_dict)
-                if type(stage) in _WITHOUT_PAGINATION_EXTENDED_STAGES:
-                    continue
-                view = view.add_stage(stage)
+        view = fov.DatasetView(state.dataset)
+        view._stages = [fosg.ViewStage._from_dict(s) for s in stages]
         return fos.DatasetStatistics(view).serialize()["stats"]
 
     @_catch_errors
@@ -296,6 +285,7 @@ class StateController(Namespace):
         selected = set(state.selected)
         selected.add(_id)
         state.selected = list(selected)
+        assert False
         return state
 
     @_catch_errors
