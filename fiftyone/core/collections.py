@@ -587,7 +587,7 @@ class SampleCollection(object):
 
     @view_stage
     def filter_field(self, field, filter, only_matches=False):
-        """Filters the values of the given field of the samples.
+        """Filters the values of a given sample (or embedded document) field.
 
         Values of ``field`` for which ``filter`` returns ``False`` are
         replaced with ``None``.
@@ -627,6 +627,153 @@ class SampleCollection(object):
         """
         return self._add_view_stage(
             fos.FilterField(field, filter, only_matches=only_matches)
+        )
+
+    @view_stage
+    def filter_labels(self, field, filter, only_matches=False):
+        """Filters the :class:`fiftyone.core.labels.Label` elements in a labels
+        list field of each sample.
+
+        The specified ``field`` must be one of the following types:
+
+        -   :class:`fiftyone.core.labels.Classifications`
+        -   :class:`fiftyone.core.labels.Detections`
+        -   :class:`fiftyone.core.labels.Polylines`
+        -   :class:`fiftyone.core.labels.Keypoints`
+
+        Classifications Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Only include classifications in the `predictions` field whose
+            # `confidence` greater than 0.8
+            #
+
+            view = dataset.filter_labels("predictions", F("confidence") > 0.8)
+
+            #
+            # Only include classifications in the `predictions` field whose
+            # `label` is "cat" or "dog", and only show samples with at least
+            # one classification after filtering
+            #
+
+            view = dataset.filter_labels(
+                "predictions",
+                F("label").is_in(["cat", "dog"]),
+                only_matches=True,
+            )
+
+        Detections Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Only include detections in the `predictions` field whose
+            # `confidence` is greater than 0.8
+            #
+
+            stage = filter_labels("predictions", F("confidence") > 0.8)
+            view = dataset.add_stage(stage)
+
+            #
+            # Only include detections in the `predictions` field whose `label`
+            # is "cat" or "dog", and only show samples with at least one
+            # detection after filtering
+            #
+
+            view = dataset.filter_labels(
+                "predictions",
+                F("label").is_in(["cat", "dog"]),
+                only_matches=True,
+            )
+
+            #
+            # Only include detections in the `predictions` field whose bounding
+            # box area is smaller than 0.2
+            #
+
+            # bbox is in [top-left-x, top-left-y, width, height] format
+            bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+
+            view = dataset.filter_labels("predictions", bbox_area < 0.2)
+
+        Polylines Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Only include polylines in the `predictions` field that are filled
+            #
+
+            view = dataset.filter_labels("predictions", F("filled"))
+
+            #
+            # Only include polylines in the `predictions` field whose `label`
+            # is "lane", and only show samples with at least one polyline after
+            # filtering
+            #
+
+            view = dataset.filter_labels(
+                "predictions", F("label") == "lane", only_matches=True
+            )
+
+            #
+            # Only include polylines in the `predictions` field with at least
+            # 10 vertices
+            #
+
+            num_vertices = F("points").map(F().length()).sum()
+            view = dataset.filter_labels("predictions", num_vertices >= 10)
+
+        Keypoints Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Only include keypoints in the `predictions` field whose `label`
+            # is "face", and only show samples with at least one keypoint after
+            # filtering
+            #
+
+            view = dataset.filter_labels(
+                "predictions", F("label") == "face", only_matches=True
+            )
+
+            #
+            # Only include keypoints in the `predictions` field with at least
+            # 10 points
+            #
+
+            view = dataset.filter_labels(
+                "predictions", F("points").length() >= 10
+            )
+
+        Args:
+            field: the labels list field to filter
+            filter: a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that returns a boolean describing the filter to apply
+            only_matches (False): whether to only include samples with at least
+                one label after filtering
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(
+            fos.FilterLabels(field, filter, only_matches=only_matches)
         )
 
     @view_stage
@@ -869,6 +1016,38 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.Limit(limit))
+
+    @view_stage
+    def limit_labels(self, field, limit):
+        """Limits the number of :class:`fiftyone.core.labels.Label` instances
+        in the specified labels list field of each sample.
+
+        The specified ``field`` must be one of the following types:
+
+        -   :class:`fiftyone.core.labels.Classifications`
+        -   :class:`fiftyone.core.labels.Detections`
+        -   :class:`fiftyone.core.labels.Polylines`
+        -   :class:`fiftyone.core.labels.Keypoints`
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Only include the first 5 detections in the `ground_truth` field of
+            # the view
+            #
+
+            view = dataset.limit_labels("ground_truth", 5)
+
+        Args:
+            field: the labels list field to filter
+            limit: the maximum number of labels to include in each labels list.
+                If a non-positive number is provided, all lists will be empty
+        """
+        return self._add_view_stage(fos.LimitLabels(field, limit))
 
     @view_stage
     def match(self, filter):
