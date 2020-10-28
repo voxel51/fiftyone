@@ -102,6 +102,7 @@ class StateDescription(etas.Serializable):
         """
         close = d.get("close", False)
         connected = d.get("connected", False)
+        filters = d.get("filters", {})
         selected = d.get("selected", [])
         selected_objects = d.get("selected_objects", [])
 
@@ -116,7 +117,6 @@ class StateDescription(etas.Serializable):
                 view = view.add_stage(stage)
         else:
             view = None
-
         return cls(
             close=close,
             connected=connected,
@@ -124,6 +124,7 @@ class StateDescription(etas.Serializable):
             selected=selected,
             selected_objects=selected_objects,
             view=view,
+            filters=filters,
             **kwargs
         )
 
