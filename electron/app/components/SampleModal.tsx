@@ -164,6 +164,10 @@ const Container = styled.div`
       vertical-align: middle;
     }
   }
+
+  .select-objects-wrapper {
+    margin-top: -1em;
+  }
 `;
 
 const TopRightNavButtonsContainer = styled.div`
@@ -520,6 +524,12 @@ const SampleModal = ({
             Display Options
             <span className="push-right" />
           </h2>
+          <div className="select-objects-wrapper">
+            <SelectObjectsMenu
+              sample={sample}
+              frameNumberRef={frameNumberRef}
+            />
+          </div>
           <DisplayOptionsSidebar
             colorMap={colorMap}
             tags={getDisplayOptions(
@@ -551,14 +561,6 @@ const SampleModal = ({
               overflowY: "auto",
               overflowX: "hidden",
               height: "auto",
-            }}
-            headerContent={{
-              labels: (
-                <SelectObjectsMenu
-                  sample={sample}
-                  frameNumberRef={frameNumberRef}
-                />
-              ),
             }}
             modal={true}
           />
