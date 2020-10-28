@@ -415,7 +415,7 @@ class CountLabels(Aggregation):
         return "%s-count-labels" % self._field_name_path
 
     def _get_result(self, d):
-        d = {i["k"]: i["count"] for i in d["result"]}
+        d = {i["k"]: i["count"] for i in d["result"] if i["k"] is not None}
         return CountLabelsResult(self._field_name, d)
 
     def _to_mongo(self, dataset, schema, frame_schema):
@@ -495,7 +495,7 @@ class CountValues(Aggregation):
         return "%s-count-values" % self._field_name_path
 
     def _get_result(self, d):
-        d = {i["k"]: i["count"] for i in d["result"]}
+        d = {i["k"]: i["count"] for i in d["result"] if i["k"] is not None}
         return CountValuesResult(self._field_name, d)
 
     def _to_mongo(self, dataset, schema, frame_schema):

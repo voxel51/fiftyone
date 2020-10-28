@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Switch, Route, Redirect } from "react-router-dom";
-import { useRecoilValue, useSetRecoilState, useResetRecoilState } from "recoil";
+import {
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+  useResetRecoilState,
+} from "recoil";
 import { Container, Message, Segment } from "semantic-ui-react";
 
 import SamplesContainer from "./SamplesContainer";
@@ -12,7 +17,6 @@ import routes from "../constants/routes.json";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { VALID_LABEL_TYPES } from "../utils/labels";
-import { useSubscribe } from "../utils/socket";
 
 function NoDataset() {
   return (
@@ -81,7 +85,7 @@ function Dataset(props) {
   // are destroyed before they can handle it
   const resetSelectedObjects = useResetRecoilState(atoms.selectedObjects);
   const resetHiddenObjects = useResetRecoilState(atoms.hiddenObjects);
-  const socket = getSocket(useRecoilValue(atoms.port), "state");
+  const socket = useRecoilValue(selectors.socket);
   const handleHideModal = () => {
     setModal({ visible: false, sample: null });
     resetSelectedObjects();

@@ -333,7 +333,7 @@ class StateController(Namespace):
 
         Args:
             state: the current
-                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+                :class:`fiftyone.core.state.StateDescription`
             selected_objects: a list of objects in the format used by
                 :mod:`fiftyone.utils.selection`
         """
