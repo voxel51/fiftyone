@@ -81,6 +81,7 @@ const Cell = ({
   label,
   icon,
   entries,
+  headerContent = null,
   onSelect,
   colorMap,
   title,
@@ -123,6 +124,7 @@ const Cell = ({
       expanded={expanded}
       onExpand={setExpanded}
     >
+      {headerContent}
       {entries.length ? (
         <CheckboxGrid
           columnWidths={[3, 2]}
@@ -175,6 +177,7 @@ const DisplayOptionsSidebar = React.forwardRef(
       onSelectLabel,
       onSelectFrameLabel,
       onSelectScalar,
+      headerContent = {},
       ...rest
     }: Props,
     ref
@@ -191,6 +194,7 @@ const DisplayOptionsSidebar = React.forwardRef(
           label="Tags"
           icon={<PhotoLibrary />}
           entries={tags}
+          headerContent={headerContent.tags}
           onSelect={onSelectTag}
           {...cellRest}
         />
@@ -199,6 +203,7 @@ const DisplayOptionsSidebar = React.forwardRef(
           label="Labels"
           icon={<Label style={{ transform: "rotate(180deg)" }} />}
           entries={labels}
+          headerContent={headerContent.labels}
           onSelect={onSelectLabel}
           {...cellRest}
         />
@@ -218,6 +223,7 @@ const DisplayOptionsSidebar = React.forwardRef(
           label="Scalars"
           icon={<BarChart />}
           entries={scalars}
+          headerContent={headerContent.scalars}
           onSelect={onSelectScalar}
           {...cellRest}
         />
@@ -232,6 +238,7 @@ const DisplayOptionsSidebar = React.forwardRef(
               selected: false,
               disabled: true,
             }))}
+            headerContent={headerContent.unsupported}
             {...cellRest}
           />
         ) : null}

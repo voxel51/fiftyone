@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Switch, Route, Redirect } from "react-router-dom";
-import { useRecoilValue, useSetRecoilState, useRecoilState } from "recoil";
+import { useRecoilValue, useSetRecoilState, useResetRecoilState } from "recoil";
 import { Container, Message, Segment } from "semantic-ui-react";
 
 import SamplesContainer from "./SamplesContainer";
@@ -76,7 +76,19 @@ function Dataset(props) {
     );
   }, [datasetName, labelTuples, frameLabelTuples]);
 
-  const handleHideModal = () => setModal({ visible: false, sample: null });
+  // reset selected/hidden objects when the modal closes (subject to change) -
+  // the socket update is needed here because SampleModal and SelectObjectsMenu
+  // are destroyed before they can handle it
+  const resetSelectedObjects = useResetRecoilState(atoms.selectedObjects);
+  const resetHiddenObjects = useResetRecoilState(atoms.hiddenObjects);
+  const socket = getSocket(useRecoilValue(atoms.port), "state");
+  const handleHideModal = () => {
+    setModal({ visible: false, sample: null });
+    resetSelectedObjects();
+    resetHiddenObjects();
+    socket.emit("set_selected_objects", []);
+  };
+
   useEffect(() => {
     document.body.classList.toggle("noscroll", modal.visible);
 

@@ -161,8 +161,7 @@ const Container = styled.div`
   }
 
   .select-objects-wrapper {
-    margin-top: 1em;
-    margin-bottom: -1em;
+    margin-top: -1em;
   }
 `;
 
@@ -335,6 +334,8 @@ const SampleModal = ({
     }
   });
 
+  // store in a ref to avoid re-rendering this component when the frame number
+  // changes
   const frameNumberRef = useRef(null);
   useEventHandler(playerRef.current, "timeupdate", (e) => {
     frameNumberRef.current = e.data.frame_number;
@@ -517,12 +518,6 @@ const SampleModal = ({
       </div>
       <div className="sidebar">
         <div className="sidebar-content">
-          <div className="select-objects-wrapper">
-            <SelectObjectsMenu
-              sample={sample}
-              frameNumberRef={frameNumberRef}
-            />
-          </div>
           <h2>
             Metadata
             <span className="push-right" />
@@ -537,6 +532,12 @@ const SampleModal = ({
             Display Options
             <span className="push-right" />
           </h2>
+          <div className="select-objects-wrapper">
+            <SelectObjectsMenu
+              sample={sample}
+              frameNumberRef={frameNumberRef}
+            />
+          </div>
           <DisplayOptionsSidebar
             colorMap={colorMap}
             tags={getDisplayOptions(
