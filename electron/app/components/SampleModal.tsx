@@ -11,6 +11,7 @@ import SelectObjectsMenu from "./SelectObjectsMenu";
 import { Button, ModalFooter } from "./utils";
 import * as selectors from "../recoil/selectors";
 import * as atoms from "../recoil/atoms";
+import { SampleContext } from "../utils/context";
 
 import {
   useEventHandler,
@@ -463,147 +464,148 @@ const SampleModal = ({
   }, {});
 
   return (
-    <Container className={fullscreen ? "fullscreen" : ""}>
-      <div className="player" ref={playerContainerRef}>
-        {showJSON ? (
-          <JSONView
-            object={sample}
-            filterJSON={enableJSONFilter}
-            enableFilter={setEnableJSONFilter}
-          />
-        ) : (
-          <Player51
-            key={sampleUrl} // force re-render when this changes
-            src={sampleUrl}
-            onLoad={handleResize}
-            style={{
-              position: "relative",
-              ...playerStyle,
-            }}
-            sample={sample}
-            overlay={videoLabels}
-            metadata={metadata}
-            colorMap={colorMap}
-            activeLabels={activeLabels}
-            activeFrameLabels={activeFrameLabels}
-            fieldSchema={fieldSchema}
-            filterSelector={selectors.modalLabelFilters}
-            playerRef={playerRef}
-            defaultOverlayOptions={savedOverlayOptions}
-            selectedObjects={selectedObjectIDs}
-            onSelectObject={({ id, name }) => {
-              toggleSelectedObject(id, {
-                sample_id: sample._id,
-                field: name,
-                frame_number: frameNumberRef.current,
-              });
-            }}
-          />
-        )}
-        {onPrevious ? (
-          <div
-            className="nav-button left"
-            onClick={onPrevious}
-            title="Previous sample (Left arrow)"
-          >
-            &lt;
-          </div>
-        ) : null}
-        {onNext ? (
-          <div
-            className="nav-button right"
-            onClick={onNext}
-            title="Next sample (Right arrow)"
-          >
-            &gt;
-          </div>
-        ) : null}
-        <TopRightNavButtons>
-          <TopRightNavButton
-            onClick={() => setFullscreen(!fullscreen)}
-            title={fullscreen ? "Unmaximize (Esc)" : "Maximize"}
-            icon={fullscreen ? <FullscreenExit /> : <Fullscreen />}
-          />
-        </TopRightNavButtons>
-      </div>
-      <div className="sidebar">
-        <div className="sidebar-content">
-          <h2>
-            Metadata
-            <span className="push-right" />
-          </h2>
-          <Row name="ID" value={sample._id} />
-          <Row name="Source" value={sample.filepath} />
-          <Row name="Media type" value={sample.media_type} />
-          {formatMetadata(sample.metadata).map(({ name, value }) => (
-            <Row key={"metadata-" + name} name={name} value={value} />
-          ))}
-          <h2>
-            Display Options
-            <span className="push-right" />
-          </h2>
-          <div className="select-objects-wrapper">
-            <SelectObjectsMenu
+    <SampleContext.Provider value={sample}>
+      <Container className={fullscreen ? "fullscreen" : ""}>
+        <div className="player" ref={playerContainerRef}>
+          {showJSON ? (
+            <JSONView
+              object={sample}
+              filterJSON={enableJSONFilter}
+              enableFilter={setEnableJSONFilter}
+            />
+          ) : (
+            <Player51
+              key={sampleUrl} // force re-render when this changes
+              src={sampleUrl}
+              onLoad={handleResize}
+              style={{
+                position: "relative",
+                ...playerStyle,
+              }}
               sample={sample}
-              frameNumberRef={frameNumberRef}
+              overlay={videoLabels}
+              metadata={metadata}
+              colorMap={colorMap}
+              activeLabels={activeLabels}
+              activeFrameLabels={activeFrameLabels}
+              fieldSchema={fieldSchema}
+              filterSelector={selectors.modalLabelFilters}
+              playerRef={playerRef}
+              defaultOverlayOptions={savedOverlayOptions}
+              selectedObjects={selectedObjectIDs}
+              onSelectObject={({ id, name }) => {
+                toggleSelectedObject(id, {
+                  sample_id: sample._id,
+                  field: name,
+                  frame_number: frameNumberRef.current,
+                });
+              }}
+            />
+          )}
+          {onPrevious ? (
+            <div
+              className="nav-button left"
+              onClick={onPrevious}
+              title="Previous sample (Left arrow)"
+            >
+              &lt;
+            </div>
+          ) : null}
+          {onNext ? (
+            <div
+              className="nav-button right"
+              onClick={onNext}
+              title="Next sample (Right arrow)"
+            >
+              &gt;
+            </div>
+          ) : null}
+          <TopRightNavButtons>
+            <TopRightNavButton
+              onClick={() => setFullscreen(!fullscreen)}
+              title={fullscreen ? "Unmaximize (Esc)" : "Maximize"}
+              icon={fullscreen ? <FullscreenExit /> : <Fullscreen />}
+            />
+          </TopRightNavButtons>
+        </div>
+        <div className="sidebar">
+          <div className="sidebar-content">
+            <h2>
+              Metadata
+              <span className="push-right" />
+            </h2>
+            <Row name="ID" value={sample._id} />
+            <Row name="Source" value={sample.filepath} />
+            <Row name="Media type" value={sample.media_type} />
+            {formatMetadata(sample.metadata).map(({ name, value }) => (
+              <Row key={"metadata-" + name} name={name} value={value} />
+            ))}
+            <h2>
+              Display Options
+              <span className="push-right" />
+            </h2>
+            <div className="select-objects-wrapper">
+              <SelectObjectsMenu
+                sample={sample}
+                frameNumberRef={frameNumberRef}
+              />
+            </div>
+            <DisplayOptionsSidebar
+              colorMap={colorMap}
+              tags={getDisplayOptions(
+                tagNames.map((t) => ({ name: t })),
+                tagSampleExists,
+                activeTags,
+                true
+              )}
+              labels={getDisplayOptions(
+                labelNameGroups.labels,
+                labelSampleValues,
+                activeLabels,
+                false,
+                filteredLabelSampleValues
+              )}
+              frameLabels={getDisplayOptions(
+                frameLabelNameGroups.labels,
+                frameLabelSampleValues,
+                activeFrameLabels,
+                false,
+                filteredFrameLabelSampleValues
+              )}
+              onSelectLabel={handleSetDisplayOption(setActiveLabels)}
+              scalars={getDisplayOptions(
+                labelNameGroups.scalars,
+                scalarSampleValues,
+                activeLabels
+              )}
+              onSelectScalar={handleSetDisplayOption(setActiveLabels)}
+              unsupported={getDisplayOptions(
+                labelNameGroups.unsupported,
+                otherSampleValues,
+                activeLabels
+              )}
+              style={{
+                overflowY: "auto",
+                overflowX: "hidden",
+                height: "auto",
+              }}
+              modal={true}
+            />
+            <TopRightNavButton
+              onClick={onClose}
+              title={"Close"}
+              icon={<Close />}
+              style={{ position: "absolute", top: 0, right: 0 }}
             />
           </div>
-          <DisplayOptionsSidebar
-            colorMap={colorMap}
-            tags={getDisplayOptions(
-              tagNames.map((t) => ({ name: t })),
-              tagSampleExists,
-              activeTags,
-              true
-            )}
-            labels={getDisplayOptions(
-              labelNameGroups.labels,
-              labelSampleValues,
-              activeLabels,
-              false,
-              filteredLabelSampleValues
-            )}
-            frameLabels={getDisplayOptions(
-              frameLabelNameGroups.labels,
-              frameLabelSampleValues,
-              activeFrameLabels,
-              false,
-              filteredFrameLabelSampleValues
-            )}
-            onSelectLabel={handleSetDisplayOption(setActiveLabels)}
-            onSelectFrameLabel={handleSetDisplayOption(setActiveFrameLabels)}
-            scalars={getDisplayOptions(
-              labelNameGroups.scalars,
-              scalarSampleValues,
-              activeLabels
-            )}
-            onSelectScalar={handleSetDisplayOption(setActiveLabels)}
-            unsupported={getDisplayOptions(
-              labelNameGroups.unsupported,
-              otherSampleValues,
-              activeLabels
-            )}
-            style={{
-              overflowY: "auto",
-              overflowX: "hidden",
-              height: "auto",
-            }}
-            modal={true}
-          />
-          <TopRightNavButton
-            onClick={onClose}
-            title={"Close"}
-            icon={<Close />}
-            style={{ position: "absolute", top: 0, right: 0 }}
-          />
+          <ModalFooter>
+            <Button onClick={() => setShowJSON(!showJSON)}>
+              {showJSON ? "Hide" : "Show"} JSON
+            </Button>
+          </ModalFooter>
         </div>
-        <ModalFooter>
-          <Button onClick={() => setShowJSON(!showJSON)}>
-            {showJSON ? "Hide" : "Show"} JSON
-          </Button>
-        </ModalFooter>
-      </div>
-    </Container>
+      </Container>
+    </SampleContext.Provider>
   );
 };
 

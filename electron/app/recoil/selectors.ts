@@ -344,7 +344,7 @@ export const modalLabelFilters = selector({
       const none = get(atoms.modalFilterLabelIncludeNoConfidence(label));
       const include = get(atoms.modalFilterIncludeLabels(label));
       filters[label] = (s) => {
-        if (hiddenObjects.has(s.id)) {
+        if (hiddenObjects[s.id]) {
           return false;
         }
         const inRange =

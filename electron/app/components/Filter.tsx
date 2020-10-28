@@ -10,10 +10,12 @@ import useMeasure from "react-use-measure";
 import * as atoms from "../recoil/atoms";
 import { getSocket } from "../utils/socket";
 import * as selectors from "../recoil/selectors";
+import { SampleContext } from "../utils/context";
 import { useOutsideClick } from "../utils/hooks";
 import SearchResults from "./ViewBar/ViewStage/SearchResults";
 import { NamedRangeSlider } from "./RangeSlider";
 import { VALID_LIST_TYPES } from "../utils/labels";
+import { removeObjectIDsFromSelection } from "../utils/selection";
 
 const classFilterMachine = Machine({
   id: "classFilter",
@@ -191,6 +193,16 @@ const classFilterMachine = Machine({
   },
 });
 
+const FilterHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+
+  a {
+    cursor: pointer;
+    text-decoration: underline;
+  }
+`;
+
 const ClassInput = styled.input`
   width: 100%;
   background: ${({ theme }) => theme.backgroundDark};
@@ -268,17 +280,12 @@ const ClassFilter = ({ name, atoms, path }) => {
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
+      <FilterHeader>
         Labels{" "}
         {selected.length ? (
-          <a
-            style={{ cursor: "pointer", textDecoration: "underline" }}
-            onClick={() => send({ type: "CLEAR" })}
-          >
-            clear {selected.length}
-          </a>
+          <a onClick={() => send({ type: "CLEAR" })}>clear {selected.length}</a>
         ) : null}
-      </div>
+      </FilterHeader>
       <ClassFilterContainer>
         <div ref={inputRef}>
           <ClassInput
@@ -391,6 +398,36 @@ const makeFilter = (fieldName, cls, labels, range, includeNone, hasBounds) => {
   };
 };
 
+const HiddenObjectFilter = ({ entry }) => {
+  const fieldName = entry.name;
+  const sample = useContext(SampleContext);
+  const [hiddenObjects, setHiddenObjects] = useRecoilState(atoms.hiddenObjects);
+  if (!sample) {
+    return null;
+  }
+
+  const sampleHiddenObjectIDs = Object.entries(hiddenObjects)
+    .filter(
+      ([object_id, data]) =>
+        data.sample_id === sample._id && data.field === fieldName
+    )
+    .map(([object_id]) => object_id);
+  if (!sampleHiddenObjectIDs.length) {
+    return null;
+  }
+  const clear = () =>
+    setHiddenObjects((hiddenObjects) =>
+      removeObjectIDsFromSelection(hiddenObjects, sampleHiddenObjectIDs)
+    );
+
+  return (
+    <FilterHeader>
+      Manually hidden: {sampleHiddenObjectIDs.length}
+      <a onClick={clear}>reset</a>
+    </FilterHeader>
+  );
+};
+
 const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
   const port = useRecoilValue(atoms.port);
   const socket = getSocket(port, "state");
@@ -485,6 +522,7 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
       <div ref={ref}>
         <div style={{ margin: 3 }}>
           <ClassFilter name={entry.name} atoms={rest} path={entry.path} />
+          <HiddenObjectFilter entry={entry} />
           <NamedRangeSlider
             color={entry.color}
             name={"Confidence"}
