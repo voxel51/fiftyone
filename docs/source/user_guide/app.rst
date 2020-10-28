@@ -215,8 +215,8 @@ show up under the `Tags` tab. Scalar fields, for example if you computed
    :alt: CIFAR-10 Scalars
    :align: center
 
-Selecting samples in the App
-____________________________
+Selecting samples
+_________________
 
 As previously explained, the |Session| object created when you launch the App
 lets you interact with the App from your Python process.
@@ -253,8 +253,8 @@ your session to retrieve the IDs of the currently selected samples in the App:
      '5ef0eef405059ebb0ddfa86e',
      '5ef0eef405059ebb0ddfa93c']
 
-Selecting objects in the App
-____________________________
+Selecting objects
+_________________
 
 You can also use the App to select individual objects within samples. You can
 use this functionality to visually show/hide objects of interest in the App; or
