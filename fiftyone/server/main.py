@@ -18,6 +18,7 @@ from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 from flask_socketio import emit, Namespace, SocketIO
 
+import eta.core.labels as etal
 import eta.core.utils as etau
 import eta.core.video as etav
 
@@ -154,11 +155,44 @@ _WITHOUT_PAGINATION_EXTENDED_STAGES = {
 }
 
 
-def _make_image_labels(name, label, frame_number):
-    return etav.VideoFrameLabels.from_image_labels(
-        fol.ImageLabel.from_dict(label).to_image_labels(name=name),
-        frame_number,
+def _get_label_object_ids(label):
+    """Returns a list of all object IDs contained in the label.
+
+    Args:
+        label: an ImageLabel instance
+
+    Returns:
+        list of IDs as strings
+    """
+    list_field_name = type(label).__name__.lower()
+    if hasattr(label, "id"):
+        return [label.id]
+    elif list_field_name in label:
+        return [obj.id for obj in label[list_field_name]]
+    raise TypeError("Cannot serialize label type: " + str(type(label)))
+
+
+def _make_frame_labels(name, label, frame_number):
+    label = fol.ImageLabel.from_dict(label)
+    labels = etav.VideoFrameLabels.from_image_labels(
+        label.to_image_labels(name=name), frame_number,
     )
+
+    for obj in labels.objects:
+        obj.frame_number = frame_number
+
+    for attr in labels.attributes():
+        container = getattr(labels, attr)
+        if isinstance(container, etal.LabelsContainer):
+            object_ids = _get_label_object_ids(label)
+            assert len(container) == len(object_ids)
+            for (obj, object_id) in zip(container, object_ids):
+                # force _id to be serialized
+                obj._id = object_id
+                attrs = obj.attributes() + ["_id"]
+                obj.attributes = lambda: attrs
+
+    return labels
 
 
 class StateController(Namespace):
@@ -280,6 +314,23 @@ class StateController(Namespace):
         return state
 
     @_catch_errors
+    @_load_state()
+    def on_set_selected_objects(self, state, selected_objects):
+        """Sets the entire selected object list.
+
+        Args:
+            state: the current
+                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+            selected_objects: a list of objects in the format used by
+                :mod:`fiftyone.utils.selection`
+        """
+        if not isinstance(selected_objects, list):
+            raise TypeError("selected_objects must be a list")
+
+        state.selected_objects = selected_objects
+        return state
+
+    @_catch_errors
     def on_get_frame_labels(self, sample_id):
         """Gets the frame labels for video samples
 
@@ -295,6 +346,7 @@ class StateController(Namespace):
         find_d = {"_sample_id": ObjectId(sample_id)}
         labels = etav.VideoLabels()
         frames = list(state.dataset._frame_collection.find(find_d))
+        convert(frames)
         sample = state.dataset[sample_id].to_mongo_dict()
 
         for frame_dict in frames:
@@ -302,10 +354,7 @@ class StateController(Namespace):
             frame_labels = etav.VideoFrameLabels(frame_number=frame_number)
             for k, v in frame_dict.items():
                 if isinstance(v, dict) and "_cls" in v:
-                    field_labels = _make_image_labels(k, v, frame_number)
-                    for obj in field_labels.objects:
-                        obj.frame_number = frame_number
-
+                    field_labels = _make_frame_labels(k, v, frame_number)
                     frame_labels.merge_labels(field_labels)
 
             labels.add_frame(frame_labels)
@@ -316,7 +365,7 @@ class StateController(Namespace):
             frame_labels = etav.VideoFrameLabels(frame_number=frame_number)
             for k, v in sample.items():
                 if isinstance(v, dict) and k != "frames" and "_cls" in v:
-                    field_labels = _make_image_labels(k, v, frame_number)
+                    field_labels = _make_frame_labels(k, v, frame_number)
                     for obj in field_labels.objects:
                         obj.frame_number = frame_number
 

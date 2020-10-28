@@ -44,13 +44,16 @@ const SelectionMenu = ({ port, dispatch }) => {
 
   const size = selectedSamples.size;
   if (size == 0) {
-    return <span>0 samples selected</span>;
+    return (
+      <span title="Click on samples below to select them">
+        0 samples selected
+      </span>
+    );
   }
   return (
     <DropdownTag
       name={`${size} sample${size == 1 ? "" : "s"} selected`}
       disabled={!size}
-      title={size ? undefined : "Click on samples below to select them"}
       onSelect={(item) => item.action()}
       menuItems={[
         {

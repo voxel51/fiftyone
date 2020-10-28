@@ -47,14 +47,16 @@ export default ({
   onDoubleClick,
   overlay = null,
   onLoad = () => {},
-  onMouseEnter = null,
-  onMouseLeave = null,
+  onMouseEnter = () => {},
+  onMouseLeave = () => {},
   activeLabels,
   frameLabelsActive,
   fieldSchema = {},
   filterSelector,
   playerRef,
   defaultOverlayOptions,
+  selectedObjects,
+  onSelectObject,
 }) => {
   const filter = useRecoilValue(filterSelector);
   const colorMap = useRecoilValue(atoms.colorMap);
@@ -87,7 +89,7 @@ export default ({
         overlay,
         fps: metadata.fps,
         colorMap,
-        playerActiveLabels,
+        activeLabels: playerActiveLabels,
         filter,
         enableOverlayOptions: {
           attrRenderMode: false,
@@ -132,6 +134,12 @@ export default ({
     }
   }, [player, filter, overlay, playerActiveLabels, colorMap]);
 
+  useEffect(() => {
+    if (player && selectedObjects) {
+      player.updateOptions({ selectedObjects });
+    }
+  }, [player, selectedObjects]);
+
   useEventHandler(player, "load", () => setMediaLoading(false));
   useEventHandler(player, "load", onLoad);
   useEventHandler(player, "error", () =>
@@ -152,8 +160,15 @@ export default ({
       </>
     )
   );
-  onMouseEnter && useEventHandler(player, "mouseenter", onMouseEnter);
-  onMouseLeave && useEventHandler(player, "mouseleave", onMouseLeave);
+  useEventHandler(player, "mouseenter", onMouseEnter);
+  useEventHandler(player, "mouseleave", onMouseLeave);
+  useEventHandler(player, "select", (e) => {
+    const id = e.data?.id;
+    const name = e.data?.name;
+    if (id && onSelectObject) {
+      onSelectObject({ id, name });
+    }
+  });
 
   return (
     <div id={id} style={style} {...props}>
