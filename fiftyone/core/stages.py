@@ -93,8 +93,8 @@ class ViewStage(object):
                 :class:`fiftyone.core.collections.SampleCollection`
 
         Raises:
-            :class:`ViewStageError` if the stage cannot be applied to the
-            collection
+            :class:`ViewStageError`: if the stage cannot be applied to the
+                collection
         """
         pass
 
