@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
@@ -23,9 +23,12 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
   const [selectedObjects, setSelectedObjects] = useRecoilState<
     SelectedObjectMap
   >(atoms.selectedObjects);
+  const resetSelectedObjects = useResetRecoilState(atoms.selectedObjects);
   const [hiddenObjects, setHiddenObjects] = useRecoilState<Set<string>>(
     atoms.hiddenObjects
   );
+  const resetHiddenObjects = useResetRecoilState(atoms.hiddenObjects);
+
   const sampleFrameData =
     useRecoilValue(atoms.sampleFrameData(sample._id)) || [];
   const isVideo = useRecoilValue(selectors.mediaType) == "video";
@@ -94,7 +97,7 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
 
   const hideSelected = () => {
     const ids = Object.keys(selectedObjects);
-    setSelectedObjects({});
+    resetSelectedObjects();
     setHiddenObjects((hiddenObjects) => {
       const newHidden = new Set(hiddenObjects);
       for (const id of ids) {
@@ -150,7 +153,7 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
         {
           name: "Clear selection",
           disabled: !numTotalSelectedObjects,
-          action: () => setSelectedObjects({}),
+          action: () => resetSelectedObjects(),
         },
         Menu.DIVIDER,
         {
@@ -171,7 +174,7 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
         {
           name: "Show all objects",
           disabled: hiddenObjects.size == 0,
-          action: () => setHiddenObjects(new Set()),
+          action: () => resetHiddenObjects(),
         },
       ].filter(Boolean)}
       menuZIndex={10}
