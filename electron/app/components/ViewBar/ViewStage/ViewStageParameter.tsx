@@ -311,6 +311,11 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
 
   const hasExpansion = state.context.type === "dict|str";
   const isObjectEditor = hasObjectType && (!hasExpansion || expanded);
+  let isObject = false;
+  try {
+    JSON.parse(value);
+    isObject = true;
+  } catch {}
   useEffect(() => {
     if (!hasExpansion || expanded) return;
     try {
@@ -361,7 +366,11 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
             followRef={containerRef}
             inputRef={inputRef}
             stageRef={stageRef}
-            onClose={() => hasExpansion && setExpanded(false)}
+            onClose={() => {
+              if (!hasExpansion) return;
+              setExpanded(false);
+              isObject && send("BLUR");
+            }}
             hasExpansion={hasExpansion}
           />
         ) : (
@@ -370,7 +379,9 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
               placeholder={makePlaceholder(state.context)}
               autoFocus={state.matches("editing")}
               value={
-                state.matches("reading") && value.length > 24
+                isObject
+                  ? "{ ... }"
+                  : state.matches("reading") && value.length > 24
                   ? value.slice(0, 25) + "..."
                   : value
               }

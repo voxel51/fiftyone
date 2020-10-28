@@ -185,6 +185,19 @@ const fields = selectorFamily({
   },
 });
 
+export const fieldPaths = selector({
+  key: "fieldPaths",
+  get: ({ get }) => {
+    const fieldsNames = Object.keys(get(fields("sample")));
+    if (get(mediaType) === "video") {
+      return fieldsNames
+        .concat(Object.keys(get(fields("frame"))).map((f) => "frames." + f))
+        .sort();
+    }
+    return fieldsNames.sort();
+  },
+});
+
 const labels = selectorFamily({
   key: "labels",
   get: (dimension: string) => ({ get }) => {

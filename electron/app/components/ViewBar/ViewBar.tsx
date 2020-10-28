@@ -62,6 +62,7 @@ const viewBarKeyMap = {
 const ViewBar = React.memo(() => {
   const [state, send] = useMachine(viewBarMachine);
   const [view, setView] = useRecoilState(selectors.view);
+  const fieldPaths = useRecoilValue(selectors.fieldPaths);
 
   const port = useRecoilValue<number>(atoms.port);
 
@@ -71,6 +72,7 @@ const ViewBar = React.memo(() => {
       port,
       view,
       setView,
+      fieldNames: fieldPaths,
     });
   }, [port, view]);
 
