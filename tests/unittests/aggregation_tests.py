@@ -151,11 +151,6 @@ class DatasetTests(unittest.TestCase):
 
         d = fo.Dataset()
         s = fo.Sample("video.mp4")
-        s[1].tags = ["one", "two"]
-        d.add_sample(s)
-        self.assertEqual(
-            d.aggregate(fo.Distinct("frames.tags")).values, ["one", "two"]
-        )
 
     @drop_datasets
     def test_distinct_labels(self):

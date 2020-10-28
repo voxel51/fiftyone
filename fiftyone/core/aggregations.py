@@ -35,6 +35,11 @@ class Aggregation(object):
         self._field_name = field_name
 
     @property
+    def field_name(self):
+        """The field name of the :class:`Aggregation`"""
+        return self.field_name
+
+    @property
     def _field_name_path(self):
         return self._field_name.replace(".", "__")
 

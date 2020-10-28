@@ -1552,7 +1552,9 @@ class SelectFields(ViewStage):
         else:
             fn = lambda n: not n.startswith(_FRAMES_PREFIX)
 
-        return list(set(filter(fn, self._field_names)) | set(default_fields))
+        field_names = self._field_names or []
+
+        return list(set(filter(fn, field_names)) | set(default_fields))
 
     def to_mongo(self, _):
         selected_fields = self.get_selected_fields()

@@ -142,10 +142,7 @@ class SampleCollection(object):
         agg_map = {}
         for agg in aggregations:
             if not isinstance(agg, Aggregation):
-                raise TypeError(
-                    "'%s' with name '%s' is not a an Aggregation"
-                    % (agg.__class__, agg.name)
-                )
+                raise TypeError("'%s' is not a an Aggregation" % agg.__class__)
 
             field = agg._get_output_field(self)
             agg_map[field] = agg
@@ -349,6 +346,9 @@ class SampleCollection(object):
             field_name = field.split(".", 1)[0]
             if field_name not in schema and field_name not in default_fields:
                 raise ValueError("Field '%s' does not exist" % field_name)
+
+        if self.media_type != fom.VIDEO:
+            return
 
         frame_schema = self.get_frame_field_schema(include_private=True)
         default_frame_fields = set(
