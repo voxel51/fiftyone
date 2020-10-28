@@ -8,7 +8,6 @@ import { ThemeProvider } from "styled-components";
 
 import { GlobalStyle } from "../app/shared/global";
 import { lightTheme, darkTheme } from "../app/shared/colors";
-import { configureStore } from "../app/store/configureStore";
 
 addDecorator((story, context) => <>{withConsole()(story)(context)}</>);
 addDecorator(withKnobs);
@@ -21,11 +20,6 @@ addDecorator((story) => (
 ));
 
 addDecorator((story) => <RecoilRoot>{story()}</RecoilRoot>);
-
-addDecorator((story) => {
-  const [store] = useState(configureStore());
-  return <Provider store={store}>{story()}</Provider>;
-});
 
 const themeChoices = {
   Dark: darkTheme,
