@@ -647,9 +647,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             the ID of the sample in the dataset
 
         Raises:
-            :class:`mongoengine.errors.ValidationError` if a field of the
-            sample has a type that is inconsistent with the dataset schema, or
-            if ``expand_schema == False`` and a new field is encountered
+            ``mongoengine.errors.ValidationError``: if a field of the sample
+                has a type that is inconsistent with the dataset schema, or if
+                ``expand_schema == False`` and a new field is encountered
         """
         if expand_schema:
             self._expand_schema([sample])
@@ -695,9 +695,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a list of IDs of the samples in the dataset
 
         Raises:
-            :class:`mongoengine.errors.ValidationError` if a field of a sample
-            has a type that is inconsistent with the dataset schema, or if
-            ``expand_schema == False`` and a new field is encountered
+            ``mongoengine.errors.ValidationError``: if a field of a sample has
+                a type that is inconsistent with the dataset schema, or if
+                ``expand_schema == False`` and a new field is encountered
         """
         if num_samples is None:
             try:

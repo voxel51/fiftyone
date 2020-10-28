@@ -114,10 +114,13 @@ def _catch_errors(func):
             self.state = self.prev_state
             error = {
                 "kind": "Server Error",
-                "message": "An exception has been raised by the server. Your session has been reverted to its previous state.",
+                "message": (
+                    "An exception has been raised by the server. Your session "
+                    "has been reverted to its previous state."
+                ),
                 "session_items": [traceback.format_exc()],
                 "app_items": [
-                    "A traceback has been printed to your python shell."
+                    "A traceback has been printed to your Python shell."
                 ],
             }
             emit("notification", error, broadcast=True, include_self=True)
@@ -410,6 +413,7 @@ class StateController(Namespace):
             stage = fosg.ViewStage._from_dict(stage_dict)
             if type(stage) in _WITHOUT_PAGINATION_EXTENDED_STAGES:
                 continue
+
             view = view.add_stage(stage)
 
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
@@ -522,6 +526,7 @@ def _get_distributions(view, group):
         new_result = []
         for f in result[0].values():
             new_result += f
+
         result = new_result
 
     if group != SCALARS:

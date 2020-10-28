@@ -116,18 +116,14 @@ class SampleCollection(object):
         for larger datasets.
 
         Args:
-            aggregations: a single
-                :class:`fiftyone.core.aggregations.Aggregation` or an iterable
-                of
-                :class:`Aggregations <fiftyone.core.aggregations.Aggregation>`
+            aggregations: an :class:`fiftyone.core.aggregations.Aggregation` or
+                iterable of :class:`<fiftyone.core.aggregations.Aggregation>`
+                instances
 
         Returns:
-            an :class:`AggregationResult` if a single
-            :class:`fiftyone.core.aggregations.Aggregation` was provided or a list of 
-            :class:`AggregationResults <fiftyone.core.aggregations.AggregationResult>`
-            if an iterable of
-            :class:`Aggregations <fiftyone.core.aggregations.Aggregation>` was
-            provided.
+            an :class:`fiftyone.core.aggregations.AggregationResult` or list of
+            :class:`fiftyone.core.aggregations.AggregationResult` instances
+            corresponding to the input aggregations
         """
         scalar_result = isinstance(aggregations, Aggregation)
         if scalar_result:
@@ -135,20 +131,22 @@ class SampleCollection(object):
         elif len(aggregations) == 0:
             return []
 
-        pipelines = {}
-        agg_map = {}
         # pylint: disable=no-member
         schema = self.get_field_schema()
         if self.media_type == fom.VIDEO:
             frame_schema = self.get_frame_field_schema()
         else:
             frame_schema = None
+
+        pipelines = {}
+        agg_map = {}
         for agg in aggregations:
             if not isinstance(agg, Aggregation):
                 raise TypeError(
                     "'%s' with name '%s' is not a an Aggregation"
                     % (agg.__class__, agg.name)
                 )
+
             field = agg._get_output_field(self)
             agg_map[field] = agg
             pipelines[field] = agg._to_mongo(
@@ -1760,6 +1758,22 @@ class SampleCollection(object):
                 a valid stage for this collection
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
+
+    def _aggregate(
+        self, pipeline=None, hide_frames=False, squash_frames=False
+    ):
+        """Runs the MongoDB aggregation pipeline on the collection and returns
+        the result.
+
+        Args:
+            pipeline (None): a MongoDB pipeline (list of dicts)
+            hide_frames (False): whether to hide frames in the result
+            squash_frames (False): whether to squash frames in the result
+
+        Returns:
+            the aggregation result dict
+        """
+        raise NotImplementedError("Subclass must implement _aggregate()")
 
     def _attach_frames(self, hide_frames=False):
         key = "_frames" if hide_frames else "frames"

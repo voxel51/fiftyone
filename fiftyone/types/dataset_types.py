@@ -1069,7 +1069,7 @@ class CVATVideoDataset(VideoLabelsDataset):
 class FiftyOneImageLabelsDataset(ImageLabelsDataset):
     """A labeled dataset consisting of images and their associated multitask
     predictions stored in
-    `ETA ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_.
+    `ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -1103,8 +1103,9 @@ class FiftyOneImageLabelsDataset(ImageLabelsDataset):
         }
 
     and where each labels JSON file is stored in ``eta.core.image.ImageLabels``
-    format. See https://voxel51.com/docs/api/#types-imagelabels for more
-    details.
+    format. See
+    `this guide <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_
+    for more details.
 
     For unlabeled images, an empty ``eta.core.image.ImageLabels`` file is
     stored.
@@ -1230,7 +1231,7 @@ class BDDDataset(ImageLabelsDataset):
 class FiftyOneVideoLabelsDataset(VideoLabelsDataset):
     """A labeled dataset consisting of videos and their associated labels
     stored in
-    `ETA VideoLabels format <https://voxel51.com/docs/api/#types-videolabels>`_.
+    `ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -1264,8 +1265,9 @@ class FiftyOneVideoLabelsDataset(VideoLabelsDataset):
         }
 
     and where each labels JSON file is stored in ``eta.core.image.VideoLabels``
-    format. See https://voxel51.com/docs/api/#types-videolabels for more
-    details.
+    format. See
+    `this guide <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_
+    for more details.
 
     For unlabeled videos, an empty ``eta.core.image.VideoLabels`` file is
     stored.
