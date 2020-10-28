@@ -529,47 +529,7 @@ class ViewStageTests(unittest.TestCase):
         self.dataset.add_sample(self.sample1)
         self.dataset.add_sample(self.sample2)
 
-    def test_exclude(self):
-        result = list(self.dataset.exclude([self.sample1.id]))
-        self.assertIs(len(result), 1)
-        self.assertEqual(result[0].id, self.sample2.id)
-
-    def test_exclude_fields(self):
-        self.dataset.add_sample_field("exclude_fields_field1", fo.IntField)
-        self.dataset.add_sample_field("exclude_fields_field2", fo.IntField)
-
-        for sample in self.dataset.exclude_fields(["exclude_fields_field1"]):
-            self.assertIsNone(sample.selected_field_names)
-            self.assertSetEqual(
-                sample.excluded_field_names, {"exclude_fields_field1"}
-            )
-            with self.assertRaises(AttributeError):
-                sample.exclude_fields_field1
-
-            self.assertIsNone(sample.exclude_fields_field2)
-
-    def test_exists(self):
-        self.sample1["exists"] = True
-        self.sample1.save()
-        result = list(self.dataset.exists("exists"))
-        self.assertIs(len(result), 1)
-        self.assertEqual(result[0].id, self.sample1.id)
-
-    def test_filter_field(self):
-        self.sample1["test_class"] = fo.Classification(label="friend")
-        self.sample1.save()
-
-        self.sample2["test_class"] = fo.Classification(label="enemy")
-        self.sample2.save()
-
-        view = self.dataset.filter_field("test_class", F("label") == "friend")
-
-        self.assertEqual(len(view.exists("test_class")), 1)
-        for sample in view:
-            if sample.test_class is not None:
-                self.assertEqual(sample.test_class.label, "friend")
-
-    def test_filter_classifications(self):
+    def _setUp_classifications(self):
         self.sample1["test_clfs"] = fo.Classifications(
             classifications=[
                 fo.Classification(label="friend", confidence=0.9),
@@ -588,16 +548,7 @@ class ViewStageTests(unittest.TestCase):
         )
         self.sample2.save()
 
-        view = self.dataset.filter_classifications(
-            "test_clfs", (F("confidence") > 0.5) & (F("label") == "friend")
-        )
-
-        for sample in view:
-            for clf in sample.test_clfs.classifications:
-                self.assertGreater(clf.confidence, 0.5)
-                self.assertEqual(clf.label, "friend")
-
-    def test_filter_detections(self):
+    def _setUp_detections(self):
         self.sample1["test_dets"] = fo.Detections(
             detections=[
                 fo.Detection(
@@ -642,7 +593,87 @@ class ViewStageTests(unittest.TestCase):
         )
         self.sample2.save()
 
+    def test_exclude(self):
+        result = list(self.dataset.exclude([self.sample1.id]))
+        self.assertIs(len(result), 1)
+        self.assertEqual(result[0].id, self.sample2.id)
+
+    def test_exclude_fields(self):
+        self.dataset.add_sample_field("exclude_fields_field1", fo.IntField)
+        self.dataset.add_sample_field("exclude_fields_field2", fo.IntField)
+
+        for sample in self.dataset.exclude_fields(["exclude_fields_field1"]):
+            self.assertIsNone(sample.selected_field_names)
+            self.assertSetEqual(
+                sample.excluded_field_names, {"exclude_fields_field1"}
+            )
+            with self.assertRaises(AttributeError):
+                sample.exclude_fields_field1
+
+            self.assertIsNone(sample.exclude_fields_field2)
+
+    def test_exists(self):
+        self.sample1["exists"] = True
+        self.sample1.save()
+        result = list(self.dataset.exists("exists"))
+        self.assertIs(len(result), 1)
+        self.assertEqual(result[0].id, self.sample1.id)
+
+    def test_filter_field(self):
+        self.sample1["test_class"] = fo.Classification(label="friend")
+        self.sample1.save()
+
+        self.sample2["test_class"] = fo.Classification(label="enemy")
+        self.sample2.save()
+
+        view = self.dataset.filter_field("test_class", F("label") == "friend")
+
+        self.assertEqual(len(view.exists("test_class")), 1)
+        for sample in view:
+            if sample.test_class is not None:
+                self.assertEqual(sample.test_class.label, "friend")
+
+    def test_filter_classifications(self):
+        self._setUp_classifications()
+
+        view = self.dataset.filter_classifications(
+            "test_clfs", (F("confidence") > 0.5) & (F("label") == "friend")
+        )
+
+        for sample in view:
+            for clf in sample.test_clfs.classifications:
+                self.assertGreater(clf.confidence, 0.5)
+                self.assertEqual(clf.label, "friend")
+
+    def test_filter_detections(self):
+        self._setUp_detections()
+
         view = self.dataset.filter_detections(
+            "test_dets", (F("confidence") > 0.5) & (F("label") == "friend")
+        )
+
+        for sample in view:
+            for det in sample.test_dets.detections:
+                self.assertGreater(det.confidence, 0.5)
+                self.assertEqual(det.label, "friend")
+
+    def test_filter_labels(self):
+        # Classifications
+        self._setUp_classifications()
+
+        view = self.dataset.filter_labels(
+            "test_clfs", (F("confidence") > 0.5) & (F("label") == "friend")
+        )
+
+        for sample in view:
+            for clf in sample.test_clfs.classifications:
+                self.assertGreater(clf.confidence, 0.5)
+                self.assertEqual(clf.label, "friend")
+
+        # Detections
+        self._setUp_detections()
+
+        view = self.dataset.filter_labels(
             "test_dets", (F("confidence") > 0.5) & (F("label") == "friend")
         )
 
@@ -654,6 +685,12 @@ class ViewStageTests(unittest.TestCase):
     def test_limit(self):
         result = list(self.dataset.limit(1))
         self.assertIs(len(result), 1)
+
+    def test_limit_labels(self):
+        self._setUp_classifications()
+
+        result = list(self.dataset.limit_labels("test_clfs", 1))
+        self.assertIs(len(result[0]["test_clfs"].classifications), 1)
 
     def test_match(self):
         self.sample1["value"] = "value"
