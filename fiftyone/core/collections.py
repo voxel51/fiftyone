@@ -395,14 +395,13 @@ class SampleCollection(object):
         if frames:
             field_name = field_name[len("frames.") :]
 
-        frame_schema = self.get_frame_field_schema()
-        if not frames and field_name not in schema:
-            raise ValueError("Field '%s' does not exist" % field_name)
-
-        if frames and field_name not in frame_schema:
-            raise ValueError("Field '%s' does not exist" % field_name)
-
-        field = frame_schema[field_name] if frames else schema[field_name]
+        if frames:
+            frame_schema = self.get_frame_field_schema()
+            if field_name not in frame_schema:
+                raise ValueError("Field '%s' does not exist" % field_name)
+            field = frame_schema[field_name]
+        else:
+            field = schema[field_name]
 
         if embedded_doc_type is not None:
             if not isinstance(field, fof.EmbeddedDocumentField) or (
