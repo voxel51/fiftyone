@@ -108,12 +108,12 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement info")
 
     def aggregate(self, aggregations):
-        """Aggregates an iterable of
-        :class:`Aggregations <fiftyone.core.aggregations.Aggregation>`
+        """Aggregates one or more
+        :class:`fiftyone.core.aggregations.Aggregation` instances.
 
-        Note that it is best practice to group aggregations into a single
-        aggregate call. Calling this method repeatedly will not be performant
-        for larger datasets.
+        Note that it is best practice to group aggregations into a single call
+        to :meth:`aggregate() <aggregate>`, as this will be more efficient than
+        performing multiple aggregations in series.
 
         Args:
             aggregations: an :class:`fiftyone.core.aggregations.Aggregation` or
@@ -1766,7 +1766,7 @@ class SampleCollection(object):
         the result.
 
         Args:
-            pipeline (None): a MongoDB pipeline (list of dicts)
+            pipeline (None): a MongoDB aggregation pipeline (list of dicts)
             hide_frames (False): whether to hide frames in the result
             squash_frames (False): whether to squash frames in the result
 
