@@ -385,7 +385,7 @@ class ExcludeObjects(ViewStage):
         return [
             {
                 "name": "objects",
-                "type": "dict",  # "list<dict>"
+                "type": "dict",  # @todo use "list<dict>" when supported
                 "placeholder": "[{...}]",
             }
         ]
@@ -1711,7 +1711,7 @@ class SelectObjects(ViewStage):
         return [
             {
                 "name": "objects",
-                "type": "dict",  # "list<dict>"
+                "type": "dict",  # @todo use "list<dict>" when supported
                 "placeholder": "[{...}]",
             }
         ]
