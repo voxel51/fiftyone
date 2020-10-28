@@ -64,6 +64,20 @@ export const filterStages = selector({
   },
 });
 
+export const paginatedFilterStages = selector({
+  key: "paginatedFilterStages",
+  get: ({ get }) => {
+    const scalars = get(scalarNames("sample"));
+    const filters = get(filterStages);
+    return Object.keys(filters).reduce((acc, cur) => {
+      if (scalars.includes(cur)) {
+        acc[cur] = filters[cur];
+      }
+      return acc;
+    }, {});
+  },
+});
+
 export const extendedView = selector({
   key: "extendedView",
   get: ({ get }) => {
@@ -216,6 +230,14 @@ export const scalarNames = selectorFamily({
   },
 });
 
+export const scalarTypes = selectorFamily({
+  key: "scalarTypes",
+  get: (dimension: string) => ({ get }) => {
+    const l = get(scalars(dimension));
+    return l.map((l) => l.ftype);
+  },
+});
+
 const COUNT_CLS = "fiftyone.core.aggregations.CountResult";
 const LABELS_CLS = "fiftyone.core.aggregations.DistinctLabelsResult";
 const BOUNDS_CLS = "fiftyone.core.aggregations.BoundsResult";
@@ -361,6 +383,20 @@ export const labelTuples = selectorFamily({
   get: (dimension: string) => ({ get }) => {
     const types = get(labelTypes(dimension));
     return get(labelNames(dimension)).map((n, i) => [n, types[i]]);
+  },
+});
+
+const scalarsMap = selectorFamily({
+  key: "scalarsMap",
+  get: (dimension: string) => ({ get }) => {
+    const types = get(scalarTypes(dimension));
+    return get(scalarNames(dimension)).reduce(
+      (acc, cur, i) => ({
+        ...acc,
+        [cur]: types[i],
+      }),
+      {}
+    );
   },
 });
 
@@ -514,7 +550,8 @@ export const labelNameGroups = selectorFamily({
 export const isNumericField = selectorFamily({
   key: "isNumericField",
   get: (name) => ({ get }) => {
-    return VALID_NUMERIC_TYPES.includes(get(fields("sample"))[name]);
+    const map = get(scalarsMap("sample"));
+    return VALID_NUMERIC_TYPES.includes(map[name]);
   },
 });
 

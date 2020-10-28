@@ -466,14 +466,10 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
         newState.filters[entry.name] = filter;
       }
       setStateDescription(newState);
-      socket.emit(
-        "update",
-        {
-          data: newState,
-          include_self: false,
-        },
-        (data) => setStateDescription(data)
-      );
+      socket.emit("update", {
+        data: newState,
+        include_self: false,
+      });
       const extendedView = [...(newState.view || [])];
       for (const stage in newState.filters) {
         extendedView.push(newState.filters[stage]);
