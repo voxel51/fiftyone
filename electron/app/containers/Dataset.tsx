@@ -97,6 +97,12 @@ function Dataset(props) {
     });
   }, [modal.visible]);
 
+  useEffect(() => {
+    modal.visible &&
+      !currentSamples.some((i) => i.sample._id === modal.sample._id) &&
+      handleHideModal();
+  }, [currentSamples]);
+
   let src = null;
   let s = null;
   if (modal.sample) {
