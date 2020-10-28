@@ -629,6 +629,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample = fos.Sample.from_doc(doc, dataset=self)
             if self.media_type == fom.VIDEO:
                 sample.frames._set_replacements(frames)
+
             yield sample
 
     def add_sample(self, sample, expand_schema=True):
