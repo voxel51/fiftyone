@@ -401,6 +401,9 @@ class ExcludeObjects(ViewStage):
                 [foe.ObjectId(oid) for oid in object_ids]
             )
             stage = _make_label_filter_stage(label_schema, field, label_filter)
+            if stage is None:
+                continue
+
             stage.validate(sample_collection)
             pipeline.extend(stage.to_mongo())
 
@@ -1734,6 +1737,9 @@ class SelectObjects(ViewStage):
                 [foe.ObjectId(oid) for oid in object_ids]
             )
             stage = _make_label_filter_stage(label_schema, field, label_filter)
+            if stage is None:
+                continue
+
             stage.validate(sample_collection)
             pipeline.extend(stage.to_mongo())
 
@@ -2134,7 +2140,7 @@ def _make_label_filter_stage(label_schema, field, label_filter):
 
     msg = "Ignoring unsupported field '%s' (%s)" % (field, label_type)
     warnings.warn(msg)
-    return []
+    return None
 
 
 class _ViewStageRepr(reprlib.Repr):
