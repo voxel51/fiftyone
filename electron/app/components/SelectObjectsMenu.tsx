@@ -64,17 +64,16 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
     (obj) => selectedObjects[obj._id]
   ).length;
 
+  const _getObjectSelectionData = (object) => ({
+    object_id: object._id,
+    sample_id: sample._id,
+    field: object.name,
+    frame_number: object.frame_number,
+  });
+
   const _selectAll = (objects) => {
     setSelectedObjects((selection) =>
-      addObjectsToSelection(
-        selection,
-        objects.map((obj) => ({
-          object_id: obj._id,
-          sample_id: sample._id,
-          field: obj.name,
-          frame_number: obj.frame_number,
-        }))
-      )
+      addObjectsToSelection(selection, objects.map(_getObjectSelectionData))
     );
   };
 
@@ -98,25 +97,24 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
   const hideSelected = () => {
     const ids = Object.keys(selectedObjects);
     resetSelectedObjects();
-    setHiddenObjects((hiddenObjects) => {
-      const newHidden = new Set(hiddenObjects);
-      for (const id of ids) {
-        newHidden.add(id);
-      }
-      return newHidden;
-    });
+    // can copy data directly from selectedObjects since it's in the same format
+    setHiddenObjects((hiddenObjects) =>
+      addObjectsToSelection(
+        hiddenObjects,
+        ids.map((object_id) => ({ object_id, ...selectedObjects[object_id] }))
+      )
+    );
   };
 
   const hideOthers = (objects) => {
-    setHiddenObjects((hiddenObjects) => {
-      const newHidden = new Set(hiddenObjects);
-      for (const obj of objects) {
-        if (!selectedObjects[obj._id]) {
-          newHidden.add(obj._id);
-        }
-      }
-      return newHidden;
-    });
+    setHiddenObjects((hiddenObjects) =>
+      addObjectsToSelection(
+        hiddenObjects,
+        objects
+          .filter((obj) => !selectedObjects[obj._id])
+          .map(_getObjectSelectionData)
+      )
+    );
   };
 
   const refresh = useFastRerender();

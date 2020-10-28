@@ -27,9 +27,9 @@ export const selectedObjects = atom<SelectedObjectMap>({
   default: {},
 });
 
-export const hiddenObjects = atom<Set<string>>({
+export const hiddenObjects = atom<SelectedObjectMap>({
   key: "hiddenObjects",
-  default: new Set(),
+  default: {},
 });
 
 export const stageInfo = atom({
