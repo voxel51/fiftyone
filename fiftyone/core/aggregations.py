@@ -83,7 +83,7 @@ class Aggregation(object):
 
 class AggregationResult(etas.Serializable):
     """Abstract base class for all aggregation results.
-    
+
     :class:`AggregationResult` instances represent the result of the execution
     of an :class:`Aggregation` instance on a
     :class:`fiftyone.core.collection.SampleCollection`.
@@ -125,6 +125,7 @@ class Bounds(Aggregation):
     numeric subfield must be explicitly defined.
 
     Examples::
+
         import fiftyone as fo
         from fiftyone.core.aggregations import Bounds
 
@@ -149,7 +150,7 @@ class Bounds(Aggregation):
         list_bounds = Bounds("uniqueness_trials")
         list_bounds_result = dataset.aggregate(list_bounds)
         list_bounds_result.bounds # (min, max) inclusive bounds tuple
-    
+
     Args:
         field_name: the name of the field to compute bounds for
     """
@@ -219,6 +220,7 @@ class ConfidenceBounds(Aggregation):
     :class:`fiftyone.core.labels.Label`
 
     Examples::
+
         import fiftyone as fo
         from fiftyone.core.aggregations import ConfidenceBounds
 
@@ -239,7 +241,7 @@ class ConfidenceBounds(Aggregation):
         detections_bounds = ConfidenceBounds("detections")
         detections_bounds_result = dataset.aggregate(detections_bounds)
         detections_bounds_result.bounds # (min, max) inclusive bounds tuple
-    
+
     Args:
         field_name: the name of the label field to compute confidence bounds
             for
@@ -304,11 +306,12 @@ class Count(Aggregation):
     no field_name is provided.
 
     Examples::
+
         import fiftyone as fo
         from fiftyone.core.aggregations import Count
 
         dataset = fo.load_dataset(...)
-        
+
         #
         # Compute the number of samples in a dataset
         #
@@ -324,7 +327,7 @@ class Count(Aggregation):
         detections = Count("detections")
         detections_result = dataset.aggregate(detections)
         detections_result.count
-    
+
     Args:
         field_name: the name of the field to have its items counted. If no
             field name is provided, samples themselves are counted
@@ -386,11 +389,12 @@ class CountLabels(Aggregation):
     :class:`fiftyone.core.labels.Label` field.
 
     Examples::
+
         import fiftyone as fo
         from fiftyone.core.aggregations import CountLabels
 
         dataset = fo.load_dataset(...)
-        
+
         #
         # Compute the label counts for "ground_truth" fo.Classifications field
         # in the dataset
@@ -399,7 +403,7 @@ class CountLabels(Aggregation):
         count_labels = CountLabels("ground_truth")
         count_labels_result = dataset.aggregate(count_labels)
         count_labels_result.labels
-    
+
     Args:
         field_name: the name of the label field
     """
@@ -460,16 +464,18 @@ class CountValues(Aggregation):
     """Counts the occurrences of values or a countable field.
 
     Countable fields are:
-        - :class:`fiftyone.core.fields.BooleanField`
-        - :class:`fiftyone.core.fields.IntField`
-        - :class:`fiftyone.core.fields.StringField`
+
+    -   :class:`fiftyone.core.fields.BooleanField`
+    -   :class:`fiftyone.core.fields.IntField`
+    -   :class:`fiftyone.core.fields.StringField`
 
     Examples::
+
         import fiftyone as fo
         from fiftyone.core.aggregations import CountValues
 
         dataset = fo.load_dataset(...)
-        
+
         #
         # Compute the tag counts in the dataset
         #
@@ -477,7 +483,7 @@ class CountValues(Aggregation):
         count_values = CountValues("tags")
         count_values_result = dataset.aggregate(count_values)
         count_values_result.values
-    
+
     Args:
         field_name: the name of the countable field
     """
@@ -539,19 +545,21 @@ class Distinct(Aggregation):
     countable field.
 
     Countable fields are:
-        - :class:`fiftyone.core.fields.BooleanField`
-        - :class:`fiftyone.core.fields.IntField`
-        - :class:`fiftyone.core.fields.StringField`
+
+    -   :class:`fiftyone.core.fields.BooleanField`
+    -   :class:`fiftyone.core.fields.IntField`
+    -   :class:`fiftyone.core.fields.StringField`
 
     Note that to compute distinct values for a list field of countable fields,
     the countable subfield must be explicitly defined.
 
     Examples::
+
         import fiftyone as fo
         from fiftyone.core.aggregations import Distinct
 
         dataset = fo.load_dataset(...)
-        
+
         #
         # Compute the distinct values of string field
         #
@@ -567,7 +575,7 @@ class Distinct(Aggregation):
         tags = Distinct("tags")
         tags_result = dataset.aggregate(tags)
         tags_result.values
-    
+
     Args:
         field_name: the name of the field to compute distinct values for
     """
@@ -637,11 +645,12 @@ class DistinctLabels(Aggregation):
     :class:`fiftyone.core.labels.Label`.
 
     Examples::
+
         import fiftyone as fo
         from fiftyone.core.aggregations import DistinctLabels
 
         dataset = fo.load_dataset(...)
-        
+
         #
         # Compute the distinct labels of a fo.Classification label field
         #
@@ -657,7 +666,7 @@ class DistinctLabels(Aggregation):
         detections_labels = DistinctLabels("detections")
         detections_labels_result = dataset.aggregate(detections_labels)
         detections_labels_result.labels
-    
+
     Args:
         field_name: the name of the label field to compute distinct labels for
     """
