@@ -43,11 +43,15 @@ more than one thing about a dataset or view.
     :linenos:
     import fiftyone as fo
 
-    aggregations = [fo.CountLabels("predictions"), fo.ConfidenceBounds("predictions")]
+    aggregations = [
+        fo.CountLabels("predictions"),
+        fo.ConfidenceBounds("predictions")
+    ]
     dataset = fo.load_dataset("my_dataset")
     view = datatset.sort_by("uniqueness", reverse=True).limit(10)
-    for result in aggregations:
-       print(result) # results are returned in the order they are supplied
+    for result in view.aggregations:
+       # results are returned in the order the aggregations are supplied
+       print(result)
     
     
 Looking forward
