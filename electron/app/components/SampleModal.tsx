@@ -384,27 +384,37 @@ const SampleModal = ({
 
   const labelSampleValuesReducer = (s, groups, filterData = false) => {
     const isVideo = s.media_type === "video";
-
     return groups.labels.reduce((obj, { name, type }) => {
       let value = 0;
-      const resolver = (frame) => {
-        if (!frame[name]) return 0;
+      const resolver = (frame, prefix = "") => {
+        const path = prefix + name;
+        if (!frame[path]) return 0;
         return ["Detections", "Classifications", "Polylines"].includes(type)
-          ? frame[name][type.toLowerCase()].length
+          ? frame[path][type.toLowerCase()].length
           : type === "Keypoints"
-          ? frame[name].keypoints.reduce(
+          ? frame[path].keypoints.reduce(
               (acc, cur) => acc + cur.points.length,
               0
             )
           : type === "Keypoint"
-          ? frame[name].points.length
+          ? frame[path].points.length
           : 1;
       };
 
       if (!(name in s) && isVideo && frameData) {
         for (const frame of frameData) {
+          const pathFrame = Object.keys(frame).reduce(
+            (acc, cur) => ({
+              ...acc,
+              ["frames." + cur]: frame[cur],
+            }),
+            {}
+          );
           if (frame[name])
-            value += resolver(filterData ? filter(frame) : frame);
+            value += resolver(
+              filterData ? filter(pathFrame) : pathFrame,
+              "frames."
+            );
         }
       } else if (!(name in s) && isVideo) {
         value = "-";

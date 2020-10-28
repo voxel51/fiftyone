@@ -522,7 +522,16 @@ export const sampleModalFilter = selector({
   key: "sampleModalFilter",
   get: ({ get }) => {
     const filters = get(modalLabelFilters);
-    const activeLabels = get(atoms.modalActiveLabels("sample"));
+    const frameLabels = get(atoms.modalActiveLabels("frame"));
+    const activeLabels = {
+      ...get(atoms.modalActiveLabels("sample")),
+      ...Object.keys(frameLabels).reduce((acc, cur) => {
+        return {
+          ...acc,
+          ["frames." + cur]: frameLabels[cur],
+        };
+      }, {}),
+    };
     return (sample) => {
       return Object.entries(sample).reduce((acc, [key, value]) => {
         if (key === "tags") {
