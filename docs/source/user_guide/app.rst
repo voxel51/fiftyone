@@ -229,7 +229,12 @@ select some samples in the App:
    :alt: CIFAR-10 Selected
    :align: center
 
-Next, access the
+The selected samples dropdown on the upper-left of the sample grid records the
+number of samples that you have currently selected. You can also take actions
+such as updating the view to only show (or exclude) the currently selected
+samples.
+
+You can also access the
 :meth:`Session.selected <fiftyone.core.session.Session.selected>` property of
 your session to retrieve the IDs of the currently selected samples in the App:
 
