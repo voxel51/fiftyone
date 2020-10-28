@@ -201,7 +201,7 @@ reflected in the |DatasetView| exposed by the
     :align: center
 
 Tabs
-----
+____
 
 The `Samples`, `Labels`, `Tags`, and `Scalars` tabs in the App let you
 visualize different aspects and statistics about your dataset. `Samples` is the
