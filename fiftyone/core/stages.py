@@ -572,6 +572,10 @@ class _FilterListField(FilterField):
     def _filter_field(self):
         raise NotImplementedError("subclasses must implement `_filter_field`")
 
+    @property
+    def _frame_filter_field(self):
+        return self._filter_field[len(_FRAMES_PREFIX) :]
+
     def get_filtered_list_fields(self):
         return [self._filter_field]
 
@@ -627,9 +631,9 @@ class _FilterListField(FilterField):
         pipeline = [
             {
                 "$addFields": {
-                    "_frames": {
+                    "frames": {
                         "$map": {
-                            "input": "$_frames",
+                            "input": "$frames",
                             "as": "frame",
                             "in": {
                                 "$mergeObjects": [

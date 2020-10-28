@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
 import uuid from "uuid-v4";
@@ -402,6 +402,7 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
   const [labels, setLabels] = useRecoilState(rest.includeLabels(entry.path));
   const fieldIsFiltered = useRecoilValue(rest.fieldIsFiltered(entry.path));
   const mediaType = useRecoilValue(selectors.mediaType);
+  const setExtendedDatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
 
   const [stateDescription, setStateDescription] = useRecoilState(
     atoms.stateDescription
@@ -442,6 +443,7 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
     useEffect(() => {
       const newState = JSON.parse(JSON.stringify(stateDescription));
       if (!fieldIsFiltered && !(entry.name in newState.filters)) return;
+      setExtendedDatasetStats([]);
       let fieldName = entry.name;
       if (mediaType === "video") {
         fieldName = "frames." + entry.name;
@@ -472,6 +474,13 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
         },
         (data) => setStateDescription(data)
       );
+      const extendedView = [...(newState.view || [])];
+      for (const stage in newState.filters) {
+        extendedView.push(newState.filters[stage]);
+      }
+      socket.emit("get_statistics", extendedView, (data) => {
+        setExtendedDatasetStats(data);
+      });
     }, [bounds, range, includeNone, labels, fieldIsFiltered]);
   }
 
@@ -484,9 +493,9 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
             color={entry.color}
             name={"Confidence"}
             valueName={"confidence"}
-            includeNoneAtom={rest.includeNoConfidence(entry.name)}
-            boundsAtom={rest.confidenceBounds(entry.name)}
-            rangeAtom={rest.confidenceRange(entry.name)}
+            includeNoneAtom={rest.includeNoConfidence(entry.path)}
+            boundsAtom={rest.confidenceBounds(entry.path)}
+            rangeAtom={rest.confidenceRange(entry.path)}
             maxMin={0}
             minMax={1}
           />

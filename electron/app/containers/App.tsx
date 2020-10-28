@@ -79,11 +79,10 @@ function App(props: Props) {
 
   const getAllStats = () => {
     setDatasetStats([]);
+    setExtendedDatasetStats([]);
     getStats(view, setDatasetStats);
     if (extendedView.length > view.length) {
       getStats(extendedView, setExtendedDatasetStats);
-    } else {
-      setExtendedDatasetStats([]);
     }
   };
   const handleStateUpdate = (data) => {

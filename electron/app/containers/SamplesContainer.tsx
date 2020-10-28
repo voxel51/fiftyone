@@ -74,7 +74,6 @@ const DisplayOptionsWrapper = (props) => {
   }, [filters]);
 
   const getDisplayOptions = (values, filteredCounts, totalCounts, selected) => {
-    console.log(values, filteredCounts, totalCounts);
     return [...values].sort().map(({ name, type }) => ({
       name,
       type,

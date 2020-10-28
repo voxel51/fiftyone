@@ -260,7 +260,7 @@ export const filteredLabelSampleCounts = selectorFamily({
       get(scalarNames(dimension))
     );
     const prefix = dimension === "sample" ? "" : "frames.";
-    return get(atoms.datasetStats).reduce((acc, cur) => {
+    return get(atoms.extendedDatasetStats).reduce((acc, cur) => {
       if (
         names.includes(cur.name.slice(prefix.length)) &&
         cur._CLS === COUNT_CLS
@@ -392,8 +392,10 @@ export const refreshColorMap = selector({
 export const isLabel = selectorFamily({
   key: "isLabel",
   get: (field) => ({ get }) => {
-    const types = get(labelTypes("sample"));
-    return Boolean(types[field]);
+    const names = get(labelNames("sample")).concat(
+      get(labelNames("frame")).map((l) => "frames." + l)
+    );
+    return names.includes(field);
   },
 });
 

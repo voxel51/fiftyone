@@ -138,7 +138,6 @@ def _load_state(trigger_update=False):
                 broadcast=True,
                 include_self=trigger_update,
             )
-            print(self.state["selected"])
             return self.state
 
         return wrapper
@@ -264,6 +263,8 @@ class StateController(Namespace):
             a :class:`fiftyone.core.state.DatasetStatistics`
         """
         state = fos.StateDescription.from_dict(self.state)
+        if state.dataset is None:
+            return []
         view = fov.DatasetView(state.dataset)
         view._stages = [fosg.ViewStage._from_dict(s) for s in stages]
         return fos.DatasetStatistics(view).serialize()["stats"]
@@ -285,7 +286,6 @@ class StateController(Namespace):
         selected = set(state.selected)
         selected.add(_id)
         state.selected = list(selected)
-        assert False
         return state
 
     @_catch_errors
