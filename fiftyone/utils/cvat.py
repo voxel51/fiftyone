@@ -786,6 +786,21 @@ class CVATImage(object):
         self.polylines = polylines or []
         self.points = points or []
 
+    @property
+    def has_boxes(self):
+        """Whether this image has 2D boxes."""
+        return bool(self.boxes)
+
+    @property
+    def has_polylines(self):
+        """Whether this image has polygons or polylines."""
+        return bool(self.polygons) or bool(self.polylines)
+
+    @property
+    def has_points(self):
+        """Whether this image has keypoints."""
+        return bool(self.points)
+
     def iter_annos(self):
         """Returns an iterator over the annotations in the image.
 
@@ -1454,6 +1469,21 @@ class CVATTrack(object):
         self.polygons = polygons or {}
         self.polylines = polylines or {}
         self.points = points or {}
+
+    @property
+    def has_boxes(self):
+        """Whether this track has 2D boxes."""
+        return bool(self.boxes)
+
+    @property
+    def has_polylines(self):
+        """Whether this track has polygons or polylines."""
+        return bool(self.polygons) or bool(self.polylines)
+
+    @property
+    def has_points(self):
+        """Whether this track has keypoints."""
+        return bool(self.points)
 
     def iter_annos(self):
         """Returns an iterator over the annotations in the track.

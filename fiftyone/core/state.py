@@ -48,6 +48,7 @@ class StateDescription(etas.Serializable):
         connected=False,
         dataset=None,
         selected=None,
+        selected_objects=None,
         view=None,
     ):
         self.close = close
@@ -55,6 +56,7 @@ class StateDescription(etas.Serializable):
         self.dataset = dataset
         self.view = view
         self.selected = selected or []
+        self.selected_objects = selected_objects or []
         self.view_count = (
             len(view)
             if view is not None
@@ -113,17 +115,19 @@ class StateDescription(etas.Serializable):
         if dataset is not None:
             view = fov.DatasetView(dataset)
             if view_ is not None:
-                view._stages = [
-                    fos.ViewStage._from_dict(s) for s in view_["view"]
-                ]
+                for stage_dict in view_["view"]:
+                    stage = fos.ViewStage._from_dict(stage_dict)
+                    view = view.add_stage(stage)
 
         selected = d.get("selected", [])
+        selected_objects = d.get("selected_objects", [])
 
         return cls(
             close=close,
             connected=connected,
             dataset=dataset,
             selected=selected,
+            selected_objects=selected_objects,
             view=view,
             **kwargs
         )

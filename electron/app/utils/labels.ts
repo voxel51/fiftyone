@@ -185,6 +185,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
       return {
         type: "eta.core.data.CategoricalAttribute",
         name,
+        _id: obj._id,
         confidence: obj.confidence,
         value: obj.label,
       };
@@ -200,6 +201,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
         ...base,
         type: "eta.core.objects.DetectedObject",
         name,
+        _id: obj._id,
         label: obj.label,
         index: obj.index,
         confidence: obj.confidence,
@@ -222,6 +224,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
     convert: (name, obj) => {
       return {
         name,
+        _id: obj._id,
         label: obj.label,
         points: obj.points,
       };
@@ -232,6 +235,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
     convert: (name, obj) => {
       return {
         name,
+        _id: obj._id,
         label: obj.label,
         points: obj.points,
         closed: Boolean(obj.closed),
@@ -313,4 +317,28 @@ const convertImageSampleToETA = (sample, fieldSchema, frame_number) => {
     }
   }
   return imgLabels;
+};
+
+export const listSampleObjects = (sample) => {
+  const objects = [];
+  for (const [fieldName, field] of Object.entries(sample)) {
+    if (
+      field === null ||
+      field === undefined ||
+      !VALID_OBJECT_TYPES.includes(field._cls)
+    )
+      continue;
+    if (FIFTYONE_TO_ETA_CONVERTERS[field._cls]) {
+      objects.push(
+        FIFTYONE_TO_ETA_CONVERTERS[field._cls].convert(fieldName, field)
+      );
+    } else if (VALID_LIST_TYPES.includes(field._cls)) {
+      for (const object of field[field._cls.toLowerCase()]) {
+        objects.push(
+          FIFTYONE_TO_ETA_CONVERTERS[object._cls].convert(fieldName, object)
+        );
+      }
+    }
+  }
+  return objects;
 };

@@ -11,11 +11,14 @@ import PortForm from "../components/PortForm";
 import { updatePort } from "../actions/update";
 
 import { updateState, updateConnected, updateLoading } from "../actions/update";
+import { useHashChangeHandler } from "../utils/hooks";
 import { getSocket, useSubscribe } from "../utils/socket";
 import connect from "../utils/connect";
+import { convertSelectedObjectsListToMap } from "../utils/selection";
 import {
   stateDescription,
   selectedSamples,
+  selectedObjects,
   viewCounter,
 } from "../recoil/atoms";
 import gaConfig from "../constants/ga.json";
@@ -35,11 +38,13 @@ function App(props: Props) {
   const [socket, setSocket] = useState(getSocket(result.port, "state"));
   const setStateDescription = useSetRecoilState(stateDescription);
   const setSelectedSamples = useSetRecoilState(selectedSamples);
+  const setSelectedObjects = useSetRecoilState(selectedObjects);
   const [viewCounterValue, setViewCounter] = useRecoilState(viewCounter);
 
   const handleStateUpdate = (data) => {
     setStateDescription(data);
     setSelectedSamples(new Set(data.selected));
+    setSelectedObjects(convertSelectedObjectsListToMap(data.selected_objects));
     dispatch(updateState(data));
   };
 
@@ -66,11 +71,11 @@ function App(props: Props) {
       ReactGA.pageview(window.location.hash.replace(/^#/, ""));
     });
   }, []);
-  useEffect(() => {
+  useHashChangeHandler(() => {
     if (gaInitialized) {
       ReactGA.pageview(window.location.hash.replace(/^#/, ""));
     }
-  }, [window.location.hash]);
+  });
   useSubscribe(socket, "connect", () => {
     dispatch(updateConnected(true));
     if (loading) {

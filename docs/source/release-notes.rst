@@ -148,7 +148,7 @@ Core
 - Added support for :ref:`importing <FiftyOneVideoLabelsDataset-import>` and
   :ref:`exporting <FiftyOneVideoLabelsDataset-export>` labeled video
   datasets in
-  `ETA VideoLabels format <https://voxel51.com/docs/api/#types-videolabels>`_.
+  `ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
 - Added support for :ref:`importing <writing-a-custom-dataset-importer>` and
   :ref:`exporting <writing-a-custom-dataset-exporter>` video datasets in
   custom formats

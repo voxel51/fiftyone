@@ -554,8 +554,8 @@ class DatasetMixin(object):
 
 
 class NoDatasetMixin(object):
-    """Mixin for concrete :class:`fiftyone.core.odm.document.SampleDocument`
-    subtypes that are not backed by a dataset
+    """Mixin for :class:`fiftyone.core.odm.document.SampleDocument` subtypes
+    that are not backed by a dataset.
     """
 
     def __getattr__(self, name):

@@ -5,7 +5,6 @@ FiftyOne datasets.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
 from copy import deepcopy
 import datetime
 import fnmatch
@@ -639,9 +638,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             the ID of the sample in the dataset
 
         Raises:
-            :class:`mongoengine.errors.ValidationError` if a field of the
-            sample has a type that is inconsistent with the dataset schema, or
-            if ``expand_schema == False`` and a new field is encountered
+            ``mongoengine.errors.ValidationError``: if a field of the sample
+                has a type that is inconsistent with the dataset schema, or if
+                ``expand_schema == False`` and a new field is encountered
         """
         if expand_schema:
             self._expand_schema([sample])
@@ -687,9 +686,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a list of IDs of the samples in the dataset
 
         Raises:
-            :class:`mongoengine.errors.ValidationError` if a field of a sample
-            has a type that is inconsistent with the dataset schema, or if
-            ``expand_schema == False`` and a new field is encountered
+            ``mongoengine.errors.ValidationError``: if a field of a sample has
+                a type that is inconsistent with the dataset schema, or if
+                ``expand_schema == False`` and a new field is encountered
         """
         if num_samples is None:
             try:
@@ -1082,7 +1081,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             add_info=add_info,
         )
 
-    def add_images(self, samples, sample_parser, tags=None):
+    def add_images(self, samples, sample_parser=None, tags=None):
         """Adds the given images to the dataset.
 
         This operation does not read the images.
@@ -1092,8 +1091,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         :class:`UnlabeledImageSampleParser <fiftyone.utils.data.parsers.UnlabeledImageSampleParser>`.
 
         Args:
-            samples: an iterable of samples
-            sample_parser: a
+            samples: an iterable of samples. If no ``sample_parser`` is
+                provided, this must be an iterable of image paths. If a
+                ``sample_parser`` is provided, this can be an arbitrary
+                iterable whose elements can be parsed by the sample parser
+            sample_parser (None): a
                 :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
                 instance to use to parse the samples
             tags (None): an optional list of tags to attach to each sample
@@ -1101,6 +1103,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples that were added to the dataset
         """
+        if sample_parser is None:
+            sample_parser = foud.ImageSampleParser()
+
         return foud.add_images(self, samples, sample_parser, tags=tags)
 
     def add_labeled_images(
@@ -1186,7 +1191,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def ingest_images(
         self,
         samples,
-        sample_parser,
+        sample_parser=None,
         tags=None,
         dataset_dir=None,
         image_format=None,
@@ -1200,8 +1205,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         :class:`UnlabeledImageSampleParser <fiftyone.utils.data.parsers.UnlabeledImageSampleParser>`.
 
         Args:
-            samples: an iterable of samples
-            sample_parser: a
+            samples: an iterable of samples. If no ``sample_parser`` is
+                provided, this must be an iterable of image paths. If a
+                ``sample_parser`` is provided, this can be an arbitrary
+                iterable whose elements can be parsed by the sample parser
+            sample_parser (None): a
                 :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
                 instance to use to parse the samples
             tags (None): an optional list of tags to attach to each sample
@@ -1213,6 +1221,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples in the dataset
         """
+        if sample_parser is None:
+            sample_parser = foud.ImageSampleParser()
+
         if dataset_dir is None:
             dataset_dir = get_default_dataset_dir(self.name)
 
@@ -1281,25 +1292,31 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expand_schema=expand_schema,
         )
 
-    def add_videos(self, samples, sample_parser, tags=None):
+    def add_videos(self, samples, sample_parser=None, tags=None):
         """Adds the given videos to the dataset.
 
-        This operation does not read the images.
+        This operation does not read the videos.
 
         See :ref:`this guide <custom-sample-parser>` for more details about
         adding videos to a dataset by defining your own
         :class:`UnlabeledVideoSampleParser <fiftyone.utils.data.parsers.UnlabeledVideoSampleParser>`.
 
         Args:
-            samples: an iterable of samples
-            sample_parser: a
-                :class:`fiftyone.utils.data.parsers.UnlabeledVideoSampleParser`
+            samples: an iterable of samples. If no ``sample_parser`` is
+                provided, this must be an iterable of video paths. If a
+                ``sample_parser`` is provided, this can be an arbitrary
+                iterable whose elements can be parsed by the sample parser
+            sample_parser (None): a
+                :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
                 instance to use to parse the samples
             tags (None): an optional list of tags to attach to each sample
 
         Returns:
             a list of IDs of the samples that were added to the dataset
         """
+        if sample_parser is None:
+            sample_parser = foud.VideoSampleParser()
+
         return foud.add_videos(self, samples, sample_parser, tags=tags)
 
     def add_labeled_videos(
@@ -1382,7 +1399,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self.add_videos(video_paths, sample_parser, tags=tags)
 
     def ingest_videos(
-        self, samples, sample_parser, tags=None, dataset_dir=None,
+        self, samples, sample_parser=None, tags=None, dataset_dir=None,
     ):
         """Ingests the given iterable of videos into the dataset.
 
@@ -1393,9 +1410,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         :class:`UnlabeledVideoSampleParser <fiftyone.utils.data.parsers.UnlabeledVideoSampleParser>`.
 
         Args:
-            samples: an iterable of samples
-            sample_parser: a
-                :class:`fiftyone.utils.data.parsers.UnlabeledVideoSampleParser`
+            samples: an iterable of samples. If no ``sample_parser`` is
+                provided, this must be an iterable of video paths. If a
+                ``sample_parser`` is provided, this can be an arbitrary
+                iterable whose elements can be parsed by the sample parser
+            sample_parser (None): a
+                :class:`fiftyone.utils.data.parsers.UnlabeledImageSampleParser`
                 instance to use to parse the samples
             tags (None): an optional list of tags to attach to each sample
             dataset_dir (None): the directory in which the videos will be
@@ -1404,6 +1424,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples in the dataset
         """
+        if sample_parser is None:
+            sample_parser = foud.VideoSampleParser()
+
         if dataset_dir is None:
             dataset_dir = get_default_dataset_dir(self.name)
 
@@ -2112,8 +2135,9 @@ def _load_dataset(name):
         runner = get_migration_runner(dataset_doc.version, VERSION)
         if runner.has_revisions:
             logger.info(
-                "Migrating dataset '%s' to the current version (%s)"
-                % (dataset_doc.name, VERSION)
+                "Migrating dataset '%s' to the current version (%s)",
+                dataset_doc.name,
+                VERSION,
             )
             runner.run(dataset_names=[dataset_doc.name])
 

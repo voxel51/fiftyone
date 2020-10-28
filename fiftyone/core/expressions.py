@@ -8,6 +8,8 @@ Expressions for :class:`fiftyone.core.stages.ViewStage` definitions.
 from copy import deepcopy
 import re
 
+import bson
+
 import eta.core.utils as etau
 
 import fiftyone.core.utils as fou
@@ -403,6 +405,36 @@ class ViewExpression(object):
         """
         return ViewExpression({"$trunc": [self, place]})
 
+    # Field expression operators ##############################################
+
+    def apply(self, expr):
+        """Applies the given expression to this expression.
+
+        Examples::
+
+            from fiftyone import ViewField as F
+
+            # Show samples whose first detection in the `predictions` field
+            # has confidence > 0.95
+            view = dataset.match(
+                F("predictions.detections")[0].apply(F("confidence") > 0.95)
+            )
+
+        Args:
+            expr: a :class:`ViewExpression`
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression(
+            {
+                "$let": {
+                    "vars": {"field": self},
+                    "in": expr.to_mongo(prefix="$$field"),
+                }
+            }
+        )
+
     # Array expression operators ##############################################
 
     def __getitem__(self, idx_or_slice):
@@ -503,6 +535,14 @@ class ViewExpression(object):
         """
         return ViewExpression({"$in": [value, self]})
 
+    def reverse(self):
+        """Reverses the order of the elements in the array expression.
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$reverseArray": self})
+
     def filter(self, expr):
         """Applies the given filter to the elements of this expression, which
         must resolve to an array.
@@ -541,12 +581,40 @@ class ViewExpression(object):
             {"$map": {"input": self, "in": expr.to_mongo(prefix="$$this")}}
         )
 
+    def min(self):
+        """Returns the minimum value in this expression, which must resolve to
+        a numeric array.
+
+        Missing or ``None``-valued elements are ignored.
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$min": self})
+
+    def max(self):
+        """Returns the maximum value in this expression, which must resolve to
+        a numeric array.
+
+        Missing or ``None``-valued elements are ignored.
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$max": self})
+
     def sum(self):
         """Returns the sum of the values in this expression, which must resolve
         to a numeric array.
 
+        Missing, non-numeric, or ``None``-valued elements are ignored.
+
         Returns:
             a :class:`ViewExpression`
+        """
+        return ViewExpression({"$sum": self})
+
+        # @todo is this version needed?
         """
         return ViewExpression(
             {
@@ -557,6 +625,18 @@ class ViewExpression(object):
                 }
             }
         )
+        """
+
+    def mean(self):
+        """Returns the average value in this expression, which must resolve to
+        a numeric array.
+
+        Missing or ``None``-valued elements are ignored.
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$avg": self})
 
     # String expression operators #############################################
 
@@ -793,6 +873,42 @@ class ViewField(ViewExpression, metaclass=_MetaViewField):
             return prefix + "." + self._expr if self._expr else prefix
 
         return "$" + self._expr if self._expr else "$this"
+
+
+class ObjectId(ViewExpression, metaclass=_MetaViewField):
+    """A :class:`ViewExpression` that refers to an
+    `ObjectId <https://docs.mongodb.com/manual/reference/method/ObjectId>`_ of
+    a document.
+
+    The typical use case for this class is writing an expression that involves
+    checking if the ID of a document matches a particular known ID.
+
+    Example::
+
+        from fiftyone import ViewField as F
+        from fiftyone.core.expressions import ObjectId
+
+        # Check if the ID of the document matches the given ID
+        expr = F("_id") == ObjectId("5f452489ef00e6374aad384a")
+
+    Args:
+        oid: the object ID string
+    """
+
+    def __init__(self, oid):
+        _ = bson.ObjectId(oid)  # validates that `oid` is valid value
+        super().__init__(oid)
+
+    def to_mongo(self, prefix=None):
+        """Returns a MongoDB representation of the ObjectId.
+
+        Args:
+            prefix (None): unused
+
+        Returns:
+            a MongoDB expression
+        """
+        return {"$toObjectId": self._expr}
 
 
 def _escape_regex_chars(str_or_strs):
