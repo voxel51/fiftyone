@@ -1092,11 +1092,13 @@ class LimitLabels(ViewStage):
                 % self.__class__
             )
 
+        limit = max(self._limit, 0)
+
         return [
             {
                 "$addFields": {
                     self._labels_list_field: {
-                        "$slice": ["$" + self._labels_list_field, self._limit]
+                        "$slice": ["$" + self._labels_list_field, limit]
                     }
                 }
             }
