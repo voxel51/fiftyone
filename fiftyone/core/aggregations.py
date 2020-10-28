@@ -119,7 +119,7 @@ class AggregationError(RuntimeError):
 
 class Bounds(Aggregation):
     """Computes the inclusive bounds of a numeric field or a list field of
-    numeric field in a view.
+    a numeric field in a view.
 
     Note that to compute bounds on a list field of numeric fields, the
     numeric subfield must be explicitly defined.
@@ -163,7 +163,7 @@ class Bounds(Aggregation):
     def _get_result(self, d):
         mn = d["min"]
         mx = d["max"]
-        return ConfidenceBoundsResult(self._field_name, (mn, mx))
+        return BoundsResult(self._field_name, (mn, mx))
 
     def _to_mongo(self, dataset, schema, frame_schema):
         field, path, pipeline = self._get_field_path_pipeline(

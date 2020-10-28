@@ -37,7 +37,7 @@ Executing multiple aggregations
 -------------------------------
 
 The convenience of aggregations becomes apparent when one would like to learn
-more than just on thing about a dataset or view.
+more than one thing about a dataset or view.
 
 .. code-block:: python
     :linenos:
