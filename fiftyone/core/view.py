@@ -288,12 +288,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             an iterable over the aggregation result
         """
-        _pipeline = []
-        if self._flatten_frames is not None:
-            _pipeline.extend(self._flatten_frames)
-
-        for s in self._stages:
-            _pipeline.extend(s.to_mongo())
+        _pipeline = self._get_pipeline()
 
         if pipeline is not None:
             _pipeline.extend(pipeline)
@@ -320,6 +315,16 @@ class DatasetView(foc.SampleCollection):
         d["stages"] = [s._serialize() for s in self._stages]
         d["samples"] = samples
         return d
+
+    def _get_pipeline(self):
+        pipeline = []
+        if self._flatten_frames is not None:
+            pipeline.extend(self._flatten_frames)
+
+        for s in self._stages:
+            pipeline.extend(s.to_mongo())
+
+        return pipeline
 
     def _serialize(self):
         return {
