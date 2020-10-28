@@ -1267,7 +1267,7 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
 
 class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
     """Exporter that writes a labeled image dataset to disk with labels stored
-    in `ETA ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_.
+    in `ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
 
     See :class:`fiftyone.types.dataset_types.FiftyOneImageLabelsDataset` for
     format details.
@@ -1369,7 +1369,7 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
 
 class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
     """Exporter that writes a labeled video dataset with labels stored in
-    `ETA VideoLabels format <https://voxel51.com/docs/api/#types-videolabels>`_.
+    `ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
 
     See :class:`fiftyone.types.dataset_types.FiftyOneVideoLabelsDataset` for
     format details.

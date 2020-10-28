@@ -1512,7 +1512,7 @@ class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
 
 class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
     """Importer for labeled image datasets whose labels are stored in
-    `ETA ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_.
+    `ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
 
     See :class:`fiftyone.types.dataset_types.FiftyOneImageLabelsDataset` for
     format details.
@@ -1643,7 +1643,7 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
 
 class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
     """Importer for labeled video datasets whose labels are stored in
-    `ETA VideoLabels format <https://voxel51.com/docs/api/#types-videolabels>`_.
+    `ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
 
     See :class:`fiftyone.types.dataset_types.FiftyOneVideoLabelsDataset` for
     format details.
