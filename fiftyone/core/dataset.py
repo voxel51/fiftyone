@@ -329,13 +329,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a string summary
         """
+        aggs = self.aggregate([foa.Count(), foa.Distinct("tags")])
         elements = [
             "Name:           %s" % self.name,
             "Media type:     %s" % self.media_type,
-            "Num samples:    %d" % len(self),
+            "Num samples:    %d" % aggs[0].count,
             "Persistent:     %s" % self.persistent,
             "Info:           %s" % _info_repr.repr(self.info),
-            "Tags:           %s" % self.get_tags(),
+            "Tags:           %s" % aggs[1].values,
             "Sample fields:",
             self._to_fields_str(self.get_field_schema()),
         ]

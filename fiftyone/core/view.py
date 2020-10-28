@@ -114,11 +114,12 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a string summary
         """
+        aggs = self.aggregate([foa.Count(), foa.Distinct("tags")])
         elements = [
             "Dataset:        %s" % self.dataset_name,
             "Media type:     %s" % self.media_type,
-            "Num samples:    %d" % len(self),
-            "Tags:           %s" % self.get_tags(),
+            "Num samples:    %d" % aggs[0].count,
+            "Tags:           %s" % aggs[1].values,
             "Sample fields:",
             self._dataset._to_fields_str(self.get_field_schema()),
         ]
