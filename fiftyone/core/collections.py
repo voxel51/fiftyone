@@ -494,7 +494,7 @@ class SampleCollection(object):
 
     @view_stage
     def filter_field(self, field, filter, only_matches=False):
-        """Filters the values of the given field of the samples.
+        """Filters the values of a given sample (or embedded document) field.
 
         Values of ``field`` for which ``filter`` returns ``False`` are
         replaced with ``None``.
