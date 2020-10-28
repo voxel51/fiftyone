@@ -215,7 +215,7 @@ class BoundsResult(AggregationResult):
 
 
 class ConfidenceBounds(Aggregation):
-    """Computes the inclusive bounds of the confidences of
+    """Computes the inclusive bounds of the confidences of a
     :class:`fiftyone.core.labels.Label`
 
     Examples::
