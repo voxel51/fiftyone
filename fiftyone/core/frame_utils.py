@@ -20,8 +20,8 @@ def is_frame_number(value):
         True/False
 
     Raises:
-        :class:`FrameError` if ``value`` is an integer but is not strictly
-        positive
+        :class:`FrameError`: if ``value`` is an integer but is not strictly
+            positive
     """
     if isinstance(value, six.integer_types):
         if value < 1:
@@ -43,7 +43,7 @@ def validate_frame_number(value):
         value: a value
 
     Raises:
-        :class:`FrameError` if ``value`` is not a frame number
+        :class:`FrameError`: if ``value`` is not a frame number
     """
     if not isinstance(value, six.integer_types):
         raise FrameError(

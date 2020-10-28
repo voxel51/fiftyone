@@ -113,9 +113,9 @@ class StateDescription(etas.Serializable):
         if dataset is not None:
             view = fov.DatasetView(dataset)
             if view_ is not None:
-                view._stages = [
-                    fos.ViewStage._from_dict(s) for s in view_["view"]
-                ]
+                for stage_dict in view_["view"]:
+                    stage = fos.ViewStage._from_dict(stage_dict)
+                    view = view.add_stage(stage)
 
         selected = d.get("selected", [])
 
