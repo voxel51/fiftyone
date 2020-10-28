@@ -1759,6 +1759,22 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
 
+    def _aggregate(
+        self, pipeline=None, hide_frames=False, squash_frames=False
+    ):
+        """Runs the MongoDB aggregation pipeline on the collection and returns
+        the result.
+
+        Args:
+            pipeline (None): a MongoDB pipeline (list of dicts)
+            hide_frames (False): whether to hide frames in the result
+            squash_frames (False): whether to squash frames in the result
+
+        Returns:
+            the aggregation result dict
+        """
+        raise NotImplementedError("Subclass must implement _aggregate()")
+
     def _attach_frames(self, hide_frames=False):
         key = "_frames" if hide_frames else "frames"
 
