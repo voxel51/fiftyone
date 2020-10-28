@@ -658,43 +658,9 @@ class _FilterListField(FilterField):
         ]
 
         if self._only_matches:
-            pipeline.append(
-                {
-                    "$match": {
-                        "$expr": {
-                            "$gt": [
-                                {
-                                    "$size": {
-                                        "$ifNull": [
-                                            {
-                                                "$filter": {
-                                                    "input": "$_frames",
-                                                    "as": "frame",
-                                                    "cond": {
-                                                        "$gt": [
-                                                            {
-                                                                "$size": {
-                                                                    "$ifNull": [
-                                                                        "$$frame."
-                                                                        + self._frame_filter_field,
-                                                                        [],
-                                                                    ]
-                                                                }
-                                                            },
-                                                            0,
-                                                        ]
-                                                    },
-                                                }
-                                            },
-                                            [],
-                                        ]
-                                    }
-                                },
-                                0,
-                            ]
-                        }
-                    }
-                }
+            # @todo
+            raise ValueError(
+                "Only matching for frame labels is not yet supported"
             )
 
         return pipeline
