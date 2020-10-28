@@ -7,6 +7,7 @@ import { animated, useSpring } from "react-spring";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+import { SampleContext } from "../utils/context";
 import { labelTypeIsFilterable } from "../utils/labels";
 
 import Filter from "./Filter";
@@ -148,8 +149,10 @@ type Props = {
 const Entry = ({ entry, onCheck, modal }) => {
   const [expanded, setExpanded] = useState(false);
   const theme = useContext(ThemeContext);
-  const atoms = modal ? MODAL_ATOMS : GLOBAL_ATOMS;
-  const fieldIsFiltered = useRecoilValue(atoms.fieldIsFiltered(entry.name));
+  const filterAtoms = modal ? MODAL_ATOMS : GLOBAL_ATOMS;
+  const fieldIsFiltered = useRecoilValue(
+    filterAtoms.fieldIsFiltered(entry.name)
+  );
   const isNumericField = useRecoilValue(selectors.isNumericField(entry.name));
   const mediaType = useRecoilValue(selectors.mediaType);
 
@@ -159,13 +162,23 @@ const Entry = ({ entry, onCheck, modal }) => {
     }
   };
 
+  const sample = useContext(SampleContext);
+  const hiddenObjects = useRecoilValue(atoms.hiddenObjects);
+  const hasHiddenObjects = sample
+    ? Object.entries(hiddenObjects).some(
+        ([object_id, data]) =>
+          data.sample_id === sample._id && data.field === entry.name
+      )
+    : false;
+
   const checkboxClass = entry.hideCheckbox ? "no-checkbox" : "with-checkbox";
   const containerProps = useSpring({
-    backgroundColor: fieldIsFiltered
-      ? "#6C757D"
-      : entry.hideCheckbox || entry.selected
-      ? theme.backgroundLight
-      : theme.background,
+    backgroundColor:
+      fieldIsFiltered || hasHiddenObjects
+        ? "#6C757D"
+        : entry.hideCheckbox || entry.selected
+        ? theme.backgroundLight
+        : theme.background,
   });
   const ArrowType = expanded ? ArrowDropUp : ArrowDropDown;
 
@@ -230,7 +243,12 @@ const Entry = ({ entry, onCheck, modal }) => {
         <NumericFieldFilter expanded={expanded} entry={entry} />
       ) : null}
       {entry.type && labelTypeIsFilterable(entry.type) ? (
-        <Filter expanded={expanded} entry={entry} {...atoms} modal={modal} />
+        <Filter
+          expanded={expanded}
+          entry={entry}
+          {...filterAtoms}
+          modal={modal}
+        />
       ) : null}
     </CheckboxContainer>
   );
