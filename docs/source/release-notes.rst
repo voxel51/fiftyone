@@ -10,7 +10,7 @@ FiftyOne 0.6.4
 App
 ^^^
 - Improved page load times for video datasets
-- Improved support for Frame and Sample level labels in display pptions
+- Improved support for Frame and Sample level labels in display options
   for video datasets
 - Added support for all label types in the labels distributions tab
 - Added support for selecting and hiding objects in the sample modal
@@ -25,13 +25,13 @@ Core
   :meth:`select_objects() <fiftyone.core.collections.SampleCollection.select_objects>`
   and
   :meth:`exclude_objects() <fiftyone.core.collections.SampleCollection.exclude_objects>`
-  to select or exclude objects from a dataset or view.
+  to select or exclude objects from a dataset or view
 - Added an :mod:`Aggregations <fiftyone.core.aggregations>` framework for
   computing aggregate values via
   :meth:`aggregate() <fiftyone.core.collections.SampleCollection.aggregate>`
 - Added the
-  :attr:`selected_objects <fiftyone.core.session.Session.selected_objects>`, which
-  holds the currently selected objects in the App
+  :attr:`selected_objects <fiftyone.core.session.Session.selected_objects>`
+  session attribute, which holds the currently selected objects in the App
 
 Utils
 ^^^^^
