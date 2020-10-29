@@ -165,14 +165,8 @@ your local machine via `ssh` and connect to the App via Python.
 
         fos.launch_app()
 
-Using the FiftyOne App
-______________________
-
-The App exposes powerful dataset exploration functionality directly in its
-user interface.
-
 Display options
----------------
+_______________
 
 Any labels, tags, and scalar fields can be overlaid on the samples in the App
 by toggling the corresponding display options on the lefthand side of the App.
@@ -182,7 +176,7 @@ by toggling the corresponding display options on the lefthand side of the App.
     :align: center
 
 Viewing a sample
-----------------
+________________
 
 Double-click a sample to open an expanded view of the sample. This modal also
 contains information about the fields of the |Sample| and allows you to access
@@ -193,7 +187,7 @@ the raw JSON description of the sample.
     :align: center
 
 Using the view bar
-------------------
+__________________
 
 The view bar makes all of the powerful searching, sorting, and filtering
 operations :ref:`provided by DatasetViews <using-views>` available directly in
@@ -207,7 +201,7 @@ reflected in the |DatasetView| exposed by the
     :align: center
 
 Tabs
-----
+____
 
 The `Samples`, `Labels`, `Tags`, and `Scalars` tabs in the App let you
 visualize different aspects and statistics about your dataset. `Samples` is the
@@ -221,8 +215,8 @@ show up under the `Tags` tab. Scalar fields, for example if you computed
    :alt: CIFAR-10 Scalars
    :align: center
 
-Accessing selected samples
---------------------------
+Selecting samples
+_________________
 
 As previously explained, the |Session| object created when you launch the App
 lets you interact with the App from your Python process.
@@ -235,7 +229,12 @@ select some samples in the App:
    :alt: CIFAR-10 Selected
    :align: center
 
-Next, access the
+The selected samples dropdown on the upper-left of the sample grid records the
+number of samples that you have currently selected. You can also take actions
+such as updating the view to only show (or exclude) the currently selected
+samples.
+
+You can also access the
 :meth:`Session.selected <fiftyone.core.session.Session.selected>` property of
 your session to retrieve the IDs of the currently selected samples in the App:
 
@@ -253,3 +252,58 @@ your session to retrieve the IDs of the currently selected samples in the App:
      '5ef0eef405059ebb0ddfa7c4',
      '5ef0eef405059ebb0ddfa86e',
      '5ef0eef405059ebb0ddfa93c']
+
+Selecting objects
+_________________
+
+You can also use the App to select individual objects within samples. You can
+use this functionality to visually show/hide objects of interest in the App; or
+you can access the data for the selected objects from Python, for example by
+creating a |DatasetView| that includes/excludes the selected objects.
+
+To perform this workflow, open the expanded sample modal by double-clicking on
+a sample in the App. Then click on individual objects to select them:
+
+.. image:: ../images/coco2017_selected.png
+   :alt: COCO-2017 Selected
+   :align: center
+
+Selected objects will appear with dotted lines around them. The example above
+shows selecting an object detection, but polygons, polylines, segmentations,
+and keypoints can be selected as well.
+
+When you have selected objects in the App, you can use the selected objects
+dropdown menu under ``Display Options`` to take actions such as hiding the
+selected samples from view.
+
+You can also access the
+:meth:`Session.selected_objects <fiftyone.core.session.Session.selected_objects>`
+property of your session to retrieve information about the currently selected
+objects in the App:
+
+.. code-block:: python
+
+    # Print information about the currently selected samples in the App
+    fo.pprint(session.selected_objects)
+
+    # Create a view containing only the selected objects
+    selected_view = dataset.select_objects(session.selected_objects)
+
+    # Create a view containing everything except the selected objects
+    excluded_view = dataset.exclude_objects(session.selected_objects)
+
+.. code-block:: text
+
+    [
+        {
+            'object_id': '5f99d2eb36208058abbfc02a',
+            'sample_id': '5f99d2eb36208058abbfc030',
+            'field': 'ground_truth',
+        },
+        {
+            'object_id': '5f99d2eb36208058abbfc02b',
+            'sample_id': '5f99d2eb36208058abbfc030',
+            'field': 'ground_truth',
+        },
+        ...
+    ]

@@ -332,10 +332,8 @@ class StateController(Namespace):
         """Sets the entire selected object list.
 
         Args:
-            state: the current
-                :class:`fiftyone.core.state.StateDescription`
-            selected_objects: a list of objects in the format used by
-                :mod:`fiftyone.utils.selection`
+            state: the current :class:`fiftyone.core.state.StateDescription`
+            selected_objects: a list of selected objects
         """
         if not isinstance(selected_objects, list):
             raise TypeError("selected_objects must be a list")

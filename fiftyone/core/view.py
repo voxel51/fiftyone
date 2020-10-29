@@ -53,7 +53,6 @@ class DatasetView(foc.SampleCollection):
     def __init__(self, dataset):
         self._dataset = dataset
         self._stages = []
-        self._flatten_frames = None
 
     def __len__(self):
         return self.aggregate(foa.Count()).count
@@ -289,6 +288,14 @@ class DatasetView(foc.SampleCollection):
     @property
     def _doc(self):
         return self._dataset._doc
+
+    def _get_pipeline(self):
+        pipeline = []
+
+        for s in self._stages:
+            pipeline.extend(s.to_mongo())
+
+        return pipeline
 
     def _serialize(self):
         return [s._serialize() for s in self._stages]

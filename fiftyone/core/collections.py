@@ -548,6 +548,48 @@ class SampleCollection(object):
         return self._add_view_stage(fos.ExcludeFields(field_names))
 
     @view_stage
+    def exclude_objects(self, objects):
+        """Excludes the specified objects from the view.
+
+        The returned view will omit the objects specified in the provided
+        ``objects`` argument, which should have the following format::
+
+            [
+                {
+                    "sample_id": "5f8d254a27ad06815ab89df4",
+                    "field": "ground_truth",
+                    "object_id": "5f8d254a27ad06815ab89df3",
+                },
+                {
+                    "sample_id": "5f8d255e27ad06815ab93bf8",
+                    "field": "ground_truth",
+                    "object_id": "5f8d255e27ad06815ab93bf6",
+                },
+                ...
+            ]
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Exclude the objects currently selected in the App
+            #
+
+            session = fo.launch_app(dataset)
+
+            # Select some objects in the App...
+
+            view = dataset.exclude_objects(session.selected_objects)
+
+        Args:
+            objects: a list of dicts specifying the objects to exclude
+        """
+        return self._add_view_stage(fos.ExcludeObjects(objects))
+
+    @view_stage
     def exists(self, field, bool=True):
         """Returns a view containing the samples that have (or do not have) a
         non-``None`` value for the given field.
@@ -1277,6 +1319,49 @@ class SampleCollection(object):
             a :class:`DatasetView`
         """
         return self._add_view_stage(fos.SelectFields(field_names))
+
+    @view_stage
+    def select_objects(self, objects):
+        """Selects only the specified objects from the view.
+
+        The returned view will omit samples, sample fields, and individual
+        objects that do not appear in the provided ``objects`` argument, which
+        should have the following format::
+
+            [
+                {
+                    "sample_id": "5f8d254a27ad06815ab89df4",
+                    "field": "ground_truth",
+                    "object_id": "5f8d254a27ad06815ab89df3",
+                },
+                {
+                    "sample_id": "5f8d255e27ad06815ab93bf8",
+                    "field": "ground_truth",
+                    "object_id": "5f8d255e27ad06815ab93bf6",
+                },
+                ...
+            ]
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Only include the objects currently selected in the App
+            #
+
+            session = fo.launch_app(dataset)
+
+            # Select some objects in the App...
+
+            view = dataset.select_objects(session.selected_objects)
+
+        Args:
+            objects: a list of dicts specifying the objects to select
+        """
+        return self._add_view_stage(fos.SelectObjects(objects))
 
     @view_stage
     def shuffle(self, seed=None):
