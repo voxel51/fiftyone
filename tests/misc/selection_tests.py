@@ -1,5 +1,6 @@
 """
-Unit tests for the :mod:`fiftyone.utils.selection` module.
+Unit tests for :class:`fiftyone.core.stages.SelectObjects` and
+:class:`fiftyone.core.stages.ExcludeObjects`.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -10,7 +11,6 @@ import unittest
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
-import fiftyone.utils.selection as fous
 import fiftyone.zoo as foz
 
 
@@ -45,8 +45,8 @@ class SelectionTests(unittest.TestCase):
                     }
                 )
 
-        selected_view = fous.select_objects(dataset, selected_objects)
-        excluded_view = fous.exclude_objects(dataset, selected_objects)
+        selected_view = dataset.select_objects(selected_objects)
+        excluded_view = dataset.exclude_objects(selected_objects)
 
         total_objects = _count_detections(dataset, "ground_truth")
         num_selected_objects = len(selected_objects)

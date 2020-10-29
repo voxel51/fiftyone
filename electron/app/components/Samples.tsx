@@ -2,12 +2,11 @@ import React, { useState, useEffect, useContext } from "react";
 import InfiniteScroll from "react-infinite-scroller";
 import useMeasure from "react-use-measure";
 import { useSetRecoilState, useRecoilValue } from "recoil";
-import { Grid, Loader, Dimmer } from "semantic-ui-react";
-import styled, { ThemeContext } from "styled-components";
+import { Grid } from "semantic-ui-react";
+import { ThemeContext } from "styled-components";
 import CircularProgress from "@material-ui/core/CircularProgress";
 
 import Sample from "./Sample";
-import connect from "../utils/connect";
 import tile from "./Samples.hooks";
 import * as atoms from "../recoil/atoms";
 

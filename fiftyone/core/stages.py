@@ -5,22 +5,30 @@ View stages.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import defaultdict
 import random
 import reprlib
 import uuid
+import warnings
 
 from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
 
-from fiftyone.core.expressions import ViewExpression, ViewField
+from fiftyone.core.aggregations import Aggregation
+import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
+import fiftyone.core.media as fom
+from fiftyone.core.odm.frame import DatasetFrameSampleDocument
 from fiftyone.core.odm.sample import (
     DatasetSampleDocument,
     default_sample_fields,
 )
 
 import eta.core.utils as etau
+
+
+_FRAMES_PREFIX = "frames."
 
 
 class ViewStage(object):
@@ -40,50 +48,66 @@ class ViewStage(object):
         return repr(self)
 
     def __repr__(self):
-        kwargs_str = ", ".join(
-            [
-                "%s=%s" % (k, _repr.repr(v))
-                for k, v in self._kwargs()
-                if not k.startswith("_")
-            ]
-        )
+        kwargs_list = []
+        for k, v in self._kwargs():
+            if k.startswith("_"):
+                continue
 
+            v_repr = _repr.repr(v)
+            # v_repr = etau.summarize_long_str(v_repr, 30)
+            kwargs_list.append("%s=%s" % (k, v_repr))
+
+        kwargs_str = ", ".join(kwargs_list)
         return "%s(%s)" % (self.__class__.__name__, kwargs_str)
 
     def get_filtered_list_fields(self):
         """Returns a list of names of fields or subfields that contain arrays
         that may have been filtered by the stage, if any.
-
         Returns:
             a list of fields, or ``None`` if no fields have been filtered
         """
         return None
 
-    def get_selected_fields(self):
+    def get_selected_fields(self, frames=False):
         """Returns a list of fields that have been selected by the stage, if
         any.
-
         Returns:
             a list of fields, or ``None`` if no fields have been selected
         """
         return None
 
-    def get_excluded_fields(self):
+    def get_excluded_fields(self, frames=False):
         """Returns a list of fields that have been excluded by the stage, if
         any.
-
         Returns:
             a list of fields, or ``None`` if no fields have been selected
         """
         return None
 
-    def to_mongo(self):
+    def to_mongo(self, sample_collection):
         """Returns the MongoDB version of the stage.
+
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the stage is being applied
 
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
         """
         raise NotImplementedError("subclasses must implement `to_mongo()`")
+
+    def to_frames_mongo(self, view):
+        """Returns the MongoDB version of the stage for the frames pipeline, if
+        any.
+
+        Args:
+            view: the view
+
+        Returns:
+            a MongoDB aggregation pipeline (list of dicts)
+        """
+        return []
 
     def validate(self, sample_collection):
         """Validates that the stage can be applied to the given collection.
@@ -201,12 +225,7 @@ class Exclude(ViewStage):
         """The list of sample IDs to exclude."""
         return self._sample_ids
 
-    def to_mongo(self):
-        """Returns the MongoDB version of the stage.
-
-        Returns:
-            a MongoDB aggregation pipeline (list of dicts)
-        """
+    def to_mongo(self, _):
         sample_ids = [ObjectId(id) for id in self._sample_ids]
         return [{"$match": {"_id": {"$not": {"$in": sample_ids}}}}]
 
@@ -225,7 +244,8 @@ class Exclude(ViewStage):
 
     def _validate_params(self):
         # Ensures that ObjectIDs are valid
-        self.to_mongo()
+        for id in self._sample_ids:
+            ObjectId(id)
 
 
 class ExcludeFields(ViewStage):
@@ -270,16 +290,27 @@ class ExcludeFields(ViewStage):
         """The list of field names to exclude."""
         return self._field_names
 
-    def get_excluded_fields(self):
-        return self._field_names
+    def get_excluded_fields(self, frames=False):
+        if frames:
+            fn = lambda n: n.startswith(_FRAMES_PREFIX)
+        else:
+            fn = lambda n: not n.startswith(_FRAMES_PREFIX)
 
-    def to_mongo(self):
-        """Returns the MongoDB version of the stage.
+        return list(filter(fn, self._field_names))
 
-        Returns:
-            a MongoDB aggregation pipeline (list of dicts)
-        """
-        return [{"$unset": self._field_names}]
+    def to_mongo(self, _):
+        fields = self.get_excluded_fields()
+        if len(fields) == 0:
+            return []
+
+        return [{"$unset": fields}]
+
+    def to_frames_mongo(self, view):
+        fields = self.get_excluded_fields(frames=True)
+        if len(fields) == 0:
+            return []
+
+        return [{"$unset": [".".join(f.split(".", 1)[1:]) for f in fields]}]
 
     def _kwargs(self):
         return [["field_names", self._field_names]]
@@ -309,6 +340,104 @@ class ExcludeFields(ViewStage):
 
     def validate(self, sample_collection):
         sample_collection.validate_fields_exist(self.field_names)
+
+
+class ExcludeObjects(ViewStage):
+    """Excludes the specified objects from the view.
+
+    The returned view will omit the objects specified in the provided
+    ``objects`` argument, which should have the following format::
+
+        [
+            {
+                "sample_id": "5f8d254a27ad06815ab89df4",
+                "field": "ground_truth",
+                "object_id": "5f8d254a27ad06815ab89df3",
+            },
+            {
+                "sample_id": "5f8d255e27ad06815ab93bf8",
+                "field": "ground_truth",
+                "object_id": "5f8d255e27ad06815ab93bf6",
+            },
+            ...
+        ]
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone.core.stages import ExcludeObjects
+
+        dataset = fo.load_dataset(...)
+
+        #
+        # Exclude the objects currently selected in the App
+        #
+
+        session = fo.launch_app(dataset)
+
+        # Select some objects in the App...
+
+        stage = ExcludeObjects(session.selected_objects)
+        view = dataset.add_stage(stage)
+
+    Args:
+        objects: a list of dicts specifying the objects to exclude
+    """
+
+    def __init__(self, objects):
+        _, object_ids = _parse_objects(objects)
+        self._objects = objects
+        self._object_ids = object_ids
+        self._pipeline = None
+
+    @property
+    def objects(self):
+        """A list of dicts specifying the objects to exclude."""
+        return self._objects
+
+    def to_mongo(self, _):
+        if self._pipeline is None:
+            raise ValueError(
+                "`validate()` must be called before using a %s stage"
+                % self.__class__
+            )
+
+        return self._pipeline
+
+    def _kwargs(self):
+        return [["objects", self._objects]]
+
+    @classmethod
+    def _params(self):
+        return [
+            {
+                "name": "objects",
+                "type": "dict",  # @todo use "list<dict>" when supported
+                "placeholder": "[{...}]",
+            }
+        ]
+
+    def _make_pipeline(self, sample_collection):
+        label_schema = sample_collection.get_field_schema(
+            ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+        )
+
+        pipeline = []
+        for field, object_ids in self._object_ids.items():
+            label_filter = ~foe.ViewField("_id").is_in(
+                [foe.ObjectId(oid) for oid in object_ids]
+            )
+            stage = _make_label_filter_stage(label_schema, field, label_filter)
+            if stage is None:
+                continue
+
+            stage.validate(sample_collection)
+            pipeline.extend(stage.to_mongo(sample_collection))
+
+        return pipeline
+
+    def validate(self, sample_collection):
+        self._pipeline = self._make_pipeline(sample_collection)
 
 
 class Exists(ViewStage):
@@ -359,12 +488,7 @@ class Exists(ViewStage):
         """
         return self._bool
 
-    def to_mongo(self):
-        """Returns the MongoDB version of the stage.
-
-        Returns:
-            a MongoDB aggregation pipeline (list of dicts)
-        """
+    def to_mongo(self, _):
         if self._bool:
             return [{"$match": {self._field: {"$exists": True, "$ne": None}}}]
 
@@ -455,12 +579,18 @@ class FilterField(ViewStage):
         """Whether to only include samples that match the filter."""
         return self._only_matches
 
-    def to_mongo(self):
-        """Returns the MongoDB version of the stage.
+    @property
+    def _frame_filter_field(self):
+        return self._field[len(_FRAMES_PREFIX) :]
 
-        Returns:
-            a MongoDB aggregation pipeline (list of dicts)
-        """
+    def to_mongo(self, sample_collection):
+        if (
+            sample_collection.media_type == fom.VIDEO
+            and self._field.startswith(_FRAMES_PREFIX)
+        ):
+            pass
+            # return self._get_frames_pipeline()
+
         pipeline = [
             {
                 "$addFields": {
@@ -483,7 +613,7 @@ class FilterField(ViewStage):
         return pipeline
 
     def _get_mongo_filter(self):
-        if isinstance(self._filter, ViewExpression):
+        if isinstance(self._filter, foe.ViewExpression):
             return self._filter.to_mongo(prefix="$" + self.field)
 
         return self._filter
@@ -509,7 +639,7 @@ class FilterField(ViewStage):
         ]
 
     def _validate_params(self):
-        if not isinstance(self._filter, (ViewExpression, dict)):
+        if not isinstance(self._filter, (foe.ViewExpression, dict)):
             raise ValueError(
                 "Filter must be a ViewExpression or a MongoDB expression; "
                 "found '%s'" % self._filter
@@ -527,15 +657,20 @@ class _FilterListField(FilterField):
     def _filter_field(self):
         raise NotImplementedError("subclasses must implement `_filter_field`")
 
+    @property
+    def _frame_filter_field(self):
+        return self._filter_field[len(_FRAMES_PREFIX) :]
+
     def get_filtered_list_fields(self):
         return [self._filter_field]
 
-    def to_mongo(self):
-        """Returns the MongoDB version of the stage.
+    def to_mongo(self, sample_collection):
+        if (
+            sample_collection.media_type == fom.VIDEO
+            and self._filter_field.startswith(_FRAMES_PREFIX)
+        ):
+            return self._get_frames_pipeline()
 
-        Returns:
-            a MongoDB aggregation pipeline (list of dicts)
-        """
         pipeline = [
             {
                 "$addFields": {
@@ -572,8 +707,47 @@ class _FilterListField(FilterField):
 
         return pipeline
 
+    def _get_frames_pipeline(self):
+        field, array = self._filter_field.split(".")[1:]
+        pipeline = [
+            {
+                "$addFields": {
+                    "frames": {
+                        "$map": {
+                            "input": "$frames",
+                            "as": "frame",
+                            "in": {
+                                "$mergeObjects": [
+                                    "$$frame",
+                                    {
+                                        field: {
+                                            array: {
+                                                "$filter": {
+                                                    "input": "$$frame."
+                                                    + self._frame_filter_field,
+                                                    "cond": self._get_mongo_filter(),
+                                                }
+                                            }
+                                        }
+                                    },
+                                ]
+                            },
+                        }
+                    }
+                }
+            }
+        ]
+
+        if self._only_matches:
+            # @todo
+            raise ValueError(
+                "Only matching for frame labels is not yet supported"
+            )
+
+        return pipeline
+
     def _get_mongo_filter(self):
-        if isinstance(self._filter, ViewExpression):
+        if isinstance(self._filter, foe.ViewExpression):
             return self._filter.to_mongo(prefix="$$this")
 
         return self._filter
@@ -745,6 +919,12 @@ class FilterLabels(_FilterListField):
             )
 
         return self._labels_list_field
+
+    def to_mongo(self, sample_collection):
+        self._labels_list_field = _get_labels_list_field(
+            self._field, sample_collection
+        )
+        return super().to_mongo(sample_collection)
 
     def validate(self, sample_collection):
         self._labels_list_field = _get_labels_list_field(
@@ -1014,12 +1194,7 @@ class Limit(ViewStage):
         """The maximum number of samples to return."""
         return self._limit
 
-    def to_mongo(self):
-        """Returns the MongoDB version of the stage.
-
-        Returns:
-            a MongoDB aggregation pipeline (list of dicts)
-        """
+    def to_mongo(self, _):
         if self._limit <= 0:
             return [{"$match": {"_id": None}}]
 
@@ -1080,17 +1255,10 @@ class LimitLabels(ViewStage):
         """The maximum number of labels to return in each sample."""
         return self._limit
 
-    def to_mongo(self):
-        """Returns the MongoDB version of the stage.
-
-        Returns:
-            a MongoDB aggregation pipeline (list of dicts)
-        """
-        if self._labels_list_field is None:
-            raise ValueError(
-                "`validate()` must be called before using a %s stage"
-                % self.__class__
-            )
+    def to_mongo(self, sample_collection):
+        self._labels_list_field = _get_labels_list_field(
+            self._field, sample_collection
+        )
 
         limit = max(self._limit, 0)
 
@@ -1185,16 +1353,11 @@ class Match(ViewStage):
         """The filter expression."""
         return self._filter
 
-    def to_mongo(self):
-        """Returns the MongoDB version of the stage.
-
-        Returns:
-            a MongoDB aggregation pipeline (list of dicts)
-        """
+    def to_mongo(self, _):
         return [{"$match": self._get_mongo_filter()}]
 
     def _get_mongo_filter(self):
-        if isinstance(self._filter, ViewExpression):
+        if isinstance(self._filter, foe.ViewExpression):
             return {"$expr": self._filter.to_mongo()}
 
         return self._filter
@@ -1203,7 +1366,7 @@ class Match(ViewStage):
         return [["filter", self._get_mongo_filter()]]
 
     def _validate_params(self):
-        if not isinstance(self._filter, (ViewExpression, dict)):
+        if not isinstance(self._filter, (foe.ViewExpression, dict)):
             raise ValueError(
                 "Filter must be a ViewExpression or a MongoDB expression; "
                 "found '%s'" % self._filter
@@ -1243,12 +1406,7 @@ class MatchTag(ViewStage):
         """The tag to match."""
         return self._tag
 
-    def to_mongo(self):
-        """Returns the MongoDB version of the stage.
-
-        Returns:
-            a MongoDB aggregation pipeline (list of dicts)
-        """
+    def to_mongo(self, _):
         return [{"$match": {"tags": self._tag}}]
 
     def _kwargs(self):
@@ -1291,12 +1449,7 @@ class MatchTags(ViewStage):
         """The list of tags to match."""
         return self._tags
 
-    def to_mongo(self):
-        """Returns the MongoDB version of the stage.
-
-        Returns:
-            a MongoDB aggregation pipeline (list of dicts)
-        """
+    def to_mongo(self, _):
         return [{"$match": {"tags": {"$in": self._tags}}}]
 
     def _kwargs(self):
@@ -1363,12 +1516,7 @@ class Mongo(ViewStage):
         """The MongoDB aggregation pipeline."""
         return self._pipeline
 
-    def to_mongo(self):
-        """Returns the MongoDB version of the stage.
-
-        Returns:
-            a MongoDB aggregation pipeline (list of dicts)
-        """
+    def to_mongo(self, _):
         return self._pipeline
 
     def _kwargs(self):
@@ -1428,12 +1576,7 @@ class Select(ViewStage):
         """The list of sample IDs to select."""
         return self._sample_ids
 
-    def to_mongo(self):
-        """Returns the MongoDB version of the stage.
-
-        Returns:
-            a MongoDB aggregation pipeline (list of dicts)
-        """
+    def to_mongo(self, _):
         sample_ids = [ObjectId(id) for id in self._sample_ids]
         return [{"$match": {"_id": {"$in": sample_ids}}}]
 
@@ -1452,11 +1595,12 @@ class Select(ViewStage):
 
     def _validate_params(self):
         # Ensures that ObjectIDs are valid
-        self.to_mongo()
+        for id in self._sample_ids:
+            ObjectId(id)
 
 
 class SelectFields(ViewStage):
-    """Selects *only* the fields with the given names from the samples in the
+    """Selects only the fields with the given names from the samples in the
     view. All other fields are excluded.
 
     Note that default sample fields are always selected and will be added if
@@ -1499,21 +1643,41 @@ class SelectFields(ViewStage):
         """The list of field names to select."""
         return self._field_names or []
 
-    def get_selected_fields(self):
-        default_fields = default_sample_fields(DatasetSampleDocument)
-        return list(set(self.field_names) | set(default_fields))
-
-    def to_mongo(self):
-        """Returns the MongoDB version of the stage.
-
-        Returns:
-            a MongoDB aggregation pipeline (list of dicts)
-        """
-        default_fields = default_sample_fields(
-            DatasetSampleDocument, include_private=True
+    def get_selected_fields(self, frames=False):
+        doc_cls = (
+            DatasetFrameSampleDocument if frames else DatasetSampleDocument
         )
-        selected_fields = list(set(self.field_names) | set(default_fields))
+        default_fields = default_sample_fields(doc_cls, include_private=True)
+
+        if frames:
+            fn = lambda n: n.startswith(_FRAMES_PREFIX)
+        else:
+            fn = lambda n: not n.startswith(_FRAMES_PREFIX)
+
+        field_names = self._field_names or []
+
+        return list(set(filter(fn, field_names)) | set(default_fields))
+
+    def to_mongo(self, _):
+        selected_fields = self.get_selected_fields()
+        if len(selected_fields) == 0:
+            return []
+
         return [{"$project": {fn: True for fn in selected_fields}}]
+
+    def to_frames_mongo(self, view):
+        selected_fields = self.get_selected_fields(frames=True)
+        if len(selected_fields) == 0:
+            return []
+
+        return [
+            {
+                "$project": {
+                    ".".join(fn.split(".", 1)[1:]): True
+                    for fn in selected_fields
+                }
+            }
+        ]
 
     def _kwargs(self):
         return [["field_names", self._field_names]]
@@ -1538,6 +1702,112 @@ class SelectFields(ViewStage):
 
     def validate(self, sample_collection):
         sample_collection.validate_fields_exist(self.field_names)
+
+
+class SelectObjects(ViewStage):
+    """Selects only the specified objects from the view.
+
+    The returned view will omit samples, sample fields, and individual objects
+    that do not appear in the provided ``objects`` argument, which should have
+    the following format::
+
+        [
+            {
+                "sample_id": "5f8d254a27ad06815ab89df4",
+                "field": "ground_truth",
+                "object_id": "5f8d254a27ad06815ab89df3",
+            },
+            {
+                "sample_id": "5f8d255e27ad06815ab93bf8",
+                "field": "ground_truth",
+                "object_id": "5f8d255e27ad06815ab93bf6",
+            },
+            ...
+        ]
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone.core.stages import SelectObjects
+
+        dataset = fo.load_dataset(...)
+
+        #
+        # Only include the objects currently selected in the App
+        #
+
+        session = fo.launch_app(dataset)
+
+        # Select some objects in the App...
+
+        stage = SelectObjects(session.selected_objects)
+        view = dataset.add_stage(stage)
+
+    Args:
+        objects: a list of dicts specifying the objects to select
+    """
+
+    def __init__(self, objects):
+        sample_ids, object_ids = _parse_objects(objects)
+        self._objects = objects
+        self._sample_ids = sample_ids
+        self._object_ids = object_ids
+        self._pipeline = None
+
+    @property
+    def objects(self):
+        """A list of dicts specifying the objects to select."""
+        return self._objects
+
+    def to_mongo(self, _):
+        if self._pipeline is None:
+            raise ValueError(
+                "`validate()` must be called before using a %s stage"
+                % self.__class__
+            )
+
+        return self._pipeline
+
+    def _kwargs(self):
+        return [["objects", self._objects]]
+
+    @classmethod
+    def _params(self):
+        return [
+            {
+                "name": "objects",
+                "type": "dict",  # @todo use "list<dict>" when supported
+                "placeholder": "[{...}]",
+            }
+        ]
+
+    def _make_pipeline(self, sample_collection):
+        label_schema = sample_collection.get_field_schema(
+            ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+        )
+
+        pipeline = []
+
+        stage = Select(self._sample_ids)
+        pipeline.extend(stage.to_mongo(sample_collection))
+
+        stage = SelectFields(list(self._object_ids.keys()))
+        pipeline.extend(stage.to_mongo(sample_collection))
+
+        for field, object_ids in self._object_ids.items():
+            label_filter = foe.ViewField("_id").is_in(
+                [foe.ObjectId(oid) for oid in object_ids]
+            )
+            stage = _make_label_filter_stage(label_schema, field, label_filter)
+            if stage is None:
+                continue
+
+            stage.validate(sample_collection)
+            pipeline.extend(stage.to_mongo(sample_collection))
+        return pipeline
+
+    def validate(self, sample_collection):
+        self._pipeline = self._make_pipeline(sample_collection)
 
 
 class Shuffle(ViewStage):
@@ -1578,12 +1848,7 @@ class Shuffle(ViewStage):
         """The random seed to use, or ``None``."""
         return self._seed
 
-    def to_mongo(self):
-        """Returns the MongoDB version of the stage.
-
-        Returns:
-            a MongoDB aggregation pipeline (list of dicts)
-        """
+    def to_mongo(self, _):
         # @todo avoid creating new field here?
         return [
             {"$set": {"_rand_shuffle": {"$mod": [self._randint, "$_rand"]}}},
@@ -1637,12 +1902,7 @@ class Skip(ViewStage):
         """The number of samples to skip."""
         return self._skip
 
-    def to_mongo(self):
-        """Returns the MongoDB version of the stage.
-
-        Returns:
-            a MongoDB aggregation pipeline (list of dicts)
-        """
+    def to_mongo(self, _):
         if self._skip <= 0:
             return []
 
@@ -1712,12 +1972,7 @@ class SortBy(ViewStage):
         """Whether to return the results in descending order."""
         return self._reverse
 
-    def to_mongo(self):
-        """Returns the MongoDB version of the stage.
-
-        Returns:
-            a MongoDB aggregation pipeline (list of dicts)
-        """
+    def to_mongo(self, _):
         order = DESCENDING if self._reverse else ASCENDING
 
         field_or_expr = self._get_mongo_field_or_expr()
@@ -1732,11 +1987,11 @@ class SortBy(ViewStage):
         ]
 
     def _get_mongo_field_or_expr(self):
-        if isinstance(self._field_or_expr, ViewField):
+        if isinstance(self._field_or_expr, foe.ViewField):
             return self._field_or_expr.name
 
-        if isinstance(self._field_or_expr, ViewExpression):
-            return self._field_or_expr.to_mongo()
+        if isinstance(self._field_or_expr, foe.ViewExpression):
+            return self._field_or_expr.to_mongo(None)  # @todo: fix me
 
         return self._field_or_expr
 
@@ -1816,12 +2071,7 @@ class Take(ViewStage):
         """The random seed to use, or ``None``."""
         return self._seed
 
-    def to_mongo(self):
-        """Returns the MongoDB version of the stage.
-
-        Returns:
-            a MongoDB aggregation pipeline (list of dicts)
-        """
+    def to_mongo(self, _):
         if self._size <= 0:
             return [{"$match": {"_id": None}}]
 
@@ -1897,6 +2147,43 @@ def _get_labels_list_field(field_name, sample_collection):
     )
 
 
+def _parse_objects(objects):
+    sample_ids = set()
+    object_ids = defaultdict(set)
+    for obj in objects:
+        sample_ids.add(obj["sample_id"])
+        object_ids[obj["field"]].add(obj["object_id"])
+
+    return sample_ids, object_ids
+
+
+def _make_label_filter_stage(label_schema, field, label_filter):
+    if field not in label_schema:
+        raise ValueError("Sample collection has no label field '%s'" % field)
+
+    label_type = label_schema[field].document_type
+
+    if label_type in (
+        fol.Classification,
+        fol.Detection,
+        fol.Polyline,
+        fol.Keypoint,
+    ):
+        return FilterField(field, label_filter)
+
+    if label_type in (
+        fol.Classifications,
+        fol.Detections,
+        fol.Polylines,
+        fol.Keypoints,
+    ):
+        return FilterLabels(field, label_filter)
+
+    msg = "Ignoring unsupported field '%s' (%s)" % (field, label_type)
+    warnings.warn(msg)
+    return None
+
+
 class _ViewStageRepr(reprlib.Repr):
     def repr_ViewExpression(self, expr, level):
         return self.repr1(expr.to_mongo(), level=level - 1)
@@ -1916,6 +2203,7 @@ _repr.maxother = 30
 _STAGES = [
     Exclude,
     ExcludeFields,
+    ExcludeObjects,
     Exists,
     FilterField,
     FilterLabels,
@@ -1932,6 +2220,7 @@ _STAGES = [
     Shuffle,
     Select,
     SelectFields,
+    SelectObjects,
     Skip,
     SortBy,
     Take,

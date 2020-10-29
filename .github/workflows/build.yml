@@ -10,7 +10,7 @@ on:
     tags:
       - v*
   pull_request:
-    types: [opened, synchronize, ready_for_review]
+    types: [opened, synchronize]
     branches:
       - develop
       - rel-*
@@ -19,7 +19,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-18.04
-    if: github.event.pull_request.draft == false
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v2
@@ -52,7 +51,6 @@ jobs:
 
   test:
     runs-on: ${{ matrix.os }}
-    if: github.event.pull_request.draft == false
     needs: [build, check]
     strategy:
       fail-fast: false

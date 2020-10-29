@@ -11,6 +11,7 @@ import numbers
 
 from bson import ObjectId
 
+import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
@@ -52,16 +53,9 @@ class DatasetView(foc.SampleCollection):
     def __init__(self, dataset):
         self._dataset = dataset
         self._stages = []
-        self._flatten_frames = None
 
     def __len__(self):
-        try:
-            result = self.aggregate([{"$count": "count"}])
-            return next(result)["count"]
-        except StopIteration:
-            pass
-
-        return 0
+        return self.aggregate(foa.Count()).count
 
     def __getitem__(self, sample_id):
         if isinstance(sample_id, numbers.Integral):
@@ -119,11 +113,12 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a string summary
         """
+        aggs = self.aggregate([foa.Count(), foa.Distinct("tags")])
         elements = [
             "Dataset:        %s" % self.dataset_name,
             "Media type:     %s" % self.media_type,
-            "Num samples:    %d" % len(self),
-            "Tags:           %s" % self.get_tags(),
+            "Num samples:    %d" % aggs[0].count,
+            "Tags:           %s" % aggs[1].values,
             "Sample fields:",
             self._dataset._to_fields_str(self.get_field_schema()),
         ]
@@ -161,16 +156,20 @@ class DatasetView(foc.SampleCollection):
         selected_fields, excluded_fields = self._get_selected_excluded_fields()
         filtered_fields = self._get_filtered_fields()
 
-        for d in self.aggregate():
+        for d in self._aggregate(hide_frames=True):
             try:
+                frames = d.pop("_frames", [])
                 doc = self._dataset._sample_dict_to_doc(d)
-                yield fos.SampleView(
+                sample = fos.SampleView(
                     doc,
                     self._dataset,
                     selected_fields=selected_fields,
                     excluded_fields=excluded_fields,
                     filtered_fields=filtered_fields,
                 )
+                if self.media_type == fom.VIDEO:
+                    sample.frames._set_replacements(frames)
+                yield sample
             except Exception as e:
                 raise ValueError(
                     "Failed to load sample from the database. This is likely "
@@ -202,26 +201,7 @@ class DatasetView(foc.SampleCollection):
             include_private=include_private,
         )
 
-        selected_fields, excluded_fields = self._get_selected_excluded_fields()
-        if selected_fields is not None:
-            field_schema = OrderedDict(
-                {
-                    fn: f
-                    for fn, f in field_schema.items()
-                    if fn in selected_fields
-                }
-            )
-
-        if excluded_fields is not None:
-            field_schema = OrderedDict(
-                {
-                    fn: f
-                    for fn, f in field_schema.items()
-                    if fn not in excluded_fields
-                }
-            )
-
-        return field_schema
+        return self._get_filtered_schema(field_schema)
 
     def get_frame_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False
@@ -245,11 +225,13 @@ class DatasetView(foc.SampleCollection):
             a dictionary mapping field names to field types, or ``None`` if
             the dataset is not a video dataset
         """
-        return self._dataset.get_frame_field_schema(
+        field_schema = self._dataset.get_frame_field_schema(
             ftype=ftype,
             embedded_doc_type=embedded_doc_type,
             include_private=include_private,
         )
+
+        return self._get_filtered_schema(field_schema, frames=True)
 
     def get_tags(self):
         """Returns the list of unique tags of samples in the view.
@@ -257,17 +239,7 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a list of tags
         """
-        pipeline = [
-            {"$project": {"tags": "$tags"}},
-            {"$unwind": "$tags"},
-            {"$group": {"_id": "None", "all_tags": {"$addToSet": "$tags"}}},
-        ]
-        try:
-            return next(self.aggregate(pipeline))["all_tags"]
-        except StopIteration:
-            pass
-
-        return []
+        return self.aggregate(foa.Distinct("tags")).values
 
     def create_index(self, field):
         """Creates a database index on the given field, enabling efficient
@@ -277,28 +249,6 @@ class DatasetView(foc.SampleCollection):
             field: the name of the field to index
         """
         self._dataset.create_index(field)
-
-    def aggregate(self, pipeline=None):
-        """Calls the view's current MongoDB aggregation pipeline.
-
-        Args:
-            pipeline (None): an optional aggregation pipeline (list of dicts)
-                to append to the view's pipeline before calling it
-
-        Returns:
-            an iterable over the aggregation result
-        """
-        _pipeline = []
-        if self._flatten_frames is not None:
-            _pipeline.extend(self._flatten_frames)
-
-        for s in self._stages:
-            _pipeline.extend(s.to_mongo())
-
-        if pipeline is not None:
-            _pipeline.extend(pipeline)
-
-        return self._dataset.aggregate(_pipeline)
 
     def to_dict(self, rel_dir=None):
         """Returns a JSON dictionary representation of the view.
@@ -321,11 +271,34 @@ class DatasetView(foc.SampleCollection):
         d["samples"] = samples
         return d
 
+    def _aggregate(
+        self, pipeline=None, hide_frames=False, squash_frames=False
+    ):
+        _pipeline = []
+
+        _frames_pipeline = []
+        for s in self._stages:
+            _pipeline.extend(s.to_mongo(self))
+
+        if pipeline is not None:
+            _pipeline.extend(pipeline)
+
+        return self._dataset._aggregate(_pipeline, hide_frames, squash_frames)
+
+    @property
+    def _doc(self):
+        return self._dataset._doc
+
+    def _get_pipeline(self):
+        pipeline = []
+
+        for s in self._stages:
+            pipeline.extend(s.to_mongo())
+
+        return pipeline
+
     def _serialize(self):
-        return {
-            "dataset": self._dataset._serialize(),
-            "view": [s._serialize() for s in self._stages],
-        }
+        return [s._serialize() for s in self._stages]
 
     def _slice(self, s):
         if s.step is not None and s.step != 1:
@@ -369,19 +342,39 @@ class DatasetView(foc.SampleCollection):
         view._stages.append(stage)
         return view
 
-    def _get_selected_excluded_fields(self):
+    def _get_filtered_schema(self, schema, frames=False):
+        selected_fields, excluded_fields = self._get_selected_excluded_fields(
+            frames
+        )
+        if selected_fields is not None:
+            schema = OrderedDict(
+                {fn: f for fn, f in schema.items() if fn in selected_fields}
+            )
+
+        if excluded_fields is not None:
+            schema = OrderedDict(
+                {
+                    fn: f
+                    for fn, f in schema.items()
+                    if fn not in excluded_fields
+                }
+            )
+
+        return schema
+
+    def _get_selected_excluded_fields(self, frames=False):
         selected_fields = None
         excluded_fields = set()
 
         for stage in self._stages:
-            _selected_fields = stage.get_selected_fields()
+            _selected_fields = stage.get_selected_fields(frames)
             if _selected_fields:
                 if selected_fields is None:
                     selected_fields = set(_selected_fields)
                 else:
                     selected_fields.intersection_update(_selected_fields)
 
-            _excluded_fields = stage.get_excluded_fields()
+            _excluded_fields = stage.get_excluded_fields(frames)
             if _excluded_fields:
                 excluded_fields.update(_excluded_fields)
 
@@ -399,17 +392,3 @@ class DatasetView(foc.SampleCollection):
                 filtered_fields.update(_filtered_fields)
 
         return filtered_fields
-
-    def _with_frames(self):
-        view = copy(self)
-        lookup = {
-            "$lookup": {
-                "from": self._dataset._frame_collection_name,
-                "localField": "_id",
-                "foreignField": "_sample_id",
-                "as": "frames",
-            }
-        }
-        unwind = {"$unwind": "$frames"}
-        view._flatten_frames = [lookup, unwind]
-        return view

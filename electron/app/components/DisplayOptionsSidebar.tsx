@@ -25,11 +25,13 @@ export type Entry = {
   selected: boolean;
   count: number;
   type: string;
+  path: string;
 };
 
 type Props = {
   tags: Entry[];
   labels: Entry[];
+  frameLabels: Entry[];
   scalars: Entry[];
   unsupported: Entry[];
   onSelectTag: (entry: Entry) => void;
@@ -84,6 +86,7 @@ const Cell = ({
   colorMap,
   title,
   modal,
+  prefix = "",
 }) => {
   const theme = useContext(ThemeContext);
   const [expanded, setExpanded] = useState(true);
@@ -133,13 +136,15 @@ const Cell = ({
             totalCount: e.totalCount,
             filteredCount: e.filteredCount,
             color: labelTypeHasColor(e.type)
-              ? colorMap[e.name]
+              ? colorMap[prefix + e.name]
               : theme.backgroundLight,
             hideCheckbox: e.hideCheckbox,
             disabled: Boolean(e.disabled),
+            path: prefix + e.name,
           }))}
           onCheck={onSelect}
           modal={modal}
+          prefix={prefix}
         />
       ) : (
         <span>No options available</span>
@@ -165,10 +170,12 @@ const DisplayOptionsSidebar = React.forwardRef(
       modal = false,
       tags = [],
       labels = [],
+      frameLabels = [],
       scalars = [],
       unsupported = [],
       onSelectTag,
       onSelectLabel,
+      onSelectFrameLabel,
       onSelectScalar,
       headerContent = {},
       ...rest
@@ -178,6 +185,8 @@ const DisplayOptionsSidebar = React.forwardRef(
     const refreshColorMap = useSetRecoilState(refreshColorMapSelector);
     const colorMap = useRecoilValue(atoms.colorMap);
     const cellRest = { modal };
+    const mediaType = useRecoilValue(selectors.mediaType);
+    const isVideo = mediaType === "video";
     return (
       <Container ref={ref} {...rest}>
         <Cell
@@ -198,6 +207,17 @@ const DisplayOptionsSidebar = React.forwardRef(
           onSelect={onSelectLabel}
           {...cellRest}
         />
+        {isVideo && (
+          <Cell
+            colorMap={colorMap}
+            label="Frame Labels"
+            icon={<PhotoLibrary />}
+            entries={frameLabels}
+            onSelect={onSelectFrameLabel}
+            {...cellRest}
+            prefix="frames."
+          />
+        )}
         <Cell
           colorMap={colorMap}
           label="Scalars"

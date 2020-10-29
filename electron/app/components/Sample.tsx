@@ -1,17 +1,14 @@
 import React, { useState } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { animated, useSpring, useTransition } from "react-spring";
 
-import { updateState } from "../actions/update";
-import { getSocket } from "../utils/socket";
-import connect from "../utils/connect";
 import Player51 from "./Player51";
 import Tag from "./Tags/Tag";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { getLabelText, stringify } from "../utils/labels";
-import { useFastRerender, useFrameLabels } from "../utils/hooks";
+import { useFastRerender, useVideoData } from "../utils/hooks";
 
 const SampleDiv = animated(styled.div`
   position: relative;
@@ -44,9 +41,9 @@ const useHoverLoad = (socket, sample) => {
   const [loaded, setLoaded] = useState(null);
   const viewCounter = useRecoilValue(atoms.viewCounter);
 
-  const [requested, requestLabels] = useFrameLabels(
+  const [requested, requestLabels] = useVideoData(
     socket,
-    sample._id,
+    sample,
     (data, player) => {
       if (!data) return;
       const { labels } = data;
@@ -89,16 +86,19 @@ const useHoverLoad = (socket, sample) => {
   return [bar, onMouseEnter, onMouseLeave];
 };
 
-const Sample = ({ dispatch, sample, metadata, port, setView }) => {
+const Sample = ({ sample, metadata, setView }) => {
+  const port = useRecoilValue(atoms.port);
   const host = `http://127.0.0.1:${port}`;
   const id = sample._id;
   const src = `${host}?path=${sample.filepath}&id=${id}`;
-  const socket = getSocket(port, "state");
+  const socket = useRecoilValue(selectors.socket);
   const filter = useRecoilValue(selectors.labelFilters);
   const colorMap = useRecoilValue(atoms.colorMap);
-  const activeLabels = useRecoilValue(atoms.activeLabels);
+  const activeLabels = useRecoilValue(atoms.activeLabels("sample"));
+  const activeFrameLabels = useRecoilValue(atoms.activeLabels("frame"));
   const activeTags = useRecoilValue(atoms.activeTags);
-  const activeOther = useRecoilValue(atoms.activeOther);
+  const activeOther = useRecoilValue(atoms.activeOther("sample"));
+  const setStateDescription = useSetRecoilState(atoms.stateDescription);
 
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     atoms.selectedSamples
@@ -117,9 +117,7 @@ const Sample = ({ dispatch, sample, metadata, port, setView }) => {
     }
     setSelectedSamples(newSelected);
     rerender();
-    socket.emit(event, id, (data) => {
-      dispatch(updateState(data));
-    });
+    socket.emit(event, id, (data) => setStateDescription(data));
   };
   const eventHandlers = {
     onClick: () => handleClick(),
@@ -186,6 +184,7 @@ const Sample = ({ dispatch, sample, metadata, port, setView }) => {
         metadata={metadata}
         thumbnail={true}
         activeLabels={activeLabels}
+        activeFrameLabels={activeFrameLabels}
         {...eventHandlers}
         filterSelector={selectors.labelFilters}
         onMouseEnter={onMouseEnter}
@@ -236,4 +235,4 @@ const Sample = ({ dispatch, sample, metadata, port, setView }) => {
   );
 };
 
-export default connect(Sample);
+export default Sample;

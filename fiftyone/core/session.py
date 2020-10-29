@@ -207,6 +207,7 @@ class Session(foc.HasClient):
         self.state.view = None
         self.state.selected = []
         self.state.selected_objects = []
+        self.state.filters = {}
 
     @_update_state
     def clear_dataset(self):
@@ -237,6 +238,7 @@ class Session(foc.HasClient):
 
         self.state.selected = []
         self.state.selected_objects = []
+        self.state.filters = {}
 
     @_update_state
     def clear_view(self):
@@ -247,8 +249,8 @@ class Session(foc.HasClient):
 
     @property
     def selected(self):
-        """A list of sample IDs of the currently selected samples in the
-        FiftyOne App.
+        """A list of sample IDs of the currently selected samples in the App,
+        if any.
         """
         return list(self.state.selected)
 
@@ -257,11 +259,11 @@ class Session(foc.HasClient):
         """A list of objects currently selected in the App.
 
         Items are dictionaries with the following keys:
-        - ``object_id``: the internal ID of the object
-        - ``sample_id``: the ID of the sample containing the object
-        - ``field``: the field name containing the object
-        - ``frame_number``: the index of the frame (starting at 1) containing
-          the object - only present if the sample is a video
+            - ``object_id``: the internal ID of the object
+            - ``sample_id``: the ID of the sample containing the object
+            - ``field``: the field name containing the object
+            - ``frame_number``: the index of the frame (starting at 1) containing
+                the object - only present if the sample is a video
         """
         return list(self.state.selected_objects)
 

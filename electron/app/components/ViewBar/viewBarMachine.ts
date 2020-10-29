@@ -1,7 +1,6 @@
 import { Machine, actions, assign, spawn, send } from "xstate";
 import uuid from "uuid-v4";
 
-import { RESERVED_FIELDS } from "../../utils/labels";
 import viewStageMachine, {
   createParameter,
 } from "./ViewStage/viewStageMachine";
@@ -112,7 +111,7 @@ const viewsAreEqual = (viewOne, viewTwo) => {
 };
 
 function setStages(ctx, stageInfo) {
-  const view = ctx.stateDescription.view.view;
+  const view = ctx.view;
   const stageMap = Object.fromEntries(stageInfo.map((s) => [s.name, s.params]));
   if (
     viewsAreEqual(view, serializeView(ctx.stages, stageMap, ctx.fieldNames))
@@ -177,8 +176,8 @@ const viewBarMachine = Machine(
       stages: [],
       stageInfo: undefined,
       activeStage: 0,
-      setStateDescription: undefined,
-      stateDescription: undefined,
+      view: undefined,
+      setView: undefined,
       port: undefined,
       fieldNames: [],
     },
@@ -188,7 +187,7 @@ const viewBarMachine = Machine(
         always: [
           {
             target: "running.hist",
-            cond: (ctx) => ctx.stageInfo && ctx.stateDescription.view,
+            cond: (ctx) => ctx.stageInfo && ctx.view,
             actions: [
               assign({
                 stages: (ctx) => setStages(ctx, ctx.stageInfo),
@@ -207,9 +206,9 @@ const viewBarMachine = Machine(
           onDone: {
             target: "running",
             actions: assign({
-              stageInfo: (ctx, e) => e.data.stages,
+              stageInfo: (_, e) => e.data.stages,
               stages: (ctx, e) => {
-                const view = ctx.stateDescription.view.view;
+                const view = ctx.view;
                 if (view.length === 0)
                   return makeEmptyView(ctx.fieldNames, e.data.stages);
                 return setStages(ctx, e.data.stages);
@@ -502,19 +501,9 @@ const viewBarMachine = Machine(
           assign({
             port: (_, { port }) => port,
             socket: (_, { port }) => getSocket(port, "state"),
-            stateDescription: (_, e) => {
-              return e.stateDescription;
-            },
-            setStateDescription: (_, e) => e.setStateDescription,
-            fieldNames: (_, e) => {
-              const fieldSchema = (e.stateDescription || {}).field_schema;
-              if (fieldSchema) {
-                return Object.keys(fieldSchema).filter(
-                  (f) => !RESERVED_FIELDS.includes(f)
-                );
-              }
-              return [];
-            },
+            view: (_, { view }) => view,
+            setView: (_, { setView }) => setView,
+            fieldNames: (_, { fieldNames }) => fieldNames,
           }),
           "sendStagesUpdate",
         ],
@@ -535,24 +524,13 @@ const viewBarMachine = Machine(
           })
         );
       },
-      submit: ({ socket, stateDescription, stages, stageInfo, fieldNames }) => {
+      submit: ({ stages, stageInfo, fieldNames, setView, view }) => {
         const stageMap = Object.fromEntries(
           stageInfo.map((s) => [s.name, s.params])
         );
         const newView = serializeView(stages, stageMap, fieldNames);
-        const {
-          view: { dataset },
-        } = stateDescription;
-        if (viewsAreEqual(newView, stateDescription.view.view)) return;
-        const newState = {
-          ...stateDescription,
-          filter_stages: {},
-          view: {
-            dataset,
-            view: newView,
-          },
-        };
-        socket.emit("update", { data: newState, include_self: true });
+        if (viewsAreEqual(newView, view)) return;
+        setView(newView);
       },
     },
   }

@@ -408,6 +408,7 @@ class SampleView(_DatasetSample):
 
         if self.media_type == fomm.VIDEO:
             self._frames = fofr.Frames()
+            self._frames._serve(self)
 
         super().__init__(dataset=dataset)
 
@@ -427,7 +428,7 @@ class SampleView(_DatasetSample):
         )
 
     def __getattr__(self, name):
-        if not name.startswith("_"):
+        if not name.startswith("_") and name != "frames":
             if (
                 self._selected_fields is not None
                 and name not in self._selected_fields

@@ -21,3 +21,11 @@ export function useSubscribe(socket, event, callback) {
     };
   }, []);
 }
+
+export async function request(socket, event, data = null) {
+  return new Promise(function (resolve, reject) {
+    socket.emit(event, data, function (response) {
+      resolve(response);
+    });
+  });
+}

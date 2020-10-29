@@ -45,6 +45,7 @@ class Frames(object):
         self._iter = None
         self._iter_frame = None
         self._replacements = {}
+        self._replacements_complete = False
 
     def __str__(self):
         return "<%s: %s>" % (self.__class__.__name__, fou.pformat(dict(self)))
@@ -59,6 +60,14 @@ class Frames(object):
 
     def _set_replacement(self, doc):
         self._replacements[doc.get_field("frame_number")] = doc
+
+    def _set_replacements(self, frames):
+        frame_dict_to_doc = self._sample._dataset._frame_dict_to_doc
+        for frame in frames:
+            if frame["frame_number"] in self._replacements:
+                continue
+            doc = frame_dict_to_doc(frame)
+            self._replacements[doc.frame_number] = doc
 
     def _save_replacements(self, insert=False):
         if not self._replacements:

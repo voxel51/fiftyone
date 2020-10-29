@@ -1,28 +1,19 @@
 import React from "react";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 
-import { updateState } from "../actions/update";
 import * as atoms from "../recoil/atoms";
-import connect from "../utils/connect";
-import { getSocket } from "../utils/socket";
+import * as selectors from "../recoil/selectors";
 
 import DropdownTag from "./Tags/DropdownTag";
 
-const SelectionMenu = ({ port, dispatch }) => {
-  const socket = getSocket(port, "state");
+const SelectionMenu = () => {
+  const socket = useRecoilValue(selectors.socket);
   const [stateDescription, setStateDescription] = useRecoilState(
     atoms.stateDescription
   );
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     atoms.selectedSamples
   );
-
-  // from App.tsx - todo: refactor into action?
-  const handleStateUpdate = (data) => {
-    setStateDescription(data);
-    setSelectedSamples(new Set(data.selected));
-    dispatch(updateState(data));
-  };
 
   const clearSelection = () => {
     setSelectedSamples(new Set());
@@ -74,4 +65,4 @@ const SelectionMenu = ({ port, dispatch }) => {
   );
 };
 
-export default connect(SelectionMenu);
+export default SelectionMenu;
