@@ -10,8 +10,8 @@ FiftyOne 0.6.4
 App
 ^^^
 - Improved page load times for video datasets
-- Improved support for Frame and Sample level labels in display options
-  for video datasets
+- Improved support for frame- and sample-level labels in display options for
+  video datasets
 - Added support for all label types in the labels distributions tab
 - Added support for selecting and hiding objects in the sample modal
 
@@ -26,12 +26,17 @@ Core
   and
   :meth:`exclude_objects() <fiftyone.core.collections.SampleCollection.exclude_objects>`
   to select or exclude objects from a dataset or view
-- Added an :mod:`Aggregations <fiftyone.core.aggregations>` framework for
+- Added an :mod:`aggregations framework <fiftyone.core.aggregations>` for
   computing aggregate values via
   :meth:`aggregate() <fiftyone.core.collections.SampleCollection.aggregate>`
 - Added the
   :attr:`selected_objects <fiftyone.core.session.Session.selected_objects>`
   session attribute, which holds the currently selected objects in the App
+- Added support for
+  :meth:`adding <fiftyone.core.dataset.Dataset.add_frame_field>`,
+  :meth:`renaming <fiftyone.core.dataset.Dataset.rename_frame_field>`, and
+  :meth:`deleting <fiftyone.core.dataset.Dataset.delete_frame_field>`
+  frame-level fields of video datasets
 
 Utils
 ^^^^^
@@ -40,6 +45,12 @@ Utils
   that emits tensors of patches extracted from images defined by sets of
   :class:`Detections <fiftyone.core.labels.Detections>` associated with the
   images
+
+Brain
+^^^^^
+- Added support for computing uniqueness within regions-of-interest specified
+  by a set of detections/polylines when using
+  :meth:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`
 
 FiftyOne 0.6.3
 --------------
@@ -61,8 +72,7 @@ Core
   the :ref:`Dataset Zoo <dataset-zoo>`
 - Added new versions of `COCO <https://cocodataset.org/#home>`_ that contain
   instance segmentations to the :ref:`Dataset Zoo <dataset-zoo>`
-- Added :mod:`utilities <fiftyone.utils.selection>` for selecting objects from
-  datasets via the Python library
+- Added utilities for selecting objects from datasets via the Python library
 - Added a boolean `only_matches` parameter to all filter stages that enables
   the user to specify that a view should only contain samples that match the
   given filter
@@ -121,9 +131,9 @@ Core
 
 Brain
 ^^^^^
-- :meth:`compute_uniqueness() <fiftyone.brain.uniqueness.compute_uniqueness>`
-  and :meth:`compute_hardness() <fiftyone.brain.hardness.compute_hardness>` now
-  support multilabel classification tasks
+- :meth:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>` and
+  :meth:`compute_hardness() <fiftyone.brain.compute_hardness>` now support
+  multilabel classification tasks
 
 FiftyOne 0.6.1
 --------------
