@@ -78,6 +78,7 @@ function App(props: Props) {
   };
 
   const getAllStats = ({ view: newView, filters }) => {
+    newView = newView || [];
     setDatasetStats([]);
     setExtendedDatasetStats([]);
     getStats(newView, setDatasetStats);
