@@ -29,6 +29,9 @@ class Aggregation(object):
 
     :class:`Aggregation` instances represent an aggregation or reduction
     of a :class:`fiftyone.core.collections.SampleCollection` instance.
+
+    Args:
+        field_name: the name of the field to compute on
     """
 
     def __init__(self, field_name):
@@ -36,7 +39,7 @@ class Aggregation(object):
 
     @property
     def field_name(self):
-        """The field name of the :class:`Aggregation`"""
+        """The field name being computed on."""
         return self.field_name
 
     @property
@@ -215,8 +218,8 @@ class BoundsResult(AggregationResult):
         bounds: the inclusive (min, max) bounds tuple
     """
 
-    def __init__(self, field_name, bounds):
-        self.name = field_name
+    def __init__(self, name, bounds):
+        self.name = name
         self.bounds = bounds
 
 
@@ -301,8 +304,8 @@ class ConfidenceBoundsResult(AggregationResult):
         bounds: the inclusive (min, max) confidence bounds tuple
     """
 
-    def __init__(self, field_name, bounds):
-        self.name = field_name
+    def __init__(self, name, bounds):
+        self.name = name
         self.bounds = bounds
 
 
@@ -382,10 +385,11 @@ class CountResult(AggregationResult):
         count: the count
     """
 
-    def __init__(self, field_name, count):
-        self.name = field_name
-        if field_name is None:
-            self.name = "count"
+    def __init__(self, name, count):
+        if name is None:
+            name = "count"
+
+        self.name = name
         self.count = count
 
 
@@ -460,8 +464,8 @@ class CountLabelsResult(AggregationResult):
         labels: a dict mapping the label to the number of occurrences
     """
 
-    def __init__(self, field_name, labels):
-        self.name = field_name
+    def __init__(self, name, labels):
+        self.name = name
         self.labels = labels
 
 
@@ -540,8 +544,8 @@ class CountValuesResult(AggregationResult):
         values: a dict mapping the value to the number of occurrences
     """
 
-    def __init__(self, field_name, values):
-        self.name = field_name
+    def __init__(self, name, values):
+        self.name = name
         self.values = values
 
 
@@ -640,8 +644,8 @@ class DistinctResult(AggregationResult):
         values: a sorted list of distinct values
     """
 
-    def __init__(self, field_name, values):
-        self.name = field_name
+    def __init__(self, name, values):
+        self.name = name
         self.values = values
 
 
@@ -720,6 +724,6 @@ class DistinctLabelsResult(AggregationResult):
         labels: a sorted list of distinct labels
     """
 
-    def __init__(self, field_name, labels):
-        self.name = field_name
+    def __init__(self, name, labels):
+        self.name = name
         self.labels = labels
