@@ -259,11 +259,12 @@ class Session(foc.HasClient):
         """A list of objects currently selected in the App.
 
         Items are dictionaries with the following keys:
-            - ``object_id``: the internal ID of the object
-            - ``sample_id``: the ID of the sample containing the object
-            - ``field``: the field name containing the object
-            - ``frame_number``: the index of the frame (starting at 1) containing
-                the object - only present if the sample is a video
+
+            -   ``object_id``: the internal ID of the object
+            -   ``sample_id``: the ID of the sample containing the object
+            -   ``field``: the field name containing the object
+            -   ``frame_number``: the frame number containing the object (only
+                applicable to video samples)
         """
         return list(self.state.selected_objects)
 
