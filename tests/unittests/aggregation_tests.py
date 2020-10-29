@@ -14,6 +14,17 @@ from decorators import drop_datasets
 
 class DatasetTests(unittest.TestCase):
     @drop_datasets
+    def test_order(self):
+        d = fo.Dataset()
+        s = fo.Sample("image.jpeg")
+        s["number"] = 0
+        s["numbers"] = [0, 1]
+        d.add_sample(s)
+        results = d.aggregate([fo.Count("number"), fo.Count("numbers")])
+        self.assertEqual(results[0].name, "number")
+        self.assertEqual(results[1].name, "numbers")
+
+    @drop_datasets
     def test_bounds(self):
         d = fo.Dataset()
         d.add_sample_field("numbers", fo.ListField, subfield=fo.IntField())

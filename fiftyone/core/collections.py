@@ -139,13 +139,11 @@ class SampleCollection(object):
             frame_schema = None
 
         pipelines = {}
-        agg_map = {}
         for agg in aggregations:
             if not isinstance(agg, Aggregation):
                 raise TypeError("'%s' is not a an Aggregation" % agg.__class__)
 
             field = agg._get_output_field(self)
-            agg_map[field] = agg
             pipelines[field] = agg._to_mongo(
                 self._dataset, schema, frame_schema
             )
@@ -158,9 +156,11 @@ class SampleCollection(object):
             pass
 
         results = []
-        for field, agg in agg_map.items():
+        for agg in aggregations:
             try:
-                results.append(agg._get_result(result_d[field][0]))
+                results.append(
+                    agg._get_result(result_d[agg._get_output_field(self)][0])
+                )
             except:
                 results.append(agg._get_default_result())
 
