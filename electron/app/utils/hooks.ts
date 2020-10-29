@@ -99,23 +99,30 @@ export const useFastRerender = () => {
   return rerender;
 };
 
-export const useFrameLabels = (socket, sampleId, callback = null) => {
+export const useVideoData = (socket, sample, callback = null) => {
+  const { _id: sampleId, filepath } = sample;
   const [requested, setRequested] = useRecoilState(
     atoms.sampleVideoDataRequested(sampleId)
   );
   const setVideoLabels = useSetRecoilState(atoms.sampleVideoLabels(sampleId));
   const setFrameData = useSetRecoilState(atoms.sampleFrameData(sampleId));
+  const setFrameRate = useSetRecoilState(atoms.sampleFrameRate(sampleId));
   const viewCounter = useRecoilValue(atoms.viewCounter);
   return [
     requested,
     (...args) => {
       if (requested !== viewCounter) {
         setRequested(viewCounter);
-        socket.emit("get_frame_labels", sampleId, ({ labels, frames }) => {
-          setVideoLabels(labels);
-          setFrameData(frames);
-          callback && callback({ labels, frames }, ...args);
-        });
+        socket.emit(
+          "get_video_data",
+          { _id: sampleId, filepath },
+          ({ labels, frames, fps }) => {
+            setVideoLabels(labels);
+            setFrameData(frames);
+            setFrameRate(fps);
+            callback && callback({ labels, frames }, ...args);
+          }
+        );
       } else {
         callback && callback(null, ...args);
       }

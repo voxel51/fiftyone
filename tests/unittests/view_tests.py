@@ -489,7 +489,7 @@ class AggregationTests(unittest.TestCase):
         ]
 
         for ds in dataset, dataset.view():
-            for d in ds.aggregate(pipeline):
+            for d in ds._aggregate(pipeline):
                 tag = d["_id"]
                 count = d["count"]
                 self.assertEqual(count, counts[tag])
@@ -743,7 +743,11 @@ class ViewStageTests(unittest.TestCase):
         for sample in self.dataset.select_fields():
             self.assertSetEqual(
                 sample.selected_field_names,
-                set(default_sample_fields(DatasetSampleDocument)),
+                set(
+                    default_sample_fields(
+                        DatasetSampleDocument, include_private=True
+                    )
+                ),
             )
             self.assertIsNone(sample.excluded_field_names)
             sample.filepath

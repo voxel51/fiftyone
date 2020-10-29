@@ -40,7 +40,6 @@ const InfoWrapper = styled.div`
 export default ({
   thumbnail,
   sample,
-  metadata = {},
   src,
   style,
   onClick,
@@ -50,7 +49,7 @@ export default ({
   onMouseEnter = () => {},
   onMouseLeave = () => {},
   activeLabels,
-  frameLabelsActive,
+  activeFrameLabels,
   fieldSchema = {},
   filterSelector,
   playerRef,
@@ -59,6 +58,7 @@ export default ({
   onSelectObject,
 }) => {
   const filter = useRecoilValue(filterSelector);
+  const fps = useRecoilValue(atoms.sampleFrameRate(sample._id));
   const colorMap = useRecoilValue(atoms.colorMap);
   const mediaType = useRecoilValue(selectors.mediaType);
   if (overlay === null) {
@@ -74,10 +74,13 @@ export default ({
     "image/jpg";
   const playerActiveLabels = {
     ...activeLabels,
+    ...Object.keys(activeFrameLabels).reduce((acc, cur) => {
+      return {
+        ...acc,
+        ["frames." + cur]: activeFrameLabels[cur],
+      };
+    }, {}),
   };
-  if (mediaType === "video") {
-    playerActiveLabels.frames = frameLabelsActive;
-  }
 
   const [player] = useState(() => {
     try {
@@ -87,7 +90,6 @@ export default ({
           type: mimetype,
         },
         overlay,
-        fps: metadata.fps,
         colorMap,
         activeLabels: playerActiveLabels,
         filter,
@@ -127,12 +129,13 @@ export default ({
         activeLabels: playerActiveLabels,
         filter,
         colorMap,
+        fps,
       });
       if (!thumbnail) {
         player.updateOverlay(overlay);
       }
     }
-  }, [player, filter, overlay, playerActiveLabels, colorMap]);
+  }, [player, filter, overlay, playerActiveLabels, colorMap, fps]);
 
   useEffect(() => {
     if (player && selectedObjects) {

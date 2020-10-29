@@ -9,7 +9,7 @@ on:
     tags:
       - v*
   pull_request:
-    types: [opened, synchronize, ready_for_review]
+    types: [opened, synchronize]
     branches:
       - develop
       - rel-*
@@ -21,7 +21,6 @@ on:
 jobs:
   chromatic:
     runs-on: ubuntu-18.04
-    if: github.event.pull_request.draft == false
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v1
@@ -38,3 +37,8 @@ jobs:
       - name: Publish storybook
         working-directory: electron
         run: yarn chromatic --project-token=${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+      - uses: actions/upload-artifact@v2
+        if: success() || failure()
+        with:
+          name: build-storybook-log
+          path: electron/build-storybook.log

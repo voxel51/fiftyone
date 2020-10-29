@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
 import uuid from "uuid-v4";
@@ -249,11 +249,11 @@ const ClassFilterContainer = styled.div`
   margin: 0.25rem 0;
 `;
 
-const ClassFilter = ({ name, atoms }) => {
+const ClassFilter = ({ name, atoms, path }) => {
   const theme = useContext(ThemeContext);
-  const classes = useRecoilValue(selectors.labelClasses(name));
+  const classes = useRecoilValue(selectors.labelClasses(path));
   const [selectedClasses, setSelectedClasses] = useRecoilState(
-    atoms.includeLabels(name)
+    atoms.includeLabels(path)
   );
   const [state, send] = useMachine(classFilterMachine);
   const inputRef = useRef();
@@ -431,19 +431,20 @@ const HiddenObjectFilter = ({ entry }) => {
 const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
   const port = useRecoilValue(atoms.port);
   const socket = getSocket(port, "state");
-  const [range, setRange] = useRecoilState(rest.confidenceRange(entry.name));
+  const [range, setRange] = useRecoilState(rest.confidenceRange(entry.path));
   const [includeNone, setIncludeNone] = useRecoilState(
-    rest.includeNoConfidence(entry.name)
+    rest.includeNoConfidence(entry.path)
   );
-  const bounds = useRecoilValue(rest.confidenceBounds(entry.name));
-  const [labels, setLabels] = useRecoilState(rest.includeLabels(entry.name));
-  const fieldIsFiltered = useRecoilValue(rest.fieldIsFiltered(entry.name));
+  const bounds = useRecoilValue(rest.confidenceBounds(entry.path));
+  const [labels, setLabels] = useRecoilState(rest.includeLabels(entry.path));
+  const fieldIsFiltered = useRecoilValue(rest.fieldIsFiltered(entry.path));
   const mediaType = useRecoilValue(selectors.mediaType);
+  const setExtendedDatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
 
   const [stateDescription, setStateDescription] = useRecoilState(
     atoms.stateDescription
   );
-  const filterStage = useRecoilValue(selectors.filterStage(entry.name));
+  const filterStage = useRecoilValue(selectors.filterStage(entry.path));
   useEffect(() => {
     if (filterStage) return;
     setLabels([]);
@@ -478,7 +479,8 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
   if (!modal) {
     useEffect(() => {
       const newState = JSON.parse(JSON.stringify(stateDescription));
-      if (!fieldIsFiltered && !(entry.name in newState.filter_stages)) return;
+      if (!fieldIsFiltered && !(entry.name in newState.filters)) return;
+      setExtendedDatasetStats([]);
       let fieldName = entry.name;
       if (mediaType === "video") {
         fieldName = "frames." + entry.name;
@@ -492,24 +494,26 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
         hasBounds
       );
       if (
-        JSON.stringify(filter) ===
-        JSON.stringify(newState.filter_stages[entry.name])
+        JSON.stringify(filter) === JSON.stringify(newState.filters[entry.name])
       )
         return;
-      if (!fieldIsFiltered && entry.name in newState.filter_stages) {
-        delete newState.filter_stages[entry.name];
+      if (!fieldIsFiltered && entry.name in newState.filters) {
+        delete newState.filters[entry.name];
       } else {
-        newState.filter_stages[entry.name] = filter;
+        newState.filters[entry.name] = filter;
       }
       setStateDescription(newState);
-      socket.emit(
-        "update",
-        {
-          data: newState,
-          include_self: false,
-        },
-        (data) => setStateDescription(data)
-      );
+      socket.emit("update", {
+        data: newState,
+        include_self: false,
+      });
+      const extendedView = [...(newState.view || [])];
+      for (const stage in newState.filters) {
+        extendedView.push(newState.filters[stage]);
+      }
+      socket.emit("get_statistics", extendedView, (data) => {
+        setExtendedDatasetStats(data);
+      });
     }, [bounds, range, includeNone, labels, fieldIsFiltered]);
   }
 
@@ -517,15 +521,15 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
     <animated.div style={{ ...props, overflow }}>
       <div ref={ref}>
         <div style={{ margin: 3 }}>
+          <ClassFilter name={entry.name} atoms={rest} path={entry.path} />
           <HiddenObjectFilter entry={entry} />
-          <ClassFilter name={entry.name} atoms={rest} />
           <NamedRangeSlider
             color={entry.color}
             name={"Confidence"}
             valueName={"confidence"}
-            includeNoneAtom={rest.includeNoConfidence(entry.name)}
-            boundsAtom={rest.confidenceBounds(entry.name)}
-            rangeAtom={rest.confidenceRange(entry.name)}
+            includeNoneAtom={rest.includeNoConfidence(entry.path)}
+            boundsAtom={rest.confidenceBounds(entry.path)}
+            rangeAtom={rest.confidenceRange(entry.path)}
             maxMin={0}
             minMax={1}
           />

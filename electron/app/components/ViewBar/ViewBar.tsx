@@ -6,7 +6,8 @@ import { GlobalHotKeys } from "react-hotkeys";
 import { Close, Help } from "@material-ui/icons";
 
 import { useOutsideClick } from "../../utils/hooks";
-import { port, stateDescription } from "../../recoil/atoms";
+import * as atoms from "../../recoil/atoms";
+import * as selectors from "../../recoil/selectors";
 import ExternalLink from "../ExternalLink";
 import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";
 import viewBarMachine from "./viewBarMachine";
@@ -60,20 +61,20 @@ const viewBarKeyMap = {
 
 const ViewBar = React.memo(() => {
   const [state, send] = useMachine(viewBarMachine);
-  const [stateDescriptionValue, setStateDescription] = useRecoilState(
-    stateDescription
-  );
+  const [view, setView] = useRecoilState(selectors.view);
+  const fieldPaths = useRecoilValue(selectors.fieldPaths);
 
-  const portValue = useRecoilValue(port);
+  const port = useRecoilValue<number>(atoms.port);
 
   useEffect(() => {
     send({
       type: "UPDATE",
-      port: portValue,
-      stateDescription: stateDescriptionValue,
-      setStateDescription,
+      port,
+      view,
+      setView,
+      fieldNames: fieldPaths,
     });
-  }, [portValue, stateDescriptionValue, setStateDescription]);
+  }, [port, view]);
 
   const { stages, activeStage } = state.context;
   const barRef = useRef(null);

@@ -7,6 +7,7 @@ FiftyOne Flask server.
 """
 import argparse
 from collections import defaultdict
+from copy import copy
 import json
 import logging
 import os
@@ -23,6 +24,7 @@ import eta.core.utils as etau
 import eta.core.video as etav
 
 os.environ["FIFTYONE_SERVER"] = "1"
+import fiftyone.core.aggregations as foa
 import fiftyone.constants as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -32,10 +34,11 @@ from fiftyone.core.service import DatabaseService
 from fiftyone.core.stages import _STAGES
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
+import fiftyone.core.view as fov
 
 from json_util import convert, FiftyOneJSONEncoder
 from util import get_file_dimensions
-from pipelines import DISTRIBUTION_PIPELINES, LABELS, SCALARS
+from pipelines import DISTRIBUTION_PIPELINES, TAGS, LABELS, SCALARS
 
 
 logger = logging.getLogger(__name__)
@@ -125,12 +128,11 @@ def _catch_errors(func):
     return wrapper
 
 
-def _load_state(trigger_update=False, with_stats=False):
+def _load_state(trigger_update=False):
     def decorator(func):
         def wrapper(self, *args, **kwargs):
             state = self.state.copy()
-            state["with_stats"] = with_stats
-            state = fos.StateDescriptionWithDerivables.from_dict(state)
+            state = fos.StateDescription.from_dict(state)
             state = func(self, state, *args, **kwargs)
             self.state = state.serialize()
             emit(
@@ -172,10 +174,10 @@ def _get_label_object_ids(label):
     raise TypeError("Cannot serialize label type: " + str(type(label)))
 
 
-def _make_frame_labels(name, label, frame_number):
+def _make_frame_labels(name, label, frame_number, prefix=""):
     label = fol.ImageLabel.from_dict(label)
     labels = etav.VideoFrameLabels.from_image_labels(
-        label.to_image_labels(name=name), frame_number,
+        label.to_image_labels(name=prefix + name), frame_number,
     )
 
     for obj in labels.objects:
@@ -199,7 +201,7 @@ class StateController(Namespace):
     """State controller.
 
     Attributes:
-        state: a :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+        state: a :class:`fiftyone.core.state.StateDescription`
                instance
 
     Args:
@@ -208,7 +210,7 @@ class StateController(Namespace):
     """
 
     def __init__(self, *args, **kwargs):
-        self.state = fos.StateDescriptionWithDerivables().serialize()
+        self.state = fos.StateDescription().serialize()
         self.prev_state = self.state
         super().__init__(*args, **kwargs)
 
@@ -229,10 +231,7 @@ class StateController(Namespace):
                 :class:`fiftyone.core.state.StateDescription`
         """
         state = data["data"]
-        state["with_stats"] = True
-        self.state = fos.StateDescriptionWithDerivables.from_dict(
-            state
-        ).serialize()
+        self.state = fos.StateDescription.from_dict(state).serialize()
         emit(
             "update",
             self.state,
@@ -250,14 +249,28 @@ class StateController(Namespace):
         }
 
     @_catch_errors
-    @_load_state(with_stats=True)
+    @_load_state()
     def on_get_current_state(self, state, _):
         """Gets the current state.
 
         Returns:
-            a :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+            a :class:`fiftyone.core.state.StateDescription`
         """
         return state
+
+    @_catch_errors
+    def on_get_statistics(self, stages):
+        """Gets the statistics for a view.
+
+        Returns:
+            a :class:`fiftyone.core.state.DatasetStatistics`
+        """
+        state = fos.StateDescription.from_dict(self.state)
+        if state.dataset is None:
+            return []
+        view = fov.DatasetView(state.dataset)
+        view._stages = [fosg.ViewStage._from_dict(s) for s in stages]
+        return fos.DatasetStatistics(view).serialize()["stats"]
 
     @_catch_errors
     @_load_state()
@@ -266,12 +279,12 @@ class StateController(Namespace):
 
         Args:
             state: the current
-                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+                :class:`fiftyone.core.state.StateDescription`
             _id: the sample ID
 
         Returns:
             the updated
-                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+                :class:`fiftyone.core.state.StateDescription`
         """
         selected = set(state.selected)
         selected.add(_id)
@@ -285,12 +298,12 @@ class StateController(Namespace):
 
         Args:
             state: the current
-                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+                :class:`fiftyone.core.state.StateDescription`
             _id: the sample ID
 
         Returns:
             the updated
-                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+                :class:`fiftyone.core.state.StateDescription`
         """
         selected = set(state.selected)
         selected.remove(_id)
@@ -304,11 +317,11 @@ class StateController(Namespace):
 
         Args:
             state: the current
-                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+                :class:`fiftyone.core.state.StateDescription`
 
         Returns:
             the updated
-                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+                :class:`fiftyone.core.state.StateDescription`
         """
         state.selected = []
         return state
@@ -319,8 +332,7 @@ class StateController(Namespace):
         """Sets the entire selected object list.
 
         Args:
-            state: the current
-                :class:`fiftyone.core.state.StateDescriptionWithDerivables`
+            state: the current :class:`fiftyone.core.state.StateDescription`
             selected_objects: a list of selected objects
         """
         if not isinstance(selected_objects, list):
@@ -330,7 +342,7 @@ class StateController(Namespace):
         return state
 
     @_catch_errors
-    def on_get_frame_labels(self, sample_id):
+    def on_get_video_data(self, sample_d):
         """Gets the frame labels for video samples
 
         Args:
@@ -340,20 +352,21 @@ class StateController(Namespace):
             ...
         """
         state = self.state.copy()
-        state["with_stats"] = False
-        state = fos.StateDescriptionWithDerivables.from_dict(state)
-        find_d = {"_sample_id": ObjectId(sample_id)}
+        state = fos.StateDescription.from_dict(state)
+        find_d = {"_sample_id": ObjectId(sample_d["_id"])}
         labels = etav.VideoLabels()
         frames = list(state.dataset._frame_collection.find(find_d))
+        sample = state.dataset[sample_d["_id"]].to_mongo_dict()
         convert(frames)
-        sample = state.dataset[sample_id].to_mongo_dict()
 
         for frame_dict in frames:
             frame_number = frame_dict["frame_number"]
             frame_labels = etav.VideoFrameLabels(frame_number=frame_number)
             for k, v in frame_dict.items():
                 if isinstance(v, dict) and "_cls" in v:
-                    field_labels = _make_frame_labels(k, v, frame_number)
+                    field_labels = _make_frame_labels(
+                        k, v, frame_number, prefix="frames."
+                    )
                     frame_labels.merge_labels(field_labels)
 
             labels.add_frame(frame_labels)
@@ -372,7 +385,8 @@ class StateController(Namespace):
 
             labels.add_frame(frame_labels, overwrite=False)
 
-        return {"frames": frames, "labels": labels.serialize()}
+        fps = etav.get_frame_rate(sample_d["filepath"])
+        return {"frames": frames, "labels": labels.serialize(), "fps": fps}
 
     @_catch_errors
     def on_page(self, page, page_length=20):
@@ -385,8 +399,7 @@ class StateController(Namespace):
         Returns:
             the list of sample dicts for the page
         """
-        self.state["with_stats"] = False
-        state = fos.StateDescriptionWithDerivables.from_dict(self.state)
+        state = fos.StateDescription.from_dict(self.state)
         if state.view is not None:
             view = state.view
         elif state.dataset is not None:
@@ -394,7 +407,7 @@ class StateController(Namespace):
         else:
             return []
 
-        for stage_dict in state.filter_stages.values():
+        for stage_dict in state.filters.values():
             stage = fosg.ViewStage._from_dict(stage_dict)
             if type(stage) in _WITHOUT_PAGINATION_EXTENDED_STAGES:
                 continue
@@ -402,7 +415,9 @@ class StateController(Namespace):
             view = view.add_stage(stage)
 
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
-        samples = [s.to_mongo_dict() for s in view]
+        samples = [
+            s for s in view._aggregate(hide_frames=True, squash_frames=True)
+        ]
         convert(samples)
 
         more = False
@@ -416,8 +431,6 @@ class StateController(Namespace):
             r["width"] = w
             r["height"] = h
             # default to image
-            if r["sample"].get("media_type", fom.IMAGE) == fom.VIDEO:
-                r["fps"] = etav.get_frame_rate(r["sample"]["filepath"])
 
         return {"results": results, "more": more}
 
@@ -432,13 +445,67 @@ class StateController(Namespace):
         Returns:
             a list of distributions
         """
-        state = fos.StateDescriptionWithDerivables.from_dict(self.state)
+        state = fos.StateDescription.from_dict(self.state)
         if state.view is not None:
             view = state.view
         elif state.dataset is not None:
             view = state.dataset.view()
         else:
             return []
+
+        if group == LABELS:
+            aggregations = []
+            fields = []
+            for name, field in view.get_field_schema().items():
+                if isinstance(field, fof.EmbeddedDocumentField) and issubclass(
+                    field.document_type, fol.Label
+                ):
+                    aggregations.append(foa.CountLabels(name))
+                    fields.append(field)
+
+            if view.media_type == fom.VIDEO:
+                for name, field in view.get_frame_field_schema().items():
+                    if isinstance(
+                        field, fof.EmbeddedDocumentField
+                    ) and issubclass(field.document_type, fol.Label):
+                        aggregations.append(foa.CountLabels("frames." + name))
+                        fields.append(field)
+
+            results = []
+            for idx, result in enumerate(view.aggregate(aggregations)):
+                results.append(
+                    {
+                        "type": fields[idx].document_type.__name__,
+                        "name": result.name,
+                        "data": sorted(
+                            [
+                                {"key": k, "count": v}
+                                for k, v in result.labels.items()
+                            ],
+                            key=lambda i: i["count"],
+                            reverse=True,
+                        ),
+                    }
+                )
+
+            return results
+
+        if group == TAGS:
+            result = view.aggregate(foa.CountValues("tags"))
+            return [
+                {
+                    "type": "list",
+                    "name": result.name,
+                    "data": sorted(
+                        [
+                            {"key": k, "count": v}
+                            for k, v in result.values.items()
+                        ],
+                        key=lambda i: i["count"],
+                        reverse=True,
+                    ),
+                }
+            ]
 
         return _get_distributions(view, group)
 
@@ -451,7 +518,7 @@ def _get_distributions(view, group):
     if group == SCALARS:
         _numeric_distribution_pipelines(view, pipeline)
 
-    result = list(view.aggregate(pipeline))
+    result = list(view._aggregate(pipeline))
 
     if group in {LABELS, SCALARS}:
         new_result = []
@@ -482,7 +549,7 @@ def _numeric_bounds(view, numerics):
             }
         ]
 
-    return list(view.aggregate(bounds_pipeline))[0] if len(numerics) else {}
+    return list(view._aggregate(bounds_pipeline))[0] if len(numerics) else {}
 
 
 def _numeric_distribution_pipelines(view, pipeline, buckets=50):

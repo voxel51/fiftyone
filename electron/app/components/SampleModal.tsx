@@ -12,19 +12,14 @@ import { Button, ModalFooter } from "./utils";
 import * as selectors from "../recoil/selectors";
 import * as atoms from "../recoil/atoms";
 import { SampleContext } from "../utils/context";
-import { getSocket } from "../utils/socket";
 
 import {
   useEventHandler,
   useKeydownHandler,
   useResizeHandler,
-  useFrameLabels,
+  useVideoData,
 } from "../utils/hooks";
-import {
-  formatMetadata,
-  makeLabelNameGroups,
-  stringify,
-} from "../utils/labels";
+import { formatMetadata, stringify } from "../utils/labels";
 import { useToggleSelectionObject } from "../utils/selection";
 
 type Props = {
@@ -237,24 +232,23 @@ const SampleModal = ({
   const [enableJSONFilter, setEnableJSONFilter] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const [activeLabels, setActiveLabels] = useRecoilState(
-    atoms.modalActiveLabels
+    atoms.modalActiveLabels("sample")
+  );
+  const [activeFrameLabels, setActiveFrameLabels] = useRecoilState(
+    atoms.modalActiveLabels("frame")
   );
   const mediaType = useRecoilValue(selectors.mediaType);
   const filter = useRecoilValue(selectors.sampleModalFilter);
   const activeTags = useRecoilValue(atoms.modalActiveTags);
   const tagNames = useRecoilValue(selectors.tagNames);
-  const fieldSchema = useRecoilValue(selectors.fieldSchema);
-  const labelNames = useRecoilValue(selectors.labelNames);
-  const labelTypes = useRecoilValue(selectors.labelTypes);
-  const labelNameGroups = makeLabelNameGroups(
-    fieldSchema,
-    labelNames,
-    labelTypes
+  const fieldSchema = useRecoilValue(selectors.fieldSchema("sample"));
+  const labelNameGroups = useRecoilValue(selectors.labelNameGroups("sample"));
+  const frameLabelNameGroups = useRecoilValue(
+    selectors.labelNameGroups("frame")
   );
-
-  const socket = getSocket(port, "state");
+  const socket = useRecoilValue(selectors.socket);
   const viewCounter = useRecoilValue(atoms.viewCounter);
-  const [requested, requestLabels] = useFrameLabels(socket, sample._id);
+  const [requested, requestLabels] = useVideoData(socket, sample);
   const frameData = useRecoilValue(atoms.sampleFrameData(sample._id));
   const videoLabels = useRecoilValue(atoms.sampleVideoLabels(sample._id));
   useEffect(() => {
@@ -264,6 +258,9 @@ const SampleModal = ({
   useEffect(() => {
     setActiveLabels(rest.activeLabels);
   }, [rest.activeLabels]);
+  useEffect(() => {
+    setActiveFrameLabels(rest.activeFrameLabels);
+  }, [rest.activeFrameLabels]);
 
   const toggleSelectedObject = useToggleSelectionObject(atoms.selectedObjects);
   const selectedObjectIDs = Object.keys(useRecoilValue(atoms.selectedObjects));
@@ -386,29 +383,39 @@ const SampleModal = ({
     {}
   );
 
-  const labelSampleValuesReducer = (s, filterData = false) => {
+  const labelSampleValuesReducer = (s, groups, filterData = false) => {
     const isVideo = s.media_type === "video";
-
-    return labelNameGroups.labels.reduce((obj, { name, type }) => {
+    return groups.labels.reduce((obj, { name, type }) => {
       let value = 0;
-      const resolver = (frame) => {
-        if (!frame[name]) return 0;
+      const resolver = (frame, prefix = "") => {
+        const path = prefix + name;
+        if (!frame[path]) return 0;
         return ["Detections", "Classifications", "Polylines"].includes(type)
-          ? frame[name][type.toLowerCase()].length
+          ? frame[path][type.toLowerCase()].length
           : type === "Keypoints"
-          ? frame[name].keypoints.reduce(
+          ? frame[path].keypoints.reduce(
               (acc, cur) => acc + cur.points.length,
               0
             )
           : type === "Keypoint"
-          ? frame[name].points.length
+          ? frame[path].points.length
           : 1;
       };
 
       if (!(name in s) && isVideo && frameData) {
         for (const frame of frameData) {
+          const pathFrame = Object.keys(frame).reduce(
+            (acc, cur) => ({
+              ...acc,
+              ["frames." + cur]: frame[cur],
+            }),
+            {}
+          );
           if (frame[name])
-            value += resolver(filterData ? filter(frame) : frame);
+            value += resolver(
+              filterData ? filter(pathFrame) : pathFrame,
+              "frames."
+            );
         }
       } else if (!(name in s) && isVideo) {
         value = "-";
@@ -422,9 +429,19 @@ const SampleModal = ({
     }, {});
   };
 
-  const labelSampleValues = labelSampleValuesReducer(sample);
+  const labelSampleValues = labelSampleValuesReducer(sample, labelNameGroups);
   const filteredLabelSampleValues = labelSampleValuesReducer(
     filter(sample),
+    labelNameGroups,
+    true
+  );
+  const frameLabelSampleValues = labelSampleValuesReducer(
+    sample,
+    frameLabelNameGroups
+  );
+  const filteredFrameLabelSampleValues = labelSampleValuesReducer(
+    filter(sample),
+    frameLabelNameGroups,
     true
   );
 
@@ -470,6 +487,7 @@ const SampleModal = ({
               metadata={metadata}
               colorMap={colorMap}
               activeLabels={activeLabels}
+              activeFrameLabels={activeFrameLabels}
               fieldSchema={fieldSchema}
               filterSelector={selectors.modalLabelFilters}
               playerRef={playerRef}
@@ -546,6 +564,13 @@ const SampleModal = ({
                 activeLabels,
                 false,
                 filteredLabelSampleValues
+              )}
+              frameLabels={getDisplayOptions(
+                frameLabelNameGroups.labels,
+                frameLabelSampleValues,
+                activeFrameLabels,
+                false,
+                filteredFrameLabelSampleValues
               )}
               onSelectLabel={handleSetDisplayOption(setActiveLabels)}
               scalars={getDisplayOptions(

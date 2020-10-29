@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
@@ -35,11 +35,10 @@ const makeFilter = (fieldName, range, includeNone, isDefaultRange) => {
 };
 
 const NumericFieldFilter = ({ expanded, entry }) => {
-  const port = useRecoilValue(atoms.port);
-  const socket = getSocket(port, "state");
-  const boundsAtom = selectors.numericFieldBounds(entry.name);
-  const rangeAtom = atoms.filterNumericFieldRange(entry.name);
-  const includeNoneAtom = atoms.filterNumericFieldIncludeNone(entry.name);
+  const socket = useRecoilValue(selectors.socket);
+  const boundsAtom = selectors.numericFieldBounds(entry.path);
+  const rangeAtom = atoms.filterNumericFieldRange(entry.path);
+  const includeNoneAtom = atoms.filterNumericFieldIncludeNone(entry.path);
   const [includeNone, setIncludeNone] = useRecoilState(includeNoneAtom);
   const stateDescription = useRecoilValue(atoms.stateDescription);
   const bounds = useRecoilValue(boundsAtom);
@@ -48,12 +47,18 @@ const NumericFieldFilter = ({ expanded, entry }) => {
   const [overflow, setOverflow] = useState("hidden");
   const [localBounds, setLocalBounds] = useState([null, null]);
   const isDefaultRange = range[0] === bounds[0] && range[1] === bounds[1];
-  const filterStage = useRecoilValue(selectors.filterStage(entry.name));
+  const filterStage = useRecoilValue(selectors.filterStage(entry.path));
+  const setStateDescription = useSetRecoilState(atoms.stateDescription);
+  const setExtendedDatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
+
   useEffect(() => {
     if (filterStage) return;
     setIncludeNone(true);
     setRange(bounds);
   }, [filterStage]);
+  useEffect(() => {
+    setRange(bounds);
+  }, [bounds]);
   useEffect(() => {
     if (!hasBounds) {
       return;
@@ -67,32 +72,29 @@ const NumericFieldFilter = ({ expanded, entry }) => {
   useEffect(() => {
     const newState = JSON.parse(JSON.stringify(stateDescription));
     if (range.every((e) => e === null)) return;
-    if (
-      includeNone &&
-      isDefaultRange &&
-      !(entry.name in newState.filter_stages)
-    )
+    if (includeNone && isDefaultRange && !(entry.path in newState.filters))
       return;
     const filter = makeFilter(entry.name, range, includeNone, isDefaultRange);
-    if (
-      JSON.stringify(filter) ===
-      JSON.stringify(newState.filter_stages[entry.name])
-    )
+    if (JSON.stringify(filter) === JSON.stringify(newState.filters[entry.path]))
       return;
-    if (isDefaultRange && includeNone && newState.filter_stages[entry.name]) {
-      delete newState.filter_stages[entry.name];
+    if (isDefaultRange && includeNone && newState.filters[entry.path]) {
+      delete newState.filters[entry.path];
     } else {
-      newState.filter_stages[entry.name] = filter;
+      newState.filters[entry.path] = filter;
     }
-    hasBounds &&
-      socket.emit(
-        "update",
-        {
-          data: newState,
-          include_self: true,
-        },
-        () => {}
-      );
+    if (!hasBounds) return;
+    setStateDescription(newState);
+    socket.emit("update", {
+      data: newState,
+      include_self: false,
+    });
+    const extendedView = [...(newState.view || [])];
+    for (const stage in newState.filters) {
+      extendedView.push(newState.filters[stage]);
+    }
+    socket.emit("get_statistics", extendedView, (data) => {
+      setExtendedDatasetStats(data);
+    });
   }, [range, includeNone]);
 
   const [ref, { height }] = useMeasure();

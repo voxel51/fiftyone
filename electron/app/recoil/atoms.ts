@@ -7,6 +7,26 @@ export const port = atom({
   default: parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151,
 });
 
+export const connected = atom({
+  key: "connected",
+  default: false,
+});
+
+export const datasetStats = atom({
+  key: "datasetStats",
+  default: [],
+});
+
+export const extendedDatasetStats = atom({
+  key: "extendedDatasetStats",
+  default: [],
+});
+
+export const loading = atom({
+  key: "loading",
+  default: false,
+});
+
 export const colorMap = atom({
   key: "colorMap",
   default: {},
@@ -87,22 +107,22 @@ export const modalFilterLabelIncludeNoConfidence = atomFamily({
   default: true,
 });
 
-export const activeLabels = atom({
+export const activeLabels = atomFamily({
   key: "activeLabels",
   default: {},
 });
 
-export const modalActiveLabels = atom({
+export const modalActiveLabels = atomFamily({
   key: "modalActiveLabels",
   default: {},
 });
 
-export const activeOther = atom({
+export const activeOther = atomFamily({
   key: "activeOther",
   default: {},
 });
 
-export const modalActiveOther = atom({
+export const modalActiveOther = atomFamily({
   key: "modalActiveOther",
   default: {},
 });
@@ -134,6 +154,11 @@ export const sampleVideoLabels = atomFamily({
 
 export const sampleFrameData = atomFamily({
   key: "sampleFrameData",
+  default: null,
+});
+
+export const sampleFrameRate = atomFamily({
+  key: "sampleFrameRate",
   default: null,
 });
 

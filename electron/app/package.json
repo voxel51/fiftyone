@@ -18,8 +18,8 @@
     "fomantic-ui-less": "^2.8.4",
     "lodash": "^4.17.19",
     "prettier": "^2.0.5",
-    "react": "^16.13.1",
-    "react-dom": "^16.13.1",
+    "react": "17.0.0",
+    "react-dom": "17.0.0",
     "react-infinite": "^0.13.0",
     "semantic-ui-react": "^0.88.2",
     "socket.io-client": "^2.3.0"

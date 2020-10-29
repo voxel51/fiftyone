@@ -47,6 +47,12 @@ on your data quickly and easily.
     :button_link: app.html
 
 .. customcalloutitem::
+    :header: Using aggregations
+    :description: Learn about your FiftyOne datasets and views in the aggregate.
+    :button_text: Learn more about using aggregations
+    :button_link: using_aggregations.html
+
+.. customcalloutitem::
     :header: Exporting datasets
     :description: Export datasets to disk in any number of common formats, or in your own custom format.
     :button_text: Learn more about exporting datasets
@@ -94,6 +100,7 @@ on your data quickly and easily.
     Using datasets<using_datasets>
     Dataset views<using_views>
     Using the App<app>
+    Using aggregations<using_aggregations>
     Exporting datasets<export_datasets>
     Drawing labels on samples<draw_labels>
     FiftyOne Brain<brain>

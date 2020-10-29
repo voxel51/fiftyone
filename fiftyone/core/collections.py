@@ -14,9 +14,11 @@ import string
 import eta.core.serial as etas
 import eta.core.utils as etau
 
+from fiftyone.core.aggregations import Aggregation
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+from fiftyone.core.odm.frame import DatasetFrameSampleDocument
 from fiftyone.core.odm.sample import (
     DatasetSampleDocument,
     default_sample_fields,
@@ -104,6 +106,65 @@ class SampleCollection(object):
         underlying the collection.
         """
         raise NotImplementedError("Subclass must implement info")
+
+    def aggregate(self, aggregations):
+        """Aggregates one or more
+        :class:`fiftyone.core.aggregations.Aggregation` instances.
+
+        Note that it is best practice to group aggregations into a single call
+        to :meth:`aggregate() <aggregate>`, as this will be more efficient than
+        performing multiple aggregations in series.
+
+        Args:
+            aggregations: an :class:`fiftyone.core.aggregations.Aggregation` or
+                iterable of :class:`<fiftyone.core.aggregations.Aggregation>`
+                instances
+
+        Returns:
+            an :class:`fiftyone.core.aggregations.AggregationResult` or list of
+            :class:`fiftyone.core.aggregations.AggregationResult` instances
+            corresponding to the input aggregations
+        """
+        scalar_result = isinstance(aggregations, Aggregation)
+        if scalar_result:
+            aggregations = [aggregations]
+        elif len(aggregations) == 0:
+            return []
+
+        # pylint: disable=no-member
+        schema = self.get_field_schema()
+        if self.media_type == fom.VIDEO:
+            frame_schema = self.get_frame_field_schema()
+        else:
+            frame_schema = None
+
+        pipelines = {}
+        for agg in aggregations:
+            if not isinstance(agg, Aggregation):
+                raise TypeError("'%s' is not a an Aggregation" % agg.__class__)
+
+            field = agg._get_output_field(self)
+            pipelines[field] = agg._to_mongo(
+                self._dataset, schema, frame_schema
+            )
+
+        result_d = {}
+        try:
+            # pylint: disable=no-member
+            result_d = next(self._aggregate([{"$facet": pipelines}]))
+        except StopIteration:
+            pass
+
+        results = []
+        for agg in aggregations:
+            try:
+                results.append(
+                    agg._get_result(result_d[agg._get_output_field(self)][0])
+                )
+            except:
+                results.append(agg._get_default_result())
+
+        return results[0] if scalar_result else results
 
     def summary(self):
         """Returns a string summary of the collection.
@@ -264,6 +325,16 @@ class SampleCollection(object):
         if etau.is_str(field_or_fields):
             field_or_fields = [field_or_fields]
 
+        if self.media_type == fom.VIDEO:
+            frame_fields = list(
+                filter(lambda n: n.startswith("frames."), field_or_fields)
+            )
+            field_or_fields = list(
+                filter(lambda n: not n.startswith("frames."), field_or_fields)
+            )
+        else:
+            frame_fields = []
+
         schema = self.get_field_schema(include_private=True)
         default_fields = set(
             default_sample_fields(
@@ -274,6 +345,26 @@ class SampleCollection(object):
             # We only validate that the root field exists
             field_name = field.split(".", 1)[0]
             if field_name not in schema and field_name not in default_fields:
+                raise ValueError("Field '%s' does not exist" % field_name)
+
+        if self.media_type != fom.VIDEO:
+            return
+
+        frame_schema = self.get_frame_field_schema(include_private=True)
+        default_frame_fields = set(
+            default_sample_fields(
+                DatasetFrameSampleDocument,
+                include_private=True,
+                include_id=True,
+            )
+        )
+        for field in frame_fields:
+            # We only validate that the root field exists
+            field_name = field.split(".", 2)[1]
+            if (
+                field_name not in frame_schema
+                and field_name not in default_frame_fields
+            ):
                 raise ValueError("Field '%s' does not exist" % field_name)
 
     def validate_field_type(
@@ -304,14 +395,13 @@ class SampleCollection(object):
         if frames:
             field_name = field_name[len("frames.") :]
 
-        frame_schema = self.get_frame_field_schema()
-        if not frames and field_name not in schema:
-            raise ValueError("Field '%s' does not exist" % field_name)
-
-        if frames and field_name not in frame_schema:
-            raise ValueError("Field '%s' does not exist" % field_name)
-
-        field = frame_schema[field_name] if frames else schema[field_name]
+        if frames:
+            frame_schema = self.get_frame_field_schema()
+            if field_name not in frame_schema:
+                raise ValueError("Field '%s' does not exist" % field_name)
+            field = frame_schema[field_name]
+        else:
+            field = schema[field_name]
 
         if embedded_doc_type is not None:
             if not isinstance(field, fof.EmbeddedDocumentField) or (
@@ -1642,18 +1732,6 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement make_index()")
 
-    def aggregate(self, pipeline=None):
-        """Calls the collection's current MongoDB aggregation pipeline.
-
-        Args:
-            pipeline (None): an optional aggregation pipeline (list of dicts)
-                to append to the collections's pipeline before calling it
-
-        Returns:
-            an iterable over the aggregation result
-        """
-        raise NotImplementedError("Subclass must implement aggregate()")
-
     def to_dict(self, rel_dir=None):
         """Returns a JSON dictionary representation of the collection.
 
@@ -1764,6 +1842,41 @@ class SampleCollection(object):
                 a valid stage for this collection
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
+
+    def _aggregate(
+        self, pipeline=None, hide_frames=False, squash_frames=False
+    ):
+        """Runs the MongoDB aggregation pipeline on the collection and returns
+        the result.
+
+        Args:
+            pipeline (None): a MongoDB aggregation pipeline (list of dicts)
+            hide_frames (False): whether to hide frames in the result
+            squash_frames (False): whether to squash frames in the result
+
+        Returns:
+            the aggregation result dict
+        """
+        raise NotImplementedError("Subclass must implement _aggregate()")
+
+    def _attach_frames(self, hide_frames=False):
+        key = "_frames" if hide_frames else "frames"
+
+        # pylint: disable=no-member
+        return [
+            {
+                "$lookup": {
+                    "from": self._frame_collection_name,
+                    "localField": "_id",
+                    "foreignField": "_sample_id",
+                    "as": key,
+                }
+            }
+        ]
+
+    def _serialize(self):
+        # pylint: disable=no-member
+        return self._doc.to_dict(extended=True)
 
     def _serialize_field_schema(self):
         return self._serialize_schema(self.get_field_schema())
