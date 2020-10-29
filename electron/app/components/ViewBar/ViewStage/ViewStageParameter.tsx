@@ -313,15 +313,12 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
   const isObjectEditor = hasObjectType && (!hasExpansion || expanded);
   let isObject = false;
   try {
-    JSON.parse(value);
-    isObject = true;
+    const parsedValue = JSON.parse(value);
+    isObject = !Array.isArray(parsedValue) && typeof parsedValue === "object";
   } catch {}
   useEffect(() => {
     if (!hasExpansion || expanded) return;
-    try {
-      JSON.parse(value);
-      setExpanded(true);
-    } catch {}
+    isObject && setExpanded(true);
   }, [value]);
 
   const props = useSpring({
@@ -386,10 +383,7 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
                   : value
               }
               onFocus={() => !isEditing && send({ type: "EDIT" })}
-              onBlur={() =>
-                state.matches("editing.searchResults.notHovering") &&
-                send({ type: "COMMIT" })
-              }
+              onBlur={() => send({ type: "COMMIT" })}
               onChange={(e) => {
                 send({ type: "CHANGE", value: e.target.value });
               }}
@@ -403,7 +397,7 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
                   case "Tab":
                     send("COMMIT");
                   case "Escape":
-                    send("BLUR");
+                    send("COMMIT");
                     break;
                   case "ArrowDown":
                     send("NEXT_RESULT");

@@ -207,6 +207,7 @@ class Session(foc.HasClient):
         self.state.view = None
         self.state.selected = []
         self.state.selected_objects = []
+        self.state.filters = {}
 
     @_update_state
     def clear_dataset(self):
@@ -237,6 +238,7 @@ class Session(foc.HasClient):
 
         self.state.selected = []
         self.state.selected_objects = []
+        self.state.filters = {}
 
     @_update_state
     def clear_view(self):

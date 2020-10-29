@@ -1,7 +1,6 @@
 import { Machine, actions, assign, spawn, send } from "xstate";
 import uuid from "uuid-v4";
 
-import { RESERVED_FIELDS } from "../../utils/labels";
 import viewStageMachine, {
   createParameter,
 } from "./ViewStage/viewStageMachine";
@@ -531,7 +530,7 @@ const viewBarMachine = Machine(
         );
         const newView = serializeView(stages, stageMap, fieldNames);
         if (viewsAreEqual(newView, view)) return;
-        setView(view);
+        setView(newView);
       },
     },
   }

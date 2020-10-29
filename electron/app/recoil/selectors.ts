@@ -50,10 +50,11 @@ export const view = selector({
   },
   set: ({ get }, stages) => {
     const state = get(atoms.stateDescription);
-    return {
+    const newState = {
       ...state,
       view: stages,
     };
+    get(socket).emit("update", { data: newState, include_self: true });
   },
 });
 
@@ -112,10 +113,10 @@ export const filterStage = selectorFamily({
 export const filteredCount = selector({
   key: "filteredCount",
   get: ({ get }): number => {
-    const stats = get(atoms.datasetStats) || [];
+    const stats = get(atoms.extendedDatasetStats) || [];
     return stats.reduce(
       (acc, cur) => (cur.name === "count" ? cur.count : acc),
-      get(totalCount)
+      null
     );
   },
 });

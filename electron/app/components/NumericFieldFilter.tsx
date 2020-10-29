@@ -35,11 +35,10 @@ const makeFilter = (fieldName, range, includeNone, isDefaultRange) => {
 };
 
 const NumericFieldFilter = ({ expanded, entry }) => {
-  const port = useRecoilValue(atoms.port);
-  const socket = getSocket(port, "state");
-  const boundsAtom = selectors.numericFieldBounds(entry.name);
-  const rangeAtom = atoms.filterNumericFieldRange(entry.name);
-  const includeNoneAtom = atoms.filterNumericFieldIncludeNone(entry.name);
+  const socket = useRecoilValue(selectors.socket);
+  const boundsAtom = selectors.numericFieldBounds(entry.path);
+  const rangeAtom = atoms.filterNumericFieldRange(entry.path);
+  const includeNoneAtom = atoms.filterNumericFieldIncludeNone(entry.path);
   const [includeNone, setIncludeNone] = useRecoilState(includeNoneAtom);
   const stateDescription = useRecoilValue(atoms.stateDescription);
   const bounds = useRecoilValue(boundsAtom);
@@ -48,14 +47,18 @@ const NumericFieldFilter = ({ expanded, entry }) => {
   const [overflow, setOverflow] = useState("hidden");
   const [localBounds, setLocalBounds] = useState([null, null]);
   const isDefaultRange = range[0] === bounds[0] && range[1] === bounds[1];
-  const filterStage = useRecoilValue(selectors.filterStage(entry.name));
+  const filterStage = useRecoilValue(selectors.filterStage(entry.path));
   const setStateDescription = useSetRecoilState(atoms.stateDescription);
   const setExtendedDatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
+
   useEffect(() => {
     if (filterStage) return;
     setIncludeNone(true);
     setRange(bounds);
   }, [filterStage]);
+  useEffect(() => {
+    setRange(bounds);
+  }, [bounds]);
   useEffect(() => {
     if (!hasBounds) {
       return;

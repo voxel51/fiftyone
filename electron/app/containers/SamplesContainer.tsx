@@ -114,7 +114,7 @@ const DisplayOptionsWrapper = (props) => {
           )}
           labels={getDisplayOptions(
             labelNameGroups.labels,
-            filteredFrameLabelSampleCounts,
+            filteredLabelSampleCounts,
             labelSampleCounts,
             activeLabels
           )}
