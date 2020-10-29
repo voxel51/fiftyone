@@ -3,6 +3,28 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne 0.6.4
+--------------
+*Released October 29, 2020*
+
+App
+^^^
+- Improved page load times for video datasets
+- Improved support for Frame and Sample level labels in Display Options
+  for video datasets
+
+Core
+^^^^
+- Added the :class:`fiftyone.core.stages.FilterLabels` view stage that is 
+  equivalent to using any classifications/detections/keypoints/polylines
+  filter
+
+Utils
+^^^^^
+- Added the :class:`fiftyone.utils.torch.TorchImagePatchesDataset` dataset that
+  emits tensors of patches extracted from images defined by sets of
+  :class:`fiftyone.core.labels.Detections` associated with the images.
+
 FiftyOne 0.6.3
 --------------
 *Released October 20, 2020*
