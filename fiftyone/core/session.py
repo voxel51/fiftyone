@@ -247,8 +247,8 @@ class Session(foc.HasClient):
 
     @property
     def selected(self):
-        """A list of sample IDs of the currently selected samples in the
-        FiftyOne App.
+        """A list of sample IDs of the currently selected samples in the App,
+        if any.
         """
         return list(self.state.selected)
 
