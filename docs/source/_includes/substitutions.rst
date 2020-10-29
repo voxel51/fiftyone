@@ -67,3 +67,5 @@
 .. |AnnotationConfig| replace:: :class:`AnnotationConfig <fiftyone.utils.annotations.AnnotationConfig>`
 
 .. |Session| replace:: :class:`Session <fiftyone.core.session.Session>`
+
+.. |Aggregation| replace:: :class:`Aggregation <fiftyone.core.aggregations.Aggregation>`
