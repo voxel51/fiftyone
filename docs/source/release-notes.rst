@@ -72,8 +72,7 @@ Core
   the :ref:`Dataset Zoo <dataset-zoo>`
 - Added new versions of `COCO <https://cocodataset.org/#home>`_ that contain
   instance segmentations to the :ref:`Dataset Zoo <dataset-zoo>`
-- Added :mod:`utilities <fiftyone.utils.selection>` for selecting objects from
-  datasets via the Python library
+- Added utilities for selecting objects from datasets via the Python library
 - Added a boolean `only_matches` parameter to all filter stages that enables
   the user to specify that a view should only contain samples that match the
   given filter
