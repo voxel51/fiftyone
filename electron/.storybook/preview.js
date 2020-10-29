@@ -2,7 +2,6 @@ import { setConsoleOptions, withConsole } from "@storybook/addon-console";
 import { withKnobs, radios } from "@storybook/addon-knobs";
 import { addDecorator } from "@storybook/react";
 import React, { useState } from "react";
-import { Provider } from "react-redux";
 import { RecoilRoot } from "recoil";
 import { ThemeProvider } from "styled-components";
 

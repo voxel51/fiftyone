@@ -40,7 +40,7 @@
     "storybook": "start-storybook -p 6006",
     "build-storybook": "build-storybook",
     "build-storybook-docs": "build-storybook -s public --docs",
-    "chromatic": "npx chromatic --exit-zero-on-changes --allow-console-errors --debug"
+    "chromatic": "npx chromatic --exit-zero-on-changes"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
