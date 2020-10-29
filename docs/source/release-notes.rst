@@ -50,7 +50,7 @@ Brain
 ^^^^^
 - Added support for computing uniqueness within regions-of-interest specified
   by a set of detections/polylines when using
-  :meth:`compute_uniqueness() <fiftyone.brain.uniqueness.compute_uniqueness>`
+  :meth:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`
 
 FiftyOne 0.6.3
 --------------
@@ -132,9 +132,9 @@ Core
 
 Brain
 ^^^^^
-- :meth:`compute_uniqueness() <fiftyone.brain.uniqueness.compute_uniqueness>`
-  and :meth:`compute_hardness() <fiftyone.brain.hardness.compute_hardness>` now
-  support multilabel classification tasks
+- :meth:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>` and
+  :meth:`compute_hardness() <fiftyone.brain.compute_hardness>` now support
+  multilabel classification tasks
 
 FiftyOne 0.6.1
 --------------
