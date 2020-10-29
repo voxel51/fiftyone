@@ -78,8 +78,8 @@ class Document(object):
 
     @property
     def _id(self):
-        """The ObjectId of the document, or ``None`` if it has not been added to the
-        database.
+        """The ObjectId of the document, or ``None`` if it has not been added
+        to the database.
         """
         return self._doc.id if self._in_db else None
 

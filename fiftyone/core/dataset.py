@@ -25,6 +25,7 @@ import fiftyone as fo
 from fiftyone.constants import VERSION
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
+import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 from fiftyone.migrations import get_migration_runner
@@ -158,9 +159,9 @@ def delete_non_persistent_datasets(verbose=False):
         verbose (False): whether to log the names of deleted datasets
     """
     for name in list_datasets():
-        if _drop_dataset(name, if_persistent=True):
-            if verbose:
-                logger.info("Dataset '%s' deleted", name)
+        did_delete = _drop_dataset(name, drop_persistent=False)
+        if did_delete and verbose:
+            logger.info("Dataset '%s' deleted", name)
 
 
 class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
@@ -529,6 +530,35 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             subfield=subfield,
         )
 
+    def add_frame_field(
+        self, field_name, ftype, embedded_doc_type=None, subfield=None
+    ):
+        """Adds a new frame-level field to the dataset.
+
+        Only applicable to video datasets.
+
+        Args:
+            field_name: the field name
+            ftype: the field type to create. Must be a subclass of
+                :class:`fiftyone.core.fields.Field`
+            embedded_doc_type (None): the
+                :class:`fiftyone.core.odm.BaseEmbeddedDocument` type of the
+                field. Used only when ``ftype`` is an embedded
+                :class:`fiftyone.core.fields.EmbeddedDocumentField`
+            subfield (None): the type of the contained field. Used only when
+                ``ftype`` is a :class:`fiftyone.core.fields.ListField` or
+                :class:`fiftyone.core.fields.DictField`
+        """
+        if self.media_type != fom.VIDEO:
+            raise ValueError("Only video datasets have frame fields")
+
+        self._frame_doc_cls.add_field(
+            field_name,
+            ftype,
+            embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
+        )
+
     def delete_sample_field(self, field_name):
         """Deletes the field from all samples in the dataset.
 
@@ -540,6 +570,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._sample_doc_cls.delete_field(field_name)
         fos.Sample._purge_field(self._sample_collection_name, field_name)
+
+    def delete_frame_field(self, field_name):
+        """Deletes the frame-level field from all samples in the dataset.
+
+        Only applicable to video datasets.
+
+        Args:
+            field_name: the field name
+
+        Raises:
+            AttributeError: if the field does not exist
+        """
+        if self.media_type != fom.VIDEO:
+            raise ValueError("Only video datasets have frame fields")
+
+        self._frame_doc_cls.delete_field(field_name, is_frame_field=True)
+        fofr.Frame._purge_field(self._frame_collection_name, field_name)
 
     def get_tags(self):
         """Returns the list of unique tags of samples in the dataset.
@@ -831,6 +878,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_doc_cls.rename_field(field_name, new_field_name)
         fos.Sample._rename_field(
             self._sample_collection_name, field_name, new_field_name
+        )
+
+    def rename_frame_field(self, field_name, new_field_name):
+        """Renames the frame-level field to the given new name.
+
+        Only applicable to video datasets.
+
+        Args:
+            field_name: the field name
+            new_field_name: the new field name
+        """
+        if self.media_type != fom.VIDEO:
+            raise ValueError("Only video datasets have frame fields")
+
+        self._frame_doc_cls.rename_field(
+            field_name, new_field_name, is_frame_field=True
+        )
+        fofr.Frame._rename_field(
+            self._frame_collection_name, field_name, new_field_name
         )
 
     def save(self):
@@ -2014,6 +2080,7 @@ def _create_dataset(name, persistent=False, media_type=None):
     frames_collection_name = "frames." + sample_collection_name
     frame_doc_cls = _create_frame_document_cls(frames_collection_name)
 
+    # @todo add `frames_collection_name` to dataset document too
     dataset_doc = foo.DatasetDocument(
         media_type=media_type,
         name=name,
@@ -2054,29 +2121,6 @@ def _create_sample_document_cls(sample_collection_name):
 
 def _create_frame_document_cls(frame_collection_name):
     return type(frame_collection_name, (foo.DatasetFrameSampleDocument,), {})
-
-
-def _drop_dataset(name, if_persistent=True):
-    try:
-        # pylint: disable=no-member
-        dataset_doc = foo.DatasetDocument.objects.get(name=name)
-    except DoesNotExist:
-        raise DoesNotExistError("Dataset '%s' not found" % name)
-
-    if dataset_doc.persistent:
-        return False
-
-    sample_doc_cls = _create_sample_document_cls(
-        dataset_doc.sample_collection_name
-    )
-    sample_doc_cls.drop_collection()
-
-    frame_doc_cls = _create_frame_document_cls(
-        "frames." + dataset_doc.sample_collection_name
-    )
-    frame_doc_cls.drop_collection()
-    dataset_doc.delete()
-    return True
 
 
 def _load_dataset(name):
@@ -2162,3 +2206,28 @@ def _load_dataset(name):
         )
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
+
+
+def _drop_dataset(name, drop_persistent=True):
+    try:
+        # pylint: disable=no-member
+        dataset_doc = foo.DatasetDocument.objects.get(name=name)
+    except DoesNotExist:
+        raise DoesNotExistError("Dataset '%s' not found" % name)
+
+    if dataset_doc.persistent and not drop_persistent:
+        return False
+
+    sample_doc_cls = _create_sample_document_cls(
+        dataset_doc.sample_collection_name
+    )
+    sample_doc_cls.drop_collection()
+
+    frame_doc_cls = _create_frame_document_cls(
+        "frames." + dataset_doc.sample_collection_name
+    )
+    frame_doc_cls.drop_collection()
+
+    dataset_doc.delete()
+
+    return True
