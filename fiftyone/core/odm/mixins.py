@@ -101,6 +101,7 @@ class DatasetMixin(object):
                 "Adding sample fields using the `sample.field = value` syntax "
                 "is not allowed; use `sample['field'] = value` instead"
             )
+
         if value is not None:
             self._fields[name].validate(value)
 
@@ -297,7 +298,7 @@ class DatasetMixin(object):
 
     @classmethod
     @no_rename_default_field
-    def rename_field(cls, field_name, new_field_name):
+    def rename_field(cls, field_name, new_field_name, is_frame_field=False):
         """Renames the field of the sample(s).
 
         If the sample is in a dataset, the field will be renamed on all samples
@@ -306,16 +307,26 @@ class DatasetMixin(object):
         Args:
             field_name: the field name
             new_field_name: the new field name
+            is_frame_field (False): whether this is a frame-level field of a
+                dataset
 
         Raises:
             AttributeError: if the field does not exist
         """
         try:
+            # https://docs.mongoengine.org/guide/querying.html#filtering-queries
+            _field_name = field_name.replace(".", "__")
+            _new_field_name = new_field_name.replace(".", "__")
+
             # Rename field on all samples
             # pylint: disable=no-member
-            cls.objects.update(**{"rename__%s" % field_name: new_field_name})
+
+            cls.objects.update(**{"rename__%s" % _field_name: _new_field_name})
         except InvalidQueryError:
             raise AttributeError("Sample has no field '%s'" % field_name)
+
+        if "." in field_name:
+            return
 
         # Rename field on dataset
         # pylint: disable=no-member
@@ -337,18 +348,31 @@ class DatasetMixin(object):
             pass
 
         # Update dataset document
-        dataset_doc = DatasetDocument.objects.get(
-            sample_collection_name=cls.__name__
-        )
-        for sf in dataset_doc.sample_fields:
-            if sf.name == field_name:
-                sf.name = new_field_name
+        if is_frame_field:
+            # @todo this hack assumes that
+            # frames_collection_name = "frames." + sample_collection_name
+            sample_collection_name = cls.__name__[7:]
+            dataset_doc = DatasetDocument.objects.get(
+                sample_collection_name=sample_collection_name
+            )
+            for f in dataset_doc.frame_fields:
+                if f.name == field_name:
+                    f.name = new_field_name
 
-        dataset_doc.save()
+            dataset_doc.save()
+        else:
+            dataset_doc = DatasetDocument.objects.get(
+                sample_collection_name=cls.__name__
+            )
+            for f in dataset_doc.sample_fields:
+                if f.name == field_name:
+                    f.name = new_field_name
+
+            dataset_doc.save()
 
     @classmethod
     @no_delete_default_field
-    def delete_field(cls, field_name):
+    def delete_field(cls, field_name, is_frame_field=False):
         """Deletes the field from the sample(s).
 
         If the sample is in a dataset, the field will be removed from all
@@ -356,16 +380,24 @@ class DatasetMixin(object):
 
         Args:
             field_name: the field name
+            is_frame_field (False): whether this is a frame-level field of a
+                dataset
 
         Raises:
             AttributeError: if the field does not exist
         """
         try:
+            # https://docs.mongoengine.org/guide/querying.html#filtering-queries
+            _field_name = field_name.replace(".", "__")
+
             # Delete from all samples
             # pylint: disable=no-member
-            cls.objects.update(**{"unset__%s" % field_name: None})
+            cls.objects.update(**{"unset__%s" % _field_name: None})
         except InvalidQueryError:
             raise AttributeError("Sample has no field '%s'" % field_name)
+
+        if "." in field_name:
+            return
 
         # Remove from dataset
         # pylint: disable=no-member
@@ -376,13 +408,25 @@ class DatasetMixin(object):
         delattr(cls, field_name)
 
         # Update dataset document
-        dataset_doc = DatasetDocument.objects.get(
-            sample_collection_name=cls.__name__
-        )
-        dataset_doc.sample_fields = [
-            sf for sf in dataset_doc.sample_fields if sf.name != field_name
-        ]
-        dataset_doc.save()
+        if is_frame_field:
+            # @todo this hack assumes that
+            # frames_collection_name = "frames." + sample_collection_name
+            sample_collection_name = cls.__name__[7:]
+            dataset_doc = DatasetDocument.objects.get(
+                sample_collection_name=sample_collection_name
+            )
+            dataset_doc.frame_fields = [
+                f for f in dataset_doc.frame_fields if f.name != field_name
+            ]
+            dataset_doc.save()
+        else:
+            dataset_doc = DatasetDocument.objects.get(
+                sample_collection_name=cls.__name__
+            )
+            dataset_doc.sample_fields = [
+                f for f in dataset_doc.sample_fields if f.name != field_name
+            ]
+            dataset_doc.save()
 
     def _update(self, object_id, update_doc, filtered_fields=None, **kwargs):
         """Updates an existing document.
