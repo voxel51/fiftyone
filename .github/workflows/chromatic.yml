@@ -38,3 +38,8 @@ jobs:
       - name: Publish storybook
         working-directory: electron
         run: yarn chromatic --project-token=${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+      - uses: actions/upload-artifact@v2
+        if: success() || failure()
+        with:
+          name: build-storybook-log
+          path: electron/build-storybook.log
