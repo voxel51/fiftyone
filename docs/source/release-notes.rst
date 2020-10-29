@@ -10,20 +10,36 @@ FiftyOne 0.6.4
 App
 ^^^
 - Improved page load times for video datasets
-- Improved support for Frame and Sample level labels in Display Options
+- Improved support for Frame and Sample level labels in display pptions
   for video datasets
+- Added support for all label types in the labels distributions tab
+- Added support for selecting and hiding objects in the sample modal
 
 Core
 ^^^^
-- Added the :class:`fiftyone.core.stages.FilterLabels` view stage that is 
-  equivalent to using any classifications/detections/keypoints/polylines
-  filter
+- Added the
+  :meth:`filter_labels() <fiftyone.core.collections.SampleCollection.filter_labels>`
+  view stage that is equivalent to using any
+  classifications/detections/keypoints/polylines filter
+- Added
+  :meth:`select_objects() <fiftyone.core.collections.SampleCollection.select_objects>`
+  and
+  :meth:`exclude_objects() <fiftyone.core.collections.SampleCollection.exclude_objects>`
+  to select or exclude objects from a dataset or view.
+- Added an :mod:`Aggregations <fiftyone.core.aggregations>` framework for
+  computing aggregate values via
+  :meth:`aggregate() <fiftyone.core.collections.SampleCollection.aggregate>`
+- Added the
+  :attr:`selected_objects <fiftyone.core.session.Session.selected_objects>`, which
+  holds the currently selected objects in the App
 
 Utils
 ^^^^^
-- Added the :class:`fiftyone.utils.torch.TorchImagePatchesDataset` dataset that
-  emits tensors of patches extracted from images defined by sets of
-  :class:`fiftyone.core.labels.Detections` associated with the images.
+- Added the
+  :class:`TorchImagePatchesDataset <fiftyone.utils.torch.TorchImagePatchesDataset>`
+  that emits tensors of patches extracted from images defined by sets of
+  :class:`Detections <fiftyone.core.labels.Detections>` associated with the
+  images
 
 FiftyOne 0.6.3
 --------------
