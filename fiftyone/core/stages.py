@@ -1803,8 +1803,7 @@ class SelectObjects(ViewStage):
                 continue
 
             stage.validate(sample_collection)
-            pipeline.extend(stage.to_mongo())
-
+            pipeline.extend(stage.to_mongo(sample_collection))
         return pipeline
 
     def validate(self, sample_collection):
@@ -1992,7 +1991,7 @@ class SortBy(ViewStage):
             return self._field_or_expr.name
 
         if isinstance(self._field_or_expr, foe.ViewExpression):
-            return self._field_or_expr.to_mongo()
+            return self._field_or_expr.to_mongo(None)  # @todo: fix me
 
         return self._field_or_expr
 
