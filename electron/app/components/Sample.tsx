@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { animated, useSpring, useTransition } from "react-spring";
 
@@ -98,6 +98,7 @@ const Sample = ({ sample, metadata, setView }) => {
   const activeFrameLabels = useRecoilValue(atoms.activeLabels("frame"));
   const activeTags = useRecoilValue(atoms.activeTags);
   const activeOther = useRecoilValue(atoms.activeOther("sample"));
+  const setStateDescription = useSetRecoilState(atoms.stateDescription);
 
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     atoms.selectedSamples
@@ -116,6 +117,7 @@ const Sample = ({ sample, metadata, setView }) => {
     }
     setSelectedSamples(newSelected);
     rerender();
+    socket.emit(event, id, (data) => setStateDescription(data));
   };
   const eventHandlers = {
     onClick: () => handleClick(),
