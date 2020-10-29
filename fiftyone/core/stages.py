@@ -339,7 +339,7 @@ class ExcludeFields(ViewStage):
                 )
 
     def validate(self, sample_collection):
-        sample_collection.validate_fields_exist(self.field_names)
+        sample_collection._dataset.validate_fields_exist(self.field_names)
 
 
 class ExcludeObjects(ViewStage):
