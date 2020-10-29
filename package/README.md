@@ -59,6 +59,14 @@ It is recommended to:
     _before_ publishing `fiftyone`. This ensures that users are never able to
     download a `fiftyone` package whose dependencies have not been published
     yet.
+    -   The test workflow currently installs the latest pre-release of
+        `voxel51-eta` if available (alpha/beta/rc) - this allows tests to use
+        bleeding-edge versions of ETA published to PyPI without making them
+        available to end-users by default. This is usually only necessary if
+        `fiftyone` tests fail without new ETA features. However, pre-releases
+        are intentionally not installed for tests run on release branches/tags,
+        so a stable release of `voxel51-eta` will need to be available before a
+        `fiftyone` release can be made.
 -   Create the tags on a release branch and wait for builds to be published
     successfully before merging the branch.
 -   Update `master` after the release has been merged into `develop`:

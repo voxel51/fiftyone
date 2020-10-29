@@ -102,6 +102,9 @@ jobs:
         with:
           key: db-${{ runner.os }}-${{ hashFiles('package/db/setup.py') }}
           path: package/db/cache/
+      # install prod versions of fiftyone-db and fiftyone-gui from source - this
+      # allows the build to succeed if requirements for those packages have been
+      # bumped but they have not been published yet
       - name: Install fiftyone-db
         working-directory: package/db
         run: |
@@ -124,6 +127,10 @@ jobs:
           PIP_INDEX_URL: https://voxel51-ci@pypi.voxel51.com
         run: |
           pip install -e . fiftyone-brain
+      # upgrade voxel51-eta to the latest pre-release (can't use the same
+      # strategy as fiftyone-db/gui above because it's in a different repo).
+      # Release branches and tags are excluded to force a proper compatible ETA
+      # release to be published first.
       - name: Upgrade ETA to pre-release
         if: ${{ !startsWith(github.ref, 'refs/heads/rel') && !startsWith(github.ref, 'refs/tags/') }}
         env:
@@ -135,6 +142,11 @@ jobs:
         if: ${{ !startsWith(matrix.os, 'windows') }}
         run: |
           pip install pytest tensorflow tensorflow-datasets torch torchvision
+      # obtained from "Windows, pip" instructions at
+      # https://pytorch.org/get-started/locally/ - unaware of a way to update
+      # the version number automatically, but tests on other platforms should
+      # hopefully catch any relevant PyTorch incompatibilities even if the
+      # PyTorch version used on Windows is not the latest
       - name: Install test dependencies (Windows)
         if: ${{ startsWith(matrix.os, 'windows') }}
         run: |
@@ -145,13 +157,20 @@ jobs:
         run: |
           python tests/utils/setup_config.py
           python tests/utils/github_actions_flags.py
+      # Important: use pytest_wrapper.py instead of pytest directly to ensure
+      # that services shut down cleanly and do not conflict with steps later in
+      # this workflow
       - name: Run tests
         run: |
           python tests/utils/pytest_wrapper.py tests/ --verbose --ignore tests/benchmarking/ --ignore tests/isolated/ --ignore tests/utils/ --ignore tests/import_export/
+      # Intended to run even if the tests above failed (todo: don't run if the
+      # tests were skipped due to an earlier step failing?)
       - name: Run isolated tests
         if: success() || failure()
         run: |
           find tests/isolated/ -name '*.py' -print0 | xargs -0 --verbose -n1 python tests/utils/pytest_wrapper.py --verbose
+      # these are somewhat slower/more bandwidth-intensive, so only run them if
+      # github_actions_flags.py determined that they should be run
       - name: Test quickstarts
         if: ${{ steps.test_config.outputs.run_integration == 'true' }}
         env:
