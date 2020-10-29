@@ -395,7 +395,7 @@ class ExcludeObjects(ViewStage):
         """A list of dicts specifying the objects to exclude."""
         return self._objects
 
-    def to_mongo(self):
+    def to_mongo(self, _):
         if self._pipeline is None:
             raise ValueError(
                 "`validate()` must be called before using a %s stage"
@@ -432,7 +432,7 @@ class ExcludeObjects(ViewStage):
                 continue
 
             stage.validate(sample_collection)
-            pipeline.extend(stage.to_mongo())
+            pipeline.extend(stage.to_mongo(sample_collection))
 
         return pipeline
 
@@ -1759,7 +1759,7 @@ class SelectObjects(ViewStage):
         """A list of dicts specifying the objects to select."""
         return self._objects
 
-    def to_mongo(self):
+    def to_mongo(self, _):
         if self._pipeline is None:
             raise ValueError(
                 "`validate()` must be called before using a %s stage"
