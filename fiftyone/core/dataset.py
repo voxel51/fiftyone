@@ -160,9 +160,9 @@ def delete_non_persistent_datasets(verbose=False):
         verbose (False): whether to log the names of deleted datasets
     """
     for name in list_datasets():
-        if _drop_dataset(name, if_persistent=True):
-            if verbose:
-                logger.info("Dataset '%s' deleted", name)
+        did_delete = _drop_dataset(name, drop_persistent=False)
+        if did_delete and verbose:
+            logger.info("Dataset '%s' deleted", name)
 
 
 class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
@@ -2121,29 +2121,6 @@ def _create_frame_document_cls(frame_collection_name):
     return type(frame_collection_name, (foo.DatasetFrameSampleDocument,), {})
 
 
-def _drop_dataset(name, if_persistent=True):
-    try:
-        # pylint: disable=no-member
-        dataset_doc = foo.DatasetDocument.objects.get(name=name)
-    except DoesNotExist:
-        raise DoesNotExistError("Dataset '%s' not found" % name)
-
-    if dataset_doc.persistent:
-        return False
-
-    sample_doc_cls = _create_sample_document_cls(
-        dataset_doc.sample_collection_name
-    )
-    sample_doc_cls.drop_collection()
-
-    frame_doc_cls = _create_frame_document_cls(
-        "frames." + dataset_doc.sample_collection_name
-    )
-    frame_doc_cls.drop_collection()
-    dataset_doc.delete()
-    return True
-
-
 def _load_dataset(name):
     try:
         # pylint: disable=no-member
@@ -2227,3 +2204,28 @@ def _load_dataset(name):
         )
 
     return dataset_doc, sample_doc_cls, frame_doc_cls
+
+
+def _drop_dataset(name, drop_persistent=True):
+    try:
+        # pylint: disable=no-member
+        dataset_doc = foo.DatasetDocument.objects.get(name=name)
+    except DoesNotExist:
+        raise DoesNotExistError("Dataset '%s' not found" % name)
+
+    if dataset_doc.persistent and not drop_persistent:
+        return False
+
+    sample_doc_cls = _create_sample_document_cls(
+        dataset_doc.sample_collection_name
+    )
+    sample_doc_cls.drop_collection()
+
+    frame_doc_cls = _create_frame_document_cls(
+        "frames." + dataset_doc.sample_collection_name
+    )
+    frame_doc_cls.drop_collection()
+
+    dataset_doc.delete()
+
+    return True
