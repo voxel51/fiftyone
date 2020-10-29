@@ -77,13 +77,12 @@ function App(props: Props) {
     socket.emit("get_statistics", view, (d) => setter(d));
   };
 
-  const getAllStats = () => {
+  const getAllStats = ({ view: newView, filters }) => {
     setDatasetStats([]);
     setExtendedDatasetStats([]);
-    getStats(view, setDatasetStats);
-    if (extendedView.length > view.length) {
-      getStats(extendedView, setExtendedDatasetStats);
-    }
+    getStats(newView, setDatasetStats);
+    filters.length &&
+      getStats(newView.concat(Object.values(filters)), setExtendedDatasetStats);
   };
   const handleStateUpdate = (data) => {
     setStateDescription(data);
@@ -95,9 +94,10 @@ function App(props: Props) {
     setConnected(true);
     if (!loading) {
       setLoading(true);
-      getAllStats();
+
       socket.emit("get_current_state", "", (data) => {
         handleStateUpdate(data);
+        getAllStats(data);
         setLoading(false);
       });
     }
@@ -105,11 +105,11 @@ function App(props: Props) {
   if (socket.connected && !connected) {
     setConnected(true);
     setLoading(true);
-    getAllStats();
     socket.emit("get_current_state", "", (data) => {
       setViewCounter(viewCounterValue + 1);
       handleStateUpdate(data);
       setLoading(false);
+      getAllStats(data);
     });
   }
   setTimeout(() => {
@@ -125,7 +125,7 @@ function App(props: Props) {
     if (data.close) {
       remote.getCurrentWindow().close();
     }
-    getAllStats();
+    getAllStats(data);
     handleStateUpdate(data);
   });
 
@@ -135,8 +135,8 @@ function App(props: Props) {
 
   useEffect(() => {
     if (reset) {
-      getAllStats();
       socket.emit("get_current_state", "", (data) => {
+        getAllStats(data);
         handleStateUpdate(data);
         setLoading(false);
       });
