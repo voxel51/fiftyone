@@ -23,7 +23,6 @@ from fiftyone.core.odm.sample import (
     DatasetSampleDocument,
     default_sample_fields,
 )
-import fiftyone.core.view as fov
 
 import eta.core.utils as etau
 
@@ -352,6 +351,8 @@ class ExcludeFields(ViewStage):
                 )
 
     def validate(self, sample_collection):
+        import fiftyone.core.view as fov
+
         # Allows a field to be excluded multiple times, if desired
         if isinstance(sample_collection, fov.DatasetView):
             dataset = sample_collection._dataset
