@@ -278,7 +278,7 @@ class DatasetView(foc.SampleCollection):
 
         _frames_pipeline = []
         for s in self._stages:
-            s.validate(self)
+            s.validate(self)  # @todo don't re-validate here
             _pipeline.extend(s.to_mongo(self))
 
         if pipeline is not None:
