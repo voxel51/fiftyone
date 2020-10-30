@@ -12,13 +12,13 @@ import * as atoms from "../recoil/atoms";
 
 function Samples({ setView }) {
   const theme = useContext(ThemeContext);
-  const port = useRecoilValue(atoms.port);
   const setCurrentSamples = useSetRecoilState(atoms.currentSamples);
   const [containerRef, bounds] = useMeasure();
 
-  const [scrollState, setScrollState] = tile(port);
+  const [scrollState, setScrollState] = tile();
   useEffect(() => {
-    setCurrentSamples(scrollState.rows.map((row) => row.samples).flat());
+    scrollState.initialized &&
+      setCurrentSamples(scrollState.rows.map((row) => row.samples).flat());
   }, [scrollState.rows]);
 
   return (

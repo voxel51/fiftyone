@@ -115,5 +115,6 @@ export default function tile(data, newHasMore, state) {
     loadMore: false,
     remainder: remainder,
     pageToLoad: Boolean(newHasMore) ? newHasMore : state.pageToLoad,
+    initialized: true,
   };
 }

@@ -114,9 +114,19 @@ function Dataset(props) {
   }, [modal.visible]);
 
   useEffect(() => {
-    modal.visible &&
-      !currentSamples.some((i) => i.sample._id === modal.sample._id) &&
+    if (
+      modal.visible &&
+      !currentSamples.some((i) => i.sample._id === modal.sample._id)
+    ) {
       handleHideModal();
+    } else if (modal.visible) {
+      setModal({
+        ...modal,
+        sample: currentSamples.filter(
+          (i) => i.sample._id === modal.sample._id
+        )[0].sample,
+      });
+    }
   }, [currentSamples]);
 
   let src = null;
