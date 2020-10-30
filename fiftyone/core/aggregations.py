@@ -94,7 +94,7 @@ class AggregationResult(etas.Serializable):
 
     :class:`AggregationResult` instances represent the result of the execution
     of an :class:`Aggregation` instance on a
-    :class:`fiftyone.core.collection.SampleCollection`.
+    :class:`fiftyone.core.collections.SampleCollection`.
     """
 
     def __init__(self, *args, **kwargs):

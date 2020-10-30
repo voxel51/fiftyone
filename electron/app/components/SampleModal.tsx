@@ -573,6 +573,7 @@ const SampleModal = ({
                 filteredFrameLabelSampleValues
               )}
               onSelectLabel={handleSetDisplayOption(setActiveLabels)}
+              onSelectFrameLabel={handleSetDisplayOption(setActiveFrameLabels)}
               scalars={getDisplayOptions(
                 labelNameGroups.scalars,
                 scalarSampleValues,

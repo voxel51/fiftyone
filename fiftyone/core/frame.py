@@ -58,16 +58,18 @@ class Frames(object):
     def __len__(self):
         return self._sample._doc.frames["frame_count"]
 
-    def _set_replacement(self, doc):
-        self._replacements[doc.get_field("frame_number")] = doc
+    def _set_replacement(self, frame):
+        self._replacements[frame.frame_number] = frame
 
     def _set_replacements(self, frames):
         frame_dict_to_doc = self._sample._dataset._frame_dict_to_doc
-        for frame in frames:
-            if frame["frame_number"] in self._replacements:
+        for d in frames:
+            if d["frame_number"] in self._replacements:
                 continue
-            doc = frame_dict_to_doc(frame)
-            self._replacements[doc.frame_number] = doc
+            frame = Frame.from_doc(
+                frame_dict_to_doc(d), dataset=self._sample._dataset
+            )
+            self._replacements[frame.frame_number] = frame
 
     def _save_replacements(self, insert=False):
         if not self._replacements:

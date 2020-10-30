@@ -14,7 +14,6 @@ import warnings
 from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
 
-from fiftyone.core.aggregations import Aggregation
 import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -63,6 +62,7 @@ class ViewStage(object):
     def get_filtered_list_fields(self):
         """Returns a list of names of fields or subfields that contain arrays
         that may have been filtered by the stage, if any.
+
         Returns:
             a list of fields, or ``None`` if no fields have been filtered
         """
@@ -71,6 +71,11 @@ class ViewStage(object):
     def get_selected_fields(self, frames=False):
         """Returns a list of fields that have been selected by the stage, if
         any.
+
+        Args:
+            frames (False): whether to return sample-level (False) or
+                frame-level (True) fields
+
         Returns:
             a list of fields, or ``None`` if no fields have been selected
         """
@@ -79,6 +84,11 @@ class ViewStage(object):
     def get_excluded_fields(self, frames=False):
         """Returns a list of fields that have been excluded by the stage, if
         any.
+
+        Args:
+            frames (False): whether to return sample-level (False) or
+                frame-level (True) fields
+
         Returns:
             a list of fields, or ``None`` if no fields have been selected
         """
@@ -97,12 +107,14 @@ class ViewStage(object):
         """
         raise NotImplementedError("subclasses must implement `to_mongo()`")
 
-    def to_frames_mongo(self, view):
+    def to_frames_mongo(self, sample_collection):
         """Returns the MongoDB version of the stage for the frames pipeline, if
         any.
 
         Args:
-            view: the view
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the stage is being applied
 
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
@@ -305,7 +317,7 @@ class ExcludeFields(ViewStage):
 
         return [{"$unset": fields}]
 
-    def to_frames_mongo(self, view):
+    def to_frames_mongo(self, _):
         fields = self.get_excluded_fields(frames=True)
         if len(fields) == 0:
             return []
@@ -339,7 +351,15 @@ class ExcludeFields(ViewStage):
                 )
 
     def validate(self, sample_collection):
-        sample_collection.validate_fields_exist(self.field_names)
+        import fiftyone.core.view as fov
+
+        # Allows a field to be excluded multiple times, if desired
+        if isinstance(sample_collection, fov.DatasetView):
+            dataset = sample_collection._dataset
+        else:
+            dataset = sample_collection
+
+        dataset.validate_fields_exist(self.field_names)
 
 
 class ExcludeObjects(ViewStage):
@@ -1665,7 +1685,7 @@ class SelectFields(ViewStage):
 
         return [{"$project": {fn: True for fn in selected_fields}}]
 
-    def to_frames_mongo(self, view):
+    def to_frames_mongo(self, _):
         selected_fields = self.get_selected_fields(frames=True)
         if len(selected_fields) == 0:
             return []
