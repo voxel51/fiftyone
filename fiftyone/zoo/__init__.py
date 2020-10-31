@@ -21,10 +21,6 @@ import fiftyone.core.dataset as fod
 logger = logging.getLogger(__name__)
 
 
-# Initialized the first time `_get_zoo_datasets()` is called
-__ZOO_DATASETS__ = None
-
-
 def list_zoo_datasets():
     """Returns the list of available datasets in the FiftyOne Dataset Zoo.
 
@@ -337,20 +333,15 @@ def _parse_splits(split, splits):
 
 
 def _get_zoo_datasets():
-    global __ZOO_DATASETS__
+    from fiftyone.zoo.base import AVAILABLE_DATASETS as BASE_DATASETS
+    from fiftyone.zoo.torch import AVAILABLE_DATASETS as TORCH_DATASETS
+    from fiftyone.zoo.tf import AVAILABLE_DATASETS as TF_DATASETS
 
-    if __ZOO_DATASETS__ is None:
-        from fiftyone.zoo.torch import AVAILABLE_DATASETS as TORCH_DATASETS
-        from fiftyone.zoo.tf import AVAILABLE_DATASETS as TF_DATASETS
-        from fiftyone.zoo.base import AVAILABLE_DATASETS as BASE_DATASETS
-
-        __ZOO_DATASETS__ = {
-            "torch": TORCH_DATASETS,
-            "tensorflow": TF_DATASETS,
-            "base": BASE_DATASETS,
-        }
-
-    return __ZOO_DATASETS__
+    return {
+        "base": BASE_DATASETS,
+        "torch": TORCH_DATASETS,
+        "tensorflow": TF_DATASETS,
+    }
 
 
 def _get_zoo_dataset_sources():
@@ -358,14 +349,23 @@ def _get_zoo_dataset_sources():
     all_sources = list(all_datasets.keys())
     default_source = fo.config.default_ml_backend
 
+    sources = []
+
+    try:
+        all_sources.remove("base")
+        sources.append("base")
+    except:
+        pass
+
     try:
         all_sources.remove(default_source)
-        all_sources = [default_source] + all_sources
-        has_default = True
+        sources.append(default_source)
     except ValueError:
-        has_default = False
+        default_source = None
 
-    return all_sources, has_default
+    sources.extend(all_sources)
+
+    return sources, default_source
 
 
 def _parse_dataset_details(name, dataset_dir, **kwargs):
