@@ -268,8 +268,12 @@ class StateController(Namespace):
         state = fos.StateDescription.from_dict(self.state)
         if state.dataset is None:
             return []
+
         view = fov.DatasetView(state.dataset)
-        view._stages = [fosg.ViewStage._from_dict(s) for s in stages]
+        for stage_dict in stages:
+            stage = fosg.ViewStage._from_dict(stage_dict)
+            view.add_stage(stage)
+
         return fos.DatasetStatistics(view).serialize()["stats"]
 
     @_catch_errors
