@@ -61,7 +61,7 @@ def list_downloaded_zoo_datasets(base_dir=None):
             info = ZooDataset.load_info(dataset_dir)
             if sub_dir == info.name:
                 downloaded_datasets[info.name] = (dataset_dir, info)
-        except OSError:
+        except:
             pass
 
     return downloaded_datasets
