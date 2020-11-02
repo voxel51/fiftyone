@@ -2,15 +2,15 @@
 
 FiftyOne is open source and community contributions are welcome!
 
-Please do not be frightened by the procedures outlined below. They are not
-dogmatic and are only meant to help guide development as the project and number
-of contributors grow.
-
 If you have not already, we highly recommend browsing currently active
 [projects](https://github.com/voxel51/fiftyone/projects) to get a sense of what
 is planned for FiftyOne as it is steered toward a 1.0 release. Each project is
 a component of FiftyOne that we, the maintainers, deem critical to a great
 CV/ML tool for both datasets and models.
+
+Please do not be frightened by the procedures outlined below. They are not
+dogmatic and are only meant to help guide development as the project and number
+of contributors grow.
 
 ## Contribution process
 
