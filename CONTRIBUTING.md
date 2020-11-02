@@ -19,20 +19,21 @@ defines four categories of issues: feature requests, bug reports, documentation
 fixes, and installation issues. Details about each issue type and the issue
 lifecycle are discussed in the [FiftyOne Issue Policy](ISSUE_POLICY.md).
 Documentation typos, and generally any small improvements need not a have a
-corresponding issue, though.
+corresponding issue.
 
-FiftyOne committers actively [triage](ISSUE_TRIAGE.md) and respond to GitHub
-issues. In general, we recommend waiting for feebdack from an FiftyOne
-committer or community member before proceeding to implement a feature or
+FiftyOne maintainers actively [triage](ISSUE_TRIAGE.md) and respond to GitHub
+issues. In general, we recommend waiting for feebdack from a FiftyOne
+maintainer or community member before proceeding to implement a feature or
 patch. This is particularly important for
 [significant changes](#write-designs-for-significant-changes), and will
 typically be labeled during triage with `needs design`.
 
 After you have agreed upon an implementation strategy for your feature or patch
-with an FiftyOne committer, the next step is to introduce your changes (see
+with a FiftyOne maintainer, the next step is to introduce your changes (see
 [developing changes](#developing-changes-to-fiftyone)) as a pull request
-against the FiftyOne Repository. FiftyOne committers actively review pull
-requests.
+against the FiftyOne Repository. If it is a feature request that should be
+associated with a [project](https://github.com/voxel51/fiftyone/projects), a
+FiftyOne maintainer will do so.
 
 Once your pull request against the FiftyOne Repository has been merged, your
 corresponding changes will be automatically included in the next FiftyOne
@@ -47,7 +48,7 @@ and patches for FiftyOne.
 ### Write designs for significant changes
 
 For significant changes to FiftyOne, we recommend outlining a design for the
-feature or patch and discussing it with an FiftyOne committer before investing
+feature or patch and discussing it with a FiftyOne maintainer before investing
 heavily in implementation. During issue triage, we try to proactively identify
 issues that require design by labeling them with `needs design`. This is
 particularly important if your proposed implementation:
@@ -67,8 +68,8 @@ workflows. As new versions of FiftyOne's are developed and released, it is
 important to ensure that users' workflows continue to operate as expected.
 Accordingly, please take care to consider backwards compatibility when
 introducing changes to the FiftyOne codebase. If you are unsure of the
-backwards compatibility implications of a particular change, feel free to ask
-an FiftyOne committer or community member for input.
+backwards compatibility implications of a particular change, feel free to ask a
+FiftyOne maintainer or community member for input.
 
 ## Developing changes to FiftyOne
 
