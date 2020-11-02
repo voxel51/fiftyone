@@ -1,11 +1,12 @@
 import React, { useState, useRef, PureComponent } from "react";
 import { Bar, BarChart, XAxis, YAxis, Tooltip } from "recharts";
+import { useRecoilValue } from "recoil";
 import { Dimmer, Header, Loader, Message, Segment } from "semantic-ui-react";
 import _ from "lodash";
 
-import { getSocket, useSubscribe } from "../utils/socket";
-import connect from "../utils/connect";
+import { useSubscribe } from "../utils/socket";
 import { isFloat } from "../utils/generic";
+import * as selectors from "../recoil/selectors";
 
 class CustomizedAxisTick extends PureComponent {
   render() {
@@ -28,7 +29,7 @@ class CustomizedAxisTick extends PureComponent {
   }
 }
 
-const Distribution = connect(({ distribution }) => {
+const Distribution = ({ distribution }) => {
   const { name, type, data } = distribution;
   const barWidth = 30;
   const [rightMargin, setRightMargin] = useState(0);
@@ -37,6 +38,7 @@ const Distribution = connect(({ distribution }) => {
   const fill = stroke;
   const isNumeric = _.indexOf(["int", "float"], type) >= 0;
   const padding = isNumeric ? 0 : 20;
+
   return (
     <Segment style={{ overflowY: "auto", margin: "2rem 0" }}>
       <Header as="h3">{`${name}: ${type}`}</Header>
@@ -79,7 +81,7 @@ const Distribution = connect(({ distribution }) => {
       </BarChart>
     </Segment>
   );
-});
+};
 
 function NoDistributions({ name }) {
   return (
@@ -89,8 +91,8 @@ function NoDistributions({ name }) {
   );
 }
 
-const Distributions = ({ group, port }) => {
-  const socket = getSocket(port, "state");
+const Distributions = ({ group }) => {
+  const socket = useRecoilValue(selectors.socket);
   const [initialLoad, setInitialLoad] = useState(true);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
@@ -133,4 +135,4 @@ const Distributions = ({ group, port }) => {
   );
 };
 
-export default connect(Distributions);
+export default Distributions;

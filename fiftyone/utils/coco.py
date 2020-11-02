@@ -1,6 +1,6 @@
 """
 Utilities for working with datasets in
-`COCO format <http://cocodataset.org/#home>`_.
+`COCO format <https://cocodataset.org/#format-data>`_.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -8,8 +8,13 @@ Utilities for working with datasets in
 """
 from collections import defaultdict
 from datetime import datetime
+from itertools import groupby
 import logging
 import os
+import warnings
+
+import numpy as np
+from skimage import measure
 
 import eta.core.image as etai
 import eta.core.serial as etas
@@ -22,38 +27,43 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
+mask_utils = fou.lazy_import(
+    "pycocotools.mask", callback=fou.ensure_pycocotools
+)
+
 
 logger = logging.getLogger(__name__)
 
 
-class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
+class COCODetectionSampleParser(foud.LabeledImageTupleSampleParser):
     """Parser for samples in
-    `COCO detection format <http://cocodataset.org/#home>`_.
+    `COCO Object Detection Format <https://cocodataset.org/#format-data>`_.
 
     This implementation supports samples that are
-    ``(image_or_path, annotations)`` tuples, where:
+    ``(image_or_path, anno_dict_or_path)`` tuples, where:
 
         - ``image_or_path`` is either an image that can be converted to numpy
           format via ``np.asarray()`` or the path to an image on disk
 
-        - ``annotations`` is a list of detections in the following format::
+        - ``anno_dict_or_path`` is a list of detections in the following
+          format::
 
             [
                 {
                     "id": 354728
                     "image_id": 183709,
                     "category_id": 3,
-                    "segmentation": [[...]],
                     "bbox": [45.03, 236.82, 54.79, 30.91],
+                    "segmentation": [...],
                     "area": 1193.6559000000002,
                     "iscrowd": 0,
                 },
                 ...
             ]
 
-          where it is assumed that all detections correspond to the image in
-          the sample. Or, for unlabeled images, ``annotations`` can be
-          ``None``.
+          or the path to such a JSON file on disk. It is assumed that all
+          detections correspond to the image in the sample. For unlabeled
+          images, ``anno_dict_or_path`` can be ``None``.
 
     See :class:`fiftyone.types.dataset_types.COCODetectionDataset` for format
     details.
@@ -64,26 +74,68 @@ class COCODetectionSampleParser(foud.ImageDetectionSampleParser):
         supercategory_map (None): a dict mapping class labels to
             supercategories. If provided, ``supercategory`` attributes will be
             added to all parsed detections
+        load_segmentations (True): whether to load segmentation masks, if
+            available
+        return_polylines (False): whether to return
+            :class:`fiftyone.core.labels.Polylines` instances rather than
+            :class:`fiftyone.core.labels.Detections`
+        tolerance (None): a tolerance, in pixels, when generating approximate
+            polylines for instance masks. Typical values are 1-3 pixels
     """
 
-    def __init__(self, classes=None, supercategory_map=None):
-        super().__init__(
-            label_field=None,
-            bounding_box_field=None,
-            confidence_field=None,
-            attributes_field=None,
-            classes=classes,
-            normalized=False,  # image required to convert to relative coords
-        )
+    def __init__(
+        self,
+        classes=None,
+        supercategory_map=None,
+        load_segmentations=True,
+        return_polylines=False,
+        tolerance=None,
+    ):
+        super().__init__()
+        self.classes = classes
         self.supercategory_map = supercategory_map
+        self.load_segmentations = load_segmentations
+        self.return_polylines = return_polylines
+        self.tolerance = tolerance
 
-    def _parse_detection(self, obj, img=None):
-        coco_obj = COCOObject.from_annotation_dict(obj)
+    @property
+    def label_cls(self):
+        if self.return_polylines:
+            return fol.Polylines
+
+        return fol.Detections
+
+    def get_label(self):
+        anno_dict = self.current_sample[1]
+        img = self._current_image
+
+        return self._parse_anno_dict(anno_dict, img)
+
+    def _parse_anno_dict(self, anno_dict, img):
+        if anno_dict is None:
+            return None
+
+        if etau.is_str(anno_dict):
+            anno_dict = etas.load_json(anno_dict)
+
         frame_size = etai.to_frame_size(img=img)
-        return coco_obj.to_detection(
+        coco_objects = [COCOObject.from_anno_dict(d) for d in anno_dict]
+
+        if self.return_polylines:
+            return _coco_objects_to_polylines(
+                coco_objects,
+                frame_size,
+                self.classes,
+                self.supercategory_map,
+                self.tolerance,
+            )
+
+        return _coco_objects_to_detections(
+            coco_objects,
             frame_size,
-            classes=self.classes,
-            supercategory_map=self.supercategory_map,
+            self.classes,
+            self.supercategory_map,
+            self.load_segmentations,
         )
 
 
@@ -95,10 +147,42 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
 
     Args:
         dataset_dir: the dataset directory
+        load_segmentations (True): whether to load segmentation masks, if
+            available
+        return_polylines (False): whether to return
+            :class:`fiftyone.core.labels.Polylines` instances rather than
+            :class:`fiftyone.core.labels.Detections`
+        tolerance (None): a tolerance, in pixels, when generating approximate
+            polylines for instance masks. Typical values are 1-3 pixels
+        skip_unlabeled (False): whether to skip unlabeled images when importing
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
     """
 
-    def __init__(self, dataset_dir):
-        super().__init__(dataset_dir)
+    def __init__(
+        self,
+        dataset_dir,
+        load_segmentations=True,
+        return_polylines=False,
+        tolerance=None,
+        skip_unlabeled=False,
+        shuffle=False,
+        seed=None,
+        max_samples=None,
+    ):
+        super().__init__(
+            dataset_dir,
+            skip_unlabeled=skip_unlabeled,
+            shuffle=shuffle,
+            seed=seed,
+            max_samples=max_samples,
+        )
+        self.load_segmentations = load_segmentations
+        self.return_polylines = return_polylines
+        self.tolerance = tolerance
         self._data_dir = None
         self._info = None
         self._classes = None
@@ -131,22 +215,30 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
 
         image_metadata = fom.ImageMetadata(width=width, height=height)
 
-        if self._annotations is not None:
-            frame_size = (width, height)
-            detections = fol.Detections(
-                detections=[
-                    obj.to_detection(
-                        frame_size,
-                        classes=self._classes,
-                        supercategory_map=self._supercategory_map,
-                    )
-                    for obj in self._annotations.get(image_id, [])
-                ]
+        if self._annotations is None:
+            return image_path, image_metadata, None
+
+        coco_objects = self._annotations.get(image_id, [])
+        frame_size = (width, height)
+
+        if self.return_polylines:
+            label = _coco_objects_to_polylines(
+                coco_objects,
+                frame_size,
+                self._classes,
+                self._supercategory_map,
+                self.tolerance,
             )
         else:
-            detections = None
+            label = _coco_objects_to_detections(
+                coco_objects,
+                frame_size,
+                self._classes,
+                self._supercategory_map,
+                self.load_segmentations,
+            )
 
-        return image_path, image_metadata, detections
+        return image_path, image_metadata, label
 
     @property
     def has_dataset_info(self):
@@ -158,6 +250,9 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
 
     @property
     def label_cls(self):
+        if self.return_polylines:
+            return fol.Polylines
+
         return fol.Detections
 
     def setup(self):
@@ -187,7 +282,13 @@ class COCODetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         self._supercategory_map = supercategory_map
         self._images_map = {i["file_name"]: i for i in images.values()}
         self._annotations = annotations
-        self._filenames = etau.list_files(self._data_dir, abs_paths=False)
+
+        if self.skip_unlabeled:
+            filenames = self._images_map.keys()
+        else:
+            filenames = etau.list_files(self._data_dir, abs_paths=False)
+
+        self._filenames = self._preprocess_list(filenames)
 
     def get_dataset_info(self):
         return self._info
@@ -211,9 +312,18 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         image_format (None): the image format to use when writing in-memory
             images to disk. By default, ``fiftyone.config.default_image_ext``
             is used
+        tolerance (None): a tolerance, in pixels, when generating approximate
+            polylines for instance masks. Typical values are 1-3 pixels
     """
 
-    def __init__(self, export_dir, classes=None, info=None, image_format=None):
+    def __init__(
+        self,
+        export_dir,
+        classes=None,
+        info=None,
+        image_format=None,
+        tolerance=None,
+    ):
         if image_format is None:
             image_format = fo.config.default_image_ext
 
@@ -221,6 +331,7 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         self.classes = classes
         self.info = info
         self.image_format = image_format
+        self.tolerance = tolerance
         self._labels_map_rev = None
         self._data_dir = None
         self._labels_path = None
@@ -290,11 +401,14 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
             self._anno_id += 1
             self._classes.add(detection.label)
             obj = COCOObject.from_detection(
-                detection, metadata, labels_map_rev=self._labels_map_rev
+                detection,
+                metadata,
+                labels_map_rev=self._labels_map_rev,
+                tolerance=self.tolerance,
             )
             obj.id = self._anno_id
             obj.image_id = self._image_id
-            self._annotations.append(obj)
+            self._annotations.append(obj.to_anno_dict())
 
     def close(self, *args):
         # Populate observed category IDs, if necessary
@@ -302,7 +416,7 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
             classes = sorted(self._classes)
             labels_map_rev = _to_labels_map_rev(classes)
             for anno in self._annotations:
-                anno.category_id = labels_map_rev[anno.category_id]
+                anno["category_id"] = labels_map_rev[anno["category_id"]]
         else:
             classes = self.classes
 
@@ -342,7 +456,7 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
             self._labels_map_rev = _to_labels_map_rev(self.classes)
 
 
-class COCOObject(etas.Serializable):
+class COCOObject(object):
     """An object in COCO detection format.
 
     Args:
@@ -351,10 +465,9 @@ class COCOObject(etas.Serializable):
         category_id: the category ID of the object
         bbox: a bounding box for the object in ``[xmin, ymin, width, height]``
             format
+        segmentation (None): the segmentation data for the object
         area (None): the area of the bounding box, in pixels
-        iscrowd (None): 0 for polygon (object instance) segmentation and 1 for
-            uncompressed RLE (crowd)
-        segmentation (None): a list of segmentation data
+        iscrowd (None): whether the detection is a crowd
     """
 
     def __init__(
@@ -363,33 +476,122 @@ class COCOObject(etas.Serializable):
         image_id,
         category_id,
         bbox,
+        segmentation=None,
         area=None,
         iscrowd=None,
-        segmentation=None,
-        **kwargs
     ):
         self.id = id
         self.image_id = image_id
         self.category_id = category_id
         self.bbox = bbox
+        self.segmentation = segmentation
         self.area = area
         self.iscrowd = iscrowd
-        self.segmentation = segmentation
 
-    @classmethod
-    def from_annotation_dict(cls, d):
-        """Creates a :class:`COCOObject` from a COCO annotation dict.
+    def to_polyline(
+        self, frame_size, classes=None, supercategory_map=None, tolerance=None
+    ):
+        """Returns a :class:`fiftyone.core.labels.Polyline` representation of
+        the object.
 
         Args:
-            d: an annotation dict
+            frame_size: the ``(width, height)`` of the image
+            classes (None): the list of classes
+            supercategory_map (None): a dict mapping class names to
+                supercategories
+            tolerance (None): a tolerance, in pixels, when generating
+                approximate polylines for instance masks. Typical values are
+                1-3 pixels
 
         Returns:
-            a :class:`COCOObject`
+            a :class:`fiftyone.core.labels.Polyline`
         """
-        return cls.from_dict(d)
+        if self.segmentation is None:
+            return []
+
+        label, attributes = self._get_label_and_attributes(
+            classes, supercategory_map
+        )
+
+        points = _get_polygons_for_segmentation(
+            self.segmentation, frame_size, tolerance
+        )
+
+        return fol.Polyline(
+            label=label,
+            points=points,
+            closed=False,
+            filled=True,
+            attributes=attributes,
+        )
+
+    def to_detection(
+        self,
+        frame_size,
+        classes=None,
+        supercategory_map=None,
+        load_segmentation=False,
+    ):
+        """Returns a :class:`fiftyone.core.labels.Detection` representation of
+        the object.
+
+        Args:
+            frame_size: the ``(width, height)`` of the image
+            classes (None): the list of classes
+            supercategory_map (None): a dict mapping class names to
+                supercategories
+            load_segmentation (False): whether to load the segmentation mask
+                for the object, if available
+
+        Returns:
+            a :class:`fiftyone.core.labels.Detection`
+        """
+        label, attributes = self._get_label_and_attributes(
+            classes, supercategory_map
+        )
+
+        width, height = frame_size
+        x, y, w, h = self.bbox
+        bounding_box = [x / width, y / height, w / width, h / height]
+
+        mask = None
+        if load_segmentation:
+            try:
+                mask = _coco_segmentation_to_mask(
+                    self.segmentation, self.bbox, frame_size
+                )
+            except:
+                warnings.warn(
+                    "Failed to convert segmentation to mask; skipping mask"
+                )
+
+        return fol.Detection(
+            label=label,
+            bounding_box=bounding_box,
+            mask=mask,
+            attributes=attributes,
+        )
+
+    def to_anno_dict(self):
+        """Returns a COCO annotation dictionary representation of the object.
+
+        Returns:
+            a COCO annotation dict
+        """
+        return {
+            "id": self.id,
+            "image_id": self.image_id,
+            "category_id": self.category_id,
+            "bbox": self.bbox,
+            "segmentation": self.segmentation,
+            "area": self.area,
+            "iscrowd": self.iscrowd,
+        }
 
     @classmethod
-    def from_detection(cls, detection, metadata, labels_map_rev=None):
+    def from_detection(
+        cls, detection, metadata, labels_map_rev=None, tolerance=None
+    ):
         """Creates a :class:`COCOObject` from a
         :class:`fiftyone.core.labels.Detection`.
 
@@ -399,6 +601,9 @@ class COCOObject(etas.Serializable):
                 image
             labels_map_rev (None): an optional dict mapping labels to category
                 IDs
+            tolerance (None): a tolerance, in pixels, when generating
+                approximate polylines for instance masks. Typical values are
+                1-3 pixels
 
         Returns:
             a :class:`COCOObject`
@@ -429,33 +634,48 @@ class COCOObject(etas.Serializable):
         else:
             iscrowd = None
 
-        # @todo parse `segmentation`
+        frame_size = (width, height)
+        segmentation = _make_coco_segmentation(
+            detection, frame_size, iscrowd, tolerance
+        )
 
-        return cls(None, None, category_id, bbox, area=area, iscrowd=iscrowd)
+        return cls(
+            None,
+            None,
+            category_id,
+            bbox,
+            segmentation=segmentation,
+            area=area,
+            iscrowd=iscrowd,
+        )
 
-    def to_detection(self, frame_size, classes=None, supercategory_map=None):
-        """Returns a :class:`fiftyone.core.labels.Detection` representation of
-        the object.
+    @classmethod
+    def from_anno_dict(cls, d):
+        """Creates a :class:`COCOObject` from a COCO annotation dict.
 
         Args:
-            frame_size: the ``(width, height)`` of the image
-            classes (None): the list of classes
-            supercategory_map (None): a dict mapping class names to
-                supercategories
+            d: a COCO annotation dict
 
         Returns:
-            a :class:`fiftyone.core.labels.Detection`
+            a :class:`COCOObject`
         """
+        return cls(
+            d["id"],
+            d["image_id"],
+            d["category_id"],
+            d["bbox"],
+            segmentation=d.get("segmentation", None),
+            area=d.get("area", None),
+            iscrowd=d.get("iscrowd", None),
+        )
+
+    def _get_label_and_attributes(self, classes, supercategory_map):
         if classes:
             label = classes[self.category_id]
         else:
             label = str(self.category_id)
 
-        width, height = frame_size
-        x, y, w, h = self.bbox
-        bounding_box = [x / width, y / height, w / width, h / height]
-
-        detection = fol.Detection(label=label, bounding_box=bounding_box)
+        attributes = {}
 
         if supercategory_map is not None:
             supercategory = supercategory_map.get(label, None)
@@ -463,58 +683,17 @@ class COCOObject(etas.Serializable):
             supercategory = None
 
         if supercategory is not None:
-            # pylint: disable=unsupported-assignment-operation
-            detection.attributes["supercategory"] = fol.CategoricalAttribute(
+            attributes["supercategory"] = fol.CategoricalAttribute(
                 value=supercategory
             )
 
         if self.area is not None:
-            # pylint: disable=unsupported-assignment-operation
-            detection.attributes["area"] = fol.NumericAttribute(
-                value=self.area
-            )
+            attributes["area"] = fol.NumericAttribute(value=self.area)
 
         if self.iscrowd is not None:
-            # pylint: disable=unsupported-assignment-operation
-            detection.attributes["iscrowd"] = fol.NumericAttribute(
-                value=self.iscrowd
-            )
+            attributes["iscrowd"] = fol.NumericAttribute(value=self.iscrowd)
 
-        # @todo parse `segmentation`
-
-        return detection
-
-    def attributes(self):
-        """Returns a list of class attributes to be serialized.
-
-        Returns:
-            a list of class attributes
-        """
-        _attrs = [
-            "id",
-            "image_id",
-            "category_id",
-            "bbox",
-        ]
-        if self.area is not None:
-            _attrs.append("area")
-        if self.iscrowd is not None:
-            _attrs.append("iscrowd")
-        if self.segmentation is not None:
-            _attrs.append("segmentation")
-        return _attrs
-
-    @classmethod
-    def from_dict(cls, d):
-        """Creates a :class:`COCOObject` from a JSON dictionary.
-
-        Args:
-            d: a JSON dict
-
-        Returns:
-            a :class:`COCOObject`
-        """
-        return cls(**d)
+        return label, attributes
 
 
 def load_coco_detection_annotations(json_path):
@@ -563,9 +742,7 @@ def load_coco_detection_annotations(json_path):
     if _annotations is not None:
         annotations = defaultdict(list)
         for a in _annotations:
-            annotations[a["image_id"]].append(
-                COCOObject.from_annotation_dict(a)
-            )
+            annotations[a["image_id"]].append(COCOObject.from_anno_dict(a))
 
         annotations = dict(annotations)
     else:
@@ -763,3 +940,162 @@ _ANNOTATION_PATHS = {
 
 def _to_labels_map_rev(classes):
     return {c: i for i, c in enumerate(classes)}
+
+
+def _coco_objects_to_polylines(
+    coco_objects, frame_size, classes, supercategory_map, tolerance
+):
+    polylines = []
+    for coco_obj in coco_objects:
+        polylines.append(
+            coco_obj.to_polyline(
+                frame_size,
+                classes=classes,
+                supercategory_map=supercategory_map,
+                tolerance=tolerance,
+            )
+        )
+
+    return fol.Polylines(polylines=polylines)
+
+
+def _coco_objects_to_detections(
+    coco_objects, frame_size, classes, supercategory_map, load_segmentations
+):
+    detections = []
+    for coco_obj in coco_objects:
+        detections.append(
+            coco_obj.to_detection(
+                frame_size,
+                classes=classes,
+                supercategory_map=supercategory_map,
+                load_segmentation=load_segmentations,
+            )
+        )
+
+    return fol.Detections(detections=detections)
+
+
+#
+# The methods below are taken, in part, from:
+# https://github.com/waspinator/pycococreator/blob/207b4fa8bbaae22ebcdeb3bbf00b724498e026a7/pycococreatortools/pycococreatortools.py
+#
+
+
+def _get_polygons_for_segmentation(segmentation, frame_size, tolerance):
+    width, height = frame_size
+
+    # Convert to [[x1, y1, x2, y2, ...]] polygons
+    if isinstance(segmentation, list):
+        abs_points = segmentation
+    else:
+        if isinstance(segmentation["counts"], list):
+            # Uncompressed RLE
+            rle = mask_utils.frPyObjects(segmentation, height, width)
+        else:
+            # RLE
+            rle = segmentation
+
+        mask = mask_utils.decode(rle)
+        abs_points = _mask_to_polygons(mask, tolerance)
+
+    # Convert to [[(x1, y1), (x2, y2), ...]] in relative coordinates
+
+    rel_points = []
+    for apoints in abs_points:
+        rel_points.append(
+            [(x / width, y / height) for x, y, in _pairwise(apoints)]
+        )
+
+    return rel_points
+
+
+def _pairwise(x):
+    y = iter(x)
+    return zip(y, y)
+
+
+def _coco_segmentation_to_mask(segmentation, bbox, frame_size):
+    if segmentation is None:
+        return None
+
+    x, y, w, h = bbox
+    width, height = frame_size
+
+    if isinstance(segmentation, list):
+        # Polygon -- a single object might consist of multiple parts, so merge
+        # all parts into one mask RLE code
+        rle = mask_utils.merge(
+            mask_utils.frPyObjects(segmentation, height, width)
+        )
+    elif isinstance(segmentation["counts"], list):
+        # Uncompressed RLE
+        rle = mask_utils.frPyObjects(segmentation, height, width)
+    else:
+        # RLE
+        rle = segmentation
+
+    mask = mask_utils.decode(rle).astype(bool)
+
+    return mask[
+        int(round(y)) : int(round(y + h)), int(round(x)) : int(round(x + w)),
+    ]
+
+
+def _make_coco_segmentation(detection, frame_size, iscrowd, tolerance):
+    if detection.mask is None:
+        return None
+
+    dobj = detection.to_detected_object()
+    mask = etai.render_instance_image(dobj.mask, dobj.bounding_box, frame_size)
+
+    if iscrowd:
+        return _mask_to_rle(mask)
+
+    return _mask_to_polygons(mask, tolerance)
+
+
+def _mask_to_rle(mask):
+    counts = []
+    for i, (value, elements) in enumerate(groupby(mask.ravel(order="F"))):
+        if i == 0 and value == 1:
+            counts.append(0)
+
+        counts.append(len(list(elements)))
+
+    return {"counts": counts, "size": list(mask.shape)}
+
+
+def _mask_to_polygons(mask, tolerance):
+    if tolerance is None:
+        tolerance = 2
+
+    # Pad mask to close contours of shapes which start and end at an edge
+    padded_mask = np.pad(mask, pad_width=1, mode="constant", constant_values=0)
+
+    contours = measure.find_contours(padded_mask, 0.5)
+    contours = np.subtract(contours, 1)  # undo padding
+
+    polygons = []
+    for contour in contours:
+        contour = _close_contour(contour)
+        contour = measure.approximate_polygon(contour, tolerance)
+        if len(contour) < 3:
+            continue
+
+        contour = np.flip(contour, axis=1)
+        segmentation = contour.ravel().tolist()
+
+        # After padding and subtracting 1 there may be -0.5 points
+        segmentation = [0 if i < 0 else i for i in segmentation]
+
+        polygons.append(segmentation)
+
+    return polygons
+
+
+def _close_contour(contour):
+    if not np.array_equal(contour[0], contour[-1]):
+        contour = np.vstack((contour, contour[0]))
+
+    return contour

@@ -19,7 +19,7 @@ const ErrorMessageDiv = animated(styled.div`
   font-weight: bold;
   position: fixed;
   width: auto;
-  z-index: 800;
+  z-index: 802;
 `);
 
 const ErrorHeader = styled.div`
@@ -59,7 +59,7 @@ const ErrorMessage = React.memo(({ barRef, followRef, serviceRef, style }) => {
 
   useOutsideClick(ref, () => send("CLEAR_ERROR_ID"));
 
-  barRef && followRef && useFollow(barRef, followRef, set, errorId);
+  useFollow(barRef, followRef, set);
 
   return (
     <ErrorMessageDiv

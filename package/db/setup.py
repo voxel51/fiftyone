@@ -58,11 +58,10 @@ class CustomBdistWheel(bdist_wheel):
             )
 
     def get_tag(self):
-        impl, abi_tag, plat_name = bdist_wheel.get_tag(self)
         # no dependency on a specific CPython version
-        impl = "py2.py3"
+        impl = "py3"
         abi_tag = "none"
-        return impl, abi_tag, plat_name
+        return impl, abi_tag, self.plat_name
 
     def write_wheelfile(self, *args, **kwargs):
         bdist_wheel.write_wheelfile(self, *args, **kwargs)

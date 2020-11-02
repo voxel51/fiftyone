@@ -59,6 +59,7 @@ export const darkTheme = {
   buttonBorder: grey24,
   overlay: grey46a70,
   overlayButton: grey46a30,
+  overlayButtonHover: grey46a70,
   menuBackground: grey15,
   menuBorder: grey11,
   darkShadow: black0a16,

@@ -4,22 +4,29 @@ FiftyOne currently uses both
 [unittest](https://docs.python.org/3/library/unittest.html) and
 [pytest](https://docs.pytest.org/en/stable) to implement its tests.
 
-Tests do exist, but their coverage generally needs improvement...
-
 ## Contents
 
-| File                     | Description                                                                                 |
-| ------------------------ | ------------------------------------------------------------------------------------------- |
-| `db_conn_test.py`        | Tests connection to the MongoDB database                                                    |
-| `import_export_tests.py` | Tests for importing/exporting datasets in supported formats                                 |
-| `unittests.py`           | Unit tests checking expected behavior of `fiftyone`                                         |
-| `zoo_tests.py`           | Basic tests of Dataset Zoo functionality                                                    |
-| `benchmarking/*.py`      | Tests related to benchmarking the performance of FiftyOne                                   |
-| `isolated/*.py`          | Tests that must be run in a separate `pytest` process to avoid interfering with other tests |
+| File                 | Description                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------------- |
+| `unittests/*.py`     | Unit tests checking expected behavior of FiftyOne                                           |
+| `benchmarking/*.py`  | Tests related to benchmarking the performance of FiftyOne                                   |
+| `import_export/*.py` | Tests for importing/exporting datasets                                                      |
+| `isolated/*.py`      | Tests that must be run in a separate `pytest` process to avoid interfering with other tests |
+| `misc/*.py`          | Miscellaneous tests that have not been upgraded to official unit tests                      |
 
-## Running a test
+## Running tests
 
-To run a test, simply run `python <name-of-file>.py`
+To run all unit tests, execute:
+
+```shell
+pytest unittests/
+```
+
+To run a specific test, execute:
+
+```shell
+pytest unittests/<file>.py
+```
 
 ## Copyright
 

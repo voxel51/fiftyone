@@ -45,8 +45,8 @@ def launch_app(dataset=None, view=None, port=5151, remote=False):
             load
         view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
-        port (5151): the port number of the server
-        remote (False): whether this is a remote session
+        port (5151): the port number to use
+        remote (False): whether to launch a remote session
 
     Returns:
         a :class:`Session`
@@ -124,7 +124,7 @@ class Session(foc.HasClient):
             load
         view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
-        port (5151): the port to use to connect the FiftyOne App
+        port (5151): the port number to use
         remote (False): whether this is a remote session. Remote sessions do
             not launch the FiftyOne App
     """
@@ -206,6 +206,8 @@ class Session(foc.HasClient):
         self.state.dataset = dataset
         self.state.view = None
         self.state.selected = []
+        self.state.selected_objects = []
+        self.state.filters = {}
 
     @_update_state
     def clear_dataset(self):
@@ -235,6 +237,8 @@ class Session(foc.HasClient):
             self.state.dataset = self.state.view._dataset
 
         self.state.selected = []
+        self.state.selected_objects = []
+        self.state.filters = {}
 
     @_update_state
     def clear_view(self):
@@ -245,10 +249,24 @@ class Session(foc.HasClient):
 
     @property
     def selected(self):
-        """A list of sample IDs of the currently selected samples in the
-        FiftyOne App.
+        """A list of sample IDs of the currently selected samples in the App,
+        if any.
         """
         return list(self.state.selected)
+
+    @property
+    def selected_objects(self):
+        """A list of objects currently selected in the App.
+
+        Items are dictionaries with the following keys:
+
+            -   ``object_id``: the internal ID of the object
+            -   ``sample_id``: the ID of the sample containing the object
+            -   ``field``: the field name containing the object
+            -   ``frame_number``: the frame number containing the object (only
+                applicable to video samples)
+        """
+        return list(self.state.selected_objects)
 
     @_update_state
     def refresh(self):

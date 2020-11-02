@@ -11,28 +11,46 @@ import fiftyone.core.service as fos
 _database_service = fos.DatabaseService()
 config = foc.load_config()
 
+from .core.aggregations import (
+    Bounds,
+    ConfidenceBounds,
+    Count,
+    CountLabels,
+    CountValues,
+    Distinct,
+    DistinctLabels,
+)
 from .core.dataset import (
     Dataset,
     list_datasets,
     dataset_exists,
     load_dataset,
     delete_dataset,
+    delete_datasets,
     delete_non_persistent_datasets,
+    get_default_dataset_name,
+    get_default_dataset_dir,
 )
-from .core.expressions import ViewField, ViewExpression
+from .core.expressions import (
+    ViewField,
+    ViewExpression,
+)
 from .core.fields import (
     Field,
     BooleanField,
     IntField,
+    FrameNumberField,
     FloatField,
     StringField,
     ListField,
+    KeypointsField,
+    PolylinePointsField,
     DictField,
     EmbeddedDocumentField,
     VectorField,
     ArrayField,
-    ImageLabelsField,
 )
+from .core.frame import Frame
 from .core.labels import (
     Label,
     ImageLabel,
@@ -40,16 +58,21 @@ from .core.labels import (
     BooleanAttribute,
     CategoricalAttribute,
     NumericAttribute,
-    VectorAttribute,
+    ListAttribute,
     Classification,
     Classifications,
     Detection,
     Detections,
-    ImageLabels,
+    Polyline,
+    Polylines,
+    Keypoint,
+    Keypoints,
+    Segmentation,
 )
 from .core.metadata import (
     Metadata,
     ImageMetadata,
+    VideoMetadata,
 )
 from .core.sample import Sample
 from .core.session import (

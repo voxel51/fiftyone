@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<annotations>
+    <version>1.1</version>
+    <meta>
+        <task>
+            <id>{{ id }}</id>
+            <name>{{ name }}</name>
+            <size>{{ size }}</size>
+            <mode>interpolation</mode>
+            <overlap></overlap>
+            <bugtracker></bugtracker>
+            <flipped>False</flipped>
+            <created>{{ created }}</created>
+            <updated>{{ updated }}</updated>
+            <labels>
+{% for label in labels %}
+                <label>
+                    <name>{{ label.name }}</name>
+                    <attributes>
+{% for attribute in label.attributes %}
+                        <attribute>
+                            <name>{{ attribute.name }}</name>
+                            <values>{{ attribute.categories|join('\n') }}</values>
+                        </attribute>
+{% endfor %}
+                    </attributes>
+                </label>
+{% endfor %}
+            </labels>
+            <segments>
+                    <segment>
+                        <id>{{ id }}</id>
+                        <start>{{ 0 }}</start>
+                        <stop>{{ [size - 1, 0]|max }}</stop>
+                        <url></url>
+                    </segment>
+            </segments>
+            <owner>
+                <username></username>
+                <email></email>
+            </owner>
+            <original_size>
+                <width>{{ width }}</width>
+                <height>{{ height }}</height>
+            </original_size>
+        </task>
+        <dumped>{{ dumped }}</dumped>
+    </meta>
+{% for track in tracks %}
+    <track id="{{ track.id }}" label="{{ track.label }}">
+{% for frame, box in track.boxes|dictsort %}
+        <box frame="{{ frame }}" xtl="{{ box.xtl }}" ytl="{{ box.ytl }}" xbr="{{ box.xbr }}" ybr="{{ box.ybr }}"{% if box.outside is not none %} outside="{{ box.outside }}" {%endif %}{% if box.occluded is not none %} occluded="{{ box.occluded }}" {%endif %}{% if box.keyframe is not none %} keyframe="{{ box.keyframe }}" {%endif %}>
+{% for attr in box.attributes %}
+            <attribute name="{{ attr.name }}">{{ attr.value }}</attribute>
+{% endfor %}
+        </box>
+{% endfor %}
+{% for frame, polygon in track.polygons|dictsort %}
+        <polygon frame="{{ frame }}" points="{{ polygon.points_str }}"{% if polygon.outside is not none %} outside="{{ polygon.outside }}" {%endif %}{% if polygon.occluded is not none %} occluded="{{ polygon.occluded }}" {%endif %}{% if polygon.keyframe is not none %} keyframe="{{ polygon.keyframe }}" {%endif %}>
+{% for attr in polygon.attributes %}
+            <attribute name="{{ attr.name }}">{{ attr.value }}</attribute>
+{% endfor %}
+        </polygon>
+{% endfor %}
+{% for frame, polyline in track.polylines|dictsort %}
+        <polyline frame="{{ frame }}" points="{{ polyline.points_str }}"{% if polyline.outside is not none %} outside="{{ polyline.outside }}" {%endif %}{% if polyline.occluded is not none %} occluded="{{ polyline.occluded }}" {%endif %}{% if polyline.keyframe is not none %} keyframe="{{ polyline.keyframe }}" {%endif %}>
+{% for attr in polyline.attributes %}
+            <attribute name="{{ attr.name }}">{{ attr.value }}</attribute>
+{% endfor %}
+        </polyline>
+{% endfor %}
+{% for frame, point in track.points|dictsort %}
+        <points frame="{{ frame }}" points="{{ point.points_str }}"{% if point.outside is not none %} outside="{{ point.outside }}" {%endif %}{% if point.occluded is not none %} occluded="{{ point.occluded }}" {%endif %}{% if point.keyframe is not none %} keyframe="{{ point.keyframe }}" {%endif %}>
+{% for attr in point.attributes %}
+            <attribute name="{{ attr.name }}">{{ attr.value }}</attribute>
+{% endfor %}
+        </points>
+{% endfor %}
+    </track>
+{% endfor %}
+</annotations>

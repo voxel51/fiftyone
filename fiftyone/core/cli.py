@@ -12,7 +12,6 @@ import json
 import os
 import subprocess
 import sys
-import time
 
 import argcomplete
 from tabulate import tabulate
@@ -89,15 +88,45 @@ class QuickstartCommand(Command):
 
         # Launch the quickstart
         fiftyone quickstart
+
+        # Launch the quickstart with a video dataset
+        fiftyone quickstart --video
+
+        # Launch the quickstart as a remote session
+        fiftyone quickstart --remote
     """
 
     @staticmethod
     def setup(parser):
-        pass
+        parser.add_argument(
+            "-v",
+            "--video",
+            action="store_true",
+            help="launch the quickstart with a video dataset",
+        )
+        parser.add_argument(
+            "-p",
+            "--port",
+            metavar="PORT",
+            default=5151,
+            type=int,
+            help="the port number to use",
+        )
+        parser.add_argument(
+            "-r",
+            "--remote",
+            action="store_true",
+            help="whether to launch a remote app session",
+        )
 
     @staticmethod
     def execute(parser, args):
-        fouq.quickstart(interactive=False)
+        fouq.quickstart(
+            interactive=False,
+            video=args.video,
+            port=args.port,
+            remote=args.remote,
+        )
 
 
 class ConfigCommand(Command):
@@ -344,6 +373,11 @@ class DatasetsCreateCommand(Command):
         fiftyone datasets create \\
             --name <name> --dataset-dir <dataset-dir> --type <type>
 
+        # Create a dataset from a random subset of the data on disk
+        fiftyone datasets create \\
+            --name <name> --dataset-dir <dataset-dir> --type <type> \\
+            --shuffle --max-samples <max-samples>
+
         # Create a dataset from the given samples JSON file
         fiftyone datasets create --json-path <json-path>
     """
@@ -371,6 +405,29 @@ class DatasetsCreateCommand(Command):
             metavar="TYPE",
             help="the fiftyone.types.Dataset type of the dataset",
         )
+        parser.add_argument(
+            "--shuffle",
+            action="store_true",
+            help=(
+                "whether to randomly shuffle the order in which the samples "
+                "are imported"
+            ),
+        )
+        parser.add_argument(
+            "--seed",
+            metavar="SEED",
+            type=int,
+            help="a random seed to use when shuffling",
+        )
+        parser.add_argument(
+            "--max-samples",
+            metavar="MAX_SAMPLES",
+            type=int,
+            help=(
+                "a maximum number of samples to import. By default, all "
+                "samples are imported"
+            ),
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -380,8 +437,9 @@ class DatasetsCreateCommand(Command):
         dataset_type = etau.get_class(args.type) if args.type else None
 
         if dataset_dir:
+            kwargs = _parse_dataset_import_kwargs(args)
             dataset = fod.Dataset.from_dir(
-                dataset_dir, dataset_type, name=name
+                dataset_dir, dataset_type, name=name, **kwargs
             )
         elif json_path:
             dataset = fod.Dataset.from_json(json_path, name=name)
@@ -650,20 +708,46 @@ class DatasetsDeleteCommand(Command):
 
     Examples::
 
-        # Delete the dataset with the given name
-        fiftyone datasets delete <name>
+        # Delete the datasets with the given name(s)
+        fiftyone datasets delete <name1> <name2> ...
+
+        # Delete the datasets whose names match the given glob pattern
+        fiftyone datasets delete --glob-patt <glob-patt>
+
+        # Delete all non-persistent datasets
+        fiftyone datasets delete --non-persistent
     """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the dataset",
+            "name",
+            metavar="NAME",
+            nargs="*",
+            help="the dataset name(s) to delete",
+        )
+        parser.add_argument(
+            "-g",
+            "--glob-patt",
+            metavar="GLOB_PATT",
+            help="a glob pattern of datasets to delete",
+        )
+        parser.add_argument(
+            "--non-persistent",
+            action="store_true",
+            help="delete all non-persistent datasets",
         )
 
     @staticmethod
     def execute(parser, args):
-        fod.delete_dataset(args.name)
-        print("Dataset '%s' deleted" % args.name)
+        for name in args.name:
+            fod.delete_dataset(name, verbose=True)
+
+        if args.glob_patt:
+            fod.delete_datasets(args.glob_patt, verbose=True)
+
+        if args.non_persistent:
+            fod.delete_non_persistent_datasets(verbose=True)
 
 
 class AppCommand(Command):
@@ -751,8 +835,17 @@ class AppViewCommand(Command):
         # View a glob pattern of images in the app
         fiftyone app view --images-patt <images-patt>
 
+        # View a directory of videos in the app
+        fiftyone app view --videos-dir <videos-dir>
+
+        # View a glob pattern of videos in the app
+        fiftyone app view --videos-patt <videos-patt>
+
         # View a dataset stored in JSON format on disk in the app
         fiftyone app view --json-path <json-path>
+
+        # View a random subset of the data stored on disk in the app
+        fiftyone app view ... --shuffle --max-samples <max-samples>
 
         # View the dataset in a remote app session
         fiftyone app view ... --remote
@@ -799,10 +892,43 @@ class AppViewCommand(Command):
             help="a glob pattern of images",
         )
         parser.add_argument(
+            "--videos-dir",
+            metavar="VIDEOS_DIR",
+            help="the path to a directory of videos",
+        )
+        parser.add_argument(
+            "--videos-patt",
+            metavar="VIDEOS_PATT",
+            help="a glob pattern of videos",
+        )
+        parser.add_argument(
             "-j",
             "--json-path",
             metavar="JSON_PATH",
             help="the path to a samples JSON file to view",
+        )
+        parser.add_argument(
+            "--shuffle",
+            action="store_true",
+            help=(
+                "whether to randomly shuffle the order in which the samples "
+                "are imported"
+            ),
+        )
+        parser.add_argument(
+            "--seed",
+            metavar="SEED",
+            type=int,
+            help="a random seed to use when shuffling",
+        )
+        parser.add_argument(
+            "--max-samples",
+            metavar="MAX_SAMPLES",
+            type=int,
+            help=(
+                "a maximum number of samples to import. By default, all "
+                "samples are imported"
+            ),
         )
         parser.add_argument(
             "-p",
@@ -826,16 +952,20 @@ class AppViewCommand(Command):
             name = args.zoo_dataset
             splits = args.splits
             dataset_dir = args.dataset_dir
+            kwargs = _parse_dataset_import_kwargs(args)
+
             dataset = foz.load_zoo_dataset(
-                name, splits=splits, dataset_dir=dataset_dir
+                name, splits=splits, dataset_dir=dataset_dir, **kwargs
             )
         elif args.dataset_dir:
             # View a dataset from a directory
             name = args.name
             dataset_dir = args.dataset_dir
             dataset_type = etau.get_class(args.type)
+            kwargs = _parse_dataset_import_kwargs(args)
+
             dataset = fod.Dataset.from_dir(
-                dataset_dir, dataset_type, name=name
+                dataset_dir, dataset_type, name=name, **kwargs
             )
         elif args.images_dir:
             # View a directory of images
@@ -847,6 +977,16 @@ class AppViewCommand(Command):
             name = args.name
             images_patt = args.images_patt
             dataset = fod.Dataset.from_images_patt(images_patt, name=name)
+        elif args.videos_dir:
+            # View a directory of images
+            name = args.name
+            videos_dir = args.videos_dir
+            dataset = fod.Dataset.from_videos_dir(videos_dir, name=name)
+        elif args.videos_patt:
+            # View a glob pattern of videos
+            name = args.name
+            videos_patt = args.videos_patt
+            dataset = fod.Dataset.from_videos_patt(videos_patt, name=name)
         elif args.json_path:
             # View a dataset from a JSON file
             name = args.name
@@ -992,7 +1132,7 @@ class ZooListCommand(Command):
     @staticmethod
     def execute(parser, args):
         all_datasets = foz._get_zoo_datasets()
-        all_sources, has_default = foz._get_zoo_dataset_sources()
+        all_sources, default_source = foz._get_zoo_dataset_sources()
 
         base_dir = args.base_dir
         downloaded_datasets = foz.list_downloaded_zoo_datasets(
@@ -1000,12 +1140,12 @@ class ZooListCommand(Command):
         )
 
         _print_zoo_dataset_list(
-            downloaded_datasets, all_datasets, all_sources, has_default
+            downloaded_datasets, all_datasets, all_sources, default_source
         )
 
 
 def _print_zoo_dataset_list(
-    downloaded_datasets, all_datasets, all_sources, has_default
+    downloaded_datasets, all_datasets, all_sources, default_source
 ):
     available_datasets = defaultdict(dict)
     for source, datasets in all_datasets.items():
@@ -1063,12 +1203,13 @@ def _print_zoo_dataset_list(
                 (name, split, is_downloaded, split_dir) + tuple(srcs)
             )
 
-    first_suffix = " (*)" if has_default else ""
-    headers = (
-        ["name", "split", "downloaded", "dataset_dir"]
-        + ["%s%s" % (all_sources[0], first_suffix)]
-        + all_sources[1:]
-    )
+    headers = ["name", "split", "downloaded", "dataset_dir"]
+    for source in all_sources:
+        if source == default_source:
+            source += " (*)"
+
+        headers.append(source)
+
     table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
     print(table_str)
 
@@ -1217,6 +1358,9 @@ class ZooLoadCommand(Command):
 
         # Load the zoo dataset from a custom directory
         fiftyone zoo load <name> --dataset-dir <dataset-dir>
+
+        # Load a random subset of the zoo dataset
+        fiftyone zoo load <name> --shuffle --max-samples <max-samples>
     """
 
     @staticmethod
@@ -1243,6 +1387,29 @@ class ZooLoadCommand(Command):
             metavar="DATASET_DIR",
             help="a custom directory in which the dataset is downloaded",
         )
+        parser.add_argument(
+            "--shuffle",
+            action="store_true",
+            help=(
+                "whether to randomly shuffle the order in which the samples "
+                "are imported"
+            ),
+        )
+        parser.add_argument(
+            "--seed",
+            metavar="SEED",
+            type=int,
+            help="a random seed to use when shuffling",
+        )
+        parser.add_argument(
+            "--max-samples",
+            metavar="MAX_SAMPLES",
+            type=int,
+            help=(
+                "a maximum number of samples to import. By default, all "
+                "samples are imported"
+            ),
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -1250,14 +1417,33 @@ class ZooLoadCommand(Command):
         splits = args.splits
         dataset_name = args.dataset_name
         dataset_dir = args.dataset_dir
+        kwargs = _parse_dataset_import_kwargs(args)
+
         dataset = foz.load_zoo_dataset(
             name,
             splits=splits,
             dataset_name=dataset_name,
             dataset_dir=dataset_dir,
+            **kwargs
         )
+
         dataset.persistent = True
         print("Dataset '%s' created" % dataset.name)
+
+
+def _parse_dataset_import_kwargs(args):
+    kwargs = {}
+
+    if args.shuffle:
+        kwargs["shuffle"] = args.shuffle
+
+    if args.seed is not None:
+        kwargs["seed"] = args.seed
+
+    if args.max_samples is not None:
+        kwargs["max_samples"] = args.max_samples
+
+    return kwargs
 
 
 def _print_dict_as_json(d):

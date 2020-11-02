@@ -1,11 +1,14 @@
-import { wrap, releaseProxy } from "comlink";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useRecoilValue } from "recoil";
+
+import * as selectors from "../recoil/selectors";
 import { getSocket, useSubscribe } from "../utils/socket";
 import tile from "../utils/tile";
 
-export default (port) => {
+export default () => {
+  const socket = useRecoilValue(selectors.socket);
   const [state, setState] = useState({
+    initialized: false,
     loadMore: false,
     isLoading: false,
     hasMore: true,
@@ -13,11 +16,11 @@ export default (port) => {
     rows: [],
     remainder: [],
   });
-
-  const host = `http://127.0.0.1:${port}`;
-  const socket = getSocket(port, "state");
-  useSubscribe(socket, "update", (data) => {
+  const [prevFilters, setPrevFilters] = useState({});
+  const filters = useRecoilValue(selectors.paginatedFilterStages);
+  const clearState = () =>
     setState({
+      initialized: false,
       loadMore: false,
       isLoading: false,
       hasMore: true,
@@ -25,13 +28,18 @@ export default (port) => {
       pageToLoad: 1,
       remainder: [],
     });
-  });
+
+  useSubscribe(socket, "update", () => clearState());
+  useEffect(() => {
+    clearState();
+    setPrevFilters(filters);
+  }, [JSON.stringify(filters) === JSON.stringify(prevFilters)]);
 
   useEffect(() => {
     if (!state.loadMore || state.isLoading || !state.hasMore) return;
-    setState({ ...state, isLoading: true, loadMore: false });
+    setState({ ...state, isLoading: true, loadMore: false, initialized: true });
     socket.emit("page", state.pageToLoad, (data) => {
-      setState(tile(data.results, data.more, state, host));
+      setState(tile(data.results, data.more, state));
     });
   }, [state.loadMore, state.pageToLoad, state.hasMore]);
 

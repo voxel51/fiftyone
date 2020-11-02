@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
 import uuid from "uuid-v4";
@@ -10,10 +10,12 @@ import useMeasure from "react-use-measure";
 import * as atoms from "../recoil/atoms";
 import { getSocket } from "../utils/socket";
 import * as selectors from "../recoil/selectors";
+import { SampleContext } from "../utils/context";
 import { useOutsideClick } from "../utils/hooks";
 import SearchResults from "./ViewBar/ViewStage/SearchResults";
 import { NamedRangeSlider } from "./RangeSlider";
 import { VALID_LIST_TYPES } from "../utils/labels";
+import { removeObjectIDsFromSelection } from "../utils/selection";
 
 const classFilterMachine = Machine({
   id: "classFilter",
@@ -26,6 +28,7 @@ const classFilterMachine = Machine({
     currentResult: null,
     errorId: null,
     results: [],
+    prevValue: "",
   },
   states: {
     init: {},
@@ -41,6 +44,7 @@ const classFilterMachine = Machine({
         assign({
           currentResult: null,
           errorId: null,
+          currentResult: null,
         }),
       ],
       type: "parallel",
@@ -77,6 +81,31 @@ const classFilterMachine = Machine({
         },
       },
       on: {
+        NEXT_RESULT: {
+          actions: assign({
+            currentResult: ({ currentResult, results }) => {
+              if (currentResult === null) return 0;
+              return Math.min(currentResult + 1, results.length - 1);
+            },
+            inputValue: ({ currentResult, results }) => {
+              if (currentResult === null) return results[0];
+              return results[Math.min(currentResult + 1, results.length - 1)];
+            },
+          }),
+        },
+        PREVIOUS_RESULT: {
+          actions: assign({
+            currentResult: ({ currentResult }) => {
+              if (currentResult === 0 || currentResult === null) return null;
+              return currentResult - 1;
+            },
+            inputValue: ({ currentResult, prevValue, results }) => {
+              if (currentResult === 0 || currentResult === null)
+                return prevValue;
+              return results[currentResult - 1];
+            },
+          }),
+        },
         BLUR: {
           target: "reading",
         },
@@ -113,6 +142,7 @@ const classFilterMachine = Machine({
                 classes.filter((c) =>
                   c.toLowerCase().includes(value.toLowerCase())
                 ),
+              prevValue: ({ inputValue }) => inputValue,
             }),
           ],
         },
@@ -140,11 +170,13 @@ const classFilterMachine = Machine({
       target: "reading",
       actions: [
         assign({
-          classes: (_, { classes }) => classes,
+          classes: (_, { classes }) => (classes ? classes : []),
           results: ({ inputValue }, { classes }) =>
-            classes.filter((c) =>
-              c.toLowerCase().includes(inputValue.toLowerCase())
-            ),
+            classes
+              ? classes.filter((c) =>
+                  c.toLowerCase().includes(inputValue.toLowerCase())
+                )
+              : [],
         }),
       ],
     },
@@ -160,6 +192,16 @@ const classFilterMachine = Machine({
     },
   },
 });
+
+const FilterHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+
+  a {
+    cursor: pointer;
+    text-decoration: underline;
+  }
+`;
 
 const ClassInput = styled.input`
   width: 100%;
@@ -207,11 +249,11 @@ const ClassFilterContainer = styled.div`
   margin: 0.25rem 0;
 `;
 
-const ClassFilter = ({ name, atoms }) => {
+const ClassFilter = ({ name, atoms, path }) => {
   const theme = useContext(ThemeContext);
-  const classes = useRecoilValue(selectors.labelClasses(name));
+  const classes = useRecoilValue(selectors.labelClasses(path));
   const [selectedClasses, setSelectedClasses] = useRecoilState(
-    atoms.includeLabels(name)
+    atoms.includeLabels(path)
   );
   const [state, send] = useMachine(classFilterMachine);
   const inputRef = useRef();
@@ -238,17 +280,12 @@ const ClassFilter = ({ name, atoms }) => {
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
+      <FilterHeader>
         Labels{" "}
         {selected.length ? (
-          <a
-            style={{ cursor: "pointer", textDecoration: "underline" }}
-            onClick={() => send({ type: "CLEAR" })}
-          >
-            clear {selected.length}
-          </a>
+          <a onClick={() => send({ type: "CLEAR" })}>clear {selected.length}</a>
         ) : null}
-      </div>
+      </FilterHeader>
       <ClassFilterContainer>
         <div ref={inputRef}>
           <ClassInput
@@ -316,10 +353,14 @@ const CLS_TO_STAGE = {
   Classifications: "FilterClassifications",
   Detection: "FilterField",
   Detections: "FilterDetections",
+  Polyline: "FilterField",
+  Polylines: "FilterPolylines",
+  Keypoint: "FilterField",
+  Keypoints: "FilterKeypoints",
 };
 
 const makeFilter = (fieldName, cls, labels, range, includeNone, hasBounds) => {
-  const fieldStr = VALID_LIST_TYPES.includes(cls) ? "$$this" : `$${fieldName}`;
+  let fieldStr = VALID_LIST_TYPES.includes(cls) ? "$$this" : `$${fieldName}`;
   const confidenceStr = `${fieldStr}.confidence`;
   const labelStr = `${fieldStr}.label`;
   let rangeExpr = null;
@@ -357,21 +398,53 @@ const makeFilter = (fieldName, cls, labels, range, includeNone, hasBounds) => {
   };
 };
 
+const HiddenObjectFilter = ({ entry }) => {
+  const fieldName = entry.name;
+  const sample = useContext(SampleContext);
+  const [hiddenObjects, setHiddenObjects] = useRecoilState(atoms.hiddenObjects);
+  if (!sample) {
+    return null;
+  }
+
+  const sampleHiddenObjectIDs = Object.entries(hiddenObjects)
+    .filter(
+      ([object_id, data]) =>
+        data.sample_id === sample._id && data.field === fieldName
+    )
+    .map(([object_id]) => object_id);
+  if (!sampleHiddenObjectIDs.length) {
+    return null;
+  }
+  const clear = () =>
+    setHiddenObjects((hiddenObjects) =>
+      removeObjectIDsFromSelection(hiddenObjects, sampleHiddenObjectIDs)
+    );
+
+  return (
+    <FilterHeader>
+      Manually hidden: {sampleHiddenObjectIDs.length}
+      <a onClick={clear}>reset</a>
+    </FilterHeader>
+  );
+};
+
 const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
   const port = useRecoilValue(atoms.port);
   const socket = getSocket(port, "state");
-  const [range, setRange] = useRecoilState(rest.confidenceRange(entry.name));
+  const [range, setRange] = useRecoilState(rest.confidenceRange(entry.path));
   const [includeNone, setIncludeNone] = useRecoilState(
-    rest.includeNoConfidence(entry.name)
+    rest.includeNoConfidence(entry.path)
   );
-  const bounds = useRecoilValue(rest.confidenceBounds(entry.name));
-  const [labels, setLabels] = useRecoilState(rest.includeLabels(entry.name));
-  const fieldIsFiltered = useRecoilValue(rest.fieldIsFiltered(entry.name));
+  const bounds = useRecoilValue(rest.confidenceBounds(entry.path));
+  const [labels, setLabels] = useRecoilState(rest.includeLabels(entry.path));
+  const fieldIsFiltered = useRecoilValue(rest.fieldIsFiltered(entry.path));
+  const mediaType = useRecoilValue(selectors.mediaType);
+  const setExtendedDatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
 
   const [stateDescription, setStateDescription] = useRecoilState(
     atoms.stateDescription
   );
-  const filterStage = useRecoilValue(selectors.filterStage(entry.name));
+  const filterStage = useRecoilValue(selectors.filterStage(entry.path));
   useEffect(() => {
     if (filterStage) return;
     setLabels([]);
@@ -406,9 +479,14 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
   if (!modal) {
     useEffect(() => {
       const newState = JSON.parse(JSON.stringify(stateDescription));
-      if (!fieldIsFiltered && !(entry.name in newState.filter_stages)) return;
+      if (!fieldIsFiltered && !(entry.name in newState.filters)) return;
+      setExtendedDatasetStats([]);
+      let fieldName = entry.name;
+      if (mediaType === "video") {
+        fieldName = "frames." + entry.name;
+      }
       const filter = makeFilter(
-        entry.name,
+        fieldName,
         entry.type,
         labels,
         range,
@@ -416,24 +494,26 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
         hasBounds
       );
       if (
-        JSON.stringify(filter) ===
-        JSON.stringify(newState.filter_stages[entry.name])
+        JSON.stringify(filter) === JSON.stringify(newState.filters[entry.name])
       )
         return;
-      if (!fieldIsFiltered && entry.name in newState.filter_stages) {
-        delete newState.filter_stages[entry.name];
+      if (!fieldIsFiltered && entry.name in newState.filters) {
+        delete newState.filters[entry.name];
       } else {
-        newState.filter_stages[entry.name] = filter;
+        newState.filters[entry.name] = filter;
       }
       setStateDescription(newState);
-      socket.emit(
-        "update",
-        {
-          data: newState,
-          include_self: false,
-        },
-        (data) => setStateDescription(data)
-      );
+      socket.emit("update", {
+        data: newState,
+        include_self: false,
+      });
+      const extendedView = [...(newState.view || [])];
+      for (const stage in newState.filters) {
+        extendedView.push(newState.filters[stage]);
+      }
+      socket.emit("get_statistics", extendedView, (data) => {
+        setExtendedDatasetStats(data);
+      });
     }, [bounds, range, includeNone, labels, fieldIsFiltered]);
   }
 
@@ -441,14 +521,15 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
     <animated.div style={{ ...props, overflow }}>
       <div ref={ref}>
         <div style={{ margin: 3 }}>
-          <ClassFilter name={entry.name} atoms={rest} />
+          <ClassFilter name={entry.name} atoms={rest} path={entry.path} />
+          <HiddenObjectFilter entry={entry} />
           <NamedRangeSlider
             color={entry.color}
             name={"Confidence"}
             valueName={"confidence"}
-            includeNoneAtom={rest.includeNoConfidence(entry.name)}
-            boundsAtom={rest.confidenceBounds(entry.name)}
-            rangeAtom={rest.confidenceRange(entry.name)}
+            includeNoneAtom={rest.includeNoConfidence(entry.path)}
+            boundsAtom={rest.confidenceBounds(entry.path)}
+            rangeAtom={rest.confidenceRange(entry.path)}
             maxMin={0}
             minMax={1}
           />

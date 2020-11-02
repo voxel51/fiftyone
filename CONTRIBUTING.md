@@ -180,7 +180,3 @@ After installing the App development environment (see the App
 
 Chromatic homepage: Our Chromatic homepage can be found
 [here](https://www.chromatic.com/builds?appId=5f1875aa9080b80022532573)
-
-## Copyright
-
-Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com

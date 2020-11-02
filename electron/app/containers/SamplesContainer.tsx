@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef, useContext } from "react";
+import React, {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useContext,
+} from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled, { ThemeContext } from "styled-components";
 
@@ -12,7 +18,6 @@ import ViewBar from "../components/ViewBar/ViewBar";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { useResizeHandler, useScrollHandler } from "../utils/hooks";
-import { makeLabelNameGroups } from "../utils/labels";
 
 const Root = styled.div`
   .ui.grid > .sidebar-column {
@@ -28,33 +33,41 @@ const Root = styled.div`
 `;
 
 const DisplayOptionsWrapper = (props) => {
-  const {
-    containerRef,
-    sidebarRef,
-    sidebarHeight,
-    displayProps,
-    headerHeight,
-  } = props;
-  const {
-    activeTags,
-    activeLabels,
-    activeOther,
-    setActiveTags,
-    setActiveLabels,
-    setActiveOther,
-  } = displayProps;
-  const labelSampleCounts = useRecoilValue(selectors.labelSampleCounts);
-  const filteredLabelSampleCounts = useRecoilValue(
-    selectors.filteredLabelSampleCounts
+  const { containerRef, sidebarRef, sidebarHeight, headerHeight } = props;
+  const [activeTags, setActiveTags] = useRecoilState(atoms.activeTags);
+  const [activeLabels, setActiveLabels] = useRecoilState(
+    atoms.activeLabels("sample")
   );
+  const [activeFrameLabels, setActiveFrameLabels] = useRecoilState(
+    atoms.activeLabels("frame")
+  );
+  const [activeOther, setActiveOther] = useRecoilState(
+    atoms.activeOther("sample")
+  );
+
+  const labelSampleCounts = useRecoilValue(
+    selectors.labelSampleCounts("sample")
+  );
+  const filteredLabelSampleCounts = useRecoilValue(
+    selectors.filteredLabelSampleCounts("sample")
+  );
+  const frameLabelSampleCounts = useRecoilValue(
+    selectors.labelSampleCounts("frame")
+  );
+  const filteredFrameLabelSampleCounts = useRecoilValue(
+    selectors.filteredLabelSampleCounts("frame")
+  );
+
   const tagNames = useRecoilValue(selectors.tagNames);
   const tagSampleCounts = useRecoilValue(selectors.tagSampleCounts);
-  const filteredTagSampleCounts = useRecoilValue(
-    selectors.filteredTagSampleCounts
-  );
+
   const filters = useRecoilValue(selectors.labelFilters);
   const setModalFilters = useSetRecoilState(selectors.modalLabelFilters);
-  const labelNameGroups = useRecoilValue(selectors.labelNameGroups);
+  const labelNameGroups = useRecoilValue(selectors.labelNameGroups("sample"));
+
+  const frameLabelNameGroups = useRecoilValue(
+    selectors.labelNameGroups("frame")
+  );
 
   useEffect(() => {
     setModalFilters(filters);
@@ -93,6 +106,12 @@ const DisplayOptionsWrapper = (props) => {
             tagSampleCounts,
             activeTags
           )}
+          frameLabels={getDisplayOptions(
+            frameLabelNameGroups.labels,
+            filteredFrameLabelSampleCounts,
+            frameLabelSampleCounts,
+            activeFrameLabels
+          )}
           labels={getDisplayOptions(
             labelNameGroups.labels,
             filteredLabelSampleCounts,
@@ -101,6 +120,7 @@ const DisplayOptionsWrapper = (props) => {
           )}
           onSelectTag={handleSetDisplayOption(setActiveTags)}
           onSelectLabel={handleSetDisplayOption(setActiveLabels)}
+          onSelectFrameLabel={handleSetDisplayOption(setActiveFrameLabels)}
           scalars={getDisplayOptions(
             labelNameGroups.scalars,
             filteredLabelSampleCounts,
@@ -149,9 +169,9 @@ const SamplesContainer = (props) => {
       );
     }
   };
-  useResizeHandler(updateSidebarHeight, [sidebarRef.current]);
-  useScrollHandler(updateSidebarHeight, [sidebarRef.current]);
-  useEffect(updateSidebarHeight, []);
+  useResizeHandler(updateSidebarHeight);
+  useScrollHandler(updateSidebarHeight);
+  useLayoutEffect(updateSidebarHeight, []);
 
   return (
     <Root ref={containerRef} showSidebar={showSidebar}>

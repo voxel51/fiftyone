@@ -15,15 +15,19 @@ FiftyOne Installation
     `Sign up for the mailing list <https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk>`_
     so we can keep you posted on new features as they come out!
 
+.. _install-prereqs:
+
 Prerequisites
 -------------
 
 You will need a working Python installation. FiftyOne currently requires
-**Python 3.6** or newer. On Linux, we recommended installing Python through
-your system package manager (APT, YUM, etc.) if it is available. On other
-platforms, Python can be downloaded
-`from python.org <https://www.python.org/downloads>`_. To verify that a
-suitable Python version is installed and accessible, run `python3 --version`
+**Python 3.5 through Python 3.8**. Python 3.9 is not yet supported because
+several FiftyOne dependencies do not support it yet.
+
+On Linux, we recommended installing Python through your system package manager
+(APT, YUM, etc.) if it is available. On other platforms, Python can be
+downloaded `from python.org <https://www.python.org/downloads>`_. To verify that
+a suitable Python version is installed and accessible, run `python3 --version`
 or `python --version`.
 
 We encourage installing FiftyOne in a virtual environment. See

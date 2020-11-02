@@ -5,7 +5,6 @@ Tests related to Session behavior.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
 import os
 import sys
 import subprocess

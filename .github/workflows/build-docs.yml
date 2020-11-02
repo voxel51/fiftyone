@@ -43,9 +43,23 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.8
+      - name: Install pip dependencies
+        run: |
+          pip install --upgrade pip setuptools wheel
+          mkdir -p pip-cache
+          echo "PIP_CACHE_DIR=pip-cache" >> $GITHUB_ENV
+      - name: Fetch pip cache
+        uses: actions/cache@v2
+        with:
+          path: pip-cache
+          key: pip-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements/*.txt') }}
+          restore-keys: |
+            pip-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements/*.txt') }}
+            pip-${{ hashFiles('setup.py') }}-
+            pip-
       - name: Install dependencies
         env:
-          PIP_INDEX_URL: https://voxel51-ci:${{ secrets.FIFTYONE_GITHUB_TOKEN }}@pypi.voxel51.com
+          PIP_INDEX_URL: https://voxel51-ci@pypi.voxel51.com
         run: |
           sudo apt-get install pandoc
           pip install -e .
@@ -56,6 +70,13 @@ jobs:
         run: |
           python setup.py bdist_wheel
           pip install dist/*.whl
+      - name: Upgrade ETA to pre-release
+        if: ${{ !startsWith(github.ref, 'refs/heads/rel') && !startsWith(github.ref, 'refs/tags/') }}
+        env:
+          PIP_INDEX_URL: https://voxel51-ci@pypi.voxel51.com
+        run: |
+          echo "Upgrading ETA because github.ref = ${{ github.ref }} (not a release)"
+          pip install -U "voxel51-eta>=0.dev0"
       - name: Build docs
         run: |
           ./docs/generate_docs.bash
@@ -65,8 +86,20 @@ jobs:
           name: docs
           path: docs/build/html/
 
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone fiftyone
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+      - name: Check tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          python .github/tools/check-setup-version.py setup.py $(echo ${{ github.ref }} | sed 's/refs\/tags\/v//')
+
   publish:
-    needs: build
+    needs: [build, check]
     if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/tags/docs-publish'
     runs-on: ubuntu-18.04
     steps:

@@ -1,13 +1,93 @@
 # FiftyOne Packaging
 
-This folder contains supporting code to package most sub-packages of FiftyOne.
-FiftyOne packages are distributed as [wheels](https://pythonwheels.com/)
-installable with `pip`.
+FiftyOne currently consists of several packages:
 
-For each package, `python setup.py bdist_wheel` will generate a wheel for the
-current platform. For some packages, this is configurable as detailed below.
+-   `fiftyone`: the core library
+-   `fiftyone-db`: a bundled copy of MongoDB
+-   `fiftyone-gui`: a bundled production build of the app
+-   `fiftyone-brain`: (external)
+-   `voxel51-eta`: https://github.com/voxel51/eta
 
-## Packaging `fiftyone`
+These packages are distributed as [wheels](https://pythonwheels.com/)
+installable with `pip`. They are separated in this way to enable individual
+packages to be upgraded if necessary while minimizing download size.
+
+## Versioning
+
+The `fiftyone` package is versioned according to the impact of changes in each
+release. Due to `fiftyone` being tightly coupled to the other packages listed
+above, it should generally require relatively strict version ranges. For
+example:
+
+-   `fiftyone-db>=1.2,<2` would require at least `fiftyone-db` 1.2, would also
+    allow 1.2.1, 1.3.0, but would not allow 2.0 or above.
+-   `fiftyone-db>=1.2,<1.3` differs from the above by not allowing
+    `fiftyone-db` 1.3.0 or above
+
+Care should be taken when assigning version numbers to packages that `fiftyone`
+depends on. Generally, following [Semantic Versioning](https://semver.org/) for
+them is recommended. For instance:
+
+-   A `fiftyone-gui` hotfix that is separate from a `fiftyone` release should
+    use a version number allowed by the latest `fiftyone` release
+-   A `voxel51-eta` release that breaks compatibility with the latest
+    `fiftyone` release should use a version number above the range allowed by
+    the latest `fiftyone` release so that users installing `fiftyone` do not
+    end up with a broken installation. (Exceptions can be made, e.g. in the
+    case of rarely-used functionality.)
+
+## Automated builds
+
+Currently, release builds are automated using
+[GitHub Actions](https://github.com/features/actions). Workflows for each
+package are located in the `.github/workflows` directory. Wheels are always
+built when the workflow runs, and are downloadable as workflow artifacts.
+Wheels are also published to PyPI under the following circumstances:
+
+-   `fiftyone` wheels (and documentation) are published when a tag matching
+    `v*` is pushed. `*` must match the version in `setup.py`.
+-   `fiftyone-db` wheels are published when a tag matching `db-v*` is pushed.
+    `*` must match the version in `package/db/setup.py`.
+-   `fiftyone-gui` wheels are published when a tag matching `gui-v*` is pushed.
+    `*` must match the version in `package/gui/setup.py`.
+    -   For consistency, upgrading the versions in all `package.json` files is
+        also recommended
+
+It is recommended to:
+
+-   Publish all dependencies of `fiftyone` that the new release depends on
+    _before_ publishing `fiftyone`. This ensures that users are never able to
+    download a `fiftyone` package whose dependencies have not been published
+    yet.
+    -   The test workflow currently installs the latest pre-release of
+        `voxel51-eta` if available (alpha/beta/rc) - this allows tests to use
+        bleeding-edge versions of ETA published to PyPI without making them
+        available to end-users by default. This is usually only necessary if
+        `fiftyone` tests fail without new ETA features. However, pre-releases
+        are intentionally not installed for tests run on release branches/tags,
+        so a stable release of `voxel51-eta` will need to be available before a
+        `fiftyone` release can be made.
+-   Create the tags on a release branch and wait for builds to be published
+    successfully before merging the branch.
+-   Update `master` after the release has been merged into `develop`:
+    `git push origin develop:master`
+
+If the `publish` step of a workflow fails and has uploaded some (but not all)
+packages to PyPI, you will likely need to upload the rest manually (e.g. with
+`twine`). Downloading and extracting individual `wheel-*.zip` artifacts will
+give `*.whl` files that can be uploaded.
+
+## Manual builds
+
+FiftyOne and its related packages can also be built manually. The `package`
+folder contains supporting code to package `fiftyone-db` and `fiftyone-gui`;
+the main `fiftyone` package is handled by the top-level `setup.py`.
+
+For each package, `python setup.py bdist_wheel` in the appropriate folder will
+generate a wheel for the current platform. For some packages, this is
+configurable as detailed below.
+
+### Packaging `fiftyone`
 
 The wheel for this package will work on any supported platform and Python
 version - no extra steps are necessary.
@@ -15,7 +95,7 @@ version - no extra steps are necessary.
 The `fiftyone` wheel works on any platform. The `fiftyone-brain` wheel
 currently must be built on the target platform.
 
-## Packaging `fiftyone-brain`
+### Packaging `fiftyone-brain`
 
 The wheel for this package is tied to a specific platform and Python version.
 By default, it will be built for your current platform - to change this, add
@@ -27,7 +107,7 @@ Building for separate Python versions currently must be done manually, e.g. by
 creating separate virtual environments. [pyenv](https://github.com/pyenv/pyenv)
 is one way to install multiple isolated Python versions.
 
-## Packaging `fiftyone-db`
+### Packaging `fiftyone-db`
 
 This package can be built from within the `package/db` directory. The wheel for
 this package is platform-specific but will work with any supported Python
@@ -40,7 +120,7 @@ avoid a second download, you can copy the archive here - refer to
 `package/db/setup.py` for the expected filename (which should match the
 download URL).
 
-## Packaging `fiftyone-gui`
+### Packaging `fiftyone-gui`
 
 This package supports the same platforms as `fiftyone-db` and the same
 portability constraints apply. It can be built from within the `package/gui`
@@ -54,7 +134,7 @@ complete, and may require additional system packages - see
 the Electron app is built, switch to the `package/gui` folder and build a wheel
 using the above instructions.
 
-## Testing with built wheels locally
+### Testing with built wheels locally
 
 Once you have built the wheels you want to test with, you can simply run
 `pip install /path/to/dist/fiftyone-something.whl` in a separate environment to
@@ -65,7 +145,7 @@ If you are reinstalling wheels frequently for testing purposes, adding
 `--force-reinstall` to `pip install` will force reinstallation, and `--no-deps`
 will skip reinstalling dependencies.
 
-## Testing package uploads locally
+### Testing package uploads locally
 
 You can spin up a local PyPI server instance (in this example, accessible at
 `localhost:5159`) with:
@@ -125,7 +205,7 @@ To download packages from this instance, add `--index http://localhost:5159` to
 `pip install`. (If your instance is on another host and is not HTTPS-enabled,
 you will need to add `--trusted-host <hostname>` as well.)
 
-### Testing on other Linux distributions
+#### Testing on other Linux distributions
 
 The `test-envs` folder contains some scripts to help with testing on various
 Linux distributions. You will need Docker installed. Note that the base images
