@@ -9,7 +9,6 @@ import logging
 import os
 import shutil
 
-import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -18,6 +17,7 @@ import fiftyone.utils.bdd as foub
 import fiftyone.utils.coco as fouc
 import fiftyone.utils.data as foud
 import fiftyone.utils.hmdb51 as fouh
+import fiftyone.utils.lfw as foul
 import fiftyone.utils.ucf101 as fouu
 import fiftyone.zoo as foz
 
@@ -66,8 +66,9 @@ class QuickstartDataset(FiftyOneDataset):
         # Get metadata
         logger.info("Parsing dataset metadata")
         dataset_type = fot.FiftyOneDataset()
-        classes = foud.FiftyOneDatasetImporter.get_classes(dataset_dir)
-        num_samples = foud.FiftyOneDatasetImporter.get_num_samples(dataset_dir)
+        importer = foud.FiftyOneDatasetImporter
+        classes = importer.get_classes(dataset_dir)
+        num_samples = importer.get_num_samples(dataset_dir)
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
@@ -221,6 +222,58 @@ class COCO2017Dataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
 
+class LabeledFacesInTheWildDataset(FiftyOneDataset):
+    """Labeled Faces in the Wild is a public benchmark for face verification,
+    also known as pair matching.
+
+    The dataset contains 13,233 images of 5,749 people's faces collected from
+    the web. Each face has been labeled with the name of the person pictured.
+    1,680 of the people pictured have two or more distinct photos in the data
+    set. The only constraint on these faces is that they were detected by the
+    Viola-Jones face detector.
+
+    Dataset size:
+        173 MB
+
+    Source:
+        http://vis-www.cs.umass.edu/lfw
+    """
+
+    @property
+    def name(self):
+        return "lfw"
+
+    @property
+    def supported_splits(self):
+        return ("test", "train")
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        #
+        # LFW is distributed as a single download that contains all splits,
+        # so we remove the split from `dataset_dir` and download the whole
+        # dataset (only if necessary)
+        #
+        dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
+        split_dir = os.path.join(dataset_dir, split)
+        if not os.path.exists(split_dir):
+            foul.download_lfw_dataset(
+                dataset_dir, scratch_dir=scratch_dir, cleanup=False
+            )
+
+        # Get metadata
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.ImageClassificationDirectoryTree()
+        importer = foud.ImageClassificationDirectoryTreeImporter
+        classes = sorted(
+            importer.get_classes(os.path.join(dataset_dir, "train"))
+            + importer.get_classes(os.path.join(dataset_dir, "test"))
+        )
+        num_samples = importer.get_num_samples(split_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, classes
+
+
 class BDD100KDataset(FiftyOneDataset):
     """The Berkeley Deep Drive (BDD) dataset is one of the largest and most
     diverese video datasets for autonomous vehicles.
@@ -362,12 +415,9 @@ class HMDB51Dataset(FiftyOneDataset):
         # Get metadata
         logger.info("Parsing dataset metadata")
         dataset_type = fot.VideoClassificationDirectoryTree()
-        classes = foud.VideoClassificationDirectoryTreeImporter.get_classes(
-            split_dir
-        )
-        num_samples = foud.VideoClassificationDirectoryTreeImporter.get_num_samples(
-            split_dir
-        )
+        importer = foud.VideoClassificationDirectoryTreeImporter
+        classes = importer.get_classes(split_dir)
+        num_samples = importer.get_num_samples(split_dir)
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
@@ -437,12 +487,9 @@ class UCF101Dataset(FiftyOneDataset):
         # Get metadata
         logger.info("Parsing dataset metadata")
         dataset_type = fot.VideoClassificationDirectoryTree()
-        classes = foud.VideoClassificationDirectoryTreeImporter.get_classes(
-            split_dir
-        )
-        num_samples = foud.VideoClassificationDirectoryTreeImporter.get_num_samples(
-            split_dir
-        )
+        importer = foud.VideoClassificationDirectoryTreeImporter
+        classes = importer.get_classes(split_dir)
+        num_samples = importer.get_num_samples(split_dir)
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, classes
@@ -453,6 +500,7 @@ AVAILABLE_DATASETS = {
     "quickstart-video": VideoQuickstartDataset,
     "coco-2014-segmentation": COCO2014Dataset,
     "coco-2017-segmentation": COCO2017Dataset,
+    "lfw": LabeledFacesInTheWildDataset,
     "bdd100k": BDD100KDataset,
     "hmdb51": HMDB51Dataset,
     "ucf101": UCF101Dataset,

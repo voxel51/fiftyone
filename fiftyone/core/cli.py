@@ -1132,7 +1132,7 @@ class ZooListCommand(Command):
     @staticmethod
     def execute(parser, args):
         all_datasets = foz._get_zoo_datasets()
-        all_sources, has_default = foz._get_zoo_dataset_sources()
+        all_sources, default_source = foz._get_zoo_dataset_sources()
 
         base_dir = args.base_dir
         downloaded_datasets = foz.list_downloaded_zoo_datasets(
@@ -1140,12 +1140,12 @@ class ZooListCommand(Command):
         )
 
         _print_zoo_dataset_list(
-            downloaded_datasets, all_datasets, all_sources, has_default
+            downloaded_datasets, all_datasets, all_sources, default_source
         )
 
 
 def _print_zoo_dataset_list(
-    downloaded_datasets, all_datasets, all_sources, has_default
+    downloaded_datasets, all_datasets, all_sources, default_source
 ):
     available_datasets = defaultdict(dict)
     for source, datasets in all_datasets.items():
@@ -1203,12 +1203,13 @@ def _print_zoo_dataset_list(
                 (name, split, is_downloaded, split_dir) + tuple(srcs)
             )
 
-    first_suffix = " (*)" if has_default else ""
-    headers = (
-        ["name", "split", "downloaded", "dataset_dir"]
-        + ["%s%s" % (all_sources[0], first_suffix)]
-        + all_sources[1:]
-    )
+    headers = ["name", "split", "downloaded", "dataset_dir"]
+    for source in all_sources:
+        if source == default_source:
+            source += " (*)"
+
+        headers.append(source)
+
     table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
     print(table_str)
 

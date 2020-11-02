@@ -63,20 +63,7 @@ Listing zoo datasets
         ['bdd100k',
         'caltech101',
         'cifar10',
-        'cifar100',
-        'coco-2014',
-        'coco-2014-segmentation',
-        'coco-2017',
-        'coco-2017-segmentation',
-        'fashion-mnist',
-        'hmdb51',
-        'imagenet-2012',
-        'kitti',
-        'mnist',
-        'quickstart',
-        'quickstart-video',
-        'ucf101',
-        'voc-2007',
+        ...
         'voc-2012']
 
     To view the zoo datasets that you have downloaded, you can use
@@ -117,62 +104,17 @@ Listing zoo datasets
 
         $ fiftyone zoo list
 
-        name                    split       downloaded    dataset_dir                                   torch (*)    tensorflow    base
-        ----------------------  ----------  ------------  --------------------------------------------  -----------  ------------  ------
-        bdd100k                 test        ✓             ~/fiftyone/bdd100k/test                                                  ✓
-        bdd100k                 train       ✓             ~/fiftyone/bdd100k/train                                                 ✓
-        bdd100k                 validation  ✓             ~/fiftyone/bdd100k/validation                                            ✓
-        caltech101              test        ✓             ~/fiftyone/caltech101/test                                 ✓
-        caltech101              train                                                                                           ✓
-        cifar10                 test        ✓             ~/fiftyone/cifar10/test                       ✓            ✓
-        cifar10                 train       ✓             ~/fiftyone/cifar10/train                      ✓            ✓
-        cifar100                test        ✓             ~/fiftyone/cifar100/test                      ✓            ✓
-        cifar100                train                                                                   ✓            ✓
-        coco-2014               test                                                                    ✓            ✓
-        coco-2014               train                                                                   ✓            ✓
-        coco-2014               validation                                                              ✓            ✓
-        coco-2014-segmentation  test                                                                                               ✓
-        coco-2014-segmentation  train                                                                                              ✓
-        coco-2014-segmentation  validation                                                                                         ✓
-        coco-2017               test                                                                    ✓            ✓
-        coco-2017               train                                                                   ✓            ✓
-        coco-2017               validation  ✓             ~/fiftyone/coco-2017/validation               ✓            ✓
-        coco-2017-segmentation  test                                                                                               ✓
-        coco-2017-segmentation  train                                                                                              ✓
-        coco-2017-segmentation  validation  ✓             ~/fiftyone/coco-2017-segmentation/validation                             ✓
-        fashion-mnist           test                                                                    ✓            ✓
-        fashion-mnist           train                                                                   ✓            ✓
-        hmdb51                  other       ✓             ~/fiftyone/hmdb51/other                                                  ✓
-        hmdb51                  test        ✓             ~/fiftyone/hmdb51/test                                                   ✓
-        hmdb51                  train       ✓             ~/fiftyone/hmdb51/train                                                  ✓
-        imagenet-2012           train                                                                   ✓            ✓
-        imagenet-2012           validation                                                              ✓            ✓
-        kitti                   test                                                                                 ✓
-        kitti                   train                                                                                ✓
-        kitti                   validation  ✓             ~/fiftyone/kitti/validation                                ✓
-        mnist                   test        ✓             ~/fiftyone/mnist/test                         ✓            ✓
-        mnist                   train       ✓             ~/fiftyone/mnist/train                        ✓            ✓
-        quickstart                          ✓             ~/fiftyone/quickstart                                                    ✓
-        quickstart-video                    ✓             ~/fiftyone/quickstart-video                                              ✓
-        ucf101                  test        ✓             ~/fiftyone/ucf101/test                                                   ✓
-        ucf101                  train       ✓             ~/fiftyone/ucf101/train                                                  ✓
-        voc-2007                test                                                                                 ✓
-        voc-2007                train       ✓             ~/fiftyone/voc-2007/train                     ✓            ✓
-        voc-2007                validation  ✓             ~/fiftyone/voc-2007/validation                ✓            ✓
-        voc-2012                test                                                                                 ✓
-        voc-2012                train                                                                   ✓            ✓
-        voc-2012                validation                                                              ✓            ✓
-
     Dataset splits that have been downloaded are indicated by a checkmark in
     the ``downloaded`` column, and their location on disk is indicated by
     the ``dataset_dir`` column.
 
+    The ``base`` column indicates datasets that are available directly via
+    FiftyOne without requiring an ML backend.
+
     The ``torch`` and ``tensorflow`` columns indicate whether the particular
     dataset split is provided via the respective ML backend. The ``(*)``
     indicates your default ML backend, which will be used in case a given
-    split is available through multiple ML backends. The ``base`` column
-    indicates datasets that are available directly via FiftyOne without
-    requiring an ML backend.
+    split is available through multiple ML backends.
 
 Getting information about zoo datasets
 --------------------------------------
