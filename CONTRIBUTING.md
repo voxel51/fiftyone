@@ -10,6 +10,8 @@ The FiftyOne contribution process starts with filing a GitHub issue. FiftyOne
 defines four categories of issues: feature requests, bug reports, documentation
 fixes, and installation issues. Details about each issue type and the issue
 lifecycle are discussed in the [FiftyOne Issue Policy](ISSUE_POLICY.md).
+Documentation typos, and generally any small improvements need not a have a
+corresponding issue, though.
 
 FiftyOne committers actively [triage](ISSUE_TRIAGE.md) and respond to GitHub
 issues. In general, we recommend waiting for feebdack from an FiftyOne
@@ -114,13 +116,10 @@ documentation in all relevant locations.
 FiftyOne has a suite of tests in the `fiftyone/tests` subdirectory. These tests
 are run automatically on code in outstanding PRs. When making a PR to FiftyOne
 be sure that all tests are passing. To run these tests locally either run each
-test individually:
+test individually, e.g.:
 
 ```bash
-python tests/db_conn_test.py
-python tests/unittests.py
-python tests/stage_tests.py
-...
+python tests/unittests/sample_tests.py
 ```
 
 Or alternatively use [pytest](https://github.com/pytest-dev/pytest) to run the
@@ -172,17 +171,6 @@ After installing the App development environment (see the App
 
 Chromatic homepage: Our Chromatic homepage can be found
 [here](https://www.chromatic.com/builds?appId=5f1875aa9080b80022532573)
-
-[//]: # "TODOS"
-[//]: # "-   ESLint configuration"
-[//]: # "-   Webpack cleanup"
-[//]: # "-   Unit tests - see here"
-[//]:
-    #
-    "https://www.learnstorybook.com/design-systems-for-developers/react/en/test/"
-[//]: # "-   Recoil best practices"
-[//]: # "-   TSDoc documentation for non-component code?"
-[//]: # "-   Add custom introduction page to Storybook"
 
 ## Copyright
 
