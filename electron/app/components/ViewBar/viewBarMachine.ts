@@ -101,7 +101,8 @@ function makeEmptyView(fieldNames, stageInfo) {
   ];
 }
 
-const viewCompareMapper = (stages) => stages.map((stage) => stage.kwargs);
+const viewCompareMapper = (stages) =>
+  stages.map(({ kwargs, _cls }) => ({ kwargs, _cls }));
 
 const viewsAreEqual = (viewOne, viewTwo) => {
   return (
