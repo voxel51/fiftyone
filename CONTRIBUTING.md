@@ -124,22 +124,10 @@ documentation in all relevant locations.
 
 FiftyOne has a suite of tests in the `fiftyone/tests` subdirectory. These tests
 are run automatically on code in outstanding PRs. When making a PR to FiftyOne
-be sure that all tests are passing. To run these tests locally either run each
-test individually, e.g.:
+be sure that all tests are passing. See the README in `fiftyone/tests` for
+instructions on running these tests locally.
 
-```bash
-python tests/unittests/sample_tests.py
-```
-
-Or alternatively use [pytest](https://github.com/pytest-dev/pytest) to run the
-entire test suite:
-
-```bash
-cd tests
-pytest
-```
-
-If adding a new feature be sure to write one or more tests for the feature.
+Please be sure to write tests when you add new features.
 
 ### App development and best practices
 
