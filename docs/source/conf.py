@@ -171,8 +171,10 @@ html_context = {
     "link_voxel51_twitter": "https://twitter.com/voxel51",
     "link_voxel51_medium": "https://medium.com/voxel51/",
     # Banner - set to None or empty string to disable
-    "banner_link": "https://us02web.zoom.us/meeting/register/tZ0kd-GppzsrHNeJEEYcCKsE_t_lI_7iB6Sy",
-    "banner_message": "Register for <b>the biweekly FiftyOne webinar series</b> on Wednesdays at 1PM EST!",
+    # "banner_link": "https://us02web.zoom.us/meeting/register/tZ0kd-GppzsrHNeJEEYcCKsE_t_lI_7iB6Sy",
+    # "banner_message": "Register for <b>the biweekly FiftyOne webinar series</b> on Wednesdays at 1PM EST!",
+    "banner_link": None,
+    "banner_message": None,
 }
 
 # -- Custom app setup --------------------------------------------------------
