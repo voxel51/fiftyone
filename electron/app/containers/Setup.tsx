@@ -1,10 +1,11 @@
 import React, { useState, useContext } from "react";
+import { useRecoilValue } from "recoil";
 import { Redirect } from "react-router-dom";
 import styled, { ThemeContext } from "styled-components";
 import { animated, useSpring } from "react-spring";
 
 import routes from "../constants/routes.json";
-import connect from "../utils/connect";
+import * as atoms from "../recoil/atoms";
 import localSnippet from "../snippets/local.py";
 import bashSnippet from "../snippets/remote.bash";
 import remoteSnippet from "../snippets/remote.py";
@@ -103,7 +104,7 @@ const Tab = animated(styled.div`
 `);
 
 function Setup(props) {
-  const { connected } = props;
+  const connected = useRecoilValue(atoms.connected);
   const theme = useContext(ThemeContext);
   const [activeTab, setActiveTab] = useState<string>("local");
   const localProps = useSpring({
@@ -135,4 +136,4 @@ function Setup(props) {
   );
 }
 
-export default connect(Setup);
+export default Setup;

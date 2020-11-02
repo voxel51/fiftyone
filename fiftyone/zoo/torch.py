@@ -215,16 +215,15 @@ class ImageNet2012Dataset(TorchVisionDataset):
 
     **Manual download instructions**
 
-    This dataset requires you to download the source data manually into
-    the requested backing directory. In particular, you must provide the
-    following files::
+    This dataset requires you to download the source data manually. You must
+    register at http://www.image-net.org/download-images in order to get the
+    link to download the dataset.
+
+    In particular, you must provide the following files::
 
             both splits: ILSVRC2012_devkit_t12.tar.gz
             train split: ILSVRC2012_img_train.tar
        validation split: ILSVRC2012_img_val.tar
-
-    You must register at http://www.image-net.org/download-images in order to
-    get the link to download the dataset.
 
     Dataset size:
         144.02 GiB

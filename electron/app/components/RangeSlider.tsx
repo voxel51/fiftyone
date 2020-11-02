@@ -70,10 +70,6 @@ type RangeValue = number | undefined;
 
 export type Range = [RangeValue, RangeValue];
 
-const valueText = (value: number) => {
-  return value.toFixed(2);
-};
-
 type Props = {
   rangeAtom: RecoilState<Range>;
   boundsAtom: RecoilState<Range>;
@@ -96,15 +92,15 @@ const RangeSlider = ({ rangeAtom, boundsAtom, maxMin, minMax }: Props) => {
     maxMin < bounds[0] ? maxMin : bounds[0],
     minMax > bounds[1] ? minMax : bounds[1],
   ];
-
   return hasBounds && hasValue ? (
     <SliderContainer>
       {stretchedBounds[0].toFixed(2)}
       <Slider
-        value={[...localValue]}
-        onChange={(_, v: Range) => setLocalValue([...v])}
+        value={localValue.map((i) => (i ? Number(i.toFixed(2)) : i))}
+        onChange={(_, v: Range) =>
+          setLocalValue(v.map((i) => (i ? Number(i.toFixed(2)) : i)))
+        }
         onChangeCommitted={(_, v: Range) => {
-          setLocalValue([...v]);
           setValue([...v]);
         }}
         classes={{
@@ -115,10 +111,9 @@ const RangeSlider = ({ rangeAtom, boundsAtom, maxMin, minMax }: Props) => {
           valueLabel: "valueLabel",
         }}
         aria-labelledby="range-slider"
-        getAriaValueText={valueText}
         valueLabelDisplay={"on"}
-        max={stretchedBounds[1]}
-        min={stretchedBounds[0]}
+        max={Number(stretchedBounds[1].toFixed(2))}
+        min={Number(stretchedBounds[0].toFixed(2))}
         step={(stretchedBounds[1] - stretchedBounds[0]) / 100}
       />
       {stretchedBounds[1].toFixed(2)}
@@ -129,6 +124,7 @@ const RangeSlider = ({ rangeAtom, boundsAtom, maxMin, minMax }: Props) => {
 const NamedRangeSliderContainer = styled.div`
   padding-bottom: 0.5rem;
   margin: 3px;
+  font-weight: bold;
 `;
 
 const NamedRangeSliderHeader = styled.div`
@@ -156,7 +152,7 @@ type NamedProps = {
   color: string;
 };
 
-const isDefaultRange = (range, bounds, maxMin, minMax) => {
+const getMinAndMax = (bounds, minMax, maxMin) => {
   const min =
     maxMin !== undefined && maxMin < bounds[0] && bounds[1] !== bounds[0]
       ? maxMin
@@ -165,8 +161,11 @@ const isDefaultRange = (range, bounds, maxMin, minMax) => {
     minMax !== undefined && minMax > bounds[1] && bounds[1] !== bounds[0]
       ? minMax
       : bounds[1];
+  return { min, max };
+};
 
-  return [min, max].every((b, i) => b === range[i]);
+const isDefaultRange = (range, bounds) => {
+  return bounds.every((b, i) => b === range[i]);
 };
 
 export const NamedRangeSlider = React.forwardRef(
@@ -186,7 +185,8 @@ export const NamedRangeSlider = React.forwardRef(
     const [range, setRange] = useRecoilState(rangeSliderProps.rangeAtom);
     const bounds = useRecoilValue(rangeSliderProps.boundsAtom);
 
-    const hasDefaultRange = isDefaultRange(range, bounds, maxMin, minMax);
+    const { min, max } = getMinAndMax(bounds, minMax, maxMin);
+    const hasDefaultRange = isDefaultRange(range, [min, max]);
     const hasBounds = bounds.every((b) => b !== null);
     const isSingleValue = hasBounds && bounds[0] === bounds[1];
 
@@ -198,7 +198,7 @@ export const NamedRangeSlider = React.forwardRef(
             <a
               style={{ cursor: "pointer", textDecoration: "underline" }}
               onClick={() => {
-                setRange([null, null]);
+                setRange([min, max]);
                 setIncludeNone(true);
               }}
             >

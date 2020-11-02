@@ -13,6 +13,7 @@ try:
 except ImportError:
     import importlib_metadata  # Python < 3.8
 
+import eta
 from eta.core.config import EnvConfig
 
 import fiftyone as fo
@@ -50,6 +51,13 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DEFAULT_IMAGE_EXT",
             default=".jpg",
         )
+        self.default_video_ext = self.parse_string(
+            d,
+            "default_video_ext",
+            env_var="FIFTYONE_DEFAULT_VIDEO_EXT",
+            default=".mp4",
+        )
+        self._show_progress_bars = None  # declare
         self.show_progress_bars = self.parse_bool(
             d,
             "show_progress_bars",
@@ -59,6 +67,23 @@ class FiftyOneConfig(EnvConfig):
 
         self._set_defaults()
         self._validate()
+
+    @property
+    def show_progress_bars(self):
+        return self._show_progress_bars
+
+    @show_progress_bars.setter
+    def show_progress_bars(self, value):
+        self._show_progress_bars = value
+        try:
+            # Keep ETA config in-sync
+            eta.config.show_progress_bars = value
+        except:
+            pass
+
+    def attributes(self):
+        # Includes `show_progress_bars`
+        return super().custom_attributes(dynamic=True)
 
     def _set_defaults(self):
         if self.default_dataset_dir is None:

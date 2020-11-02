@@ -4,20 +4,23 @@ import styled from "styled-components";
 import { Check, Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
 import { useRecoilState, useRecoilValue } from "recoil";
 
-import CheckboxGrid from "./CheckboxGrid";
 import DisplayOptionsSidebar from "./DisplayOptionsSidebar";
 import JSONView from "./JSONView";
 import Player51 from "./Player51";
+import SelectObjectsMenu from "./SelectObjectsMenu";
 import { Button, ModalFooter } from "./utils";
 import * as selectors from "../recoil/selectors";
 import * as atoms from "../recoil/atoms";
+import { SampleContext } from "../utils/context";
 
-import { useKeydownHandler, useResizeHandler } from "../utils/hooks";
 import {
-  formatMetadata,
-  makeLabelNameGroups,
-  stringify,
-} from "../utils/labels";
+  useEventHandler,
+  useKeydownHandler,
+  useResizeHandler,
+  useVideoData,
+} from "../utils/hooks";
+import { formatMetadata, stringify } from "../utils/labels";
+import { useToggleSelectionObject } from "../utils/selection";
 
 type Props = {
   sample: object;
@@ -100,6 +103,9 @@ const Container = styled.div`
     &.right {
       right: 0;
     }
+    &:hover {
+      background-color: ${({ theme }) => theme.overlayButtonHover};
+    }
   }
 
   .sidebar {
@@ -154,6 +160,10 @@ const Container = styled.div`
       vertical-align: middle;
     }
   }
+
+  .select-objects-wrapper {
+    margin-top: -1em;
+  }
 `;
 
 const TopRightNavButtonsContainer = styled.div`
@@ -181,6 +191,9 @@ const TopRightNavButtonContainer = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
+  &:hover {
+    background-color: ${({ theme }) => theme.overlayButtonHover};
+  }
 `;
 
 const TopRightNavButton = ({ icon, title, onClick, ...rest }) => {
@@ -204,32 +217,53 @@ const Row = ({ name, renderedName, value, children, ...rest }) => (
 const SampleModal = ({
   sample,
   sampleUrl,
+  metadata,
   colorMap = {},
   onClose,
+  port,
   ...rest
 }: Props) => {
   const playerContainerRef = useRef();
-  const [playerStyle, setPlayerStyle] = useState({ height: "100%" });
+  const [playerStyle, setPlayerStyle] = useState({
+    height: "100%",
+    width: "100%",
+  });
   const [showJSON, setShowJSON] = useState(false);
   const [enableJSONFilter, setEnableJSONFilter] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const [activeLabels, setActiveLabels] = useRecoilState(
-    atoms.modalActiveLabels
+    atoms.modalActiveLabels("sample")
   );
+  const [activeFrameLabels, setActiveFrameLabels] = useRecoilState(
+    atoms.modalActiveLabels("frame")
+  );
+  const mediaType = useRecoilValue(selectors.mediaType);
   const filter = useRecoilValue(selectors.sampleModalFilter);
   const activeTags = useRecoilValue(atoms.modalActiveTags);
   const tagNames = useRecoilValue(selectors.tagNames);
-  const fieldSchema = useRecoilValue(selectors.fieldSchema);
-  const labelNames = useRecoilValue(selectors.labelNames);
-  const labelTypes = useRecoilValue(selectors.labelTypes);
-  const labelNameGroups = makeLabelNameGroups(
-    fieldSchema,
-    labelNames,
-    labelTypes
+  const fieldSchema = useRecoilValue(selectors.fieldSchema("sample"));
+  const labelNameGroups = useRecoilValue(selectors.labelNameGroups("sample"));
+  const frameLabelNameGroups = useRecoilValue(
+    selectors.labelNameGroups("frame")
   );
+  const socket = useRecoilValue(selectors.socket);
+  const viewCounter = useRecoilValue(atoms.viewCounter);
+  const [requested, requestLabels] = useVideoData(socket, sample);
+  const frameData = useRecoilValue(atoms.sampleFrameData(sample._id));
+  const videoLabels = useRecoilValue(atoms.sampleVideoLabels(sample._id));
+  useEffect(() => {
+    mediaType === "video" && requested !== viewCounter && requestLabels();
+  }, [requested]);
+
   useEffect(() => {
     setActiveLabels(rest.activeLabels);
   }, [rest.activeLabels]);
+  useEffect(() => {
+    setActiveFrameLabels(rest.activeFrameLabels);
+  }, [rest.activeFrameLabels]);
+
+  const toggleSelectedObject = useToggleSelectionObject(atoms.selectedObjects);
+  const selectedObjectIDs = Object.keys(useRecoilValue(atoms.selectedObjects));
 
   // save overlay options when navigating - these are restored by passing them
   // in defaultOverlayOptions when the new player is created
@@ -249,54 +283,64 @@ const SampleModal = ({
   const onNext = wrapNavigationFunc(rest.onNext);
 
   const handleResize = () => {
-    if (!playerContainerRef.current || showJSON) {
+    if (!playerRef.current || !playerContainerRef.current || showJSON) {
       return;
     }
     const container = playerContainerRef.current;
-    const image = playerContainerRef.current.querySelector(
-      "img.p51-contained-image"
-    );
     const containerRatio = container.clientWidth / container.clientHeight;
-    const imageRatio = image.clientWidth / image.clientHeight;
-    if (containerRatio < imageRatio) {
+    const contentDimensions = playerRef.current.getContentDimensions();
+    if (
+      !contentDimensions ||
+      contentDimensions.width === 0 ||
+      contentDimensions.height === 0
+    ) {
+      // content may not have loaded yet
+      return;
+    }
+    const contentRatio = contentDimensions.width / contentDimensions.height;
+    if (containerRatio < contentRatio) {
       setPlayerStyle({
         width: container.clientWidth,
-        height: container.clientWidth / imageRatio,
+        height: container.clientWidth / contentRatio,
       });
     } else {
       setPlayerStyle({
         height: container.clientHeight,
-        width: container.clientHeight * imageRatio,
+        width: container.clientHeight * contentRatio,
       });
     }
   };
 
-  useResizeHandler(handleResize, [showJSON]);
-  useEffect(handleResize, [showJSON, fullscreen]);
+  useResizeHandler(handleResize);
+  useEffect(handleResize, [sampleUrl, showJSON, fullscreen]);
 
-  useKeydownHandler(
-    (e) => {
-      if (
-        document.activeElement &&
-        ((document.activeElement.tagName.toLowerCase() === "input" &&
-          !["checkbox", "radio"].includes(document.activeElement.type)) ||
-          document.activeElement.getAttribute("role") === "slider")
-      ) {
-        return;
-      } else if (e.key == "Escape") {
-        if (fullscreen) {
-          setFullscreen(false);
-        } else if (onClose) {
-          onClose();
-        }
-      } else if (e.key == "ArrowLeft" && onPrevious) {
-        onPrevious();
-      } else if (e.key == "ArrowRight" && onNext) {
-        onNext();
+  useKeydownHandler((e) => {
+    if (
+      document.activeElement &&
+      ((document.activeElement.tagName.toLowerCase() === "input" &&
+        !["checkbox", "radio"].includes(document.activeElement.type)) ||
+        document.activeElement.getAttribute("role") === "slider")
+    ) {
+      return;
+    } else if (e.key == "Escape") {
+      if (fullscreen) {
+        setFullscreen(false);
+      } else if (onClose) {
+        onClose();
       }
-    },
-    [onClose, onPrevious, onNext, fullscreen]
-  );
+    } else if (e.key == "ArrowLeft" && onPrevious) {
+      onPrevious();
+    } else if (e.key == "ArrowRight" && onNext) {
+      onNext();
+    }
+  });
+
+  // store in a ref to avoid re-rendering this component when the frame number
+  // changes
+  const frameNumberRef = useRef(null);
+  useEventHandler(playerRef.current, "timeupdate", (e) => {
+    frameNumberRef.current = e.data.frame_number;
+  });
 
   const getDisplayOptions = (
     values,
@@ -339,15 +383,44 @@ const SampleModal = ({
     {}
   );
 
-  const labelSampleValuesReducer = (s) => {
-    return labelNameGroups.labels.reduce((obj, { name, type }) => {
-      let value;
-      if (!s[name]) {
-        value = 0;
-      } else {
-        value = ["Detections", "Classifcations"].includes(type)
-          ? s[name][type.toLowerCase()].length
+  const labelSampleValuesReducer = (s, groups, filterData = false) => {
+    const isVideo = s.media_type === "video";
+    return groups.labels.reduce((obj, { name, type }) => {
+      let value = 0;
+      const resolver = (frame, prefix = "") => {
+        const path = prefix + name;
+        if (!frame[path]) return 0;
+        return ["Detections", "Classifications", "Polylines"].includes(type)
+          ? frame[path][type.toLowerCase()].length
+          : type === "Keypoints"
+          ? frame[path].keypoints.reduce(
+              (acc, cur) => acc + cur.points.length,
+              0
+            )
+          : type === "Keypoint"
+          ? frame[path].points.length
           : 1;
+      };
+
+      if (!(name in s) && isVideo && frameData) {
+        for (const frame of frameData) {
+          const pathFrame = Object.keys(frame).reduce(
+            (acc, cur) => ({
+              ...acc,
+              ["frames." + cur]: frame[cur],
+            }),
+            {}
+          );
+          if (frame[name])
+            value += resolver(
+              filterData ? filter(pathFrame) : pathFrame,
+              "frames."
+            );
+        }
+      } else if (!(name in s) && isVideo) {
+        value = "-";
+      } else {
+        value += resolver(s);
       }
       return {
         ...obj,
@@ -356,8 +429,21 @@ const SampleModal = ({
     }, {});
   };
 
-  const labelSampleValues = labelSampleValuesReducer(sample);
-  const filteredLabelSampleValues = labelSampleValuesReducer(filter(sample));
+  const labelSampleValues = labelSampleValuesReducer(sample, labelNameGroups);
+  const filteredLabelSampleValues = labelSampleValuesReducer(
+    filter(sample),
+    labelNameGroups,
+    true
+  );
+  const frameLabelSampleValues = labelSampleValuesReducer(
+    sample,
+    frameLabelNameGroups
+  );
+  const filteredFrameLabelSampleValues = labelSampleValuesReducer(
+    filter(sample),
+    frameLabelNameGroups,
+    true
+  );
 
   const scalarSampleValues = labelNameGroups.scalars.reduce(
     (obj, { name }) => ({
@@ -378,121 +464,149 @@ const SampleModal = ({
   }, {});
 
   return (
-    <Container className={fullscreen ? "fullscreen" : ""}>
-      <div className="player" ref={playerContainerRef}>
-        {showJSON ? (
-          <JSONView
-            object={sample}
-            filterJSON={enableJSONFilter}
-            enableFilter={setEnableJSONFilter}
-          />
-        ) : (
-          <Player51
-            key={sampleUrl} // force re-render when this changes
-            src={sampleUrl}
-            onLoad={handleResize}
-            style={{
-              position: "relative",
-              ...playerStyle,
-            }}
-            sample={sample}
-            colorMap={colorMap}
-            activeLabels={activeLabels}
-            fieldSchema={fieldSchema}
-            filterSelector={selectors.modalLabelFilters}
-            playerRef={playerRef}
-            defaultOverlayOptions={savedOverlayOptions}
-          />
-        )}
-        {onPrevious ? (
-          <div
-            className="nav-button left"
-            onClick={onPrevious}
-            title="Previous sample (Left arrow)"
-          >
-            &lt;
-          </div>
-        ) : null}
-        {onNext ? (
-          <div
-            className="nav-button right"
-            onClick={onNext}
-            title="Next sample (Right arrow)"
-          >
-            &gt;
-          </div>
-        ) : null}
-        <TopRightNavButtons>
-          <TopRightNavButton
-            onClick={() => setFullscreen(!fullscreen)}
-            title={fullscreen ? "Unmaximize (Esc)" : "Maximize"}
-            icon={fullscreen ? <FullscreenExit /> : <Fullscreen />}
-          />
-        </TopRightNavButtons>
-      </div>
-      <div className="sidebar">
-        <div className="sidebar-content">
-          <h2>
-            Metadata
-            <span className="push-right" />
-          </h2>
-          <Row name="ID" value={sample._id.$oid} />
-          <Row name="Source" value={sample.filepath} />
-          {formatMetadata(sample.metadata).map(({ name, value }) => (
-            <Row key={"metadata-" + name} name={name} value={value} />
-          ))}
-          <h2>
-            Display Options
-            <span className="push-right" />
-          </h2>
-          <DisplayOptionsSidebar
-            colorMap={colorMap}
-            tags={getDisplayOptions(
-              tagNames.map((t) => ({ name: t })),
-              tagSampleExists,
-              activeTags,
-              true
-            )}
-            labels={getDisplayOptions(
-              labelNameGroups.labels,
-              labelSampleValues,
-              activeLabels,
-              false,
-              filteredLabelSampleValues
-            )}
-            onSelectLabel={handleSetDisplayOption(setActiveLabels)}
-            scalars={getDisplayOptions(
-              labelNameGroups.scalars,
-              scalarSampleValues,
-              activeLabels
-            )}
-            onSelectScalar={handleSetDisplayOption(setActiveLabels)}
-            unsupported={getDisplayOptions(
-              labelNameGroups.unsupported,
-              otherSampleValues,
-              activeLabels
-            )}
-            style={{
-              overflowY: "auto",
-              overflowX: "hidden",
-              height: "auto",
-            }}
-            modal={true}
-          />
-          <TopRightNavButton
-            onClick={onClose}
-            title={"Close"}
-            icon={<Close />}
-            style={{ position: "absolute", top: 0, right: 0 }}
-          />
+    <SampleContext.Provider value={sample}>
+      <Container className={fullscreen ? "fullscreen" : ""}>
+        <div className="player" ref={playerContainerRef}>
+          {showJSON ? (
+            <JSONView
+              object={sample}
+              filterJSON={enableJSONFilter}
+              enableFilter={setEnableJSONFilter}
+            />
+          ) : (
+            <Player51
+              key={sampleUrl} // force re-render when this changes
+              src={sampleUrl}
+              onLoad={handleResize}
+              style={{
+                position: "relative",
+                ...playerStyle,
+              }}
+              sample={sample}
+              overlay={videoLabels}
+              metadata={metadata}
+              colorMap={colorMap}
+              activeLabels={activeLabels}
+              activeFrameLabels={activeFrameLabels}
+              fieldSchema={fieldSchema}
+              filterSelector={selectors.modalLabelFilters}
+              playerRef={playerRef}
+              defaultOverlayOptions={savedOverlayOptions}
+              selectedObjects={selectedObjectIDs}
+              onSelectObject={({ id, name }) => {
+                toggleSelectedObject(id, {
+                  sample_id: sample._id,
+                  field: name,
+                  frame_number: frameNumberRef.current,
+                });
+              }}
+            />
+          )}
+          {onPrevious ? (
+            <div
+              className="nav-button left"
+              onClick={onPrevious}
+              title="Previous sample (Left arrow)"
+            >
+              &lt;
+            </div>
+          ) : null}
+          {onNext ? (
+            <div
+              className="nav-button right"
+              onClick={onNext}
+              title="Next sample (Right arrow)"
+            >
+              &gt;
+            </div>
+          ) : null}
+          <TopRightNavButtons>
+            <TopRightNavButton
+              onClick={() => setFullscreen(!fullscreen)}
+              title={fullscreen ? "Unmaximize (Esc)" : "Maximize"}
+              icon={fullscreen ? <FullscreenExit /> : <Fullscreen />}
+            />
+          </TopRightNavButtons>
         </div>
-        <ModalFooter>
-          <Button onClick={() => setShowJSON(!showJSON)}>
-            {showJSON ? "Hide" : "Show"} JSON
-          </Button>
-        </ModalFooter>
-      </div>
-    </Container>
+        <div className="sidebar">
+          <div className="sidebar-content">
+            <h2>
+              Metadata
+              <span className="push-right" />
+            </h2>
+            <Row name="ID" value={sample._id} />
+            <Row name="Source" value={sample.filepath} />
+            <Row name="Media type" value={sample.media_type} />
+            {formatMetadata(sample.metadata).map(({ name, value }) => (
+              <Row key={"metadata-" + name} name={name} value={value} />
+            ))}
+            <h2>
+              Display Options
+              <span className="push-right" />
+            </h2>
+            <div className="select-objects-wrapper">
+              <SelectObjectsMenu
+                sample={sample}
+                frameNumberRef={frameNumberRef}
+              />
+            </div>
+            <DisplayOptionsSidebar
+              colorMap={colorMap}
+              tags={getDisplayOptions(
+                tagNames.map((t) => ({ name: t })),
+                tagSampleExists,
+                activeTags,
+                true
+              )}
+              labels={getDisplayOptions(
+                labelNameGroups.labels,
+                labelSampleValues,
+                activeLabels,
+                false,
+                filteredLabelSampleValues
+              )}
+              frameLabels={getDisplayOptions(
+                frameLabelNameGroups.labels,
+                frameLabelSampleValues,
+                activeFrameLabels,
+                false,
+                filteredFrameLabelSampleValues
+              )}
+              onSelectLabel={handleSetDisplayOption(setActiveLabels)}
+              onSelectFrameLabel={handleSetDisplayOption(setActiveFrameLabels)}
+              scalars={getDisplayOptions(
+                labelNameGroups.scalars,
+                scalarSampleValues,
+                activeLabels
+              )}
+              onSelectScalar={handleSetDisplayOption(setActiveLabels)}
+              unsupported={getDisplayOptions(
+                labelNameGroups.unsupported,
+                otherSampleValues,
+                activeLabels
+              )}
+              style={{
+                overflowY: "auto",
+                overflowX: "hidden",
+                height: "auto",
+              }}
+              modal={true}
+            />
+            <TopRightNavButton
+              onClick={onClose}
+              title={"Close"}
+              icon={<Close />}
+              style={{ position: "absolute", top: 0, right: 0 }}
+            />
+          </div>
+          <ModalFooter>
+            <Button onClick={() => setShowJSON(!showJSON)}>
+              {showJSON ? "Hide" : "Show"} JSON
+            </Button>
+          </ModalFooter>
+        </div>
+      </Container>
+    </SampleContext.Provider>
   );
 };
 

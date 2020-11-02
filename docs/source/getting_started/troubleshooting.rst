@@ -42,6 +42,29 @@ still encounter this error, ensure that the virtual environment is activated.
 See the
 :doc:`virtual environment setup guide <virtualenv>` for more details.
 
+"Package 'fiftyone' requires a different Python"
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This error occurs when attempting to install FiftyOne with an unsupported Python
+version (either too old or too new). See the
+:ref:`installation guide <install-prereqs>` for details on which versions of
+Python are supported by FiftyOne.
+
+If you have multiple Python installations, you may be using `pip` from an
+incompatible Python installation. Run `pip --version` to see which Python
+version `pip` is using. If you see an unsupported or unexpected Python version
+reported, there are several possible causes, including:
+
+* You may not have activated a virtual environment in your current shell. Refer
+  to the :doc:`virtual environment setup guide <virtualenv>` for details.
+* If you are intentionally using your system Python installation instead of a
+  virtual environment, your system-wide `pip` may use an unsupported Python
+  version. For instance, on some Linux systems, `pip` uses Python 2, and `pip3`
+  uses Python 3. If this is the case, try installing FiftyOne with `pip3`
+  instead of `pip`.
+* You may not have a compatible Python version installed. See the
+  :ref:`installation guide <install-prereqs>` for details.
+
 "No module named skbuild"
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 

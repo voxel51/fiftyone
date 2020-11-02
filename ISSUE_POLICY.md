@@ -1,7 +1,7 @@
 # Issue Policy
 
-The FiftyOne Issue Policy outlines the categories of FiftyOne GitHub issues and
-discusses the guidelines & processes associated with each type of issue.
+The FiftyOne Issue Policy outlines the categories of GitHub issues that we use
+and discusses the guidelines & processes associated with each type of issue.
 
 Before filing an issue, make sure to
 [search for related issues](https://github.com/voxel51/fiftyone/issues) and

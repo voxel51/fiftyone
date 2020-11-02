@@ -3,16 +3,17 @@ Drawing Labels on Samples
 
 .. default-role:: code
 
-FiftyOne provides native support for rendering annotated versions of samples
-with |Label| fields overlaid on the source data (e.g., images).
+FiftyOne provides native support for rendering annotated versions of image and
+video samples with :ref:`label fields <using-labels>` overlaid on the source
+media.
 
 Basic recipe
 ------------
 
 The interface for drawing labels on samples in conveniently exposed via the
-Python library and the CLI. You can easily annotate one or more |Label| fields
-on entire datasets or arbitrary subsets of your datasets that you have
-identified by constructing a |DatasetView|.
+Python library and the CLI. You can easily annotate one or more
+:ref:`label fields <using-labels>` on entire datasets or arbitrary subsets of
+your datasets that you have identified by constructing a |DatasetView|.
 
 .. tabs::
 
@@ -67,8 +68,9 @@ Drawing labels for individual samples
 You can also annotate individual samples directly by using the various methods
 exposed in the :mod:`fiftyone.utils.annotations` module.
 
-For example, you can draw an annotated version of an image sample with its
-label field(s) overlaid as follows:
+For example, you can draw an annotated version of an image sample with
+|Classification| and |Detections| labels overlaid via
+:func:`draw_labeled_image() <fiftyone.utils.annotations.draw_labeled_image>`:
 
 .. code-block:: python
     :linenos:
@@ -110,18 +112,19 @@ label field(s) overlaid as follows:
         ),
     )
 
-    # The label fields to render
-    label_fields = ["gt_label", "pred_label", "gt_objects", "pred_objects"]
-
     # The path to write the annotated image
     outpath = "/path/for/image-annotated.jpg"
 
     # Render the annotated image
-    foua.draw_labeled_image(sample, label_fields, outpath)
+    foua.draw_labeled_image(sample, outpath)
 
 .. image:: ../images/draw_labels_example1.jpg
    :alt: image-annotated.jpg
    :align: center
+
+Similarly, you can draw an annotated version of a video sample with its frame
+labels overlaid via
+:func:`draw_labeled_video() <fiftyone.utils.annotations.draw_labeled_video>`.
 
 Customizing annotation rendering
 --------------------------------
@@ -154,9 +157,7 @@ predictions:
     )
 
     # Render the annotated image
-    foua.draw_labeled_image(
-        sample, label_fields, outpath, annotation_config=annotation_config
-    )
+    foua.draw_labeled_image(sample, outpath, annotation_config=annotation_config)
 
 .. image:: ../images/draw_labels_example2.jpg
    :alt: image-annotated.jpg

@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import styled from "styled-components";
+import React, { useState, useContext } from "react";
+import styled, { ThemeContext } from "styled-components";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 
 import {
@@ -16,18 +16,22 @@ import DropdownCell from "./DropdownCell";
 import SelectionTag from "./Tags/SelectionTag";
 import { Button, scrollbarStyles } from "./utils";
 import * as atoms from "../recoil/atoms";
+import * as selectors from "../recoil/selectors";
 import { refreshColorMap as refreshColorMapSelector } from "../recoil/selectors";
+import { labelTypeHasColor } from "../utils/labels";
 
 export type Entry = {
   name: string;
   selected: boolean;
   count: number;
   type: string;
+  path: string;
 };
 
 type Props = {
   tags: Entry[];
   labels: Entry[];
+  frameLabels: Entry[];
   scalars: Entry[];
   unsupported: Entry[];
   onSelectTag: (entry: Entry) => void;
@@ -73,7 +77,18 @@ const Container = styled.div`
   }
 `;
 
-const Cell = ({ label, icon, entries, onSelect, colorMap, title, modal }) => {
+const Cell = ({
+  label,
+  icon,
+  entries,
+  headerContent = null,
+  onSelect,
+  colorMap,
+  title,
+  modal,
+  prefix = "",
+}) => {
+  const theme = useContext(ThemeContext);
   const [expanded, setExpanded] = useState(true);
   const numSelected = entries.filter((e) => e.selected).length;
   const handleClear = (e) => {
@@ -109,6 +124,7 @@ const Cell = ({ label, icon, entries, onSelect, colorMap, title, modal }) => {
       expanded={expanded}
       onExpand={setExpanded}
     >
+      {headerContent}
       {entries.length ? (
         <CheckboxGrid
           columnWidths={[3, 2]}
@@ -119,12 +135,16 @@ const Cell = ({ label, icon, entries, onSelect, colorMap, title, modal }) => {
             data: e.icon ? e.icon : [makeData(e.filteredCount, e.totalCount)],
             totalCount: e.totalCount,
             filteredCount: e.filteredCount,
-            color: colorMap[e.name],
+            color: labelTypeHasColor(e.type)
+              ? colorMap[prefix + e.name]
+              : theme.backgroundLight,
             hideCheckbox: e.hideCheckbox,
             disabled: Boolean(e.disabled),
+            path: prefix + e.name,
           }))}
           onCheck={onSelect}
           modal={modal}
+          prefix={prefix}
         />
       ) : (
         <span>No options available</span>
@@ -150,11 +170,14 @@ const DisplayOptionsSidebar = React.forwardRef(
       modal = false,
       tags = [],
       labels = [],
+      frameLabels = [],
       scalars = [],
       unsupported = [],
       onSelectTag,
       onSelectLabel,
+      onSelectFrameLabel,
       onSelectScalar,
+      headerContent = {},
       ...rest
     }: Props,
     ref
@@ -162,6 +185,8 @@ const DisplayOptionsSidebar = React.forwardRef(
     const refreshColorMap = useSetRecoilState(refreshColorMapSelector);
     const colorMap = useRecoilValue(atoms.colorMap);
     const cellRest = { modal };
+    const mediaType = useRecoilValue(selectors.mediaType);
+    const isVideo = mediaType === "video";
     return (
       <Container ref={ref} {...rest}>
         <Cell
@@ -169,6 +194,7 @@ const DisplayOptionsSidebar = React.forwardRef(
           label="Tags"
           icon={<PhotoLibrary />}
           entries={tags}
+          headerContent={headerContent.tags}
           onSelect={onSelectTag}
           {...cellRest}
         />
@@ -177,14 +203,27 @@ const DisplayOptionsSidebar = React.forwardRef(
           label="Labels"
           icon={<Label style={{ transform: "rotate(180deg)" }} />}
           entries={labels}
+          headerContent={headerContent.labels}
           onSelect={onSelectLabel}
           {...cellRest}
         />
+        {isVideo && (
+          <Cell
+            colorMap={colorMap}
+            label="Frame Labels"
+            icon={<PhotoLibrary />}
+            entries={frameLabels}
+            onSelect={onSelectFrameLabel}
+            {...cellRest}
+            prefix="frames."
+          />
+        )}
         <Cell
           colorMap={colorMap}
           label="Scalars"
           icon={<BarChart />}
           entries={scalars}
+          headerContent={headerContent.scalars}
           onSelect={onSelectScalar}
           {...cellRest}
         />
@@ -199,6 +238,7 @@ const DisplayOptionsSidebar = React.forwardRef(
               selected: false,
               disabled: true,
             }))}
+            headerContent={headerContent.unsupported}
             {...cellRest}
           />
         ) : null}

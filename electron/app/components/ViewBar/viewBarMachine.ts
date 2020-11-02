@@ -1,5 +1,6 @@
 import { Machine, actions, assign, spawn, send } from "xstate";
 import uuid from "uuid-v4";
+
 import viewStageMachine, {
   createParameter,
 } from "./ViewStage/viewStageMachine";
@@ -8,6 +9,7 @@ import { PARSER as PARAM_PARSER } from "./ViewStage/viewStageParameterMachine";
 const { choose } = actions;
 
 export const createStage = (
+  fieldNames,
   id,
   stage,
   index,
@@ -30,6 +32,7 @@ export const createStage = (
   inputRef: {},
   submitted,
   loaded,
+  fieldNames,
 });
 
 import { getSocket } from "../../utils/socket";
@@ -40,12 +43,18 @@ function getStageInfo(context) {
   );
 }
 
-function serializeStage(stage, stageMap) {
+function serializeStage(stage, stageMap, fieldNames) {
   return {
     kwargs: stage.parameters.map((param, i) => {
       return [
         param.parameter,
-        operate(stageMap[stage.stage][i].type, "castTo", param.value),
+        operate(
+          stageMap[stage.stage][i].type,
+          "castTo",
+          param.value,
+          true,
+          fieldNames
+        ),
       ];
     }),
     _uuid: stage.id,
@@ -53,23 +62,37 @@ function serializeStage(stage, stageMap) {
   };
 }
 
-function operate(type, operator, value, isString = true) {
+function operate(type, operator, value, isString = true, fieldNames) {
   return type.split("|").reduce((acc, t) => {
     if (acc !== undefined) return acc;
     const parser = PARAM_PARSER[t];
-    return parser.validate(!isString ? parser.castFrom(value) : value)
-      ? parser[operator](value)
+    return parser.validate(
+      !isString ? parser.castFrom(value, fieldNames) : value,
+      fieldNames
+    )
+      ? parser[operator](value, fieldNames)
       : acc;
   }, undefined);
 }
 
-function serializeView(stages, stageMap) {
+function serializeView(stages, stageMap, fieldNames) {
   if (stages.length === 1 && stages[0].stage === "") return [];
-  return stages.map((stage) => serializeStage(stage, stageMap));
+  return stages.map((stage) => serializeStage(stage, stageMap, fieldNames));
 }
 
-function makeEmptyView(stageInfo) {
-  const stage = createStage(null, "", 0, stageInfo, false, 1, true, [], false);
+function makeEmptyView(fieldNames, stageInfo) {
+  const stage = createStage(
+    fieldNames,
+    null,
+    "",
+    0,
+    stageInfo,
+    false,
+    1,
+    true,
+    [],
+    false
+  );
   return [
     {
       ...stage,
@@ -78,19 +101,31 @@ function makeEmptyView(stageInfo) {
   ];
 }
 
+const viewCompareMapper = (stages) =>
+  stages.map(({ kwargs, _cls }) => ({ kwargs, _cls }));
+
+const viewsAreEqual = (viewOne, viewTwo) => {
+  return (
+    JSON.stringify(viewCompareMapper(viewOne)) ===
+    JSON.stringify(viewCompareMapper(viewTwo))
+  );
+};
+
 function setStages(ctx, stageInfo) {
-  const viewStr = ctx.stateDescription.view.view;
-  const view = JSON.parse(viewStr);
+  const view = ctx.view;
   const stageMap = Object.fromEntries(stageInfo.map((s) => [s.name, s.params]));
-  if (viewStr === JSON.stringify(serializeView(ctx.stages, stageMap))) {
+  if (
+    viewsAreEqual(view, serializeView(ctx.stages, stageMap, ctx.fieldNames))
+  ) {
     return ctx.stages;
   } else if (view.length === 0) {
-    return makeEmptyView(stageInfo);
+    return makeEmptyView(ctx.fieldNames, stageInfo);
   } else {
     return view.map((stage, i) => {
       let stageName = stage._cls.split(".");
       stageName = stageName[stageName.length - 1];
       const newStage = createStage(
+        ctx.fieldNames,
         stage._uuid,
         stageName,
         i,
@@ -102,12 +137,20 @@ function setStages(ctx, stageInfo) {
           const stageInfoResult = stageInfo.filter(
             (s) => s.name === stageName
           )[0];
+
           return createParameter(
+            ctx.fieldNames,
             stageName,
             p[0],
             stageInfoResult.params[j].type,
             stageInfoResult.params[j].default,
-            operate(stageInfoResult.params[j].type, "castFrom", p[1], false),
+            operate(
+              stageInfoResult.params[j].type,
+              "castFrom",
+              p[1],
+              false,
+              ctx.fieldNames
+            ),
             true,
             false,
             j === stageInfoResult.params.length - 1,
@@ -134,9 +177,10 @@ const viewBarMachine = Machine(
       stages: [],
       stageInfo: undefined,
       activeStage: 0,
-      setStateDescription: undefined,
-      stateDescription: undefined,
+      view: undefined,
+      setView: undefined,
       port: undefined,
+      fieldNames: [],
     },
     initial: "initializing",
     states: {
@@ -144,14 +188,9 @@ const viewBarMachine = Machine(
         always: [
           {
             target: "running.hist",
-            cond: (ctx) => ctx.stageInfo && ctx.stateDescription.view,
+            cond: (ctx) => ctx.stageInfo && ctx.view,
             actions: [
               assign({
-                activeStage: (ctx) =>
-                  Math.min(
-                    Math.max(ctx.stateDescription.view.view.length - 1, 0),
-                    ctx.activeStage
-                  ),
                 stages: (ctx) => setStages(ctx, ctx.stageInfo),
               }),
             ],
@@ -168,10 +207,11 @@ const viewBarMachine = Machine(
           onDone: {
             target: "running",
             actions: assign({
-              stageInfo: (ctx, e) => e.data.stages,
+              stageInfo: (_, e) => e.data.stages,
               stages: (ctx, e) => {
-                const view = JSON.parse(ctx.stateDescription.view.view);
-                if (view.length === 0) return makeEmptyView(e.data.stages);
+                const view = ctx.view;
+                if (view.length === 0)
+                  return makeEmptyView(ctx.fieldNames, e.data.stages);
                 return setStages(ctx, e.data.stages);
               },
             }),
@@ -343,6 +383,7 @@ const viewBarMachine = Machine(
             activeStage: (_, { index }) => index,
             stages: (ctx, { index }) => {
               const newStage = createStage(
+                ctx.fieldNames,
                 null,
                 "",
                 index,
@@ -392,6 +433,7 @@ const viewBarMachine = Machine(
           assign({
             stages: (ctx) => {
               const stage = createStage(
+                ctx.fieldNames,
                 null,
                 "",
                 0,
@@ -417,9 +459,10 @@ const viewBarMachine = Machine(
         actions: [
           assign({
             activeStage: ({ activeStage }) => Math.max(activeStage - 1, 0),
-            stages: ({ stages, stageInfo }, e) => {
+            stages: ({ fieldNames, stages, stageInfo }, e) => {
               if (stages.length === 1 && stages[0].id === e.stage.id) {
                 const stage = createStage(
+                  fieldNames,
                   null,
                   "",
                   0,
@@ -459,10 +502,9 @@ const viewBarMachine = Machine(
           assign({
             port: (_, { port }) => port,
             socket: (_, { port }) => getSocket(port, "state"),
-            stateDescription: (_, e) => {
-              return e.stateDescription;
-            },
-            setStateDescription: (_, e) => e.setStateDescription,
+            view: (_, { view }) => view,
+            setView: (_, { setView }) => setView,
+            fieldNames: (_, { fieldNames }) => fieldNames,
           }),
           "sendStagesUpdate",
         ],
@@ -479,28 +521,17 @@ const viewBarMachine = Machine(
             length: ctx.stages.length,
             active: stage.index === ctx.activeStage,
             stage: stage.stage,
+            fieldNames: ctx.fieldNames,
           })
         );
       },
-      submit: ({ socket, stateDescription, stages, stageInfo }) => {
+      submit: ({ stages, stageInfo, fieldNames, setView, view }) => {
         const stageMap = Object.fromEntries(
           stageInfo.map((s) => [s.name, s.params])
         );
-        const result = JSON.stringify(serializeView(stages, stageMap));
-        const {
-          view: { dataset },
-        } = stateDescription;
-        if (result === JSON.stringify(JSON.parse(stateDescription.view.view)))
-          return;
-        const newState = {
-          ...stateDescription,
-          filter_stages: {},
-          view: {
-            dataset,
-            view: result,
-          },
-        };
-        socket.emit("update", { data: newState, include_self: true });
+        const newView = serializeView(stages, stageMap, fieldNames);
+        if (viewsAreEqual(newView, view)) return;
+        setView(newView);
       },
     },
   }

@@ -36,11 +36,10 @@ class CustomBdistWheel(bdist_wheel):
             )
 
     def get_tag(self):
-        impl, abi_tag, plat_name = bdist_wheel.get_tag(self)
         # no dependency on a specific CPython version
-        impl = "py2.py3"
+        impl = "py3"
         abi_tag = "none"
-        return impl, abi_tag, plat_name
+        return impl, abi_tag, self.plat_name
 
     def write_wheelfile(self, *args, **kwargs):
         bdist_wheel.write_wheelfile(self, *args, **kwargs)
@@ -55,7 +54,9 @@ class CustomBdistWheel(bdist_wheel):
             self.bdist_dir, self.data_dir, "purelib", "fiftyone", "gui", "bin"
         )
 
-        if self.plat_name.startswith("linux"):
+        if os.environ.get("FIFTYONE_GUI_EXE_PATH"):
+            apps = [os.environ["FIFTYONE_GUI_EXE_PATH"]]
+        elif self.plat_name.startswith("linux"):
             apps = glob.glob(os.path.join(release_dir, "FiftyOne*.AppImage"))
         elif self.plat_name.startswith("mac"):
             apps = glob.glob(os.path.join(release_dir, "mac", "FiftyOne*.app"))
@@ -96,7 +97,7 @@ cmdclass = {
 
 setup(
     name="fiftyone_gui",
-    version="0.5.5",
+    version="0.6.4.1",
     description="FiftyOne App",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",

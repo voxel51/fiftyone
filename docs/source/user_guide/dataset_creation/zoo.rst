@@ -14,8 +14,8 @@ that you can download and load into FiftyOne via a few simple commands.
     Behind the scenes, FiftyOne's Dataset Zoo uses the
     `TorchVision Datasets <https://pytorch.org/docs/stable/torchvision/datasets.html>`_ or
     `TensorFlow Datasets <https://www.tensorflow.org/datasets>`_
-    libraries to wrangle certain datasets, depending on which ML library you
-    have installed.
+    libraries to wrangle some datasets, depending on which ML library you have
+    installed.
 
     If you do not have the proper packages installed when attempting to
     download a zoo dataset, you will receive an error message that will help
@@ -60,17 +60,11 @@ Listing zoo datasets
 
     .. code-block:: text
 
-        ['coco-2014',
-         'coco-2017',
-         'imagenet-2012',
-         'voc-2007',
-         'cifar100',
-         'kitti',
-         'mnist',
-         'voc-2012',
-         'cifar10',
-         'fashion-mnist',
-         'caltech101']
+        ['bdd100k',
+        'caltech101',
+        'cifar10',
+        ...
+        'voc-2012']
 
     To view the zoo datasets that you have downloaded, you can use
     :meth:`list_downloaded_zoo_datasets() <fiftyone.zoo.list_downloaded_zoo_datasets>`:
@@ -78,11 +72,11 @@ Listing zoo datasets
     .. code-block:: python
         :linenos:
 
-        from pprintpp import pprint
+        import fiftyone as fo
         import fiftyone.zoo as foz
 
         downloaded_datasets = foz.list_downloaded_zoo_datasets()
-        pprint(downloaded_datasets)
+        fo.pprint(downloaded_datasets)
 
     .. code-block:: text
 
@@ -110,44 +104,17 @@ Listing zoo datasets
 
         $ fiftyone zoo list
 
-        name           split       downloaded    dataset_dir                     torch (*)    tensorflow
-        -------------  ----------  ------------  ------------------------------  -----------  ------------
-        caltech101     test                                                      ✓
-        caltech101     train                                                     ✓
-        cifar10        test        ✓             ~/fiftyone/cifar10/test         ✓            ✓
-        cifar10        train       ✓             ~/fiftyone/cifar10/train        ✓            ✓
-        cifar100       test        ✓             ~/fiftyone/cifar100/test        ✓            ✓
-        cifar100       train       ✓             ~/fiftyone/cifar100/train       ✓            ✓
-        coco-2014      test                                                      ✓            ✓
-        coco-2014      train                                                     ✓            ✓
-        coco-2014      validation                                                ✓            ✓
-        coco-2017      test                                                      ✓            ✓
-        coco-2017      train                                                     ✓            ✓
-        coco-2017      validation                                                ✓            ✓
-        fashion-mnist  test                                                      ✓            ✓
-        fashion-mnist  train                                                     ✓            ✓
-        imagenet-2012  train                                                     ✓            ✓
-        imagenet-2012  validation                                                ✓            ✓
-        kitti          test        ✓             ~/fiftyone/kitti/test                        ✓
-        kitti          train       ✓             ~/fiftyone/kitti/train                       ✓
-        kitti          validation  ✓             ~/fiftyone/kitti/validation                  ✓
-        mnist          test        ✓             ~/fiftyone/mnist/test           ✓            ✓
-        mnist          train       ✓             ~/fiftyone/mnist/train          ✓            ✓
-        voc-2007       test                                                                   ✓
-        voc-2007       train       ✓             ~/fiftyone/voc-2007/train       ✓            ✓
-        voc-2007       validation  ✓             ~/fiftyone/voc-2007/validation  ✓            ✓
-        voc-2012       test                                                                   ✓
-        voc-2012       train                                                     ✓            ✓
-        voc-2012       validation                                                ✓            ✓
-
     Dataset splits that have been downloaded are indicated by a checkmark in
     the ``downloaded`` column, and their location on disk is indicated by
     the ``dataset_dir`` column.
 
+    The ``base`` column indicates datasets that are available directly via
+    FiftyOne without requiring an ML backend.
+
     The ``torch`` and ``tensorflow`` columns indicate whether the particular
-    dataset split is available in the respective ML backends. The ``(*)``
+    dataset split is provided via the respective ML backend. The ``(*)``
     indicates your default ML backend, which will be used in case a given
-    split is available through multiple sources.
+    split is available through multiple ML backends.
 
 Getting information about zoo datasets
 --------------------------------------
@@ -387,6 +354,25 @@ Loading zoo datasets
         # Print the first few samples in the dataset
         print(dataset.head())
 
+    You can also provide additional arguments to
+    :meth:`load_zoo_dataset() <fiftyone.zoo.load_zoo_dataset>` to customize the
+    import behavior:
+
+    .. code-block:: python
+        :linenos:
+
+        # Import a random subset of 10 samples from the zoo dataset
+        dataset = foz.load_zoo_dataset(
+            "cifar10",
+            split="test",
+            dataset_name="cifar10-test-sample",
+            shuffle=True,
+            max_samples=10,
+        )
+
+    The additional arguments are passed directly to the |DatasetImporter| that
+    performs the actual import.
+
   .. group-tab:: CLI
 
     After a zoo dataset has been downloaded from the web, you can load it as
@@ -403,6 +389,20 @@ Loading zoo datasets
         Split 'test' already downloaded
         Loading 'cifar10' split 'test'
          100% |██████████████████████████████████████████████| 10000/10000 [3.6s elapsed, 0s remaining, 2.9K samples/s]
+        Dataset 'cifar10-test' created
+
+    You can also provide :ref:`additional arguments <cli-fiftyone-zoo-load>`
+    to customize the import behavior. For example, you can load a random subset
+    of 10 samples from the zoo dataset:
+
+    .. code-block:: text
+
+        $ fiftyone zoo load cifar10 --splits test \
+            --dataset-name cifar10-test-sample --shuffle --max-samples 10
+
+        Split 'test' already downloaded
+        Loading 'cifar10' split 'test'
+         100% |██████████████████████████████████████████████| 10/10 [3.2ms elapsed, 0s remaining, 2.9K samples/s]
         Dataset 'cifar10-test' created
 
 Controlling where zoo datasets are downloaded
@@ -454,22 +454,22 @@ of your :doc:`FiftyOne config </user_guide/config>`.
 Customizing your ML backend
 ---------------------------
 
-Behind the scenes, FiftyOne uses the
+Behind the scenes, FiftyOne uses either
 `TensorFlow Datasets <https://www.tensorflow.org/datasets>`_ or
 `TorchVision Datasets <https://pytorch.org/docs/stable/torchvision/datasets.html>`_
-libraries to wrangle the datasets, depending on which ML library you have
-installed. In order to load datasets using TF, you must have the
-`tensorflow-datasets <https://pypi.org/project/tensorflow-datasets>`_
+libraries to download and wrangle some zoo datasets, depending on which ML
+library you have installed. In order to load datasets using TF, you must have
+the `tensorflow-datasets <https://pypi.org/project/tensorflow-datasets>`_
 package installed on your machine. In order to load datasets using PyTorch, you
 must have the `torch <https://pypi.org/project/torch>`_ and
 `torchvision <https://pypi.org/project/torchvision>`_ packages installed.
 
 Note that the ML backends may expose different datasets.
 
-By default, FiftyOne will use whichever ML backend is necessary to download the
-requested zoo dataset. If a dataset is available through both backends, it will
-use the backend specified by the `fo.config.default_ml_backend` setting in your
-FiftyOne config.
+For datasets that require an ML backend, FiftyOne will use whichever ML backend
+is necessary to download the requested zoo dataset. If a dataset is available
+through both backends, it will use the backend specified by the
+`fo.config.default_ml_backend` setting in your FiftyOne config.
 
 You can customize this backend by modifying the `default_ml_backend` setting
 of your :doc:`FiftyOne config </user_guide/config>`.

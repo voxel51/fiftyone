@@ -1,12 +1,14 @@
 import React, { useContext, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
-import { ArrowDropDown } from "@material-ui/icons";
+import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
 import { useRecoilValue } from "recoil";
 import { animated, useSpring } from "react-spring";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+import { SampleContext } from "../utils/context";
+import { labelTypeIsFilterable } from "../utils/labels";
 
 import Filter from "./Filter";
 import NumericFieldFilter from "./NumericFieldFilter";
@@ -136,6 +138,7 @@ export type Entry = {
   color: string;
   disabled: boolean;
   type?: string;
+  prefix: string;
 };
 
 type Props = {
@@ -147,9 +150,11 @@ type Props = {
 const Entry = ({ entry, onCheck, modal }) => {
   const [expanded, setExpanded] = useState(false);
   const theme = useContext(ThemeContext);
-  const atoms = modal ? MODAL_ATOMS : GLOBAL_ATOMS;
-  const fieldIsFiltered = useRecoilValue(atoms.fieldIsFiltered(entry.name));
-  const isNumericField = useRecoilValue(selectors.isNumericField(entry.name));
+  const filterAtoms = modal ? MODAL_ATOMS : GLOBAL_ATOMS;
+  const fieldIsFiltered = useRecoilValue(
+    filterAtoms.fieldIsFiltered(entry.path)
+  );
+  const isNumericField = useRecoilValue(selectors.isNumericField(entry.path));
 
   const handleCheck = (entry) => {
     if (onCheck) {
@@ -157,14 +162,25 @@ const Entry = ({ entry, onCheck, modal }) => {
     }
   };
 
+  const sample = useContext(SampleContext);
+  const hiddenObjects = useRecoilValue(atoms.hiddenObjects);
+  const hasHiddenObjects = sample
+    ? Object.entries(hiddenObjects).some(
+        ([object_id, data]) =>
+          data.sample_id === sample._id && data.field === entry.name
+      )
+    : false;
+
   const checkboxClass = entry.hideCheckbox ? "no-checkbox" : "with-checkbox";
   const containerProps = useSpring({
-    backgroundColor: fieldIsFiltered
-      ? "#6C757D"
-      : entry.hideCheckbox || entry.selected
-      ? theme.backgroundLight
-      : theme.background,
+    backgroundColor:
+      fieldIsFiltered || hasHiddenObjects
+        ? "#6C757D"
+        : entry.hideCheckbox || entry.selected
+        ? theme.backgroundLight
+        : theme.background,
   });
+  const ArrowType = expanded ? ArrowDropUp : ArrowDropDown;
 
   return (
     <CheckboxContainer key={entry.name} style={containerProps}>
@@ -182,15 +198,16 @@ const Entry = ({ entry, onCheck, modal }) => {
               entry.icon &&
               !["Detections", "Classifications"].includes(entry.type)
             ) &&
-              (entry.type || (isNumericField && !modal)) && (
-                <ArrowDropDown
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setExpanded(!expanded);
-                  }}
-                  style={{ marginRight: -4 }}
-                />
-              )}
+            ((entry.type && labelTypeIsFilterable(entry.type)) ||
+              (isNumericField && !modal)) ? (
+              <ArrowType
+                onClick={(e) => {
+                  e.preventDefault();
+                  setExpanded(!expanded);
+                }}
+                style={{ marginRight: -4 }}
+              />
+            ) : null}
           </>
         }
         classes={{
@@ -222,12 +239,17 @@ const Entry = ({ entry, onCheck, modal }) => {
           />
         }
       />
-      {isNumericField && (
+      {isNumericField ? (
         <NumericFieldFilter expanded={expanded} entry={entry} />
-      )}
-      {entry.type && (
-        <Filter expanded={expanded} entry={entry} {...atoms} modal={modal} />
-      )}
+      ) : null}
+      {entry.type && labelTypeIsFilterable(entry.type) ? (
+        <Filter
+          expanded={expanded}
+          entry={entry}
+          {...filterAtoms}
+          modal={modal}
+        />
+      ) : null}
     </CheckboxContainer>
   );
 };

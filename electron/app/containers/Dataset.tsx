@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Switch, Route, Redirect, useRouteMatch } from "react-router-dom";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { Switch, Route, Redirect } from "react-router-dom";
+import {
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+  useResetRecoilState,
+} from "recoil";
 import { Container, Message, Segment } from "semantic-ui-react";
 
 import SamplesContainer from "./SamplesContainer";
@@ -11,7 +16,6 @@ import { ModalWrapper, Overlay } from "../components/utils";
 import routes from "../constants/routes.json";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import connect from "../utils/connect";
 import { VALID_LABEL_TYPES } from "../utils/labels";
 
 function NoDataset() {
@@ -22,46 +26,73 @@ function NoDataset() {
   );
 }
 
+const applyActiveLabels = (tuples, current, setter) => {
+  const newSelection = { ...current };
+  for (const [label, type] of tuples) {
+    if (newSelection[label] === undefined && VALID_LABEL_TYPES.includes(type)) {
+      newSelection[label] = true;
+    }
+  }
+  setter(newSelection);
+};
+
 function Dataset(props) {
-  const { path, url } = useRouteMatch();
-  const { connected, loading, port, state, displayProps } = props;
-  const hasDataset = Boolean(state && state.dataset);
   const tabs = [routes.SAMPLES, routes.TAGS, routes.LABELS, routes.SCALARS];
   const [modal, setModal] = useState({
     visible: false,
     sample: null,
+    metadata: null,
     activeLabels: {},
   });
+  const port = useRecoilValue(atoms.port);
+  const connected = useRecoilValue(atoms.connected);
+  const loading = useRecoilValue(atoms.loading);
+  const hasDataset = useRecoilValue(selectors.hasDataset);
   const colorMap = useRecoilValue(atoms.colorMap);
   const refreshColorMap = useSetRecoilState(selectors.refreshColorMap);
-
   const datasetName = useRecoilValue(selectors.datasetName);
   const currentSamples = useRecoilValue(atoms.currentSamples);
-  const labelNames = useRecoilValue(selectors.labelNames);
+  const labelTuples = useRecoilValue(selectors.labelTuples("sample"));
+  const frameLabelTuples = useRecoilValue(selectors.labelTuples("frame"));
   const tagNames = useRecoilValue(selectors.tagNames);
-  const labelTypes = useRecoilValue(selectors.labelTypes);
-  const fieldSchema = useRecoilValue(selectors.fieldSchema);
+  const [activeLabels, setActiveLabels] = useRecoilState(
+    atoms.activeLabels("sample")
+  );
+  const [activeFrameLabels, setActiveFrameLabels] = useRecoilState(
+    atoms.activeLabels("frame")
+  );
+  const activeOther = useRecoilValue(atoms.activeOther("sample"));
+  const activeFrameOther = useRecoilValue(atoms.activeOther("frame"));
 
   // update color map
   useEffect(() => {
     refreshColorMap(colorMap);
-  }, [labelNames, tagNames]);
+  }, [labelTuples, frameLabelTuples, tagNames]);
 
   // select any new labels by default
-  useEffect(() => {
-    const newSelection = { ...displayProps.activeLabels };
-    for (const label of labelNames) {
-      if (
-        newSelection[label] === undefined &&
-        VALID_LABEL_TYPES.includes(labelTypes[label])
-      ) {
-        newSelection[label] = true;
-      }
-    }
-    displayProps.setActiveLabels(newSelection);
-  }, [datasetName, labelNames]);
 
-  const handleHideModal = () => setModal({ visible: false, sample: null });
+  useEffect(() => {
+    applyActiveLabels(labelTuples, activeLabels, setActiveLabels);
+    applyActiveLabels(
+      frameLabelTuples,
+      activeFrameLabels,
+      setActiveFrameLabels
+    );
+  }, [datasetName, labelTuples, frameLabelTuples]);
+
+  // reset selected/hidden objects when the modal closes (subject to change) -
+  // the socket update is needed here because SampleModal and SelectObjectsMenu
+  // are destroyed before they can handle it
+  const resetSelectedObjects = useResetRecoilState(atoms.selectedObjects);
+  const resetHiddenObjects = useResetRecoilState(atoms.hiddenObjects);
+  const socket = useRecoilValue(selectors.socket);
+  const handleHideModal = () => {
+    setModal({ visible: false, sample: null });
+    resetSelectedObjects();
+    resetHiddenObjects();
+    socket.emit("set_selected_objects", []);
+  };
+
   useEffect(() => {
     document.body.classList.toggle("noscroll", modal.visible);
 
@@ -69,18 +100,40 @@ function Dataset(props) {
       ...modal,
       activeLabels: modal.visible
         ? {
-            ...displayProps.activeLabels,
-            ...displayProps.activeOther,
+            ...activeLabels,
+            ...activeOther,
+          }
+        : {},
+      activeFrameLabels: modal.visible
+        ? {
+            ...activeFrameLabels,
+            ...activeFrameOther,
           }
         : {},
     });
   }, [modal.visible]);
 
+  useEffect(() => {
+    if (
+      modal.visible &&
+      !currentSamples.some((i) => i.sample._id === modal.sample._id)
+    ) {
+      handleHideModal();
+    } else if (modal.visible) {
+      setModal({
+        ...modal,
+        sample: currentSamples.filter(
+          (i) => i.sample._id === modal.sample._id
+        )[0].sample,
+      });
+    }
+  }, [currentSamples]);
+
   let src = null;
   let s = null;
   if (modal.sample) {
     const path = modal.sample.filepath;
-    const id = modal.sample._id.$oid;
+    const id = modal.sample._id;
     const host = `http://127.0.0.1:${port}/`;
     src = `${host}?path=${path}&id=${id}`;
     s = modal.sample;
@@ -96,16 +149,15 @@ function Dataset(props) {
   let modalProps = {};
   if (modal.visible && modal.sample) {
     const currentSampleIndex = currentSamples.findIndex(
-      (sample) => sample._id.$oid == modal.sample._id.$oid
+      ({ sample }) => sample._id == modal.sample._id
     );
     const previousSample = currentSamples[currentSampleIndex - 1];
     if (previousSample) {
-      modalProps.onPrevious = () =>
-        setModal({ ...modal, sample: previousSample });
+      modalProps.onPrevious = () => setModal({ ...modal, ...previousSample });
     }
     const nextSample = currentSamples[currentSampleIndex + 1];
     if (nextSample) {
-      modalProps.onNext = () => setModal({ ...modal, sample: nextSample });
+      modalProps.onNext = () => setModal({ ...modal, ...nextSample });
     }
   }
 
@@ -116,9 +168,10 @@ function Dataset(props) {
           <Overlay onClick={handleHideModal} />
           <SampleModal
             activeLabels={modal.activeLabels}
-            fieldSchema={fieldSchema}
+            activeFrameLabels={modal.activeFrameLabels}
             colorMap={colorMap}
             sample={modal.sample}
+            metadata={modal.metadata}
             sampleUrl={src}
             onClose={handleHideModal}
             {...modalProps}
@@ -139,14 +192,14 @@ function Dataset(props) {
               <Route path={routes.SAMPLES}>
                 <SamplesContainer
                   {...props.socket}
-                  setView={(sample) =>
+                  setView={(sample, metadata) =>
                     setModal({
                       ...modal,
                       visible: true,
                       sample,
+                      metadata,
                     })
                   }
-                  displayProps={displayProps}
                   colorMap={colorMap}
                 />
               </Route>
@@ -169,4 +222,4 @@ function Dataset(props) {
   );
 }
 
-export default connect(Dataset);
+export default React.memo(Dataset);

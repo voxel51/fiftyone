@@ -75,6 +75,37 @@ class UnlabeledImageDataset(UnlabeledDataset):
         )
 
 
+class UnlabeledVideoDataset(UnlabeledDataset):
+    """Base type for datasets that represent an unlabeled collection of videos.
+    """
+
+    def get_dataset_importer_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.importers.UnlabeledVideoDatasetImporter`
+        class for importing datasets of this type from disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.importers.UnlabeledVideoDatasetImporter`
+            class
+        """
+        raise NotImplementedError(
+            "subclass must implement get_dataset_importer_cls()"
+        )
+
+    def get_dataset_exporter_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.exporters.UnlabeledVideoDatasetExporter`
+        class for exporting datasets of this type to disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.exporters.UnlabeledVideoDatasetExporter`
+            class
+        """
+        raise NotImplementedError(
+            "subclass must implement get_dataset_exporter_cls()"
+        )
+
+
 class LabeledDataset(Dataset):
     """Base type for datasets that represent a collection of data samples and
     their associated labels.
@@ -115,8 +146,48 @@ class LabeledImageDataset(LabeledDataset):
         )
 
 
+class LabeledVideoDataset(LabeledDataset):
+    """Base type for datasets that represent a collection of videos and their
+    associated labels.
+    """
+
+    def get_dataset_importer_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.importers.LabeledVideoDatasetImporter`
+        class for importing datasets of this type from disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.importers.LabeledVideoDatasetImporter`
+            class
+        """
+        raise NotImplementedError(
+            "subclass must implement get_dataset_importer_cls()"
+        )
+
+    def get_dataset_exporter_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.exporters.LabeledVideoDatasetExporter`
+        class for exporting datasets of this type to disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.exporters.LabeledVideoDatasetExporter`
+            class
+        """
+        raise NotImplementedError(
+            "subclass must implement get_dataset_exporter_cls()"
+        )
+
+
 class ImageClassificationDataset(LabeledImageDataset):
     """Base type for datasets that represent a collection of images and a set
+    of associated classification labels.
+    """
+
+    pass
+
+
+class VideoClassificationDataset(LabeledVideoDataset):
+    """Base type for datasets that represent a collection of videos and a set
     of associated classification labels.
     """
 
@@ -131,8 +202,24 @@ class ImageDetectionDataset(LabeledImageDataset):
     pass
 
 
+class VideoDetectionDataset(LabeledVideoDataset):
+    """Base type for datasets that represent a collection of videos and a set
+    of associated video object detections.
+    """
+
+    pass
+
+
 class ImageLabelsDataset(LabeledImageDataset):
     """Base type for datasets that represent a collection of images and a set
+    of associated multitask predictions.
+    """
+
+    pass
+
+
+class VideoLabelsDataset(LabeledVideoDataset):
+    """Base type for datasets that represent a collection of videos and a set
     of associated multitask predictions.
     """
 
@@ -162,6 +249,31 @@ class ImageDirectory(UnlabeledImageDataset):
         import fiftyone.utils.data as foud
 
         return foud.ImageDirectoryExporter
+
+
+class VideoDirectory(UnlabeledImageDataset):
+    """A directory of videos.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            <filename1>.<ext>
+            <filename2>.<ext>
+            ...
+
+    When reading datasets of this type, subfolders are recursively traversed,
+    and files with non-video MIME types are omitted.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.VideoDirectoryImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.VideoDirectoryExporter
 
 
 class FiftyOneImageClassificationDataset(ImageClassificationDataset):
@@ -240,6 +352,36 @@ class ImageClassificationDirectoryTree(ImageClassificationDataset):
         import fiftyone.utils.data as foud
 
         return foud.ImageClassificationDirectoryTreeExporter
+
+
+class VideoClassificationDirectoryTree(VideoClassificationDataset):
+    """A directory tree whose subfolders define a video classification dataset.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            <classA>/
+                <video1>.<ext>
+                <video2>.<ext>
+                ...
+            <classB>/
+                <video1>.<ext>
+                <video2>.<ext>
+                ...
+            ...
+
+    Unlabeled videos are stored in a subdirectory named ``_unlabeled``.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.VideoClassificationDirectoryTreeImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.VideoClassificationDirectoryTreeExporter
 
 
 class TFImageClassificationDataset(ImageClassificationDataset):
@@ -352,7 +494,8 @@ class FiftyOneImageDetectionDataset(ImageDetectionDataset):
 
 class COCODetectionDataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
-    detections saved in `COCO format <http://cocodataset.org/#home>`_.
+    detections saved in
+    `COCO Object Detection Format <https://cocodataset.org/#format-data>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -401,13 +544,16 @@ class COCODetectionDataset(ImageDetectionDataset):
                     "image_id": 0,
                     "category_id": 2,
                     "bbox": [260, 177, 231, 199],
+                    "segmentation": [...],
                     "area": 45969,
-                    "segmentation": [],
                     "iscrowd": 0
                 },
                 ...
             ]
         }
+
+    See `this page <https://cocodataset.org/#format-data>`_ for a full
+    specification of the ``segmentation`` field.
 
     For unlabeled datasets, ``labels.json`` does not contain an ``annotations``
     field.
@@ -582,6 +728,58 @@ class KITTIDetectionDataset(ImageDetectionDataset):
         return fouk.KITTIDetectionDatasetExporter
 
 
+class YOLODataset(ImageDetectionDataset):
+    """A labeled dataset consisting of images and their associated object
+    detections saved in `YOLO format <https://github.com/AlexeyAB/darknet>`_.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            obj.names
+            images.txt
+            data/
+                <uuid1>.<ext>
+                <uuid1>.txt
+                <uuid2>.<ext>
+                <uuid2>.txt
+                ...
+
+    where ``obj.names`` contains the object class labels::
+
+        <label-0>
+        <label-1>
+        ...
+
+    and ``images.txt`` contains the list of images in ``data/``::
+
+        data/<uuid1>.<ext>
+        data/<uuid2>.<ext>
+        ...
+
+    and the TXT files in ``data/`` are space-delimited files where each row
+    corresponds to an object in the image of the same name, in the following
+    format::
+
+        <target> <x-center> <y-center> <width> <height>
+
+    where ``<target>`` is the zero-based integer index of the object class
+    label from ``obj.names`` and the bounding box coordinates are expressed as
+    relative coordinates in ``[0, 1] x [0, 1]``.
+
+    Unlabeled images have no corresponding TXT file in ``data/``.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.yolo as fouy
+
+        return fouy.YOLODatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.yolo as fouy
+
+        return fouy.YOLODatasetExporter
+
+
 class TFObjectDetectionDataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
     detections stored as TFRecords in
@@ -639,8 +837,8 @@ class TFObjectDetectionDataset(ImageDetectionDataset):
 
 
 class CVATImageDataset(ImageDetectionDataset):
-    """A labeled dataset consisting of images and their associated object
-    detections stored in `CVAT image format <https://github.com/opencv/cvat>`_.
+    """A labeled dataset consisting of images and their associated labels
+    stored in `CVAT image format <https://github.com/opencv/cvat>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -658,8 +856,15 @@ class CVATImageDataset(ImageDetectionDataset):
             <version>1.1</version>
             <meta>
                 <task>
+                    <id>0</id>
+                    <name>task-name</name>
                     <size>51</size>
                     <mode>annotation</mode>
+                    <overlap></overlap>
+                    <bugtracker></bugtracker>
+                    <flipped>False</flipped>
+                    <created>2017-11-20 11:51:51.000000+00:00</created>
+                    <updated>2017-11-20 11:51:51.000000+00:00</updated>
                     <labels>
                         <label>
                             <name>car</name>
@@ -672,11 +877,11 @@ class CVATImageDataset(ImageDetectionDataset):
                             </attributes>
                         </label>
                         <label>
-                            <name>person</name>
+                            <name>traffic_line</name>
                             <attributes>
                                 <attribute>
-                                    <name>gender</name>
-                                    <values>male\\nfemale</values>
+                                    <name>color</name>
+                                    <values>white\\nyellow</values>
                                 </attribute>
                                 ...
                             </attributes>
@@ -684,15 +889,44 @@ class CVATImageDataset(ImageDetectionDataset):
                         ...
                     </labels>
                 </task>
+                <segments>
+                    <segment>
+                        <id>0</id>
+                        <start>0</start>
+                        <stop>50</stop>
+                        <url></url>
+                    </segment>
+                </segments>
+                <owner>
+                    <username></username>
+                    <email></email>
+                </owner>
                 <dumped>2017-11-20 11:51:51.000000+00:00</dumped>
             </meta>
-            <image id="1" name="<uuid1>.<ext>" width="640" height="480">
-                <box label="car" xtl="100" ytl="50" xbr="325" ybr="190" type="sedan"></box>
+            <image id="0" name="<uuid1>.<ext>" width="640" height="480">
+                <box label="car" xtl="100" ytl="50" xbr="325" ybr="190" occluded="0">
+                    <attribute name="type">sedan</attribute>
+                    ...
+                </box>
+                ...
+                <polygon label="car" points="561.30,916.23;561.30,842.77;...;560.20,966.67" occluded="0">
+                    <attribute name="make">Honda</attribute>
+                    ...
+                </polygon>
+                ...
+                <polyline label="traffic_line" points="462.10,0.00;126.80,1200.00" occluded="0">
+                    <attribute name="color">yellow</attribute>
+                    ...
+                </polyline>
+                ...
+                <points label="wheel" points="574.90,939.48;1170.16,907.90;...;600.16,459.48" occluded="0">
+                    <attribute name="location">front_driver_side</attribute>
+                    ...
+                </points>
                 ...
             </image>
             ...
-            <image id="51" name="<uuid51>.<ext>" width="640" height="480">
-                <box label="person" xtl="300" ytl="25" xbr="375" ybr="400" gender="female"></box>
+            <image id="50" name="<uuid51>.<ext>" width="640" height="480">
                 ...
             </image>
         </annotations>
@@ -711,10 +945,131 @@ class CVATImageDataset(ImageDetectionDataset):
         return fouc.CVATImageDatasetExporter
 
 
+class CVATVideoDataset(VideoLabelsDataset):
+    """A labeled dataset consisting of images and their associated object
+    detections stored in `CVAT video format <https://github.com/opencv/cvat>`_.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            data/
+                <uuid1>.<ext>
+                <uuid2>.<ext>
+                ...
+            labels/
+                <uuid1>.xml
+                <uuid2>.xml
+                ...
+
+    where the labels XML files are stored in the following format::
+
+        <?xml version="1.0" encoding="utf-8"?>
+        <annotations>
+            <version>1.1</version>
+            <meta>
+                <task>
+                    <id>task-id</id>
+                    <name>task-name</name>
+                    <size>51</size>
+                    <mode>interpolation</mode>
+                    <overlap></overlap>
+                    <bugtracker></bugtracker>
+                    <flipped>False</flipped>
+                    <created>2017-11-20 11:51:51.000000+00:00</created>
+                    <updated>2017-11-20 11:51:51.000000+00:00</updated>
+                    <labels>
+                        <label>
+                            <name>car</name>
+                            <attributes>
+                                <attribute>
+                                    <name>type</name>
+                                    <values>coupe\\nsedan\\ntruck</values>
+                                </attribute>
+                                ...
+                            </attributes>
+                        </label>
+                        <label>
+                            <name>traffic_line</name>
+                            <attributes>
+                                <attribute>
+                                    <name>color</name>
+                                    <values>white\\nyellow</values>
+                                </attribute>
+                                ...
+                            </attributes>
+                        </label>
+                        ...
+                    </labels>
+                </task>
+                <segments>
+                    <segment>
+                        <id>0</id>
+                        <start>0</start>
+                        <stop>50</stop>
+                        <url></url>
+                    </segment>
+                </segments>
+                <owner>
+                    <username></username>
+                    <email></email>
+                </owner>
+                <original_size>
+                    <width>640</width>
+                    <height>480</height>
+                </original_size>
+                <dumped>2017-11-20 11:51:51.000000+00:00</dumped>
+            </meta>
+            <track id="0" label=car">
+                <box frame="0" xtl="100" ytl="50" xbr="325" ybr="190" outside="0" occluded="0", keyframe="1">
+                    <attribute name="type">sedan</attribute>
+                    ...
+                </box>
+                ...
+            </track>
+            <track id="1" label=car">
+                <polygon frame="0" points="561.30,916.23;561.30,842.77;...;560.20,966.67" outside="0" occluded="0", keyframe="1">
+                    <attribute name="make">Honda</attribute>
+                    ...
+                </polygon>
+                ...
+            </track>
+            ...
+            <track id="10" label="traffic_line">
+                <polyline frame="10" points="462.10,0.00;126.80,1200.00" outside="0" occluded="0", keyframe="1">
+                    <attribute name="color">yellow</attribute>
+                    ...
+                </polyline>
+                ...
+            </track>
+            ...
+            <track id="88" label="wheel">
+                <points frame="176" points="574.90,939.48;1170.16,907.90;...;600.16,459.48" outside="0" occluded="0", keyframe="1">
+                    <attribute name="location">front_driver_side</attribute>
+                    ...
+                </points>
+                ...
+            </track>
+            ...
+        </annotations>
+
+    Unlabeled videos have no corresponding XML file in ``labels/``.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.cvat as fouc
+
+        return fouc.CVATVideoDatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.cvat as fouc
+
+        return fouc.CVATVideoDatasetExporter
+
+
 class FiftyOneImageLabelsDataset(ImageLabelsDataset):
     """A labeled dataset consisting of images and their associated multitask
     predictions stored in
-    `ETA ImageLabels format <https://voxel51.com/docs/api/#types-imagelabels>`_.
+    `ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
 
     Datasets of this type are read/written in the following format::
 
@@ -748,8 +1103,9 @@ class FiftyOneImageLabelsDataset(ImageLabelsDataset):
         }
 
     and where each labels JSON file is stored in ``eta.core.image.ImageLabels``
-    format. See https://voxel51.com/docs/api/#types-imagelabels for more
-    details.
+    format. See
+    `this guide <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_
+    for more details.
 
     For unlabeled images, an empty ``eta.core.image.ImageLabels`` file is
     stored.
@@ -792,6 +1148,10 @@ class BDDDataset(ImageLabelsDataset):
                 },
                 "labels": [
                     {
+                        "id": 0,
+                        "category": "traffic sign",
+                        "manualAttributes": true,
+                        "manualShape": true,
                         "attributes": {
                             "occluded": false,
                             "trafficLightColor": "none",
@@ -802,16 +1162,55 @@ class BDDDataset(ImageLabelsDataset):
                             "x2": 1040.626872,
                             "y1": 281.992415,
                             "y2": 326.91156
-                        },
-                        "category": "traffic sign",
-                        "id": 0,
-                        "manualAttributes": true,
-                        "manualShape": true
+                        }
                     },
                     ...
-                ],
-                ...
-            },
+                    {
+                        "id": 34,
+                        "category": "drivable area",
+                        "manualAttributes": true,
+                        "manualShape": true,
+                        "attributes": {
+                            "areaType": "direct"
+                        },
+                        "poly2d": [
+                            {
+                                "types": "LLLLCCC",
+                                "closed": true,
+                                "vertices": [
+                                    [241.143645, 697.923453],
+                                    [541.525255, 380.564983],
+                                    ...
+                                ]
+                            }
+                        ]
+                    },
+                    ...
+                    {
+                        "id": 109356,
+                        "category": "lane",
+                        "attributes": {
+                            "laneDirection": "parallel",
+                            "laneStyle": "dashed",
+                            "laneType": "single white"
+                        },
+                        "manualShape": true,
+                        "manualAttributes": true,
+                        "poly2d": [
+                            {
+                                "types": "LL",
+                                "closed": false,
+                                "vertices": [
+                                    [492.879546, 331.939543],
+                                    [0, 471.076658],
+                                    ...
+                                ]
+                            }
+                        ],
+                    },
+                    ...
+                }
+            }
             ...
         ]
 
@@ -829,12 +1228,68 @@ class BDDDataset(ImageLabelsDataset):
         return foub.BDDDatasetExporter
 
 
+class FiftyOneVideoLabelsDataset(VideoLabelsDataset):
+    """A labeled dataset consisting of videos and their associated labels
+    stored in
+    `ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
+
+    Datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            data/
+                <uuid1>.<ext>
+                <uuid2>.<ext>
+                ...
+            labels/
+                <uuid1>.json
+                <uuid2>.json
+                ...
+            manifest.json
+
+    where ``manifest.json`` is a JSON file in the following format::
+
+        {
+            "type": "eta.core.datasets.LabeledVideoDataset",
+            "description": "",
+            "index": [
+                {
+                    "data": "data/<uuid1>.<ext>",
+                    "labels": "labels/<uuid1>.json"
+                },
+                {
+                    "data": "data/<uuid2>.<ext>",
+                    "labels": "labels/<uuid2>.json"
+                },
+                ...
+            ]
+        }
+
+    and where each labels JSON file is stored in ``eta.core.image.VideoLabels``
+    format. See
+    `this guide <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_
+    for more details.
+
+    For unlabeled videos, an empty ``eta.core.image.VideoLabels`` file is
+    stored.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.FiftyOneVideoLabelsDatasetImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.FiftyOneVideoLabelsDatasetExporter
+
+
 class FiftyOneDataset(Dataset):
     """A disk representation of a :class:`fiftyone.core.dataset.Dataset`,
     including its :class:`fiftyone.core.sample.Sample` instances stored in a
     serialized JSON format, and the associated source data.
 
-    Datasets of this type are read/written in the following format::
+    Non-video datasets of this type are read/written in the following format::
 
         <dataset_dir>/
             data/
@@ -848,6 +1303,23 @@ class FiftyOneDataset(Dataset):
     associated with the dataset, and ``samples.json`` is a JSON file containing
     a serialized representation of the samples in the dataset generated by
     :meth:`fiftyone.core.sample.Sample.to_dict`.
+
+    Video datasets of this type are read/written in the following format::
+
+        <dataset_dir>/
+            data/
+                <filename1>.<ext>
+                <filename2>.<ext>
+                ...
+            frames/
+                <filename1>.json
+                <filename2>.json
+                ...
+            metadata.json
+            samples.json
+
+    where the additional ``frames/`` directory contains a serialized
+    representation of the frame labels for each video in the dataset.
     """
 
     def get_dataset_importer_cls(self):

@@ -1,80 +1,131 @@
-import { useState, useEffect, useLayoutEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRecoilState, useSetRecoilState, useRecoilValue } from "recoil";
+import ResizeObserver from "resize-observer-polyfill";
 
-export const useResizeHandler = (handler, deps = []) => {
-  useEffect(() => {
-    window.addEventListener("resize", handler);
-    return () => {
-      window.removeEventListener("resize", handler);
-    };
-  }, deps);
-};
+import * as atoms from "../recoil/atoms";
 
-export const useScrollHandler = (handler, deps = []) => {
+export const useEventHandler = (target, eventType, handler) => {
+  // Adapted from https://reactjs.org/docs/hooks-faq.html#what-can-i-do-if-my-effect-dependencies-change-too-often
+  const handlerRef = useRef(handler);
   useEffect(() => {
-    window.addEventListener("scroll", handler);
-    return () => {
-      window.removeEventListener("scroll", handler);
-    };
-  }, deps);
-};
+    handlerRef.current = handler;
+  });
 
-export const useKeydownHandler = (handler, deps = []) => {
   useEffect(() => {
-    document.body.addEventListener("keydown", handler);
-    return () => {
-      document.body.removeEventListener("keydown", handler);
-    };
-  }, deps);
-};
-
-export const useOutsideClick = (ref, callback) => {
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (ref.current && !ref.current.contains(event.target)) {
-        callback(event);
-      }
+    if (!target) {
+      return;
     }
-
-    document.addEventListener("mousedown", handleClickOutside);
+    const wrapper = (e) => handlerRef.current(e);
+    target.addEventListener(eventType, wrapper);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      target.removeEventListener(eventType, wrapper);
     };
-  }, [ref, callback]);
+  }, [target, eventType]);
 };
 
-export const useFollow = (leaderRef, followerRef, set, deps = []) => {
-  useLayoutEffect(() => {
-    const follow = () => {
-      const { x, y } = followerRef.current.getBoundingClientRect();
-      const {
-        x: leaderX,
-        width: leaderWidth,
-      } = leaderRef.current.getBoundingClientRect();
-      set({
-        left: x,
-        top: y,
-        opacity: x - leaderX < 0 || x > leaderX + leaderWidth ? 0 : 1,
-      });
-    };
-    leaderRef.current &&
-      followerRef.current &&
-      (() => {
-        leaderRef.current.addEventListener("scroll", follow);
-        window.addEventListener("scroll", follow);
-      })();
-    return () =>
-      leaderRef.current &&
-      (() => {
-        leaderRef.current.removeEventListener("scroll", follow);
-        window.removeEventListener("scroll", follow);
-      })();
-  }, [leaderRef.current, followerRef.current, ...deps]);
+export const useObserve = (target, handler) => {
+  const handlerRef = useRef(handler);
+  const observerRef = useRef(new ResizeObserver(() => handlerRef.current()));
+
+  useEffect(() => {
+    handlerRef.current = handler;
+  });
+
+  useEffect(() => {
+    if (!target) {
+      return;
+    }
+    observerRef.current.observe(target);
+    return () => observerRef.current.unobserve(target);
+  }, [target]);
+};
+
+export const useResizeHandler = (handler) =>
+  useEventHandler(window, "resize", handler);
+
+export const useScrollHandler = (handler) =>
+  useEventHandler(window, "scroll", handler);
+
+export const useHashChangeHandler = (handler) =>
+  useEventHandler(window, "hashchange", handler);
+
+export const useKeydownHandler = (handler) =>
+  useEventHandler(document.body, "keydown", handler);
+
+export const useOutsideClick = (ref, handler) => {
+  const handleClickOutside = (event) => {
+    if (ref.current && !ref.current.contains(event.target)) {
+      handler(event);
+    }
+  };
+
+  useEventHandler(document, "mousedown", handleClickOutside);
+};
+
+export const useFollow = (leaderRef, followerRef, set) => {
+  const follow = () => {
+    if (
+      !leaderRef ||
+      !leaderRef.current ||
+      !followerRef ||
+      !followerRef.current
+    ) {
+      return;
+    }
+    const { x, y } = followerRef.current.getBoundingClientRect();
+    const {
+      x: leaderX,
+      width: leaderWidth,
+    } = leaderRef.current.getBoundingClientRect();
+
+    set({
+      left: x,
+      top: y,
+      opacity: x - leaderX < 0 || x > leaderX + leaderWidth ? 0 : 1,
+    });
+  };
+
+  useEventHandler(window, "scroll", follow);
+  useEventHandler(leaderRef ? leaderRef.current : null, "scroll", follow);
+  useObserve(followerRef ? followerRef.current : null, follow);
 };
 
 // allows re-rendering before recoil's Batcher updates
 export const useFastRerender = () => {
   const [counter, setCounter] = useState(0);
-  return () => {
+  const rerender = useCallback(() => {
     setCounter((prev) => prev + 1);
-  };
+  }, []);
+  return rerender;
+};
+
+export const useVideoData = (socket, sample, callback = null) => {
+  const { _id: sampleId, filepath } = sample;
+  const [requested, setRequested] = useRecoilState(
+    atoms.sampleVideoDataRequested(sampleId)
+  );
+  const setVideoLabels = useSetRecoilState(atoms.sampleVideoLabels(sampleId));
+  const setFrameData = useSetRecoilState(atoms.sampleFrameData(sampleId));
+  const setFrameRate = useSetRecoilState(atoms.sampleFrameRate(sampleId));
+  const viewCounter = useRecoilValue(atoms.viewCounter);
+  return [
+    requested,
+    (...args) => {
+      if (requested !== viewCounter) {
+        setRequested(viewCounter);
+        socket.emit(
+          "get_video_data",
+          { _id: sampleId, filepath },
+          ({ labels, frames, fps }) => {
+            setVideoLabels(labels);
+            setFrameData(frames);
+            setFrameRate(fps);
+            callback && callback({ labels, frames }, ...args);
+          }
+        );
+      } else {
+        callback && callback(null, ...args);
+      }
+    },
+  ];
 };

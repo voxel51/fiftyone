@@ -1,8 +1,30 @@
 import { atom, atomFamily } from "recoil";
 
+import { SelectedObjectMap } from "../utils/selection";
+
 export const port = atom({
   key: "port",
   default: parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151,
+});
+
+export const connected = atom({
+  key: "connected",
+  default: false,
+});
+
+export const datasetStats = atom({
+  key: "datasetStats",
+  default: [],
+});
+
+export const extendedDatasetStats = atom({
+  key: "extendedDatasetStats",
+  default: [],
+});
+
+export const loading = atom({
+  key: "loading",
+  default: false,
 });
 
 export const colorMap = atom({
@@ -18,6 +40,16 @@ export const stateDescription = atom({
 export const selectedSamples = atom({
   key: "selectedSamples",
   default: new Set(),
+});
+
+export const selectedObjects = atom<SelectedObjectMap>({
+  key: "selectedObjects",
+  default: {},
+});
+
+export const hiddenObjects = atom<SelectedObjectMap>({
+  key: "hiddenObjects",
+  default: {},
 });
 
 export const stageInfo = atom({
@@ -75,22 +107,22 @@ export const modalFilterLabelIncludeNoConfidence = atomFamily({
   default: true,
 });
 
-export const activeLabels = atom({
+export const activeLabels = atomFamily({
   key: "activeLabels",
   default: {},
 });
 
-export const modalActiveLabels = atom({
+export const modalActiveLabels = atomFamily({
   key: "modalActiveLabels",
   default: {},
 });
 
-export const activeOther = atom({
+export const activeOther = atomFamily({
   key: "activeOther",
   default: {},
 });
 
-export const modalActiveOther = atom({
+export const modalActiveOther = atomFamily({
   key: "modalActiveOther",
   default: {},
 });
@@ -113,4 +145,29 @@ export const filterNumericFieldRange = atomFamily({
 export const filterNumericFieldIncludeNone = atomFamily({
   key: "filterNumericFieldIncludeNone",
   default: true,
+});
+
+export const sampleVideoLabels = atomFamily({
+  key: "sampleVideoLabels",
+  default: null,
+});
+
+export const sampleFrameData = atomFamily({
+  key: "sampleFrameData",
+  default: null,
+});
+
+export const sampleFrameRate = atomFamily({
+  key: "sampleFrameRate",
+  default: null,
+});
+
+export const sampleVideoDataRequested = atomFamily({
+  key: "sampleVideoDataRequested",
+  default: null,
+});
+
+export const viewCounter = atom({
+  key: "viewCounter",
+  default: 0,
 });

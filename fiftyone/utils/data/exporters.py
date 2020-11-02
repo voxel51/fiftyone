@@ -17,15 +17,96 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.collections as foc
+import fiftyone.core.eta_utils as foe
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
+import fiftyone.core.media as fomm
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
 
 from .parsers import (
     FiftyOneLabeledImageSampleParser,
     FiftyOneUnlabeledImageSampleParser,
+    FiftyOneLabeledVideoSampleParser,
+    FiftyOneUnlabeledVideoSampleParser,
 )
+
+
+def export_samples(
+    samples,
+    export_dir=None,
+    dataset_type=None,
+    dataset_exporter=None,
+    label_field_or_dict=None,
+    frame_labels_field_or_dict=None,
+    num_samples=None,
+    **kwargs
+):
+    """Exports the given samples to disk as a dataset in the specified format.
+
+    Provide either ``export_dir`` and ``dataset_type`` or ``dataset_exporter``
+    to perform the export.
+
+    Args:
+        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances.
+            For example, this may be a :class:`fiftyone.core.dataset.Dataset`
+            or a :class:`fifyone.core.view.DatasetView`
+        export_dir (None): the directory to which to export the samples in
+            format ``dataset_type``
+        dataset_type (None): the :class:`fiftyone.types.dataset_types.Dataset`
+            type to write
+        dataset_exporter (None): a
+            :class:`fiftyone.utils.data.exporters.DatasetExporter` to use to
+            write the dataset
+        label_field_or_dict (None): the name of the label field to export, or
+            a dictionary mapping field names to output keys describing the
+            label fields to export. Only applicable if ``dataset_exporter`` is
+            a :class:`LabeledImageDatasetExporter` or
+            :class:`LabeledVideoDatasetExporter`
+        frame_labels_field_or_dict (None): the name of the frame label field to
+            export, or a dictionary mapping field names to output keys
+            describing the frame label fields to export. Only applicable if
+            ``dataset_exporter`` is a :class:`LabeledVideoDatasetExporter`
+        num_samples (None): the number of samples in ``samples``. If omitted,
+            this is computed (if possible) via ``len(samples)``
+        **kwargs: optional keyword arguments to pass to
+            ``dataset_type.get_dataset_exporter_cls(export_dir, **kwargs)``
+    """
+    dataset_exporter = _get_dataset_exporter(
+        export_dir, dataset_type, dataset_exporter, **kwargs
+    )
+
+    if isinstance(dataset_exporter, GenericSampleDatasetExporter):
+        sample_parser = None
+    elif isinstance(dataset_exporter, UnlabeledImageDatasetExporter):
+        sample_parser = FiftyOneUnlabeledImageSampleParser(
+            compute_metadata=True
+        )
+    elif isinstance(dataset_exporter, UnlabeledVideoDatasetExporter):
+        sample_parser = FiftyOneUnlabeledVideoSampleParser(
+            compute_metadata=True
+        )
+    elif isinstance(dataset_exporter, LabeledImageDatasetExporter):
+        sample_parser = FiftyOneLabeledImageSampleParser(
+            label_field_or_dict, compute_metadata=True
+        )
+    elif isinstance(dataset_exporter, LabeledVideoDatasetExporter):
+        sample_parser = FiftyOneLabeledVideoSampleParser(
+            label_field_or_dict=label_field_or_dict,
+            frame_labels_field_or_dict=frame_labels_field_or_dict,
+            compute_metadata=True,
+        )
+    else:
+        raise ValueError(
+            "Unsupported DatasetExporter %s" % type(dataset_exporter)
+        )
+
+    write_dataset(
+        samples,
+        sample_parser,
+        dataset_exporter=dataset_exporter,
+        num_samples=num_samples,
+    )
 
 
 def write_dataset(
@@ -58,20 +139,9 @@ def write_dataset(
         **kwargs: optional keyword arguments to pass to
             ``dataset_type.get_dataset_exporter_cls(dataset_dir, **kwargs)``
     """
-    if dataset_type is not None:
-        if inspect.isclass(dataset_type):
-            dataset_type = dataset_type()
-
-        if not isinstance(
-            dataset_type, (fot.UnlabeledImageDataset, fot.LabeledImageDataset),
-        ):
-            raise ValueError(
-                "Unsupported `dataset_type` %s" % type(dataset_type)
-            )
-
-    if dataset_exporter is None:
-        dataset_exporter_cls = dataset_type.get_dataset_exporter_cls()
-        dataset_exporter = dataset_exporter_cls(dataset_dir, **kwargs)
+    dataset_exporter = _get_dataset_exporter(
+        dataset_dir, dataset_type, dataset_exporter, **kwargs
+    )
 
     if num_samples is None:
         try:
@@ -79,18 +149,69 @@ def write_dataset(
         except:
             pass
 
-    raw_samples = False
-    labeled_images = False
     if isinstance(dataset_exporter, GenericSampleDatasetExporter):
-        raw_samples = True
-    elif isinstance(dataset_exporter, UnlabeledImageDatasetExporter):
-        labeled_images = False
-    elif isinstance(dataset_exporter, LabeledImageDatasetExporter):
-        labeled_images = True
+        _write_generic_sample_dataset(dataset_exporter, samples, num_samples)
+    elif isinstance(
+        dataset_exporter,
+        (UnlabeledImageDatasetExporter, LabeledImageDatasetExporter),
+    ):
+        _write_image_dataset(
+            dataset_exporter, samples, sample_parser, num_samples
+        )
+    elif isinstance(
+        dataset_exporter,
+        (UnlabeledVideoDatasetExporter, LabeledVideoDatasetExporter),
+    ):
+        _write_video_dataset(
+            dataset_exporter, samples, sample_parser, num_samples
+        )
     else:
         raise ValueError(
             "Unsupported DatasetExporter %s" % type(dataset_exporter)
         )
+
+
+def _get_dataset_exporter(
+    export_dir, dataset_type, dataset_exporter, **kwargs
+):
+    if dataset_type is not None:
+        if inspect.isclass(dataset_type):
+            dataset_type = dataset_type()
+
+        if not isinstance(
+            dataset_type,
+            (
+                fot.UnlabeledImageDataset,
+                fot.LabeledImageDataset,
+                fot.UnlabeledVideoDataset,
+                fot.LabeledVideoDataset,
+            ),
+        ):
+            raise ValueError(
+                "Unsupported `dataset_type` %s" % type(dataset_type)
+            )
+
+    if dataset_exporter is None:
+        dataset_exporter_cls = dataset_type.get_dataset_exporter_cls()
+        dataset_exporter = dataset_exporter_cls(export_dir, **kwargs)
+
+    return dataset_exporter
+
+
+def _write_generic_sample_dataset(dataset_exporter, samples, num_samples):
+    with fou.ProgressBar(total=num_samples) as pb:
+        with dataset_exporter:
+            if isinstance(samples, foc.SampleCollection):
+                dataset_exporter.log_collection(samples)
+
+            for sample in pb(samples):
+                dataset_exporter.export_sample(sample)
+
+
+def _write_image_dataset(
+    dataset_exporter, samples, sample_parser, num_samples
+):
+    labeled_images = isinstance(dataset_exporter, LabeledImageDatasetExporter)
 
     with fou.ProgressBar(total=num_samples) as pb:
         with dataset_exporter:
@@ -98,14 +219,9 @@ def write_dataset(
                 dataset_exporter.log_collection(samples)
 
             for sample in pb(samples):
-                # GenericSampleDatasetExporter
-                if raw_samples:
-                    dataset_exporter.export_sample(sample)
-                    continue
-
-                # UnlabeledImageDatasetExporter and LabeledImageDatasetExporter
                 sample_parser.with_sample(sample)
 
+                # Parse image
                 if sample_parser.has_image_path:
                     try:
                         image_or_path = sample_parser.get_image_path()
@@ -114,6 +230,7 @@ def write_dataset(
                 else:
                     image_or_path = sample_parser.get_image()
 
+                # Parse metadata
                 if dataset_exporter.requires_image_metadata:
                     if sample_parser.has_image_metadata:
                         metadata = sample_parser.get_image_metadata()
@@ -126,6 +243,7 @@ def write_dataset(
                     metadata = None
 
                 if labeled_images:
+                    # Parse label
                     label = sample_parser.get_label()
 
                     #
@@ -134,105 +252,98 @@ def write_dataset(
                     # Convert `Classification` labels to `Detections` format,
                     # if necessary
                     #
-                    if (
-                        dataset_exporter.label_cls is fol.Detections
-                        and isinstance(label, fol.Classification)
-                    ):
-                        msg = (
-                            "Dataset exporter expects labels in %s format, "
-                            "but found %s. Converting labels to detections "
-                            "whose bounding boxes span the entire image"
-                            % (fol.Detections, label.__class__)
-                        )
-                        warnings.warn(msg)
-                        label = fol.Detections(
-                            detections=[
-                                fol.Detection(
-                                    label=label.label,
-                                    bounding_box=[0, 0, 1, 1],  # entire image
-                                    confidence=label.confidence,
-                                )
-                            ]
-                        )
+                    label = _check_classification_to_detections(
+                        dataset_exporter, label
+                    )
 
+                    # Export sample
                     dataset_exporter.export_sample(
                         image_or_path, label, metadata=metadata
                     )
                 else:
+                    # Export sample
                     dataset_exporter.export_sample(
                         image_or_path, metadata=metadata
                     )
 
 
-def export_samples(
-    samples,
-    export_dir=None,
-    dataset_type=None,
-    dataset_exporter=None,
-    label_field_or_dict=None,
-    num_samples=None,
-    **kwargs
+def _write_video_dataset(
+    dataset_exporter, samples, sample_parser, num_samples
 ):
-    """Exports the given samples to disk as a dataset in the specified format.
+    labeled_videos = isinstance(dataset_exporter, LabeledVideoDatasetExporter)
 
-    Provide either ``export_dir`` and ``dataset_type`` or ``dataset_exporter``
-    to perform the export.
+    with fou.ProgressBar(total=num_samples) as pb:
+        with dataset_exporter:
+            if isinstance(samples, foc.SampleCollection):
+                dataset_exporter.log_collection(samples)
 
-    Args:
-        samples: an iterable of :class:`fiftyone.core.sample.Sample` instances.
-            For example, this may be a :class:`fiftyone.core.dataset.Dataset`
-            or a :class:`fifyone.core.view.DatasetView`
-        export_dir (None): the directory to which to export the samples in
-            format ``dataset_type``
-        dataset_type (None): the :class:`fiftyone.types.dataset_types.Dataset`
-            type to write
-        dataset_exporter (None): a
-            :class:`fiftyone.utils.data.exporters.DatasetExporter` to use to
-            write the dataset
-        label_field_or_dict (None): the name of the label field to export, or
-            a dictionary mapping field names to output keys describing the
-            label fields to export. This is required if and only if
-            ``dataset_exporter`` is a :class:`LabeledImageDatasetExporter`
-        num_samples (None): the number of samples in ``samples``. If omitted,
-            this is computed (if possible) via ``len(samples)``
-        **kwargs: optional keyword arguments to pass to
-            ``dataset_type.get_dataset_exporter_cls(export_dir, **kwargs)``
-    """
-    if dataset_type is not None:
-        if inspect.isclass(dataset_type):
-            dataset_type = dataset_type()
+            for sample in pb(samples):
+                sample_parser.with_sample(sample)
 
-        if not isinstance(
-            dataset_type, (fot.UnlabeledImageDataset, fot.LabeledImageDataset),
-        ):
-            raise ValueError(
-                "Unsupported `dataset_type` %s" % type(dataset_type)
+                # Parse video
+                video_path = sample_parser.get_video_path()
+
+                # Parse metadata
+                if dataset_exporter.requires_video_metadata:
+                    if sample_parser.has_video_metadata:
+                        metadata = sample_parser.get_video_metadata()
+                    else:
+                        metadata = None
+
+                    if metadata is None:
+                        metadata = fom.VideoMetadata.build_for(video_path)
+                else:
+                    metadata = None
+
+                if labeled_videos:
+                    # Parse labels
+                    label = sample_parser.get_label()
+
+                    #
+                    # SPECIAL CASE
+                    #
+                    # Convert `Classification` labels to `Detections` format,
+                    # if necessary
+                    #
+                    label = _check_classification_to_detections(
+                        dataset_exporter, label
+                    )
+
+                    frames = sample_parser.get_frame_labels()
+
+                    # Export sample
+                    dataset_exporter.export_sample(
+                        video_path, label, frames, metadata=metadata
+                    )
+                else:
+                    # Export sample
+                    dataset_exporter.export_sample(
+                        video_path, metadata=metadata
+                    )
+
+
+def _check_classification_to_detections(dataset_exporter, label):
+    if dataset_exporter.label_cls is not fol.Detections:
+        return label
+
+    if not isinstance(label, fol.Classification):
+        return label
+
+    msg = (
+        "Dataset exporter expects labels in %s format, but found %s. "
+        "Converting labels to detections whose bounding boxes span the entire "
+        "image" % (fol.Detections, label.__class__)
+    )
+    warnings.warn(msg)
+
+    return fol.Detections(
+        detections=[
+            fol.Detection(
+                label=label.label,
+                bounding_box=[0, 0, 1, 1],  # entire image
+                confidence=label.confidence,
             )
-
-    if dataset_exporter is None:
-        dataset_exporter_cls = dataset_type.get_dataset_exporter_cls()
-        dataset_exporter = dataset_exporter_cls(export_dir, **kwargs)
-
-    if isinstance(dataset_exporter, GenericSampleDatasetExporter):
-        sample_parser = None
-    elif isinstance(dataset_exporter, UnlabeledImageDatasetExporter):
-        sample_parser = FiftyOneUnlabeledImageSampleParser(
-            compute_metadata=True
-        )
-    elif isinstance(dataset_exporter, LabeledImageDatasetExporter):
-        sample_parser = FiftyOneLabeledImageSampleParser(
-            label_field_or_dict, compute_metadata=True
-        )
-    else:
-        raise ValueError(
-            "Unsupported DatasetExporter %s" % type(dataset_exporter)
-        )
-
-    write_dataset(
-        samples,
-        sample_parser,
-        dataset_exporter=dataset_exporter,
-        num_samples=num_samples,
+        ]
     )
 
 
@@ -240,7 +351,7 @@ class DatasetExporter(object):
     """Base interface for exporting collections of
     :class:`fiftyone.core.sample.Sample` instances to disk.
 
-    Example Usage::
+    Example usage::
 
         import fiftyone as fo
 
@@ -249,6 +360,7 @@ class DatasetExporter(object):
         exporter = GenericSampleDatasetExporter(export_dir, ...)
         with exporter:
             exporter.log_collection(samples)
+
             for sample in samples:
                 # Extract relevant information from `sample` and feed to
                 # `export_sample()`
@@ -348,7 +460,7 @@ class ExportsImages(object):
         Args:
             image_or_path: an image or the path to the image on disk
             filename_maker: a :class:`fiftyone.core.utils.UniqueFilenameMaker`
-                to use to generate the output path for the image
+                to use to generate the output image path
 
         Returns:
             the path to the exported image
@@ -365,11 +477,34 @@ class ExportsImages(object):
         return out_image_path
 
 
+class ExportsVideos(object):
+    """Mixin for :class:`DatasetExporter` classes that export videos."""
+
+    @staticmethod
+    def _export_video(video_path, filename_maker):
+        """Exports the video, using the given
+        :class:`fiftyone.core.utils.UniqueFilenameMaker` to generate the output
+        path for the video.
+
+        Args:
+            video_path: the path to a video on disk
+            filename_maker: a :class:`fiftyone.core.utils.UniqueFilenameMaker`
+                to use to generate the output video path
+
+        Returns:
+            the path to the exported video
+        """
+        out_video_path = filename_maker.get_output_path(video_path)
+        etau.copy_file(video_path, out_video_path)
+
+        return out_video_path
+
+
 class GenericSampleDatasetExporter(DatasetExporter):
     """Interface for exporting datasets of arbitrary
     :class:`fiftyone.core.sample.Sample` instances.
 
-    Example Usage::
+    Example usage::
 
         import fiftyone as fo
 
@@ -378,6 +513,7 @@ class GenericSampleDatasetExporter(DatasetExporter):
         exporter = GenericSampleDatasetExporter(export_dir, ...)
         with exporter:
             exporter.log_collection(samples)
+
             for sample in samples:
                 exporter.export_sample(sample)
 
@@ -397,7 +533,7 @@ class GenericSampleDatasetExporter(DatasetExporter):
 class UnlabeledImageDatasetExporter(DatasetExporter, ExportsImages):
     """Interface for exporting datasets of unlabeled image samples.
 
-    Example Usage::
+    Example usage::
 
         import fiftyone as fo
 
@@ -406,8 +542,10 @@ class UnlabeledImageDatasetExporter(DatasetExporter, ExportsImages):
         exporter = UnlabeledImageDatasetExporter(export_dir, ...)
         with exporter:
             exporter.log_collection(samples)
+
             for sample in samples:
                 image_path = sample.filepath
+
                 metadata = sample.metadata
                 if exporter.requires_image_metadata and metadata is None:
                     metadata = fo.ImageMetadata.build_for(image_path)
@@ -440,25 +578,77 @@ class UnlabeledImageDatasetExporter(DatasetExporter, ExportsImages):
         raise NotImplementedError("subclass must implement export_sample()")
 
 
-class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
-    """Interface for exporting datasets of labeled image samples.
+class UnlabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
+    """Interface for exporting datasets of unlabeled video samples.
 
-    Example Usage::
+    Example usage::
 
         import fiftyone as fo
 
         samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
-        label_field = ...  # assumes single label field case
+
+        exporter = UnlabeledVideoDatasetExporter(export_dir, ...)
+        with exporter:
+            exporter.log_collection(samples)
+
+            for sample in samples:
+                video_path = sample.filepath
+
+                metadata = sample.metadata
+                if exporter.requires_video_metadata and metadata is None:
+                    metadata = fo.VideoMetadata.build_for(video_path)
+
+                exporter.export_sample(video_path, metadata=metadata)
+
+    Args:
+        export_dir: the directory to write the export
+    """
+
+    @property
+    def requires_video_metadata(self):
+        """Whether this exporter requires
+        :class:`fiftyone.core.metadata.VideoMetadata` instances for each sample
+        being exported.
+        """
+        raise NotImplementedError(
+            "subclass must implement requires_video_metadata"
+        )
+
+    def export_sample(self, video_path, metadata=None):
+        """Exports the given sample to the dataset.
+
+        Args:
+            video_path: the path to a video on disk
+            metadata (None): a :class:`fiftyone.core.metadata.VideoMetadata`
+                instance for the sample. Only required when
+                :meth:`requires_video_metadata` is ``True``
+        """
+        raise NotImplementedError("subclass must implement export_sample()")
+
+
+class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
+    """Interface for exporting datasets of labeled image samples.
+
+    Example usage::
+
+        import fiftyone as fo
+
+        samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
+        label_field = ...
 
         exporter = LabeledImageDatasetExporter(export_dir, ...)
         with exporter:
             exporter.log_collection(samples)
+
             for sample in samples:
                 image_path = sample.filepath
-                label = sample[label_field]
+
                 metadata = sample.metadata
                 if exporter.requires_image_metadata and metadata is None:
                     metadata = fo.ImageMetadata.build_for(image_path)
+
+                # Assumes single label field case
+                label = sample[label_field]
 
                 exporter.export_sample(image_path, label, metadata=metadata)
 
@@ -478,8 +668,19 @@ class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
 
     @property
     def label_cls(self):
-        """The :class:`fiftyone.core.labels.Label` class exported by this
+        """The :class:`fiftyone.core.labels.Label` class(es) exported by this
         exporter.
+
+        This can be any of the following:
+
+        -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+            exporter directly exports labels of this type
+        -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+            In this case, the exporter can handle label dictionaries with
+            value-types specified by this dictionary. Not all keys need be
+            present in the exported label dicts
+        -   ``None``. In this case, the exporter makes no guarantees about the
+            labels that it can export
         """
         raise NotImplementedError("subclass must implement label_cls")
 
@@ -494,6 +695,104 @@ class LabeledImageDatasetExporter(DatasetExporter, ExportsImages):
             metadata (None): a :class:`fiftyone.core.metadata.ImageMetadata`
                 instance for the sample. Only required when
                 :meth:`requires_image_metadata` is ``True``
+        """
+        raise NotImplementedError("subclass must implement export_sample()")
+
+
+class LabeledVideoDatasetExporter(DatasetExporter, ExportsVideos):
+    """Interface for exporting datasets of labeled video samples.
+
+    Example usage::
+
+        import fiftyone as fo
+
+        samples = ...  # a SampleCollection (e.g., Dataset or DatasetView)
+
+        exporter = LabeledVideoDatasetExporter(export_dir, ...)
+        with exporter:
+            exporter.log_collection(samples)
+
+            for sample in samples:
+                video_path = sample.filepath
+
+                metadata = sample.metadata
+                if exporter.requires_video_metadata and metadata is None:
+                    metadata = fo.VideoMetadata.build_for(video_path)
+
+                # Extract relevant sample-level labels to export
+                label = ...
+
+                # Extract relevant frame-level labels to export
+                frames = ...
+
+                exporter.export_sample(
+                    video_path, label, frames, metadata=metadata
+                )
+
+    Args:
+        export_dir: the directory to write the export
+    """
+
+    @property
+    def requires_video_metadata(self):
+        """Whether this exporter requires
+        :class:`fiftyone.core.metadata.VideoMetadata` instances for each sample
+        being exported.
+        """
+        raise NotImplementedError(
+            "subclass must implement requires_video_metadata"
+        )
+
+    @property
+    def label_cls(self):
+        """The :class:`fiftyone.core.labels.Label` class(es) that can be
+        exported at the sample-level.
+
+        This can be any of the following:
+
+        -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+            exporter directly exports sample-level labels of this type
+        -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+            In this case, the exporter can export multiple label fields with
+            value-types specified by this dictionary. Not all keys need be
+            present in the exported sample-level labels
+        -   ``None``. In this case, the exporter makes no guarantees about the
+            sample-level labels that it can export
+        """
+        raise NotImplementedError("subclass must implement label_cls")
+
+    @property
+    def frame_labels_cls(self):
+        """The :class:`fiftyone.core.labels.Label` class(es) that can be
+        exported by this exporter at the frame-level.
+
+        This can be any of the following:
+
+        -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+            exporter directly exports frame labels of this type
+        -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+            In this case, the exporter can export multiple frame label fields
+            with value-types specified by this dictionary. Not all keys need be
+            present in the exported frame labels
+        -   ``None``. In this case, the exporter makes no guarantees about the
+            frame labels that it can export
+        """
+        raise NotImplementedError("subclass must implement frame_labels_cls")
+
+    def export_sample(self, video_path, label, frames, metadata=None):
+        """Exports the given sample to the dataset.
+
+        Args:
+            video_path: the path to a video on disk
+            label: an instance of :meth:`label_cls`, or a dictionary mapping
+                field names to :class:`fiftyone.core.labels.Label` instances,
+                or ``None`` if the sample has no sample-level labels
+            frames: a dictionary mapping frame numbers to dictionaries that map
+                field names to :class:`fiftyone.core.labels.Label` instances,
+                or ``None`` if the sample has no frame-level labels
+            metadata (None): a :class:`fiftyone.core.metadata.VideoMetadata`
+                instance for the sample. Only required when
+                :meth:`requires_video_metadata` is ``True``
         """
         raise NotImplementedError("subclass must implement export_sample()")
 
@@ -516,14 +815,17 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
         super().__init__(export_dir)
         self.pretty_print = pretty_print
         self._data_dir = None
+        self._frame_labels_dir = None
         self._metadata_path = None
         self._samples_path = None
         self._metadata = None
         self._samples = None
         self._filename_maker = None
+        self._is_video_dataset = False
 
     def setup(self):
         self._data_dir = os.path.join(self.export_dir, "data")
+        self._frame_labels_dir = os.path.join(self.export_dir, "frames")
         self._metadata_path = os.path.join(self.export_dir, "metadata.json")
         self._samples_path = os.path.join(self.export_dir, "samples.json")
         self._metadata = {}
@@ -533,19 +835,34 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
         )
 
     def log_collection(self, sample_collection):
+        self._is_video_dataset = sample_collection.media_type == fomm.VIDEO
+
         self._metadata["name"] = sample_collection.name
-        self._metadata[
-            "sample_fields"
-        ] = sample_collection._serialize_field_schema()
+        self._metadata["media_type"] = sample_collection.media_type
+
+        schema = sample_collection._serialize_field_schema()
+        self._metadata["sample_fields"] = schema
+
+        if self._is_video_dataset:
+            schema = sample_collection._serialize_frame_field_schema()
+            self._metadata["frame_fields"] = schema
+
         self._metadata["info"] = sample_collection.info
 
     def export_sample(self, sample):
         out_filepath = self._filename_maker.get_output_path(sample.filepath)
         etau.copy_file(sample.filepath, out_filepath)
 
-        d = sample.to_dict()
-        d["filepath"] = os.path.relpath(out_filepath, self.export_dir)
-        self._samples.append(d)
+        sd = sample.to_dict()
+        sd["filepath"] = os.path.relpath(out_filepath, self.export_dir)
+
+        if self._is_video_dataset:
+            # Serialize frame labels separately
+            uuid = os.path.splitext(os.path.basename(out_filepath))[0]
+            outpath = self._export_frame_labels(sample, uuid)
+            sd["frames"] = os.path.relpath(outpath, self.export_dir)
+
+        self._samples.append(sd)
 
     def close(self, *args):
         samples = {"samples": self._samples}
@@ -555,6 +872,17 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
         etas.write_json(
             samples, self._samples_path, pretty_print=self.pretty_print
         )
+
+    def _export_frame_labels(self, sample, uuid):
+        frames = {}
+        for frame_number, frame in sample.frames.items():
+            frames[str(frame_number)] = frame.to_dict()
+
+        frames_dict = {"frames": frames}
+        outpath = os.path.join(self._frame_labels_dir, uuid + ".json")
+        etas.write_json(frames_dict, outpath, pretty_print=self.pretty_print)
+
+        return outpath
 
 
 class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
@@ -594,6 +922,38 @@ class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
 
     def export_sample(self, image_or_path, metadata=None):
         self._export_image_or_path(image_or_path, self._filename_maker)
+
+
+class VideoDirectoryExporter(UnlabeledVideoDatasetExporter):
+    """Exporter that writes a directory of videos to disk.
+
+    See :class:`fiftyone.types.dataset_types.VideoDirectory` for format
+    details.
+
+    If the path to a video is provided, the video is directly copied to its
+    destination, maintaining the original filename, unless a name conflict
+    would occur, in which case an index of the form ``"-%d" % count`` is
+    appended to the base filename.
+
+    Args:
+        export_dir: the directory to write the export
+    """
+
+    def __init__(self, export_dir):
+        super().__init__(export_dir)
+        self._filename_maker = None
+
+    @property
+    def requires_video_metadata(self):
+        return False
+
+    def setup(self):
+        self._filename_maker = fou.UniqueFilenameMaker(
+            output_dir=self.export_dir
+        )
+
+    def export_sample(self, video_path, metadata=None):
+        self._export_video(video_path, self._filename_maker)
 
 
 class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
@@ -760,6 +1120,64 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
             etai.write(img, out_image_path)
 
 
+class VideoClassificationDirectoryTreeExporter(LabeledVideoDatasetExporter):
+    """Exporter that writes a video classification directory tree to disk.
+
+    See :class:`fiftyone.types.dataset_types.VideoClassificationDirectoryTree`
+    for format details.
+
+    The source videos are directly copied to their export destination,
+    maintaining the original filename, unless a name conflict would occur, in
+    which case an index of the form ``"-%d" % count`` is appended to the base
+    filename.
+
+    Args:
+        export_dir: the directory to write the export
+    """
+
+    def __init__(self, export_dir):
+        super().__init__(export_dir)
+        self._class_counts = None
+        self._filename_counts = None
+
+    @property
+    def requires_video_metadata(self):
+        return False
+
+    @property
+    def label_cls(self):
+        return fol.Classification
+
+    @property
+    def frame_labels_cls(self):
+        return None
+
+    def setup(self):
+        self._class_counts = defaultdict(int)
+        self._filename_counts = defaultdict(int)
+        etau.ensure_dir(self.export_dir)
+
+    def export_sample(self, video_path, classification, _, metadata=None):
+        _label = _parse_classification(classification)
+        if _label is None:
+            _label = "_unlabeled"
+
+        self._class_counts[_label] += 1
+
+        filename = os.path.basename(video_path)
+        name, ext = os.path.splitext(filename)
+
+        key = (_label, filename)
+        self._filename_counts[key] += 1
+        count = self._filename_counts[key]
+        if count > 1:
+            filename = name + ("-%d" % count) + ext
+
+        out_video_path = os.path.join(self.export_dir, _label, filename)
+
+        etau.copy_file(video_path, out_video_path)
+
+
 class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
     """Exporter that writes an image detection dataset to disk in FiftyOne's
     default format.
@@ -848,8 +1266,8 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
 
 
 class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
-    """Exporter that writes an image labels dataset to disk in FiftyOne's
-    default format.
+    """Exporter that writes a labeled image dataset to disk with labels stored
+    in `ETA ImageLabels format <https://github.com/voxel51/eta/blob/develop/docs/image_labels_guide.md>`_.
 
     See :class:`fiftyone.types.dataset_types.FiftyOneImageLabelsDataset` for
     format details.
@@ -887,7 +1305,12 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
 
     @property
     def label_cls(self):
-        return fol.ImageLabels
+        return {
+            "attributes": fol.Classifications,
+            "detections": fol.Detections,
+            "polylines": fol.Polylines,
+            "keypoints": fol.Keypoints,
+        }
 
     def setup(self):
         self._labeled_dataset = etad.LabeledImageDataset.create_empty_dataset(
@@ -904,9 +1327,7 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
     def log_collection(self, sample_collection):
         self._description = sample_collection.info.get("description", None)
 
-    def export_sample(
-        self, image_or_path, image_labels_or_dict, metadata=None
-    ):
+    def export_sample(self, image_or_path, labels, metadata=None):
         is_image_path = self._is_image_path(image_or_path)
 
         if is_image_path:
@@ -920,7 +1341,7 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
         new_image_filename = name + ext
         new_labels_filename = name + ".json"
 
-        _image_labels = _parse_image_labels(image_labels_or_dict)
+        _image_labels = foe.to_image_labels(labels)
 
         if etau.is_str(image_or_path):
             image_labels_path = os.path.join(
@@ -940,6 +1361,89 @@ class FiftyOneImageLabelsDatasetExporter(LabeledImageDatasetExporter):
             self._labeled_dataset.add_data(
                 img, _image_labels, new_image_filename, new_labels_filename,
             )
+
+    def close(self, *args):
+        self._labeled_dataset.set_description(self._description)
+        self._labeled_dataset.write_manifest()
+
+
+class FiftyOneVideoLabelsDatasetExporter(LabeledVideoDatasetExporter):
+    """Exporter that writes a labeled video dataset with labels stored in
+    `ETA VideoLabels format <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.
+
+    See :class:`fiftyone.types.dataset_types.FiftyOneVideoLabelsDataset` for
+    format details.
+
+    If the path to a video is provided, the video is directly copied to its
+    destination, maintaining the original filename, unless a name conflict
+    would occur, in which case an index of the form ``"-%d" % count`` is
+    appended to the base filename.
+
+    Args:
+        export_dir: the directory to write the export
+        pretty_print (False): whether to render the JSON in human readable
+            format with newlines and indentations
+    """
+
+    def __init__(self, export_dir, pretty_print=False):
+        super().__init__(export_dir)
+        self.pretty_print = pretty_print
+        self._labeled_dataset = None
+        self._data_dir = None
+        self._labels_dir = None
+        self._filename_maker = None
+        self._description = None
+
+    @property
+    def requires_video_metadata(self):
+        return False
+
+    @property
+    def label_cls(self):
+        return None
+
+    @property
+    def frame_labels_cls(self):
+        return {
+            "attributes": fol.Classifications,
+            "detections": fol.Detections,
+            "polylines": fol.Polylines,
+            "keypoints": fol.Keypoints,
+        }
+
+    def setup(self):
+        self._labeled_dataset = etad.LabeledVideoDataset.create_empty_dataset(
+            self.export_dir
+        )
+        self._data_dir = self._labeled_dataset.data_dir
+        self._labels_dir = self._labeled_dataset.labels_dir
+        self._filename_maker = fou.UniqueFilenameMaker(
+            output_dir=self._data_dir, ignore_exts=True,
+        )
+
+    def log_collection(self, sample_collection):
+        self._description = sample_collection.info.get("description", None)
+
+    def export_sample(self, video_path, _, frames, metadata=None):
+        out_video_path = self._filename_maker.get_output_path(video_path)
+
+        name, ext = os.path.splitext(os.path.basename(out_video_path))
+        new_image_filename = name + ext
+        new_labels_filename = name + ".json"
+
+        _video_labels = foe.to_video_labels(frames)
+
+        video_labels_path = os.path.join(self._labels_dir, new_labels_filename)
+        _video_labels.write_json(
+            video_labels_path, pretty_print=self.pretty_print
+        )
+
+        self._labeled_dataset.add_file(
+            video_path,
+            video_labels_path,
+            new_data_filename=new_image_filename,
+            new_labels_filename=new_labels_filename,
+        )
 
     def close(self, *args):
         self._labeled_dataset.set_description(self._description)
@@ -982,20 +1486,6 @@ def _parse_detections(detections, labels_map_rev=None):
         _detections.append(_detection)
 
     return _detections
-
-
-def _parse_image_labels(label):
-    if label is None:
-        return etai.ImageLabels()
-
-    if isinstance(label, dict):
-        image_labels = etai.ImageLabels()
-        for name, _label in label.items():
-            image_labels.merge_labels(_label.to_image_labels(name=name))
-
-        return image_labels
-
-    return label.labels
 
 
 def _to_labels_map_rev(classes):

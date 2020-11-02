@@ -8,6 +8,8 @@ Expressions for :class:`fiftyone.core.stages.ViewStage` definitions.
 from copy import deepcopy
 import re
 
+import bson
+
 import eta.core.utils as etau
 
 import fiftyone.core.utils as fou
@@ -403,11 +405,41 @@ class ViewExpression(object):
         """
         return ViewExpression({"$trunc": [self, place]})
 
+    # Field expression operators ##############################################
+
+    def apply(self, expr):
+        """Applies the given expression to this expression.
+
+        Examples::
+
+            from fiftyone import ViewField as F
+
+            # Show samples whose first detection in the `predictions` field
+            # has confidence > 0.95
+            view = dataset.match(
+                F("predictions.detections")[0].apply(F("confidence") > 0.95)
+            )
+
+        Args:
+            expr: a :class:`ViewExpression`
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression(
+            {
+                "$let": {
+                    "vars": {"field": self},
+                    "in": expr.to_mongo(prefix="$$field"),
+                }
+            }
+        )
+
     # Array expression operators ##############################################
 
     def __getitem__(self, idx_or_slice):
-        """Returns the element or slice of the given expression, which must
-        resolve to an array.
+        """Returns the element or slice of this expression, which must resolve
+        to an array.
 
         All of the typical array slicing operations are supported, except for
         specifying a non-unit step.
@@ -466,7 +498,7 @@ class ViewExpression(object):
         )
 
     def length(self):
-        """Computes the length of the expression, which must resolve to an
+        """Computes the length of this expression, which must resolve to an
         array.
 
         If the expression is null, 0 is returned.
@@ -503,9 +535,17 @@ class ViewExpression(object):
         """
         return ViewExpression({"$in": [value, self]})
 
+    def reverse(self):
+        """Reverses the order of the elements in the array expression.
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$reverseArray": self})
+
     def filter(self, expr):
-        """Applies the filter to the elements of the expression, which must
-        resolve to an array.
+        """Applies the given filter to the elements of this expression, which
+        must resolve to an array.
 
         The output array will only contain elements of the input array for
         which ``expr`` returns ``True``.
@@ -525,11 +565,84 @@ class ViewExpression(object):
             }
         )
 
+    def map(self, expr):
+        """Applies the given expression to the elements of this expression,
+        which must resolve to an array.
+
+        The output will be an array with the applied results.
+
+        Args:
+            expr: a :class:`ViewExpression`
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression(
+            {"$map": {"input": self, "in": expr.to_mongo(prefix="$$this")}}
+        )
+
+    def min(self):
+        """Returns the minimum value in this expression, which must resolve to
+        a numeric array.
+
+        Missing or ``None``-valued elements are ignored.
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$min": self})
+
+    def max(self):
+        """Returns the maximum value in this expression, which must resolve to
+        a numeric array.
+
+        Missing or ``None``-valued elements are ignored.
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$max": self})
+
+    def sum(self):
+        """Returns the sum of the values in this expression, which must resolve
+        to a numeric array.
+
+        Missing, non-numeric, or ``None``-valued elements are ignored.
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$sum": self})
+
+        # @todo is this version needed?
+        """
+        return ViewExpression(
+            {
+                "$reduce": {
+                    "input": self,
+                    "initialValue": 0,
+                    "in": {"$add": ["$$value", "$$this"]},
+                }
+            }
+        )
+        """
+
+    def mean(self):
+        """Returns the average value in this expression, which must resolve to
+        a numeric array.
+
+        Missing or ``None``-valued elements are ignored.
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$avg": self})
+
     # String expression operators #############################################
 
     def re_match(self, regex, options=None):
-        """Performs a regular expression pattern match on the expression, which
-        must resolve to a string.
+        """Performs a regular expression pattern match on this expression,
+        which must resolve to a string.
 
         The output of the expression will be ``True`` if the pattern matches
         and ``False`` otherwise.
@@ -565,7 +678,7 @@ class ViewExpression(object):
         )
 
     def starts_with(self, str_or_strs, case_sensitive=True):
-        """Determines whether the string expression starts with the given
+        """Determines whether this string expression starts with the given
         string (or any of a list of strings).
 
         Args:
@@ -586,7 +699,7 @@ class ViewExpression(object):
         return self.re_match(regex, options=options)
 
     def ends_with(self, str_or_strs, case_sensitive=True):
-        """Determines whether the string expression ends with the given string
+        """Determines whether this string expression ends with the given string
         (or any of a list of strings).
 
         Args:
@@ -607,7 +720,7 @@ class ViewExpression(object):
         return self.re_match(regex, options=options)
 
     def contains_str(self, str_or_strs, case_sensitive=True):
-        """Determines whether the string expression contains the given string
+        """Determines whether this string expression contains the given string
         (or any of a list of strings).
 
         Args:
@@ -628,7 +741,7 @@ class ViewExpression(object):
         return self.re_match(regex, options=options)
 
     def matches_str(self, str_or_strs, case_sensitive=True):
-        """Determines whether the string expression exactly matches the given
+        """Determines whether this string expression exactly matches the given
         string (or any of a list of strings).
 
         Args:
@@ -760,6 +873,42 @@ class ViewField(ViewExpression, metaclass=_MetaViewField):
             return prefix + "." + self._expr if self._expr else prefix
 
         return "$" + self._expr if self._expr else "$this"
+
+
+class ObjectId(ViewExpression, metaclass=_MetaViewField):
+    """A :class:`ViewExpression` that refers to an
+    `ObjectId <https://docs.mongodb.com/manual/reference/method/ObjectId>`_ of
+    a document.
+
+    The typical use case for this class is writing an expression that involves
+    checking if the ID of a document matches a particular known ID.
+
+    Example::
+
+        from fiftyone import ViewField as F
+        from fiftyone.core.expressions import ObjectId
+
+        # Check if the ID of the document matches the given ID
+        expr = F("_id") == ObjectId("5f452489ef00e6374aad384a")
+
+    Args:
+        oid: the object ID string
+    """
+
+    def __init__(self, oid):
+        _ = bson.ObjectId(oid)  # validates that `oid` is valid value
+        super().__init__(oid)
+
+    def to_mongo(self, prefix=None):
+        """Returns a MongoDB representation of the ObjectId.
+
+        Args:
+            prefix (None): unused
+
+        Returns:
+            a MongoDB expression
+        """
+        return {"$toObjectId": self._expr}
 
 
 def _escape_regex_chars(str_or_strs):
