@@ -15,8 +15,7 @@ import eta.core.web as etaw
 import fiftyone.types as fot
 import fiftyone.utils.bdd as foub
 import fiftyone.utils.coco as fouc
-
-# import fiftyone.utils.cityscapes as foucs
+import fiftyone.utils.cityscapes as foucs
 import fiftyone.utils.data as foud
 import fiftyone.utils.hmdb51 as fouh
 import fiftyone.utils.lfw as foul
@@ -326,7 +325,6 @@ class CityscapesDataset(FiftyOneDataset):
         dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
         split_dir = os.path.join(dataset_dir, split)
         if not os.path.exists(split_dir):
-            """
             foucs.parse_cityscapes_dataset(
                 dataset_dir,
                 scratch_dir,
@@ -335,7 +333,6 @@ class CityscapesDataset(FiftyOneDataset):
                 coarse_annos=self.coarse_annos,
                 person_annos=self.person_annos,
             )
-            """
 
         # Get metadata
         logger.info("Parsing dataset metadata")
