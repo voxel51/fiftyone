@@ -9,8 +9,8 @@ import {
 import { Message, Segment } from "semantic-ui-react";
 import styled from "styled-components";
 
+import { PLOTS } from "../Routes";
 import SamplesContainer from "./SamplesContainer";
-import Distributions from "../components/Distributions";
 import HorizontalNav from "../components/HorizontalNav";
 import SampleModal from "../components/SampleModal";
 import { ModalWrapper, Overlay } from "../components/utils";
@@ -44,7 +44,6 @@ const applyActiveLabels = (tuples, current, setter) => {
 };
 
 function Dataset(props) {
-  const tabs = [routes.SAMPLES, routes.TAGS, routes.LABELS, routes.SCALARS];
   const [modal, setModal] = useState({
     visible: false,
     sample: null,
@@ -185,18 +184,12 @@ function Dataset(props) {
           />
         </ModalWrapper>
       ) : null}
-      <HorizontalNav
-        currentPath={props.location.pathname}
-        entries={tabs.map((path) => ({ path, name: path.slice(1) }))}
-      />
+      <HorizontalNav entries={PLOTS} />
       <Body>
         <Switch>
-          <Route exact path={routes.DATASET}>
-            <Redirect to={routes.SAMPLES} />
-          </Route>
           {hasDataset ? (
             <>
-              <Route path={routes.SAMPLES}>
+              <Route path={routes.DATASET}>
                 <SamplesContainer
                   {...props.socket}
                   setView={(sample, metadata) =>
@@ -209,15 +202,6 @@ function Dataset(props) {
                   }
                   colorMap={colorMap}
                 />
-              </Route>
-              <Route path={routes.LABELS}>
-                <Distributions group="labels" />
-              </Route>
-              <Route path={routes.TAGS}>
-                <Distributions group="tags" />
-              </Route>
-              <Route path={routes.SCALARS}>
-                <Distributions group="scalars" />
               </Route>
             </>
           ) : (

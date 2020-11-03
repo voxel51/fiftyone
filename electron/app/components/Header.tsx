@@ -18,7 +18,7 @@ const HeaderDiv = styled.div`
 
 const LogoDiv = styled.div`
   height: 40px;
-  margin: 1rem 1rem 1rem 2rem;
+  margin: 1rem;
 `;
 
 const LogoImg = styled.img`
@@ -37,7 +37,7 @@ const LeftDiv = styled.div`
 
 const RightDiv = styled.div`
   margin-left: auto;
-  padding-right: 1.5rem;
+  padding-right: 0.5rem;
 `;
 
 const TitleDiv = styled.div`

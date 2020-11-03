@@ -1,25 +1,26 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useState } from "react";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
+import { capitalize } from "lodash";
 
-export type Entry = {
-  path: string;
-  name: string;
-};
+import * as atoms from "../recoil/atoms";
 
 export type Props = {
-  entries: Entry[];
-  currentPath: string;
+  entries: string[];
 };
 
 const Body = styled.div`
-  padding: 1rem 2rem;
+  padding: 1rem;
   background-color: ${({ theme }) => theme.backgroundDark};
   border-bottom: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
   width: 100%;
+  display: flex;
+  justify-content: space-between;
 `;
 
-const Item = styled(Link)`
+const Plots = styled.div``;
+
+const Plot = styled.div`
   display: inline-block;
   margin-right: 5px;
   padding: 0 1em;
@@ -35,18 +36,22 @@ const Item = styled(Link)`
   }
 `;
 
-const HorizontalNav = ({ entries, currentPath }: Props) => {
+const TogglePlots = styled.button``;
+
+const HorizontalNav = ({ entries }: Props) => {
+  const activePlot = useRecoilValue(atoms.activePlot);
+  const [expanded, setExpanded] = useState(false);
+
   return (
     <Body>
-      {entries.map((e) => (
-        <Item
-          key={e.path}
-          to={e.path}
-          className={e.path == currentPath ? "active" : ""}
-        >
-          {e.name}
-        </Item>
-      ))}
+      <Plots>
+        {entries.map((e) => (
+          <Plot key={e} className={e === activePlot ? "active" : ""}>
+            {capitalize(e)}
+          </Plot>
+        ))}
+      </Plots>
+      <TogglePlots>hello</TogglePlots>
     </Body>
   );
 };
