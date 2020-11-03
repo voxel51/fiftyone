@@ -252,7 +252,7 @@ class LabeledFacesInTheWildDataset(FiftyOneDataset):
         #
         # LFW is distributed as a single download that contains all splits,
         # so we remove the split from `dataset_dir` and download the whole
-        # dataset (only if necessary)
+        # dataset (if necessary)
         #
         dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
         split_dir = os.path.join(dataset_dir, split)
@@ -320,7 +320,7 @@ class CityscapesDataset(FiftyOneDataset):
         #
         # Cityscapes is distributed as a single download that contains all
         # splits (which must be manually downloaded), so we remove the split
-        # from `dataset_dir` and download the whole dataset (only if necessary)
+        # from `dataset_dir` and download the whole dataset (if necessary)
         #
         dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
         split_dir = os.path.join(dataset_dir, split)
@@ -415,8 +415,7 @@ class BDD100KDataset(FiftyOneDataset):
         # `self.source_dir` or `scratch_dir`
         #
         # The download contains all splits, so we remove the split from
-        # `dataset_dir` and download the whole
-        # dataset (only if necessary)
+        # `dataset_dir` and download the whole dataset (if necessary)
         #
         dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
         split_dir = os.path.join(dataset_dir, split)
@@ -469,7 +468,7 @@ class HMDB51Dataset(FiftyOneDataset):
         #
         # HMDB51 is distributed as a single download that contains all splits,
         # so we remove the split from `dataset_dir` and download the whole
-        # dataset (only if necessary)
+        # dataset (if necessary)
         #
         dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
         split_dir = os.path.join(dataset_dir, split)
@@ -541,7 +540,7 @@ class UCF101Dataset(FiftyOneDataset):
         #
         # UCF101 is distributed as a single download that contains all splits,
         # so we remove the split from `dataset_dir` and download the whole
-        # dataset (only if necessary)
+        # dataset (if necessary)
         #
         dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
         split_dir = os.path.join(dataset_dir, split)
