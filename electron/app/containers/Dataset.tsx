@@ -178,46 +178,44 @@ function Dataset(props) {
           />
         </ModalWrapper>
       ) : null}
-      <Container fluid={true}>
-        <HorizontalNav
-          currentPath={props.location.pathname}
-          entries={tabs.map((path) => ({ path, name: path.slice(1) }))}
-        />
-        <Switch>
-          <Route exact path={routes.DATASET}>
-            <Redirect to={routes.SAMPLES} />
-          </Route>
-          {hasDataset ? (
-            <>
-              <Route path={routes.SAMPLES}>
-                <SamplesContainer
-                  {...props.socket}
-                  setView={(sample, metadata) =>
-                    setModal({
-                      ...modal,
-                      visible: true,
-                      sample,
-                      metadata,
-                    })
-                  }
-                  colorMap={colorMap}
-                />
-              </Route>
-              <Route path={routes.LABELS}>
-                <Distributions group="labels" />
-              </Route>
-              <Route path={routes.TAGS}>
-                <Distributions group="tags" />
-              </Route>
-              <Route path={routes.SCALARS}>
-                <Distributions group="scalars" />
-              </Route>
-            </>
-          ) : (
-            <NoDataset />
-          )}
-        </Switch>
-      </Container>
+      <HorizontalNav
+        currentPath={props.location.pathname}
+        entries={tabs.map((path) => ({ path, name: path.slice(1) }))}
+      />
+      <Switch>
+        <Route exact path={routes.DATASET}>
+          <Redirect to={routes.SAMPLES} />
+        </Route>
+        {hasDataset ? (
+          <>
+            <Route path={routes.SAMPLES}>
+              <SamplesContainer
+                {...props.socket}
+                setView={(sample, metadata) =>
+                  setModal({
+                    ...modal,
+                    visible: true,
+                    sample,
+                    metadata,
+                  })
+                }
+                colorMap={colorMap}
+              />
+            </Route>
+            <Route path={routes.LABELS}>
+              <Distributions group="labels" />
+            </Route>
+            <Route path={routes.TAGS}>
+              <Distributions group="tags" />
+            </Route>
+            <Route path={routes.SCALARS}>
+              <Distributions group="scalars" />
+            </Route>
+          </>
+        ) : (
+          <NoDataset />
+        )}
+      </Switch>
     </>
   );
 }

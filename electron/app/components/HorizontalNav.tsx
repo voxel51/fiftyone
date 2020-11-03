@@ -17,6 +17,9 @@ const Body = styled.div`
   padding: 1rem 2rem;
   background-color: ${({ theme }) => theme.backgroundDark};
   border-bottom: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
+  position: fixed;
+  margin-top: 73px;
+  z-index: 1000;
 `;
 
 const Item = styled(Link)`

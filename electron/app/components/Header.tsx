@@ -14,6 +14,8 @@ const HeaderDiv = styled.div`
   justify-content: space-between;
   width: 100%;
   border-bottom: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
+  position: fixed;
+  z-index: 1000;
 `;
 
 const LogoDiv = styled.div`
