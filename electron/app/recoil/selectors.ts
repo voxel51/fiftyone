@@ -186,11 +186,10 @@ const fields = selectorFamily({
   },
 });
 
-const excludePrivateFilter = (f) => !f.startsWith("_");
-
 export const fieldPaths = selector({
   key: "fieldPaths",
   get: ({ get }) => {
+    const excludePrivateFilter = (f) => !f.startsWith("_");
     const fieldsNames = Object.keys(get(fields("sample"))).filter(
       excludePrivateFilter
     );
