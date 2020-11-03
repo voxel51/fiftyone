@@ -337,16 +337,10 @@ class CityscapesDataset(FiftyOneDataset):
         # Get metadata
         logger.info("Parsing dataset metadata")
         dataset_type = fot.FiftyOneDataset()
-        importer = foud.FiftyOneDatasetImporter
-        classes = sorted(
-            importer.get_classes(os.path.join(dataset_dir, "train"))
-            + importer.get_classes(os.path.join(dataset_dir, "test"))
-            + importer.get_classes(os.path.join(dataset_dir, "validation"))
-        )
-        num_samples = importer.get_num_samples(split_dir)
+        num_samples = foud.FiftyOneDatasetImporter.get_num_samples(split_dir)
         logger.info("Found %d samples", num_samples)
 
-        return dataset_type, num_samples, classes
+        return dataset_type, num_samples, None
 
 
 class BDD100KDataset(FiftyOneDataset):
