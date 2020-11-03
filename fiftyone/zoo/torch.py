@@ -5,6 +5,8 @@ FiftyOne Zoo Datasets provided by ``torchvision.datasets``.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
+
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
 import fiftyone.utils.coco as fouc
@@ -242,7 +244,8 @@ class ImageNet2012Dataset(TorchVisionDataset):
 
     def _download_and_prepare(self, dataset_dir, _, split):
         # Ensure that the source files have been manually downloaded
-        foui.ensure_imagenet_manual_download(dataset_dir, split)
+        root_dir = os.path.dirname(dataset_dir)  # remove split dir
+        foui.ensure_imagenet_manual_download(root_dir, split)
 
         if split == "validation":
             _split = "val"
@@ -250,7 +253,7 @@ class ImageNet2012Dataset(TorchVisionDataset):
             _split = split
 
         def download_fcn(_):
-            return torchvision.datasets.ImageNet(dataset_dir, split=_split)
+            return torchvision.datasets.ImageNet(root_dir, split=_split)
 
         get_class_labels_fcn = _parse_classification_labels
         sample_parser = foud.ImageClassificationSampleParser()

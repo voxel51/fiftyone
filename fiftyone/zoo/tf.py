@@ -5,6 +5,8 @@ FiftyOne Zoo Datasets provided by ``tensorflow_datasets``.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
+
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
 import fiftyone.utils.imagenet as foui
@@ -304,7 +306,8 @@ class ImageNet2012Dataset(TFDSDataset):
 
     def _download_and_prepare(self, dataset_dir, _, split):
         # Ensure that the source files have been manually downloaded
-        foui.ensure_imagenet_manual_download(dataset_dir, split)
+        root_dir = os.path.dirname(dataset_dir)  # remove split dir
+        foui.ensure_imagenet_manual_download(root_dir, split)
 
         if split == "validation":
             _split = "val"
@@ -315,7 +318,7 @@ class ImageNet2012Dataset(TFDSDataset):
             return tfds.load(
                 "imagenet2012",
                 split=_split,
-                data_dir=dataset_dir,
+                data_dir=root_dir,
                 download=False,
                 with_info=True,
             )

@@ -8,6 +8,11 @@ Utilities for working with the `ImageNet dataset <http://www.image-net.org>`_.
 import os
 
 
+_TRAIN_IMAGES_TAR = "ILSVRC2012_img_train.tar"
+_VAL_IMAGES_DIR = "ILSVRC2012_img_val.tar"
+_DEVKIT_TAR = "ILSVRC2012_devkit_t12.tar.gz"
+
+
 def ensure_imagenet_manual_download(dataset_dir, split, devkit=False):
     """Ensures that the ImageNet archive(s) for the requested split have been
     manually downloaded to the required locations.
@@ -22,9 +27,9 @@ def ensure_imagenet_manual_download(dataset_dir, split, devkit=False):
         OSError: if the required files are not present
     """
     if split == "train":
-        archive_name = "ILSVRC2012_img_train.tar"
+        archive_name = _TRAIN_IMAGES_TAR
     elif split == "validation":
-        archive_name = "ILSVRC2012_img_val.tar"
+        archive_name = _VAL_IMAGES_DIR
     else:
         raise ValueError(
             "Unsupported split '%s'; Supported values are "
@@ -34,7 +39,7 @@ def ensure_imagenet_manual_download(dataset_dir, split, devkit=False):
     _ensure_archive(archive_name, dataset_dir)
 
     if devkit:
-        devkit_name = "ILSVRC2012_devkit_t12.tar.gz"
+        devkit_name = _DEVKIT_TAR
         _ensure_archive(devkit_name, dataset_dir)
 
 
@@ -43,10 +48,10 @@ def _ensure_archive(archive_name, dataset_dir):
     if not os.path.isfile(archive_path):
         raise OSError(
             (
-                "Archive '%s' not found in dataset directory '%s'."
+                "Archive '%s' not found in directory '%s'."
                 "\n\n"
                 "You must download the source files for the ImageNet dataset "
-                "manually to the dataset directory."
+                "manually to the above directory."
                 "\n\n"
                 "Register at http://www.image-net.org/download-images in "
                 "order to get the link to download the dataset"
