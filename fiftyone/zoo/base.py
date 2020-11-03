@@ -15,6 +15,8 @@ import eta.core.web as etaw
 import fiftyone.types as fot
 import fiftyone.utils.bdd as foub
 import fiftyone.utils.coco as fouc
+
+# import fiftyone.utils.cityscapes as foucs
 import fiftyone.utils.data as foud
 import fiftyone.utils.hmdb51 as fouh
 import fiftyone.utils.lfw as foul
@@ -274,6 +276,81 @@ class LabeledFacesInTheWildDataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
 
+class CityscapesDataset(FiftyOneDataset):
+    """Cityscapes is a large-scale dataset that contains a diverse set of
+    stereo video sequences recorded in street scenes from 50 different cities,
+    with high quality pixel-level annotations of 5,000 frames in addition to a
+    arger set of 20,000 weakly annotated frames.
+
+    The dataset is intended for:
+
+    -   assessing the performance of vision algorithms for major tasks of
+    semantic urban scene understanding: pixel-level, instance-level, and
+    panoptic semantic labeling
+    -   supporting research that aims to exploit large volumes of (weakly)
+    annotated data, e.g. for training deep neural networks
+
+    Dataset size:
+        11.8 GB
+
+    Source:
+        https://www.cityscapes-dataset.com
+
+    Args:
+        fine_annos (False): whether to load the fine annotations
+        coarse_annos (False): whether to load the coarse annotations
+        person_annos (False): whether to load the person annotations
+    """
+
+    def __init__(
+        self, fine_annos=False, coarse_annos=False, person_annos=False
+    ):
+        self.fine_annos = fine_annos
+        self.coarse_annos = coarse_annos
+        self.person_annos = person_annos
+
+    @property
+    def name(self):
+        return "cityscapes"
+
+    @property
+    def supported_splits(self):
+        return ("train", "test", "validation")
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        #
+        # Cityscapes is distributed as a single download that contains all
+        # splits (which must be manually downloaded), so we remove the split
+        # from `dataset_dir` and download the whole dataset (only if necessary)
+        #
+        dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
+        split_dir = os.path.join(dataset_dir, split)
+        if not os.path.exists(split_dir):
+            """
+            foucs.parse_cityscapes_dataset(
+                dataset_dir,
+                scratch_dir,
+                fine_annos=self.fine_annos,
+                coarse_annos=self.coarse_annos,
+                person_annos=self.person_annos,
+            )
+            """
+
+        # Get metadata
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        importer = foud.FiftyOneDatasetImporter
+        classes = sorted(
+            importer.get_classes(os.path.join(dataset_dir, "train"))
+            + importer.get_classes(os.path.join(dataset_dir, "test"))
+            + importer.get_classes(os.path.join(dataset_dir, "validation"))
+        )
+        num_samples = importer.get_num_samples(split_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, classes
+
+
 class BDD100KDataset(FiftyOneDataset):
     """The Berkeley Deep Drive (BDD) dataset is one of the largest and most
     diverese video datasets for autonomous vehicles.
@@ -501,6 +578,7 @@ AVAILABLE_DATASETS = {
     "coco-2014-segmentation": COCO2014Dataset,
     "coco-2017-segmentation": COCO2017Dataset,
     "lfw": LabeledFacesInTheWildDataset,
+    "cityscapes": CityscapesDataset,
     "bdd100k": BDD100KDataset,
     "hmdb51": HMDB51Dataset,
     "ucf101": UCF101Dataset,
