@@ -189,10 +189,17 @@ const fields = selectorFamily({
 export const fieldPaths = selector({
   key: "fieldPaths",
   get: ({ get }) => {
-    const fieldsNames = Object.keys(get(fields("sample")));
+    const excludePrivateFilter = (f) => !f.startsWith("_");
+    const fieldsNames = Object.keys(get(fields("sample"))).filter(
+      excludePrivateFilter
+    );
     if (get(mediaType) === "video") {
       return fieldsNames
-        .concat(Object.keys(get(fields("frame"))).map((f) => "frames." + f))
+        .concat(
+          Object.keys(get(fields("frame")))
+            .filter(excludePrivateFilter)
+            .map((f) => "frames." + f)
+        )
         .sort();
     }
     return fieldsNames.sort();
