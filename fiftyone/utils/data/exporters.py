@@ -806,13 +806,16 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
     Args:
         export_dir: the directory to write the export
+        move_media (False): whether to move (True) or copy (False) the source
+            media into its output destination
         pretty_print (False): whether to render the JSON in human readable
             format with newlines and indentations
     """
 
-    def __init__(self, export_dir, pretty_print=False):
+    def __init__(self, export_dir, move_media=False, pretty_print=False):
         export_dir = os.path.abspath(os.path.expanduser(export_dir))
         super().__init__(export_dir)
+        self.move_media = move_media
         self.pretty_print = pretty_print
         self._data_dir = None
         self._frame_labels_dir = None
@@ -851,7 +854,10 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
     def export_sample(self, sample):
         out_filepath = self._filename_maker.get_output_path(sample.filepath)
-        etau.copy_file(sample.filepath, out_filepath)
+        if self.move_media:
+            etau.move_file(sample.filepath, out_filepath)
+        else:
+            etau.copy_file(sample.filepath, out_filepath)
 
         sd = sample.to_dict()
         sd["filepath"] = os.path.relpath(out_filepath, self.export_dir)
