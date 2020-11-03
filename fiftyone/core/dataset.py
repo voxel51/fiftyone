@@ -12,7 +12,9 @@ import inspect
 import logging
 import numbers
 import os
+import random
 import reprlib
+import string
 
 from bson import ObjectId
 from mongoengine.errors import DoesNotExist, FieldDoesNotExist
@@ -101,6 +103,27 @@ def get_default_dataset_name():
     name = now.strftime("%Y.%m.%d.%H.%M.%S")
     if name in list_datasets():
         name = now.strftime("%Y.%m.%d.%H.%M.%S.%f")
+
+    return name
+
+
+def make_unique_dataset_name(root):
+    """Makes a unique dataset name with the given root name.
+
+    Args:
+        root: the root name for the dataset
+
+    Returns:
+        the dataset name
+    """
+    name = root
+    dataset_names = list_datasets()
+
+    if name in dataset_names:
+        name += "_" + _get_random_characters(6)
+
+    while name in dataset_names:
+        name += _get_random_characters(1)
 
     return name
 
@@ -2060,6 +2083,12 @@ _info_repr.maxtuple = 3
 _info_repr.maxset = 3
 _info_repr.maxstring = 63
 _info_repr.maxother = 63
+
+
+def _get_random_characters(n):
+    return "".join(
+        random.choice(string.ascii_lowercase + string.digits) for _ in range(n)
+    )
 
 
 def _create_dataset(name, persistent=False, media_type=None):
