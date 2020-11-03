@@ -2,34 +2,29 @@ import React, { useEffect, useRef } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 
-import { Grid } from "semantic-ui-react";
-
 import DisplayOptionsSidebar from "../components/DisplayOptionsSidebar";
-import ImageContainerHeader from "../components/ImageContainerHeader";
+import ContainerHeader from "../components/ImageContainerHeader";
 import Samples from "../components/Samples";
 import ViewBar from "../components/ViewBar/ViewBar";
-import { scrollbarStyles } from "./utils";
+import { scrollbarStyles } from "../components/utils";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 
-const Root = styled.div`
+const SidebarColumn = styled.div`
+  ${scrollbarStyles}
+  z-index: 400;
   height: 100%;
-  overlflow-y: hidden;
-  .ui.grid > .sidebar-column {
-    ${scrollbarStyles}
-    flex: 0 0 17rem;
-    z-index: 400;
-    margin-right: -0.5em;
-  }
-
-  .ui.grid > .content-column {
-    flex: 1;
-    padding-bottom: 0;
-  }
+  overflow-y: scroll;
+  width 256px;
 `;
 
-const DisplayOptionsWrapper = (props) => {
+const ContentColumn = styled.div`
+  flex: 1;
+  height: 100%;
+`;
+
+const DisplayOptionsWrapper = () => {
   const [activeTags, setActiveTags] = useRecoilState(atoms.activeTags);
   const [activeLabels, setActiveLabels] = useRecoilState(
     atoms.activeLabels("sample")
@@ -86,7 +81,7 @@ const DisplayOptionsWrapper = (props) => {
   };
 
   return (
-    <Grid.Column className="sidebar-column">
+    <SidebarColumn>
       <DisplayOptionsSidebar
         tags={getDisplayOptions(
           tagNames.map((t) => ({ name: t })),
@@ -126,33 +121,35 @@ const DisplayOptionsWrapper = (props) => {
           scrollbarWidth: "thin",
         }}
       />
-    </Grid.Column>
+    </SidebarColumn>
   );
 };
 
+const Container = styled.div`
+  display: flex;
+  justify-content: space-between;
+  height: 100%;
+  margin-right: -1rem;
+  height: calc(100% - 129px);
+`;
+
 const SamplesContainer = (props) => {
   const [showSidebar, setShowSidebar] = useRecoilState(atoms.sidebarVisible);
-  const containerRef = useRef();
 
   return (
-    <Root ref={containerRef} showSidebar={showSidebar}>
+    <>
       <ViewBar />
-      <ImageContainerHeader
+      <ContainerHeader
         showSidebar={showSidebar}
         onShowSidebar={setShowSidebar}
       />
-      <Grid style={{ height: "100%", overflow: "hidden" }}>
-        {showSidebar ? (
-          <DisplayOptionsWrapper containerRef={containerRef} {...props} />
-        ) : null}
-        <Grid.Column
-          className="content-column"
-          style={{ height: "100%", paddingRight: 0, paddingTop: 0 }}
-        >
+      <Container>
+        {showSidebar ? <DisplayOptionsWrapper /> : null}
+        <ContentColumn>
           <Samples {...props} />
-        </Grid.Column>
-      </Grid>
-    </Root>
+        </ContentColumn>
+      </Container>
+    </>
   );
 };
 

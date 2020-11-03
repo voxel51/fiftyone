@@ -14,6 +14,7 @@ type Props = {
 const Wrapper = styled.div`
   background: ${({ theme }) => theme.background};
   display: flex;
+  margin-bottom: 0.5rem;
 
   ${DropdownHandle.Body} {
     width: 264px;
@@ -24,8 +25,10 @@ const SamplesHeader = styled.div`
   display: flex;
   justify-content: space-between;
   flex-grow: 1;
-  height: 2rem;
-  padding-left: 25px;
+  height: 45px;
+  overflow-x: hidden;
+  margin-left: 1rem;
+  margin-right: -1rem;
 `;
 
 const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
@@ -45,7 +48,7 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
       />
       <SamplesHeader>
         <SelectionMenu />
-        <div className="total">
+        <div className="total" style={{ paddingRight: "1rem" }}>
           Viewing <strong>{countStr} samples</strong>
         </div>
       </SamplesHeader>

@@ -38,9 +38,7 @@ type Props = {
 };
 
 const Container = styled.div`
-  margin-bottom: 2px;
   height: 100%;
-  padding-bottom: 1em;
   ${scrollbarStyles};
 
   .MuiCheckbox-root {
@@ -248,6 +246,7 @@ const DisplayOptionsSidebar = React.forwardRef(
             Refresh colors
           </Button>
         ) : null}
+        <div style={{ height: "1rem", width: "100%" }} />
       </Container>
     );
   }
