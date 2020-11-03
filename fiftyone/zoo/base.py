@@ -330,6 +330,7 @@ class CityscapesDataset(FiftyOneDataset):
             foucs.parse_cityscapes_dataset(
                 dataset_dir,
                 scratch_dir,
+                [split],
                 fine_annos=self.fine_annos,
                 coarse_annos=self.coarse_annos,
                 person_annos=self.person_annos,
