@@ -1,12 +1,22 @@
 import React, { useState, useRef, PureComponent } from "react";
 import { Bar, BarChart, XAxis, YAxis, Tooltip } from "recharts";
 import { useRecoilValue } from "recoil";
-import { Dimmer, Header, Loader, Message, Segment } from "semantic-ui-react";
+import styled from "styled-components";
+import { Dimmer, Header, Loader, Message } from "semantic-ui-react";
 import _ from "lodash";
+import { scrollbarStyles } from "./utils";
 
 import { useSubscribe } from "../utils/socket";
 import { isFloat } from "../utils/generic";
 import * as selectors from "../recoil/selectors";
+
+const Container = styled.div`
+  ${scrollbarStyles}
+  overflow-y: hidden;
+  overflow-x: scroll;
+  width: 100%;
+  padding-left: 1rem;
+`;
 
 class CustomizedAxisTick extends PureComponent {
   render() {
@@ -29,10 +39,14 @@ class CustomizedAxisTick extends PureComponent {
   }
 }
 
+const Title = styled.div`
+  font-weight: bold;
+  font-size: 1rem;
+`;
+
 const Distribution = ({ distribution }) => {
   const { name, type, data } = distribution;
   const barWidth = 30;
-  const [rightMargin, setRightMargin] = useState(0);
   const container = useRef(null);
   const stroke = "hsl(210, 20%, 90%)";
   const fill = stroke;
@@ -40,15 +54,15 @@ const Distribution = ({ distribution }) => {
   const padding = isNumeric ? 0 : 20;
 
   return (
-    <Segment style={{ overflowY: "auto", margin: "2rem 0" }}>
-      <Header as="h3">{`${name}: ${type}`}</Header>
+    <Container>
+      <Title>{`${name}: ${type}`}</Title>
       <BarChart
         ref={container}
-        height={500}
+        height={300}
         width={data.length * (barWidth + padding)}
         barCategoryGap={"20px"}
         data={data}
-        margin={{ top: 0, left: 0, bottom: 0, right: rightMargin + 5 }}
+        margin={{ top: 0, left: 0, bottom: 0, right: 5 }}
       >
         <XAxis
           dataKey="key"
@@ -79,17 +93,18 @@ const Distribution = ({ distribution }) => {
           barSize={barWidth}
         />
       </BarChart>
-    </Segment>
+    </Container>
   );
 };
 
-function NoDistributions({ name }) {
-  return (
-    <Segment>
-      <Message>No {name}</Message>
-    </Segment>
-  );
-}
+const DistributionsContainer = styled.div`
+  padding: 1rem 0;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  width: 100%;
+  height: 100%;
+  ${scrollbarStyles}
+`;
 
 const Distributions = ({ group }) => {
   const socket = useRecoilValue(selectors.socket);
@@ -122,16 +137,12 @@ const Distributions = ({ group }) => {
     );
   }
 
-  if (!data.length) {
-    return <NoDistributions name={group} />;
-  }
-
   return (
-    <>
+    <DistributionsContainer>
       {data.map((distribution, i) => {
         return <Distribution key={i} distribution={distribution} />;
       })}
-    </>
+    </DistributionsContainer>
   );
 };
 

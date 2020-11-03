@@ -1,21 +1,26 @@
 import React, { useContext, useState } from "react";
 import { animated, useSpring } from "react-spring";
-import { useRecoilValue } from "recoil";
+import { useRecoilState } from "recoil";
 import styled, { ThemeContext } from "styled-components";
 import AssessmentIcon from "@material-ui/icons/Assessment";
 import KeyboardArrowDownIcon from "@material-ui/icons/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@material-ui/icons/KeyboardArrowUp";
 
+import Distributions from "./Distributions";
 import * as atoms from "../recoil/atoms";
 
 export type Props = {
   entries: string[];
 };
 
-const Body = styled.div`
-  padding: 1rem;
+const Container = animated(styled.div`
+  padding: 1rem 0;
   background-color: ${({ theme }) => theme.backgroundDark};
   border-bottom: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
+`);
+
+const Nav = styled.div`
+  padding: 0 1rem;
   width: 100%;
   display: flex;
   justify-content: space-between;
@@ -61,7 +66,7 @@ const TogglePlotsButton = animated(styled.div`
 
 const HorizontalNav = ({ entries }: Props) => {
   const theme = useContext(ThemeContext);
-  const activePlot = useRecoilValue(atoms.activePlot);
+  const [activePlot, setActivePlot] = useRecoilState(atoms.activePlot);
   const [expanded, setExpanded] = useState(false);
   const togglePlotButton = useSpring({
     opacity: 1,
@@ -71,24 +76,37 @@ const HorizontalNav = ({ entries }: Props) => {
     },
   });
 
+  const container = useSpring({
+    height: expanded ? 408 : 64,
+  });
+
   return (
-    <Body>
-      <PlotsButtons>
-        {entries.map((e) => (
-          <PlotButton key={e} className={e === activePlot ? "active" : ""}>
-            {e}
-          </PlotButton>
-        ))}
-      </PlotsButtons>
-      <TogglePlotsButton
-        onClick={() => setExpanded(!expanded)}
-        style={togglePlotButton}
-      >
-        <AssessmentIcon />
-        <span style={{ padding: "0 1rem" }}>{expanded ? "Hide" : "Show"}</span>
-        {expanded ? <KeyboardArrowDownIcon /> : <KeyboardArrowUpIcon />}
-      </TogglePlotsButton>
-    </Body>
+    <Container style={container}>
+      <Nav>
+        <PlotsButtons>
+          {entries.map((e) => (
+            <PlotButton
+              key={e}
+              className={e === activePlot ? "active" : ""}
+              onClick={() => setActivePlot(e)}
+            >
+              {e}
+            </PlotButton>
+          ))}
+        </PlotsButtons>
+        <TogglePlotsButton
+          onClick={() => setExpanded(!expanded)}
+          style={togglePlotButton}
+        >
+          <AssessmentIcon />
+          <span style={{ padding: "0 1rem" }}>
+            {expanded ? "Hide" : "Show"}
+          </span>
+          {expanded ? <KeyboardArrowDownIcon /> : <KeyboardArrowUpIcon />}
+        </TogglePlotsButton>
+      </Nav>
+      {expanded && <Distributions group={activePlot} />}
+    </Container>
   );
 };
 
