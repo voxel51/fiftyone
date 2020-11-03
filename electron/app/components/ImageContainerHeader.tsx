@@ -14,12 +14,8 @@ type Props = {
 const Wrapper = styled.div`
   background: ${({ theme }) => theme.background};
   display: flex;
-  padding-top: 5px;
-  padding-bottom: 5px;
 
   ${DropdownHandle.Body} {
-    padding-top: 0.5em;
-    padding-bottom: 0.5em;
     width: 264px;
   }
 `;
@@ -28,6 +24,8 @@ const SamplesHeader = styled.div`
   display: flex;
   justify-content: space-between;
   flex-grow: 1;
+  height: 2rem;
+  padding-left: 25px;
 `;
 
 const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
@@ -39,14 +37,12 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
       : (totalCount || 0).toLocaleString();
   return (
     <Wrapper>
-      <div>
-        <DropdownHandle
-          label="Display Options"
-          expanded={showSidebar}
-          onClick={onShowSidebar && (() => onShowSidebar(!showSidebar))}
-          style={{ width: 240 }}
-        />
-      </div>
+      <DropdownHandle
+        label="Display Options"
+        expanded={showSidebar}
+        onClick={onShowSidebar && (() => onShowSidebar(!showSidebar))}
+        style={{ width: 240 }}
+      />
       <SamplesHeader>
         <SelectionMenu />
         <div className="total">

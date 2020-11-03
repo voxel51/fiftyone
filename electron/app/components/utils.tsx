@@ -70,7 +70,6 @@ export const ModalFooter = styled.footer`
 export const scrollbarStyles = ({ theme }) => `
 ::-webkit-scrollbar {
   width: 16px;
-  right: -16px;
 }
 
 ::-webkit-scrollbar-track {

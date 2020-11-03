@@ -1,27 +1,23 @@
-import React, {
-  useState,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useContext,
-} from "react";
+import React, { useEffect, useRef } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
-import styled, { ThemeContext } from "styled-components";
+import styled from "styled-components";
 
-import { Grid, Sticky } from "semantic-ui-react";
+import { Grid } from "semantic-ui-react";
 
 import DisplayOptionsSidebar from "../components/DisplayOptionsSidebar";
 import ImageContainerHeader from "../components/ImageContainerHeader";
 import Samples from "../components/Samples";
 import ViewBar from "../components/ViewBar/ViewBar";
+import { scrollbarStyles } from "./utils";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 
 const Root = styled.div`
   height: 100%;
-  overflow: hidden;
+  overlflow-y: hidden;
   .ui.grid > .sidebar-column {
+    ${scrollbarStyles}
     flex: 0 0 17rem;
     z-index: 400;
     margin-right: -0.5em;
@@ -29,6 +25,7 @@ const Root = styled.div`
 
   .ui.grid > .content-column {
     flex: 1;
+    padding-bottom: 0;
   }
 `;
 
@@ -126,10 +123,6 @@ const DisplayOptionsWrapper = (props) => {
           activeLabels
         )}
         style={{
-          overflowY: "auto",
-          overflowX: "hidden",
-          paddingRight: 25,
-          marginRight: -25,
           scrollbarWidth: "thin",
         }}
       />

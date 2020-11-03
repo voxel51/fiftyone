@@ -14,7 +14,8 @@ import { scrollbarStyles } from "./utils";
 
 const Container = styled.div`
   ${scrollbarStyles}
-  overflow: scroll;
+  overflow-y: scroll;
+  overflow-x: hidden;
   height: 100%;
 `;
 
