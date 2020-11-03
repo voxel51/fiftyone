@@ -14,7 +14,7 @@ export type Props = {
 };
 
 const Container = animated(styled.div`
-  padding: 1rem 0;
+  padding: 1rem 0 0;
   background-color: ${({ theme }) => theme.backgroundDark};
   border-bottom: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
 `);
@@ -50,6 +50,7 @@ const PlotButton = styled.div`
 
 const TogglePlotsButton = animated(styled.div`
   line-height: 2rem;
+  padding: 0 0.5rem;
   cursor: pointer;
   background-color: ${({ theme }) => theme.button};
   height: 2rem;
@@ -61,6 +62,11 @@ const TogglePlotsButton = animated(styled.div`
 
   &.hidden {
     background-color: ${({ theme }) => theme.brand};
+  }
+  & > svg {
+    padding: 0.25rem;
+    height: 2rem;
+    width: 2rem;
   }
 `);
 
@@ -77,7 +83,7 @@ const HorizontalNav = ({ entries }: Props) => {
   });
 
   const container = useSpring({
-    height: expanded ? 408 : 64,
+    height: expanded ? 392 : 64,
   });
 
   return (
@@ -87,8 +93,11 @@ const HorizontalNav = ({ entries }: Props) => {
           {entries.map((e) => (
             <PlotButton
               key={e}
-              className={e === activePlot ? "active" : ""}
-              onClick={() => setActivePlot(e)}
+              className={e === activePlot && expanded ? "active" : ""}
+              onClick={() => {
+                setExpanded(true);
+                setActivePlot(e);
+              }}
             >
               {e}
             </PlotButton>
@@ -99,13 +108,11 @@ const HorizontalNav = ({ entries }: Props) => {
           style={togglePlotButton}
         >
           <AssessmentIcon />
-          <span style={{ padding: "0 1rem" }}>
-            {expanded ? "Hide" : "Show"}
-          </span>
+          <span>{expanded ? "Hide" : "Show"}</span>
           {expanded ? <KeyboardArrowDownIcon /> : <KeyboardArrowUpIcon />}
         </TogglePlotsButton>
       </Nav>
-      {expanded && <Distributions group={activePlot} />}
+      {expanded && <Distributions key={activePlot} group={activePlot} />}
     </Container>
   );
 };

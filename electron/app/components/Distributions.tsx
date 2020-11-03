@@ -98,11 +98,10 @@ const Distribution = ({ distribution }) => {
 };
 
 const DistributionsContainer = styled.div`
-  padding: 1rem 0;
   overflow-y: scroll;
   overflow-x: hidden;
   width: 100%;
-  height: 100%;
+  height: calc(100% - 2rem);
   ${scrollbarStyles}
 `;
 

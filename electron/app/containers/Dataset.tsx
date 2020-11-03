@@ -184,7 +184,7 @@ function Dataset(props) {
           />
         </ModalWrapper>
       ) : null}
-      <HorizontalNav entries={PLOTS} />
+      {hasDataset && <HorizontalNav entries={PLOTS} />}
       <Body>
         <Switch>
           {hasDataset ? (
