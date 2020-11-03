@@ -8,9 +8,7 @@ import DropdownTag from "./Tags/DropdownTag";
 
 const SelectionMenu = () => {
   const socket = useRecoilValue(selectors.socket);
-  const [stateDescription, setStateDescription] = useRecoilState(
-    atoms.stateDescription
-  );
+  const stateDescription = useRecoilValue(atoms.stateDescription);
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     atoms.selectedSamples
   );
@@ -22,12 +20,12 @@ const SelectionMenu = () => {
 
   const addStage = (name, callback = () => {}) => {
     const newState = JSON.parse(JSON.stringify(stateDescription));
-    const newView = newState.view.view;
+    const newView = newState.view || [];
     newView.push({
       _cls: `fiftyone.core.stages.${name}`,
       kwargs: [["sample_ids", Array.from(selectedSamples)]],
     });
-    newState.view.view = newView;
+    newState.view = newView;
     socket.emit("update", { data: newState, include_self: true }, () => {
       callback();
     });
