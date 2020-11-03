@@ -20,6 +20,7 @@ import * as selectors from "../recoil/selectors";
 
 const Root = styled.div`
   height: 100%;
+  overflow: hidden;
   .ui.grid > .sidebar-column {
     flex: 0 0 17rem;
     z-index: 400;
@@ -153,7 +154,7 @@ const SamplesContainer = (props) => {
         ) : null}
         <Grid.Column
           className="content-column"
-          style={{ height: "100%", paddingRight: 0 }}
+          style={{ height: "100%", paddingRight: 0, paddingTop: 0 }}
         >
           <Samples {...props} />
         </Grid.Column>

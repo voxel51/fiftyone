@@ -20,13 +20,9 @@ import * as selectors from "../recoil/selectors";
 import { VALID_LABEL_TYPES } from "../utils/labels";
 
 const Body = styled.div`
-  margin-top: 132px;
   padding: 0 1rem;
-  position: fixed;
-  top: 0;
   width: 100%;
-  height: calc(100% - 132px);
-  overflow: hidden;
+  height: calc(100% - 131px);
 `;
 
 function NoDataset() {

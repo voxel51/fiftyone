@@ -14,7 +14,7 @@ import { scrollbarStyles } from "./utils";
 
 const Container = styled.div`
   ${scrollbarStyles}
-  overflow: auto;
+  overflow: scroll;
   height: 100%;
 `;
 
@@ -46,7 +46,10 @@ function Samples({ setView }) {
           <React.Fragment key={i}>
             <Grid
               columns={r.columns}
-              style={{ ...r.style, height: bounds.width / r.aspectRatio }}
+              style={{
+                ...r.style,
+                height: (bounds.width - 16) / r.aspectRatio,
+              }}
               key={i}
             >
               {r.samples.map((s, j) => (

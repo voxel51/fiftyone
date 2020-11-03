@@ -13,28 +13,21 @@ type Props = {
 
 const Wrapper = styled.div`
   background: ${({ theme }) => theme.background};
-  display: grid;
-  grid-template-columns: 264px auto auto;
+  display: flex;
   padding-top: 5px;
   padding-bottom: 5px;
-
-  > div {
-    display: flex;
-    align-items: center;
-  }
-
-  > div:last-child {
-    justify-content: flex-end;
-  }
-
-  > div > div {
-    display: inline-block;
-  }
 
   ${DropdownHandle.Body} {
     padding-top: 0.5em;
     padding-bottom: 0.5em;
+    width: 264px;
   }
+`;
+
+const SamplesHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  flex-grow: 1;
 `;
 
 const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
@@ -54,14 +47,12 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
           style={{ width: 240 }}
         />
       </div>
-      <div>
+      <SamplesHeader>
         <SelectionMenu />
-      </div>
-      <div>
         <div className="total">
           Viewing <strong>{countStr} samples</strong>
         </div>
-      </div>
+      </SamplesHeader>
     </Wrapper>
   );
 };
