@@ -699,7 +699,10 @@ class ZooDataset(object):
             if info is not None:
                 _splits = []
                 for split in splits:
-                    if split in info.downloaded_splits:
+                    split_dir = self.get_split_dir(dataset_dir, split)
+                    if split in info.downloaded_splits and os.path.isdir(
+                        split_dir
+                    ):
                         logger.info("Split '%s' already downloaded", split)
                     else:
                         _splits.append(split)
