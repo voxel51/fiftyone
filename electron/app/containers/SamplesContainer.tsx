@@ -19,6 +19,7 @@ import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 
 const Root = styled.div`
+  height: 100%;
   .ui.grid > .sidebar-column {
     flex: 0 0 17rem;
     z-index: 400;
@@ -146,11 +147,14 @@ const SamplesContainer = (props) => {
         showSidebar={showSidebar}
         onShowSidebar={setShowSidebar}
       />
-      <Grid>
+      <Grid style={{ height: "100%", overflow: "hidden" }}>
         {showSidebar ? (
           <DisplayOptionsWrapper containerRef={containerRef} {...props} />
         ) : null}
-        <Grid.Column className="content-column">
+        <Grid.Column
+          className="content-column"
+          style={{ height: "100%", paddingRight: 0 }}
+        >
           <Samples {...props} />
         </Grid.Column>
       </Grid>

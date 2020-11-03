@@ -6,7 +6,8 @@ import {
   useSetRecoilState,
   useResetRecoilState,
 } from "recoil";
-import { Container, Message, Segment } from "semantic-ui-react";
+import { Message, Segment } from "semantic-ui-react";
+import styled from "styled-components";
 
 import SamplesContainer from "./SamplesContainer";
 import Distributions from "../components/Distributions";
@@ -17,6 +18,16 @@ import routes from "../constants/routes.json";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { VALID_LABEL_TYPES } from "../utils/labels";
+
+const Body = styled.div`
+  margin-top: 132px;
+  padding: 0 1rem;
+  position: fixed;
+  top: 0;
+  width: 100%;
+  height: calc(100% - 132px);
+  overflow: hidden;
+`;
 
 function NoDataset() {
   return (
@@ -182,40 +193,42 @@ function Dataset(props) {
         currentPath={props.location.pathname}
         entries={tabs.map((path) => ({ path, name: path.slice(1) }))}
       />
-      <Switch>
-        <Route exact path={routes.DATASET}>
-          <Redirect to={routes.SAMPLES} />
-        </Route>
-        {hasDataset ? (
-          <>
-            <Route path={routes.SAMPLES}>
-              <SamplesContainer
-                {...props.socket}
-                setView={(sample, metadata) =>
-                  setModal({
-                    ...modal,
-                    visible: true,
-                    sample,
-                    metadata,
-                  })
-                }
-                colorMap={colorMap}
-              />
-            </Route>
-            <Route path={routes.LABELS}>
-              <Distributions group="labels" />
-            </Route>
-            <Route path={routes.TAGS}>
-              <Distributions group="tags" />
-            </Route>
-            <Route path={routes.SCALARS}>
-              <Distributions group="scalars" />
-            </Route>
-          </>
-        ) : (
-          <NoDataset />
-        )}
-      </Switch>
+      <Body>
+        <Switch>
+          <Route exact path={routes.DATASET}>
+            <Redirect to={routes.SAMPLES} />
+          </Route>
+          {hasDataset ? (
+            <>
+              <Route path={routes.SAMPLES}>
+                <SamplesContainer
+                  {...props.socket}
+                  setView={(sample, metadata) =>
+                    setModal({
+                      ...modal,
+                      visible: true,
+                      sample,
+                      metadata,
+                    })
+                  }
+                  colorMap={colorMap}
+                />
+              </Route>
+              <Route path={routes.LABELS}>
+                <Distributions group="labels" />
+              </Route>
+              <Route path={routes.TAGS}>
+                <Distributions group="tags" />
+              </Route>
+              <Route path={routes.SCALARS}>
+                <Distributions group="scalars" />
+              </Route>
+            </>
+          ) : (
+            <NoDataset />
+          )}
+        </Switch>
+      </Body>
     </>
   );
 }

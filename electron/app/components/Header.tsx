@@ -16,6 +16,7 @@ const HeaderDiv = styled.div`
   border-bottom: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
   position: fixed;
   z-index: 1000;
+  top: 0;
 `;
 
 const LogoDiv = styled.div`

@@ -13,13 +13,14 @@ export type Props = {
 };
 
 const Body = styled.div`
-  margin: 0 -2rem;
   padding: 1rem 2rem;
   background-color: ${({ theme }) => theme.backgroundDark};
   border-bottom: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
   position: fixed;
   margin-top: 73px;
   z-index: 1000;
+  width: 100%;
+  top: 0;
 `;
 
 const Item = styled(Link)`
