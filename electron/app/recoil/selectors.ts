@@ -186,13 +186,21 @@ const fields = selectorFamily({
   },
 });
 
+const excludePrivateFilter = (f) => !f.startsWith("_");
+
 export const fieldPaths = selector({
   key: "fieldPaths",
   get: ({ get }) => {
-    const fieldsNames = Object.keys(get(fields("sample")));
+    const fieldsNames = Object.keys(get(fields("sample"))).filter(
+      excludePrivateFilter
+    );
     if (get(mediaType) === "video") {
       return fieldsNames
-        .concat(Object.keys(get(fields("frame"))).map((f) => "frames." + f))
+        .concat(
+          Object.keys(get(fields("frame")))
+            .filter(excludePrivateFilter)
+            .map((f) => "frames." + f)
+        )
         .sort();
     }
     return fieldsNames.sort();
