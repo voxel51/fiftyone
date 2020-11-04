@@ -362,15 +362,10 @@ class BDD100KDataset(FiftyOneDataset):
     the videos as described above, together with the image classification,
     detection, and segmentation labels.
 
-    **Manual download instructions**
+    In order to load the BDD100k dataset, you must download the source data
+    manually into ``source_dir`` as follows::
 
-    This dataset requires you to download the source data manually. You must
-    register at https://bdd-data.berkeley.edu/ in order to get the link to
-    download the dataset.
-
-    After extracting the download, you will find contents similar to::
-
-        bdd100k/
+        source_dir/
             labels/
                 bdd100k_labels_images_train.json
                 bdd100k_labels_images_val.json
@@ -379,10 +374,21 @@ class BDD100KDataset(FiftyOneDataset):
                     train/
                     test/
                     val/
-            ...
 
-    You must provide the path to the above ``bdd100k/`` folder when loading
-    this dataset.
+    You can register at `https://bdd-data.berkeley.edu`_ in order to get links
+    to download the data.
+
+    Example usage::
+
+        import fiftyone.zoo as foz
+
+        # First parse the manually downloaded files in `source_dir`
+        foz.download_zoo_dataset(
+            "bdd100k", source_dir="/path/to/dir-with-bdd100k-files"
+        )
+
+        # Now load into FiftyOne
+        dataset = foz.load_zoo_dataset("bdd100k", split="validation")
 
     Dataset size:
         7.1GB
@@ -391,8 +397,8 @@ class BDD100KDataset(FiftyOneDataset):
         https://bdd-data.berkeley.edu
 
     Args:
-        source_dir (None): the path to the downloaded ``bdd100k/`` folder on
-            disk
+        source_dir (None): the directory containing the manually downloaded
+            BDD100k files
         copy_files (True): whether to move (False) or create copies (True) of
             the source files when populating the dataset directory
     """
@@ -411,18 +417,16 @@ class BDD100KDataset(FiftyOneDataset):
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         #
-        # BDD100k must be manually downloaded by the user and placed in
-        # `self.source_dir` or `scratch_dir`
+        # BDD100k must be manually downloaded by the user in `source_dir`
         #
         # The download contains all splits, so we remove the split from
-        # `dataset_dir` and download the whole dataset (if necessary)
+        # `dataset_dir` here and wrangle the whole dataset (if necessary)
         #
         dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
         split_dir = os.path.join(dataset_dir, split)
         if not os.path.exists(split_dir):
-            bdd100k_dir = self.source_dir or scratch_dir
-            foub.wrangle_bdd100k_download(
-                bdd100k_dir, dataset_dir, copy_files=self.copy_files
+            foub.parse_bdd100k_dataset(
+                self.source_dir, dataset_dir, copy_files=self.copy_files
             )
 
         # Get metadata
