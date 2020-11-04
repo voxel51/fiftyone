@@ -279,15 +279,39 @@ class CityscapesDataset(FiftyOneDataset):
     """Cityscapes is a large-scale dataset that contains a diverse set of
     stereo video sequences recorded in street scenes from 50 different cities,
     with high quality pixel-level annotations of 5,000 frames in addition to a
-    arger set of 20,000 weakly annotated frames.
+    larger set of 20,000 weakly annotated frames.
 
     The dataset is intended for:
 
-    -   assessing the performance of vision algorithms for major tasks of
+    -   Assessing the performance of vision algorithms for major tasks of
     semantic urban scene understanding: pixel-level, instance-level, and
     panoptic semantic labeling
-    -   supporting research that aims to exploit large volumes of (weakly)
+    -   Supporting research that aims to exploit large volumes of (weakly)
     annotated data, e.g. for training deep neural networks
+
+    In order to load the Cityscapes dataset, you must download the source ZIP
+    files manually ``source_dir`` as follows::
+
+        source_dir/
+            leftImg8bit_trainvaltest.zip
+            gtFine_trainvaltest.zip         # optional
+            gtCoarse.zip                    # optional
+            gtBbox_cityPersons_trainval     # optional
+
+    You can register at `https://www.cityscapes-dataset.com/register`_ in order
+    to get links to download the data.
+
+    Example usage::
+
+        import fiftyone.zoo as foz
+
+        # First parse the manually downloaded files in `source_dir`
+        foz.download_zoo_dataset(
+            "cityscapes", source_dir="/path/to/dir-with-cityscapes-files"
+        )
+
+        # Now load into FiftyOne
+        dataset = foz.load_zoo_dataset("cityscapes", split="validation")
 
     Dataset size:
         11.8 GB
@@ -296,17 +320,31 @@ class CityscapesDataset(FiftyOneDataset):
         https://www.cityscapes-dataset.com
 
     Args:
-        fine_annos (False): whether to load the fine annotations
-        coarse_annos (False): whether to load the coarse annotations
-        person_annos (False): whether to load the person annotations
+        source_dir (None): a directory containing the manually downloaded
+            Cityscapes files
+        fine_annos (None): whether to load the fine annotations (True), or not
+            (False), or only if the ZIP file exists (None)
+        coarse_annos (None): whether to load the coarse annotations (True), or
+            not (False), or only if the ZIP file exists (None)
+        person_annos (None): whether to load the personn detections (True), or
+            not (False), or only if the ZIP file exists (None)
+        include_unlabeled (False): whether to include unlabeled images in the
+            output dataset
     """
 
     def __init__(
-        self, fine_annos=False, coarse_annos=False, person_annos=False
+        self,
+        source_dir=None,
+        fine_annos=None,
+        coarse_annos=None,
+        person_annos=None,
+        include_unlabeled=False,
     ):
+        self.source_dir = source_dir
         self.fine_annos = fine_annos
         self.coarse_annos = coarse_annos
         self.person_annos = person_annos
+        self.include_unlabeled = include_unlabeled
 
     @property
     def name(self):
@@ -326,12 +364,14 @@ class CityscapesDataset(FiftyOneDataset):
         split_dir = os.path.join(dataset_dir, split)
         if not os.path.exists(split_dir):
             foucs.parse_cityscapes_dataset(
+                self.source_dir,
                 dataset_dir,
                 scratch_dir,
                 [split],
                 fine_annos=self.fine_annos,
                 coarse_annos=self.coarse_annos,
                 person_annos=self.person_annos,
+                include_unlabeled=self.include_unlabeled,
             )
 
         # Get metadata

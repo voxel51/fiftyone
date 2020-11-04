@@ -24,7 +24,6 @@ import fiftyone.utils.data as foud
 logger = logging.getLogger(__name__)
 
 
-_SUPPORTED_SPLITS = ("train", "test", "validation")
 _IMAGES_ZIP = "leftImg8bit_trainvaltest.zip"
 _FINE_ANNOS_ZIP = "gtFine_trainvaltest.zip"
 _COARSE_ANNOS_ZIP = "gtCoarse.zip"
@@ -32,46 +31,76 @@ _PERSON_ANNOS_ZIP = "gtBbox_cityPersons_trainval.zip"
 
 
 def parse_cityscapes_dataset(
+    source_dir,
     dataset_dir,
     scratch_dir,
     splits,
-    fine_annos=False,
-    coarse_annos=False,
-    person_annos=False,
+    fine_annos=None,
+    coarse_annos=None,
+    person_annos=None,
+    include_unlabeled=False,
 ):
-    """Parses the Cityscapes archive(s) in the specified directory.
+    """Parses the Cityscapes archive(s) in the specified directory and writes
+    the requested splits in subdirectories of ``dataset_dir`` in
+    :class:`fiftyone.types.dataset_types.FiftyOneDataset` format.
 
     The archives must have been manually downloaded into the directory before
     this method is called.
 
-    The dataset splits will saved in subdirectories of ``dataset_dir`` in
-    :class:`fiftyone.types.dataset_types.FiftyOneDataset` format.
+    The ``source_dir`` should contain the following files::
+
+        source_dir/
+            leftImg8bit_trainvaltest.zip
+            gtFine_trainvaltest.zip             # optional
+            gtCoarse.zip                        # optional
+            gtBbox_cityPersons_trainval.zip     # optional
 
     Args:
-        dataset_dir: the dataset directory
+        source_dir: the directory continaining the manually downloaded
+            Cityscapes files
+        dataset_dir: the directory in which to build the output dataset
         scratch_dir: a scratch directory to use for temporary files
         splits: a list of splits to parse. Supported values are
             ``(train, test, validation)``
-        fine_annos (False): whether to parse the fine annotations
-        coarse_annos (False): whether to parse the coarse annotations
-        person_annos (False): whether to parse the person annotations
+        fine_annos (None): whether to load the fine annotations (True), or not
+            (False), or only if the ZIP file exists (None)
+        coarse_annos (None): whether to load the coarse annotations (True), or
+            not (False), or only if the ZIP file exists (None)
+        person_annos (None): whether to load the personn detections (True), or
+            not (False), or only if the ZIP file exists (None)
+        include_unlabeled (False): whether to include unlabeled images in the
+            output dataset
+
+    Raises:
+        OSError: if any required source files are not present
     """
+    (
+        images_zip_path,
+        fine_annos_zip_path,
+        coarse_annos_zip_path,
+        person_annos_zip_path,
+    ) = _parse_source_dir(source_dir, fine_annos, coarse_annos, person_annos)
+
     _splits = [_parse_split(s) for s in splits]
 
-    images_dir = _extract_images(dataset_dir, scratch_dir)
+    images_dir = _extract_images(images_zip_path, scratch_dir)
 
-    if fine_annos:
-        fine_annos_dir = _extract_fine_annos(dataset_dir, scratch_dir)
+    if fine_annos_zip_path:
+        fine_annos_dir = _extract_fine_annos(fine_annos_zip_path, scratch_dir)
     else:
         fine_annos_dir = None
 
-    if coarse_annos:
-        coarse_annos_dir = _extract_coarse_annos(dataset_dir, scratch_dir)
+    if coarse_annos_zip_path:
+        coarse_annos_dir = _extract_coarse_annos(
+            coarse_annos_zip_path, scratch_dir
+        )
     else:
         coarse_annos_dir = None
 
-    if person_annos:
-        person_annos_dir = _extract_person_annos(dataset_dir, scratch_dir)
+    if person_annos_zip_path:
+        person_annos_dir = _extract_person_annos(
+            person_annos_zip_path, scratch_dir
+        )
     else:
         person_annos_dir = None
 
@@ -84,7 +113,92 @@ def parse_cityscapes_dataset(
             fine_annos_dir,
             coarse_annos_dir,
             person_annos_dir,
+            include_unlabeled,
         )
+
+
+def _parse_source_dir(source_dir, fine_annos, coarse_annos, person_annos):
+    if source_dir is None:
+        _raise_cityscapes_error(
+            "You must provide a `source_dir` in order to load the Cityscapes "
+            "dataset."
+        )
+
+    if not os.path.isdir(source_dir):
+        _raise_cityscapes_error(
+            "Source directory '%s' does not exist." % source_dir
+        )
+
+    files = etau.list_files(source_dir)
+
+    if _IMAGES_ZIP not in files:
+        _raise_cityscapes_error(
+            "Images zip '%s' not found within '%s'."
+            % (_IMAGES_ZIP, source_dir)
+        )
+
+    images_zip_path = os.path.join(source_dir, _IMAGES_ZIP)
+
+    if fine_annos is None:
+        fine_annos = _FINE_ANNOS_ZIP in files
+
+    if fine_annos:
+        if _FINE_ANNOS_ZIP not in files:
+            _raise_cityscapes_error(
+                "Fine annotations zip '%s' not found within '%s'."
+                % (_FINE_ANNOS_ZIP, source_dir)
+            )
+
+        fine_annos_zip_path = os.path.join(source_dir, _FINE_ANNOS_ZIP)
+    else:
+        fine_annos_zip_path = None
+
+    if coarse_annos is None:
+        coarse_annos = _COARSE_ANNOS_ZIP in files
+
+    if coarse_annos:
+        if _COARSE_ANNOS_ZIP not in files:
+            _raise_cityscapes_error(
+                "Coarse annotations zip '%s' not found within '%s'."
+                % (_COARSE_ANNOS_ZIP, source_dir)
+            )
+
+        coarse_annos_zip_path = os.path.join(source_dir, _COARSE_ANNOS_ZIP)
+    else:
+        coarse_annos_zip_path = None
+
+    if person_annos is None:
+        person_annos = _PERSON_ANNOS_ZIP in files
+
+    if person_annos:
+        if _PERSON_ANNOS_ZIP not in files:
+            _raise_cityscapes_error(
+                "Person annotations zip '%s' not found within '%s'."
+                % (_PERSON_ANNOS_ZIP, source_dir)
+            )
+
+        person_annos_zip_path = os.path.join(source_dir, _PERSON_ANNOS_ZIP)
+    else:
+        person_annos_zip_path = None
+
+    return (
+        images_zip_path,
+        fine_annos_zip_path,
+        coarse_annos_zip_path,
+        person_annos_zip_path,
+    )
+
+
+def _raise_cityscapes_error(msg):
+    raise OSError(
+        "\n\n"
+        + msg
+        + "\n\n"
+        + "You must download the source files for the Cityscapes dataset "
+        "manually."
+        + "\n\n"
+        + "Run `fiftyone zoo info cityscapes` for more information"
+    )
 
 
 def _parse_split(split):
@@ -94,7 +208,7 @@ def _parse_split(split):
     if split not in ("test", "train"):
         raise ValueError(
             "Invalid split '%s''; supported values are %s"
-            % (split, _SUPPORTED_SPLITS)
+            % (split, ("train", "test", "validation"))
         )
 
     return split
@@ -107,6 +221,7 @@ def _export_split(
     fine_annos_dir,
     coarse_annos_dir,
     person_annos_dir,
+    include_unlabeled,
 ):
     name = fod.make_unique_dataset_name("cityscapes-" + split)
     dataset = fod.Dataset(name=name)
@@ -144,11 +259,16 @@ def _export_split(
     else:
         person_annos_map = {}
 
-    uuids = sorted(
+    uuids = (
         set(fine_annos_map.keys())
         | set(coarse_annos_map.keys())
         | set(person_annos_map.keys())
     )
+
+    if include_unlabeled:
+        uuids |= set(images_map.keys())
+
+    uuids = sorted(uuids)
 
     logger.info("Finalizing split '%s'...", split)
     exporter = foud.FiftyOneDatasetExporter(split_dir, move_media=False)
@@ -170,66 +290,50 @@ def _export_split(
             exporter.export_sample(sample)
 
 
-def _extract_images(dataset_dir, scratch_dir):
-    images_zip = os.path.join(dataset_dir, _IMAGES_ZIP)
+def _extract_images(images_zip_path, scratch_dir):
     tmp_dir = os.path.join(scratch_dir, "images")
     images_dir = os.path.join(tmp_dir, "leftImg8bit")
 
-    if os.path.isdir(images_dir):
-        return images_dir
-
-    _ensure_archive(_IMAGES_ZIP, dataset_dir)
-
-    logger.info("Extracting images...")
-    etau.extract_zip(images_zip, outdir=tmp_dir, delete_zip=False)
+    if not os.path.isdir(images_dir):
+        logger.info("Extracting images...")
+        etau.extract_zip(images_zip_path, outdir=tmp_dir, delete_zip=False)
 
     return images_dir
 
 
-def _extract_fine_annos(dataset_dir, scratch_dir):
-    fine_annos_zip = os.path.join(dataset_dir, _FINE_ANNOS_ZIP)
+def _extract_fine_annos(fine_annos_zip_path, scratch_dir):
     tmp_dir = os.path.join(scratch_dir, "fine-annos")
     fine_annos_dir = os.path.join(tmp_dir, "gtFine")
 
-    if os.path.isdir(fine_annos_dir):
-        return fine_annos_dir
-
-    _ensure_archive(_FINE_ANNOS_ZIP, dataset_dir)
-
-    logger.info("Extracting fine annotations...")
-    etau.extract_zip(fine_annos_zip, outdir=tmp_dir, delete_zip=False)
+    if not os.path.isdir(fine_annos_dir):
+        logger.info("Extracting fine annotations...")
+        etau.extract_zip(fine_annos_zip_path, outdir=tmp_dir, delete_zip=False)
 
     return fine_annos_dir
 
 
-def _extract_coarse_annos(dataset_dir, scratch_dir):
-    coarse_annos_zip = os.path.join(dataset_dir, _COARSE_ANNOS_ZIP)
+def _extract_coarse_annos(coarse_annos_zip_path, scratch_dir):
     tmp_dir = os.path.join(scratch_dir, "coarse-annos")
     coarse_annos_dir = os.path.join(tmp_dir, "gtCoarse")
 
-    if os.path.isdir(coarse_annos_dir):
-        return coarse_annos_dir
-
-    _ensure_archive(_COARSE_ANNOS_ZIP, dataset_dir)
-
-    logger.info("Extracting coarse annotations...")
-    etau.extract_zip(coarse_annos_zip, outdir=tmp_dir, delete_zip=False)
+    if not os.path.isdir(coarse_annos_dir):
+        logger.info("Extracting coarse annotations...")
+        etau.extract_zip(
+            coarse_annos_zip_path, outdir=tmp_dir, delete_zip=False
+        )
 
     return coarse_annos_dir
 
 
-def _extract_person_annos(dataset_dir, scratch_dir):
-    person_annos_zip = os.path.join(dataset_dir, _PERSON_ANNOS_ZIP)
+def _extract_person_annos(person_annos_zip_path, scratch_dir):
     tmp_dir = os.path.join(scratch_dir, "person-annos")
     person_annos_dir = os.path.join(tmp_dir, "gtBboxCityPersons")
 
-    if os.path.isdir(person_annos_dir):
-        return person_annos_dir
-
-    _ensure_archive(_PERSON_ANNOS_ZIP, dataset_dir)
-
-    logger.info("Extracting person annotations...")
-    etau.extract_zip(person_annos_zip, outdir=tmp_dir, delete_zip=False)
+    if not os.path.isdir(person_annos_dir):
+        logger.info("Extracting person annotations...")
+        etau.extract_zip(
+            person_annos_zip_path, outdir=tmp_dir, delete_zip=False
+        )
 
     return person_annos_dir
 
@@ -326,20 +430,3 @@ def _parse_bbox_file(json_path):
         detections.append(detection)
 
     return fol.Detections(detections=detections)
-
-
-def _ensure_archive(archive_name, dataset_dir):
-    archive_path = os.path.join(dataset_dir, archive_name)
-    if not os.path.isfile(archive_path):
-        raise OSError(
-            (
-                "Archive '%s' not found in directory '%s'."
-                "\n\n"
-                "You must download the source files for the Cityscapes "
-                "dataset manually to the above directory."
-                "\n\n"
-                "Register at https://www.cityscapes-dataset.com/register in "
-                "order to get links to download the data"
-            )
-            % (archive_name, dataset_dir)
-        )
