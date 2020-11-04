@@ -5,12 +5,13 @@ Web socket client mixins.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import asyncio
 from collections import defaultdict
 import logging
 
 from tornado.websocket import websocket_connect
 
-from fiftyone.constants import SERVER_IP
+from fiftyone.constants import SERVER_NAME
 
 
 # We only want one session to print notifications per namespace and per process
@@ -23,15 +24,23 @@ class HasClient(object):
     _HC_ATTR_NAME = None
     _HC_ATTR_TYPE = None
 
-    async def __init__(self, port):
+    def __init__(self, port):
         self._port = port
         self._data = None
-        self._client = await websocket_connect(
-            "ws://%s:%d/%s" % (SERVER_IP, port, self._HC_NAMESPACE),
-            on_message_callback=lambda message: setattr(
-                self, "_data", self._HC_ATTR_TYPE.from_dict(message["data"])
-            ),
-        )
+        self._client = None
+
+        def callback(message):
+            if message["type"] == "update":
+                self._data = self._HC_ATTR_TYPE.from_dict(message["data"])
+
+        async def init_client():
+            url = "ws://%s:%d/%s" % (SERVER_NAME, port, self._HC_NAMESPACE)
+            self._client = await websocket_connect(
+                url, on_message_callback=callback
+            )
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(init_client())
 
     def __getattr__(self, name):
         """Gets the data via the attribute defined by ``_HC_ATTR_NAME``."""

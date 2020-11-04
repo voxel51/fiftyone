@@ -69,7 +69,6 @@ def get_user_id():
 
 
 class FileHandler(tornado.web.StaticFileHandler):
-
     def get(self):
         """Gets the sample media.
 
@@ -83,34 +82,29 @@ class FileHandler(tornado.web.StaticFileHandler):
         pass
 
 
-class InfoHandler(tornado.web.RequestHandler):
-
+class FiftyOneHandler(tornado.web.RequestHandler):
     def get(self):
-        return jsonify({"version": foc.VERSION})
+        self.write({"version": foc.VERSION})
 
 
-@app.route("/fiftyone")
-def get_fiftyone_info():
-
-
-@app.route("/stages")
-def get_stages():
-    """Gets ViewStage descriptions"""
-    return {
-        "stages": [
-            {"name": stage.__name__, "params": stage._params()}
-            for stage in _STAGES
-        ]
-    }
+class StagesHandler(tornado.web.RequestHandler):
+    def get(self):
+        """Gets ViewStage descriptions"""
+        return {
+            "stages": [
+                {"name": stage.__name__, "params": stage._params()}
+                for stage in _STAGES
+            ]
+        }
 
 
 def _catch_errors(func):
     def wrapper(self, *args, **kwargs):
         try:
-            self.prev_state = self.state
+            StateHandler.prev_state = StateHandler.state
             return func(self, *args, **kwargs)
         except Exception as error:
-            self.state = self.prev_state
+            StateHandler.state = StateHandler.prev_state
             error = {
                 "kind": "Server Error",
                 "message": (
@@ -122,7 +116,6 @@ def _catch_errors(func):
                     "A traceback has been printed to your Python shell."
                 ],
             }
-            emit("notification", error, broadcast=True, include_self=True)
 
     return wrapper
 
@@ -196,48 +189,33 @@ def _make_frame_labels(name, label, frame_number, prefix=""):
     return labels
 
 
-class StateController(Namespace):
-    """State controller.
+class StateHandler(tornado.websocket.WebSocketHandler):
 
-    Attributes:
-        state: a :class:`fiftyone.core.state.StateDescription`
-               instance
+    clients = set()
+    state = fos.StateDescription().serialize()
+    prev_state = fos.StateDescription().serialize()
 
-    Args:
-        **args: positional arguments for ``flask_socketio.Namespace``
-        **kwargs: keyword arguments for ``flask_socketio.Namespace``
-    """
+    async def open(self):
+        StateHandler.clients.add(self)
+        logging.info("connected")
 
-    def __init__(self, *args, **kwargs):
-        self.state = fos.StateDescription().serialize()
-        self.prev_state = self.state
-        super().__init__(*args, **kwargs)
+    async def on_close(self):
+        StateHandler.clients.add(self)
 
-    def on_connect(self):
-        """Handles connection to the server."""
-        pass
-
-    def on_disconnect(self):
-        """Handles disconnection from the server."""
-        pass
+    async def on_message(self, message):
+        event = getattr(self, "on_" + message["type"])
+        await event(message["data"])
 
     @_catch_errors
-    def on_update(self, data):
+    async def on_update(self, message):
         """Updates the state.
 
         Args:
             state_dict: a serialized
                 :class:`fiftyone.core.state.StateDescription`
         """
-        state = data["data"]
-        self.state = fos.StateDescription.from_dict(state).serialize()
-        emit(
-            "update",
-            self.state,
-            broadcast=True,
-            include_self=data["include_self"],
-        )
-        return self.state
+        StateHandler.state = fos.StateDescription.from_dict(state).serialize()
+        print(StateHandler.state)
 
     @_catch_errors
     def on_get_fiftyone_info(self):
@@ -620,16 +598,14 @@ def _numeric_distribution_pipelines(view, pipeline, buckets=50):
         ]
 
 
-
 class Application(tornado.web.Application):
-    def __init__(self):
+    def __init__(self, **settings):
         handlers = [
+            (r"/fiftyone", FiftyOneHandler),
             (r"/file", FileHandler),
-            (r"/state", StateHandler)
+            (r"/state", StateHandler),
         ]
-        settings = dict()
         super().__init__(handlers, **settings)
-
 
 
 if __name__ == "__main__":

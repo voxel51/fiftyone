@@ -147,7 +147,6 @@ class Session(foc.HasClient):
 
         global _subscribed_sessions  # pylint: disable=global-statement
         _subscribed_sessions[port].add(self)
-
         super().__init__(self._port)
 
         if view is not None:
