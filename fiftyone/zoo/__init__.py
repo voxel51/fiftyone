@@ -39,8 +39,8 @@ def list_downloaded_zoo_datasets(base_dir=None):
     """Returns information about the zoo datasets that have been downloaded.
 
     Args:
-        base_dir (None): the base directory to search. By default,
-            ``fo.config.default_dataset_dir`` is used
+        base_dir (None): the base directory to search for downloaded datasets.
+            By default, ``fo.config.default_dataset_dir`` is used
 
     Returns:
         a dict mapping dataset names to (dataset dir, :class:`ZooDatasetInfo`)
@@ -68,12 +68,18 @@ def list_downloaded_zoo_datasets(base_dir=None):
 
 
 def download_zoo_dataset(
-    name, split=None, splits=None, dataset_dir=None, cleanup=True, **kwargs
+    name,
+    split=None,
+    splits=None,
+    dataset_dir=None,
+    overwrite=False,
+    cleanup=True,
+    **kwargs
 ):
     """Downloads the dataset of the given name from the FiftyOne Dataset Zoo.
 
     Any dataset splits that already exist in the specified directory are not
-    re-downloaded.
+    re-downloaded, unless ``overwrite == True`` is specified.
 
     Args:
         name: the name of the zoo dataset to download. Call
@@ -91,6 +97,7 @@ def download_zoo_dataset(
         dataset_dir (None): the directory into which to download the dataset.
             By default, :func:`fiftyone.core.dataset.get_default_dataset_dir`
             is used
+        overwrite (False): whether to overwrite any existing files
         cleanup (True): whether to cleanup any temporary files generated during
             download
         **kwargs: optional keyword arguments to pass to the constructor of the
@@ -107,7 +114,11 @@ def download_zoo_dataset(
         name, dataset_dir, **kwargs
     )
     info = zoo_dataset.download_and_prepare(
-        dataset_dir, split=split, splits=splits, cleanup=cleanup
+        dataset_dir,
+        split=split,
+        splits=splits,
+        overwrite=overwrite,
+        cleanup=cleanup,
     )
     return info, dataset_dir
 
@@ -229,6 +240,9 @@ def find_zoo_dataset(name, split=None):
 
     Returns:
         the directory containing the dataset
+
+    Raises:
+        ValueError: if the dataset or split has not been downloaded
     """
     zoo_dataset, dataset_dir = _parse_dataset_details(name, None)
     try:
@@ -267,13 +281,13 @@ def load_zoo_dataset_info(name, dataset_dir=None):
         the :class:`ZooDatasetInfo` for the dataset
 
     Raises:
-        OSError: if the dataset has not been downloaded
+        ValueError: if the dataset has not been downloaded
     """
     zoo_dataset, dataset_dir = _parse_dataset_details(name, dataset_dir)
     try:
         return zoo_dataset.load_info(dataset_dir)
     except OSError:
-        raise OSError("Dataset '%s' not found at '%s'" % (name, dataset_dir))
+        raise ValueError("Dataset '%s' is not downloaded" % name)
 
 
 def get_zoo_dataset(name, **kwargs):
@@ -648,7 +662,12 @@ class ZooDataset(object):
         return os.path.join(dataset_dir, "info.json")
 
     def download_and_prepare(
-        self, dataset_dir, split=None, splits=None, cleanup=True
+        self,
+        dataset_dir,
+        split=None,
+        splits=None,
+        overwrite=False,
+        cleanup=True,
     ):
         """Downloads the dataset and prepares it for use in the given
         directory.
@@ -664,6 +683,7 @@ class ZooDataset(object):
             splits (None): a list of splits to download, if applicable. If
                 neither ``split`` nor ``splits`` are provided, the full dataset
                 is  downloaded
+            overwrite (False): whether to overwrite any existing files
             cleanup (True): whether to cleanup any temporary files generated
                 during download
 
@@ -679,6 +699,7 @@ class ZooDataset(object):
                         "Invalid split '%s'; supported values are %s"
                         % (split, self.supported_splits)
                     )
+
         elif self.has_splits:
             splits = self.supported_splits
 
@@ -695,17 +716,23 @@ class ZooDataset(object):
         # Download dataset, if necessary
         write_info = False
         if splits:
-            # Skip splits that have already been downloaded
+            # Handle splits that have already been downloaded
             if info is not None:
                 _splits = []
                 for split in splits:
                     split_dir = self.get_split_dir(dataset_dir, split)
-                    if split in info.downloaded_splits and os.path.isdir(
-                        split_dir
-                    ):
-                        logger.info("Split '%s' already downloaded", split)
-                    else:
-                        _splits.append(split)
+                    if os.path.isdir(split_dir):
+                        if overwrite:
+                            logger.info(
+                                "Overwriting existing directory '%s'",
+                                split_dir,
+                            )
+                            etau.delete_dir(split_dir)
+                        elif split in info.downloaded_splits:
+                            logger.info("Split '%s' already downloaded", split)
+                            continue
+
+                    _splits.append(split)
 
                 splits = _splits
 
