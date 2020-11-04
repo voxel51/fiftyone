@@ -1,5 +1,5 @@
 """
-FiftyOne Flask server.
+FiftyOne Tornado server.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -15,9 +15,11 @@ import traceback
 import uuid
 
 from bson import ObjectId
-from flask import Flask, jsonify, request, send_file
-from flask_cors import CORS
-from flask_socketio import emit, Namespace, SocketIO
+import tornado.escape
+import tornado.ioloop
+import tornado.options
+import tornado.web
+import tornado.websocket
 
 import eta.core.labels as etal
 import eta.core.utils as etau
@@ -43,21 +45,10 @@ from pipelines import DISTRIBUTION_PIPELINES, TAGS, LABELS, SCALARS
 
 logger = logging.getLogger(__name__)
 
+
 # connect to the existing DB service to initialize global port information
 db = DatabaseService()
 db.start()
-app = Flask(__name__)
-app.json_encoder = FiftyOneJSONEncoder
-CORS(app)
-
-app.config["SECRET_KEY"] = "fiftyone"
-
-socketio = SocketIO(
-    app,
-    async_mode="eventlet",
-    cors_allowed_origins="*",
-    json=FiftyOneJSONEncoder,
-)
 
 
 def get_user_id():
@@ -77,21 +68,29 @@ def get_user_id():
     return read()
 
 
-@app.route("/")
-def get_sample_media():
-    """Gets the sample media.
+class FileHandler(tornado.web.StaticFileHandler):
 
-    Returns:
-        bytes
-    """
-    path = request.args.get("path")
-    # `conditional`: support partial content
-    return send_file(path, conditional=True)
+    def get(self):
+        """Gets the sample media.
+
+        Returns:
+            bytes
+        """
+        # @todo
+        # path = request.args.get("path")
+        # `conditional`: support partial content
+        # return send_file(path, conditional=True)
+        pass
+
+
+class InfoHandler(tornado.web.RequestHandler):
+
+    def get(self):
+        return jsonify({"version": foc.VERSION})
 
 
 @app.route("/fiftyone")
 def get_fiftyone_info():
-    return jsonify({"version": foc.VERSION})
 
 
 @app.route("/stages")
@@ -621,7 +620,16 @@ def _numeric_distribution_pipelines(view, pipeline, buckets=50):
         ]
 
 
-socketio.on_namespace(StateController("/state"))
+
+class Application(tornado.web.Application):
+    def __init__(self):
+        handlers = [
+            (r"/file", FileHandler),
+            (r"/state", StateHandler)
+        ]
+        settings = dict()
+        super().__init__(handlers, **settings)
+
 
 
 if __name__ == "__main__":
@@ -630,10 +638,9 @@ if __name__ == "__main__":
     )
     etau.ensure_basedir(log_path)
     # pylint: disable=no-member
-    app.logger.addHandler(logging.FileHandler(log_path, mode="w"))
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=5151)
     args = parser.parse_args()
-
-    socketio.run(app, port=args.port, debug=foc.DEV_INSTALL)
+    app = Application(debug=foc.DEV_INSTALL)
+    app.listen(args.port)
+    tornado.ioloop.IOLoop.current().start()
