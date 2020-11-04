@@ -5,8 +5,6 @@ FiftyOne Zoo Datasets provided by ``tensorflow_datasets``.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import os
-
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
 import fiftyone.utils.imagenet as foui
@@ -275,26 +273,43 @@ class ImageNet2012Dataset(TFDSDataset):
     hierarchy.
 
     Note that labels were never publicly released for the test set, so only the
-    training and validation sets are provided here.
+    training and validation sets are provided.
 
-    **Manual download instructions**
-
-    This dataset requires you to download the source data manually. You must
-    register at http://www.image-net.org/download-images in order to get the
-    link to download the dataset.
-
-    In particular, you must provide the following files::
+    In order to load the ImageNet dataset, you must download the source data
+    manually into ``source_dir`` as follows::
 
             both splits: ILSVRC2012_devkit_t12.tar.gz
             train split: ILSVRC2012_img_train.tar
        validation split: ILSVRC2012_img_val.tar
+
+    You can register at `http://www.image-net.org/download-images`_ in order to
+    get links to download the data.
+
+    Example usage::
+
+        import fiftyone.zoo as foz
+
+        # First parse the manually downloaded files in `source_dir`
+        foz.download_zoo_dataset(
+            "imagenet-2012", source_dir="/path/to/dir-with-imagenet-files"
+        )
+
+        # Now load into FiftyOne
+        dataset = foz.load_zoo_dataset("imagenet-2012", split="validation")
 
     Dataset size:
         144.02 GiB
 
     Source:
         http://image-net.org
+
+    Args:
+        source_dir (None): the directory containing the manually downloaded
+            ImageNet files
     """
+
+    def __init__(self, source_dir=None):
+        self.source_dir = source_dir
 
     @property
     def name(self):
@@ -306,8 +321,7 @@ class ImageNet2012Dataset(TFDSDataset):
 
     def _download_and_prepare(self, dataset_dir, _, split):
         # Ensure that the source files have been manually downloaded
-        root_dir = os.path.dirname(dataset_dir)  # remove split dir
-        foui.ensure_imagenet_manual_download(root_dir, split)
+        foui.ensure_imagenet_manual_download(self.source_dir, split)
 
         if split == "validation":
             _split = "val"
@@ -318,7 +332,7 @@ class ImageNet2012Dataset(TFDSDataset):
             return tfds.load(
                 "imagenet2012",
                 split=_split,
-                data_dir=root_dir,
+                data_dir=self.source_dir,
                 download=False,
                 with_info=True,
             )
