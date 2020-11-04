@@ -242,7 +242,8 @@ def find_zoo_dataset(name, split=None):
         the directory containing the dataset
 
     Raises:
-        ValueError: if the dataset or split has not been downloaded
+        ValueError: if the dataset or split does not exist or has not been
+            downloaded
     """
     zoo_dataset, dataset_dir = _parse_dataset_details(name, None)
     try:
