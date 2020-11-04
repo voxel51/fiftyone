@@ -1274,7 +1274,7 @@ class ZooInfoCommand(Command):
 
         # Print dataset info
         zoo_dataset = foz.get_zoo_dataset(name)
-        print("***** Dataset description *****\n%s" % zoo_dataset.__doc__)
+        print("***** Dataset description *****\n    %s" % zoo_dataset.__doc__)
 
         # Check if dataset is downloaded
         base_dir = args.base_dir
