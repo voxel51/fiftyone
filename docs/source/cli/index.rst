@@ -917,13 +917,8 @@ Print information about datasets in the FiftyOne Dataset Zoo.
 
 .. code-block:: shell
 
-    # Print information about a downloaded zoo dataset
+    # Print information about a zoo dataset
     fiftyone zoo info <name>
-
-.. code-block:: shell
-
-    # Print information about the zoo dataset downloaded to the specified base directory
-    fiftyone zoo info <name> --base-dir <base-dir>
 
 .. _cli-fiftyone-zoo-download:
 

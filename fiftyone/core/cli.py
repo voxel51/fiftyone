@@ -1245,16 +1245,12 @@ class ZooFindCommand(Command):
 
 
 class ZooInfoCommand(Command):
-    """Print information about downloaded zoo datasets.
+    """Print information about datasets in the FiftyOne Dataset Zoo.
 
     Examples::
 
-        # Print information about a downloaded zoo dataset
+        # Print information about a zoo dataset
         fiftyone zoo info <name>
-
-        # Print information about the zoo dataset downloaded to the specified
-        # base directory
-        fiftyone zoo info <name> --base-dir <base-dir>
     """
 
     @staticmethod
