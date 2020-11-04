@@ -127,12 +127,6 @@ def _load_state(trigger_update=False):
             state = fos.StateDescription.from_dict(state)
             state = func(self, state, *args, **kwargs)
             self.state = state.serialize()
-            emit(
-                "update",
-                self.state,
-                broadcast=True,
-                include_self=trigger_update,
-            )
             return self.state
 
         return wrapper
@@ -197,25 +191,31 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     async def open(self):
         StateHandler.clients.add(self)
-        logging.info("connected")
+        logger.debug("connected")
+        self.write_message({"type": "update", "data": StateHandler.state})
+        print(StateHandler.clients)
 
-    async def on_close(self):
-        StateHandler.clients.add(self)
+    def on_close(self):
+        StateHandler.clients.remove(self)
+        logger.debug("disconnected")
 
     async def on_message(self, message):
-        event = getattr(self, "on_" + message["type"])
-        await event(message["data"])
+        message = FiftyOneJSONEncoder.loads(message)
+        event = getattr(self, message.pop("type"))
+        logger.debug("%s event" % event.__name__)
+        await event(**message)
 
-    @_catch_errors
-    async def on_update(self, message):
-        """Updates the state.
+    async def update(self, data):
+        StateHandler.state = fos.StateDescription.from_dict(data).serialize()
+        self.write_update()
 
-        Args:
-            state_dict: a serialized
-                :class:`fiftyone.core.state.StateDescription`
-        """
-        StateHandler.state = fos.StateDescription.from_dict(state).serialize()
-        print(StateHandler.state)
+    def write_update(self):
+        response = {"type": "update", "data": StateHandler.state}
+        for client in StateHandler.clients:
+            if client == self:
+                continue
+            print("writing message", StateHandler.state)
+            client.write_message(response)
 
     @_catch_errors
     def on_get_fiftyone_info(self):

@@ -9,6 +9,7 @@ import asyncio
 from collections import defaultdict
 import logging
 
+from bson import json_util
 from tornado.websocket import websocket_connect
 
 from fiftyone.constants import SERVER_NAME
@@ -30,6 +31,8 @@ class HasClient(object):
         self._client = None
 
         def callback(message):
+            message = json_util.loads(message)
+            print("MESSAGE")
             if message["type"] == "update":
                 self._data = self._HC_ATTR_TYPE.from_dict(message["data"])
 
@@ -61,7 +64,7 @@ class HasClient(object):
                 )
             self._data = value
             self._client.write_message(
-                {"type": "update", "data": value.serialize()}
+                json_util.dumps({"type": "update", "data": value.serialize()})
             )
         else:
             super().__setattr__(name, value)
