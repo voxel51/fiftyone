@@ -52,7 +52,7 @@ MIGRATIONS_REVISIONS_DIR = os.path.join(FIFTYONE_DIR, "migrations/revisions")
 
 # Server setup
 SERVER_DIR = os.path.join(FIFTYONE_DIR, "server")
-SERVER_ADDR = "http://127.0.0.1:%d"
+SERVER_IP = "127.0.0.1"
 
 # App setup
 try:
