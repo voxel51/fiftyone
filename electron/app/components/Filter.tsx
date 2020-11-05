@@ -254,6 +254,15 @@ const ClassFilterContainer = styled.div`
   margin: 0.25rem 0;
 `;
 
+const BoxedContainer = styled.div`
+  background: ${({ theme }) => theme.backgroundDark};
+  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
+  border: 1px solid #191c1f;
+  border-radius: 2px;
+  color: ${({ theme }) => theme.fontDark};
+  margin-top: 0.25rem;
+`;
+
 const ClassFilter = ({ entry: { path, type, color }, atoms }) => {
   const theme = useContext(ThemeContext);
   const classes = useRecoilValue(selectors.labelClasses(path));
@@ -352,23 +361,25 @@ const ClassFilter = ({ entry: { path, type, color }, atoms }) => {
           ))}
         </Selected>
         {OBJECT_TYPES.includes(type) && (
-          <FormControlLabel
-            label={
-              <div style={{ lineHeight: "20px", fontSize: 14 }}>
-                Color by label
-              </div>
-            }
-            control={
-              <Checkbox
-                checked={colorByLabel}
-                onChange={() => setColorByLabel(!colorByLabel)}
-                style={{
-                  padding: "0 5px",
-                  color: color,
-                }}
-              />
-            }
-          />
+          <BoxedContainer>
+            <FormControlLabel
+              label={
+                <div style={{ lineHeight: "20px", fontSize: 14 }}>
+                  Color by label
+                </div>
+              }
+              control={
+                <Checkbox
+                  checked={colorByLabel}
+                  onChange={() => setColorByLabel(!colorByLabel)}
+                  style={{
+                    padding: "0 5px",
+                    color: color,
+                  }}
+                />
+              }
+            />
+          </BoxedContainer>
         )}
       </ClassFilterContainer>
     </>

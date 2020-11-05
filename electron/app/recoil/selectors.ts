@@ -381,9 +381,12 @@ export const modalLabelFilters = selector({
     return filters;
   },
   set: ({ get, set }, _) => {
-    const active = get(atoms.activeLabels("sample"));
-    set(atoms.modalActiveLabels("sample"), active);
-    for (const label in active) {
+    const paths = get(labelPaths);
+    const activeLabels = get(atoms.activeLabels("sample"));
+    set(atoms.modalActiveLabels("sample"), activeLabels);
+    const activeFrameLabels = get(atoms.activeLabels("frame"));
+    set(atoms.modalActiveLabels("frame"), activeFrameLabels);
+    for (const label of paths) {
       set(
         atoms.modalFilterLabelConfidenceRange(label),
         get(atoms.filterLabelConfidenceRange(label))
@@ -398,6 +401,8 @@ export const modalLabelFilters = selector({
         atoms.modalFilterIncludeLabels(label),
         get(atoms.filterIncludeLabels(label))
       );
+
+      set(atoms.modalColorByLabel(label), get(atoms.colorByLabel(label)));
     }
   },
 });
