@@ -207,8 +207,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         logger.debug("%s event" % event.__name__)
         await event(**message)
 
-    async def on_update(self, data):
-        StateHandler.state = fos.StateDescription.from_dict(data).serialize()
+    async def on_update(self, state):
+        StateHandler.state = fos.StateDescription.from_dict(state).serialize()
         self.send_updates(ignore=self)
         self.send_statistics()
 

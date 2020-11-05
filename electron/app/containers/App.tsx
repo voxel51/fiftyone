@@ -105,11 +105,6 @@ function App(props: Props) {
   ipcRenderer.on("update-session-config", (event, message) => {
     portRef.current.ref.current.click();
   });
-
-  useEffect(() => {
-    const interval = setInterval(() => console.log(socket.readyState));
-    return clearInterval(interval);
-  });
   return (
     <ErrorBoundary
       FallbackComponent={Error}
