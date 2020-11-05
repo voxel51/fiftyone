@@ -192,7 +192,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     async def open(self):
         StateHandler.clients.add(self)
         logger.debug("connected")
-        self.write_message({"type": "update", "data": StateHandler.state})
+        self.write_message({"type": "update", "state": StateHandler.state})
 
     def on_close(self):
         StateHandler.clients.remove(self)
@@ -206,40 +206,28 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     async def update(self, data):
         StateHandler.state = fos.StateDescription.from_dict(data).serialize()
-        self.write_update()
+        self.send_updates(ignore=self)
+        self.send_statistics()
+
+    async def fiftyone(self):
+        self.write_message(
+            {
+                "type": "fiftyone",
+                "data": {"version": foc.VERSION, "user_id": get_user_id(),},
+            }
+        )
 
     @classmethod
-    def write_update(cls):
-        response = {"type": "update", "data": StateHandler.state}
+    def send_updates(cls, ignore=None):
+        response = {"type": "update", "state": StateHandler.state}
         for client in cls.clients:
+            if client == ignore:
+                continue
             client.write_message(response)
 
-    @_catch_errors
-    def on_get_fiftyone_info(self):
-        """Retrieves information about the FiftyOne installation."""
-        return {
-            "version": foc.VERSION,
-            "user_id": get_user_id(),
-        }
-
-    @_catch_errors
-    @_load_state()
-    def on_get_current_state(self, state, _):
-        """Gets the current state.
-
-        Returns:
-            a :class:`fiftyone.core.state.StateDescription`
-        """
-        return state
-
-    @_catch_errors
-    def on_get_statistics(self, stages):
-        """Gets the statistics for a view.
-
-        Returns:
-            a :class:`fiftyone.core.state.DatasetStatistics`
-        """
-        state = fos.StateDescription.from_dict(self.state)
+    @classmethod
+    def send_statistics(cls, stages):
+        state = fos.StateDescription.from_dict(StateHandler.state)
         if state.dataset is None:
             return []
 
@@ -248,89 +236,43 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             stage = fosg.ViewStage._from_dict(stage_dict)
             view.add_stage(stage)
 
-        return fos.DatasetStatistics(view).serialize()["stats"]
+        stats = fos.DatasetStatistics(view).serialize()["stats"]
+        for client in cls.clients:
+            self.write_message({"type": "statistics", "data": stats})
 
-    @_catch_errors
-    @_load_state()
-    def on_add_selection(self, state, _id):
-        """Adds a sample to the selected samples list.
-
-        Args:
-            state: the current
-                :class:`fiftyone.core.state.StateDescription`
-            _id: the sample ID
-
-        Returns:
-            the updated
-                :class:`fiftyone.core.state.StateDescription`
-        """
+    async def add_selection(self, _id):
+        state = fos.StateDescription.from_dict(StateHandler.state)
         selected = set(state.selected)
         selected.add(_id)
         state.selected = list(selected)
-        return state
+        StateHandler.state = state.serialize()
+        self.send_updates(ignore=self)
 
-    @_catch_errors
-    @_load_state()
-    def on_remove_selection(self, state, _id):
-        """Remove a sample from the selected samples list
-
-        Args:
-            state: the current
-                :class:`fiftyone.core.state.StateDescription`
-            _id: the sample ID
-
-        Returns:
-            the updated
-                :class:`fiftyone.core.state.StateDescription`
-        """
+    async def remove_selection(self, _id):
+        state = fos.StateDescription.from_dict(StateHandler.state)
         selected = set(state.selected)
         selected.remove(_id)
         state.selected = list(selected)
-        return state
+        StateHandler.state = state.serialize()
+        self.send_updates(ignore=self)
 
-    @_catch_errors
-    @_load_state()
-    def on_clear_selection(self, state):
-        """Remove all samples from the selected samples list
-
-        Args:
-            state: the current
-                :class:`fiftyone.core.state.StateDescription`
-
-        Returns:
-            the updated
-                :class:`fiftyone.core.state.StateDescription`
-        """
+    async def clear_selection(self):
+        state = fos.StateDescription.from_dict(StateHandler.state)
         state.selected = []
-        return state
+        StateHandler.state = state.serialize()
+        self.send_updates(ignore=self)
 
-    @_catch_errors
-    @_load_state()
-    def on_set_selected_objects(self, state, selected_objects):
-        """Sets the entire selected object list.
-
-        Args:
-            state: the current :class:`fiftyone.core.state.StateDescription`
-            selected_objects: a list of selected objects
-        """
+    async def on_set_selected_objects(self, selected_objects):
         if not isinstance(selected_objects, list):
             raise TypeError("selected_objects must be a list")
 
+        state = fos.StateDescription.from_dict(cls.state)
         state.selected_objects = selected_objects
+        cls.state = state.serialize()
         return state
 
-    @_catch_errors
-    def on_get_video_data(self, sample_d):
-        """Gets the frame labels for video samples
-
-        Args:
-            sample_id: the id of the video sample
-
-        Returns:
-            ...
-        """
-        state = self.state.copy()
-        state = fos.StateDescription.from_dict(state)
+    async def on_get_video_data(self, sample_d):
+        state = fos.StateDescription.from_dict(StateHandler.state)
         find_d = {"_sample_id": ObjectId(sample_d["_id"])}
         labels = etav.VideoLabels()
         frames = list(state.dataset._frame_collection.find(find_d))
@@ -364,20 +306,19 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             labels.add_frame(frame_labels, overwrite=False)
 
         fps = etav.get_frame_rate(sample_d["filepath"])
-        return {"frames": frames, "labels": labels.serialize(), "fps": fps}
+        self.write_message(
+            {
+                "type": "video_data",
+                "data": {
+                    "frames": frames,
+                    "labels": labels.serialize(),
+                    "fps": fps,
+                },
+            }
+        )
 
-    @_catch_errors
-    def on_page(self, page, page_length=20):
-        """Gets the requested page of samples.
-
-        Args:
-            page: the page number
-            page_length: the page length
-
-        Returns:
-            the list of sample dicts for the page
-        """
-        state = fos.StateDescription.from_dict(self.state)
+    async def on_page(self, page, page_length=20):
+        state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
             view = state.view
         elif state.dataset is not None:
@@ -412,18 +353,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         return {"results": results, "more": more}
 
-    @_catch_errors
-    def on_get_distributions(self, group):
-        """Gets the distributions for the current state with respect to a
-        group.
-
-        Args:
-            group: one of "labels", "tags", or "scalars"
-
-        Returns:
-            a list of distributions
-        """
-        state = fos.StateDescription.from_dict(self.state)
+    def distributions(self, group):
+        state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
             view = state.view
         elif state.dataset is not None:

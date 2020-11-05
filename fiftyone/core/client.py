@@ -46,7 +46,7 @@ class HasClient(object):
 
                 message = json_util.loads(message)
                 if message["type"] == "update":
-                    self._data = self._HC_ATTR_TYPE.from_dict(message["data"])
+                    self._data = self._HC_ATTR_TYPE.from_dict(message["state"])
 
         def run_client():
             io_loop = IOLoop(make_current=True)
@@ -74,7 +74,7 @@ class HasClient(object):
                 )
             self._data = value
             self._client.write_message(
-                json_util.dumps({"type": "update", "data": value.serialize()})
+                json_util.dumps({"type": "update", "state": value.serialize()})
             )
         else:
             super().__setattr__(name, value)

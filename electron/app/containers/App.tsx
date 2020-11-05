@@ -9,7 +9,7 @@ import ReactGA from "react-ga";
 import Header from "../components/Header";
 import PortForm from "../components/PortForm";
 
-import { useHashChangeHandler } from "../utils/hooks";
+import { useEventHandler, useHashChangeHandler } from "../utils/hooks";
 import { useSubscribe } from "../utils/socket";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
@@ -91,36 +91,17 @@ function App(props: Props) {
     setSelectedObjects(convertSelectedObjectsListToMap(data.selected_objects));
   };
 
-  useSubscribe(socket, "connect", () => {
+  useEventHandler(socket, "open", () => {
     setConnected(true);
     if (!loading) {
       setLoading(true);
-
-      socket.emit("get_current_state", "", (data) => {
-        handleStateUpdate(data);
-        getAllStats(data);
-        setLoading(false);
-      });
     }
   });
-  if (socket.connected && !connected) {
+  if (socket.readyState === 1 && !connected) {
     setConnected(true);
     setLoading(true);
-    socket.emit("get_current_state", "", (data) => {
-      setViewCounter(viewCounterValue + 1);
-      handleStateUpdate(data);
-      setLoading(false);
-      getAllStats(data);
-    });
   }
-  setTimeout(() => {
-    if (loading && !connected) {
-      setLoading(false);
-    }
-  }, 250);
-  useSubscribe(socket, "disconnect", () => {
-    setConnected(false);
-  });
+  useEventHandler(socket, "clos", () => setConnected(false));
   useSubscribe(socket, "update", (data) => {
     setViewCounter(viewCounterValue + 1);
     if (data.close) {

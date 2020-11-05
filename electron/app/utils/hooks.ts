@@ -3,6 +3,7 @@ import { useRecoilState, useSetRecoilState, useRecoilValue } from "recoil";
 import ResizeObserver from "resize-observer-polyfill";
 
 import * as atoms from "../recoil/atoms";
+import * as selectors from "../recoil/selectors";
 
 export const useEventHandler = (target, eventType, handler) => {
   // Adapted from https://reactjs.org/docs/hooks-faq.html#what-can-i-do-if-my-effect-dependencies-change-too-often
@@ -21,6 +22,12 @@ export const useEventHandler = (target, eventType, handler) => {
       target.removeEventListener(eventType, wrapper);
     };
   }, [target, eventType]);
+};
+
+export const useMessageHandler = (type, handler) => {
+  const socket = useRecoilValue(selectors.socket);
+  const wrapper = ({ data }) => data.type === type && handler(data);
+  useEventHandler(socket, "message", wrapper);
 };
 
 export const useObserve = (target, handler) => {
