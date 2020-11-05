@@ -89,6 +89,7 @@ function App(props: Props) {
     if (state.close) {
       remote.getCurrentWindow().close();
     }
+    setLoading(false);
     handleStateUpdate(state);
   });
 
