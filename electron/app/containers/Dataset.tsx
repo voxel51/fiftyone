@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Switch, Route, Redirect } from "react-router-dom";
 import {
   useRecoilState,
@@ -18,6 +18,7 @@ import routes from "../constants/routes.json";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { VALID_LABEL_TYPES } from "../utils/labels";
+import { useSendMessage } from "../utils/hooks";
 
 const Body = styled.div`
   padding: 0 1rem;
@@ -96,7 +97,6 @@ function Dataset(props) {
     setModal({ visible: false, sample: null });
     resetSelectedObjects();
     resetHiddenObjects();
-    socket.emit("set_selected_objects", []);
   };
 
   useEffect(() => {
@@ -119,13 +119,16 @@ function Dataset(props) {
     });
   }, [modal.visible]);
 
-  useEffect(() => {
-    if (
+  const hideModal = useMemo(() => {
+    return (
       modal.visible &&
       !currentSamples.some((i) => i.sample._id === modal.sample._id)
-    ) {
-      handleHideModal();
-    } else if (modal.visible) {
+    );
+  }, [currentSamples]);
+
+  useEffect(() => {
+    hideModal && handleHideModal();
+    if (!hideModal && modal.visible) {
       setModal({
         ...modal,
         sample: currentSamples.filter(
@@ -133,7 +136,9 @@ function Dataset(props) {
         )[0].sample,
       });
     }
-  }, [currentSamples]);
+  }, [hideModal]);
+
+  useSendMessage("set_selected_objects", { selected_objects: [] }, !hideModal);
 
   let src = null;
   let s = null;

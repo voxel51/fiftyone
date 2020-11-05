@@ -189,6 +189,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     state = fos.StateDescription().serialize()
     prev_state = fos.StateDescription().serialize()
 
+    def check_origin(self, origin):
+        return True
+
     async def open(self):
         StateHandler.clients.add(self)
         logger.debug("connected")

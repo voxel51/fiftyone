@@ -10,12 +10,14 @@ import {
   makeLabelNameGroups,
   labelTypeHasColor,
 } from "../utils/labels";
+import { getSocket } from "../utils/sockets";
 
 export const socket = selector({
   key: "socket",
   get: ({ get }): WebSocket => {
-    return new WebSocket(`ws://localhost:${get(atoms.port)}/state`);
+    return getSocket(get(atoms.port));
   },
+  dangerouslyAllowMutability: true,
 });
 
 export const datasetName = selector({

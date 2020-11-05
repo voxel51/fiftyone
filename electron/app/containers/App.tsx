@@ -9,8 +9,11 @@ import ReactGA from "react-ga";
 import Header from "../components/Header";
 import PortForm from "../components/PortForm";
 
-import { useEventHandler, useHashChangeHandler } from "../utils/hooks";
-import { useSubscribe } from "../utils/socket";
+import {
+  useEventHandler,
+  useHashChangeHandler,
+  useMessageHandler,
+} from "../utils/hooks";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { convertSelectedObjectsListToMap } from "../utils/selection";
@@ -21,30 +24,29 @@ type Props = {
   children: ReactNode;
 };
 
-const useGA = (socket) => {
+const useGA = () => {
   const [gaInitialized, setGAInitialized] = useState(false);
-  useEffect(() => {
+  useMessageHandler("fiftyone", (info) => {
     const dev = process.env.NODE_ENV == "development";
     const buildType = dev ? "dev" : "prod";
-    socket.emit("get_fiftyone_info", (info) => {
-      ReactGA.initialize(gaConfig.app_ids[buildType], {
-        debug: dev,
-        gaOptions: {
-          storage: "none",
-          cookieDomain: "none",
-          clientId: info.user_id,
-        },
-      });
-      ReactGA.set({
-        userId: info.user_id,
-        checkProtocolTask: null, // disable check, allow file:// URLs
-        [gaConfig.dimensions.dev]: buildType,
-        [gaConfig.dimensions.version]: info.version,
-      });
-      setGAInitialized(true);
-      ReactGA.pageview(window.location.hash.replace(/^#/, ""));
+
+    ReactGA.initialize(gaConfig.app_ids[buildType], {
+      debug: dev,
+      gaOptions: {
+        storage: "none",
+        cookieDomain: "none",
+        clientId: info.user_id,
+      },
     });
-  }, []);
+    ReactGA.set({
+      userId: info.user_id,
+      checkProtocolTask: null, // disable check, allow file:// URLs
+      [gaConfig.dimensions.dev]: buildType,
+      [gaConfig.dimensions.version]: info.version,
+    });
+    setGAInitialized(true);
+    ReactGA.pageview(window.location.hash.replace(/^#/, ""));
+  });
   useHashChangeHandler(() => {
     if (gaInitialized) {
       ReactGA.pageview(window.location.hash.replace(/^#/, ""));
@@ -65,27 +67,13 @@ function App(props: Props) {
   const setSelectedSamples = useSetRecoilState(atoms.selectedSamples);
   const [viewCounterValue, setViewCounter] = useRecoilState(atoms.viewCounter);
   const [result, setResultFromForm] = useState({ port, connected });
-  const setDatasetStats = useSetRecoilState(atoms.datasetStats);
   const setSelectedObjects = useSetRecoilState(atoms.selectedObjects);
-  const setExtendedDatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
 
-  useGA(socket);
-  const getStats = (view, setter) => {
-    socket.emit("get_statistics", view, (d) => setter(d));
-  };
-
-  const getAllStats = ({ view: newView, filters }) => {
-    newView = newView || [];
-    setDatasetStats([]);
-    setExtendedDatasetStats([]);
-    getStats(newView, setDatasetStats);
-    filters.length &&
-      getStats(newView.concat(Object.values(filters)), setExtendedDatasetStats);
-  };
-  const handleStateUpdate = (data) => {
-    setStateDescription(data);
-    setSelectedSamples(new Set(data.selected));
-    setSelectedObjects(convertSelectedObjectsListToMap(data.selected_objects));
+  useGA();
+  const handleStateUpdate = (state) => {
+    setStateDescription(state);
+    setSelectedSamples(new Set(state.selected));
+    setSelectedObjects(convertSelectedObjectsListToMap(state.selected_objects));
   };
 
   useEventHandler(socket, "open", () => {
@@ -94,33 +82,15 @@ function App(props: Props) {
       setLoading(true);
     }
   });
-  if (socket.readyState === 1 && !connected) {
-    setConnected(true);
-    setLoading(true);
-  }
-  useEventHandler(socket, "clos", () => setConnected(false));
-  useSubscribe(socket, "update", (data) => {
+
+  useEventHandler(socket, "close", () => setConnected(false));
+  useMessageHandler("update", ({ state }) => {
     setViewCounter(viewCounterValue + 1);
-    if (data.close) {
+    if (state.close) {
       remote.getCurrentWindow().close();
     }
-    getAllStats(data);
-    handleStateUpdate(data);
+    handleStateUpdate(state);
   });
-
-  useSubscribe(socket, "notification", (data) => {
-    addNotification.current(data);
-  });
-
-  useEffect(() => {
-    if (reset) {
-      socket.emit("get_current_state", "", (data) => {
-        getAllStats(data);
-        handleStateUpdate(data);
-        setLoading(false);
-      });
-    }
-  }, [reset]);
 
   ipcRenderer.on("update-session-config", (event, message) => {
     portRef.current.ref.current.click();
@@ -135,29 +105,31 @@ function App(props: Props) {
       resetKeys={[reset]}
     >
       <Header />
-      {children}
-      <Modal
-        trigger={
-          <Button
-            style={{ padding: "1rem", display: "none" }}
-            ref={portRef}
-          ></Button>
-        }
-        size="tiny"
-        onClose={() => setPort(result.port)}
-      >
-        <Modal.Header>Port number</Modal.Header>
-        <Modal.Content>
-          <Modal.Description>
-            <PortForm
-              setResult={setResultFromForm}
-              connected={connected}
-              port={port}
-              invalid={false}
-            />
-          </Modal.Description>
-        </Modal.Content>
-      </Modal>
+      <div style={bodyStyle}>
+        {children}
+        <Modal
+          trigger={
+            <Button
+              style={{ padding: "1rem", display: "none" }}
+              ref={portRef}
+            ></Button>
+          }
+          size="tiny"
+          onClose={() => setPort(result.port)}
+        >
+          <Modal.Header>Port number</Modal.Header>
+          <Modal.Content>
+            <Modal.Description>
+              <PortForm
+                setResult={setResultFromForm}
+                connected={connected}
+                port={port}
+                invalid={false}
+              />
+            </Modal.Description>
+          </Modal.Content>
+        </Modal>
+      </div>
       <NotificationHub children={(add) => (addNotification.current = add)} />
     </ErrorBoundary>
   );
