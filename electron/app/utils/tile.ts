@@ -76,18 +76,18 @@ export default function tile(data, newHasMore, state) {
     let gridColumns = columns
       .map((c) => {
         return (
-          (c * (100 - (columns.length - 1 + extraMargins) / 2)).toFixed(2) + "%"
+          (c * (100 - (columns.length - 1 + extraMargins) / 5)).toFixed(2) + "%"
         );
       })
       .reduce((acc, cur, i) => {
         if (i < columns.length - 1) {
-          return [...acc, cur, "0.5%"];
+          return [...acc, cur, "0.2%"];
         }
         return [...acc, cur];
       }, []);
 
     gridColumns = gridColumns.concat(
-      Array.from(Array(extraMargins).keys()).map(() => "0.5%")
+      Array.from(Array(extraMargins).keys()).map(() => "0.2%")
     );
     const gridColumnsLength = gridColumns.length;
     const rowStyle = {
@@ -103,7 +103,7 @@ export default function tile(data, newHasMore, state) {
       samples: row.map(({ sample, ...rest }) => ({ sample, metadata: rest })),
       aspectRatio:
         (refWidth +
-          ((columns.length - 1 + extraMargins) / 2) * (refWidth / 100)) /
+          ((columns.length - 1 + extraMargins) / 5) * (refWidth / 100)) /
         baseHeight,
       extraMargins,
     });

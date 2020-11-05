@@ -53,7 +53,6 @@ const useGA = (socket) => {
 };
 
 function App(props: Props) {
-  const [showInfo] = useState(true);
   const addNotification = useRef(null);
   const [reset, setReset] = useState(false);
   const { children } = props;
@@ -67,10 +66,8 @@ function App(props: Props) {
   const [viewCounterValue, setViewCounter] = useRecoilState(atoms.viewCounter);
   const [result, setResultFromForm] = useState({ port, connected });
   const setDatasetStats = useSetRecoilState(atoms.datasetStats);
-  const view = useRecoilValue(selectors.view);
   const setSelectedObjects = useSetRecoilState(atoms.selectedObjects);
   const setExtendedDatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
-  const extendedView = useRecoilValue(selectors.extendedView);
 
   useGA(socket);
   const getStats = (view, setter) => {
@@ -138,31 +135,29 @@ function App(props: Props) {
       resetKeys={[reset]}
     >
       <Header />
-      <div className={showInfo ? "" : "hide-info"} style={bodyStyle}>
-        {children}
-        <Modal
-          trigger={
-            <Button
-              style={{ padding: "1rem", display: "none" }}
-              ref={portRef}
-            ></Button>
-          }
-          size="tiny"
-          onClose={() => setPort(result.port)}
-        >
-          <Modal.Header>Port number</Modal.Header>
-          <Modal.Content>
-            <Modal.Description>
-              <PortForm
-                setResult={setResultFromForm}
-                connected={connected}
-                port={port}
-                invalid={false}
-              />
-            </Modal.Description>
-          </Modal.Content>
-        </Modal>
-      </div>
+      {children}
+      <Modal
+        trigger={
+          <Button
+            style={{ padding: "1rem", display: "none" }}
+            ref={portRef}
+          ></Button>
+        }
+        size="tiny"
+        onClose={() => setPort(result.port)}
+      >
+        <Modal.Header>Port number</Modal.Header>
+        <Modal.Content>
+          <Modal.Description>
+            <PortForm
+              setResult={setResultFromForm}
+              connected={connected}
+              port={port}
+              invalid={false}
+            />
+          </Modal.Description>
+        </Modal.Content>
+      </Modal>
       <NotificationHub children={(add) => (addNotification.current = add)} />
     </ErrorBoundary>
   );

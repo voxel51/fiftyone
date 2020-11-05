@@ -6,10 +6,11 @@ import {
   useSetRecoilState,
   useResetRecoilState,
 } from "recoil";
-import { Container, Message, Segment } from "semantic-ui-react";
+import { Message, Segment } from "semantic-ui-react";
+import styled from "styled-components";
 
+import { PLOTS } from "../Routes";
 import SamplesContainer from "./SamplesContainer";
-import Distributions from "../components/Distributions";
 import HorizontalNav from "../components/HorizontalNav";
 import SampleModal from "../components/SampleModal";
 import { ModalWrapper, Overlay } from "../components/utils";
@@ -17,6 +18,12 @@ import routes from "../constants/routes.json";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { VALID_LABEL_TYPES } from "../utils/labels";
+
+const Body = styled.div`
+  padding: 0 1rem;
+  width: 100%;
+  height: calc(100% - 131px);
+`;
 
 function NoDataset() {
   return (
@@ -37,7 +44,6 @@ const applyActiveLabels = (tuples, current, setter) => {
 };
 
 function Dataset(props) {
-  const tabs = [routes.SAMPLES, routes.TAGS, routes.LABELS, routes.SCALARS];
   const [modal, setModal] = useState({
     visible: false,
     sample: null,
@@ -178,18 +184,12 @@ function Dataset(props) {
           />
         </ModalWrapper>
       ) : null}
-      <Container fluid={true}>
-        <HorizontalNav
-          currentPath={props.location.pathname}
-          entries={tabs.map((path) => ({ path, name: path.slice(1) }))}
-        />
+      {hasDataset && <HorizontalNav entries={PLOTS} />}
+      <Body>
         <Switch>
-          <Route exact path={routes.DATASET}>
-            <Redirect to={routes.SAMPLES} />
-          </Route>
           {hasDataset ? (
             <>
-              <Route path={routes.SAMPLES}>
+              <Route path={routes.DATASET}>
                 <SamplesContainer
                   {...props.socket}
                   setView={(sample, metadata) =>
@@ -203,21 +203,12 @@ function Dataset(props) {
                   colorMap={colorMap}
                 />
               </Route>
-              <Route path={routes.LABELS}>
-                <Distributions group="labels" />
-              </Route>
-              <Route path={routes.TAGS}>
-                <Distributions group="tags" />
-              </Route>
-              <Route path={routes.SCALARS}>
-                <Distributions group="scalars" />
-              </Route>
             </>
           ) : (
             <NoDataset />
           )}
         </Switch>
-      </Container>
+      </Body>
     </>
   );
 }
