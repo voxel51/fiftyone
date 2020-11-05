@@ -628,18 +628,18 @@ export const coloredByLabel = selector({
   get: ({ get }) => {
     const paths = get(labelPaths);
     return paths.reduce(
-      (acc, cur) => ({ ...acc, cur: get(atoms.colorByLabel(cur)) }),
+      (acc, cur) => ({ ...acc, [cur]: get(atoms.colorByLabel(cur)) }),
       {}
     );
   },
 });
 
 export const modalColoredByLabel = selector({
-  key: "coloredByLabel",
+  key: "modalColoredByLabel",
   get: ({ get }) => {
     const paths = get(labelPaths);
     return paths.reduce(
-      (acc, cur) => ({ ...acc, cur: get(atoms.modalColorByLabel(cur)) }),
+      (acc, cur) => ({ ...acc, [cur]: get(atoms.modalColorByLabel(cur)) }),
       {}
     );
   },

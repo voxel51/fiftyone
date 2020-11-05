@@ -172,6 +172,7 @@ const Sample = ({ sample, metadata, setView }) => {
   });
 
   const [bar, onMouseEnter, onMouseLeave] = useHoverLoad(socket, sample);
+
   return (
     <SampleDiv className="sample" style={showSamples} title={tooltip}>
       <Player51

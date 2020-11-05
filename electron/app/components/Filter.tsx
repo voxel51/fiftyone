@@ -254,11 +254,14 @@ const ClassFilterContainer = styled.div`
   margin: 0.25rem 0;
 `;
 
-const ClassFilter = ({ name, atoms, path }) => {
+const ClassFilter = ({ entry: { path, type, color }, atoms }) => {
   const theme = useContext(ThemeContext);
   const classes = useRecoilValue(selectors.labelClasses(path));
   const [selectedClasses, setSelectedClasses] = useRecoilState(
     atoms.includeLabels(path)
+  );
+  const [colorByLabel, setColorByLabel] = useRecoilState(
+    atoms.colorByLabel(path)
   );
   const [state, send] = useMachine(classFilterMachine);
   const inputRef = useRef();
@@ -348,6 +351,25 @@ const ClassFilter = ({ name, atoms, path }) => {
             </ClassButton>
           ))}
         </Selected>
+        {OBJECT_TYPES.includes(type) && (
+          <FormControlLabel
+            label={
+              <div style={{ lineHeight: "20px", fontSize: 14 }}>
+                Color by label
+              </div>
+            }
+            control={
+              <Checkbox
+                checked={colorByLabel}
+                onChange={() => setColorByLabel(!colorByLabel)}
+                style={{
+                  padding: "0 5px",
+                  color: color,
+                }}
+              />
+            }
+          />
+        )}
       </ClassFilterContainer>
     </>
   );
@@ -440,9 +462,7 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
   const [includeNone, setIncludeNone] = useRecoilState(
     rest.includeNoConfidence(entry.path)
   );
-  const [colorByLabel, setColorByLabel] = useRecoilState(
-    rest.colorByLabel(entry.path)
-  );
+
   const bounds = useRecoilValue(rest.confidenceBounds(entry.path));
   const [labels, setLabels] = useRecoilState(rest.includeLabels(entry.path));
   const fieldIsFiltered = useRecoilValue(rest.fieldIsFiltered(entry.path));
@@ -529,7 +549,7 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
     <animated.div style={{ ...props, overflow }}>
       <div ref={ref}>
         <div style={{ margin: 3 }}>
-          <ClassFilter name={entry.name} atoms={rest} path={entry.path} />
+          <ClassFilter entry={entry} atoms={rest} />
           <HiddenObjectFilter entry={entry} />
           {CONFIDENCE_LABELS.includes(entry.type) && (
             <NamedRangeSlider
@@ -541,25 +561,6 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
               rangeAtom={rest.confidenceRange(entry.path)}
               maxMin={0}
               minMax={1}
-            />
-          )}
-          {OBJECT_TYPES.includes(entry.type) && (
-            <FormControlLabel
-              label={
-                <div style={{ lineHeight: "20px", fontSize: 14 }}>
-                  Color by label
-                </div>
-              }
-              control={
-                <Checkbox
-                  checked={colorByLabel}
-                  onChange={() => setColorByLabel(!colorByLabel)}
-                  style={{
-                    padding: "0 5px",
-                    color: entry.color,
-                  }}
-                />
-              }
             />
           )}
         </div>
