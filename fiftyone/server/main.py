@@ -193,7 +193,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         StateHandler.clients.add(self)
         logger.debug("connected")
         self.write_message({"type": "update", "data": StateHandler.state})
-        print(StateHandler.clients)
 
     def on_close(self):
         StateHandler.clients.remove(self)
@@ -209,12 +208,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         StateHandler.state = fos.StateDescription.from_dict(data).serialize()
         self.write_update()
 
-    def write_update(self):
+    @classmethod
+    def write_update(cls):
         response = {"type": "update", "data": StateHandler.state}
-        for client in StateHandler.clients:
-            if client == self:
-                continue
-            print("writing message", StateHandler.state)
+        for client in cls.clients:
             client.write_message(response)
 
     @_catch_errors

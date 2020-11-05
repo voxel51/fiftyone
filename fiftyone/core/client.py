@@ -8,8 +8,11 @@ Web socket client mixins.
 import asyncio
 from collections import defaultdict
 import logging
+from threading import Thread
 
 from bson import json_util
+from tornado import gen
+from tornado.ioloop import IOLoop
 from tornado.websocket import websocket_connect
 
 from fiftyone.constants import SERVER_NAME
@@ -29,21 +32,28 @@ class HasClient(object):
         self._port = port
         self._data = None
         self._client = None
+        self._url = "ws://%s:%d/%s" % (SERVER_NAME, port, self._HC_NAMESPACE)
 
-        def callback(message):
-            message = json_util.loads(message)
-            print("MESSAGE")
-            if message["type"] == "update":
-                self._data = self._HC_ATTR_TYPE.from_dict(message["data"])
+        async def connect():
+            self._client = await websocket_connect(url=self._url)
 
-        async def init_client():
-            url = "ws://%s:%d/%s" % (SERVER_NAME, port, self._HC_NAMESPACE)
-            self._client = await websocket_connect(
-                url, on_message_callback=callback
-            )
+            while True:
+                message = await self._client.read_message()
 
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(init_client())
+                if message is None:
+                    # None message means the connection was closed
+                    break
+
+                message = json_util.loads(message)
+                if message["type"] == "update":
+                    self._data = self._HC_ATTR_TYPE.from_dict(message["data"])
+
+        def run_client():
+            io_loop = IOLoop(make_current=True)
+            io_loop.run_sync(connect)
+
+        thread = Thread(target=run_client, daemon=True)
+        thread.start()
 
     def __getattr__(self, name):
         """Gets the data via the attribute defined by ``_HC_ATTR_NAME``."""
