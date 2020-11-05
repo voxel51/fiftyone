@@ -6,6 +6,7 @@ import { useMachine } from "@xstate/react";
 import uuid from "uuid-v4";
 import { animated, useSpring } from "react-spring";
 import useMeasure from "react-use-measure";
+import { Checkbox, FormControlLabel } from "@material-ui/core";
 
 import * as atoms from "../recoil/atoms";
 import { getSocket } from "../utils/socket";
@@ -435,6 +436,9 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
   const [includeNone, setIncludeNone] = useRecoilState(
     rest.includeNoConfidence(entry.path)
   );
+  const [colorByLabel, setColorByLabel] = useRecoilState(
+    rest.colorByLabel(entry.path)
+  );
   const bounds = useRecoilValue(rest.confidenceBounds(entry.path));
   const [labels, setLabels] = useRecoilState(rest.includeLabels(entry.path));
   const fieldIsFiltered = useRecoilValue(rest.fieldIsFiltered(entry.path));
@@ -532,6 +536,23 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
             rangeAtom={rest.confidenceRange(entry.path)}
             maxMin={0}
             minMax={1}
+          />
+          <FormControlLabel
+            label={
+              <div style={{ lineHeight: "20px", fontSize: 14 }}>
+                Color by label
+              </div>
+            }
+            control={
+              <Checkbox
+                checked={colorByLabel}
+                onChange={() => setColorByLabel(!colorByLabel)}
+                style={{
+                  padding: "0 5px",
+                  color: entry.color,
+                }}
+              />
+            }
           />
         </div>
       </div>

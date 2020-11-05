@@ -14,6 +14,7 @@ import Filter from "./Filter";
 import NumericFieldFilter from "./NumericFieldFilter";
 
 const GLOBAL_ATOMS = {
+  colorByLabel: atoms.colorByLabel,
   includeLabels: atoms.filterIncludeLabels,
   invertInclude: atoms.filterInvertIncludeLabels,
   includeNoConfidence: atoms.filterLabelIncludeNoConfidence,
@@ -23,6 +24,7 @@ const GLOBAL_ATOMS = {
 };
 
 const MODAL_ATOMS = {
+  colorByLabel: atoms.modalColorByLabel,
   includeLabels: atoms.modalFilterIncludeLabels,
   invertInclude: atoms.modalFilterInvertIncludeLabels,
   includeNoConfidence: atoms.modalFilterLabelIncludeNoConfidence,
