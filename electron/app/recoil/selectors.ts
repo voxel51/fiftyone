@@ -11,6 +11,7 @@ import {
   labelTypeHasColor,
 } from "../utils/labels";
 import { getSocket } from "../utils/socket";
+import { access } from "fs";
 
 export const socket = selector({
   key: "socket",
@@ -214,6 +215,15 @@ export const labelNames = selectorFamily({
   get: (dimension: string) => ({ get }) => {
     const l = get(labels(dimension));
     return l.map((l) => l.name);
+  },
+});
+
+export const labelPaths = selector({
+  key: "labelPaths",
+  get: ({ get }) => {
+    const sampleLabels = get(labelNames("sample"));
+    const frameLabels = get(labelNames("frame"));
+    return sampleLabels.concat(frameLabels.map((l) => "frames." + l));
   },
 });
 
@@ -610,5 +620,27 @@ export const sampleModalFilter = selector({
         return acc;
       }, {});
     };
+  },
+});
+
+export const coloredByLabel = selector({
+  key: "coloredByLabel",
+  get: ({ get }) => {
+    const paths = get(labelPaths);
+    return paths.reduce(
+      (acc, cur) => ({ ...acc, cur: get(atoms.colorByLabel(cur)) }),
+      {}
+    );
+  },
+});
+
+export const modalColoredByLabel = selector({
+  key: "coloredByLabel",
+  get: ({ get }) => {
+    const paths = get(labelPaths);
+    return paths.reduce(
+      (acc, cur) => ({ ...acc, cur: get(atoms.modalColorByLabel(cur)) }),
+      {}
+    );
   },
 });

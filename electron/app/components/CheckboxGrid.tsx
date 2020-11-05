@@ -8,7 +8,7 @@ import { animated, useSpring } from "react-spring";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { SampleContext } from "../utils/context";
-import { labelTypeIsFilterable } from "../utils/labels";
+import { labelTypeIsFilterable, LABEL_LISTS } from "../utils/labels";
 
 import Filter from "./Filter";
 import NumericFieldFilter from "./NumericFieldFilter";
@@ -196,10 +196,7 @@ const Entry = ({ entry, onCheck, modal }) => {
             <span className="count" title={entry.data}>
               {entry.data}
             </span>
-            {!(
-              entry.icon &&
-              !["Detections", "Classifications"].includes(entry.type)
-            ) &&
+            {!(entry.icon && !LABEL_LISTS.includes(entry.type)) &&
             ((entry.type && labelTypeIsFilterable(entry.type)) ||
               (isNumericField && !modal)) ? (
               <ArrowType
