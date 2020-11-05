@@ -17,7 +17,6 @@ export const socket = selector({
   get: ({ get }): WebSocket => {
     return getSocket(get(atoms.port));
   },
-  dangerouslyAllowMutability: true,
 });
 
 export const datasetName = selector({

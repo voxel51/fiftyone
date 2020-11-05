@@ -1,5 +1,5 @@
-import React, { useState, useContext } from "react";
-import { useRecoilValue } from "recoil";
+import React, { useContext, useEffect, useState } from "react";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { Redirect } from "react-router-dom";
 import styled, { ThemeContext } from "styled-components";
 import { animated, useSpring } from "react-spring";
@@ -9,6 +9,7 @@ import * as atoms from "../recoil/atoms";
 import localSnippet from "../snippets/local.py";
 import bashSnippet from "../snippets/remote.bash";
 import remoteSnippet from "../snippets/remote.py";
+import { resetSocket } from "../utils/sockets";
 
 const SectionTitle = styled.div`
   font-size: 2rem;
@@ -103,8 +104,9 @@ const Tab = animated(styled.div`
   border-bottom-style: solid;
 `);
 
-function Setup(props) {
-  const connected = useRecoilValue(atoms.connected);
+function Setup() {
+  const [connected, setConnected] = useRecoilState(atoms.connected);
+  const [port, setPort] = useRecoilState(atoms.port);
   const theme = useContext(ThemeContext);
   const [activeTab, setActiveTab] = useState<string>("local");
   const localProps = useSpring({
@@ -115,6 +117,21 @@ function Setup(props) {
     borderBottomColor: activeTab === "remote" ? theme.brand : theme.background,
     color: activeTab === "remote" ? theme.font : theme.fontDark,
   });
+
+  useEffect(() => {
+    let socket;
+    const interval = setInterval(() => {
+      socket = new WebSocket(`ws://localhost:${port}/state`);
+      socket.addEventListener("open", () => {
+        alert("e");
+        resetSocket(port);
+        setPort(port);
+        setConnected(connected);
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   if (connected) {
     return <Redirect to={routes.DATASET} />;
   }

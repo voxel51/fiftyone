@@ -203,11 +203,11 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     async def on_message(self, message):
         message = FiftyOneJSONEncoder.loads(message)
-        event = getattr(self, message.pop("type"))
+        event = getattr(self, "on_%s" % message.pop("type"))
         logger.debug("%s event" % event.__name__)
         await event(**message)
 
-    async def update(self, data):
+    async def on_update(self, data):
         StateHandler.state = fos.StateDescription.from_dict(data).serialize()
         self.send_updates(ignore=self)
         self.send_statistics()

@@ -1,10 +1,11 @@
 import { remote, ipcRenderer } from "electron";
-import React, { ReactNode, useState, useEffect, useRef } from "react";
+import React, { ReactNode, useState, useRef, useEffect } from "react";
 import { Button, Modal } from "semantic-ui-react";
 import { useRecoilState, useSetRecoilState, useRecoilValue } from "recoil";
 import { ErrorBoundary } from "react-error-boundary";
 import NotificationHub from "../components/NotificationHub";
 import ReactGA from "react-ga";
+import styled from "styled-components";
 
 import Header from "../components/Header";
 import PortForm from "../components/PortForm";
@@ -19,10 +20,18 @@ import * as selectors from "../recoil/selectors";
 import { convertSelectedObjectsListToMap } from "../utils/selection";
 import gaConfig from "../constants/ga.json";
 import Error from "./Error";
+import { scrollbarStyles } from "../components/utils";
 
 type Props = {
   children: ReactNode;
 };
+
+const Body = styled.div`
+  ${scrollbarStyles}
+  padding: 0 2rem 2rem 2rem;
+  overflow-y: auto;
+  height: calc(100% - 73px);
+`;
 
 const useGA = () => {
   const [gaInitialized, setGAInitialized] = useState(false);
@@ -96,9 +105,11 @@ function App(props: Props) {
   ipcRenderer.on("update-session-config", (event, message) => {
     portRef.current.ref.current.click();
   });
-  const bodyStyle = {
-    padding: "0 2rem 2rem 2rem",
-  };
+
+  useEffect(() => {
+    const interval = setInterval(() => console.log(socket.readyState));
+    return clearInterval(interval);
+  });
   return (
     <ErrorBoundary
       FallbackComponent={Error}
@@ -106,7 +117,7 @@ function App(props: Props) {
       resetKeys={[reset]}
     >
       <Header />
-      <div style={bodyStyle}>
+      <Body>
         {children}
         <Modal
           trigger={
@@ -130,7 +141,7 @@ function App(props: Props) {
             </Modal.Description>
           </Modal.Content>
         </Modal>
-      </div>
+      </Body>
       <NotificationHub children={(add) => (addNotification.current = add)} />
     </ErrorBoundary>
   );

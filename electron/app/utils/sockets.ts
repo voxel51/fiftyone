@@ -6,3 +6,7 @@ export function getSocket(port: number): WebSocket {
   }
   return sockets[port];
 }
+
+export function resetSocket(port: number): void {
+  sockets[port] = new WebSocket(`ws://localhost:${port}/state`);
+}
