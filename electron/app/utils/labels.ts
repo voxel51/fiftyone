@@ -25,6 +25,24 @@ export const FILTERABLE_TYPES = [
   "Classifications",
   "Detection",
   "Detections",
+  "Keypoints",
+  "Keypoint",
+  "Polylines",
+  "Polyline",
+];
+
+export const CONFIDENCE_LABELS = [
+  "Classification",
+  "Classifications",
+  "Detection",
+  "Detections",
+];
+
+export const LABEL_LISTS = [
+  "Classifications",
+  "Detections",
+  "Keypoints",
+  "Polylines",
 ];
 
 export const VALID_SCALAR_TYPES = [

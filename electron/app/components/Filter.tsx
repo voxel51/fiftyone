@@ -14,7 +14,7 @@ import { SampleContext } from "../utils/context";
 import { useOutsideClick } from "../utils/hooks";
 import SearchResults from "./ViewBar/ViewStage/SearchResults";
 import { NamedRangeSlider } from "./RangeSlider";
-import { VALID_LIST_TYPES } from "../utils/labels";
+import { CONFIDENCE_LABELS, VALID_LIST_TYPES } from "../utils/labels";
 import { removeObjectIDsFromSelection } from "../utils/selection";
 
 const classFilterMachine = Machine({
@@ -523,16 +523,18 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
         <div style={{ margin: 3 }}>
           <ClassFilter name={entry.name} atoms={rest} path={entry.path} />
           <HiddenObjectFilter entry={entry} />
-          <NamedRangeSlider
-            color={entry.color}
-            name={"Confidence"}
-            valueName={"confidence"}
-            includeNoneAtom={rest.includeNoConfidence(entry.path)}
-            boundsAtom={rest.confidenceBounds(entry.path)}
-            rangeAtom={rest.confidenceRange(entry.path)}
-            maxMin={0}
-            minMax={1}
-          />
+          {CONFIDENCE_LABELS.includes(entry.type) && (
+            <NamedRangeSlider
+              color={entry.color}
+              name={"Confidence"}
+              valueName={"confidence"}
+              includeNoneAtom={rest.includeNoConfidence(entry.path)}
+              boundsAtom={rest.confidenceBounds(entry.path)}
+              rangeAtom={rest.confidenceRange(entry.path)}
+              maxMin={0}
+              minMax={1}
+            />
+          )}
         </div>
       </div>
     </animated.div>
