@@ -235,8 +235,7 @@ def _export_split(
     else:
         person_annos_map = {}
 
-    name = fod.make_unique_dataset_name("cityscapes-" + split)
-    dataset = fod.Dataset(name=name)
+    dataset = fod.Dataset()
     dataset.media_type = fom.IMAGE
 
     has_fine_annos = bool(fine_annos_map)
@@ -284,6 +283,8 @@ def _export_split(
                 sample["gt_person"] = person_annos_map.get(uuid, None)
 
             exporter.export_sample(sample)
+
+    dataset.delete()
 
 
 def _extract_images(images_zip_path, scratch_dir):
