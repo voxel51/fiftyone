@@ -9,7 +9,7 @@ import * as atoms from "../recoil/atoms";
 import localSnippet from "../snippets/local.py";
 import bashSnippet from "../snippets/remote.bash";
 import remoteSnippet from "../snippets/remote.py";
-import { resetSocket } from "../utils/sockets";
+import { setSocket } from "../utils/sockets";
 
 const SectionTitle = styled.div`
   font-size: 2rem;
@@ -123,10 +123,9 @@ function Setup() {
     const interval = setInterval(() => {
       socket = new WebSocket(`ws://localhost:${port}/state`);
       socket.addEventListener("open", () => {
-        alert("e");
-        resetSocket(port);
+        setSocket(port, socket);
         setPort(port);
-        setConnected(connected);
+        setConnected(true);
       });
     }, 1000);
     return () => clearInterval(interval);
