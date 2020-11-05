@@ -35,8 +35,6 @@ export const createStage = (
   fieldNames,
 });
 
-import { getSocket } from "../../utils/socket";
-
 function getStageInfo(context) {
   return fetch(`http://127.0.0.1:${context.port}/stages`).then((response) =>
     response.json()
@@ -173,7 +171,6 @@ const viewBarMachine = Machine(
   {
     id: "stages",
     context: {
-      socket: undefined,
       stages: [],
       stageInfo: undefined,
       activeStage: 0,
@@ -501,7 +498,6 @@ const viewBarMachine = Machine(
         actions: [
           assign({
             port: (_, { port }) => port,
-            socket: (_, { port }) => getSocket(port, "state"),
             view: (_, { view }) => view,
             setView: (_, { setView }) => setView,
             fieldNames: (_, { fieldNames }) => fieldNames,

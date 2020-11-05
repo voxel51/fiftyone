@@ -1,13 +1,13 @@
-import React, { useState, useRef, PureComponent } from "react";
+import React, { useState, useRef, PureComponent, useEffect } from "react";
 import { Bar, BarChart, XAxis, YAxis, Tooltip } from "recharts";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
-import { Dimmer, Header, Loader, Message } from "semantic-ui-react";
+import { Dimmer, Loader } from "semantic-ui-react";
 import _ from "lodash";
 import { scrollbarStyles } from "./utils";
 
-import { useSubscribe } from "../utils/socket";
 import { isFloat } from "../utils/generic";
+import { useMessageHandler, useSendMessage } from "../utils/hooks";
 import * as selectors from "../recoil/selectors";
 
 const Container = styled.div`
@@ -106,26 +106,15 @@ const DistributionsContainer = styled.div`
 `;
 
 const Distributions = ({ group }) => {
-  const socket = useRecoilValue(selectors.socket);
-  const [initialLoad, setInitialLoad] = useState(true);
+  const view = useRecoilValue(selectors.view);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
 
-  const getData = () => {
-    socket.emit("get_distributions", group, (data) => {
-      setInitialLoad(false);
-      setLoading(false);
-      setData(data);
-    });
-  };
+  useSendMessage("distributions", { group }, null, [group, view]);
 
-  if (initialLoad) {
-    getData();
-  }
-
-  useSubscribe(socket, "update", () => {
-    setLoading(true);
-    getData();
+  useMessageHandler("distributions", ({ data }) => {
+    setLoading(false);
+    setData(data);
   });
 
   if (loading) {

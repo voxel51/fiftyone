@@ -26,8 +26,24 @@ export const useEventHandler = (target, eventType, handler) => {
 
 export const useMessageHandler = (type, handler) => {
   const socket = useRecoilValue(selectors.socket);
-  const wrapper = ({ data }) => data.type === type && handler(data);
+  const wrapper = ({ data }) => {
+    data = JSON.parse(data);
+    data.type === type && handler(data);
+  };
   useEventHandler(socket, "message", wrapper);
+};
+
+export const useSendMessage = (type, data, guard = null, deps = []) => {
+  const socket = useRecoilValue(selectors.socket);
+  useEffect(() => {
+    !guard &&
+      socket.send(
+        JSON.stringify({
+          ...data,
+          type,
+        })
+      );
+  }, [guard, ...deps]);
 };
 
 export const useObserve = (target, handler) => {

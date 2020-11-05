@@ -8,7 +8,6 @@ import { animated, useSpring } from "react-spring";
 import useMeasure from "react-use-measure";
 
 import * as atoms from "../recoil/atoms";
-import { getSocket } from "../utils/socket";
 import * as selectors from "../recoil/selectors";
 import { SampleContext } from "../utils/context";
 import { useOutsideClick } from "../utils/hooks";
@@ -429,8 +428,7 @@ const HiddenObjectFilter = ({ entry }) => {
 };
 
 const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
-  const port = useRecoilValue(atoms.port);
-  const socket = getSocket(port, "state");
+  const socket = useRecoilValue(selectors.socket);
   const [range, setRange] = useRecoilState(rest.confidenceRange(entry.path));
   const [includeNone, setIncludeNone] = useRecoilState(
     rest.includeNoConfidence(entry.path)
