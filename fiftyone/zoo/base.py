@@ -328,8 +328,6 @@ class CityscapesDataset(FiftyOneDataset):
             not (False), or only if the ZIP file exists (None)
         person_annos (None): whether to load the personn detections (True), or
             not (False), or only if the ZIP file exists (None)
-        include_unlabeled (False): whether to include unlabeled images in the
-            output dataset
     """
 
     def __init__(
@@ -338,13 +336,11 @@ class CityscapesDataset(FiftyOneDataset):
         fine_annos=None,
         coarse_annos=None,
         person_annos=None,
-        include_unlabeled=False,
     ):
         self.source_dir = source_dir
         self.fine_annos = fine_annos
         self.coarse_annos = coarse_annos
         self.person_annos = person_annos
-        self.include_unlabeled = include_unlabeled
 
     @property
     def name(self):
@@ -371,7 +367,6 @@ class CityscapesDataset(FiftyOneDataset):
                 fine_annos=self.fine_annos,
                 coarse_annos=self.coarse_annos,
                 person_annos=self.person_annos,
-                include_unlabeled=self.include_unlabeled,
             )
 
         # Get metadata

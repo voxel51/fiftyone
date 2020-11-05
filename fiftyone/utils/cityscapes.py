@@ -38,7 +38,6 @@ def parse_cityscapes_dataset(
     fine_annos=None,
     coarse_annos=None,
     person_annos=None,
-    include_unlabeled=False,
 ):
     """Parses the Cityscapes archive(s) in the specified directory and writes
     the requested splits in subdirectories of ``dataset_dir`` in
@@ -68,8 +67,6 @@ def parse_cityscapes_dataset(
             not (False), or only if the ZIP file exists (None)
         person_annos (None): whether to load the personn detections (True), or
             not (False), or only if the ZIP file exists (None)
-        include_unlabeled (False): whether to include unlabeled images in the
-            output dataset
 
     Raises:
         OSError: if any required source files are not present
@@ -113,7 +110,6 @@ def parse_cityscapes_dataset(
             fine_annos_dir,
             coarse_annos_dir,
             person_annos_dir,
-            include_unlabeled,
         )
 
 
@@ -221,54 +217,54 @@ def _export_split(
     fine_annos_dir,
     coarse_annos_dir,
     person_annos_dir,
-    include_unlabeled,
 ):
-    name = fod.make_unique_dataset_name("cityscapes-" + split)
-    dataset = fod.Dataset(name=name)
-    dataset.media_type = fom.IMAGE
-
     images_map = _parse_images(images_dir, split)
 
     if fine_annos_dir:
         fine_annos_map = _parse_fine_annos(fine_annos_dir, split)
-        dataset.add_sample_field(
-            "gt_fine",
-            fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.Polylines,
-        )
     else:
         fine_annos_map = {}
 
     if coarse_annos_dir:
         coarse_annos_map = _parse_coarse_annos(coarse_annos_dir, split)
-        dataset.add_sample_field(
-            "gt_coarse",
-            fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.Polylines,
-        )
     else:
         coarse_annos_map = {}
 
     if person_annos_dir:
         person_annos_map = _parse_person_annos(person_annos_dir, split)
+    else:
+        person_annos_map = {}
+
+    name = fod.make_unique_dataset_name("cityscapes-" + split)
+    dataset = fod.Dataset(name=name)
+    dataset.media_type = fom.IMAGE
+
+    has_fine_annos = bool(fine_annos_map)
+    has_coarse_annos = bool(coarse_annos_map)
+    has_person_annos = bool(person_annos_map)
+
+    if has_fine_annos:
+        dataset.add_sample_field(
+            "gt_fine",
+            fof.EmbeddedDocumentField,
+            embedded_doc_type=fol.Polylines,
+        )
+
+    if has_coarse_annos:
+        dataset.add_sample_field(
+            "gt_coarse",
+            fof.EmbeddedDocumentField,
+            embedded_doc_type=fol.Polylines,
+        )
+
+    if has_person_annos:
         dataset.add_sample_field(
             "gt_person",
             fof.EmbeddedDocumentField,
             embedded_doc_type=fol.Detections,
         )
-    else:
-        person_annos_map = {}
 
-    uuids = (
-        set(fine_annos_map.keys())
-        | set(coarse_annos_map.keys())
-        | set(person_annos_map.keys())
-    )
-
-    if include_unlabeled:
-        uuids |= set(images_map.keys())
-
-    uuids = sorted(uuids)
+    uuids = sorted(images_map.keys())
 
     logger.info("Finalizing split '%s'...", split)
     exporter = foud.FiftyOneDatasetExporter(split_dir, move_media=False)
@@ -278,13 +274,13 @@ def _export_split(
         for uuid in pb(uuids):
             sample = fos.Sample(filepath=images_map[uuid])
 
-            if fine_annos_dir:
+            if has_fine_annos:
                 sample["gt_fine"] = fine_annos_map.get(uuid, None)
 
-            if coarse_annos_dir:
+            if has_coarse_annos:
                 sample["gt_coarse"] = coarse_annos_map.get(uuid, None)
 
-            if person_annos_dir:
+            if has_person_annos:
                 sample["gt_person"] = person_annos_map.get(uuid, None)
 
             exporter.export_sample(sample)
