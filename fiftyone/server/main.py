@@ -376,16 +376,17 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         return {"results": results, "more": more}
 
-    def distributions(self, group):
+    def on_distributions(self, group):
         state = fos.StateDescription.from_dict(StateHandler.state)
+        results = None
         if state.view is not None:
             view = state.view
         elif state.dataset is not None:
             view = state.dataset.view()
         else:
-            return []
+            results = []
 
-        if group == LABELS:
+        if group == LABELS and results is None:
             aggregations = []
             fields = []
             for name, field in view.get_field_schema().items():
@@ -420,11 +421,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                     }
                 )
 
-            return results
-
-        if group == TAGS:
+        elif group == TAGS and results is None:
             result = view.aggregate(foa.CountValues("tags"))
-            return [
+            results = [
                 {
                     "type": "list",
                     "name": result.name,
@@ -438,8 +437,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                     ),
                 }
             ]
+        elif results is None:
+            results = _get_distributions(view, group)
 
-        return _get_distributions(view, group)
+        self.write_message({"type": "distributions", "results": results})
 
 
 def _get_distributions(view, group):

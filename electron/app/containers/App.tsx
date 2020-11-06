@@ -29,8 +29,10 @@ type Props = {
 const Body = styled.div`
   ${scrollbarStyles}
   padding: 0;
-  overflow-y: auto;
-  height: calc(100% - 73px);
+  overflow-y: hidden;
+  flex-grow: 1;
+  display: flex:
+  flex-direction: column;
 `;
 
 const useGA = () => {

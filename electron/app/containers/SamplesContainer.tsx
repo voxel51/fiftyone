@@ -21,7 +21,6 @@ const SidebarColumn = styled.div`
 
 const ContentColumn = styled.div`
   flex: 1;
-  height: 100%;
 `;
 
 const DisplayOptionsWrapper = () => {
@@ -128,9 +127,8 @@ const DisplayOptionsWrapper = () => {
 const Container = styled.div`
   display: flex;
   justify-content: space-between;
-  height: 100%;
   margin-right: -1rem;
-  height: calc(100% - 129px);
+  flex-grow: 1;
 `;
 
 const SamplesContainer = (props) => {

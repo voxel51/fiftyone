@@ -33,6 +33,8 @@ body.noscroll {
 #root {
   height: 100%;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .ui.vertical.inverted.menu .menu span.item {

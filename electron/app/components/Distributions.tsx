@@ -2,13 +2,14 @@ import React, { useState, useRef, PureComponent, useEffect } from "react";
 import { Bar, BarChart, XAxis, YAxis, Tooltip } from "recharts";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
-import { Dimmer, Loader } from "semantic-ui-react";
 import _ from "lodash";
 import { scrollbarStyles } from "./utils";
 
+import Loading from "./Loading";
 import { isFloat } from "../utils/generic";
 import { useMessageHandler, useSendMessage } from "../utils/hooks";
 import * as selectors from "../recoil/selectors";
+import { SearchResults } from "semantic-ui-react";
 
 const Container = styled.div`
   ${scrollbarStyles}
@@ -112,17 +113,17 @@ const Distributions = ({ group }) => {
 
   useSendMessage("distributions", { group }, null, [group, view]);
 
-  useMessageHandler("distributions", ({ data }) => {
+  useMessageHandler("distributions", ({ results }) => {
     setLoading(false);
-    setData(data);
+    setData(results);
   });
 
   if (loading) {
-    return (
-      <Dimmer active className="samples-dimmer" key={-1}>
-        <Loader />
-      </Dimmer>
-    );
+    return <Loading />;
+  }
+
+  if (data.length === 0) {
+    return <Loading text={`No ${group}`} />;
   }
 
   return (
