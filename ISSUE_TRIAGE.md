@@ -52,6 +52,8 @@ contributors.
 
 ### Areas
 
--   `App`: FiftyOne application
--   `Core`: Core `fiftyone` Python library
--   `Server`: FiftyOne server
+-   App: FiftyOne application changes
+-   Build: Build and test infrastructure changes
+-   Core: Core `fiftyone` Python library changes
+-   Documentation: FiftyOne documentation changes
+-   Other

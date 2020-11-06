@@ -2,27 +2,38 @@
 
 FiftyOne is open source and community contributions are welcome!
 
-This page provides useful information about contributing to FifyOne.
+If you have not already, we highly recommend browsing currently active
+[projects](https://github.com/voxel51/fiftyone/projects) to get a sense of what
+is planned for FiftyOne as it is steered toward a 1.0 release. Each project is
+a component of FiftyOne that we, the maintainers, deem critical to a great
+CV/ML tool for both datasets and models.
+
+Please do not be frightened by the procedures outlined below. They are not
+dogmatic and are only meant to help guide development as the project and number
+of contributors grow.
 
 ## Contribution process
 
-The FiftyOne contribution process starts with filing a GitHub issue. We use
-four categories of issues: feature requests, bug reports, documentation fixes,
-and installation issues. Details about each issue type and the issue lifecycle
-are discussed in the [FiftyOne Issue Policy](ISSUE_POLICY.md).
+The FiftyOne contribution process starts with filing a GitHub issue. FiftyOne
+defines four categories of issues: feature requests, bug reports, documentation
+fixes, and installation issues. Details about each issue type and the issue
+lifecycle are discussed in the [FiftyOne Issue Policy](ISSUE_POLICY.md).
+Documentation typos, and generally any small improvements need not a have a
+corresponding issue.
 
-FiftyOne committers actively [triage](ISSUE_TRIAGE.md) and respond to GitHub
-issues. In general, we recommend waiting for feebdack from an FiftyOne
-committer or community member before proceeding to implement a feature or
+FiftyOne maintainers actively [triage](ISSUE_TRIAGE.md) and respond to GitHub
+issues. In general, we recommend waiting for feebdack from a FiftyOne
+maintainer or community member before proceeding to implement a feature or
 patch. This is particularly important for
 [significant changes](#write-designs-for-significant-changes), and will
 typically be labeled during triage with `needs design`.
 
 After you have agreed upon an implementation strategy for your feature or patch
-with an FiftyOne committer, the next step is to introduce your changes (see
+with a FiftyOne maintainer, the next step is to introduce your changes (see
 [developing changes](#developing-changes-to-fiftyone)) as a pull request
-against the FiftyOne Repository. FiftyOne committers actively review pull
-requests.
+against the FiftyOne Repository. If it is a feature request that should be
+associated with a [project](https://github.com/voxel51/fiftyone/projects), a
+FiftyOne maintainer will do so.
 
 Once your pull request against the FiftyOne Repository has been merged, your
 corresponding changes will be automatically included in the next FiftyOne
@@ -37,7 +48,7 @@ and patches for FiftyOne.
 ### Write designs for significant changes
 
 For significant changes to FiftyOne, we recommend outlining a design for the
-feature or patch and discussing it with an FiftyOne committer before investing
+feature or patch and discussing it with a FiftyOne maintainer before investing
 heavily in implementation. During issue triage, we try to proactively identify
 issues that require design by labeling them with `needs design`. This is
 particularly important if your proposed implementation:
@@ -57,8 +68,8 @@ workflows. As new versions of FiftyOne's are developed and released, it is
 important to ensure that users' workflows continue to operate as expected.
 Accordingly, please take care to consider backwards compatibility when
 introducing changes to the FiftyOne codebase. If you are unsure of the
-backwards compatibility implications of a particular change, feel free to ask
-an FiftyOne committer or community member for input.
+backwards compatibility implications of a particular change, feel free to ask a
+FiftyOne maintainer or community member for input.
 
 ## Developing changes to FiftyOne
 
@@ -113,25 +124,10 @@ documentation in all relevant locations.
 
 FiftyOne has a suite of tests in the `fiftyone/tests` subdirectory. These tests
 are run automatically on code in outstanding PRs. When making a PR to FiftyOne
-be sure that all tests are passing. To run these tests locally either run each
-test individually:
+be sure that all tests are passing. See the README in `fiftyone/tests` for
+instructions on running these tests locally.
 
-```bash
-python tests/db_conn_test.py
-python tests/unittests.py
-python tests/stage_tests.py
-...
-```
-
-Or alternatively use [pytest](https://github.com/pytest-dev/pytest) to run the
-entire test suite:
-
-```bash
-cd tests
-pytest
-```
-
-If adding a new feature be sure to write one or more tests for the feature.
+Please be sure to write tests when you add new features.
 
 ### App development and best practices
 
@@ -172,14 +168,3 @@ After installing the App development environment (see the App
 
 Chromatic homepage: Our Chromatic homepage can be found
 [here](https://www.chromatic.com/builds?appId=5f1875aa9080b80022532573)
-
-[//]: # "TODOS"
-[//]: # "-   ESLint configuration"
-[//]: # "-   Webpack cleanup"
-[//]: # "-   Unit tests - see here"
-[//]:
-    #
-    "https://www.learnstorybook.com/design-systems-for-developers/react/en/test/"
-[//]: # "-   Recoil best practices"
-[//]: # "-   TSDoc documentation for non-component code?"
-[//]: # "-   Add custom introduction page to Storybook"
