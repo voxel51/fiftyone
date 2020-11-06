@@ -102,10 +102,11 @@ class StagesHandler(tornado.web.RequestHandler):
 
 
 def _catch_errors(func):
-    def wrapper(self, *args, **kwargs):
+    async def wrapper(self, *args, **kwargs):
         try:
             StateHandler.prev_state = StateHandler.state
-            return func(self, *args, **kwargs)
+            result = await func(self, *args, **kwargs)
+            return result
         except Exception as error:
             StateHandler.state = StateHandler.prev_state
             for client in StateHandler.clients:
@@ -465,21 +466,23 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
 async def _get_distributions(coll, view, group):
     pipeline = DISTRIBUTION_PIPELINES[group]
-    _numeric_distribution_pipelines(view, pipeline)
+    await _numeric_distribution_pipelines(coll, view, pipeline)
 
     pipeline = view._pipeline(pipeline=pipeline)
-    cursor = coll.aggregate(pipeline)
+    response = await coll.aggregate(pipeline).to_list(1)
 
     result = []
-    async for r in cursor:
-        f = r[0].values()
+    for f in response[0].values():
         result += f
 
     return sorted(result, key=lambda d: d["name"])
 
 
-def _numeric_bounds(view, numerics):
+async def _numeric_bounds(coll, view, numerics):
     bounds_pipeline = [{"$facet": {}}]
+    if len(numerics) == 0:
+        return {}
+
     for idx, (k, v) in enumerate(numerics.items()):
         bounds_pipeline[0]["$facet"]["numeric-%d" % idx] = [
             {
@@ -491,16 +494,18 @@ def _numeric_bounds(view, numerics):
             }
         ]
 
-    return list(view._aggregate(bounds_pipeline))[0] if len(numerics) else {}
+    pipeline = view._pipeline(pipeline=bounds_pipeline)
+    result = await coll.aggregate(pipeline).to_list(1)
+    return result[0]
 
 
-def _numeric_distribution_pipelines(view, pipeline, buckets=50):
+async def _numeric_distribution_pipelines(coll, view, pipeline, buckets=50):
     numerics = view._dataset.get_field_schema(ftype=fof.IntField)
     numerics.update(view._dataset.get_field_schema(ftype=fof.FloatField))
 
     # here we query the min and max for each numeric field
     # unfortunately, it looks like this has to be a separate query
-    bounds = _numeric_bounds(view, numerics)
+    bounds = await _numeric_bounds(coll, view, numerics)
 
     # for each numeric field, build the boundaries array with the
     # min/max results when adding the field's sub-pipeline

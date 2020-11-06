@@ -112,7 +112,7 @@ class SampleCollection(object):
         if scalar_result:
             aggregations = [aggregations]
         elif len(aggregations) == 0:
-            return []
+            return False, [], None
 
         # pylint: disable=no-member
         schema = self.get_field_schema()
@@ -133,7 +133,7 @@ class SampleCollection(object):
 
         result_d = {}
 
-        return scalar_result, [{"$facet": pipelines}]
+        return scalar_result, aggregations, [{"$facet": pipelines}]
 
     def _process_aggregations(self, aggregations, result, scalar_result):
         results = []
@@ -165,7 +165,11 @@ class SampleCollection(object):
             :class:`fiftyone.core.aggregations.AggregationResult` instances
             corresponding to the input aggregations
         """
-        scalar_result, facets = self._build_aggregation(aggregations)
+        scalar_result, aggregations, facets = self._build_aggregation(
+            aggregations
+        )
+        if len(aggregations) == 0:
+            return []
         pipeline = self._pipeline(pipeline=facets)
         try:
             # pylint: disable=no-member
@@ -176,7 +180,11 @@ class SampleCollection(object):
         return self._process_aggregations(aggregations, result, scalar_result)
 
     async def _async_aggregate(self, coll, aggregations):
-        scalar_result, facets = self._build_aggregation(aggregations)
+        scalar_result, aggregations, facets = self._build_aggregation(
+            aggregations
+        )
+        if len(aggregations) == 0:
+            return []
         pipeline = self._pipeline(pipeline=facets)
         try:
             # pylint: disable=no-member
