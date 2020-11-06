@@ -246,6 +246,7 @@ const SampleModal = ({
   const frameLabelNameGroups = useRecoilValue(
     selectors.labelNameGroups("frame")
   );
+  const coloredByLabel = useRecoilValue(selectors.modalColoredByLabel);
   const socket = useRecoilValue(selectors.socket);
   const viewCounter = useRecoilValue(atoms.viewCounter);
   const [requested, requestLabels] = useVideoData(socket, sample);
@@ -486,6 +487,7 @@ const SampleModal = ({
               overlay={videoLabels}
               metadata={metadata}
               colorMap={colorMap}
+              coloredByLabel={coloredByLabel}
               activeLabels={activeLabels}
               activeFrameLabels={activeFrameLabels}
               fieldSchema={fieldSchema}

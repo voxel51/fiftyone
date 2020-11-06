@@ -50,6 +50,7 @@ export default ({
   onMouseLeave = () => {},
   activeLabels,
   activeFrameLabels,
+  coloredByLabel,
   fieldSchema = {},
   filterSelector,
   playerRef,
@@ -127,6 +128,7 @@ export default ({
     } else {
       player.updateOptions({
         activeLabels: playerActiveLabels,
+        coloredByLabel,
         filter,
         colorMap,
         fps,
@@ -135,7 +137,15 @@ export default ({
         player.updateOverlay(overlay);
       }
     }
-  }, [player, filter, overlay, playerActiveLabels, colorMap, fps]);
+  }, [
+    player,
+    filter,
+    overlay,
+    playerActiveLabels,
+    colorMap,
+    coloredByLabel,
+    fps,
+  ]);
 
   useEffect(() => {
     if (player && selectedObjects) {

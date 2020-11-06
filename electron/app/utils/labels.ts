@@ -20,6 +20,15 @@ export const VALID_LABEL_TYPES = [
   ...VALID_MASK_TYPES,
 ];
 
+export const OBJECT_TYPES = [
+  "Detection",
+  "Detections",
+  "Keypoints",
+  "Keypoint",
+  "Polylines",
+  "Polyline",
+];
+
 export const FILTERABLE_TYPES = [
   "Classification",
   "Classifications",

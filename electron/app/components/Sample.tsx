@@ -114,6 +114,7 @@ const Sample = ({ sample, metadata, setView }) => {
   const socket = useRecoilValue(selectors.socket);
   const filter = useRecoilValue(selectors.labelFilters);
   const colorMap = useRecoilValue(atoms.colorMap);
+  const coloredByLabel = useRecoilValue(selectors.coloredByLabel);
   const activeLabels = useRecoilValue(atoms.activeLabels("sample"));
   const activeFrameLabels = useRecoilValue(atoms.activeLabels("frame"));
   const activeTags = useRecoilValue(atoms.activeTags);
@@ -191,6 +192,7 @@ const Sample = ({ sample, metadata, setView }) => {
   });
 
   const [bar, onMouseEnter, onMouseLeave] = useHoverLoad(socket, sample);
+
   return (
     <SampleDiv className="sample" style={showSamples} title={tooltip}>
       <Player51
@@ -205,6 +207,7 @@ const Sample = ({ sample, metadata, setView }) => {
         thumbnail={true}
         activeLabels={activeLabels}
         activeFrameLabels={activeFrameLabels}
+        coloredByLabel={coloredByLabel}
         {...eventHandlers}
         filterSelector={selectors.labelFilters}
         onMouseEnter={onMouseEnter}

@@ -6,6 +6,7 @@ import { useMachine } from "@xstate/react";
 import uuid from "uuid-v4";
 import { animated, useSpring } from "react-spring";
 import useMeasure from "react-use-measure";
+import { Checkbox, FormControlLabel } from "@material-ui/core";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
@@ -13,7 +14,11 @@ import { SampleContext } from "../utils/context";
 import { useOutsideClick } from "../utils/hooks";
 import SearchResults from "./ViewBar/ViewStage/SearchResults";
 import { NamedRangeSlider } from "./RangeSlider";
-import { CONFIDENCE_LABELS, VALID_LIST_TYPES } from "../utils/labels";
+import {
+  CONFIDENCE_LABELS,
+  OBJECT_TYPES,
+  VALID_LIST_TYPES,
+} from "../utils/labels";
 import { removeObjectIDsFromSelection } from "../utils/selection";
 
 const classFilterMachine = Machine({
@@ -248,11 +253,23 @@ const ClassFilterContainer = styled.div`
   margin: 0.25rem 0;
 `;
 
-const ClassFilter = ({ name, atoms, path }) => {
+const BoxedContainer = styled.div`
+  background: ${({ theme }) => theme.backgroundDark};
+  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
+  border: 1px solid #191c1f;
+  border-radius: 2px;
+  color: ${({ theme }) => theme.fontDark};
+  margin-top: 0.25rem;
+`;
+
+const ClassFilter = ({ entry: { path, type, color }, atoms }) => {
   const theme = useContext(ThemeContext);
   const classes = useRecoilValue(selectors.labelClasses(path));
   const [selectedClasses, setSelectedClasses] = useRecoilState(
     atoms.includeLabels(path)
+  );
+  const [colorByLabel, setColorByLabel] = useRecoilState(
+    atoms.colorByLabel(path)
   );
   const [state, send] = useMachine(classFilterMachine);
   const inputRef = useRef();
@@ -342,6 +359,27 @@ const ClassFilter = ({ name, atoms, path }) => {
             </ClassButton>
           ))}
         </Selected>
+        {OBJECT_TYPES.includes(type) && (
+          <BoxedContainer>
+            <FormControlLabel
+              label={
+                <div style={{ lineHeight: "20px", fontSize: 14 }}>
+                  Color by label
+                </div>
+              }
+              control={
+                <Checkbox
+                  checked={colorByLabel}
+                  onChange={() => setColorByLabel(!colorByLabel)}
+                  style={{
+                    padding: "0 5px",
+                    color: color,
+                  }}
+                />
+              }
+            />
+          </BoxedContainer>
+        )}
       </ClassFilterContainer>
     </>
   );
@@ -433,6 +471,7 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
   const [includeNone, setIncludeNone] = useRecoilState(
     rest.includeNoConfidence(entry.path)
   );
+
   const bounds = useRecoilValue(rest.confidenceBounds(entry.path));
   const [labels, setLabels] = useRecoilState(rest.includeLabels(entry.path));
   const fieldIsFiltered = useRecoilValue(rest.fieldIsFiltered(entry.path));
@@ -514,7 +553,7 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
     <animated.div style={{ ...props, overflow }}>
       <div ref={ref}>
         <div style={{ margin: 3 }}>
-          <ClassFilter name={entry.name} atoms={rest} path={entry.path} />
+          <ClassFilter entry={entry} atoms={rest} />
           <HiddenObjectFilter entry={entry} />
           {CONFIDENCE_LABELS.includes(entry.type) && (
             <NamedRangeSlider

@@ -216,6 +216,15 @@ export const labelNames = selectorFamily({
   },
 });
 
+export const labelPaths = selector({
+  key: "labelPaths",
+  get: ({ get }) => {
+    const sampleLabels = get(labelNames("sample"));
+    const frameLabels = get(labelNames("frame"));
+    return sampleLabels.concat(frameLabels.map((l) => "frames." + l));
+  },
+});
+
 export const labelTypes = selectorFamily({
   key: "labelTypes",
   get: (dimension: string) => ({ get }) => {
@@ -370,9 +379,12 @@ export const modalLabelFilters = selector({
     return filters;
   },
   set: ({ get, set }, _) => {
-    const active = get(atoms.activeLabels("sample"));
-    set(atoms.modalActiveLabels("sample"), active);
-    for (const label in active) {
+    const paths = get(labelPaths);
+    const activeLabels = get(atoms.activeLabels("sample"));
+    set(atoms.modalActiveLabels("sample"), activeLabels);
+    const activeFrameLabels = get(atoms.activeLabels("frame"));
+    set(atoms.modalActiveLabels("frame"), activeFrameLabels);
+    for (const label of paths) {
       set(
         atoms.modalFilterLabelConfidenceRange(label),
         get(atoms.filterLabelConfidenceRange(label))
@@ -387,6 +399,8 @@ export const modalLabelFilters = selector({
         atoms.modalFilterIncludeLabels(label),
         get(atoms.filterIncludeLabels(label))
       );
+
+      set(atoms.modalColorByLabel(label), get(atoms.colorByLabel(label)));
     }
   },
 });
@@ -609,5 +623,27 @@ export const sampleModalFilter = selector({
         return acc;
       }, {});
     };
+  },
+});
+
+export const coloredByLabel = selector({
+  key: "coloredByLabel",
+  get: ({ get }) => {
+    const paths = get(labelPaths);
+    return paths.reduce(
+      (acc, cur) => ({ ...acc, [cur]: get(atoms.colorByLabel(cur)) }),
+      {}
+    );
+  },
+});
+
+export const modalColoredByLabel = selector({
+  key: "modalColoredByLabel",
+  get: ({ get }) => {
+    const paths = get(labelPaths);
+    return paths.reduce(
+      (acc, cur) => ({ ...acc, [cur]: get(atoms.modalColorByLabel(cur)) }),
+      {}
+    );
   },
 });
