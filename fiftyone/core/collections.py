@@ -180,7 +180,8 @@ class SampleCollection(object):
         pipeline = self._pipeline(pipeline=facets)
         try:
             # pylint: disable=no-member
-            result = await next(coll.aggregate(pipeline))
+            result = await coll.aggregate(pipeline).to_list(1)
+            result = result[0]
         except StopIteration:
             pass
 

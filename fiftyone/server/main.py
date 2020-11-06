@@ -5,6 +5,7 @@ FiftyOne Tornado server.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import asyncio
 import argparse
 from collections import defaultdict
 from copy import copy
@@ -206,7 +207,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     @property
     def sample_collection(self):
         db = self.settings["db"]
-        return db[StateHandler.dataset._sample_collection_name]
+        state = fos.StateDescription.from_dict(StateHandler.state)
+        return db[state.dataset._sample_collection_name]
 
     def write_message(self, message):
         message = self.dumps(message)
@@ -225,19 +227,22 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         logger.debug("disconnected")
 
     @_catch_errors
-    def on_message(self, message):
+    async def on_message(self, message):
         message = self.loads(message)
         event = getattr(self, "on_%s" % message.pop("type"))
         logger.debug("%s event" % event.__name__)
-        event(**message)
+        await event(**message)
 
-    def on_update(self, state):
+    async def on_update(self, state):
         StateHandler.state = state
-        self.send_updates(ignore=self)
         state = fos.StateDescription.from_dict(state)
-        self.send_statistics(state.view)
+        executions = [
+            self.send_statistics(state.view),
+            self.send_updates(ignore=self),
+        ]
+        asyncio.gather(*executions)
 
-    def on_fiftyone(self):
+    async def on_fiftyone(self):
         self.write_message(
             {
                 "type": "fiftyone",
@@ -246,7 +251,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         )
 
     @classmethod
-    def send_updates(cls, ignore=None):
+    async def send_updates(cls, ignore=None):
         response = {"type": "update", "state": StateHandler.state}
         for client in cls.clients:
             if client == ignore:
@@ -254,7 +259,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             client.write_message(response)
 
     @classmethod
-    def send_statistics(cls, stages):
+    async def send_statistics(cls, stages):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.dataset is None:
             return []
