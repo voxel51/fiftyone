@@ -29,6 +29,7 @@ from .core.dataset import (
     delete_datasets,
     delete_non_persistent_datasets,
     get_default_dataset_name,
+    make_unique_dataset_name,
     get_default_dataset_dir,
 )
 from .core.expressions import (

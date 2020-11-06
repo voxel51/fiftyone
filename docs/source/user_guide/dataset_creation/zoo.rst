@@ -125,7 +125,9 @@ Getting information about zoo datasets
 
     Each zoo dataset is represented by a
     :class:`ZooDataset <fiftyone.zoo.ZooDataset>` subclass, which contains
-    information about the dataset, its available splits, and more.
+    information about the dataset, its available splits, and more. You can
+    access this object for a given dataset via the
+    :meth:`get_zoo_dataset() <fiftyone.zoo.get_zoo_dataset>` method.
 
     For example, let's print some information about the CIFAR-10 dataset:
 
@@ -137,7 +139,7 @@ Getting information about zoo datasets
         zoo_dataset = foz.get_zoo_dataset("cifar10")
 
         print("***** Dataset description *****")
-        print(zoo_dataset.__doc__)
+        print("    " + zoo_dataset.__doc__)
 
         print("***** Supported splits *****")
         print("%s\n" % ", ".join(zoo_dataset.supported_splits))
@@ -145,7 +147,7 @@ Getting information about zoo datasets
     .. code-block:: text
 
         ***** Dataset description *****
-        The CIFAR-10 dataset consists of 60000 32 x 32 color images in 10
+            The CIFAR-10 dataset consists of 60000 32 x 32 color images in 10
             classes, with 6000 images per class. There are 50000 training images and
             10000 test images.
 
@@ -227,7 +229,7 @@ Getting information about zoo datasets
         $ fiftyone zoo info cifar10
 
         ***** Dataset description *****
-        The CIFAR-10 dataset consists of 60000 32 x 32 color images in 10
+            The CIFAR-10 dataset consists of 60000 32 x 32 color images in 10
             classes, with 6000 images per class. There are 50000 training images and
             10000 test images.
 
@@ -404,6 +406,41 @@ Loading zoo datasets
         Loading 'cifar10' split 'test'
          100% |██████████████████████████████████████████████| 10/10 [3.2ms elapsed, 0s remaining, 2.9K samples/s]
         Dataset 'cifar10-test' created
+
+Loading zoo datasets with manual downloads
+------------------------------------------
+
+Some zoo datasets such as :class:`BDD100K <fiftyone.zoo.base.BDD100KDataset>`
+and :class:`Cityscapes <fiftyone.zoo.base.CityscapesDataset>` require that you
+create accounts on a website and manually download the source files. In such
+cases, the :class:`ZooDataset <fiftyone.zoo.ZooDataset>` class will provide
+additional argument(s) that let you specify the paths to these files that you
+have manually downloaded on disk.
+
+You can load these datasets into FiftyOne by first calling
+:meth:`download_zoo_dataset() <fiftyone.zoo.download_zoo_dataset>` with the
+appropriate keyword arguments (which are passed to the underlying
+:class:`ZooDataset <fiftyone.zoo.ZooDataset>` constructor) to wrangle the raw
+download into FiftyOne format, and then calling
+:meth:`load_zoo_dataset() <fiftyone.zoo.load_zoo_dataset>` or using
+:ref:`fiftyone zoo load <cli-fiftyone-zoo-load>` to load the dataset into
+FiftyOne.
+
+For example, the following snippet shows how to load the BDD100K dataset from
+the zoo:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.zoo as foz
+
+    # First parse the manually downloaded files in `source_dir`
+    foz.download_zoo_dataset(
+        "bdd100k", source_dir="/path/to/dir-with-bdd100k-files"
+    )
+
+    # Now load into FiftyOne
+    dataset = foz.load_zoo_dataset("bdd100k", split="validation")
 
 Controlling where zoo datasets are downloaded
 ---------------------------------------------
