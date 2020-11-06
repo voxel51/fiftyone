@@ -6,7 +6,7 @@ import {
   useSetRecoilState,
   useResetRecoilState,
 } from "recoil";
-import { Message, Segment } from "semantic-ui-react";
+import { animated, useSpring } from "react-spring";
 import styled from "styled-components";
 
 import { PLOTS } from "../Routes";
@@ -19,6 +19,7 @@ import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { VALID_LABEL_TYPES } from "../utils/labels";
 import { useSendMessage } from "../utils/hooks";
+import logo from "../logo.png";
 
 const Body = styled.div`
   padding: 0 1rem;
@@ -26,11 +27,45 @@ const Body = styled.div`
   height: calc(100% - 131px);
 `;
 
+const LogoImg = animated(styled.img`
+  width: 4rem;
+  height: 4rem;
+  margin: auto;
+  display: block;
+  transform-origin: 50% 50%;
+  border-color: ${({ theme }) => theme.backgroundDarkBorder};
+`);
+
+const NoDatasetContainer = styled.div`
+  display: flex;
+  width: 100%;
+  height: 100%;
+`;
+
+const NoDatasetText = styled.div`
+  padding-top: 1rem;
+  font-weight: bold;
+  text-align: center;
+`;
+
 function NoDataset() {
+  const [resetOrbit, setResetOrbit] = useState(false);
+  const props = useSpring({
+    from: { transform: "rotate(0deg)" },
+    transform: "rotate(360deg)",
+    onRest: () => setResetOrbit((state) => !state),
+    reset: resetOrbit,
+    config: {
+      duration: 3000,
+    },
+  });
   return (
-    <Segment>
-      <Message>No dataset loaded</Message>
-    </Segment>
+    <NoDatasetContainer>
+      <div style={{ margin: "auto", width: "100%" }}>
+        <LogoImg style={props} src={logo} />
+        <NoDatasetText>No dataset loaded</NoDatasetText>
+      </div>
+    </NoDatasetContainer>
   );
 }
 
@@ -190,30 +225,24 @@ function Dataset(props) {
         </ModalWrapper>
       ) : null}
       {hasDataset && <HorizontalNav entries={PLOTS} />}
-      <Body>
-        <Switch>
-          {hasDataset ? (
-            <>
-              <Route path={routes.DATASET}>
-                <SamplesContainer
-                  {...props.socket}
-                  setView={(sample, metadata) =>
-                    setModal({
-                      ...modal,
-                      visible: true,
-                      sample,
-                      metadata,
-                    })
-                  }
-                  colorMap={colorMap}
-                />
-              </Route>
-            </>
-          ) : (
-            <NoDataset />
-          )}
-        </Switch>
-      </Body>
+      {hasDataset ? (
+        <Body>
+          <SamplesContainer
+            {...props.socket}
+            setView={(sample, metadata) =>
+              setModal({
+                ...modal,
+                visible: true,
+                sample,
+                metadata,
+              })
+            }
+            colorMap={colorMap}
+          />
+        </Body>
+      ) : (
+        <NoDataset />
+      )}
     </>
   );
 }
