@@ -96,7 +96,7 @@ def download_zoo_dataset(
             you specified to see the supported splits
         dataset_dir (None): the directory into which to download the dataset.
             By default, :func:`fiftyone.core.dataset.get_default_dataset_dir`
-            is used
+            is used to select the directory
         overwrite (False): whether to overwrite any existing files
         cleanup (True): whether to cleanup any temporary files generated during
             download
@@ -113,14 +113,13 @@ def download_zoo_dataset(
     zoo_dataset, dataset_dir = _parse_dataset_details(
         name, dataset_dir, **kwargs
     )
-    info = zoo_dataset.download_and_prepare(
-        dataset_dir,
+    return zoo_dataset.download_and_prepare(
+        dataset_dir=dataset_dir,
         split=split,
         splits=splits,
         overwrite=overwrite,
         cleanup=cleanup,
     )
-    return info, dataset_dir
 
 
 def load_zoo_dataset(
@@ -161,7 +160,8 @@ def load_zoo_dataset(
             constructed based on the dataset and split(s) you are loading
         dataset_dir (None): the directory in which the dataset is stored or
             will be downloaded. By default,
-            :func:`fiftyone.core.dataset.get_default_dataset_dir` is used
+            :func:`fiftyone.core.dataset.get_default_dataset_dir` is used to
+            select the directory
         download_if_necessary (True): whether to download the dataset if it is
             not found in the specified dataset directory
         drop_existing_dataset (False): whether to drop an existing dataset
@@ -276,7 +276,7 @@ def load_zoo_dataset_info(name, dataset_dir=None):
         name: the name of the zoo dataset
         dataset_dir (None): the directory in which the dataset is stored. By
             default, :func:`fiftyone.core.dataset.get_default_dataset_dir` is
-            used
+            used to select the directory
 
     Returns:
         the :class:`ZooDatasetInfo` for the dataset
@@ -664,20 +664,22 @@ class ZooDataset(object):
 
     def download_and_prepare(
         self,
-        dataset_dir,
+        dataset_dir=None,
         split=None,
         splits=None,
         overwrite=False,
         cleanup=True,
     ):
-        """Downloads the dataset and prepares it for use in the given
-        directory.
+        """Downloads the dataset and prepares it for use.
 
         If the requested splits have already been downloaded, they are not
         re-downloaded.
 
         Args:
-            dataset_dir: the directory in which to construct the dataset
+            dataset_dir (None): the directory in which to construct the
+                dataset. By default,
+                :func:`fiftyone.core.dataset.get_default_dataset_dir` is used
+                to select the directory
             split (None) a split to download, if applicable. If neither
                 ``split`` nor ``splits`` are provided, the full dataset is
                 downloaded
@@ -689,8 +691,14 @@ class ZooDataset(object):
                 during download
 
         Returns:
-            the :class:`ZooDatasetInfo` for the dataset
+            tuple of
+
+            -   info: the :class:`ZooDatasetInfo` for the dataset
+            -   dataset_dir: the directory containing the dataset
         """
+        if dataset_dir is None:
+            dataset_dir = fod.get_default_dataset_dir(self.name)
+
         # Parse splits
         splits = _parse_splits(split, splits)
         if splits:
@@ -789,7 +797,7 @@ class ZooDataset(object):
         if cleanup:
             etau.delete_dir(scratch_dir)
 
-        return info
+        return info, dataset_dir
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         """Internal implementation of downloading the dataset and preparing it
