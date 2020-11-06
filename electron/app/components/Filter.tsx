@@ -438,7 +438,6 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
   const bounds = useRecoilValue(rest.confidenceBounds(entry.path));
   const [labels, setLabels] = useRecoilState(rest.includeLabels(entry.path));
   const fieldIsFiltered = useRecoilValue(rest.fieldIsFiltered(entry.path));
-  const mediaType = useRecoilValue(selectors.mediaType);
   const setExtendedDatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
 
   const [stateDescription, setStateDescription] = useRecoilState(
@@ -481,12 +480,8 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
       const newState = JSON.parse(JSON.stringify(stateDescription));
       if (!fieldIsFiltered && !(entry.name in newState.filters)) return;
       setExtendedDatasetStats([]);
-      let fieldName = entry.name;
-      if (mediaType === "video") {
-        fieldName = "frames." + entry.name;
-      }
       const filter = makeFilter(
-        fieldName,
+        entry.path,
         entry.type,
         labels,
         range,
@@ -494,13 +489,13 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
         hasBounds
       );
       if (
-        JSON.stringify(filter) === JSON.stringify(newState.filters[entry.name])
+        JSON.stringify(filter) === JSON.stringify(newState.filters[entry.path])
       )
         return;
-      if (!fieldIsFiltered && entry.name in newState.filters) {
-        delete newState.filters[entry.name];
+      if (!fieldIsFiltered && entry.path in newState.filters) {
+        delete newState.filters[entry.path];
       } else {
-        newState.filters[entry.name] = filter;
+        newState.filters[entry.path] = filter;
       }
       setStateDescription(newState);
       socket.emit("update", {

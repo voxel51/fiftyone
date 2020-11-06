@@ -272,7 +272,7 @@ class StateController(Namespace):
         view = fov.DatasetView(state.dataset)
         for stage_dict in stages:
             stage = fosg.ViewStage._from_dict(stage_dict)
-            view.add_stage(stage)
+            view = view.add_stage(stage)
 
         return fos.DatasetStatistics(view).serialize()["stats"]
 
