@@ -332,6 +332,33 @@ def get_zoo_dataset(name, **kwargs):
     raise ValueError("Dataset '%s' not found in the zoo" % name)
 
 
+def delete_zoo_dataset(name, split=None):
+    """Deletes the zoo dataset from local disk, if necessary.
+
+    If a ``split`` is provided, only that split is deleted.
+
+    Args:
+        name: the name of the zoo dataset
+        split (None) a valid dataset split
+    """
+    if split is None:
+        # Delete root dataset directory
+        dataset_dir = find_zoo_dataset(name)
+        etau.delete_dir(dataset_dir)
+        return
+
+    # Delete split directory
+    split_dir = find_zoo_dataset(name, split=split)
+    etau.delete_dir(split_dir)
+
+    # Remove split from ZooDatasetInfo
+    dataset_dir = os.path.dirname(split_dir)
+    info = ZooDataset.load_info(dataset_dir)
+    info.remove_split(split)
+    info_path = ZooDataset.get_info_path(dataset_dir)
+    info.write_json(info_path, pretty_print=True)
+
+
 def _parse_splits(split, splits):
     if split is None and splits is None:
         return None
@@ -487,6 +514,24 @@ class ZooDatasetInfo(etas.Serializable):
             and split in self.downloaded_splits
         )
 
+    def add_split(self, split_info):
+        """Adds the split to the dataset.
+
+        Args:
+            split_info: a :class:`ZooDatasetSplitInfo
+        """
+        self.downloaded_splits[split_info.split] = split_info
+        self._compute_num_samples()
+
+    def remove_split(self, split):
+        """Removes the split from the dataset.
+
+        Args:
+            split: the name of the split
+        """
+        self.downloaded_splits.pop(split)
+        self._compute_num_samples()
+
     def attributes(self):
         """Returns a list of class attributes to be serialized.
 
@@ -549,6 +594,11 @@ class ZooDatasetInfo(etas.Serializable):
             downloaded_splits=downloaded_splits,
             parameters=d.get("parameters", None),
             classes=d.get("classes", None),
+        )
+
+    def _compute_num_samples(self):
+        self.num_samples = sum(
+            si.num_samples for si in self.downloaded_splits.values()
         )
 
 
@@ -763,12 +813,8 @@ class ZooDataset(object):
                 if classes and not info.classes:
                     info.classes = classes
 
-                info.downloaded_splits[split] = ZooDatasetSplitInfo(
-                    split, num_samples
-                )
-                info.num_samples = sum(
-                    si.num_samples for si in info.downloaded_splits.values()
-                )
+                split_info = ZooDatasetSplitInfo(split, num_samples)
+                info.add_split(split_info)
 
                 write_info = True
         else:
