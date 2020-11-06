@@ -9,6 +9,7 @@ import asyncio
 from collections import defaultdict
 import logging
 from threading import Thread
+import time
 
 from bson import json_util
 from tornado import gen
@@ -58,6 +59,8 @@ class HasClient(object):
     def __getattr__(self, name):
         """Gets the data via the attribute defined by ``_HC_ATTR_NAME``."""
         if name == self._HC_ATTR_NAME:
+            while self._data is None:
+                time.sleep(0.2)
             return self._data
 
         return None
@@ -72,6 +75,8 @@ class HasClient(object):
                     "Client expected type %s, but got type %s"
                     % (self._HC_ATTR_TYPE, type(value))
                 )
+            while self._data is None:
+                time.sleep(0.2)
             self._data = value
             self._client.write_message(
                 json_util.dumps({"type": "update", "state": value.serialize()})
