@@ -241,7 +241,7 @@ def export_to_labelbox(
         etau.ensure_empty_file(json_path)
 
         def flush_fcn(annos):
-            etas.write_ndjson(json_path, annos, append=True)
+            etas.write_ndjson(annos, json_path, append=True)
 
     else:
         # Upload to Labelbox server
