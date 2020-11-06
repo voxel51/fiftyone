@@ -271,9 +271,8 @@ class DatasetView(foc.SampleCollection):
         d["samples"] = samples
         return d
 
-    def _aggregate(
-        self, pipeline=None, hide_frames=False, squash_frames=False
-    ):
+    def _pipeline(self, pipeline=None, hide_frames=False, squash_frames=False):
+
         _pipeline = []
 
         _frames_pipeline = []
@@ -283,6 +282,18 @@ class DatasetView(foc.SampleCollection):
         if pipeline is not None:
             _pipeline.extend(pipeline)
 
+        return self._dataset._pipeline(
+            pipeline=_pipeline,
+            hide_frames=hide_frames,
+            squash_frames=squash_frames,
+        )
+
+    def _aggregate(
+        self, pipeline=None, hide_frames=False, squash_frames=False
+    ):
+        _pipeline = self._pipeline(
+            pipeline=None, hide_frames=False, squash_frames=False
+        )
         return self._dataset._aggregate(_pipeline, hide_frames, squash_frames)
 
     @property

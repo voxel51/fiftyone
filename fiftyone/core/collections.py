@@ -107,24 +107,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement info")
 
-    def aggregate(self, aggregations):
-        """Aggregates one or more
-        :class:`fiftyone.core.aggregations.Aggregation` instances.
-
-        Note that it is best practice to group aggregations into a single call
-        to :meth:`aggregate() <aggregate>`, as this will be more efficient than
-        performing multiple aggregations in series.
-
-        Args:
-            aggregations: an :class:`fiftyone.core.aggregations.Aggregation` or
-                iterable of :class:`<fiftyone.core.aggregations.Aggregation>`
-                instances
-
-        Returns:
-            an :class:`fiftyone.core.aggregations.AggregationResult` or list of
-            :class:`fiftyone.core.aggregations.AggregationResult` instances
-            corresponding to the input aggregations
-        """
+    def _build_aggregation(self, aggregations):
         scalar_result = isinstance(aggregations, Aggregation)
         if scalar_result:
             aggregations = [aggregations]
@@ -149,22 +132,59 @@ class SampleCollection(object):
             )
 
         result_d = {}
-        try:
-            # pylint: disable=no-member
-            result_d = next(self._aggregate([{"$facet": pipelines}]))
-        except StopIteration:
-            pass
 
+        return scalar_result, [{"$facet": pipelines}]
+
+    def _process_aggregations(self, aggregations, result, scalar_result):
         results = []
         for agg in aggregations:
             try:
                 results.append(
-                    agg._get_result(result_d[agg._get_output_field(self)][0])
+                    agg._get_result(result[agg._get_output_field(self)][0])
                 )
             except:
                 results.append(agg._get_default_result())
 
         return results[0] if scalar_result else results
+
+    def aggregate(self, aggregations):
+        """Aggregates one or more
+        :class:`fiftyone.core.aggregations.Aggregation` instances.
+
+        Note that it is best practice to group aggregations into a single call
+        to :meth:`aggregate() <aggregate>`, as this will be more efficient than
+        performing multiple aggregations in series.
+
+        Args:
+            aggregations: an :class:`fiftyone.core.aggregations.Aggregation` or
+                iterable of :class:`<fiftyone.core.aggregations.Aggregation>`
+                instances
+
+        Returns:
+            an :class:`fiftyone.core.aggregations.AggregationResult` or list of
+            :class:`fiftyone.core.aggregations.AggregationResult` instances
+            corresponding to the input aggregations
+        """
+        scalar_result, facets = self._build_aggregation(aggregations)
+        pipeline = self._pipeline(pipeline=facets)
+        try:
+            # pylint: disable=no-member
+            result = next(self._dataset._sample_collection.aggregate(pipeline))
+        except StopIteration:
+            pass
+
+        return self._process_aggregations(aggregations, result, scalar_result)
+
+    async def _async_aggregate(self, coll, aggregations):
+        scalar_result, facets = self._build_aggregation(aggregations)
+        pipeline = self._pipeline(pipeline=facets)
+        try:
+            # pylint: disable=no-member
+            result = await next(coll.aggregate(pipeline))
+        except StopIteration:
+            pass
+
+        return self._process_aggregations(aggregations, result, scalar_result)
 
     def summary(self):
         """Returns a string summary of the collection.

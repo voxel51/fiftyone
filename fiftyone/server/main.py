@@ -203,6 +203,11 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     def loads(data):
         return FiftyOneJSONEncoder.loads(data)
 
+    @property
+    def sample_collection(self):
+        db = self.settings["db"]
+        return db[StateHandler.dataset._sample_collection_name]
+
     def write_message(self, message):
         message = self.dumps(message)
         return super().write_message(message)
@@ -254,6 +259,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         if state.dataset is None:
             return []
 
+        if stages is None:
+            stages = []
+
         view = fov.DatasetView(state.dataset)
         for stage_dict in stages:
             stage = fosg.ViewStage._from_dict(stage_dict)
@@ -261,7 +269,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         stats = fos.DatasetStatistics(view).serialize()["stats"]
         for client in cls.clients:
-            self.write_message({"type": "statistics", "data": stats})
+            client.write_message({"type": "statistics", "data": stats})
 
     def on_add_selection(self, _id):
         state = fos.StateDescription.from_dict(StateHandler.state)
@@ -376,7 +384,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         return {"results": results, "more": more}
 
-    def on_distributions(self, group):
+    async def on_distributions(self, group):
         state = fos.StateDescription.from_dict(StateHandler.state)
         results = None
         if state.view is not None:
@@ -405,7 +413,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                         fields.append(field)
 
             results = []
-            for idx, result in enumerate(view.aggregate(aggregations)):
+            response = await view._async_aggregate(
+                self.sample_collection, aggregations
+            )
+            for idx, result in enumerate(response):
                 results.append(
                     {
                         "type": fields[idx].document_type.__name__,
@@ -422,7 +433,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                 )
 
         elif group == TAGS and results is None:
-            result = view.aggregate(foa.CountValues("tags"))
+            result = await view._async_aggregate(
+                self.sample_collection, foa.CountValues("tags")
+            )
             results = [
                 {
                     "type": "list",
@@ -438,33 +451,24 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                 }
             ]
         elif results is None:
-            results = _get_distributions(view, group)
+            results = await _get_distributions(
+                self.sample_collection, view, group
+            )
 
         self.write_message({"type": "distributions", "results": results})
 
 
-def _get_distributions(view, group):
+async def _get_distributions(coll, view, group):
     pipeline = DISTRIBUTION_PIPELINES[group]
+    _numeric_distribution_pipelines(view, pipeline)
 
-    # we add a sub-pipeline for each numeric as it looks like multiple
-    # buckets in a single pipeline is not supported
-    if group == SCALARS:
-        _numeric_distribution_pipelines(view, pipeline)
+    pipeline = view._pipeline(pipeline=pipeline)
+    cursor = coll.aggregate(pipeline)
 
-    result = list(view._aggregate(pipeline))
-
-    if group in {LABELS, SCALARS}:
-        new_result = []
-        for f in result[0].values():
-            new_result += f
-
-        result = new_result
-
-    if group != SCALARS:
-        for idx, dist in enumerate(result):
-            result[idx]["data"] = sorted(
-                result[idx]["data"], key=lambda c: c["count"], reverse=True
-            )
+    result = []
+    async for r in cursor:
+        f = r[0].values()
+        result += f
 
     return sorted(result, key=lambda d: d["name"])
 

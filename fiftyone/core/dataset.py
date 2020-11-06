@@ -1864,9 +1864,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _add_view_stage(self, stage):
         return self.view().add_stage(stage)
 
-    def _aggregate(
-        self, pipeline=None, hide_frames=False, squash_frames=False
-    ):
+    def _pipeline(self, pipeline=None, hide_frames=False, squash_frames=False):
         if self.media_type == fom.VIDEO:
             _pipeline = self._attach_frames(hide_frames)
         else:
@@ -1879,7 +1877,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             key = "_frames" if hide_frames else "frames"
             _pipeline.append({"$project": {key: False}})
 
-        return self._sample_collection.aggregate(_pipeline, allowDiskUse=True)
+        return _pipeline
+
+    def _aggregate(
+        self, pipeline=None, hide_frames=False, squash_frames=False
+    ):
+        _pipeline = self._pipeline(
+            pipeline=None, hide_frames=False, squash_frames=False
+        )
+        return self._sample_collection.aggregate(_pipeline)
 
     @property
     def _sample_collection_name(self):
