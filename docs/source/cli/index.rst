@@ -887,6 +887,8 @@ Locate the downloaded zoo dataset on disk.
     # Print the location of the downloaded zoo dataset on disk
     fiftyone zoo find <name>
 
+.. code-block:: shell
+
     # Print the location of a specific split of the dataset
     fiftyone zoo find <name> --split <split>
 
@@ -1022,3 +1024,38 @@ Load zoo datasets as persistent FiftyOne datasets.
 
     # Load a random subset of the zoo dataset
     fiftyone zoo load <name> --shuffle --max-samples <max-samples>
+
+.. _cli-fiftyone-zoo-delete:
+
+Delete zoo datasets on disk
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Deletes the local copy of the zoo dataset on disk.
+
+.. code-block:: text
+
+    fiftyone zoo delete [-h] [-s SPLIT] NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                  the name of the dataset
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -s SPLIT, --split SPLIT
+                            a dataset split
+
+**Examples**
+
+.. code-block:: shell
+
+    # Delete an entire zoo dataset from disk
+    fiftyone zoo delete <name>
+
+.. code-block:: shell
+
+    # Delete a specific split of a zoo dataset from disk
+    fiftyone zoo delete <name> --split <split>

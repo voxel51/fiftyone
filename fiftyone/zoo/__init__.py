@@ -96,7 +96,7 @@ def download_zoo_dataset(
             you specified to see the supported splits
         dataset_dir (None): the directory into which to download the dataset.
             By default, :func:`fiftyone.core.dataset.get_default_dataset_dir`
-            is used
+            is used to select the directory
         overwrite (False): whether to overwrite any existing files
         cleanup (True): whether to cleanup any temporary files generated during
             download
@@ -113,14 +113,13 @@ def download_zoo_dataset(
     zoo_dataset, dataset_dir = _parse_dataset_details(
         name, dataset_dir, **kwargs
     )
-    info = zoo_dataset.download_and_prepare(
-        dataset_dir,
+    return zoo_dataset.download_and_prepare(
+        dataset_dir=dataset_dir,
         split=split,
         splits=splits,
         overwrite=overwrite,
         cleanup=cleanup,
     )
-    return info, dataset_dir
 
 
 def load_zoo_dataset(
@@ -161,7 +160,8 @@ def load_zoo_dataset(
             constructed based on the dataset and split(s) you are loading
         dataset_dir (None): the directory in which the dataset is stored or
             will be downloaded. By default,
-            :func:`fiftyone.core.dataset.get_default_dataset_dir` is used
+            :func:`fiftyone.core.dataset.get_default_dataset_dir` is used to
+            select the directory
         download_if_necessary (True): whether to download the dataset if it is
             not found in the specified dataset directory
         drop_existing_dataset (False): whether to drop an existing dataset
@@ -276,7 +276,7 @@ def load_zoo_dataset_info(name, dataset_dir=None):
         name: the name of the zoo dataset
         dataset_dir (None): the directory in which the dataset is stored. By
             default, :func:`fiftyone.core.dataset.get_default_dataset_dir` is
-            used
+            used to select the directory
 
     Returns:
         the :class:`ZooDatasetInfo` for the dataset
@@ -330,6 +330,33 @@ def get_zoo_dataset(name, **kwargs):
             return zoo_dataset
 
     raise ValueError("Dataset '%s' not found in the zoo" % name)
+
+
+def delete_zoo_dataset(name, split=None):
+    """Deletes the zoo dataset from local disk, if necessary.
+
+    If a ``split`` is provided, only that split is deleted.
+
+    Args:
+        name: the name of the zoo dataset
+        split (None) a valid dataset split
+    """
+    if split is None:
+        # Delete root dataset directory
+        dataset_dir = find_zoo_dataset(name)
+        etau.delete_dir(dataset_dir)
+        return
+
+    # Delete split directory
+    split_dir = find_zoo_dataset(name, split=split)
+    etau.delete_dir(split_dir)
+
+    # Remove split from ZooDatasetInfo
+    dataset_dir = os.path.dirname(split_dir)
+    info = ZooDataset.load_info(dataset_dir)
+    info.remove_split(split)
+    info_path = ZooDataset.get_info_path(dataset_dir)
+    info.write_json(info_path, pretty_print=True)
 
 
 def _parse_splits(split, splits):
@@ -487,6 +514,24 @@ class ZooDatasetInfo(etas.Serializable):
             and split in self.downloaded_splits
         )
 
+    def add_split(self, split_info):
+        """Adds the split to the dataset.
+
+        Args:
+            split_info: a :class:`ZooDatasetSplitInfo
+        """
+        self.downloaded_splits[split_info.split] = split_info
+        self._compute_num_samples()
+
+    def remove_split(self, split):
+        """Removes the split from the dataset.
+
+        Args:
+            split: the name of the split
+        """
+        self.downloaded_splits.pop(split)
+        self._compute_num_samples()
+
     def attributes(self):
         """Returns a list of class attributes to be serialized.
 
@@ -549,6 +594,11 @@ class ZooDatasetInfo(etas.Serializable):
             downloaded_splits=downloaded_splits,
             parameters=d.get("parameters", None),
             classes=d.get("classes", None),
+        )
+
+    def _compute_num_samples(self):
+        self.num_samples = sum(
+            si.num_samples for si in self.downloaded_splits.values()
         )
 
 
@@ -664,20 +714,22 @@ class ZooDataset(object):
 
     def download_and_prepare(
         self,
-        dataset_dir,
+        dataset_dir=None,
         split=None,
         splits=None,
         overwrite=False,
         cleanup=True,
     ):
-        """Downloads the dataset and prepares it for use in the given
-        directory.
+        """Downloads the dataset and prepares it for use.
 
         If the requested splits have already been downloaded, they are not
         re-downloaded.
 
         Args:
-            dataset_dir: the directory in which to construct the dataset
+            dataset_dir (None): the directory in which to construct the
+                dataset. By default,
+                :func:`fiftyone.core.dataset.get_default_dataset_dir` is used
+                to select the directory
             split (None) a split to download, if applicable. If neither
                 ``split`` nor ``splits`` are provided, the full dataset is
                 downloaded
@@ -689,8 +741,14 @@ class ZooDataset(object):
                 during download
 
         Returns:
-            the :class:`ZooDatasetInfo` for the dataset
+            tuple of
+
+            -   info: the :class:`ZooDatasetInfo` for the dataset
+            -   dataset_dir: the directory containing the dataset
         """
+        if dataset_dir is None:
+            dataset_dir = fod.get_default_dataset_dir(self.name)
+
         # Parse splits
         splits = _parse_splits(split, splits)
         if splits:
@@ -755,12 +813,8 @@ class ZooDataset(object):
                 if classes and not info.classes:
                     info.classes = classes
 
-                info.downloaded_splits[split] = ZooDatasetSplitInfo(
-                    split, num_samples
-                )
-                info.num_samples = sum(
-                    si.num_samples for si in info.downloaded_splits.values()
-                )
+                split_info = ZooDatasetSplitInfo(split, num_samples)
+                info.add_split(split_info)
 
                 write_info = True
         else:
@@ -789,7 +843,7 @@ class ZooDataset(object):
         if cleanup:
             etau.delete_dir(scratch_dir)
 
-        return info
+        return info, dataset_dir
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         """Internal implementation of downloading the dataset and preparing it
