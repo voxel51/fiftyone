@@ -8,6 +8,7 @@ Web socket client mixins.
 import asyncio
 from collections import defaultdict
 import logging
+import requests
 from threading import Thread
 import time
 
@@ -43,19 +44,53 @@ class HasClient(object):
 
                 if message is None:
                     self._data = None
+                    response = None
+                    fiftyone_url = "http://%s:%d/fiftyone" % (
+                        SERVER_NAME,
+                        port,
+                    )
+
+                    while response is None:
+                        time.sleep(0.2)
+                        try:
+                            response = requests.get(fiftyone_url)
+                        except:
+                            pass
+
                     self._client = await websocket_connect(url=self._url)
-                    break
+                    continue
 
                 message = json_util.loads(message)
-                if message["type"] == "update":
+                event = message.pop("type")
+                if event == "update":
                     self._data = self._HC_ATTR_TYPE.from_dict(message["state"])
+                if event == "notification":
+                    self.on_notification(self, message)
 
         def run_client():
             io_loop = IOLoop(make_current=True)
             io_loop.run_sync(connect)
 
-        thread = Thread(target=run_client, daemon=True)
-        thread.start()
+        self._thread = Thread(target=run_client, daemon=True)
+        self._thread.start()
+
+    def on_notification(self, data):
+        if _printer[self._url] is None:
+            _printer[self._url] = self
+
+        if _printer[self._url] != self:
+            return
+
+        print(data["kind"])
+        print()
+        print(data["message"])
+        print()
+        for value in data["session_items"]:
+            print(value)
+
+    def __del__(self):
+        _printer[self._url] = None
+        self._thread.join()
 
     def __getattr__(self, name):
         """Gets the data via the attribute defined by ``_HC_ATTR_NAME``."""

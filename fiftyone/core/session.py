@@ -189,6 +189,7 @@ class Session(foc.HasClient):
         except:
             # e.g. globals were already garbage-collected
             pass
+        super().__del__()
 
     @property
     def dataset(self):

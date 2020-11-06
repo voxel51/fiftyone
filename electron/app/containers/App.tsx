@@ -102,6 +102,8 @@ function App(props: Props) {
     handleStateUpdate(state);
   });
 
+  useMessageHandler("notification", (data) => addNotification.current(data));
+
   ipcRenderer.on("update-session-config", (event, message) => {
     portRef.current.ref.current.click();
   });

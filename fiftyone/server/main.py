@@ -90,12 +90,14 @@ class FiftyOneHandler(tornado.web.RequestHandler):
 class StagesHandler(tornado.web.RequestHandler):
     def get(self):
         """Gets ViewStage descriptions"""
-        return {
-            "stages": [
-                {"name": stage.__name__, "params": stage._params()}
-                for stage in _STAGES
-            ]
-        }
+        self.write(
+            {
+                "stages": [
+                    {"name": stage.__name__, "params": stage._params()}
+                    for stage in _STAGES
+                ]
+            }
+        )
 
 
 def _catch_errors(func):
@@ -105,17 +107,21 @@ def _catch_errors(func):
             return func(self, *args, **kwargs)
         except Exception as error:
             StateHandler.state = StateHandler.prev_state
-            error = {
-                "kind": "Server Error",
-                "message": (
-                    "An exception has been raised by the server. Your session "
-                    "has been reverted to its previous state."
-                ),
-                "session_items": [traceback.format_exc()],
-                "app_items": [
-                    "A traceback has been printed to your Python shell."
-                ],
-            }
+            for client in StateHandler.clients:
+                client.write_message(
+                    {
+                        "type": "notification",
+                        "kind": "Server Error",
+                        "message": (
+                            "An exception has been raised by the server. Your session "
+                            "has been reverted to its previous state."
+                        ),
+                        "session_items": [traceback.format_exc()],
+                        "app_items": [
+                            "A traceback has been printed to your Python shell."
+                        ],
+                    }
+                )
 
     return wrapper
 
@@ -192,7 +198,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     def check_origin(self, origin):
         return True
 
-    async def open(self):
+    def open(self):
         StateHandler.clients.add(self)
         logger.debug("connected")
         self.write_message({"type": "update", "state": StateHandler.state})
@@ -201,18 +207,20 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         StateHandler.clients.remove(self)
         logger.debug("disconnected")
 
-    async def on_message(self, message):
+    @_catch_errors
+    def on_message(self, message):
         message = FiftyOneJSONEncoder.loads(message)
         event = getattr(self, "on_%s" % message.pop("type"))
         logger.debug("%s event" % event.__name__)
-        await event(**message)
+        event(**message)
 
-    async def on_update(self, state):
-        StateHandler.state = fos.StateDescription.from_dict(state).serialize()
+    def on_update(self, state):
+        StateHandler.state = state
         self.send_updates(ignore=self)
-        self.send_statistics()
+        state = fos.StateDescription.from_dict(state)
+        self.send_statistics(state.view)
 
-    async def fiftyone(self):
+    def on_fiftyone(self):
         self.write_message(
             {
                 "type": "fiftyone",
@@ -243,7 +251,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         for client in cls.clients:
             self.write_message({"type": "statistics", "data": stats})
 
-    async def on_add_selection(self, _id):
+    def on_add_selection(self, _id):
         state = fos.StateDescription.from_dict(StateHandler.state)
         selected = set(state.selected)
         selected.add(_id)
