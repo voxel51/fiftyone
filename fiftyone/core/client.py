@@ -65,7 +65,7 @@ class HasClient(object):
                 if event == "update":
                     self._data = self._HC_ATTR_TYPE.from_dict(message["state"])
                 if event == "notification":
-                    self.on_notification(self, message)
+                    self.on_notification(message)
 
         def run_client():
             io_loop = IOLoop(make_current=True)

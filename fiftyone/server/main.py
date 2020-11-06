@@ -195,6 +195,18 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     state = fos.StateDescription().serialize()
     prev_state = fos.StateDescription().serialize()
 
+    @staticmethod
+    def dumps(data):
+        return FiftyOneJSONEncoder.dumps(data)
+
+    @staticmethod
+    def loads(data):
+        return FiftyOneJSONEncoder.loads(data)
+
+    def write_message(self, message):
+        message = self.dumps(message)
+        return super().write_message(message)
+
     def check_origin(self, origin):
         return True
 
@@ -209,7 +221,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     @_catch_errors
     def on_message(self, message):
-        message = FiftyOneJSONEncoder.loads(message)
+        message = self.loads(message)
         event = getattr(self, "on_%s" % message.pop("type"))
         logger.debug("%s event" % event.__name__)
         event(**message)
