@@ -32,8 +32,11 @@ logger = logging.getLogger(__name__)
 
 
 #
-# @todo add support for label ontologies via `schemaId`
-#       cf https://labelbox.com/docs/automation/model-assisted-labeling
+# @todo
+#   Must add support add support for populating `schemaId` when exporting
+#   labels in order for model-assisted labeling to work properly
+#
+#   cf https://labelbox.com/docs/automation/model-assisted-labeling
 #
 
 
