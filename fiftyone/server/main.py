@@ -237,7 +237,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         view = fov.DatasetView(state.dataset)
         for stage_dict in stages:
             stage = fosg.ViewStage._from_dict(stage_dict)
-            view.add_stage(stage)
+            view = view.add_stage(stage)
 
         stats = fos.DatasetStatistics(view).serialize()["stats"]
         for client in cls.clients:
