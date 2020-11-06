@@ -12,7 +12,6 @@ import os
 import uuid
 import warnings
 
-import ndjson
 import numpy as np
 
 import eta.core.image as etai
@@ -73,6 +72,7 @@ def import_from_labelbox(
         d_list = etas.load_json(labelbox_project_or_json_path)
     else:
         # Download project export from Labelbox
+        logger.info("Downloading Labelbox export...")
         export_url = labelbox_project_or_json_path.export_labels()
         d_list = etas.load_json(etaw.download_file(export_url))
 
@@ -98,9 +98,11 @@ def import_from_labelbox(
                 sample = dataset[id_map[labelbox_id]]
             elif download_dir:
                 # Download image and create new sample
+                # @todo optimize by downloading images in a background thread
+                # pool?
                 image_url = d["Labeled Data"]
                 filepath = filename_maker.get_output_path(image_url)
-                etaw.download_file(image_url, path=filepath)
+                etaw.download_file(image_url, path=filepath, quiet=True)
                 sample = fos.Sample(filepath=filepath)
                 dataset.add_sample(sample)
             else:
@@ -236,10 +238,10 @@ def export_to_labelbox(
     if etau.is_str(labelbox_project_or_json_path):
         # Append to NDJSON on disk
         json_path = labelbox_project_or_json_path
-        _create_file(json_path)
+        etau.ensure_empty_file(json_path)
 
         def flush_fcn(annos):
-            _append_to_ndjson(json_path, annos)
+            etas.write_ndjson(json_path, annos, append=True)
 
     else:
         # Upload to Labelbox server
@@ -348,7 +350,7 @@ def convert_labelbox_export_to_import(inpath, outpath):
             :meth:`export_to_labelbox`
         outpath: the path to write a JSON file containing the converted labels
     """
-    din_list = _read_ndjson(inpath)
+    din_list = etas.read_ndjson(inpath)
 
     dout_map = {}
 
@@ -376,17 +378,6 @@ def convert_labelbox_export_to_import(inpath, outpath):
 
     dout = list(dout_map.values())
     etas.write_json(dout, outpath)
-
-
-def _create_file(filepath):
-    etau.ensure_basedir(filepath)
-    with open(filepath, "w"):
-        pass
-
-
-def _append_to_ndjson(filepath, content):
-    with open(filepath, "a") as f:
-        f.write(ndjson.dumps(content))
 
 
 def _get_labels(sample_or_frame, label_fields):
@@ -630,7 +621,7 @@ def _make_mask(instance_uri, color):
 
 def _parse_video_labels(nd_labels_json_or_path, frame_size):
     if etau.is_str(nd_labels_json_or_path):
-        label_d_list = _read_ndjson(nd_labels_json_or_path)
+        label_d_list = etas.read_ndjson(nd_labels_json_or_path)
     else:
         label_d_list = nd_labels_json_or_path
 
@@ -828,12 +819,7 @@ def _parse_point(pd, frame_size):
 def _parse_mask(instance_uri):
     with etau.TempDir() as tmp_dir:
         tmp_path = os.path.join(tmp_dir, os.path.basename(instance_uri))
-        etaw.download_file(instance_uri, path=tmp_path)
+        etaw.download_file(instance_uri, path=tmp_path, quiet=True)
         mask = etai.read(tmp_path)
 
     return mask
-
-
-def _read_ndjson(ndjson_path):
-    with open(ndjson_path) as f:
-        return ndjson.load(f)

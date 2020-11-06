@@ -49,7 +49,6 @@ setup(
         "future",
         "Jinja2",
         "mongoengine",
-        "ndjson",
         "numpy",
         "packaging",
         "Pillow<7,>=6.2",
