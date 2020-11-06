@@ -243,7 +243,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         for client in cls.clients:
             self.write_message({"type": "statistics", "data": stats})
 
-    async def add_selection(self, _id):
+    async def on_add_selection(self, _id):
         state = fos.StateDescription.from_dict(StateHandler.state)
         selected = set(state.selected)
         selected.add(_id)
@@ -251,7 +251,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         StateHandler.state = state.serialize()
         self.send_updates(ignore=self)
 
-    async def remove_selection(self, _id):
+    async def on_remove_selection(self, _id):
         state = fos.StateDescription.from_dict(StateHandler.state)
         selected = set(state.selected)
         selected.remove(_id)
@@ -259,7 +259,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         StateHandler.state = state.serialize()
         self.send_updates(ignore=self)
 
-    async def clear_selection(self):
+    async def on_clear_selection(self):
         state = fos.StateDescription.from_dict(StateHandler.state)
         state.selected = []
         StateHandler.state = state.serialize()
@@ -272,7 +272,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         state = fos.StateDescription.from_dict(cls.state)
         state.selected_objects = selected_objects
         cls.state = state.serialize()
-        return state
+        self.send_updates(ignore=self)
 
     async def on_get_video_data(self, sample_d):
         state = fos.StateDescription.from_dict(StateHandler.state)
@@ -537,7 +537,8 @@ class Application(tornado.web.Application):
             (r"/stages", StagesHandler),
             (r"/state", StateHandler),
         ]
-        super().__init__(handlers, **settings)
+        db = foo.get_async_db_conn()
+        super().__init__(handlers, db=db, **settings)
 
 
 if __name__ == "__main__":
