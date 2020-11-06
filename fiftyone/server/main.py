@@ -18,6 +18,7 @@ import uuid
 from bson import ObjectId
 import tornado.escape
 import tornado.ioloop
+import tornado.iostream
 import tornado.options
 import tornado.web
 import tornado.websocket
@@ -69,18 +70,30 @@ def get_user_id():
     return read()
 
 
-class FileHandler(tornado.web.StaticFileHandler):
-    def get(self):
-        """Gets the sample media.
+class FileHandler(tornado.web.RequestHandler):
+    async def get(self):
+        chunk_size = 1024 * 1024 * 1  # 1 MiB
+        path = self.get_query_argument("path")
 
-        Returns:
-            bytes
-        """
-        # @todo
-        # path = request.args.get("path")
-        # `conditional`: support partial content
-        # return send_file(path, conditional=True)
-        pass
+        with open(path, "rb") as f:
+            while True:
+                chunk = f.read(chunk_size)
+                if not chunk:
+                    break
+                try:
+                    self.write(chunk)  # write the chunk to response
+                    await self.flush()  # send the chunk to client
+                except tornado.iostream.StreamClosedError:
+                    # this means the client has closed the connection
+                    # so break the loop
+                    break
+                finally:
+                    # deleting the chunk is very important because
+                    # if many clients are downloading files at the
+                    # same time, the chunks in memory will keep
+                    # increasing and will eat up the RAM
+                    del chunk
+                    await asyncio.sleep(0)
 
 
 class FiftyOneHandler(tornado.web.RequestHandler):
@@ -237,18 +250,16 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     async def on_update(self, state):
         StateHandler.state = state
-        state = fos.StateDescription.from_dict(state)
-
-        view = state.view or []
-        stages = [stage.to_mongo(state.dataset) for stage in view]
+        view = state["view"] or []
         executions = [
             self.send_updates(ignore=self),
-            self.send_statistics(stages),
+            self.send_statistics(view),
+            self.send_page(1),
         ]
-        if len(state.filters):
+        if len(state["filters"]):
             executions.append(
                 self.send_statistics(
-                    stages + list(state.filters.values()), extended=True
+                    view + list(state.filters.values()), extended=True
                 )
             )
         asyncio.gather(*executions)
@@ -290,34 +301,26 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             )
 
     def on_add_selection(self, _id):
-        state = fos.StateDescription.from_dict(StateHandler.state)
-        selected = set(state.selected)
+        selected = set(StateHandler.state["selected"])
         selected.add(_id)
-        state.selected = list(selected)
-        StateHandler.state = state.serialize()
+        StateHandler.state["selected"] = selected
         self.send_updates(ignore=self)
 
     async def on_remove_selection(self, _id):
-        state = fos.StateDescription.from_dict(StateHandler.state)
-        selected = set(state.selected)
+        selected = set(StateHandler.state["selected"])
         selected.remove(_id)
-        state.selected = list(selected)
-        StateHandler.state = state.serialize()
+        StateHandler.state["selected"] = selected
         self.send_updates(ignore=self)
 
     async def on_clear_selection(self):
-        state = fos.StateDescription.from_dict(StateHandler.state)
-        state.selected = []
-        StateHandler.state = state.serialize()
+        StateHandler.state["selected"] = []
         self.send_updates(ignore=self)
 
     async def on_set_selected_objects(self, selected_objects):
         if not isinstance(selected_objects, list):
             raise TypeError("selected_objects must be a list")
 
-        state = fos.StateDescription.from_dict(cls.state)
-        state.selected_objects = selected_objects
-        cls.state = state.serialize()
+        StateHandler.state["selected_objects"] = selected_objects
         self.send_updates(ignore=self)
 
     async def on_get_video_data(self, sample_d):
@@ -366,14 +369,14 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             }
         )
 
-    async def on_page(self, page, page_length=20):
+    async def send_page(self, page, page_length=20):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
             view = state.view
         elif state.dataset is not None:
             view = state.dataset.view()
         else:
-            return []
+            self.write_message({"type": "page", "results": [], "more": False})
 
         for stage_dict in state.filters.values():
             stage = fosg.ViewStage._from_dict(stage_dict)
@@ -383,9 +386,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = view.add_stage(stage)
 
         view = view.skip((page - 1) * page_length).limit(page_length + 1)
-        samples = [
-            s for s in view._aggregate(hide_frames=True, squash_frames=True)
-        ]
+        pipeline = view._pipeline(hide_frames=True, squash_frames=True)
+        samples = [s async for s in self.sample_collection.aggregate(pipeline)]
         convert(samples)
 
         more = False
@@ -400,7 +402,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             r["height"] = h
             # default to image
 
-        return {"results": results, "more": more}
+        for client in self.clients:
+            client.write_message(
+                {"type": "page", "results": results, "more": more}
+            )
 
     async def on_distributions(self, group):
         state = fos.StateDescription.from_dict(StateHandler.state)
@@ -580,7 +585,7 @@ class Application(tornado.web.Application):
     def __init__(self, **settings):
         handlers = [
             (r"/fiftyone", FiftyOneHandler),
-            (r"/file", FileHandler),
+            (r"/", FileHandler),
             (r"/stages", StagesHandler),
             (r"/state", StateHandler),
         ]

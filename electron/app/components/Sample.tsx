@@ -110,7 +110,7 @@ const Sample = ({ sample, metadata, setView }) => {
   const port = useRecoilValue(atoms.port);
   const host = `http://127.0.0.1:${port}`;
   const id = sample._id;
-  const src = `${host}?path=${sample.filepath}&id=${id}`;
+  const src = `${host}/?path=${sample.filepath}&id=${id}`;
   const socket = useRecoilValue(selectors.socket);
   const filter = useRecoilValue(selectors.labelFilters);
   const colorMap = useRecoilValue(atoms.colorMap);

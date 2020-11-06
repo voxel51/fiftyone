@@ -13,9 +13,9 @@ export default () => {
     remainder: [],
   });
 
-  useMessageHandler("page", (data) =>
-    setState(tile(data.results, data.more, state))
-  );
+  useMessageHandler("page", ({ results, more }) => {
+    setState(tile(results, more, state));
+  });
 
   const guard = useMemo(() => {
     return !state.loadMore || state.isLoading || !state.hasMore;
@@ -31,7 +31,7 @@ export default () => {
       });
   }, [guard]);
 
-  useSendMessage("page", { page: state.pageToLoad }, guard);
+  // useSendMessage("page", { page: state.pageToLoad }, guard);
 
   return [state, setState];
 };
