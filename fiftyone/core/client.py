@@ -42,7 +42,8 @@ class HasClient(object):
                 message = await self._client.read_message()
 
                 if message is None:
-                    # None message means the connection was closed
+                    self._data = None
+                    self._client = await websocket_connect(url=self._url)
                     break
 
                 message = json_util.loads(message)
