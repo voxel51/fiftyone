@@ -196,6 +196,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     clients = set()
     state = fos.StateDescription().serialize()
     prev_state = fos.StateDescription().serialize()
+    app_clients = set()
 
     @staticmethod
     def dumps(data):
@@ -237,10 +238,19 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     async def on_update(self, state):
         StateHandler.state = state
         state = fos.StateDescription.from_dict(state)
+
+        view = state.view or []
+        stages = [stage.to_mongo(state.dataset) for stage in view]
         executions = [
-            self.send_statistics(state.view),
             self.send_updates(ignore=self),
+            self.send_statistics(stages),
         ]
+        if len(state.filters):
+            executions.append(
+                self.send_statistics(
+                    stages + list(state.filters.values()), extended=True
+                )
+            )
         asyncio.gather(*executions)
 
     async def on_fiftyone(self):
@@ -260,22 +270,24 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             client.write_message(response)
 
     @classmethod
-    async def send_statistics(cls, stages):
+    async def send_statistics(cls, stages, extended=False):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.dataset is None:
-            return []
+            stats = []
+        else:
+            if stages is None:
+                stages = []
 
-        if stages is None:
-            stages = []
+            view = fov.DatasetView(state.dataset)
+            for stage_dict in stages:
+                stage = fosg.ViewStage._from_dict(stage_dict)
+                view = view.add_stage(stage)
 
-        view = fov.DatasetView(state.dataset)
-        for stage_dict in stages:
-            stage = fosg.ViewStage._from_dict(stage_dict)
-            view = view.add_stage(stage)
-
-        stats = fos.DatasetStatistics(view).serialize()["stats"]
+            stats = fos.DatasetStatistics(view).serialize()["stats"]
         for client in cls.clients:
-            client.write_message({"type": "statistics", "data": stats})
+            client.write_message(
+                {"type": "statistics", "stats": stats, "extended": extended}
+            )
 
     def on_add_selection(self, _id):
         state = fos.StateDescription.from_dict(StateHandler.state)

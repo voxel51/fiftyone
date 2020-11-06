@@ -17,7 +17,7 @@ import routes from "../constants/routes.json";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { VALID_LABEL_TYPES } from "../utils/labels";
-import { useSendMessage } from "../utils/hooks";
+import { useMessageHandler, useSendMessage } from "../utils/hooks";
 import Loading from "../components/Loading";
 import { scrollbarStyles } from "../components/utils";
 
@@ -32,7 +32,6 @@ const Body = styled.div`
   padding: 0 1rem;
   width: 100%;
   flex-grow: 1;
-  overflow-y: scroll;
   display: flex;
   flex-direction: column;
 `;
@@ -65,6 +64,8 @@ function Dataset(props) {
   const labelTuples = useRecoilValue(selectors.labelTuples("sample"));
   const frameLabelTuples = useRecoilValue(selectors.labelTuples("frame"));
   const tagNames = useRecoilValue(selectors.tagNames);
+  const setExtendedDatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
+  const setDatasetStats = useSetRecoilState(atoms.datasetStats);
   const [activeLabels, setActiveLabels] = useRecoilState(
     atoms.activeLabels("sample")
   );
@@ -73,6 +74,11 @@ function Dataset(props) {
   );
   const activeOther = useRecoilValue(atoms.activeOther("sample"));
   const activeFrameOther = useRecoilValue(atoms.activeOther("frame"));
+
+  useMessageHandler("statistics", ({ stats, extended }) => {
+    extended && setExtendedDatasetStats(stats);
+    !extended && setDatasetStats(stats);
+  });
 
   // update color map
   useEffect(() => {
