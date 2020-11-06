@@ -534,6 +534,7 @@ class Application(tornado.web.Application):
         handlers = [
             (r"/fiftyone", FiftyOneHandler),
             (r"/file", FileHandler),
+            (r"/stages", StagesHandler),
             (r"/state", StateHandler),
         ]
         super().__init__(handlers, **settings)
