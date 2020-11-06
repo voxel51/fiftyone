@@ -1027,8 +1027,8 @@ Load zoo datasets as persistent FiftyOne datasets.
 
 .. _cli-fiftyone-zoo-delete:
 
-Deletes zoo datasets from disk
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Delete zoo datasets on disk
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Deletes the local copy of the zoo dataset on disk.
 
