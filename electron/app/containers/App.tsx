@@ -28,7 +28,7 @@ type Props = {
 
 const Body = styled.div`
   ${scrollbarStyles}
-  padding: 0 2rem 2rem 2rem;
+  padding: 0 0 2rem 0;
   overflow-y: auto;
   height: calc(100% - 73px);
 `;
