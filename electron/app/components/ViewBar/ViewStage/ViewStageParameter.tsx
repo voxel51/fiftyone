@@ -383,7 +383,9 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
                   : value
               }
               onFocus={() => !isEditing && send({ type: "EDIT" })}
-              onBlur={() => send({ type: "COMMIT" })}
+              onBlur={() =>
+                state.matches("editing.notHovering") && send({ type: "COMMIT" })
+              }
               onChange={(e) => {
                 send({ type: "CHANGE", value: e.target.value });
               }}
@@ -424,6 +426,8 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
                   color: theme.font,
                   marginTop: "0.2em",
                 }}
+                onMouseEnter={() => send("MOUSEENTER")}
+                onMouseLeave={() => send("MOUSELEAVE")}
                 onClick={() => setExpanded(true)}
               />
             )}
