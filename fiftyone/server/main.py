@@ -241,6 +241,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     def on_close(self):
         StateHandler.clients.remove(self)
+        StateHandler.app_clients.discard(self)
         logger.debug("disconnected")
 
     @_catch_errors
@@ -253,6 +254,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     async def on_as_app(self):
         StateHandler.app_clients.add(self)
         awaitables = self.get_statistics_awaitables(only=self)
+        awaitables += [self.send_page(1, only=self)]
         asyncio.gather(*awaitables)
 
     async def on_update(self, state):
@@ -315,9 +317,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         if only:
             only.write_message(message)
-
-        for client in self.app_clients:
-            client.write_message(message)
+        else:
+            for client in self.app_clients:
+                client.write_message(message)
 
     def on_add_selection(self, _id):
         selected = set(StateHandler.state["selected"])
@@ -388,7 +390,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             }
         )
 
-    async def send_page(self, page, page_length=20):
+    async def send_page(self, page, page_length=20, only=None):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
             view = state.view
@@ -423,10 +425,13 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             r["height"] = h
             # default to image
 
-        for client in self.clients:
-            client.write_message(
-                {"type": "page", "results": results, "more": more}
-            )
+        message = {"type": "page", "results": results, "more": more}
+
+        if only:
+            only.write_message(message)
+        else:
+            for client in self.clients:
+                client.write_message(message)
 
     async def on_distributions(self, group):
         state = fos.StateDescription.from_dict(StateHandler.state)
