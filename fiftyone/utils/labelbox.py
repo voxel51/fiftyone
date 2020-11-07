@@ -436,12 +436,14 @@ def _to_labelbox_video_labels(frames, frame_size, data_row_id):
     return annotations
 
 
+# https://labelbox.com/docs/exporting-data/export-format-detail#classification
 def _to_global_classification(name, label, data_row_id):
     anno = _make_base_anno(name, data_row_id=data_row_id)
     anno.update(_make_classification_answer(label))
     return anno
 
 
+# https://labelbox.com/docs/exporting-data/export-format-detail#nested_classification
 def _to_nested_classifications(attributes):
     classifications = []
     for name, attr in attributes.items():
@@ -457,6 +459,7 @@ def _to_nested_classifications(attributes):
     return classifications
 
 
+# https://labelbox.com/docs/automation/model-assisted-labeling#mask_annotations
 def _to_mask(name, label, data_row_id):
     mask = np.asarray(label.mask)
     if mask.ndim < 3 or mask.dtype != np.uint8:
@@ -484,6 +487,7 @@ def _to_mask(name, label, data_row_id):
     return annos
 
 
+# https://labelbox.com/docs/exporting-data/export-format-detail#bounding_boxes
 def _to_detections(label, frame_size, data_row_id):
     if isinstance(label, fol.Detections):
         detections = label.detections
@@ -504,6 +508,8 @@ def _to_detections(label, frame_size, data_row_id):
     return annos
 
 
+# https://labelbox.com/docs/exporting-data/export-format-detail#polygons
+# https://labelbox.com/docs/exporting-data/export-format-detail#polylines
 def _to_polylines(label, frame_size, data_row_id):
     if isinstance(label, fol.Polylines):
         polylines = label.polylines
@@ -529,6 +535,7 @@ def _to_polylines(label, frame_size, data_row_id):
     return annos
 
 
+# https://labelbox.com/docs/exporting-data/export-format-detail#points
 def _to_points(label, frame_size, data_row_id):
     if isinstance(label, fol.Keypoints):
         keypoints = label.keypoints
@@ -619,6 +626,7 @@ def _make_mask(instance_uri, color):
     }
 
 
+# https://labelbox.com/docs/exporting-data/export-format-detail#video
 def _parse_video_labels(nd_labels_json_or_path, frame_size):
     if etau.is_str(nd_labels_json_or_path):
         label_d_list = etas.read_ndjson(nd_labels_json_or_path)
@@ -633,6 +641,7 @@ def _parse_video_labels(nd_labels_json_or_path, frame_size):
     return frames
 
 
+# https://labelbox.com/docs/exporting-data/export-format-detail#images
 def _parse_image_labels(label_d, frame_size):
     labels = {}
 
