@@ -185,12 +185,12 @@ const viewStageMachine = Machine(
                 states: {
                   hovering: {
                     on: {
-                      MOUSELEAVE_RESULTS: "notHovering",
+                      MOUSELEAVE: "notHovering",
                     },
                   },
                   notHovering: {
                     on: {
-                      MOUSEENTER_RESULTS: "hovering",
+                      MOUSEENTER: "hovering",
                     },
                   },
                 },
