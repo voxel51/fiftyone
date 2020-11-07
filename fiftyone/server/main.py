@@ -226,6 +226,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         return db[state.dataset._sample_collection_name]
 
     def write_message(self, message):
+        if message is None:
+            return
         message = self.dumps(message)
         return super().write_message(message)
 
@@ -248,21 +250,33 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         logger.debug("%s event" % event.__name__)
         await event(**message)
 
+    async def on_as_app(self):
+        StateHandler.app_clients.add(self)
+        awaitables = self.get_statistics_awaitables(only=self)
+        asyncio.gather(*awaitables)
+
     async def on_update(self, state):
         StateHandler.state = state
-        view = state["view"] or []
-        executions = [
-            self.send_updates(ignore=self),
-            self.send_statistics(view),
+        awaitables = [
             self.send_page(1),
+            self.send_updates(ignore=self),
         ]
+        awaitables += self.get_statistics_awaitables(self)
+        asyncio.gather(*awaitables)
+
+    def get_statistics_awaitables(self, only=None):
+        state = StateHandler.state
+        view = state["view"] or []
+        awaitables = [self.send_statistics(view, only=only)]
+
         if len(state["filters"]):
-            executions.append(
+            awaitables.append(
                 self.send_statistics(
-                    view + list(state.filters.values()), extended=True
+                    view + list(state["filters"].values()), extended=True
                 )
             )
-        asyncio.gather(*executions)
+
+        return awaitables
 
     async def on_fiftyone(self):
         self.write_message(
@@ -280,8 +294,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                 continue
             client.write_message(response)
 
-    @classmethod
-    async def send_statistics(cls, stages, extended=False):
+    async def send_statistics(self, stages, extended=False, only=None):
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.dataset is None:
             stats = []
@@ -294,11 +307,17 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                 stage = fosg.ViewStage._from_dict(stage_dict)
                 view = view.add_stage(stage)
 
-            stats = fos.DatasetStatistics(view).serialize()["stats"]
-        for client in cls.clients:
-            client.write_message(
-                {"type": "statistics", "stats": stats, "extended": extended}
-            )
+            aggs = fos.DatasetStatistics(view).aggregations
+            stats = await view._async_aggregate(self.sample_collection, aggs)
+            stats = [r.serialize(reflective=True) for r in stats]
+
+        message = {"type": "statistics", "stats": stats, "extended": extended}
+
+        if only:
+            only.write_message(message)
+
+        for client in self.app_clients:
+            client.write_message(message)
 
     def on_add_selection(self, _id):
         selected = set(StateHandler.state["selected"])
@@ -385,9 +404,11 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
             view = view.add_stage(stage)
 
-        view = view.skip((page - 1) * page_length).limit(page_length + 1)
+        view = view.skip((page - 1) * page_length)
         pipeline = view._pipeline(hide_frames=True, squash_frames=True)
-        samples = [s async for s in self.sample_collection.aggregate(pipeline)]
+        samples = await self.sample_collection.aggregate(pipeline).to_list(
+            page_length
+        )
         convert(samples)
 
         more = False

@@ -79,6 +79,7 @@ function Dataset(props) {
     extended && setExtendedDatasetStats(stats);
     !extended && setDatasetStats(stats);
   });
+  useSendMessage("as_app", {});
 
   // update color map
   useEffect(() => {
