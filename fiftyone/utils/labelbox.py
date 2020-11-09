@@ -8,8 +8,7 @@ Utilities for working with annotations in
 """
 from copy import copy
 import logging
-import os
-import uuid
+from uuid import uuid4
 import warnings
 
 import numpy as np
@@ -88,6 +87,8 @@ def import_from_labelbox(
     else:
         label_key = lambda k: k
 
+    is_video = dataset.media_type == fomm.VIDEO
+
     # ref: https://github.com/Labelbox/labelbox/blob/7c79b76310fa867dd38077e83a0852a259564da1/exporters/coco-exporter/coco_exporter.py#L33
     with fou.ProgressBar() as pb:
         for d in pb(d_list):
@@ -113,8 +114,6 @@ def import_from_labelbox(
                     labelbox_id,
                 )
                 continue
-
-            is_video = sample.media_type == fomm.VIDEO
 
             if sample.metadata is None:
                 if is_video:
@@ -355,15 +354,15 @@ def convert_labelbox_export_to_import(inpath, outpath):
     dout_map = {}
 
     for din in din_list:
-        uid = din.pop("dataRow")["id"]
-        if uid not in dout_map:
-            dout_map[uid] = {
-                "ID": uid,
+        uuid = din.pop("dataRow")["id"]
+        if uuid not in dout_map:
+            dout_map[uuid] = {
+                "ID": uuid,
                 "Labeled Data": None,
                 "Label": {"objects": [], "classifications": [],},
             }
 
-        dout = dout_map[uid]
+        dout = dout_map[uuid]
 
         din.pop("uuid")
         if any(k in din for k in ("bbox", "polygon", "line", "point", "mask")):
@@ -562,7 +561,7 @@ def _to_points(label, frame_size, data_row_id):
 
 def _make_base_anno(value, data_row_id=None):
     anno = {
-        "uuid": str(uuid.uuid4()),
+        "uuid": str(uuid4()),
         "schemaId": None,
         "title": value,
         "value": value,
@@ -826,9 +825,5 @@ def _parse_point(pd, frame_size):
 
 
 def _parse_mask(instance_uri):
-    with etau.TempDir() as tmp_dir:
-        tmp_path = os.path.join(tmp_dir, os.path.basename(instance_uri))
-        etaw.download_file(instance_uri, path=tmp_path, quiet=True)
-        mask = etai.read(tmp_path)
-
-    return mask
+    img_bytes = etaw.download_file(instance_uri, quiet=True)
+    return etai.decode(img_bytes)
