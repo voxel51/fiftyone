@@ -381,6 +381,8 @@ class StateController(Namespace):
             frame_labels = etav.VideoFrameLabels(frame_number=frame_number)
             for k, v in sample.items():
                 if isinstance(v, dict) and k != "frames" and "_cls" in v:
+                    if v["_cls"] == "VideoMetadata":
+                        continue
                     field_labels = _make_frame_labels(k, v, frame_number)
                     for obj in field_labels.objects:
                         obj.frame_number = frame_number
