@@ -577,7 +577,8 @@ def _to_scale_video_playback_labels(frames, frame_size):
                     else:
                         key = (detection.label, detection.index)
 
-                    if key not in traj_uuids:
+                    uuid = traj_uuids.get(key, None)
+                    if uuid is None:
                         uuid = str(uuid4())
                         annotations[uuid] = _init_video_box(detection.label)
 
