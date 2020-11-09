@@ -18,41 +18,45 @@ interface SearchResultProps {
   send: any;
 }
 
-const SearchResult = React.memo(({ result, isActive, send, followRef }) => {
-  const theme = useContext(ThemeContext);
-  const [props, set] = useSpring(() => ({
-    backgroundColor: isActive ? theme.backgroundLight : theme.backgroundDark,
-    color: isActive ? theme.font : theme.fontDark,
-  }));
-
-  useEffect(() => {
-    set({
+const SearchResult = React.memo(
+  ({ result, isActive, send }: SearchResultProps) => {
+    const theme = useContext(ThemeContext);
+    const [props, set] = useSpring(() => ({
       backgroundColor: isActive ? theme.backgroundLight : theme.backgroundDark,
       color: isActive ? theme.font : theme.fontDark,
-    });
-  }, [isActive]);
+    }));
 
-  const handleMouseEnter = () =>
-    set({ backgroundColor: theme.backgroundLight, color: theme.font });
+    useEffect(() => {
+      set({
+        backgroundColor: isActive
+          ? theme.backgroundLight
+          : theme.backgroundDark,
+        color: isActive ? theme.font : theme.fontDark,
+      });
+    }, [isActive]);
 
-  const handleMouseLeave = () =>
-    set({ backgroundColor: theme.backgroundDark, color: theme.fontDark });
+    const handleMouseEnter = () =>
+      set({ backgroundColor: theme.backgroundLight, color: theme.font });
 
-  const setResult = (e) =>
-    send({ type: "COMMIT", value: e.target.dataset.result });
+    const handleMouseLeave = () =>
+      set({ backgroundColor: theme.backgroundDark, color: theme.fontDark });
 
-  return (
-    <SearchResultDiv
-      onClick={setResult}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      style={props}
-      data-result={result}
-    >
-      {result}
-    </SearchResultDiv>
-  );
-});
+    const setResult = (e) =>
+      send({ type: "COMMIT", value: e.target.dataset.result });
+
+    return (
+      <SearchResultDiv
+        onClick={setResult}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        style={props}
+        data-result={result}
+      >
+        {result}
+      </SearchResultDiv>
+    );
+  }
+);
 
 const SearchResultsDiv = animated(styled.div`
   background-color: ${({ theme }) => theme.backgroundDark};
@@ -64,7 +68,8 @@ const SearchResultsDiv = animated(styled.div`
   position: fixed;
   width: auto;
   z-index: 801;
-  padding: 0.5rem 0;
+  max-height: 328px;
+  overflow-y: scroll;
 
   &::-webkit-scrollbar {
     width: 0px;
@@ -108,8 +113,8 @@ const SearchResults = React.memo(
     return (
       <SearchResultsDiv
         style={props}
-        onMouseEnter={() => send("MOUSEENTER_RESULTS")}
-        onMouseLeave={() => send("MOUSELEAVE_RESULTS")}
+        onMouseEnter={() => send("MOUSEENTER")}
+        onMouseLeave={() => send("MOUSELEAVE")}
         {...rest}
       >
         {results.map((result, i) => (

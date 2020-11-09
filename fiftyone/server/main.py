@@ -272,7 +272,7 @@ class StateController(Namespace):
         view = fov.DatasetView(state.dataset)
         for stage_dict in stages:
             stage = fosg.ViewStage._from_dict(stage_dict)
-            view.add_stage(stage)
+            view = view.add_stage(stage)
 
         return fos.DatasetStatistics(view).serialize()["stats"]
 
@@ -375,17 +375,27 @@ class StateController(Namespace):
 
             labels.add_frame(frame_labels)
 
+        sample_schema = state.dataset.get_field_schema()
         for frame_number in range(
             1, etav.get_frame_count(sample["filepath"]) + 1
         ):
             frame_labels = etav.VideoFrameLabels(frame_number=frame_number)
             for k, v in sample.items():
-                if isinstance(v, dict) and k != "frames" and "_cls" in v:
-                    field_labels = _make_frame_labels(k, v, frame_number)
-                    for obj in field_labels.objects:
-                        obj.frame_number = frame_number
+                if k not in sample_schema:
+                    continue
 
-                    frame_labels.merge_labels(field_labels)
+                field = sample_schema[k]
+                if not isinstance(field, fof.EmbeddedDocumentField):
+                    continue
+
+                if not issubclass(field.document_type, fol.Label):
+                    continue
+
+                field_labels = _make_frame_labels(k, v, frame_number)
+                for obj in field_labels.objects:
+                    obj.frame_number = frame_number
+
+                frame_labels.merge_labels(field_labels)
 
             labels.add_frame(frame_labels, overwrite=False)
 
