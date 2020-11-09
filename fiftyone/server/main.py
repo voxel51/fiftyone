@@ -328,24 +328,24 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         selected = set(StateHandler.state["selected"])
         selected.add(_id)
         StateHandler.state["selected"] = selected
-        self.send_updates(ignore=self)
+        await self.send_updates(ignore=self)
 
     async def on_remove_selection(self, _id):
         selected = set(StateHandler.state["selected"])
         selected.remove(_id)
         StateHandler.state["selected"] = selected
-        self.send_updates(ignore=self)
+        await self.send_updates(ignore=self)
 
     async def on_clear_selection(self):
         StateHandler.state["selected"] = []
-        self.send_updates(ignore=self)
+        await self.send_updates(ignore=self)
 
     async def on_set_selected_objects(self, selected_objects):
         if not isinstance(selected_objects, list):
             raise TypeError("selected_objects must be a list")
 
         StateHandler.state["selected_objects"] = selected_objects
-        self.send_updates(ignore=self)
+        await self.send_updates(ignore=self)
 
     async def on_get_video_data(self, sample_d):
         state = fos.StateDescription.from_dict(StateHandler.state)
