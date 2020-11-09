@@ -9,6 +9,7 @@ import asyncio
 from collections import defaultdict
 import logging
 import requests
+from retrying import retry
 from threading import Thread
 import time
 
@@ -20,8 +21,16 @@ from tornado.websocket import websocket_connect
 from fiftyone.constants import SERVER_NAME
 
 
+logger = logging.getLogger(__name__)
+
+
 # We only want one session to print notifications per namespace and per process
 _printer = defaultdict(lambda: None)
+
+
+@retry(wait_fixed=500, stop_max_delay=5000)
+def _ping(url):
+    requests.get(url)
 
 
 class HasClient(object):
@@ -34,30 +43,38 @@ class HasClient(object):
         self._port = port
         self._data = None
         self._client = None
+        self._initial_connection = True
         self._url = "ws://%s:%d/%s" % (SERVER_NAME, port, self._HC_NAMESPACE)
 
         async def connect():
             self._client = await websocket_connect(url=self._url)
+            self._initial_connection = False
 
             while True:
                 message = await self._client.read_message()
 
                 if message is None:
-                    self._data = None
-                    response = None
+                    logger.warn("\n%s disconnected, trying to reconnect", self)
                     fiftyone_url = "http://%s:%d/fiftyone" % (
                         SERVER_NAME,
                         port,
                     )
 
-                    while response is None:
-                        time.sleep(0.2)
+                    self._client = None
+                    while not self._client:
                         try:
-                            response = requests.get(fiftyone_url)
+                            _ping(url)
+                            self._client = await websocket_connect(
+                                url=self._url
+                            )
                         except:
-                            pass
+                            logger.warn(
+                                "\nCould not connect %s, trying again in 10 seconds",
+                                self,
+                            )
+                            time.sleep(10)
 
-                    self._client = await websocket_connect(url=self._url)
+                    logger.info("\nSession %s reconnected", self)
                     continue
 
                 message = json_util.loads(message)
@@ -95,6 +112,8 @@ class HasClient(object):
     def __getattr__(self, name):
         """Gets the data via the attribute defined by ``_HC_ATTR_NAME``."""
         if name == self._HC_ATTR_NAME:
+            if self._client is None and not self._initial_connection:
+                raise RuntimeError("Session %s is not connected" % self)
             while self._data is None:
                 time.sleep(0.2)
             return self._data
@@ -111,6 +130,8 @@ class HasClient(object):
                     "Client expected type %s, but got type %s"
                     % (self._HC_ATTR_TYPE, type(value))
                 )
+            if self._client is None and not self._initial_connection:
+                raise RuntimeError("Session %s is not connected" % self)
             while self._data is None:
                 time.sleep(0.2)
             self._data = value
