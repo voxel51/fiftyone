@@ -558,7 +558,7 @@ def _to_scale_video_playback_labels(frames, frame_size):
 
                 for classification in classifications:
                     event_label = classification.label
-                    if label in in_progress_events:
+                    if event_label in in_progress_events:
                         start = in_progress_events[event_label][0]
                     else:
                         start = frame_number
