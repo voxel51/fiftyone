@@ -412,7 +412,7 @@ def export_to_scale(
                     video_labels_dir, sample.id + ".json"
                 )
                 etas.write_json(annotations, video_labels_path)
-                anno_dict = {"url": video_labels_path}
+                anno_dict = {"annotations": {"url": video_labels_path}}
 
             labels[sample.id] = {
                 "filepath": sample.filepath,
@@ -773,7 +773,7 @@ def _make_point(point, frame_size):
 
 def _parse_video_labels(task_labels, metadata):
     anno_dict = task_labels["response"]
-    annos = _download_or_load_json(anno_dict["url"])
+    annos = _download_or_load_json(anno_dict["annotations"]["url"])
 
     if isinstance(annos, list):
         task = task_labels.get("task", None)
