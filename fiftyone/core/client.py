@@ -63,7 +63,7 @@ class HasClient(object):
                     self._client = None
                     while not self._client:
                         try:
-                            _ping(url)
+                            _ping(fiftyone_url)
                             self._client = await websocket_connect(
                                 url=self._url
                             )
