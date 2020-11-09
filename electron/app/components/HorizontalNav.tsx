@@ -83,7 +83,7 @@ const HorizontalNav = ({ entries }: Props) => {
   });
 
   const container = useSpring({
-    height: expanded ? 392 : 64,
+    minHeight: expanded ? 392 : 64,
   });
 
   return (

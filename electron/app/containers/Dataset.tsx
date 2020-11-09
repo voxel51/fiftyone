@@ -28,12 +28,12 @@ const Container = styled.div`
 `;
 
 const Body = styled.div`
-  ${scrollbarStyles}
   padding: 0 1rem;
   width: 100%;
   flex-grow: 1;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 `;
 
 const applyActiveLabels = (tuples, current, setter) => {

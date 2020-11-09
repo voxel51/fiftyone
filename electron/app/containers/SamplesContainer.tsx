@@ -20,7 +20,7 @@ const SidebarColumn = styled.div`
 `;
 
 const ContentColumn = styled.div`
-  flex: 1;
+  flex-grow: 1;
 `;
 
 const DisplayOptionsWrapper = () => {
@@ -129,9 +129,10 @@ const Container = styled.div`
   justify-content: space-between;
   margin-right: -1rem;
   flex-grow: 1;
+  overflow: hidden;
 `;
 
-const SamplesContainer = (props) => {
+const SamplesContainer = React.memo((props) => {
   const [showSidebar, setShowSidebar] = useRecoilState(atoms.sidebarVisible);
 
   return (
@@ -149,6 +150,6 @@ const SamplesContainer = (props) => {
       </Container>
     </>
   );
-};
+});
 
 export default SamplesContainer;

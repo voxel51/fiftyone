@@ -80,7 +80,7 @@ function App(props: Props) {
   const [result, setResultFromForm] = useState({ port, connected });
   const setSelectedObjects = useSetRecoilState(atoms.selectedObjects);
 
-  useGA();
+  //useGA();
   const handleStateUpdate = (state) => {
     setStateDescription(state);
     setSelectedSamples(new Set(state.selected));
@@ -94,7 +94,9 @@ function App(props: Props) {
     }
   });
 
-  useEventHandler(socket, "close", () => setConnected(false));
+  useEventHandler(socket, "close", () => {
+    setConnected(false);
+  });
   useMessageHandler("update", ({ state }) => {
     setViewCounter(viewCounterValue + 1);
     if (state.close) {

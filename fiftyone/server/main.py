@@ -257,13 +257,16 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         awaitables += [self.send_page(1, only=self)]
         asyncio.gather(*awaitables)
 
+    async def on_page(self, **kwargs):
+        await self.send_page(**kwargs)
+
     async def on_update(self, state):
         StateHandler.state = state
         awaitables = [
             self.send_page(1),
             self.send_updates(ignore=self),
         ]
-        awaitables += self.get_statistics_awaitables(self)
+        awaitables += self.get_statistics_awaitables()
         asyncio.gather(*awaitables)
 
     def get_statistics_awaitables(self, only=None):
@@ -274,7 +277,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         if len(state["filters"]):
             awaitables.append(
                 self.send_statistics(
-                    view + list(state["filters"].values()), extended=True
+                    view + list(state["filters"].values()),
+                    extended=True,
+                    only=only,
                 )
             )
 
@@ -318,7 +323,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         if only:
             only.write_message(message)
         else:
-            for client in self.app_clients:
+            for client in StateHandler.app_clients:
                 client.write_message(message)
 
     def on_add_selection(self, _id):
@@ -398,6 +403,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = state.dataset.view()
         else:
             self.write_message({"type": "page", "results": [], "more": False})
+            return
 
         for stage_dict in state.filters.values():
             stage = fosg.ViewStage._from_dict(stage_dict)

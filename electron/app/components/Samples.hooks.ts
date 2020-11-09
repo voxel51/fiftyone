@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
+import { useRecoilValue } from "recoil";
 import { useMessageHandler, useSendMessage } from "../utils/hooks";
 import tile from "../utils/tile";
 
+import * as selectors from "../recoil/selectors";
+
 export default () => {
-  const [state, setState] = useState({
+  const view = useRecoilValue(selectors.view);
+  const empty = {
     initialized: false,
     loadMore: false,
     isLoading: false,
@@ -11,9 +15,12 @@ export default () => {
     pageToLoad: 1,
     rows: [],
     remainder: [],
-  });
+  };
+  const [state, setState] = useState(empty);
+  // useEffect(() => setState(empty), [view]);
 
   useMessageHandler("page", ({ results, more }) => {
+    console.log(results, "page");
     setState(tile(results, more, state));
   });
 
@@ -31,7 +38,7 @@ export default () => {
       });
   }, [guard]);
 
-  // useSendMessage("page", { page: state.pageToLoad }, guard);
+  //useSendMessage("page", { page: state.pageToLoad }, guard);
 
   return [state, setState];
 };
