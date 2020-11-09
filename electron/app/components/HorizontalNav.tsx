@@ -109,7 +109,7 @@ const HorizontalNav = ({ entries }: Props) => {
         >
           <AssessmentIcon />
           <span>{expanded ? "Hide" : "Show"}</span>
-          {expanded ? <KeyboardArrowDownIcon /> : <KeyboardArrowUpIcon />}
+          {expanded ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
         </TogglePlotsButton>
       </Nav>
       {expanded && <Distributions key={activePlot} group={activePlot} />}
