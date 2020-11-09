@@ -9,7 +9,6 @@ import * as atoms from "../recoil/atoms";
 import localSnippet from "../snippets/local.py";
 import bashSnippet from "../snippets/remote.bash";
 import remoteSnippet from "../snippets/remote.py";
-import { setSocket } from "../utils/sockets";
 
 const SectionTitle = styled.div`
   font-size: 2rem;
@@ -105,8 +104,7 @@ const Tab = animated(styled.div`
 `);
 
 function Setup() {
-  const [connected, setConnected] = useRecoilState(atoms.connected);
-  const [port, setPort] = useRecoilState(atoms.port);
+  const connected = useRecoilValue(atoms.connected);
   const theme = useContext(ThemeContext);
   const [activeTab, setActiveTab] = useState<string>("local");
   const localProps = useSpring({
@@ -117,19 +115,6 @@ function Setup() {
     borderBottomColor: activeTab === "remote" ? theme.brand : theme.background,
     color: activeTab === "remote" ? theme.font : theme.fontDark,
   });
-
-  useEffect(() => {
-    let socket;
-    const interval = setInterval(() => {
-      socket = new WebSocket(`ws://localhost:${port}/state`);
-      socket.addEventListener("open", () => {
-        setSocket(port, socket);
-        setPort(port);
-        setConnected(true);
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   if (connected) {
     return <Redirect to={routes.DATASET} />;

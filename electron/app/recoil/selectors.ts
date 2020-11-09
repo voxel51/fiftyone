@@ -1,4 +1,6 @@
 import { selector, selectorFamily } from "recoil";
+import ReconnectingWebSocket from "reconnecting-websocket";
+
 import * as atoms from "./atoms";
 import { generateColorMap } from "../utils/colors";
 import {
@@ -10,13 +12,13 @@ import {
   makeLabelNameGroups,
   labelTypeHasColor,
 } from "../utils/labels";
-import { getSocket } from "../utils/sockets";
 
 export const socket = selector({
   key: "socket",
-  get: ({ get }): WebSocket => {
-    return getSocket(get(atoms.port));
+  get: ({ get }): ReconnectingWebSocket => {
+    return new ReconnectingWebSocket(`ws://localhost:${get(atoms.port)}/state`);
   },
+  dangerouslyAllowMutability: true,
 });
 
 export const datasetName = selector({
