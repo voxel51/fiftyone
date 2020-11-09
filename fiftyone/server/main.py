@@ -74,6 +74,7 @@ class FileHandler(tornado.web.RequestHandler):
     async def get(self):
         chunk_size = 1024 * 1024 * 1  # 1 MiB
         path = self.get_query_argument("path")
+        print("HEADERS", self.request.headers)
 
         with open(path, "rb") as f:
             while True:
@@ -266,6 +267,14 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         ]
         awaitables += self.get_statistics_awaitables()
         asyncio.gather(*awaitables)
+
+    async def on_filters_update(self, filters):
+        StateHandler.state["filters"] = filters
+        state = StateHandler.state
+        view = state["view"] or []
+        await self.send_statistics(
+            view + list(state["filters"].values()), extended=True
+        )
 
     def get_statistics_awaitables(self, only=None):
         state = StateHandler.state

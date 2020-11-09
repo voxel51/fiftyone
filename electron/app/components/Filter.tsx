@@ -20,6 +20,7 @@ import {
   VALID_LIST_TYPES,
 } from "../utils/labels";
 import { removeObjectIDsFromSelection } from "../utils/selection";
+import { packageMessage } from "../utils/socket";
 
 const classFilterMachine = Machine({
   id: "classFilter",
@@ -535,17 +536,13 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
         newState.filters[entry.path] = filter;
       }
       setStateDescription(newState);
-      socket.emit("update", {
-        data: newState,
-        include_self: false,
-      });
       const extendedView = [...(newState.view || [])];
       for (const stage in newState.filters) {
         extendedView.push(newState.filters[stage]);
       }
-      socket.emit("get_statistics", extendedView, (data) => {
-        setExtendedDatasetStats(data);
-      });
+      socket.send(
+        packageMessage("filters_update", { filters: newState.filters })
+      );
     }, [bounds, range, includeNone, labels, fieldIsFiltered]);
   }
 

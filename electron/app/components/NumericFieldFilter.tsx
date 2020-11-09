@@ -4,9 +4,9 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { NamedRangeSlider } from "./RangeSlider";
-import { getSocket } from "../utils/socket";
 import { animated, useSpring } from "react-spring";
 import useMeasure from "react-use-measure";
+import { packageMessage } from "../utils/socket";
 
 const makeFilter = (fieldName, range, includeNone, isDefaultRange) => {
   let expr,
@@ -83,18 +83,11 @@ const NumericFieldFilter = ({ expanded, entry }) => {
       newState.filters[entry.path] = filter;
     }
     if (!hasBounds) return;
-    setStateDescription(newState);
-    socket.emit("update", {
-      data: newState,
-      include_self: false,
-    });
-    const extendedView = [...(newState.view || [])];
-    for (const stage in newState.filters) {
-      extendedView.push(newState.filters[stage]);
-    }
-    socket.emit("get_statistics", extendedView, (data) => {
-      setExtendedDatasetStats(data);
-    });
+    socket.send(
+      packageMessage("update", {
+        state: newState,
+      })
+    );
   }, [range, includeNone]);
 
   const [ref, { height }] = useMeasure();

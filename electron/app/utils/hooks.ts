@@ -36,7 +36,6 @@ export const useMessageHandler = (type, handler) => {
 export const useSendMessage = (type, data, guard = null, deps = []) => {
   const socket = useRecoilValue(selectors.socket);
   useEffect(() => {
-    console.log(guard, type, data);
     !guard &&
       socket.send(
         JSON.stringify({
