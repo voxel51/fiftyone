@@ -15,6 +15,7 @@ import eta.core.web as etaw
 import fiftyone.types as fot
 import fiftyone.utils.bdd as foub
 import fiftyone.utils.coco as fouc
+import fiftyone.utils.cityscapes as foucs
 import fiftyone.utils.data as foud
 import fiftyone.utils.hmdb51 as fouh
 import fiftyone.utils.lfw as foul
@@ -251,7 +252,7 @@ class LabeledFacesInTheWildDataset(FiftyOneDataset):
         #
         # LFW is distributed as a single download that contains all splits,
         # so we remove the split from `dataset_dir` and download the whole
-        # dataset (only if necessary)
+        # dataset (if necessary)
         #
         dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
         split_dir = os.path.join(dataset_dir, split)
@@ -274,6 +275,109 @@ class LabeledFacesInTheWildDataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
 
+class CityscapesDataset(FiftyOneDataset):
+    """Cityscapes is a large-scale dataset that contains a diverse set of
+    stereo video sequences recorded in street scenes from 50 different cities,
+    with high quality pixel-level annotations of 5,000 frames in addition to a
+    larger set of 20,000 weakly annotated frames.
+
+    The dataset is intended for:
+
+    -   Assessing the performance of vision algorithms for major tasks of
+    semantic urban scene understanding: pixel-level, instance-level, and
+    panoptic semantic labeling
+    -   Supporting research that aims to exploit large volumes of (weakly)
+    annotated data, e.g. for training deep neural networks
+
+    In order to load the Cityscapes dataset, you must download the source ZIP
+    files manually ``source_dir`` as follows::
+
+        source_dir/
+            leftImg8bit_trainvaltest.zip
+            gtFine_trainvaltest.zip         # optional
+            gtCoarse.zip                    # optional
+            gtBbox_cityPersons_trainval     # optional
+
+    You can register at `https://www.cityscapes-dataset.com/register`_ in order
+    to get links to download the data.
+
+    Example usage::
+
+        import fiftyone.zoo as foz
+
+        # First parse the manually downloaded files in `source_dir`
+        foz.download_zoo_dataset(
+            "cityscapes", source_dir="/path/to/dir-with-cityscapes-files"
+        )
+
+        # Now load into FiftyOne
+        dataset = foz.load_zoo_dataset("cityscapes", split="validation")
+
+    Dataset size:
+        11.8 GB
+
+    Source:
+        https://www.cityscapes-dataset.com
+
+    Args:
+        source_dir (None): a directory containing the manually downloaded
+            Cityscapes files
+        fine_annos (None): whether to load the fine annotations (True), or not
+            (False), or only if the ZIP file exists (None)
+        coarse_annos (None): whether to load the coarse annotations (True), or
+            not (False), or only if the ZIP file exists (None)
+        person_annos (None): whether to load the personn detections (True), or
+            not (False), or only if the ZIP file exists (None)
+    """
+
+    def __init__(
+        self,
+        source_dir=None,
+        fine_annos=None,
+        coarse_annos=None,
+        person_annos=None,
+    ):
+        self.source_dir = source_dir
+        self.fine_annos = fine_annos
+        self.coarse_annos = coarse_annos
+        self.person_annos = person_annos
+
+    @property
+    def name(self):
+        return "cityscapes"
+
+    @property
+    def supported_splits(self):
+        return ("train", "test", "validation")
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        #
+        # Cityscapes is distributed as a single download that contains all
+        # splits (which must be manually downloaded), so we remove the split
+        # from `dataset_dir` and download the whole dataset (if necessary)
+        #
+        dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
+        split_dir = os.path.join(dataset_dir, split)
+        if not os.path.exists(split_dir):
+            foucs.parse_cityscapes_dataset(
+                self.source_dir,
+                dataset_dir,
+                scratch_dir,
+                [split],
+                fine_annos=self.fine_annos,
+                coarse_annos=self.coarse_annos,
+                person_annos=self.person_annos,
+            )
+
+        # Get metadata
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneDataset()
+        num_samples = foud.FiftyOneDatasetImporter.get_num_samples(split_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
+
 class BDD100KDataset(FiftyOneDataset):
     """The Berkeley Deep Drive (BDD) dataset is one of the largest and most
     diverese video datasets for autonomous vehicles.
@@ -293,15 +397,10 @@ class BDD100KDataset(FiftyOneDataset):
     the videos as described above, together with the image classification,
     detection, and segmentation labels.
 
-    **Manual download instructions**
+    In order to load the BDD100k dataset, you must download the source data
+    manually into ``source_dir`` as follows::
 
-    This dataset requires you to download the source data manually. You must
-    register at https://bdd-data.berkeley.edu/ in order to get the link to
-    download the dataset.
-
-    After extracting the download, you will find contents similar to::
-
-        bdd100k/
+        source_dir/
             labels/
                 bdd100k_labels_images_train.json
                 bdd100k_labels_images_val.json
@@ -310,10 +409,21 @@ class BDD100KDataset(FiftyOneDataset):
                     train/
                     test/
                     val/
-            ...
 
-    You must provide the path to the above ``bdd100k/`` folder when loading
-    this dataset.
+    You can register at `https://bdd-data.berkeley.edu`_ in order to get links
+    to download the data.
+
+    Example usage::
+
+        import fiftyone.zoo as foz
+
+        # First parse the manually downloaded files in `source_dir`
+        foz.download_zoo_dataset(
+            "bdd100k", source_dir="/path/to/dir-with-bdd100k-files"
+        )
+
+        # Now load into FiftyOne
+        dataset = foz.load_zoo_dataset("bdd100k", split="validation")
 
     Dataset size:
         7.1GB
@@ -322,8 +432,8 @@ class BDD100KDataset(FiftyOneDataset):
         https://bdd-data.berkeley.edu
 
     Args:
-        source_dir (None): the path to the downloaded ``bdd100k/`` folder on
-            disk
+        source_dir (None): the directory containing the manually downloaded
+            BDD100k files
         copy_files (True): whether to move (False) or create copies (True) of
             the source files when populating the dataset directory
     """
@@ -342,19 +452,16 @@ class BDD100KDataset(FiftyOneDataset):
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         #
-        # BDD100k must be manually downloaded by the user and placed in
-        # `self.source_dir` or `scratch_dir`
+        # BDD100k must be manually downloaded by the user in `source_dir`
         #
         # The download contains all splits, so we remove the split from
-        # `dataset_dir` and download the whole
-        # dataset (only if necessary)
+        # `dataset_dir` here and wrangle the whole dataset (if necessary)
         #
         dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
         split_dir = os.path.join(dataset_dir, split)
         if not os.path.exists(split_dir):
-            bdd100k_dir = self.source_dir or scratch_dir
-            foub.wrangle_bdd100k_download(
-                bdd100k_dir, dataset_dir, copy_files=self.copy_files
+            foub.parse_bdd100k_dataset(
+                self.source_dir, dataset_dir, copy_files=self.copy_files
             )
 
         # Get metadata
@@ -400,7 +507,7 @@ class HMDB51Dataset(FiftyOneDataset):
         #
         # HMDB51 is distributed as a single download that contains all splits,
         # so we remove the split from `dataset_dir` and download the whole
-        # dataset (only if necessary)
+        # dataset (if necessary)
         #
         dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
         split_dir = os.path.join(dataset_dir, split)
@@ -472,7 +579,7 @@ class UCF101Dataset(FiftyOneDataset):
         #
         # UCF101 is distributed as a single download that contains all splits,
         # so we remove the split from `dataset_dir` and download the whole
-        # dataset (only if necessary)
+        # dataset (if necessary)
         #
         dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
         split_dir = os.path.join(dataset_dir, split)
@@ -501,6 +608,7 @@ AVAILABLE_DATASETS = {
     "coco-2014-segmentation": COCO2014Dataset,
     "coco-2017-segmentation": COCO2017Dataset,
     "lfw": LabeledFacesInTheWildDataset,
+    "cityscapes": CityscapesDataset,
     "bdd100k": BDD100KDataset,
     "hmdb51": HMDB51Dataset,
     "ucf101": UCF101Dataset,

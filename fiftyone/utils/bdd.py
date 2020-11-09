@@ -335,16 +335,16 @@ def load_bdd_annotations(json_path):
     return {d["name"]: d for d in annotations}
 
 
-def wrangle_bdd100k_download(
-    bdd100k_dir, dataset_dir, copy_files=True, overwrite=False
+def parse_bdd100k_dataset(
+    source_dir, dataset_dir, copy_files=True, overwrite=False
 ):
-    """Wrangles a raw download of the BDD100k dataset into per-split
-    directories in :class:`BDDDataset` format.
+    """Parses the raw BDD100k download files in the specified directory into
+    per-split directories in :class:`BDDDataset` format.
 
-    This function assumes that the input ``bdd100k_dir`` contains the following
+    This function assumes that the input ``source_dir`` contains the following
     contents::
 
-        bdd100k_dir/
+        source_dir/
             labels/
                 bdd100k_labels_images_train.json
                 bdd100k_labels_images_val.json
@@ -368,106 +368,107 @@ def wrangle_bdd100k_download(
                 data/
 
     Args:
-        bdd100k_dir: the source directory containing the BDD100k download
+        source_dir: the source directory containing the manually dowloaded
+            BDD100k files
         dataset_dir: the directory to construct the output split directories
         copy_files (True): whether to move (False) or create copies (True) of
             the source files when populating ``dataset_dir``
         overwrite (False): whether to overwrite existing files/directories in
             the output location, if they exist
+
+    Raises:
+        OSError: if any required source files are not present
     """
     put_dir = etau.copy_dir if copy_files else etau.move_dir
     put_file = etau.copy_file if copy_files else etau.move_file
 
-    _ensure_bdd100k_root(bdd100k_dir)
+    _ensure_bdd100k_dir(source_dir)
 
     # Train images
     logger.info("Preparing training images...")
-    in_train_data_dir = os.path.join(bdd100k_dir, "images", "100k", "train")
+    in_train_data_dir = os.path.join(source_dir, "images", "100k", "train")
     out_train_data_dir = os.path.join(dataset_dir, "train", "data")
     if overwrite or not os.path.isdir(out_train_data_dir):
-        _ensure_bdd100k_dir(bdd100k_dir, in_train_data_dir)
+        _ensure_bdd100k_subdir(source_dir, in_train_data_dir)
         put_dir(in_train_data_dir, out_train_data_dir)
 
     # Train labels
     logger.info("Preparing training labels...")
     in_train_labels_path = os.path.join(
-        bdd100k_dir, "labels", "bdd100k_labels_images_train.json"
+        source_dir, "labels", "bdd100k_labels_images_train.json"
     )
     out_train_labels_path = os.path.join(dataset_dir, "train", "labels.json")
     if overwrite or not os.path.isfile(out_train_labels_path):
-        _ensure_bdd100k_file(bdd100k_dir, in_train_labels_path)
+        _ensure_bdd100k_file(source_dir, in_train_labels_path)
         put_file(in_train_labels_path, out_train_labels_path)
 
     # Validation images
     logger.info("Preparing validation images...")
-    in_val_data_dir = os.path.join(bdd100k_dir, "images", "100k", "val")
+    in_val_data_dir = os.path.join(source_dir, "images", "100k", "val")
     out_val_data_dir = os.path.join(dataset_dir, "validation", "data")
     if overwrite or not os.path.isdir(out_val_data_dir):
-        _ensure_bdd100k_dir(bdd100k_dir, in_val_data_dir)
+        _ensure_bdd100k_subdir(source_dir, in_val_data_dir)
         put_dir(in_val_data_dir, out_val_data_dir)
 
     # Validation labels
     logger.info("Preparing validation labels...")
     in_val_labels_path = os.path.join(
-        bdd100k_dir, "labels", "bdd100k_labels_images_val.json"
+        source_dir, "labels", "bdd100k_labels_images_val.json"
     )
     out_val_labels_path = os.path.join(
         dataset_dir, "validation", "labels.json"
     )
     if overwrite or not os.path.isfile(out_val_labels_path):
-        _ensure_bdd100k_file(bdd100k_dir, in_val_labels_path)
+        _ensure_bdd100k_file(source_dir, in_val_labels_path)
         put_file(in_val_labels_path, out_val_labels_path)
 
     # Test images
     logger.info("Preparing test images...")
-    in_test_data_dir = os.path.join(bdd100k_dir, "images", "100k", "test")
+    in_test_data_dir = os.path.join(source_dir, "images", "100k", "test")
     out_test_data_dir = os.path.join(dataset_dir, "test", "data")
     if overwrite or not os.path.isdir(out_test_data_dir):
-        _ensure_bdd100k_dir(bdd100k_dir, in_test_data_dir)
+        _ensure_bdd100k_subdir(source_dir, in_test_data_dir)
         put_dir(in_test_data_dir, out_test_data_dir)
 
 
-def _ensure_bdd100k_root(bdd100k_dir):
-    if not os.path.isdir(bdd100k_dir):
-        msg = "\n\nDirectory '%s' not found." % bdd100k_dir
-        msg += _ROOT_BDD100K_ERROR_MESSAGE % bdd100k_dir
-        raise OSError(msg)
-
-
-def _ensure_bdd100k_dir(bdd100k_dir, dirpath):
-    if not os.path.isdir(dirpath):
-        relpath = os.path.relpath(dirpath, bdd100k_dir)
-        msg = "\n\nDirectory '%s' not found within '%s'." % (
-            relpath,
-            bdd100k_dir,
+def _ensure_bdd100k_dir(source_dir):
+    if source_dir is None:
+        _raise_bdd100k_error(
+            "You must provide a `source_dir` in order to load the BDD100k "
+            "dataset."
         )
-        msg += _ROOT_BDD100K_ERROR_MESSAGE % bdd100k_dir
-        raise OSError(msg)
+
+    if not os.path.isdir(source_dir):
+        _raise_bdd100k_error(
+            "Source directory '%s' does not exist." % source_dir
+        )
 
 
-def _ensure_bdd100k_file(bdd100k_dir, filepath):
+def _ensure_bdd100k_subdir(source_dir, dirpath):
+    if not os.path.isdir(dirpath):
+        relpath = os.path.relpath(dirpath, source_dir)
+        _raise_bdd100k_error(
+            "Directory '%s' not found within '%s'." % (relpath, source_dir)
+        )
+
+
+def _ensure_bdd100k_file(source_dir, filepath):
     if not os.path.isfile(filepath):
-        relpath = os.path.relpath(filepath, bdd100k_dir)
-        msg = "\n\nFile '%s' not found within '%s'." % (relpath, bdd100k_dir)
-        msg += _ROOT_BDD100K_ERROR_MESSAGE % bdd100k_dir
-        raise OSError(msg)
+        relpath = os.path.relpath(filepath, source_dir)
+        _raise_bdd100k_error(
+            "File '%s' not found within '%s'." % (relpath, source_dir)
+        )
 
 
-_ROOT_BDD100K_ERROR_MESSAGE = """
-
-You must download the source files for the BDD100k dataset manually and ensure
-that the following contents are present:
-
-%s/
-    labels/
-        bdd100k_labels_images_train.json
-        bdd100k_labels_images_val.json
-    images/
-        100k/
-            train/
-            test/
-            val/
-"""
+def _raise_bdd100k_error(msg):
+    raise OSError(
+        "\n\n"
+        + msg
+        + "\n\n"
+        + "You must download the source files for BDD100k dataset manually."
+        + "\n\n"
+        + "Run `fiftyone zoo info bdd100k` for more information"
+    )
 
 
 def _parse_bdd_annotation(d, frame_size):

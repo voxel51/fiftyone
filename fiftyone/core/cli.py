@@ -1098,6 +1098,7 @@ class ZooCommand(Command):
         _register_command(subparsers, "info", ZooInfoCommand)
         _register_command(subparsers, "download", ZooDownloadCommand)
         _register_command(subparsers, "load", ZooLoadCommand)
+        _register_command(subparsers, "delete", ZooDeleteCommand)
 
     @staticmethod
     def execute(parser, args):
@@ -1245,16 +1246,12 @@ class ZooFindCommand(Command):
 
 
 class ZooInfoCommand(Command):
-    """Print information about downloaded zoo datasets.
+    """Print information about datasets in the FiftyOne Dataset Zoo.
 
     Examples::
 
-        # Print information about a downloaded zoo dataset
+        # Print information about a zoo dataset
         fiftyone zoo info <name>
-
-        # Print information about the zoo dataset downloaded to the specified
-        # base directory
-        fiftyone zoo info <name> --base-dir <base-dir>
     """
 
     @staticmethod
@@ -1278,7 +1275,7 @@ class ZooInfoCommand(Command):
 
         # Print dataset info
         zoo_dataset = foz.get_zoo_dataset(name)
-        print("***** Dataset description *****\n%s" % zoo_dataset.__doc__)
+        print("***** Dataset description *****\n    %s" % zoo_dataset.__doc__)
 
         # Check if dataset is downloaded
         base_dir = args.base_dir
@@ -1429,6 +1426,34 @@ class ZooLoadCommand(Command):
 
         dataset.persistent = True
         print("Dataset '%s' created" % dataset.name)
+
+
+class ZooDeleteCommand(Command):
+    """Deletes the local copy of the zoo dataset on disk.
+
+    Examples::
+
+        # Delete an entire zoo dataset from disk
+        fiftyone zoo delete <name>
+
+        # Delete a specific split of a zoo dataset from disk
+        fiftyone zoo delete <name> --split <split>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the dataset"
+        )
+        parser.add_argument(
+            "-s", "--split", metavar="SPLIT", help="a dataset split",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        split = args.split
+        foz.delete_zoo_dataset(name, split=split)
 
 
 def _parse_dataset_import_kwargs(args):
