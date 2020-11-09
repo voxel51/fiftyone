@@ -17,10 +17,8 @@ export default () => {
     remainder: [],
   };
   const [state, setState] = useState(empty);
-  // useEffect(() => setState(empty), [view]);
 
   useMessageHandler("page", ({ results, more }) => {
-    console.log(results, "page");
     setState(tile(results, more, state));
   });
 
@@ -38,7 +36,7 @@ export default () => {
       });
   }, [guard]);
 
-  //useSendMessage("page", { page: state.pageToLoad }, guard);
+  useSendMessage("page", { page: state.pageToLoad }, guard);
 
   return [state, setState];
 };

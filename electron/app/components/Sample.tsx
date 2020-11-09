@@ -8,6 +8,7 @@ import Tag from "./Tags/Tag";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { getLabelText, stringify } from "../utils/labels";
+import { packageMessage } from "../utils/socket";
 import { useFastRerender, useVideoData } from "../utils/hooks";
 
 const SampleDiv = animated(styled.div`
@@ -119,7 +120,9 @@ const Sample = ({ sample, metadata, setView }) => {
   const activeFrameLabels = useRecoilValue(atoms.activeLabels("frame"));
   const activeTags = useRecoilValue(atoms.activeTags);
   const activeOther = useRecoilValue(atoms.activeOther("sample"));
-  const setStateDescription = useSetRecoilState(atoms.stateDescription);
+  const [stateDescription, setStateDescription] = useRecoilState(
+    atoms.stateDescription
+  );
 
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     atoms.selectedSamples
@@ -138,7 +141,8 @@ const Sample = ({ sample, metadata, setView }) => {
     }
     setSelectedSamples(newSelected);
     rerender();
-    socket.emit(event, id, (data) => setStateDescription(data));
+    socket.send(packageMessage(event, { _id: id }));
+    setStateDescription({ ...stateDescription, selected: [...newSelected] });
   };
   const eventHandlers = {
     onClick: () => handleClick(),

@@ -254,7 +254,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     async def on_as_app(self):
         StateHandler.app_clients.add(self)
         awaitables = self.get_statistics_awaitables(only=self)
-        awaitables += [self.send_page(1, only=self)]
         asyncio.gather(*awaitables)
 
     async def on_page(self, **kwargs):
@@ -263,7 +262,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     async def on_update(self, state):
         StateHandler.state = state
         awaitables = [
-            self.send_page(1),
             self.send_updates(ignore=self),
         ]
         awaitables += self.get_statistics_awaitables()
@@ -326,7 +324,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             for client in StateHandler.app_clients:
                 client.write_message(message)
 
-    def on_add_selection(self, _id):
+    async def on_add_selection(self, _id):
         selected = set(StateHandler.state["selected"])
         selected.add(_id)
         StateHandler.state["selected"] = selected

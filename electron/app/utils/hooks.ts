@@ -36,21 +36,14 @@ export const useMessageHandler = (type, handler) => {
 export const useSendMessage = (type, data, guard = null, deps = []) => {
   const socket = useRecoilValue(selectors.socket);
   useEffect(() => {
-    const open = socket.readyState === WebSocket.OPEN;
-    const call = () => {
+    console.log(guard, type, data);
+    !guard &&
       socket.send(
         JSON.stringify({
           ...data,
           type,
         })
       );
-    };
-    !guard && open && call();
-    !guard && !open && socket.addEventListener("open", call);
-
-    return () => {
-      !guard && !open && socket.removeEventListener("open", call);
-    };
   }, [guard, ...deps]);
 };
 
