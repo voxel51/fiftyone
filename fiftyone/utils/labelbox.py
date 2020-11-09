@@ -225,13 +225,14 @@ def export_to_labelbox(
             with the given prefix will be exported
         labels_dict (None): a dictionary mapping label field names to keys; all
             fields whose names are in this dictionary will be exported
-        frame_labels_field (None): the name of a frame labels field to export
+        frame_labels_field (None): the name of a frame labels field to export.
+            Only applicable for video samples
         frame_labels_prefix (None): a frame labels field prefix; all
             frame-level fields whose name starts with the given prefix will be
-            exported
+            exported. Only applicable for video samples
         frame_labels_dict (None): a dictionary mapping frame label fields to
             keys; all frame-level fields whose names are in this dictionary
-            will be exported
+            will be exported. Only applicable for video samples
     """
     # Build callback to export labels
     if etau.is_str(labelbox_project_or_json_path):
