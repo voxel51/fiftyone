@@ -9,7 +9,6 @@ import Loading from "./Loading";
 import { isFloat } from "../utils/generic";
 import { useMessageHandler, useSendMessage } from "../utils/hooks";
 import * as selectors from "../recoil/selectors";
-import { SearchResults } from "semantic-ui-react";
 
 const Container = styled.div`
   ${scrollbarStyles}

@@ -115,7 +115,7 @@ const Sample = ({ sample, metadata, setView }) => {
   const socket = useRecoilValue(selectors.socket);
   const filter = useRecoilValue(selectors.labelFilters);
   const colorMap = useRecoilValue(atoms.colorMap);
-  const coloredByLabel = useRecoilValue(selectors.coloredByLabel);
+  const colorByLabel = useRecoilValue(atoms.colorByLabel);
   const activeLabels = useRecoilValue(atoms.activeLabels("sample"));
   const activeFrameLabels = useRecoilValue(atoms.activeLabels("frame"));
   const activeTags = useRecoilValue(atoms.activeTags);
@@ -211,7 +211,7 @@ const Sample = ({ sample, metadata, setView }) => {
         thumbnail={true}
         activeLabels={activeLabels}
         activeFrameLabels={activeFrameLabels}
-        coloredByLabel={coloredByLabel}
+        colorByLabel={colorByLabel}
         {...eventHandlers}
         filterSelector={selectors.labelFilters}
         onMouseEnter={onMouseEnter}

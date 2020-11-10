@@ -1,7 +1,7 @@
 import React, { useState, useContext } from "react";
 import styled, { ThemeContext } from "styled-components";
-import { useRecoilValue, useSetRecoilState } from "recoil";
-
+import { useRecoilValue, useSetRecoilState, useRecoilState } from "recoil";
+import { Checkbox, FormControlLabel } from "@material-ui/core";
 import {
   Autorenew,
   BarChart,
@@ -36,6 +36,16 @@ type Props = {
   unsupported: Entry[];
   onSelectTag: (entry: Entry) => void;
 };
+
+const BoxedContainer = styled.div`
+  background: ${({ theme }) => theme.backgroundDark};
+  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
+  border: 1px solid #191c1f;
+  border-radius: 2px;
+  color: ${({ theme }) => theme.fontDark};
+  margin: 0.4rem;
+  font-weight: bold;
+`;
 
 const Container = styled.div`
   height: 100%;
@@ -180,6 +190,10 @@ const DisplayOptionsSidebar = React.forwardRef(
     }: Props,
     ref
   ) => {
+    const [colorByLabel, setColorByLabel] = useRecoilState(
+      modal ? atoms.modalColorByLabel : atoms.colorByLabel
+    );
+    const theme = useContext(ThemeContext);
     const refreshColorMap = useSetRecoilState(refreshColorMapSelector);
     const colorMap = useRecoilValue(atoms.colorMap);
     const cellRest = { modal };
@@ -240,6 +254,28 @@ const DisplayOptionsSidebar = React.forwardRef(
             {...cellRest}
           />
         ) : null}
+        <BoxedContainer>
+          <FormControlLabel
+            label={
+              <div
+                style={{ lineHeight: "20px", fontSize: 14, fontWeight: "bold" }}
+              >
+                Color by label
+              </div>
+            }
+            control={
+              <Checkbox
+                checked={colorByLabel}
+                onChange={() => setColorByLabel(!colorByLabel)}
+                style={{
+                  padding: "0 5px",
+                  color: theme.brand,
+                }}
+              />
+            }
+            style={{ marginLeft: 0 }}
+          />
+        </BoxedContainer>
         {tags.length || labels.length || scalars.length ? (
           <Button onClick={refreshColorMap}>
             <Autorenew />

@@ -50,7 +50,7 @@ export default ({
   onMouseLeave = () => {},
   activeLabels,
   activeFrameLabels,
-  coloredByLabel,
+  colorByLabel,
   fieldSchema = {},
   filterSelector,
   playerRef,
@@ -128,7 +128,7 @@ export default ({
     } else {
       player.updateOptions({
         activeLabels: playerActiveLabels,
-        coloredByLabel,
+        colorByLabel,
         filter,
         colorMap,
         fps,
@@ -143,7 +143,7 @@ export default ({
     overlay,
     playerActiveLabels,
     colorMap,
-    coloredByLabel,
+    colorByLabel,
     fps,
   ]);
 

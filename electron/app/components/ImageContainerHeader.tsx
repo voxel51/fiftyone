@@ -29,6 +29,7 @@ const SamplesHeader = styled.div`
   overflow-x: hidden;
   margin-left: 1rem;
   margin-right: -1rem;
+  padding: 0.5rem 0;
 `;
 
 const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {

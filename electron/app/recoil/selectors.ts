@@ -410,7 +410,7 @@ export const modalLabelFilters = selector({
         get(atoms.filterIncludeLabels(label))
       );
 
-      set(atoms.modalColorByLabel(label), get(atoms.colorByLabel(label)));
+      set(atoms.modalColorByLabel, get(atoms.colorByLabel));
     }
   },
 });
@@ -633,27 +633,5 @@ export const sampleModalFilter = selector({
         return acc;
       }, {});
     };
-  },
-});
-
-export const coloredByLabel = selector({
-  key: "coloredByLabel",
-  get: ({ get }) => {
-    const paths = get(labelPaths);
-    return paths.reduce(
-      (acc, cur) => ({ ...acc, [cur]: get(atoms.colorByLabel(cur)) }),
-      {}
-    );
-  },
-});
-
-export const modalColoredByLabel = selector({
-  key: "modalColoredByLabel",
-  get: ({ get }) => {
-    const paths = get(labelPaths);
-    return paths.reduce(
-      (acc, cur) => ({ ...acc, [cur]: get(atoms.modalColorByLabel(cur)) }),
-      {}
-    );
   },
 });
