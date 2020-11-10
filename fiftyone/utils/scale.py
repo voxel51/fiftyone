@@ -107,12 +107,17 @@ def import_from_scale(
             {
                 "annotations": {
                     "url": <url-or-filepath>
+                },
+                "events": {
+                    "url": <url-or-filepath>
                 }
             }
 
-        where the ``url`` field can contain either a URL, in which case the
-        file is downloaded from the web, or the path to JSON file on disk
-        containing the per-frame annotations in the following format::
+        where the ``url`` fields can contain either a URL, in which case the
+        file is downloaded from the web, or the path to JSON file on disk.
+
+        The annotations file should contain per-frame annotations in the
+        following format::
 
             [
                 {
@@ -136,21 +141,37 @@ def import_from_scale(
         Scale task so that the correct frame numbers can be determined from
         these values.
 
+        The optional events file should contain a list of events in the video::
+
+            {
+                "events": [...]
+            }
+
     -   `Video Playback <https://docs.scale.com/reference#video-playback>`_::
 
             {
                 "annotations": {
                     "url": <url-or-filepath>
+                },
+                "events": {
+                    "url": <url-or-filepath>
                 }
             }
 
-        where the ``url`` field can contain either a URL, in which case the
-        file is downloaded from the web, or the path to JSON file on disk
-        containing the video playback annotations in the following format::
+        where the ``url`` fields can contain either a URL, in which case the
+        file is downloaded from the web, or the path to JSON files on disk.
+
+        The annotations file should contain a dictionary of object
+        trajectories::
 
             {
-                "annotations": [...],
-                "events": [...],
+                "annotations": {...}
+            }
+
+        The optional events file should contain a list of events in the video::
+
+            {
+                "events": [...]
             }
 
     Args:
@@ -158,7 +179,7 @@ def import_from_scale(
         labels_dir_or_json: the path to a Scale AI JSON export or a directory
             of JSON exports as per the formats described above
         label_prefix (None): a prefix to prepend to the sample label field(s)
-            that are created
+            that are created, separated by an underscore
         scale_id_field ("scale_id"): the sample field to use to associate Scale
             task IDs with FiftyOne samples
     """
@@ -179,7 +200,6 @@ def import_from_scale(
 
     is_video = dataset.media_type == fomm.VIDEO
 
-    # ref: https://github.com/Labelbox/labelbox/blob/7c79b76310fa867dd38077e83a0852a259564da1/exporters/coco-exporter/coco_exporter.py#L33
     with fou.ProgressBar(total=len(labels)) as pb:
         for task_id, task_labels in pb(labels.items()):
             if task_id not in id_map:
@@ -228,6 +248,7 @@ def export_to_scale(
     sample_collection,
     json_path,
     video_labels_dir=None,
+    events_dir=None,
     video_playback=False,
     label_field=None,
     label_prefix=None,
@@ -273,12 +294,12 @@ def export_to_scale(
 
             {
                 "annotations": {
-                    "url": <frame-labels-filepath>
+                    "url": <filepath>
                 }
             }
 
-    When exporting frame labels for video samples, the ``url`` field will
-    contain the paths on disk to per-sample JSON files that are written to
+    When exporting labels for video samples, the ``url`` field will contain the
+    paths on disk to per-sample JSON files that are written to
     ``video_labels_dir`` as follows::
 
         video_labels_dir/
@@ -308,17 +329,45 @@ def export_to_scale(
     `Video Playback format <https://docs.scale.com/reference#video-playback>`_::
 
         {
-            "annotations": [...],
-            "events": [...],
+            "annotations": {...},
+        }
+
+    When exporting labels for videos and the ``events_dir`` parameter is
+    provided, the ``hypothesis`` fields of the JSON written to ``json_path``
+    will include an ``events`` field::
+
+        {
+            "annotations": {
+                "url": <filepath>
+            },
+            "events": {
+                "url": <filepath>
+            }
+        }
+
+    whose ``url`` field will contain the paths on disk to per-sample JSON files
+    that are written to ``events_dir`` as follows::
+
+        events_dir/
+            <sample-id1>.json
+            <sample-id2>.json
+            ...
+
+    where each per-sample JSON file contains the
+    `events in the video <https://docs.scale.com/reference#events>`_::
+
+        {
+            "events": [...]
         }
 
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
-            the path to write an NDJSON export of the labels
         json_path: the path to write the JSON export
         video_labels_dir (None): a directory to write the per-sample video
             labels. Only applicable for video samples
+        events_dir (None): a directory to write the per-sample video events.
+            Only applicable for video samples
         video_playback (False): whether to export video labels in a suitable
             format for use with the
             `Video Playback <https://docs.scale.com/reference#video-playback>`_ task.
@@ -362,10 +411,12 @@ def export_to_scale(
             force_dict=True,
         )
 
-        if frame_label_fields and video_labels_dir is None:
+        if frame_label_fields and (
+            video_labels_dir is None and events_dir is None
+        ):
             raise ValueError(
-                "Must provide `video_labels_dir` when exporting frame labels "
-                "for video samples"
+                "Must provide `video_labels_dir` and/or `events_dir` when "
+                "exporting labels for video samples"
             )
 
     # Export the labels
@@ -399,20 +450,31 @@ def export_to_scale(
             # Export frame-level labels
             if is_video and frame_label_fields:
                 frames = _get_frame_labels(sample, frame_label_fields)
+                make_events = events_dir is not None
                 if video_playback:
-                    annotations = _to_scale_video_playback_labels(
-                        frames, frame_size
+                    annotations, events = _to_scale_video_playback_labels(
+                        frames, frame_size, make_events=make_events
                     )
                 else:
-                    annotations = _to_scale_video_annotation_labels(
-                        frames, frame_size
+                    annotations, events = _to_scale_video_annotation_labels(
+                        frames, frame_size, make_events=make_events
                     )
 
-                video_labels_path = os.path.join(
-                    video_labels_dir, sample.id + ".json"
-                )
-                etas.write_json(annotations, video_labels_path)
-                anno_dict = {"annotations": {"url": video_labels_path}}
+                anno_dict = {}
+
+                # Write annotations
+                if video_labels_dir:
+                    anno_path = os.path.join(
+                        video_labels_dir, sample.id + ".json"
+                    )
+                    etas.write_json(annotations, anno_path)
+                    anno_dict["annotations"] = {"url": anno_path}
+
+                # Write events
+                if events_dir:
+                    events_path = os.path.join(events_dir, sample.id + ".json")
+                    etas.write_json(events, events_path)
+                    anno_dict["events"] = {"url": events_path}
 
             labels[sample.id] = {
                 "filepath": sample.filepath,
@@ -532,39 +594,42 @@ def _to_scale_image_labels(labels_dict, frame_size):
 
 
 # https://docs.scale.com/reference#general-video-annotation
-def _to_scale_video_annotation_labels(frames, frame_size):
+def _to_scale_video_annotation_labels(frames, frame_size, make_events=False):
+    in_progress_events = {}
+    events = []
+
     annotations = []
-    for labels_dict in frames.values():
+    for frame_number, labels_dict in frames.items():
+        # Generate events, if requested
+        if make_events:
+            _parse_frame_events(
+                labels_dict, frame_number, events, in_progress_events
+            )
+
+        # Generate frame labels
         anno_dict = _to_scale_image_labels(labels_dict, frame_size)
         annotations.append(anno_dict)
 
-    return annotations
+    # Finalize all remaining events
+    _finalize_events(events, None, in_progress_events)
+
+    return annotations, {"events": events}
 
 
 # https://docs.scale.com/reference#video-playback
-def _to_scale_video_playback_labels(frames, frame_size):
-    traj_uuids = {}
+def _to_scale_video_playback_labels(frames, frame_size, make_events=False):
     in_progress_events = {}
-    annotations = {}
     events = []
+
+    traj_uuids = {}
+    annotations = {}
     for frame_number, frame in frames.items():
         # Ingst new labels
         for label in frame.values():
-            if isinstance(label, (fol.Classification, fol.Classifications)):
-                if isinstance(label, fol.Classification):
-                    classifications = [label]
-                else:
-                    classifications = label.classifications
-
-                for classification in classifications:
-                    event_label = classification.label
-                    if event_label in in_progress_events:
-                        start = in_progress_events[event_label][0]
-                    else:
-                        start = frame_number
-
-                    in_progress_events[event_label] = (start, frame_number)
-
+            if make_events and isinstance(
+                label, (fol.Classification, fol.Classifications)
+            ):
+                _ingest_event_label(label, frame_number, in_progress_events)
             elif isinstance(label, (fol.Detection, fol.Detections)):
                 if isinstance(label, fol.Detection):
                     detections = [label]
@@ -595,21 +660,47 @@ def _to_scale_video_playback_labels(frames, frame_size):
                 msg = "Ignoring unsupported label type '%s'" % label.__class__
                 warnings.warn(msg)
 
-        # Handle in-progress events
-        for event_label in list(in_progress_events.keys()):
-            start, last = in_progress_events[event_label]
-            if last != frame_number:
-                events.append(_make_event(event_label, start, last))
-                del in_progress_events[event_label]
+        # Finalize in-progress events
+        _finalize_events(events, frame_number, in_progress_events)
 
-    # Flush remaining events
-    for event_label, (start, last) in in_progress_events.items():
-        events.append(_make_event(event_label, start, last))
+    # Finalize all remaining events
+    _finalize_events(events, None, in_progress_events)
 
-    return {
-        "annotations": annotations,
-        "events": events,
-    }
+    return {"annotations": annotations}, {"events": events}
+
+
+def _parse_frame_events(labels_dict, frame_number, events, in_progress_events):
+    for name, label in labels_dict.items():
+        if isinstance(label, (fol.Classification, fol.Classifications)):
+            _ingest_event_label(label, frame_number, in_progress_events)
+            labels_dict[name] = None
+
+    # Finalize in-progress events
+    _finalize_events(events, frame_number, in_progress_events)
+
+
+def _ingest_event_label(label, frame_number, in_progress_events):
+    if isinstance(label, fol.Classification):
+        classifications = [label]
+    else:
+        classifications = label.classifications
+
+    for classification in classifications:
+        event_label = classification.label
+        if event_label in in_progress_events:
+            start = in_progress_events[event_label][0]
+        else:
+            start = frame_number
+
+        in_progress_events[event_label] = (start, frame_number)
+
+
+def _finalize_events(events, frame_number, in_progress_events):
+    for event_label in list(in_progress_events.keys()):
+        start, last = in_progress_events[event_label]
+        if last != frame_number:
+            events.append(_make_event(event_label, start, last))
+            del in_progress_events[event_label]
 
 
 # https://docs.scale.com/reference#events
@@ -774,17 +865,31 @@ def _make_point(point, frame_size):
 
 def _parse_video_labels(task_labels, metadata):
     anno_dict = task_labels["response"]
-    annos = _download_or_load_json(anno_dict["annotations"]["url"])
 
-    if isinstance(annos, list):
-        task = task_labels.get("task", None)
-        return _parse_video_annotation_labels(annos, metadata, task=task)
+    if "annotations" in anno_dict:
+        annos = _download_or_load_json(anno_dict["annotations"]["url"])
+    else:
+        annos = None
 
-    return _parse_video_playback_labels(annos, metadata)
+    if "events" in anno_dict:
+        events = _download_or_load_json(anno_dict["events"]["url"])
+    else:
+        events = None
+
+    if isinstance(annos, dict):
+        return _parse_video_playback_labels(annos, events, metadata)
+
+    task = task_labels.get("task", None)
+    return _parse_video_annotation_labels(annos, events, metadata, task=task)
 
 
 # https://docs.scale.com/reference#general-video-annotation
-def _parse_video_annotation_labels(annos, metadata, task=None):
+def _parse_video_annotation_labels(annos, events, metadata, task=None):
+    if annos is not None:
+        annos = annos.get("annotations", [])
+    else:
+        annos = []
+
     frame_numbers = None
     if task is not None:
         try:
@@ -803,9 +908,16 @@ def _parse_video_annotation_labels(annos, metadata, task=None):
 
     frame_size = (metadata.frame_width, metadata.frame_height)
 
-    frames = {}
+    frames = defaultdict(dict)
+
+    # Parse frame labels
     for frame_number, anno_dict in zip(frame_numbers, annos):
         frames[frame_number] = _parse_image_labels(anno_dict, frame_size)
+
+    # Parse events
+    if events is not None:
+        events = events.get("events", [])
+        _parse_video_playback_events(frames, events)
 
     return frames
 
@@ -839,16 +951,18 @@ def _get_frame_numbers(task, metadata):
 
 
 # https://docs.scale.com/reference#video-playback
-def _parse_video_playback_labels(anno_dict, metadata):
+def _parse_video_playback_labels(annos, events, metadata):
     frames = defaultdict(dict)
 
     # Parse events
-    events = anno_dict.get("events", [])
-    _parse_video_playback_events(frames, events)
+    if events is not None:
+        events = events.get("events", [])
+        _parse_video_playback_events(frames, events)
 
     # Parse video objects
-    annotations = anno_dict.get("annotations", {})
-    _parse_video_playback_objects(frames, annotations, metadata)
+    if annos is not None:
+        annotations = annos.get("annotations", {})
+        _parse_video_playback_objects(frames, annotations, metadata)
 
     return frames
 

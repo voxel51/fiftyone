@@ -61,6 +61,7 @@ def import_from_labelbox(
         labelbox_project_or_json_path: a ``labelbox.schema.project.Project`` or
             the path to the JSON export of a Labelbox project on disk
         label_prefix (None): a prefix to prepend to the sample label field(s)
+            that are created, separated by an underscore
         download_dir (None): a directory into which to download the media for
             any Labelbox IDs with no corresponding sample with the matching
             ``labelbox_id_field`` value. This can be omitted if all IDs are
