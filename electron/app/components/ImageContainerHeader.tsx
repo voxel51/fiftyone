@@ -48,7 +48,7 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
   return (
     <Wrapper>
       <DropdownHandle
-        label="Display Options"
+        label="Fields"
         expanded={showSidebar}
         onClick={onShowSidebar && (() => onShowSidebar(!showSidebar))}
         style={{ width: 240 }}

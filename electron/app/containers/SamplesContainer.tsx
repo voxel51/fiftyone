@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 
-import DisplayOptionsSidebar from "../components/DisplayOptionsSidebar";
+import FieldsSidebar from "../components/FieldsSidebar";
 import ContainerHeader from "../components/ImageContainerHeader";
 import Samples from "../components/Samples";
 import ViewBar from "../components/ViewBar/ViewBar";
@@ -23,7 +23,7 @@ const ContentColumn = styled.div`
   flex-grow: 1;
 `;
 
-const DisplayOptionsWrapper = () => {
+const FieldsWrapper = () => {
   const [activeTags, setActiveTags] = useRecoilState(atoms.activeTags);
   const [activeLabels, setActiveLabels] = useRecoilState(
     atoms.activeLabels("sample")
@@ -81,7 +81,7 @@ const DisplayOptionsWrapper = () => {
 
   return (
     <SidebarColumn>
-      <DisplayOptionsSidebar
+      <FieldsSidebar
         tags={getDisplayOptions(
           tagNames.map((t) => ({ name: t })),
           filteredLabelSampleCounts,
@@ -143,7 +143,7 @@ const SamplesContainer = React.memo((props) => {
         onShowSidebar={setShowSidebar}
       />
       <Container>
-        {showSidebar ? <DisplayOptionsWrapper /> : null}
+        {showSidebar ? <FieldsWrapper /> : null}
         <ContentColumn>
           <Samples {...props} />
         </ContentColumn>

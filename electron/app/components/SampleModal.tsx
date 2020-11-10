@@ -4,7 +4,7 @@ import styled from "styled-components";
 import { Check, Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
 import { useRecoilState, useRecoilValue } from "recoil";
 
-import DisplayOptionsSidebar from "./DisplayOptionsSidebar";
+import FieldsSidebar from "./FieldsSidebar";
 import JSONView from "./JSONView";
 import Player51 from "./Player51";
 import SelectObjectsMenu from "./SelectObjectsMenu";
@@ -543,7 +543,7 @@ const SampleModal = ({
               <Row key={"metadata-" + name} name={name} value={value} />
             ))}
             <h2>
-              Display Options
+              Fields
               <span className="push-right" />
             </h2>
             <div className="select-objects-wrapper">
@@ -552,7 +552,7 @@ const SampleModal = ({
                 frameNumberRef={frameNumberRef}
               />
             </div>
-            <DisplayOptionsSidebar
+            <FieldsSidebar
               colorMap={colorMap}
               tags={getDisplayOptions(
                 tagNames.map((t) => ({ name: t })),
