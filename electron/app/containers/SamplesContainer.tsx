@@ -116,6 +116,7 @@ const FieldsWrapper = () => {
           labelSampleCounts,
           activeLabels
         )}
+        colorByLabelAtom={atoms.colorByLabel}
         style={{
           scrollbarWidth: "thin",
         }}

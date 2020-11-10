@@ -592,6 +592,7 @@ const SampleModal = ({
                 overflowX: "hidden",
                 height: "auto",
               }}
+              colorByLabelAtom={atoms.modalColorByLabel}
               modal={true}
             />
             <TopRightNavButton

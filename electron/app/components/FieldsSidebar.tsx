@@ -1,13 +1,14 @@
 import React, { useState, useContext } from "react";
 import styled, { ThemeContext } from "styled-components";
 import { useRecoilValue, useSetRecoilState, useRecoilState } from "recoil";
-import { Checkbox, FormControlLabel } from "@material-ui/core";
 import {
   Autorenew,
   BarChart,
   Help,
   Label,
   PhotoLibrary,
+  Settings,
+  Brush,
 } from "@material-ui/icons";
 
 import CellHeader from "./CellHeader";
@@ -18,7 +19,6 @@ import { Button, scrollbarStyles } from "./utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { refreshColorMap as refreshColorMapSelector } from "../recoil/selectors";
-import { labelTypeHasColor } from "../utils/labels";
 
 export type Entry = {
   name: string;
@@ -36,16 +36,6 @@ type Props = {
   unsupported: Entry[];
   onSelectTag: (entry: Entry) => void;
 };
-
-const BoxedContainer = styled.div`
-  background: ${({ theme }) => theme.backgroundDark};
-  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
-  border: 1px solid #191c1f;
-  border-radius: 2px;
-  color: ${({ theme }) => theme.fontDark};
-  margin: 0.4rem;
-  font-weight: bold;
-`;
 
 const Container = styled.div`
   height: 100%;
@@ -89,9 +79,8 @@ const Cell = ({
   label,
   icon,
   entries,
-  headerContent = null,
   onSelect,
-  colorMap,
+  colorMap = {},
   title,
   modal,
   prefix = "",
@@ -132,7 +121,6 @@ const Cell = ({
       expanded={expanded}
       onExpand={setExpanded}
     >
-      {headerContent}
       {entries.length ? (
         <CheckboxGrid
           columnWidths={[3, 2]}
@@ -143,7 +131,7 @@ const Cell = ({
             data: e.icon ? e.icon : makeData(e.filteredCount, e.totalCount),
             totalCount: e.totalCount,
             filteredCount: e.filteredCount,
-            color: labelTypeHasColor(e.type)
+            color: colorMap[prefix + e.name]
               ? colorMap[prefix + e.name]
               : theme.backgroundLight,
             hideCheckbox: e.hideCheckbox,
@@ -175,7 +163,7 @@ const makeData = (filteredCount, totalCount) => {
   return totalCount;
 };
 
-const DisplayOptionsSidebar = React.forwardRef(
+const FieldsSidebar = React.forwardRef(
   (
     {
       modal = false,
@@ -188,14 +176,12 @@ const DisplayOptionsSidebar = React.forwardRef(
       onSelectLabel,
       onSelectFrameLabel,
       onSelectScalar,
-      headerContent = {},
+      colorByLabelAtom,
       ...rest
     }: Props,
     ref
   ) => {
-    const [colorByLabel, setColorByLabel] = useRecoilState(
-      modal ? atoms.modalColorByLabel : atoms.colorByLabel
-    );
+    const [colorByLabel, setColorByLabel] = useRecoilState(colorByLabelAtom);
     const theme = useContext(ThemeContext);
     const refreshColorMap = useSetRecoilState(refreshColorMapSelector);
     const colorMap = useRecoilValue(atoms.colorMap);
@@ -210,7 +196,6 @@ const DisplayOptionsSidebar = React.forwardRef(
           label="Tags"
           icon={<PhotoLibrary />}
           entries={tags}
-          headerContent={headerContent.tags}
           onSelect={onSelectTag}
           {...cellRest}
         />
@@ -219,7 +204,6 @@ const DisplayOptionsSidebar = React.forwardRef(
           label="Labels"
           icon={<Label style={{ transform: "rotate(180deg)" }} />}
           entries={labels}
-          headerContent={headerContent.labels}
           onSelect={onSelectLabel}
           {...cellRest}
         />
@@ -239,7 +223,6 @@ const DisplayOptionsSidebar = React.forwardRef(
           label="Scalars"
           icon={<BarChart />}
           entries={scalars}
-          headerContent={headerContent.scalars}
           onSelect={onSelectScalar}
           {...cellRest}
         />
@@ -254,34 +237,29 @@ const DisplayOptionsSidebar = React.forwardRef(
               selected: false,
               disabled: true,
             }))}
-            headerContent={headerContent.unsupported}
             {...cellRest}
           />
         ) : null}
-        <FormControlLabel
-          label={
-            <div
-              style={{ lineHeight: "20px", fontSize: 14, fontWeight: "bold" }}
-            >
-              Color by label
-            </div>
-          }
-          control={
-            <Checkbox
-              checked={colorByLabel}
-              onChange={() => setColorByLabel(!colorByLabel)}
-              style={{
-                padding: "0 5px",
-                color: theme.brand,
-              }}
-            />
-          }
-          style={{ marginLeft: 0 }}
+        <Cell
+          label="Options"
+          title="Field options"
+          icon={<Settings />}
+          onSelect={() => setColorByLabel(!colorByLabel)}
+          colorMap={{
+            "Color by label": theme.brand,
+          }}
+          entries={[
+            {
+              name: "Color by label",
+              selected: colorByLabel,
+              icon: <Brush style={{ paddingTop: "0.4rem" }} />,
+            },
+          ]}
         />
         {tags.length || labels.length || scalars.length ? (
           <Button onClick={refreshColorMap}>
             <Autorenew />
-            Refresh colors
+            Refresh field colors
           </Button>
         ) : null}
         <div style={{ height: "1rem", width: "100%" }} />
@@ -290,4 +268,4 @@ const DisplayOptionsSidebar = React.forwardRef(
   }
 );
 
-export default DisplayOptionsSidebar;
+export default FieldsSidebar;

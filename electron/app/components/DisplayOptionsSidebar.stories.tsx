@@ -1,10 +1,9 @@
 import React from "react";
-import DisplayOptionsSidebar from "./DisplayOptionsSidebar";
-import { Box } from "./utils";
+import FieldsSidebar from "./FieldsSidebar";
 
 export default {
-  component: DisplayOptionsSidebar,
-  title: "DisplayOptionsSidebar",
+  component: FieldsSidebar,
+  title: "FieldsSidebar",
 };
 
 const data = {
@@ -26,14 +25,12 @@ const data = {
   ],
 };
 
-export const standard = () => <DisplayOptionsSidebar {...data} />;
+export const standard = () => <FieldsSidebar {...data} />;
 
-export const empty = () => (
-  <DisplayOptionsSidebar tags={[]} labels={[]} scalars={[]} />
-);
+export const empty = () => <FieldsSidebar tags={[]} labels={[]} scalars={[]} />;
 
 export const unsupported = () => (
-  <DisplayOptionsSidebar
+  <FieldsSidebar
     {...data}
     unsupported={[
       { name: "Array thing", count: 20 },
