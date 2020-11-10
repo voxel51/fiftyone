@@ -18,11 +18,9 @@ import fiftyone.utils.scale as fous
 @unittest.skip("Must be run manually")
 def test_scale_image():
     # Image dataset
-    _dataset = foz.load_zoo_dataset(
+    dataset = foz.load_zoo_dataset(
         "bdd100k", split="validation", shuffle=True, max_samples=10
     )
-    dataset = fo.Dataset()
-    dataset.add_samples(_dataset.take(10))
 
     _test_scale_image(dataset)
 

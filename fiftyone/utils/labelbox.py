@@ -62,7 +62,7 @@ def import_from_labelbox(
             {
                 "ID": <labelbox-id>,
                 "Labeled Data": <url-or-None>,
-                "Label": {...},
+                "Label": {...}
             }
         ]
 
