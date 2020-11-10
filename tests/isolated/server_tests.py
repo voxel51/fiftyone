@@ -87,9 +87,13 @@ class StateTests(TestCase):
 
     def setUp(self):
         super().setUp()
-        self.__app_client = websocket_connect(self.get_http_port())
+        self.__app_client = self.get_ws()
         self.send(self.app, "as_app", {})
-        self.__session_client = websocket_connect(self.get_http_port())
+        self.__session_client = self.get_ws()
+
+    def get_ws(self):
+        websocket_connect(self.get_socket_path(), callback=self.stop)
+        return self.wait().result()
 
     @property
     def app(self):
@@ -104,11 +108,10 @@ class StateTests(TestCase):
 
     def send(self, client, event, message={}):
         client.write_message(FiftyOneJSONEncoder.dumps(message))
-        self.wait()
 
     def on(self, client, event):
-        message = client.read_message()
-        self.wait()
+        client.read_message(self.stop)
+        message = self.wait().result()
         message = FiftyOneJSONEncoder.loads(message)
         self.assertEqual(message.pop("type"), event)
         return message
