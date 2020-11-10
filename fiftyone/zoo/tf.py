@@ -42,10 +42,10 @@ class MNISTDataset(TFDSDataset):
     The dataset consists of 70000 28 x 28 grayscale images in 10 classes.
     There are 60000 training images and 10000 test images.
 
-    Dataset size:
+    Dataset size
         21.00 MiB
 
-    Source:
+    Source
         http://yann.lecun.com/exdb/mnist
     """
 
@@ -86,10 +86,10 @@ class FashionMNISTDataset(TFDSDataset):
     The dataset consists of 70000 28 x 28 grayscale images in 10 classes.
     There are 60000 training images and 10000 test images.
 
-    Dataset size:
+    Dataset size
         36.42 MiB
 
-    Source:
+    Source
         https://github.com/zalandoresearch/fashion-mnist
     """
 
@@ -130,10 +130,10 @@ class CIFAR10Dataset(TFDSDataset):
     The dataset consists of 60000 32 x 32 color images in 10 classes, with 6000
     images per class. There are 50000 training images and 10000 test images.
 
-    Dataset size:
+    Dataset size
         132.40 MiB
 
-    Source:
+    Source
         https://www.cs.toronto.edu/~kriz/cifar.html
     """
 
@@ -174,10 +174,10 @@ class CIFAR100Dataset(TFDSDataset):
     The dataset consists of 60000 32 x 32 color images in 100 classes, with 600
     images per class. There are 50000 training images and 10000 test images.
 
-    Dataset size:
+    Dataset size
         132.03 MiB
 
-    Source:
+    Source
         https://www.cs.toronto.edu/~kriz/cifar.html
     """
 
@@ -221,10 +221,10 @@ class Caltech101Dataset(TFDSDataset):
     Images are of variable sizes, with typical edge lengths of 200-300 pixels.
     This version contains image-level labels only.
 
-    Dataset size:
+    Dataset size
         125.64 MiB
 
-    Source:
+    Source
         http://www.vision.caltech.edu/Image_Datasets/Caltech101
     """
 
@@ -282,7 +282,7 @@ class ImageNet2012Dataset(TFDSDataset):
             train split: ILSVRC2012_img_train.tar
        validation split: ILSVRC2012_img_val.tar
 
-    You can register at `http://www.image-net.org/download-images`_ in order to
+    You can register at http://www.image-net.org/download-images in order to
     get links to download the data.
 
     Example usage::
@@ -297,10 +297,10 @@ class ImageNet2012Dataset(TFDSDataset):
         # Now load into FiftyOne
         dataset = foz.load_zoo_dataset("imagenet-2012", split="validation")
 
-    Dataset size:
+    Dataset size
         144.02 GiB
 
-    Source:
+    Source
         http://image-net.org
 
     Args:
@@ -358,16 +358,17 @@ class COCO2014Dataset(TFDSDataset):
     version of the dataset.
 
     Notes:
-        - COCO defines 91 classes but the data only uses 80 classes
-        - some images from the train and validation sets don't have annotations
-        - the test set does not have annotations
-        - COCO 2014 and 2017 uses the same images, but different train/val/test
-            splits
 
-    Dataset size:
+    -   COCO defines 91 classes but the data only uses 80 classes
+    -   Some images from the train and validation sets don't have annotations
+    -   The test set does not have annotations
+    -   COCO 2014 and 2017 uses the same images, but different train/val/test
+        splits
+
+    Dataset size
         37.57 GiB
 
-    Source:
+    Source
         http://cocodataset.org/#home
     """
 
@@ -414,16 +415,17 @@ class COCO2017Dataset(TFDSDataset):
     version of the dataset.
 
     Notes:
-        - COCO defines 91 classes but the data only uses 80 classes
-        - some images from the train and validation sets don't have annotations
-        - the test set does not have annotations
-        - COCO 2014 and 2017 uses the same images, but different train/val/test
-            splits
 
-    Dataset size:
+    -   COCO defines 91 classes but the data only uses 80 classes
+    -   Some images from the train and validation sets don't have annotations
+    -   The test set does not have annotations
+    -   COCO 2014 and 2017 uses the same images, but different train/val/test
+        splits
+
+    Dataset size
         25.20 GiB
 
-    Source:
+    Source
         http://cocodataset.org/#home
     """
 
@@ -473,10 +475,10 @@ class KITTIDataset(TFDSDataset):
     of the annotations can be found in the README of the object development kit
     on the KITTI homepage.
 
-    Dataset size:
+    Dataset size
         5.27 GiB
 
-    Source:
+    Source
         http://www.cvlibs.net/datasets/kitti
     """
 
@@ -526,10 +528,10 @@ class VOC2007Dataset(TFDSDataset):
     Note that, as per the official dataset, the test set of VOC2007 does not
     contain annotations.
 
-    Dataset size:
+    Dataset size
         868.85 MiB
 
-    Source:
+    Source
         http://host.robots.ox.ac.uk/pascal/VOC/voc2007
     """
 
@@ -579,10 +581,10 @@ class VOC2012Dataset(TFDSDataset):
     Note that, as per the official dataset, the test set of VOC2012 does not
     contain annotations.
 
-    Dataset size:
+    Dataset size
         3.59 GiB
 
-    Source:
+    Source
         http://host.robots.ox.ac.uk/pascal/VOC/voc2012
     """
 

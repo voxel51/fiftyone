@@ -518,7 +518,7 @@ class ZooDatasetInfo(etas.Serializable):
         """Adds the split to the dataset.
 
         Args:
-            split_info: a :class:`ZooDatasetSplitInfo
+            split_info: a :class:`ZooDatasetSplitInfo`
         """
         self.downloaded_splits[split_info.split] = split_info
         self._compute_num_samples()
