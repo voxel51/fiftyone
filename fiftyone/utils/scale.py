@@ -75,7 +75,7 @@ def import_from_scale(
     where each JSON file contains only the contents of the ``response`` field
     for the task.
 
-    The contents of the ``response`` field should be as follows::
+    The contents of the ``response`` field should be as follows:
 
     -   `General Image Annotation <https://docs.scale.com/reference#general-image-annotation>`_::
 
@@ -259,23 +259,23 @@ def export_to_scale(
             ...
         }
 
-    The format of the ``hypothesis`` field depends on the label type::
+    The format of the ``hypothesis`` field depends on the label type:
 
-        -   Sample-level classifications, detections, polylines, polygons, and
-            keypoints::
+    -   Sample-level classifications, detections, polylines, polygons, and
+        keypoints::
 
-                {
-                    "annotations": [...],
-                    "global_attributes: {...}
+            {
+                "annotations": [...],
+                "global_attributes: {...}
+            }
+
+    -   Video samples::
+
+            {
+                "annotations": {
+                    "url": <frame-labels-filepath>
                 }
-
-        -   Video samples::
-
-                {
-                    "annotations": {
-                        "url": <frame-labels-filepath>
-                    }
-                }
+            }
 
     When exporting frame labels for video samples, the ``url`` field will
     contain the paths on disk to per-sample JSON files that are written to
