@@ -1,12 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { useMessageHandler, useSendMessage } from "../utils/hooks";
 import tile from "../utils/tile";
+import { packageMessage } from "../utils/socket";
 
 import * as selectors from "../recoil/selectors";
 
 export default () => {
-  const view = useRecoilValue(selectors.view);
+  const socket = useRecoilValue(selectors.socket);
+  const [prevFilters, setPrevFilters] = useState({});
+  const filters = useRecoilValue(selectors.paginatedFilterStages);
+
   const empty = {
     initialized: false,
     loadMore: false,
@@ -22,21 +26,19 @@ export default () => {
     setState(tile(results, more, state));
   });
 
-  const guard = useMemo(() => {
-    return !state.loadMore || state.isLoading || !state.hasMore;
-  }, [state.loadMore, state.pageToLoad, state.hasMore]);
+  useMessageHandler("update", () => {
+    setState(empty);
+  });
+  useEffect(() => {
+    setState(empty);
+    setPrevFilters(filters);
+  }, [JSON.stringify(filters) === JSON.stringify(prevFilters)]);
 
   useEffect(() => {
-    !guard &&
-      setState({
-        ...state,
-        isLoading: true,
-        loadMore: false,
-        initialized: true,
-      });
-  }, [guard]);
-
-  useSendMessage("page", { page: state.pageToLoad }, guard);
+    if (!state.loadMore || state.isLoading || !state.hasMore) return;
+    setState({ ...state, isLoading: true, loadMore: false, initialized: true });
+    socket.send(packageMessage("page", { page: state.pageToLoad }));
+  }, [state.loadMore, state.pageToLoad, state.hasMore]);
 
   return [state, setState];
 };

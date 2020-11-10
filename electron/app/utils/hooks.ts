@@ -4,7 +4,7 @@ import ResizeObserver from "resize-observer-polyfill";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { packageMessage } from "./socket";
+import { attachDisposableHandler, packageMessage } from "./socket";
 
 export const useEventHandler = (target, eventType, handler) => {
   // Adapted from https://reactjs.org/docs/hooks-faq.html#what-can-i-do-if-my-effect-dependencies-change-too-often
@@ -32,17 +32,6 @@ export const useMessageHandler = (type, handler) => {
     data.type === type && handler(data);
   };
   useEventHandler(socket, "message", wrapper);
-};
-
-const attachDisposableHandler = (socket, type, handler) => {
-  const wrapper = ({ data }) => {
-    data = JSON.parse(data);
-    if (data.type === type) {
-      handler(data);
-      socket.removeEventListener("message", wrapper);
-    }
-  };
-  socket.addEventListener("message", wrapper);
 };
 
 export const useSendMessage = (type, data, guard = null, deps = []) => {

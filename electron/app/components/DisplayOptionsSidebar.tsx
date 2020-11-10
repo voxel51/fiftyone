@@ -169,6 +169,9 @@ const makeData = (filteredCount, totalCount) => {
   ) {
     return `${filteredCount.toLocaleString()} of ${totalCount.toLocaleString()}`;
   }
+  if (typeof totalCount === "number") {
+    return totalCount.toLocaleString();
+  }
   return totalCount;
 };
 
@@ -255,28 +258,26 @@ const DisplayOptionsSidebar = React.forwardRef(
             {...cellRest}
           />
         ) : null}
-        <BoxedContainer>
-          <FormControlLabel
-            label={
-              <div
-                style={{ lineHeight: "20px", fontSize: 14, fontWeight: "bold" }}
-              >
-                Color by label
-              </div>
-            }
-            control={
-              <Checkbox
-                checked={colorByLabel}
-                onChange={() => setColorByLabel(!colorByLabel)}
-                style={{
-                  padding: "0 5px",
-                  color: theme.brand,
-                }}
-              />
-            }
-            style={{ marginLeft: 0 }}
-          />
-        </BoxedContainer>
+        <FormControlLabel
+          label={
+            <div
+              style={{ lineHeight: "20px", fontSize: 14, fontWeight: "bold" }}
+            >
+              Color by label
+            </div>
+          }
+          control={
+            <Checkbox
+              checked={colorByLabel}
+              onChange={() => setColorByLabel(!colorByLabel)}
+              style={{
+                padding: "0 5px",
+                color: theme.brand,
+              }}
+            />
+          }
+          style={{ marginLeft: 0 }}
+        />
         {tags.length || labels.length || scalars.length ? (
           <Button onClick={refreshColorMap}>
             <Autorenew />

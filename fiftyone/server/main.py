@@ -393,7 +393,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         view = view.skip((page - 1) * page_length)
         pipeline = view._pipeline(hide_frames=True, squash_frames=True)
         samples = await self.sample_collection.aggregate(pipeline).to_list(
-            page_length
+            page_length + 1
         )
         convert(samples)
 
