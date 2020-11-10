@@ -40,9 +40,14 @@ import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
 import fiftyone.core.view as fov
 
-from json_util import convert, FiftyOneJSONEncoder
-from util import get_file_dimensions
-from pipelines import DISTRIBUTION_PIPELINES, TAGS, LABELS, SCALARS
+from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
+from fiftyone.server.util import get_file_dimensions
+from fiftyone.server.pipelines import (
+    DISTRIBUTION_PIPELINES,
+    TAGS,
+    LABELS,
+    SCALARS,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -70,22 +75,30 @@ def get_user_id():
     return read()
 
 
-class FiftyOneHandler(tornado.web.RequestHandler):
-    def get(self):
-        self.write({"version": foc.VERSION})
+class RequestHandler(tornado.web.RequestHandler):
+    async def get(self):
+        self.write(self.get_response())
+
+    @staticmethod
+    def get_response():
+        raise NotImplementedError("subclass must implement get_response()")
 
 
-class StagesHandler(tornado.web.RequestHandler):
-    def get(self):
-        """Gets ViewStage descriptions"""
-        self.write(
-            {
-                "stages": [
-                    {"name": stage.__name__, "params": stage._params()}
-                    for stage in _STAGES
-                ]
-            }
-        )
+class FiftyOneHandler(RequestHandler):
+    @staticmethod
+    def get_response():
+        return {"version": foc.VERSION}
+
+
+class StagesHandler(RequestHandler):
+    @staticmethod
+    def get_response():
+        return {
+            "stages": [
+                {"name": stage.__name__, "params": stage._params()}
+                for stage in _STAGES
+            ]
+        }
 
 
 def _catch_errors(func):

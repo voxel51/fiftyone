@@ -11,6 +11,7 @@ To run a single test, modify the main code to::
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import asyncio
 import json
 import os
 import time
@@ -19,46 +20,46 @@ import urllib
 
 from bson import ObjectId
 import numpy as np
-import socketio
+from tornado.testing import AsyncHTTPTestCase
+from tornado.websocket import websocket_connect
 
+import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
-from fiftyone.constants import SERVER_ADDR
-import fiftyone.core.client as foc
-from fiftyone.core.session import (
-    Session,
-    _server_services,
-    _subscribed_sessions,
-)
-from fiftyone.core.state import StateDescription
-import fiftyone.core.utils as fou
 from fiftyone.server.json_util import FiftyOneJSONEncoder
+import fiftyone.server.main as fosm
 
 
-class AppClient(foc.BaseClient):
-    """AppClient simulates the Application"""
+class TestCase(AsyncHTTPTestCase):
+    def get_app(self):
+        return fosm.Application()
 
-    def __init__(self):
-        self.response = None
-        super(AppClient, self).__init__("/state", StateDescription)
-
-    def on_update(self, data):
-        super(AppClient, self).on_update(data)
-        self.response = True
+    def fetch_and_parse(self, path):
+        response = self.fetch(path)
+        return etas.load_json(response.body)
 
 
-def _serialize(state):
-    return StateDescription.from_dict(state.serialize()).serialize()
+class RouteTests(TestCase):
+    def test_fiftyone(self):
+        response = self.fetch_and_parse("/fiftyone")
+        self.assertEqual(response, fosm.FiftyOneHandler.get_response())
+
+    def test_stages(self):
+        response = self.fetch_and_parse("/stages")
+        self.assertEqual(response, fosm.StagesHandler.get_response())
+
+    def test_filepath(self):
+        data = {"hello": "world"}
+        with etau.TempDir() as tmp:
+            path = os.path.join(tmp, "data.json")
+            etas.write_json(data, path)
+            response = self.fetch_and_parse("/filepath%s" % path)
+
+        self.assertEqual(response, data)
 
 
-def _normalize_session(session):
-    # convert from OrderedDict to dict, recursively
-    return json.loads(json.dumps(session))
-
-
-class ServerServiceTests(unittest.TestCase):
-    """Tests for ServerService"""
+class StateTests(TestCase):
 
     image_url = "https://user-images.githubusercontent.com/3719547/74191434-8fe4f500-4c21-11ea-8d73-555edfce0854.png"
     test_one = os.path.abspath("./test_one.png")
@@ -66,13 +67,6 @@ class ServerServiceTests(unittest.TestCase):
     dataset = fo.Dataset("test")
     sample1 = fo.Sample(filepath=test_one)
     sample2 = fo.Sample(filepath=test_two)
-    session = Session(remote=True)
-    sio_client = socketio.Client()
-    sio_client.eio.start_background_task = foc._start_background_task
-    client = AppClient()
-    sio_client.register_namespace(client)
-    foc._connect(sio_client, SERVER_ADDR % 5151)
-    _tmp = None
 
     @classmethod
     def setUpClass(cls):
@@ -91,138 +85,36 @@ class ServerServiceTests(unittest.TestCase):
         ]
         cls.sample1.save()
 
-    @classmethod
-    def tearDownClass(cls):
-        etau.delete_file(cls.test_one)
-        etau.delete_file(cls.test_two)
+    def setUp(self):
+        super().setUp()
+        self.__app_client = websocket_connect(self.get_http_port())
+        self.send(self.app, "as_app", {})
+        self.__session_client = websocket_connect(self.get_http_port())
 
-    def step_connect(self):
-        self.assertIs(self.session._hc_client.connected, True)
-        self.assertIs(self.client.connected, True)
+    @property
+    def app(self):
+        return self.__app_client
 
-    def step_update(self):
-        self.session.dataset = self.dataset
-        self.wait_for_response()
-        session = _serialize(self.session.state)
-        client = self.client.data.serialize()
-        self.assertEqual(
-            _normalize_session(session), _normalize_session(client)
-        )
+    @property
+    def session(self):
+        return self.__session_client
 
-    def step_selection(self):
-        self.client.emit("add_selection", self.sample1.id)
-        self.wait_for_response(session=True)
-        # @todo: fix me
-        # self.assertIs(len(self.session.selected), 1)
-        # self.assertEqual(self.session.selected[0], self.sample1.id)
+    def get_socket_path(self):
+        return "ws://localhost:%d/state" % self.get_http_port()
 
-        self.client.emit("remove_selection", self.sample1.id)
-        self.wait_for_response(session=True)
-        self.assertIs(len(self.session.selected), 0)
+    def send(self, client, event, message={}):
+        client.write_message(FiftyOneJSONEncoder.dumps(message))
+        self.wait()
 
-    def step_page(self):
-        self.session.dataset = self.dataset
-        self.wait_for_response()
-        self.client.emit("page", 1, callback=self.client_callback)
-        client = self.wait_for_response()
-        results = client["results"]
-        self.assertIs(len(results), 2)
+    def on(self, client, event):
+        message = client.read_message()
+        self.wait()
+        message = FiftyOneJSONEncoder.loads(message)
+        self.assertEqual(message.pop("type"), event)
+        return message
 
-    def step_get_distributions(self):
-        self.session.dataset = self.dataset
-        self.wait_for_response()
-
-        self.client.emit(
-            "get_distributions", "tags", callback=self.client_callback
-        )
-        client = self.wait_for_response()
-        self.assertIs(len(client), 1)
-        self.assertEqual(client[0]["data"], [{"key": "tag", "count": 1}])
-
-        self.client.emit(
-            "get_distributions", "labels", callback=self.client_callback
-        )
-        client = self.wait_for_response()
-        self.assertIs(len(client), 1)
-        self.assertEqual(client[0]["data"], [{"key": "test", "count": 1}])
-
-        self.client.emit(
-            "get_distributions", "scalars", callback=self.client_callback
-        )
-        client = self.wait_for_response()
-        self.assertIs(len(client), 1)
-        self.assertEqual(client[0]["data"], [{"key": "null", "count": 2}])
-
-    def step_sessions(self):
-        other_session = Session(remote=True)
-        other_session.dataset = self.dataset
-        self.wait_for_response(session=True)
-        self.assertEqual(str(self.session.dataset), str(other_session.dataset))
-        other_session.view = self.dataset.limit(1)
-        self.wait_for_response(session=True)
-        self.assertEqual(str(self.session.view), str(other_session.view))
-
-    def step_server_services(self):
-        port = 5252
-        session_one = Session(port=port, remote=True)
-        session_two = Session(port=port, remote=True)
-        self.assertEqual(len(_subscribed_sessions[port]), 2)
-        self.assertEqual(len(_subscribed_sessions), 2)
-        self.assertEqual(len(_server_services), 2)
-        session_two.__del__()
-        self.assertEqual(len(_subscribed_sessions[port]), 1)
-        self.assertEqual(len(_subscribed_sessions), 2)
-        self.assertEqual(len(_server_services), 2)
-        session_one.__del__()
-        self.assertEqual(len(_subscribed_sessions[port]), 0)
-        self.assertEqual(len(_server_services), 1)
-
-    def step_empty_derivables(self):
-        self.session.dataset = fo.Dataset()
-        response = self.wait_for_response()
-        self.assertEqual(
-            _serialize(self.session.state), _serialize(self.client.data)
-        )
-
-    def step_json_encoder(self):
-        enc = FiftyOneJSONEncoder
-        oid = "aaaaaaaaaaaaaaaaaaaaaaaa"
-        self.assertEqual(enc.dumps(ObjectId(oid)), '{"$oid": "%s"}' % oid)
-        self.assertEqual(enc.dumps(float("nan")), '"NaN"')
-        self.assertEqual(enc.dumps(float("inf")), '"Infinity"')
-
-    def test_steps(self):
-        for name, step in self.steps():
-            try:
-                step()
-                self.session.dataset = None
-                self.wait_for_response()
-            except Exception as e:
-                self.fail("{} failed ({}: {})".format(name, type(e), e))
-
-    def wait_for_response(self, timeout=3, session=False):
-        start_time = time.time()
-        while time.time() < start_time + timeout:
-            if session:
-                if self.session._hc_client.updated:
-                    self.session._hc_client.updated = False
-                    return
-            elif self.client.response:
-                response = self.client.response
-                self.client.response = None
-
-                return response
-            time.sleep(0.2)
-
-        raise RuntimeError("No response after %f" % timeout)
-
-    def client_callback(self, data):
-        self.client.response = data
-
-    def steps(self):
-        for name in dir(self):
-            if name.startswith("step_"):
-                yield name, getattr(self, name)
+    def test_page(self):
+        print("hello")
 
 
 if __name__ == "__main__":
