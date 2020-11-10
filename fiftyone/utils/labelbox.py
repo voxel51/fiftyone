@@ -55,6 +55,40 @@ def import_from_labelbox(
     FiftyOne sample are added to the FiftyOne dataset, and their media is
     downloaded into ``download_dir``.
 
+    The provided ``json_path`` should contain a JSON file in the following
+    format::
+
+        [
+            {
+                "ID": <labelbox-id>,
+                "Labeled Data": <url-or-None>,
+                "Label": {...},
+            }
+        ]
+
+    When importing image labels, the ``"Label"`` field should contain a dict
+    of `Labelbox image labels <https://labelbox.com/docs/exporting-data/export-format-detail#images>`_::
+
+        {
+            "objects": [...],
+            "classifications": [...]
+        }
+
+    When importing video labels, the ``"Label"`` field should contain a dict
+    as follows::
+
+        {
+            "frames": <url-or-filepath>
+        }
+
+    where the ``"frames"`` field can either contain a URL, in which case the
+    file is downloaded from the web, or the path to NDJSON file on disk of
+    `Labelbox video labels <https://labelbox.com/docs/exporting-data/export-format-detail#video>`_::
+
+        {"frameNumber": 1, "objects": [...], "classifications": [...]}
+        {"frameNumber": 2, "objects": [...], "classifications": [...]}
+        ...
+
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
         json_path: the path to the Labelbox JSON export to load
