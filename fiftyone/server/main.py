@@ -329,12 +329,12 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         StateHandler.state["selected_objects"] = selected_objects
         await self.send_updates(ignore=self)
 
-    async def on_get_video_data(self, sample_d):
+    async def on_get_video_data(self, _id, filepath):
         state = fos.StateDescription.from_dict(StateHandler.state)
-        find_d = {"_sample_id": ObjectId(sample_d["_id"])}
+        find_d = {"_sample_id": ObjectId(_id)}
         labels = etav.VideoLabels()
         frames = list(state.dataset._frame_collection.find(find_d))
-        sample = state.dataset[sample_d["_id"]].to_mongo_dict()
+        sample = state.dataset[_id].to_mongo_dict()
         convert(frames)
 
         for frame_dict in frames:
@@ -363,15 +363,13 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
             labels.add_frame(frame_labels, overwrite=False)
 
-        fps = etav.get_frame_rate(sample_d["filepath"])
+        fps = etav.get_frame_rate(filepath)
         self.write_message(
             {
-                "type": "video_data",
-                "data": {
-                    "frames": frames,
-                    "labels": labels.serialize(),
-                    "fps": fps,
-                },
+                "type": "video_data-%s" % _id,
+                "frames": frames,
+                "labels": labels.serialize(),
+                "fps": fps,
             }
         )
 

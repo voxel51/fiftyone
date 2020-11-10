@@ -28,6 +28,7 @@ const SelectionMenu = () => {
     });
     newState.view = newView;
     socket.send(packageMessage("update", { state: newState }));
+    callback();
   };
 
   const size = selectedSamples.size;

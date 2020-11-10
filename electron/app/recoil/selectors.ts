@@ -12,6 +12,7 @@ import {
   makeLabelNameGroups,
   labelTypeHasColor,
 } from "../utils/labels";
+import { packageMessage } from "../utils/socket";
 
 export const socket = selector({
   key: "socket",
@@ -55,7 +56,7 @@ export const view = selector({
       ...state,
       view: stages,
     };
-    get(socket).emit("update", { data: newState, include_self: true });
+    get(socket).send(packageMessage("update", { state: newState }));
   },
 });
 

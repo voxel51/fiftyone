@@ -80,7 +80,7 @@ function App(props: Props) {
   const [result, setResultFromForm] = useState({ port, connected });
   const setSelectedObjects = useSetRecoilState(atoms.selectedObjects);
 
-  //useGA();
+  useGA();
   const handleStateUpdate = (state) => {
     setStateDescription(state);
     setSelectedSamples(new Set(state.selected));

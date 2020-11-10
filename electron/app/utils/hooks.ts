@@ -4,6 +4,7 @@ import ResizeObserver from "resize-observer-polyfill";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+import { packageMessage } from "./socket";
 
 export const useEventHandler = (target, eventType, handler) => {
   // Adapted from https://reactjs.org/docs/hooks-faq.html#what-can-i-do-if-my-effect-dependencies-change-too-often
@@ -31,6 +32,17 @@ export const useMessageHandler = (type, handler) => {
     data.type === type && handler(data);
   };
   useEventHandler(socket, "message", wrapper);
+};
+
+const attachDisposableHandler = (socket, type, handler) => {
+  const wrapper = ({ data }) => {
+    data = JSON.parse(data);
+    if (data.type === type) {
+      handler(data);
+      socket.removeEventListener("message", wrapper);
+    }
+  };
+  socket.addEventListener("message", wrapper);
 };
 
 export const useSendMessage = (type, data, guard = null, deps = []) => {
@@ -136,15 +148,16 @@ export const useVideoData = (socket, sample, callback = null) => {
     (...args) => {
       if (requested !== viewCounter) {
         setRequested(viewCounter);
-        socket.emit(
-          "get_video_data",
-          { _id: sampleId, filepath },
-          ({ labels, frames, fps }) => {
-            setVideoLabels(labels);
-            setFrameData(frames);
-            setFrameRate(fps);
-            callback && callback({ labels, frames }, ...args);
-          }
+        const event = `video_data-${sampleId}`;
+        const handler = ({ labels, frames, fps }) => {
+          setVideoLabels(labels);
+          setFrameData(frames);
+          setFrameRate(fps);
+          callback && callback({ labels, frames }, ...args);
+        };
+        attachDisposableHandler(socket, event, handler);
+        socket.send(
+          packageMessage("get_video_data", { _id: sampleId, filepath })
         );
       } else {
         callback && callback(null, ...args);

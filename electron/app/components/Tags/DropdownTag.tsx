@@ -64,6 +64,7 @@ const DropdownTag = ({
       onOpen();
     }
   };
+
   const handleClose = () => {
     setOpen(false);
     onClose();
