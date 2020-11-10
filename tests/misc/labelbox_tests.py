@@ -8,6 +8,9 @@ Tests for the :mod:`fiftyone.utils.labelbox` module.
 import unittest
 from uuid import uuid4
 
+import eta.core.utils as etau
+import eta.core.web as etaw
+
 import fiftyone as fo
 import fiftyone.zoo as foz
 import fiftyone.utils.labelbox as foul
@@ -35,6 +38,12 @@ def test_labelbox_video_objects():
 
 @unittest.skip("Must be run manually")
 def test_labelbox_video_events():
+    # Download a video to work with
+    filepath = "/tmp/road.mp4"
+    etaw.download_google_drive_file(
+        "1nWyKZyV6pG0hjY_gvBNShulsxLRlC6xg", path=filepath
+    )
+
     # Video dataset with events
     dataset = fo.Dataset()
 
@@ -44,7 +53,7 @@ def test_labelbox_video_events():
         {"label": "sunny", "frames": [21, 30]},
     ]
 
-    sample = fo.Sample(filepath="/path/to/road.mp4")
+    sample = fo.Sample(filepath=filepath)
 
     for event in events:
         label = event["label"]
@@ -102,8 +111,8 @@ def _test_labelbox_video(dataset):
     labelbox_import_path = "/tmp/labelbox-video-import.json"
     labelbox_id_field = "labelbox_id"
 
-    # Video objects dataset
-    dataset = foz.load_zoo_dataset("quickstart-video", max_samples=10)
+    etau.ensure_empty_dir(labelbox_export_dir, cleanup=True)
+    etau.ensure_empty_dir(labelbox_import_dir, cleanup=True)
 
     # Generate fake Labelbox IDs, since we haven't actually uploaded there
     for sample in dataset:
@@ -140,5 +149,5 @@ def _test_labelbox_video(dataset):
 
 
 if __name__ == "__main__":
-    fo.config.show_progress_bars = False
+    fo.config.show_progress_bars = True
     unittest.main(verbosity=2)
