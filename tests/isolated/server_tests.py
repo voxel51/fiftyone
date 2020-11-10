@@ -27,6 +27,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.state as fos
 from fiftyone.server.json_util import FiftyOneJSONEncoder
 import fiftyone.server.main as fosm
 
@@ -88,8 +89,10 @@ class StateTests(TestCase):
     def setUp(self):
         super().setUp()
         self.__app_client = self.get_ws()
+        self.on(self.app)
         self.send(self.app, "as_app", {})
         self.__session_client = self.get_ws()
+        self.on(self.session)
 
     def get_ws(self):
         websocket_connect(self.get_socket_path(), callback=self.stop)
@@ -103,21 +106,39 @@ class StateTests(TestCase):
     def session(self):
         return self.__session_client
 
+    @property
+    def enc(self):
+        return FiftyOneJSONEncoder
+
+    def assertNormalizedEqual(self, one, two):
+        one = self.enc.loads(self.enc.dumps(one))
+        two = self.enc.loads(self.enc.dumps(two))
+        self.assertEqual(one, two)
+
     def get_socket_path(self):
         return "ws://localhost:%d/state" % self.get_http_port()
 
     def send(self, client, event, message={}):
-        client.write_message(FiftyOneJSONEncoder.dumps(message))
+        payload = {"type": event}
+        payload.update(message)
+        client.write_message(FiftyOneJSONEncoder.dumps(payload))
 
-    def on(self, client, event):
+    def on(self, client, event=None):
         client.read_message(self.stop)
         message = self.wait().result()
         message = FiftyOneJSONEncoder.loads(message)
-        self.assertEqual(message.pop("type"), event)
+        if event is not None:
+            self.assertEqual(message.pop("type"), event)
         return message
 
-    def test_page(self):
-        print("hello")
+    def test_update(self):
+        state = fos.StateDescription(dataset=self.dataset).serialize()
+        self.send(self.session, "update", {"state": state})
+        result = self.on(self.app, "update")
+        result_state = fos.StateDescription.from_dict(
+            result["state"]
+        ).serialize()
+        self.assertNormalizedEqual(result_state, state)
 
 
 if __name__ == "__main__":

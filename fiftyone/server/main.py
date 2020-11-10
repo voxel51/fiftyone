@@ -263,6 +263,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         )
 
     def get_statistics_awaitables(self, only=None):
+        if StateHandler.state["dataset"] is None:
+            return []
         state = StateHandler.state
         view = state["view"] or []
         awaitables = [self.send_statistics(view, only=only)]
@@ -296,20 +298,17 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     async def send_statistics(self, stages, extended=False, only=None):
         state = fos.StateDescription.from_dict(StateHandler.state)
-        if state.dataset is None:
-            stats = []
-        else:
-            if stages is None:
-                stages = []
+        if stages is None:
+            stages = []
 
-            view = fov.DatasetView(state.dataset)
-            for stage_dict in stages:
-                stage = fosg.ViewStage._from_dict(stage_dict)
-                view = view.add_stage(stage)
+        view = fov.DatasetView(state.dataset)
+        for stage_dict in stages:
+            stage = fosg.ViewStage._from_dict(stage_dict)
+            view = view.add_stage(stage)
 
-            aggs = fos.DatasetStatistics(view).aggregations
-            stats = await view._async_aggregate(self.sample_collection, aggs)
-            stats = [r.serialize(reflective=True) for r in stats]
+        aggs = fos.DatasetStatistics(view).aggregations
+        stats = await view._async_aggregate(self.sample_collection, aggs)
+        stats = [r.serialize(reflective=True) for r in stats]
 
         message = {"type": "statistics", "stats": stats, "extended": extended}
 
