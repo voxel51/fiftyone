@@ -55,12 +55,47 @@ def import_from_labelbox(
     FiftyOne sample are added to the FiftyOne dataset, and their media is
     downloaded into ``download_dir``.
 
+    The provided ``json_path`` should contain a JSON file in the following
+    format::
+
+        [
+            {
+                "ID": <labelbox-id>,
+                "Labeled Data": <url-or-None>,
+                "Label": {...}
+            }
+        ]
+
+    When importing image labels, the ``Label`` field should contain a dict of
+    `Labelbox image labels <https://labelbox.com/docs/exporting-data/export-format-detail#images>`_::
+
+        {
+            "objects": [...],
+            "classifications": [...]
+        }
+
+    When importing video labels, the ``Label`` field should contain a dict as
+    follows::
+
+        {
+            "frames": <url-or-filepath>
+        }
+
+    where the ``frames`` field can either contain a URL, in which case the
+    file is downloaded from the web, or the path to NDJSON file on disk of
+    `Labelbox video labels <https://labelbox.com/docs/exporting-data/export-format-detail#video>`_::
+
+        {"frameNumber": 1, "objects": [...], "classifications": [...]}
+        {"frameNumber": 2, "objects": [...], "classifications": [...]}
+        ...
+
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
         json_path: the path to the Labelbox JSON export to load
         labelbox_project_or_json_path: a ``labelbox.schema.project.Project`` or
             the path to the JSON export of a Labelbox project on disk
         label_prefix (None): a prefix to prepend to the sample label field(s)
+            that are created, separated by an underscore
         download_dir (None): a directory into which to download the media for
             any Labelbox IDs with no corresponding sample with the matching
             ``labelbox_id_field`` value. This can be omitted if all IDs are
@@ -404,7 +439,7 @@ def convert_labelbox_export_to_import(inpath, outpath=None, video_outdir=None):
     The output JSON file will have the same format that is generated when
     `exporting a Labelbox project's labels <https://labelbox.com/docs/exporting-data/export-overview>`_.
 
-    The ``"Labeled Data"`` fields of the output labels will be ``None``.
+    The ``Labeled Data`` fields of the output labels will be ``None``.
 
     Args:
         inpath: the path to an NDJSON file generated (for example) by
