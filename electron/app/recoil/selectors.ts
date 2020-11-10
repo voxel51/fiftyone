@@ -50,13 +50,14 @@ export const view = selector({
   get: ({ get }) => {
     return get(atoms.stateDescription).view || [];
   },
-  set: ({ get }, stages) => {
+  set: ({ get, set }, stages) => {
     const state = get(atoms.stateDescription);
     const newState = {
       ...state,
       view: stages,
     };
     get(socket).send(packageMessage("update", { state: newState }));
+    set(atoms.stateDescription, newState);
   },
 });
 
@@ -99,7 +100,7 @@ export const totalCount = selector({
     const stats = get(atoms.datasetStats) || [];
     return stats.reduce(
       (acc, cur) => (cur.name === "count" ? cur.count : acc),
-      0
+      null
     );
   },
 });

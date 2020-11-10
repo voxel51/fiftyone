@@ -5,6 +5,7 @@ import viewStageMachine, {
   createParameter,
 } from "./ViewStage/viewStageMachine";
 import { PARSER as PARAM_PARSER } from "./ViewStage/viewStageParameterMachine";
+import { viewsAreEqual } from "../../utils/view";
 
 const { choose } = actions;
 
@@ -98,16 +99,6 @@ function makeEmptyView(fieldNames, stageInfo) {
     },
   ];
 }
-
-const viewCompareMapper = (stages) =>
-  stages.map(({ kwargs, _cls }) => ({ kwargs, _cls }));
-
-const viewsAreEqual = (viewOne, viewTwo) => {
-  return (
-    JSON.stringify(viewCompareMapper(viewOne)) ===
-    JSON.stringify(viewCompareMapper(viewTwo))
-  );
-};
 
 function setStages(ctx, stageInfo) {
   const view = ctx.view;
@@ -521,7 +512,7 @@ const viewBarMachine = Machine(
           })
         );
       },
-      submit: ({ stages, stageInfo, fieldNames, setView, view }) => {
+      submit: ({ reset, stages, stageInfo, fieldNames, setView, view }) => {
         const stageMap = Object.fromEntries(
           stageInfo.map((s) => [s.name, s.params])
         );

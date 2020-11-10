@@ -54,7 +54,9 @@ class HasClient(object):
                 message = await self._client.read_message()
 
                 if message is None:
-                    logger.warn("\n%s disconnected, trying to reconnect", self)
+                    logger.warn(
+                        "\r\n%s disconnected, trying to reconnect\r\n", self
+                    )
                     fiftyone_url = "http://%s:%d/fiftyone" % (
                         SERVER_NAME,
                         port,
@@ -69,12 +71,12 @@ class HasClient(object):
                             )
                         except:
                             logger.warn(
-                                "\nCould not connect %s, trying again in 10 seconds",
+                                "\r\nCould not connect %s, trying again in 10 seconds\r\n",
                                 self,
                             )
                             time.sleep(10)
 
-                    logger.info("\nSession %s reconnected", self)
+                    logger.info("\r\nSession %s reconnected\r\n", self)
                     continue
 
                 message = json_util.loads(message)

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useRecoilValue } from "recoil";
-import { useMessageHandler, useSendMessage } from "../utils/hooks";
+import { useMessageHandler } from "../utils/hooks";
 import tile from "../utils/tile";
 import { packageMessage } from "../utils/socket";
 
@@ -10,6 +10,7 @@ export default () => {
   const socket = useRecoilValue(selectors.socket);
   const [prevFilters, setPrevFilters] = useState({});
   const filters = useRecoilValue(selectors.paginatedFilterStages);
+  const view = useRecoilValue(selectors.view);
 
   const empty = {
     initialized: false,
@@ -33,6 +34,9 @@ export default () => {
     setState(empty);
     setPrevFilters(filters);
   }, [JSON.stringify(filters) === JSON.stringify(prevFilters)]);
+  useEffect(() => {
+    setState(empty);
+  }, [view]);
 
   useEffect(() => {
     if (!state.loadMore || state.isLoading || !state.hasMore) return;

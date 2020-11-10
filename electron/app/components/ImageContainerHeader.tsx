@@ -5,6 +5,7 @@ import { useRecoilValue } from "recoil";
 import DropdownHandle from "./DropdownHandle";
 import SelectionMenu from "./SelectionMenu";
 import * as selectors from "../recoil/selectors";
+import { count } from "console";
 
 type Props = {
   showSidebar: boolean;

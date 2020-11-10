@@ -380,7 +380,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         elif state.dataset is not None:
             view = state.dataset.view()
         else:
-            self.write_message({"type": "page", "results": [], "more": False})
+            self.write_message(
+                {"type": "page", "page": page, "results": [], "more": False}
+            )
             return
 
         for stage_dict in state.filters.values():
@@ -409,7 +411,12 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             r["height"] = h
             # default to image
 
-        message = {"type": "page", "results": results, "more": more}
+        message = {
+            "type": "page",
+            "page": page,
+            "results": results,
+            "more": more,
+        }
 
         if only:
             only.write_message(message)
