@@ -122,11 +122,11 @@ def import_from_scale(
             [
                 {
                     "annotations": [...],
-                    "global_attributes: {...}
+                    "global_attributes": {...}
                 },
                 {
                     "annotations": [...],
-                    "global_attributes: {...}
+                    "global_attributes": {...}
                 },
                 ...
             ]
@@ -271,11 +271,11 @@ def export_to_scale(
         {
             <sample-id1>: {
                 "filepath": <filepath1>,
-                "hypothesis": {...},
+                "hypothesis": {...}
             },
             <sample-id2>: {
                 "filepath": <filepath2>,
-                "hypothesis": {...},
+                "hypothesis": {...}
             },
             ...
         }
@@ -287,7 +287,7 @@ def export_to_scale(
 
             {
                 "annotations": [...],
-                "global_attributes: {...}
+                "global_attributes": {...}
             }
 
     -   Video samples::
@@ -313,11 +313,11 @@ def export_to_scale(
         [
             {
                 "annotations": [...],
-                "global_attributes: {...}
+                "global_attributes": {...}
             },
             {
                 "annotations": [...],
-                "global_attributes: {...}
+                "global_attributes": {...}
             },
             ...
         ]
@@ -329,7 +329,7 @@ def export_to_scale(
     `Video Playback format <https://docs.scale.com/reference#video-playback>`_::
 
         {
-            "annotations": {...},
+            "annotations": {...}
         }
 
     When exporting labels for videos and the ``events_dir`` parameter is
