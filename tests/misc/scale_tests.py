@@ -8,6 +8,7 @@ Tests for the :mod:`fiftyone.utils.scale` module.
 import unittest
 
 import eta.core.utils as etau
+import eta.core.web as etaw
 
 import fiftyone as fo
 import fiftyone.zoo as foz
@@ -36,6 +37,12 @@ def test_scale_video_objects():
 
 @unittest.skip("Must be run manually")
 def test_scale_video_events():
+    # Download a video to work with
+    filepath = "/tmp/road.mp4"
+    etaw.download_google_drive_file(
+        "1nWyKZyV6pG0hjY_gvBNShulsxLRlC6xg", path=filepath
+    )
+
     # Video dataset with events
     dataset = fo.Dataset()
 
@@ -45,7 +52,7 @@ def test_scale_video_events():
         {"label": "sunny", "frames": [21, 30]},
     ]
 
-    sample = fo.Sample(filepath="/path/to/road.mp4")
+    sample = fo.Sample(filepath=filepath)
 
     for event in events:
         label = event["label"]
@@ -99,7 +106,7 @@ def _test_scale_video(dataset):
     scale_import_path = "/tmp/scale-video-import.json"
     scale_id_field = "scale_id"
 
-    etau.ensure_empty_dir(scale_export_dir)
+    etau.ensure_empty_dir(scale_export_dir, cleanup=True)
 
     # Export labels in Scale format
     fous.export_to_scale(
