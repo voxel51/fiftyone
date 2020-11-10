@@ -248,7 +248,7 @@ def export_to_scale(
     sample_collection,
     json_path,
     video_labels_dir=None,
-    events_dir=None,
+    video_events_dir=None,
     video_playback=False,
     label_field=None,
     label_prefix=None,
@@ -332,7 +332,7 @@ def export_to_scale(
             "annotations": {...}
         }
 
-    When exporting labels for videos and the ``events_dir`` parameter is
+    When exporting labels for videos and the ``video_events_dir`` parameter is
     provided, the ``hypothesis`` fields of the JSON written to ``json_path``
     will include an ``events`` field::
 
@@ -346,9 +346,9 @@ def export_to_scale(
         }
 
     whose ``url`` field will contain the paths on disk to per-sample JSON files
-    that are written to ``events_dir`` as follows::
+    that are written to ``video_events_dir`` as follows::
 
-        events_dir/
+        video_events_dir/
             <sample-id1>.json
             <sample-id2>.json
             ...
@@ -366,8 +366,8 @@ def export_to_scale(
         json_path: the path to write the JSON export
         video_labels_dir (None): a directory to write the per-sample video
             labels. Only applicable for video samples
-        events_dir (None): a directory to write the per-sample video events.
-            Only applicable for video samples
+        video_events_dir (None): a directory to write the per-sample video
+            events. Only applicable for video samples
         video_playback (False): whether to export video labels in a suitable
             format for use with the
             `Video Playback <https://docs.scale.com/reference#video-playback>`_ task.
@@ -412,11 +412,11 @@ def export_to_scale(
         )
 
         if frame_label_fields and (
-            video_labels_dir is None and events_dir is None
+            video_labels_dir is None and video_events_dir is None
         ):
             raise ValueError(
-                "Must provide `video_labels_dir` and/or `events_dir` when "
-                "exporting labels for video samples"
+                "Must provide `video_labels_dir` and/or `video_events_dir` "
+                "when exporting labels for video samples"
             )
 
     # Export the labels
@@ -450,7 +450,7 @@ def export_to_scale(
             # Export frame-level labels
             if is_video and frame_label_fields:
                 frames = _get_frame_labels(sample, frame_label_fields)
-                make_events = events_dir is not None
+                make_events = video_events_dir is not None
                 if video_playback:
                     annotations, events = _to_scale_video_playback_labels(
                         frames, frame_size, make_events=make_events
@@ -471,8 +471,10 @@ def export_to_scale(
                     anno_dict["annotations"] = {"url": anno_path}
 
                 # Write events
-                if events_dir:
-                    events_path = os.path.join(events_dir, sample.id + ".json")
+                if video_events_dir:
+                    events_path = os.path.join(
+                        video_events_dir, sample.id + ".json"
+                    )
                     etas.write_json(events, events_path)
                     anno_dict["events"] = {"url": events_path}
 

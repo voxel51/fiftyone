@@ -101,18 +101,23 @@ def _test_scale_image(dataset):
 
 
 def _test_scale_video(dataset):
-    scale_export_dir = "/tmp/scale-video-export"
     scale_export_path = "/tmp/scale-video-export.json"
     scale_import_path = "/tmp/scale-video-import.json"
+
+    scale_video_labels_dir = "/tmp/scale-video-labels"
+    scale_video_events_dir = "/tmp/scale-video-events"
+
     scale_id_field = "scale_id"
 
-    etau.ensure_empty_dir(scale_export_dir, cleanup=True)
+    etau.ensure_empty_dir(scale_video_labels_dir, cleanup=True)
+    etau.ensure_empty_dir(scale_video_events_dir, cleanup=True)
 
     # Export labels in Scale format
     fous.export_to_scale(
         dataset,
         scale_export_path,
-        video_labels_dir=scale_export_dir,
+        video_labels_dir=scale_video_labels_dir,
+        video_events_dir=scale_video_events_dir,
         video_playback=True,  # try both `True` and `False` here
         frame_labels_prefix="",  # all frame fields
     )
