@@ -8,6 +8,7 @@ Utilities for working with annotations in
 """
 from copy import copy
 import logging
+import os
 from uuid import uuid4
 import warnings
 
@@ -40,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 def import_from_labelbox(
     dataset,
-    labelbox_project_or_json_path,
+    json_path,
     label_prefix=None,
     download_dir=None,
     labelbox_id_field="labelbox_id",
@@ -48,12 +49,15 @@ def import_from_labelbox(
     """Imports the labels from the Labelbox project into the FiftyOne dataset.
 
     The ``labelbox_id_field`` of the FiftyOne samples are used to associate the
-    corresponding Labelbox labels. Any Labelbox IDs with no matching FiftyOne
-    sample are added to the FiftyOne dataset, and their media is downloaded
-    into ``download_dir``.
+    corresponding Labelbox labels.
+
+    If a ``download_dir`` is provided, any Labelbox IDs with no matching
+    FiftyOne sample are added to the FiftyOne dataset, and their media is
+    downloaded into ``download_dir``.
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
+        json_path: the path to the Labelbox JSON export to load
         labelbox_project_or_json_path: a ``labelbox.schema.project.Project`` or
             the path to the JSON export of a Labelbox project on disk
         label_prefix (None): a prefix to prepend to the sample label field(s)
@@ -65,16 +69,6 @@ def import_from_labelbox(
         labelbox_id_field ("labelbox_id"): the sample field to lookup/store the
             IDs of the Labelbox DataRows
     """
-    # Load labels
-    if etau.is_str(labelbox_project_or_json_path):
-        # Load JSON export from disk
-        d_list = etas.load_json(labelbox_project_or_json_path)
-    else:
-        # Download project export from Labelbox
-        logger.info("Downloading Labelbox export...")
-        export_url = labelbox_project_or_json_path.export_labels()
-        d_list = etas.load_json(etaw.download_file(export_url))
-
     if download_dir:
         filename_maker = fou.UniqueFilenameMaker(output_dir=download_dir)
 
@@ -88,6 +82,9 @@ def import_from_labelbox(
         label_key = lambda k: k
 
     is_video = dataset.media_type == fomm.VIDEO
+
+    # Load labels
+    d_list = etas.read_json(json_path)
 
     # ref: https://github.com/Labelbox/labelbox/blob/7c79b76310fa867dd38077e83a0852a259564da1/exporters/coco-exporter/coco_exporter.py#L33
     with fou.ProgressBar() as pb:
@@ -150,49 +147,10 @@ def import_from_labelbox(
             sample.save()
 
 
-def upload_media_to_labelbox(
-    samples, labelbox_dataset, labelbox_id_field="labelbox_id"
-):
-    """Uploads the raw media for the FiftyOne samples to Labelbox.
-
-    The IDs of the Labelbox DataRows that are created are stored in the
-    ``labelbox_id_field`` of the samples.
-
-    Args:
-        sample_collection: a
-            :class:`fiftyone.core.collections.SampleCollection`
-        labelbox_dataset: a ``labelbox.schema.dataset.Dataset`` to which to
-            add the media
-        labelbox_id_field ("labelbox_id"): the sample field in which to store
-            the IDs of the Labelbox DataRows
-    """
-    # @todo use `create_data_rows()` to optimize performance
-    # @todo handle API rate limits
-    # Reference: https://labelbox.com/docs/python-api/data-rows
-    with fou.ProgressBar() as pb:
-        for sample in pb(samples):
-            try:
-                has_id = sample[labelbox_id_field] is not None
-            except:
-                has_id = False
-
-            if has_id:
-                logger.warning(
-                    "Skipping sample '%s' with an existing '%s' value",
-                    sample.id,
-                    labelbox_id_field,
-                )
-                continue
-
-            filepath = sample.filepath
-            data_row = labelbox_dataset.create_data_row(row_data=filepath)
-            sample[labelbox_id_field] = data_row.uid
-            sample.save()
-
-
 def export_to_labelbox(
     sample_collection,
-    labelbox_project_or_json_path,
+    ndjson_path,
+    video_labels_dir=None,
     labelbox_id_field="labelbox_id",
     label_field=None,
     label_prefix=None,
@@ -201,23 +159,39 @@ def export_to_labelbox(
     frame_labels_prefix=None,
     frame_labels_dict=None,
 ):
-    """Exports labels from the FiftyOne samples to Labelbox.
+    """Exports labels from the FiftyOne samples to Labelbox format.
 
     This function is useful for loading predictions into Labelbox for
     `model-assisted labeling <https://labelbox.com/docs/automation/model-assisted-labeling>`_.
+
+    You can use :meth:`upload_labels_to_labelbox` to upload the exported labels
+    to a Labelbox project.
+
+    You can use :meth:`upload_media_to_labelbox` to upload sample media to
+    Labelbox and populate the ``labelbox_id_field`` field, if necessary.
 
     The IDs of the Labelbox DataRows corresponding to each sample must be
     stored in the ``labelbox_id_field`` of the samples. Any samples with no
     value in ``labelbox_id_field`` will be skipped.
 
-    You can use :meth:`upload_media_to_labelbox` to upload sample media to
-    Labelbox and populate the ``labelbox_id_field`` field, if necessary.
+    When exporting frame labels for video samples, the ``frames`` key of the
+    exported labels will contain the paths on disk to per-sample NDJSON files
+    that are written to ``video_labels_dir`` as follows::
+
+        video_labels_dir/
+            <labelbox-id1>.json
+            <labelbox-id2>.json
+            ...
+
+    where each NDJSON file contains the frame labels for the video with the
+    corresponding Labelbox ID.
 
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
-        labelbox_project_or_json_path: a ``labelbox.schema.project.Project`` or
-            the path to write an NDJSON export of the labels
+        ndjson_path: the path to write an NDJSON export of the labels
+        video_labels_dir (None): a directory to write the per-sample video
+            labels. Only applicable for video samples
         labelbox_id_field ("labelbox_id"): the sample field to lookup/store the
             IDs of the Labelbox DataRows
         label_field (None): the name of a label field to export
@@ -234,28 +208,6 @@ def export_to_labelbox(
             keys; all frame-level fields whose names are in this dictionary
             will be exported. Only applicable for video samples
     """
-    # Build callback to export labels
-    if etau.is_str(labelbox_project_or_json_path):
-        # Append to NDJSON on disk
-        json_path = labelbox_project_or_json_path
-        etau.ensure_empty_file(json_path)
-
-        def flush_fcn(annos):
-            etas.write_ndjson(annos, json_path, append=True)
-
-    else:
-        # Upload to Labelbox server
-        project = labelbox_project_or_json_path
-        uploads = {"count": 0}
-
-        def flush_fcn(annos):
-            uploads["count"] += 1
-            name = "%s-upload-request-%d" % (
-                sample_collection.name,
-                uploads["count"],
-            )
-            project.upload_annotations(name, annos)
-
     is_video = sample_collection.media_type == fomm.VIDEO
 
     # Get label fields to export
@@ -279,8 +231,15 @@ def export_to_labelbox(
             force_dict=True,
         )
 
+        if frame_label_fields and video_labels_dir is None:
+            raise ValueError(
+                "Must provide `video_labels_dir` when exporting frame labels "
+                "for video samples"
+            )
+
+    etau.ensure_empty_file(ndjson_path)
+
     # Export the labels
-    annos = []
     with fou.ProgressBar() as pb:
         for sample in pb(sample_collection):
             labelbox_id = sample[labelbox_id_field]
@@ -314,28 +273,130 @@ def export_to_labelbox(
             # Export sample-level labels
             if label_fields:
                 labels_dict = _get_labels(sample, label_fields)
-                sample_annos = _to_labelbox_image_labels(
+                annos = _to_labelbox_image_labels(
                     labels_dict, frame_size, labelbox_id
                 )
-                annos.extend(sample_annos)
+                etas.write_ndjson(annos, ndjson_path, append=True)
 
             # Export frame-level labels
             if is_video and frame_label_fields:
                 frames = _get_frame_labels(sample, frame_label_fields)
-                sample_annos = _to_labelbox_video_labels(
+                video_annos = _to_labelbox_video_labels(
                     frames, frame_size, labelbox_id
                 )
-                flush_fcn(sample_annos)
 
-            if len(annos) >= 1000:
-                flush_fcn(annos)
-                annos = []
+                video_labels_path = os.path.join(
+                    video_labels_dir, labelbox_id + ".json"
+                )
+                etas.write_ndjson(video_annos, video_labels_path)
 
-    if annos:
-        flush_fcn(annos)
+                anno = _make_video_anno(
+                    video_labels_path, data_row_id=labelbox_id
+                )
+                etas.write_ndjson([anno], ndjson_path, append=True)
 
 
-def convert_labelbox_export_to_import(inpath, outpath):
+def download_labels_from_labelbox(labelbox_project, outpath=None):
+    """Downloads the labels for the given Labelbox project.
+
+    Args:
+        labelbox_project: a ``labelbox.schema.project.Project``
+        outpath (None): the path to write the JSON export on disk
+
+    Returns:
+        ``None`` if an ``outpath`` is provided, or the loaded JSON itself if no
+        ``outpath`` is provided
+    """
+    export_url = labelbox_project.export_labels()
+
+    if outpath:
+        etaw.download_file(export_url, path=outpath)
+        return None
+
+    labels_bytes = etaw.download_file(export_url)
+    return etas.load_json(labels_bytes)
+
+
+def upload_media_to_labelbox(
+    labelbox_dataset, sample_collection, labelbox_id_field="labelbox_id"
+):
+    """Uploads the raw media for the FiftyOne samples to Labelbox.
+
+    The IDs of the Labelbox DataRows that are created are stored in the
+    ``labelbox_id_field`` of the samples.
+
+    Args:
+        labelbox_dataset: a ``labelbox.schema.dataset.Dataset`` to which to
+            add the media
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        labelbox_id_field ("labelbox_id"): the sample field in which to store
+            the IDs of the Labelbox DataRows
+    """
+    # @todo use `create_data_rows()` to optimize performance
+    # @todo handle API rate limits
+    # Reference: https://labelbox.com/docs/python-api/data-rows
+    with fou.ProgressBar() as pb:
+        for sample in pb(sample_collection):
+            try:
+                has_id = sample[labelbox_id_field] is not None
+            except:
+                has_id = False
+
+            if has_id:
+                logger.warning(
+                    "Skipping sample '%s' with an existing '%s' value",
+                    sample.id,
+                    labelbox_id_field,
+                )
+                continue
+
+            filepath = sample.filepath
+            data_row = labelbox_dataset.create_data_row(row_data=filepath)
+            sample[labelbox_id_field] = data_row.uid
+            sample.save()
+
+
+def upload_labels_to_labelbox(
+    labelbox_project, annos_or_ndjson_path, batch_size=None
+):
+    """Uploads labels to a Labelbox project.
+
+    Use this function to load predictions into Labelbox for
+    `model-assisted labeling <https://labelbox.com/docs/automation/model-assisted-labeling>`_.
+
+    Use :meth:`export_to_labelbox` to export annotations in the format expected
+    by this method.
+
+    Args:
+        labelbox_project: a ``labelbox.schema.project.Project``
+        annos_or_ndjson_path: a list of annotation dicts or the path to an
+            NDJSON file on disk containing annotations
+        batch_size (None): an optional batch size to use when uploading the
+            annotations. By default, ``annos_or_ndjson_path`` is passed
+            directly to ``labelbox_project.upload_annotations()``
+    """
+    if batch_size is None:
+        name = "%s-upload-request" % labelbox_project.name
+        return labelbox_project.upload_annotations(name, annos_or_ndjson_path)
+
+    if etau.is_str(annos_or_ndjson_path):
+        annos = etas.read_ndjson(annos_or_ndjson_path)
+    else:
+        annos = annos_or_ndjson_path
+
+    requests = []
+    count = 0
+    for anno_batch in fou.iter_batches(annos, batch_size):
+        count += 1
+        name = "%s-upload-request-%d" % (labelbox_project.name, count)
+        request = labelbox_project.upload_annotations(name, anno_batch)
+        requests.append(request)
+
+    return requests
+
+
+def convert_labelbox_export_to_import(inpath, outpath=None, video_outdir=None):
     """Converts a Labelbox NDJSON export generated by
     :meth:`export_to_labelbox` into the format expected by
     :meth:`import_from_labelbox`.
@@ -348,36 +409,92 @@ def convert_labelbox_export_to_import(inpath, outpath):
     Args:
         inpath: the path to an NDJSON file generated (for example) by
             :meth:`export_to_labelbox`
-        outpath: the path to write a JSON file containing the converted labels
+        outpath (None): the path to write a JSON file containing the converted
+            labels. If omitted, the input file will be overwritten
+        video_outdir (None): a directory to write the converted video frame
+            labels (if applicable). If omitted, the input frame label files
+            will be overwritten
     """
+    if outpath is None:
+        outpath = inpath
+
     din_list = etas.read_ndjson(inpath)
 
     dout_map = {}
 
     for din in din_list:
         uuid = din.pop("dataRow")["id"]
+        din.pop("uuid")
+
+        if "frames" in din:
+            # Video annotation
+            frames_inpath = din["frames"]
+
+            # Convert frame labels
+            if video_outdir is not None:
+                frames_outpath = os.path.join(
+                    video_outdir, os.path.basename(frames_inpath)
+                )
+            else:
+                frames_outpath = frames_inpath
+
+            _convert_labelbox_frames_export_to_import(
+                frames_inpath, frames_outpath
+            )
+
+            dout_map[uuid] = {
+                "ID": uuid,
+                "Labeled Data": None,
+                "Label": {"frames": frames_outpath},
+            }
+            continue
+
         if uuid not in dout_map:
             dout_map[uuid] = {
                 "ID": uuid,
                 "Labeled Data": None,
-                "Label": {"objects": [], "classifications": [],},
+                "Label": {"objects": [], "classifications": []},
             }
 
-        dout = dout_map[uuid]
-
-        din.pop("uuid")
-        if any(k in din for k in ("bbox", "polygon", "line", "point", "mask")):
-            # Object
-            if "mask" in din:
-                din["instanceURI"] = din.pop("mask")["instanceURI"]
-
-            dout["Label"]["objects"].append(din)
-        else:
-            # Classification
-            dout["Label"]["classifications"].append(din)
+        _ingest_label(din, dout_map[uuid]["Label"])
 
     dout = list(dout_map.values())
     etas.write_json(dout, outpath)
+
+
+def _convert_labelbox_frames_export_to_import(inpath, outpath):
+    din_list = etas.read_ndjson(inpath)
+
+    dout_map = {}
+
+    for din in din_list:
+        frame_number = din.pop("frameNumber")
+        din.pop("dataRow")
+        din.pop("uuid")
+
+        if frame_number not in dout_map:
+            dout_map[frame_number] = {
+                "frameNumber": frame_number,
+                "objects": [],
+                "classifications": [],
+            }
+
+        _ingest_label(din, dout_map[frame_number])
+
+    dout = [dout_map[fn] for fn in sorted(dout_map.keys())]
+    etas.write_ndjson(dout, outpath)
+
+
+def _ingest_label(din, d_label):
+    if any(k in din for k in ("bbox", "polygon", "line", "point", "mask")):
+        # Object
+        if "mask" in din:
+            din["instanceURI"] = din.pop("mask")["instanceURI"]
+
+        d_label["objects"].append(din)
+    else:
+        # Classification
+        d_label["classifications"].append(din)
 
 
 def _get_labels(sample_or_frame, label_fields):
@@ -574,6 +691,18 @@ def _make_base_anno(value, data_row_id=None):
     return anno
 
 
+def _make_video_anno(labels_path, data_row_id=None):
+    anno = {
+        "uuid": str(uuid4()),
+        "frames": labels_path,
+    }
+
+    if data_row_id:
+        anno["dataRow"] = {"id": data_row_id}
+
+    return anno
+
+
 def _make_classification_answer(label):
     if isinstance(label, fol.Classification):
         # Assume free text
@@ -627,11 +756,9 @@ def _make_mask(instance_uri, color):
 
 
 # https://labelbox.com/docs/exporting-data/export-format-detail#video
-def _parse_video_labels(nd_labels_json_or_path, frame_size):
-    if etau.is_str(nd_labels_json_or_path):
-        label_d_list = etas.read_ndjson(nd_labels_json_or_path)
-    else:
-        label_d_list = nd_labels_json_or_path
+def _parse_video_labels(video_label_d, frame_size):
+    url_or_filepath = video_label_d["frames"]
+    label_d_list = _download_or_load_ndjson(url_or_filepath)
 
     frames = {}
     for label_d in label_d_list:
@@ -828,3 +955,11 @@ def _parse_point(pd, frame_size):
 def _parse_mask(instance_uri):
     img_bytes = etaw.download_file(instance_uri, quiet=True)
     return etai.decode(img_bytes)
+
+
+def _download_or_load_ndjson(url_or_filepath):
+    if url_or_filepath.startswith("http"):
+        ndjson_bytes = etaw.download_file(url_or_filepath, quiet=True)
+        return etas.load_ndjson(ndjson_bytes)
+
+    return etas.read_ndjson(url_or_filepath)
