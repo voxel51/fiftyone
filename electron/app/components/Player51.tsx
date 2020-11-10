@@ -153,6 +153,10 @@ export default ({
     }
   }, [player, selectedObjects]);
 
+  useEffect(() => {
+    return () => player && player.destroy();
+  }, [player]);
+
   useEventHandler(player, "load", () => setMediaLoading(false));
   useEventHandler(player, "load", onLoad);
   useEventHandler(player, "error", () =>
