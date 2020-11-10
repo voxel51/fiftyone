@@ -7,6 +7,8 @@ Tests for the :mod:`fiftyone.utils.scale` module.
 """
 import unittest
 
+import eta.core.utils as etau
+
 import fiftyone as fo
 import fiftyone.zoo as foz
 import fiftyone.utils.scale as fous
@@ -97,6 +99,8 @@ def _test_scale_video(dataset):
     scale_import_path = "/tmp/scale-video-import.json"
     scale_id_field = "scale_id"
 
+    etau.ensure_empty_dir(scale_export_dir)
+
     # Export labels in Scale format
     fous.export_to_scale(
         dataset,
@@ -130,5 +134,5 @@ def _test_scale_video(dataset):
 
 
 if __name__ == "__main__":
-    fo.config.show_progress_bars = False
+    fo.config.show_progress_bars = True
     unittest.main(verbosity=2)
