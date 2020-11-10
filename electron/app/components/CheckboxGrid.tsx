@@ -1,6 +1,10 @@
 import React, { useContext, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
-import { Checkbox, FormControlLabel } from "@material-ui/core";
+import {
+  Checkbox,
+  FormControlLabel,
+  CircularProgress,
+} from "@material-ui/core";
 import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
 import { useRecoilValue } from "recoil";
 import { animated, useSpring } from "react-spring";
@@ -193,20 +197,32 @@ const Entry = ({ entry, onCheck, modal }) => {
             <span className="name" title={entry.name}>
               {entry.name}
             </span>
-            <span className="count" title={entry.data}>
-              {entry.data}
-            </span>
-            {!(entry.icon && !LABEL_LISTS.includes(entry.type)) &&
-            ((entry.type && labelTypeIsFilterable(entry.type)) ||
-              (isNumericField && !modal)) ? (
-              <ArrowType
-                onClick={(e) => {
-                  e.preventDefault();
-                  setExpanded(!expanded);
+            {entry.data !== undefined ? (
+              <>
+                <span className="count" title={entry.data}>
+                  {entry.data}
+                </span>
+                {!(entry.icon && !LABEL_LISTS.includes(entry.type)) &&
+                ((entry.type && labelTypeIsFilterable(entry.type)) ||
+                  (isNumericField && !modal)) ? (
+                  <ArrowType
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setExpanded(!expanded);
+                    }}
+                    style={{ marginRight: -4 }}
+                  />
+                ) : null}
+              </>
+            ) : (
+              <CircularProgress
+                style={{
+                  color: theme.font,
+                  height: 16,
+                  width: 16,
                 }}
-                style={{ marginRight: -4 }}
               />
-            ) : null}
+            )}
           </>
         }
         classes={{

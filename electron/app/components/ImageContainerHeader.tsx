@@ -35,10 +35,16 @@ const SamplesHeader = styled.div`
 const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
   const totalCount = useRecoilValue(selectors.totalCount);
   const filteredCount = useRecoilValue(selectors.filteredCount);
-  const countStr =
-    typeof filteredCount === "number" && filteredCount !== totalCount
-      ? `${filteredCount.toLocaleString()} of ${totalCount.toLocaleString()}`
-      : (totalCount || 0).toLocaleString();
+  let countStr = null;
+  if (
+    typeof filteredCount === "number" &&
+    filteredCount !== totalCount &&
+    typeof totalCount === "number"
+  ) {
+    countStr = `${filteredCount.toLocaleString()} of ${totalCount.toLocaleString()}`;
+  } else if (typeof totalCount === "number") {
+    countStr = totalCount.toLocaleString();
+  }
   return (
     <Wrapper>
       <DropdownHandle
@@ -49,9 +55,11 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
       />
       <SamplesHeader>
         <SelectionMenu />
-        <div className="total" style={{ paddingRight: "1rem" }}>
-          Viewing <strong>{countStr} samples</strong>
-        </div>
+        {countStr !== null ? (
+          <div className="total" style={{ paddingRight: "1rem" }}>
+            Viewing <strong>{countStr} samples</strong>
+          </div>
+        ) : null}
       </SamplesHeader>
     </Wrapper>
   );

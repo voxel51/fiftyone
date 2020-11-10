@@ -140,7 +140,7 @@ const Cell = ({
             name: e.name,
             selected: e.selected,
             type: e.type,
-            data: e.icon ? e.icon : [makeData(e.filteredCount, e.totalCount)],
+            data: e.icon ? e.icon : makeData(e.filteredCount, e.totalCount),
             totalCount: e.totalCount,
             filteredCount: e.filteredCount,
             color: labelTypeHasColor(e.type)
@@ -161,15 +161,15 @@ const Cell = ({
   );
 };
 
-const makeCount = (count) => {
-  return (count || 0).toLocaleString();
-};
-
 const makeData = (filteredCount, totalCount) => {
-  if (typeof filteredCount === "number" && filteredCount !== totalCount) {
-    return `${makeCount(filteredCount)} of ${makeCount(totalCount)}`;
+  if (
+    typeof filteredCount === "number" &&
+    filteredCount !== totalCount &&
+    typeof totalCount === "number"
+  ) {
+    return `${filteredCount.toLocaleString()} of ${totalCount.toLocaleString()}`;
   }
-  return makeCount(totalCount);
+  return totalCount;
 };
 
 const DisplayOptionsSidebar = React.forwardRef(
@@ -199,6 +199,7 @@ const DisplayOptionsSidebar = React.forwardRef(
     const cellRest = { modal };
     const mediaType = useRecoilValue(selectors.mediaType);
     const isVideo = mediaType === "video";
+
     return (
       <Container ref={ref} {...rest}>
         <Cell
