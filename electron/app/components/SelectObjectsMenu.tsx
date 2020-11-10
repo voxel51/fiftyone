@@ -35,7 +35,7 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
 
   useSendMessage(
     "set_selected_objects",
-    convertSelectedObjectsMapToList(selectedObjects),
+    { selected_objects: convertSelectedObjectsMapToList(selectedObjects) },
     null,
     [selectedObjects]
   );

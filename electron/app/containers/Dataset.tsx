@@ -155,8 +155,8 @@ function Dataset(props) {
   if (modal.sample) {
     const path = modal.sample.filepath;
     const id = modal.sample._id;
-    const host = `http://127.0.0.1:${port}/`;
-    src = `${host}?path=${path}&id=${id}`;
+    const host = `http://127.0.0.1:${port}/filepath`;
+    src = `${host}${path}?id=${id}`;
     s = modal.sample;
   }
   if (loading) {

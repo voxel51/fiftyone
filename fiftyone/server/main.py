@@ -70,33 +70,6 @@ def get_user_id():
     return read()
 
 
-class FileHandler(tornado.web.RequestHandler):
-    async def get(self):
-        chunk_size = 1024 * 1024 * 1  # 1 MiB
-        path = self.get_query_argument("path")
-        print("HEADERS", self.request.headers)
-
-        with open(path, "rb") as f:
-            while True:
-                chunk = f.read(chunk_size)
-                if not chunk:
-                    break
-                try:
-                    self.write(chunk)  # write the chunk to response
-                    await self.flush()  # send the chunk to client
-                except tornado.iostream.StreamClosedError:
-                    # this means the client has closed the connection
-                    # so break the loop
-                    break
-                finally:
-                    # deleting the chunk is very important because
-                    # if many clients are downloading files at the
-                    # same time, the chunks in memory will keep
-                    # increasing and will eat up the RAM
-                    del chunk
-                    await asyncio.sleep(0)
-
-
 class FiftyOneHandler(tornado.web.RequestHandler):
     def get(self):
         self.write({"version": foc.VERSION})
@@ -624,7 +597,7 @@ class Application(tornado.web.Application):
     def __init__(self, **settings):
         handlers = [
             (r"/fiftyone", FiftyOneHandler),
-            (r"/", FileHandler),
+            (r"/filepath/(.*)", tornado.web.StaticFileHandler, {"path": "/"}),
             (r"/stages", StagesHandler),
             (r"/state", StateHandler),
         ]
