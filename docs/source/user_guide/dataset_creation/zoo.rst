@@ -81,6 +81,7 @@ Listing zoo datasets
     .. code-block:: text
 
         {
+            ...
             'cifar10': (
                 '~/fiftyone/cifar10',
                 <fiftyone.zoo.ZooDatasetInfo object at 0x141a63048>,
