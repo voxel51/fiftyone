@@ -59,6 +59,11 @@ db.start()
 
 
 def get_user_id():
+    """Gets the UUID of the current user
+
+    Returns:
+     a UUID string
+    """
     uid_path = os.path.join(foc.FIFTYONE_CONFIG_DIR, "var", "uid")
 
     def read():
@@ -76,23 +81,44 @@ def get_user_id():
 
 
 class RequestHandler(tornado.web.RequestHandler):
+    """"Base class for HTTP request handlers"""
+
     async def get(self):
         self.write(self.get_response())
 
     @staticmethod
     def get_response():
+        """Returns the serializable response
+
+        Returns:
+            dict
+        """
         raise NotImplementedError("subclass must implement get_response()")
 
 
 class FiftyOneHandler(RequestHandler):
+    """Returns the version info of the fiftyone being used"""
+
     @staticmethod
     def get_response():
+        """Returns the serializable response
+
+        Returns:
+            dict
+        """
         return {"version": foc.VERSION}
 
 
 class StagesHandler(RequestHandler):
+    """Returns the definitions of stages available to the App"""
+
     @staticmethod
     def get_response():
+        """Returns the serializable response
+
+        Returns:
+            dict
+        """
         return {
             "stages": [
                 {"name": stage.__name__, "params": stage._params()}
@@ -192,11 +218,19 @@ def _make_frame_labels(name, label, frame_number, prefix=""):
 
 
 class StateHandler(tornado.websocket.WebSocketHandler):
+    """WebSocket handler for bi-directional state communication
 
+    Attributes:
+        app_clients: active App clients
+        clients: active clients
+        state: the current serialized state
+        prev_state: the previous state, serialized
+    """
+
+    app_clients = set()
     clients = set()
     state = fos.StateDescription().serialize()
     prev_state = fos.StateDescription().serialize()
-    app_clients = set()
 
     @staticmethod
     def dumps(data):
@@ -386,6 +420,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         )
 
     async def send_page(self, page, page_length=20, only=None):
+
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
             view = state.view
@@ -437,6 +472,13 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                 client.write_message(message)
 
     async def on_distributions(self, group):
+        """Sends distribution data with respect to a group to the requesting
+        client.
+
+        Args:
+            group: the distribution group. Valid groups are LABELS, SCALARS,
+                and TAGS.
+        """
         state = fos.StateDescription.from_dict(StateHandler.state)
         results = None
         if state.view is not None:
@@ -611,6 +653,8 @@ async def _numeric_distribution_pipelines(coll, view, pipeline, buckets=50):
 
 
 class Application(tornado.web.Application):
+    """FiftyOne Tornado Application"""
+
     def __init__(self, **settings):
         handlers = [
             (r"/fiftyone", FiftyOneHandler),
