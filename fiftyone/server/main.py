@@ -154,20 +154,6 @@ def _catch_errors(func):
     return wrapper
 
 
-def _load_state(trigger_update=False):
-    def decorator(func):
-        def wrapper(self, *args, **kwargs):
-            state = self.state.copy()
-            state = fos.StateDescription.from_dict(state)
-            state = func(self, state, *args, **kwargs)
-            self.state = state.serialize()
-            return self.state
-
-        return wrapper
-
-    return decorator
-
-
 _WITHOUT_PAGINATION_EXTENDED_STAGES = {
     fosg.FilterClassifications,
     fosg.FilterDetections,
@@ -223,8 +209,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     Attributes:
         app_clients: active App clients
         clients: active clients
-        state: the current serialized state
-        prev_state: the previous state, serialized
+        state: the current a serialized
+            :class:`fiftyone.core.state.StateDescription`, serialized
+        prev_state: the previous a serialized
+            :class:`fiftyone.core.state.StateDescription`, serialized
     """
 
     app_clients = set()
@@ -234,61 +222,104 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     @staticmethod
     def dumps(data):
+        """Serializes data to a JSON formatted :class:`str`
+
+        Args:
+            data: serializable object
+
+        Returns:
+            :class:`str`
+        """
         return FiftyOneJSONEncoder.dumps(data)
 
     @staticmethod
     def loads(data):
+        """Deserialized data to an object
+
+        Args:
+            data: :class:`str`, :class:`bytes`, or :class:`bytearray`
+
+        Returns:
+            an object
+        """
         return FiftyOneJSONEncoder.loads(data)
 
     @property
     def sample_collection(self):
+        """Getter for the current sample collection"""
         db = self.settings["db"]
         state = fos.StateDescription.from_dict(StateHandler.state)
         return db[state.dataset._sample_collection_name]
 
     def write_message(self, message):
+        """Writes a message to the client
+
+        Args:
+            message: a serializable object
+        """
         if message is None:
             return
         message = self.dumps(message)
         return super().write_message(message)
 
     def check_origin(self, origin):
+        """Accepts all origins
+
+        Returns:
+            True
+        """
         return True
 
     def open(self):
+        """On open, add the client to the active clients set, and write the
+        current state to the new client
+        """
         StateHandler.clients.add(self)
-        logger.debug("connected")
         self.write_message({"type": "update", "state": StateHandler.state})
 
     def on_close(self):
+        """On close, remove the client from the active clients set, and
+        active App clients set (if applicable)
+        """
         StateHandler.clients.remove(self)
         StateHandler.app_clients.discard(self)
-        logger.debug("disconnected")
 
     @_catch_errors
     async def on_message(self, message):
+        """On message, call the associated event awaitable, with respect to 
+        the provided message type
+
+        Args:
+            message: a serialzed message
+        """
         message = self.loads(message)
         event = getattr(self, "on_%s" % message.pop("type"))
         logger.debug("%s event" % event.__name__)
         await event(**message)
 
     async def on_as_app(self):
+        """Event for registering a client as an App"""
         StateHandler.app_clients.add(self)
         awaitables = self.get_statistics_awaitables(only=self)
         asyncio.gather(*awaitables)
 
-    async def on_page(self, **kwargs):
-        await self.send_page(**kwargs)
-
-    async def on_update(self, state):
-        StateHandler.state = state
-        awaitables = [
-            self.send_updates(ignore=self),
-        ]
-        awaitables += self.get_statistics_awaitables()
-        asyncio.gather(*awaitables)
+    async def on_fiftyone(self):
+        """Event for FiftyOne package version and user id requests"""
+        self.write_message(
+            {
+                "type": "fiftyone",
+                "data": {"version": foc.VERSION, "user_id": get_user_id(),},
+            }
+        )
 
     async def on_filters_update(self, filters):
+        """Event for updating state filters. Sends an extended dataset statistics
+        message to active App clients
+
+        Args:
+            filters: a :class:`dict` mapping field path to a serialized
+                :class:fiftyone.core.stages.Stage`
+        """
         StateHandler.state["filters"] = filters
         state = StateHandler.state
         view = state["view"] or []
@@ -296,7 +327,34 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view + list(state["filters"].values()), extended=True
         )
 
+    async def on_page(self, **kwargs):
+        """Event for pagination requests"""
+        await self.send_page(**kwargs)
+
+    async def on_update(self, state):
+        """Event for state updates. Sends an update message to all active
+        clients, and statistics messages to active App clients
+
+        Args:
+            state: a serialized :class:`fiftyone.core.state.StateDescription`
+        """
+        StateHandler.state = state
+        awaitables = [
+            self.send_updates(ignore=self),
+        ]
+        awaitables += self.get_statistics_awaitables()
+        asyncio.gather(*awaitables)
+
     def get_statistics_awaitables(self, only=None):
+        """Gets statistic awaitables that will send statistics to the relevant
+        client(s) when executed
+    
+        Args:
+            only: a specific client to only 
+
+        Returns:
+            a list of coroutines
+        """
         if StateHandler.state["dataset"] is None:
             return []
         state = StateHandler.state
@@ -313,14 +371,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             )
 
         return awaitables
-
-    async def on_fiftyone(self):
-        self.write_message(
-            {
-                "type": "fiftyone",
-                "data": {"version": foc.VERSION, "user_id": get_user_id(),},
-            }
-        )
 
     @classmethod
     async def send_updates(cls, ignore=None):
@@ -419,8 +469,13 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             }
         )
 
-    async def send_page(self, page, page_length=20, only=None):
+    async def send_page(self, page, page_length=20):
+        """Sends a pagination response to the current client
 
+        Args:
+            page: the page number
+            page_length: the number of items to return
+        """
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
             view = state.view
@@ -465,19 +520,15 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             "more": more,
         }
 
-        if only:
-            only.write_message(message)
-        else:
-            for client in self.clients:
-                client.write_message(message)
+        self.write_message(message)
 
     async def on_distributions(self, group):
         """Sends distribution data with respect to a group to the requesting
         client.
 
         Args:
-            group: the distribution group. Valid groups are LABELS, SCALARS,
-                and TAGS.
+            group: the distribution group. Valid groups are 'labels', 'scalars',
+                and 'tags'.
         """
         state = fos.StateDescription.from_dict(StateHandler.state)
         results = None
