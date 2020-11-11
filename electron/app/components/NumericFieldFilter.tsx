@@ -48,8 +48,6 @@ const NumericFieldFilter = ({ expanded, entry }) => {
   const [localBounds, setLocalBounds] = useState([null, null]);
   const isDefaultRange = range[0] === bounds[0] && range[1] === bounds[1];
   const filterStage = useRecoilValue(selectors.filterStage(entry.path));
-  const setStateDescription = useSetRecoilState(atoms.stateDescription);
-  const setExtendedDatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
 
   useEffect(() => {
     if (filterStage) return;
@@ -57,8 +55,8 @@ const NumericFieldFilter = ({ expanded, entry }) => {
     setRange(bounds);
   }, [filterStage]);
   useEffect(() => {
-    setRange(bounds);
-  }, [bounds]);
+    localBounds.some((b, i) => b !== bounds[i]) && setRange(bounds);
+  }, [bounds, localBounds]);
   useEffect(() => {
     if (!hasBounds) {
       return;
