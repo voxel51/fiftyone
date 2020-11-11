@@ -804,7 +804,7 @@ class Segmentation(ImageLabel):
     """A semantic segmentation mask for an image.
 
     Args:
-        mask (None): a semantic segmentation mask, which should be a 2D NumPy
+        mask (None): a semantic segmentation mask, which should be a NumPy
             array with integer values encoding the semantic labels
     """
 

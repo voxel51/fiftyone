@@ -1703,31 +1703,31 @@ class SampleCollection(object):
         # Get label field(s) to export
         if isinstance(dataset_exporter, foud.LabeledImageDatasetExporter):
             # Labeled images
-            label_field_or_dict = _pick_label_fields(
+            label_field_or_dict = get_label_fields(
                 self,
-                dataset_exporter,
-                label_field,
-                label_prefix,
-                labels_dict,
+                label_field=label_field,
+                label_prefix=label_prefix,
+                labels_dict=labels_dict,
+                dataset_exporter=dataset_exporter,
                 required=True,
             )
             frame_labels_field_or_dict = None
         elif isinstance(dataset_exporter, foud.LabeledVideoDatasetExporter):
             # Labeled videos
-            label_field_or_dict = _pick_label_fields(
+            label_field_or_dict = get_label_fields(
                 self,
-                dataset_exporter,
-                label_field,
-                label_prefix,
-                labels_dict,
+                label_field=label_field,
+                label_prefix=label_prefix,
+                labels_dict=labels_dict,
+                dataset_exporter=dataset_exporter,
                 required=False,
             )
-            frame_labels_field_or_dict = _pick_frame_labels_fields(
+            frame_labels_field_or_dict = get_frame_labels_fields(
                 self,
-                dataset_exporter,
-                frame_labels_field,
-                frame_labels_prefix,
-                frame_labels_dict,
+                frame_labels_field=frame_labels_field,
+                frame_labels_prefix=frame_labels_prefix,
+                frame_labels_dict=frame_labels_dict,
+                dataset_exporter=dataset_exporter,
                 required=False,
             )
 
@@ -1740,7 +1740,7 @@ class SampleCollection(object):
                     "field(s) to export"
                 )
         else:
-            # Unlabeled
+            # Other (unlabeled, entire samples, etc)
             label_field_or_dict = None
             frame_labels_field_or_dict = None
 
@@ -1923,14 +1923,37 @@ def _get_random_characters(n):
     )
 
 
-def _pick_label_fields(
+def get_label_fields(
     sample_collection,
-    dataset_exporter,
-    label_field,
-    label_prefix,
-    labels_dict,
-    required=True,
+    label_field=None,
+    label_prefix=None,
+    labels_dict=None,
+    dataset_exporter=None,
+    required=False,
+    force_dict=False,
 ):
+    """Gets the label field(s) of the sample collection matching the specified
+    arguments.
+
+    Provide one of ``label_field``, ``label_prefix``, ``labels_dict``, or
+    ``dataset_exporter``.
+
+    Args:
+        sample_collection: a :class:`SampleCollection`
+        label_field (None): the name of the label field to export
+        label_prefix (None): a label field prefix; the returned labels dict
+            will contain all fields whose name starts with the given prefix
+        labels_dict (None): a dictionary mapping label field names to keys
+        dataset_exporter (None): a
+            :class:`fiftyone.utils.data.exporters.DatasetExporter` to use to
+            choose appropriate label field(s)
+        required (False): whether at least one matching field must be found
+        force_dict (False): whether to always return a labels dict rather than
+            an individual label field
+
+    Returns:
+        a label field or dict mapping label fields to keys
+    """
     if label_prefix is not None:
         labels_dict = _get_labels_dict_for_prefix(
             sample_collection, label_prefix
@@ -1939,22 +1962,61 @@ def _pick_label_fields(
     if labels_dict is not None:
         return labels_dict
 
-    if label_field is None:
-        return _get_default_label_fields_for_exporter(
+    if label_field is None and dataset_exporter is not None:
+        label_field = _get_default_label_fields_for_exporter(
             sample_collection, dataset_exporter, required=required
         )
+
+    if label_field is None and required:
+        raise ValueError(
+            "Unable to find any label fields matching the provided arguments"
+        )
+
+    if (
+        force_dict
+        and label_field is not None
+        and not isinstance(label_field, dict)
+    ):
+        return {label_field: label_field}
 
     return label_field
 
 
-def _pick_frame_labels_fields(
+def get_frame_labels_fields(
     sample_collection,
-    dataset_exporter,
-    frame_labels_field,
-    frame_labels_prefix,
-    frame_labels_dict,
-    required=True,
+    frame_labels_field=None,
+    frame_labels_prefix=None,
+    frame_labels_dict=None,
+    dataset_exporter=None,
+    required=False,
+    force_dict=False,
 ):
+    """Gets the frame label field(s) of the sample collection matching the
+    specified arguments.
+
+    Provide one of ``frame_labels_field``, ``frame_labels_prefix``,
+    ``frame_labels_dict``, or ``dataset_exporter``.
+
+    Args:
+        sample_collection: a :class:`SampleCollection`
+        frame_labels_field (None): the name of the frame labels field to
+            export
+        frame_labels_prefix (None): a frame labels field prefix; the returned
+            labels dict will contain all frame-level fields whose name starts
+            with the given prefix
+        frame_labels_dict (None): a dictionary mapping frame-level label field
+            names to keys
+        dataset_exporter (None): a
+            :class:`fiftyone.utils.data.exporters.DatasetExporter` to use to
+            choose appropriate frame label field(s)
+        required (False): whether at least one matching frame field must be
+            found
+        force_dict (False): whether to always return a labels dict rather than
+            an individual label field
+
+    Returns:
+        a frame label field or dict mapping frame label fields to keys
+    """
     if frame_labels_prefix is not None:
         frame_labels_dict = _get_frame_labels_dict_for_prefix(
             sample_collection, frame_labels_prefix
@@ -1963,10 +2025,23 @@ def _pick_frame_labels_fields(
     if frame_labels_dict is not None:
         return frame_labels_dict
 
-    if frame_labels_field is None:
-        return _get_default_frame_label_fields_for_exporter(
+    if frame_labels_field is None and dataset_exporter is not None:
+        frame_labels_field = _get_default_frame_label_fields_for_exporter(
             sample_collection, dataset_exporter, required=required
         )
+
+    if frame_labels_field is None and required:
+        raise ValueError(
+            "Unable to find any frame label fields matching the provided "
+            "arguments"
+        )
+
+    if (
+        force_dict
+        and frame_labels_field is not None
+        and not isinstance(frame_labels_field, dict)
+    ):
+        return {frame_labels_field: frame_labels_field}
 
     return frame_labels_field
 
