@@ -204,7 +204,7 @@ def _make_frame_labels(name, label, frame_number, prefix=""):
 
 
 class StateHandler(tornado.websocket.WebSocketHandler):
-    """WebSocket handler for bi-directional state communication
+    """WebSocket handler for bi-directional state communication.
 
     Attributes:
         app_clients: active App clients
@@ -222,7 +222,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     @staticmethod
     def dumps(data):
-        """Serializes data to a JSON formatted :class:`str`
+        """Serializes data to a JSON formatted :class:`str`.
 
         Args:
             data: serializable object
@@ -234,7 +234,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     @staticmethod
     def loads(data):
-        """Deserialized data to an object
+        """Deserialized data to an object.
 
         Args:
             data: :class:`str`, :class:`bytes`, or :class:`bytearray`
@@ -246,13 +246,13 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     @property
     def sample_collection(self):
-        """Getter for the current sample collection"""
+        """Getter for the current sample collection."""
         db = self.settings["db"]
         state = fos.StateDescription.from_dict(StateHandler.state)
         return db[state.dataset._sample_collection_name]
 
     def write_message(self, message):
-        """Writes a message to the client
+        """Writes a message to the client.
 
         Args:
             message: a serializable object
@@ -263,7 +263,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         return super().write_message(message)
 
     def check_origin(self, origin):
-        """Accepts all origins
+        """Accepts all origins.
 
         Returns:
             True
@@ -272,14 +272,14 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     def open(self):
         """On open, add the client to the active clients set, and write the
-        current state to the new client
+        current state to the new client.
         """
         StateHandler.clients.add(self)
         self.write_message({"type": "update", "state": StateHandler.state})
 
     def on_close(self):
         """On close, remove the client from the active clients set, and
-        active App clients set (if applicable)
+        active App clients set (if applicable).
         """
         StateHandler.clients.remove(self)
         StateHandler.app_clients.discard(self)
@@ -287,7 +287,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     @_catch_errors
     async def on_message(self, message):
         """On message, call the associated event awaitable, with respect to 
-        the provided message type
+        the provided message type.
 
         Args:
             message: a serialzed message
@@ -298,13 +298,13 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         await event(**message)
 
     async def on_as_app(self):
-        """Event for registering a client as an App"""
+        """Event for registering a client as an App."""
         StateHandler.app_clients.add(self)
         awaitables = self.get_statistics_awaitables(only=self)
         asyncio.gather(*awaitables)
 
     async def on_fiftyone(self):
-        """Event for FiftyOne package version and user id requests"""
+        """Event for FiftyOne package version and user id requests."""
         self.write_message(
             {
                 "type": "fiftyone",
@@ -314,7 +314,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     async def on_filters_update(self, filters):
         """Event for updating state filters. Sends an extended dataset statistics
-        message to active App clients
+        message to active App clients.
 
         Args:
             filters: a :class:`dict` mapping field path to a serialized
@@ -333,7 +333,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     async def on_update(self, state):
         """Event for state updates. Sends an update message to all active
-        clients, and statistics messages to active App clients
+        clients, and statistics messages to active App clients.
 
         Args:
             state: a serialized :class:`fiftyone.core.state.StateDescription`
@@ -344,6 +344,104 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         ]
         awaitables += self.get_statistics_awaitables()
         asyncio.gather(*awaitables)
+
+    async def on_add_selection(self, _id):
+        """Event for adding a :class:`fiftyone.core.samples.Sample` _id to the
+        currently selected sample _ids.
+
+        Sends state updates to all active clients.
+
+        Args:
+            _id: a sample _id
+        """
+        selected = set(StateHandler.state["selected"])
+        selected.add(_id)
+        StateHandler.state["selected"] = selected
+        await self.send_updates(ignore=self)
+
+    async def on_remove_selection(self, _id):
+        """Event for removing a :class:`fiftyone.core.samples.Sample` _id from the
+        currently selected sample _ids
+
+        Sends state updates to all active clients.
+
+        Args:
+            _id: a sample _id
+        """
+        selected = set(StateHandler.state["selected"])
+        selected.remove(_id)
+        StateHandler.state["selected"] = selected
+        await self.send_updates(ignore=self)
+
+    async def on_clear_selection(self):
+        """Event for clearing the currently selected sample _ids.
+
+        Sends state updates to all active clients.
+        """
+        StateHandler.state["selected"] = []
+        await self.send_updates(ignore=self)
+
+    async def on_set_selected_objects(self, selected_objects):
+        """Event for setting the entire selected objects list.
+
+        Args:
+            selected_object: a list of selected objects
+        """
+        if not isinstance(selected_objects, list):
+            raise TypeError("selected_objects must be a list")
+
+        StateHandler.state["selected_objects"] = selected_objects
+        await self.send_updates(ignore=self)
+
+    async def on_get_video_data(self, _id, filepath):
+        """Gets the frame labels for video samples.
+
+        Args:
+            _id: a sample _id
+            filepath: the absolute path to the sample's video on disk
+        """
+        state = fos.StateDescription.from_dict(StateHandler.state)
+        find_d = {"_sample_id": ObjectId(_id)}
+        labels = etav.VideoLabels()
+        frames = list(state.dataset._frame_collection.find(find_d))
+        sample = state.dataset[_id].to_mongo_dict()
+        convert(frames)
+
+        for frame_dict in frames:
+            frame_number = frame_dict["frame_number"]
+            frame_labels = etav.VideoFrameLabels(frame_number=frame_number)
+            for k, v in frame_dict.items():
+                if isinstance(v, dict) and "_cls" in v:
+                    field_labels = _make_frame_labels(
+                        k, v, frame_number, prefix="frames."
+                    )
+                    frame_labels.merge_labels(field_labels)
+
+            labels.add_frame(frame_labels)
+
+        for frame_number in range(
+            1, etav.get_frame_count(sample["filepath"]) + 1
+        ):
+            frame_labels = etav.VideoFrameLabels(frame_number=frame_number)
+            for k, v in sample.items():
+                if isinstance(v, dict) and k != "frames" and "_cls" in v:
+                    field_labels = _make_frame_labels(k, v, frame_number)
+                    for obj in field_labels.objects:
+                        obj.frame_number = frame_number
+
+                    frame_labels.merge_labels(field_labels)
+
+            labels.add_frame(frame_labels, overwrite=False)
+
+        fps = etav.get_frame_rate(filepath)
+        self.write_message(
+            {
+                "type": "video_data-%s" % _id,
+                "frames": frames,
+                "labels": labels.serialize(),
+                "fps": fps,
+            }
+        )
 
     def get_statistics_awaitables(self, only=None):
         """Gets statistic awaitables that will send statistics to the relevant
@@ -401,73 +499,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             for client in StateHandler.app_clients:
                 client.write_message(message)
-
-    async def on_add_selection(self, _id):
-        selected = set(StateHandler.state["selected"])
-        selected.add(_id)
-        StateHandler.state["selected"] = selected
-        await self.send_updates(ignore=self)
-
-    async def on_remove_selection(self, _id):
-        selected = set(StateHandler.state["selected"])
-        selected.remove(_id)
-        StateHandler.state["selected"] = selected
-        await self.send_updates(ignore=self)
-
-    async def on_clear_selection(self):
-        StateHandler.state["selected"] = []
-        await self.send_updates(ignore=self)
-
-    async def on_set_selected_objects(self, selected_objects):
-        if not isinstance(selected_objects, list):
-            raise TypeError("selected_objects must be a list")
-
-        StateHandler.state["selected_objects"] = selected_objects
-        await self.send_updates(ignore=self)
-
-    async def on_get_video_data(self, _id, filepath):
-        state = fos.StateDescription.from_dict(StateHandler.state)
-        find_d = {"_sample_id": ObjectId(_id)}
-        labels = etav.VideoLabels()
-        frames = list(state.dataset._frame_collection.find(find_d))
-        sample = state.dataset[_id].to_mongo_dict()
-        convert(frames)
-
-        for frame_dict in frames:
-            frame_number = frame_dict["frame_number"]
-            frame_labels = etav.VideoFrameLabels(frame_number=frame_number)
-            for k, v in frame_dict.items():
-                if isinstance(v, dict) and "_cls" in v:
-                    field_labels = _make_frame_labels(
-                        k, v, frame_number, prefix="frames."
-                    )
-                    frame_labels.merge_labels(field_labels)
-
-            labels.add_frame(frame_labels)
-
-        for frame_number in range(
-            1, etav.get_frame_count(sample["filepath"]) + 1
-        ):
-            frame_labels = etav.VideoFrameLabels(frame_number=frame_number)
-            for k, v in sample.items():
-                if isinstance(v, dict) and k != "frames" and "_cls" in v:
-                    field_labels = _make_frame_labels(k, v, frame_number)
-                    for obj in field_labels.objects:
-                        obj.frame_number = frame_number
-
-                    frame_labels.merge_labels(field_labels)
-
-            labels.add_frame(frame_labels, overwrite=False)
-
-        fps = etav.get_frame_rate(filepath)
-        self.write_message(
-            {
-                "type": "video_data-%s" % _id,
-                "frames": frames,
-                "labels": labels.serialize(),
-                "fps": fps,
-            }
-        )
 
     async def send_page(self, page, page_length=20):
         """Sends a pagination response to the current client
