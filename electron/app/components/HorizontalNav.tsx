@@ -8,12 +8,13 @@ import KeyboardArrowUpIcon from "@material-ui/icons/KeyboardArrowUp";
 
 import Distributions from "./Distributions";
 import * as atoms from "../recoil/atoms";
+import { Resizable } from "re-resizable";
 
 export type Props = {
   entries: string[];
 };
 
-const Container = animated(styled.div`
+const Container = animated(styled(Resizable)`
   padding: 1rem 0 0;
   background-color: ${({ theme }) => theme.backgroundDark};
   border-bottom: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
