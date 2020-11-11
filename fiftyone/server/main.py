@@ -458,7 +458,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         client(s) when executed
     
         Args:
-            only: a specific client to only 
+            only (None): a client to restrict the messages to
 
         Returns:
             a list of coroutines
@@ -482,6 +482,12 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     @classmethod
     async def send_updates(cls, ignore=None):
+        """Sends an update event to the all clients, exluding the ignore
+        client, if it is not None.
+
+        Args:
+            ignore (None): a client to not send the update to
+        """
         response = {"type": "update", "state": StateHandler.state}
         for client in cls.clients:
             if client == ignore:
@@ -489,6 +495,15 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             client.write_message(response)
 
     async def send_statistics(self, stages, extended=False, only=None):
+        """Sends a statistics event given using the provided stages to all App
+        clients, unless an only client is provided in which case it is only
+        sent to the that client.
+
+        Args:
+            stages: a list of serialized stages
+            extended (False): extended flag
+            only (None): a client to restrict the message to
+        """
         state = fos.StateDescription.from_dict(StateHandler.state)
         if stages is None:
             stages = []
@@ -515,7 +530,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         Args:
             page: the page number
-            page_length: the number of items to return
+            page_length (20): the number of items to return
         """
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
