@@ -301,7 +301,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         """Event for registering a client as an App."""
         StateHandler.app_clients.add(self)
         awaitables = self.get_statistics_awaitables(only=self)
-        asyncio.gather(*awaitables)
+        await asyncio.gather(*awaitables, loop=tornado.ioloop.IOLoop.current())
 
     async def on_fiftyone(self):
         """Event for FiftyOne package version and user id requests."""
@@ -343,7 +343,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             self.send_updates(ignore=self),
         ]
         awaitables += self.get_statistics_awaitables()
-        await asyncio.gather(*awaitables)
+        await asyncio.gather(*awaitables, loop=tornado.ioloop.IOLoop.current())
 
     async def on_add_selection(self, _id):
         """Event for adding a :class:`fiftyone.core.samples.Sample` _id to the
