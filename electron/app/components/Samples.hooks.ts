@@ -11,6 +11,7 @@ export default () => {
   const socket = useRecoilValue(selectors.socket);
   const [prevFilters, setPrevFilters] = useState({});
   const filters = useRecoilValue(selectors.paginatedFilterStages);
+  const datasetName = useRecoilValue(selectors.datasetName);
   const view = useRecoilValue(selectors.view);
   const [prevView, setPrevView] = useState([]);
 
@@ -38,6 +39,10 @@ export default () => {
     setState(empty);
     setPrevView(view);
   }, [view, prevView]);
+
+  useEffect(() => {
+    setState(empty);
+  }, [datasetName]);
 
   useEffect(() => {
     if (!state.loadMore || state.isLoading || !state.hasMore) return;
