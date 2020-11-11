@@ -5,6 +5,23 @@ FiftyOne Release Notes
 
 FiftyOne 0.6.4
 --------------
+*Released November 12, 2020*
+
+App
+^^^
+- todo
+
+Core
+^^^^
+- todo
+
+Utils
+^^^^^
+- todo
+ 
+
+FiftyOne 0.6.4
+--------------
 *Released October 29, 2020*
 
 App
