@@ -343,7 +343,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             self.send_updates(ignore=self),
         ]
         awaitables += self.get_statistics_awaitables()
-        asyncio.gather(*awaitables)
+        await asyncio.gather(*awaitables)
 
     async def on_add_selection(self, _id):
         """Event for adding a :class:`fiftyone.core.samples.Sample` _id to the
