@@ -275,7 +275,6 @@ class DatasetView(foc.SampleCollection):
 
         _pipeline = []
 
-        _frames_pipeline = []
         for s in self._stages:
             _pipeline.extend(s.to_mongo(self))
 
@@ -292,9 +291,11 @@ class DatasetView(foc.SampleCollection):
         self, pipeline=None, hide_frames=False, squash_frames=False
     ):
         _pipeline = self._pipeline(
-            pipeline=None, hide_frames=False, squash_frames=False
+            pipeline=pipeline,
+            hide_frames=hide_frames,
+            squash_frames=squash_frames,
         )
-        return self._dataset._aggregate(_pipeline, hide_frames, squash_frames)
+        return self._dataset._sample_collection.aggregate(_pipeline)
 
     @property
     def _doc(self):

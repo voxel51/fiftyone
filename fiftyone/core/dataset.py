@@ -1908,7 +1908,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self, pipeline=None, hide_frames=False, squash_frames=False
     ):
         _pipeline = self._pipeline(
-            pipeline=None, hide_frames=False, squash_frames=False
+            pipeline=pipeline,
+            hide_frames=hide_frames,
+            squash_frames=squash_frames,
         )
         return self._sample_collection.aggregate(_pipeline)
 
