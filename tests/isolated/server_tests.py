@@ -12,6 +12,7 @@ To run a single test, modify the main code to::
 |
 """
 import asyncio
+from collections import defaultdict
 import json
 import os
 import time
@@ -89,10 +90,10 @@ class StateTests(TestCase):
     def setUp(self):
         super().setUp()
         self.__app_client = self.get_ws()
-        self.on(self.app)
+        self.gather_events({self.app: 1})
         self.send(self.app, "as_app", {})
         self.__session_client = self.get_ws()
-        self.on(self.session)
+        self.gather_events({self.session: 1})
 
     def get_ws(self):
         websocket_connect(self.get_socket_path(), callback=self.stop)
@@ -123,22 +124,26 @@ class StateTests(TestCase):
         payload.update(message)
         client.write_message(FiftyOneJSONEncoder.dumps(payload))
 
-    def on(self, client, event=None):
-        client.read_message(self.stop)
-        message = self.wait().result()
-        message = FiftyOneJSONEncoder.loads(message)
-        if event is not None:
-            self.assertEqual(message.pop("type"), event)
-        return message
+    def gather_events(self, num_events):
+        results = defaultdict(list)
+        for client, num_events in num_events.items():
+            for i in range(0, num_events):
+                client.read_message(self.stop)
+                message = self.wait().result()
+                message = FiftyOneJSONEncoder.loads(message)
+                results[client].append(message)
+        return results
 
     def test_update(self):
         state = fos.StateDescription(dataset=self.dataset).serialize()
         self.send(self.session, "update", {"state": state})
-        result = self.on(self.app, "update")
+        results = self.gather_events({self.app: 1})
+        """
         result_state = fos.StateDescription.from_dict(
             result["state"]
         ).serialize()
         self.assertNormalizedEqual(result_state, state)
+        """
 
 
 if __name__ == "__main__":
