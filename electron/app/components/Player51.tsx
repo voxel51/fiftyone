@@ -61,7 +61,6 @@ export default ({
   const filter = useRecoilValue(filterSelector);
   const fps = useRecoilValue(atoms.sampleFrameRate(sample._id));
   const colorMap = useRecoilValue(atoms.colorMap);
-  const mediaType = useRecoilValue(selectors.mediaType);
   if (overlay === null) {
     overlay = convertSampleToETA(sample, fieldSchema);
   }

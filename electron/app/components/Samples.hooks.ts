@@ -3,6 +3,7 @@ import { useRecoilValue } from "recoil";
 import { useMessageHandler } from "../utils/hooks";
 import tile from "../utils/tile";
 import { packageMessage } from "../utils/socket";
+import { viewsAreEqual } from "../utils/view";
 
 import * as selectors from "../recoil/selectors";
 
@@ -11,6 +12,7 @@ export default () => {
   const [prevFilters, setPrevFilters] = useState({});
   const filters = useRecoilValue(selectors.paginatedFilterStages);
   const view = useRecoilValue(selectors.view);
+  const [prevView, setPrevView] = useState([]);
 
   const empty = {
     initialized: false,
@@ -27,16 +29,15 @@ export default () => {
     setState(tile(results, more, state));
   });
 
-  useMessageHandler("update", () => {
-    setState(empty);
-  });
   useEffect(() => {
     setState(empty);
     setPrevFilters(filters);
   }, [JSON.stringify(filters) === JSON.stringify(prevFilters)]);
   useEffect(() => {
+    if (viewsAreEqual(view, prevView)) return;
     setState(empty);
-  }, [view]);
+    setPrevView(view);
+  }, [view, prevView]);
 
   useEffect(() => {
     if (!state.loadMore || state.isLoading || !state.hasMore) return;
