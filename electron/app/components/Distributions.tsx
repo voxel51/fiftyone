@@ -2,6 +2,7 @@ import React, { useState, useRef, PureComponent } from "react";
 import { Bar, BarChart, XAxis, YAxis, Tooltip } from "recharts";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
+import useMeasure from "react-use-measure";
 import { Dimmer, Header, Loader, Message } from "semantic-ui-react";
 import _ from "lodash";
 import { scrollbarStyles } from "./utils";
@@ -15,6 +16,7 @@ const Container = styled.div`
   overflow-y: hidden;
   overflow-x: scroll;
   width: 100%;
+  height: 100%;
   padding-left: 1rem;
 `;
 
@@ -31,8 +33,13 @@ class CustomizedAxisTick extends PureComponent {
           textAnchor="end"
           fill={fill}
           transform="rotate(-80)"
+          xlinkTitle={v}
         >
-          {isFloat(v) ? v.toFixed(3) : v}
+          {isFloat(v)
+            ? v.toFixed(3)
+            : v.length > 24
+            ? v.slice(0, 21) + "..."
+            : v}
         </text>
       </g>
     );
@@ -42,33 +49,35 @@ class CustomizedAxisTick extends PureComponent {
 const Title = styled.div`
   font-weight: bold;
   font-size: 1rem;
+  line-height: 2rem;
 `;
 
 const Distribution = ({ distribution }) => {
   const { name, type, data } = distribution;
+  const [ref, { height }] = useMeasure();
   const barWidth = 30;
   const container = useRef(null);
   const stroke = "hsl(210, 20%, 90%)";
   const fill = stroke;
   const isNumeric = _.indexOf(["int", "float"], type) >= 0;
-  const padding = isNumeric ? 0 : 20;
+  const padding = 20;
 
   return (
-    <Container>
+    <Container ref={ref}>
       <Title>{`${name}: ${type}`}</Title>
       <BarChart
         ref={container}
-        height={300}
-        width={data.length * (barWidth + padding)}
+        height={height - 32}
+        width={data.length * (barWidth + 20) + 50}
         barCategoryGap={"20px"}
         data={data}
-        margin={{ top: 0, left: 0, bottom: 0, right: 5 }}
+        margin={{ top: 0, left: 0, bottom: 0, right: 0 }}
       >
         <XAxis
           dataKey="key"
           type="category"
           interval={isNumeric ? "preserveStartEnd" : 0}
-          height={100}
+          height={0.2 * height}
           axisLine={false}
           tick={<CustomizedAxisTick {...{ fill }} />}
           tickLine={{ stroke }}
@@ -101,7 +110,7 @@ const DistributionsContainer = styled.div`
   overflow-y: scroll;
   overflow-x: hidden;
   width: 100%;
-  height: calc(100% - 2rem);
+  height: calc(100% - 3rem);
   ${scrollbarStyles}
 `;
 

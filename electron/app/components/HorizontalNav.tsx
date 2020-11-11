@@ -14,11 +14,11 @@ export type Props = {
   entries: string[];
 };
 
-const Container = animated(styled(Resizable)`
+const Container = styled(Resizable)`
   padding: 1rem 0 0;
   background-color: ${({ theme }) => theme.backgroundDark};
   border-bottom: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
-`);
+`;
 
 const Nav = styled.div`
   padding: 0 1rem;
@@ -27,7 +27,9 @@ const Nav = styled.div`
   justify-content: space-between;
 `;
 
-const PlotsButtons = styled.div``;
+const PlotsButtons = styled.div`
+  padding-bottom: 1rem;
+`;
 
 const PlotButton = styled.div`
   height: 1.5rem;
@@ -75,6 +77,8 @@ const HorizontalNav = ({ entries }: Props) => {
   const theme = useContext(ThemeContext);
   const [activePlot, setActivePlot] = useRecoilState(atoms.activePlot);
   const [expanded, setExpanded] = useState(false);
+  const [openedHeight, setOpenedHeight] = useState(392);
+  const closedHeight = 64;
   const togglePlotButton = useSpring({
     opacity: 1,
     backgroundColor: expanded ? theme.button : theme.brand,
@@ -83,12 +87,26 @@ const HorizontalNav = ({ entries }: Props) => {
     },
   });
 
-  const container = useSpring({
-    height: expanded ? 392 : 64,
-  });
+  const height = expanded ? openedHeight : closedHeight;
 
   return (
-    <Container style={container}>
+    <Container
+      size={{ height }}
+      minHeight={closedHeight}
+      enable={{
+        top: false,
+        right: false,
+        bottom: expanded,
+        left: false,
+        topRight: false,
+        bottomRight: false,
+        bottomLeft: false,
+        topLeft: false,
+      }}
+      onResizeStop={(e, direction, ref, d) => {
+        setOpenedHeight(height + d.height);
+      }}
+    >
       <Nav>
         <PlotsButtons>
           {entries.map((e) => (
