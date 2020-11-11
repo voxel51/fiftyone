@@ -1,5 +1,6 @@
 import React from "react";
 import FieldsSidebar from "./FieldsSidebar";
+import { colorByLabel } from "../recoil/atoms";
 
 export default {
   component: FieldsSidebar,
@@ -25,9 +26,18 @@ const data = {
   ],
 };
 
-export const standard = () => <FieldsSidebar {...data} />;
+export const standard = () => (
+  <FieldsSidebar {...data} colorByLabelAtom={colorByLabel} />
+);
 
-export const empty = () => <FieldsSidebar tags={[]} labels={[]} scalars={[]} />;
+export const empty = () => (
+  <FieldsSidebar
+    tags={[]}
+    labels={[]}
+    scalars={[]}
+    colorByLabelAtom={colorByLabel}
+  />
+);
 
 export const unsupported = () => (
   <FieldsSidebar
@@ -36,5 +46,6 @@ export const unsupported = () => (
       { name: "Array thing", count: 20 },
       { name: "Dict thing", count: 3000 },
     ]}
+    colorByLabelAtom={colorByLabel}
   />
 );
