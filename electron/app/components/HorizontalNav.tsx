@@ -2,11 +2,16 @@ import React, { useContext, useState } from "react";
 import { animated, useSpring } from "react-spring";
 import { useRecoilState } from "recoil";
 import styled, { ThemeContext } from "styled-components";
-import AssessmentIcon from "@material-ui/icons/Assessment";
-import KeyboardArrowDownIcon from "@material-ui/icons/KeyboardArrowDown";
-import KeyboardArrowUpIcon from "@material-ui/icons/KeyboardArrowUp";
+import {
+  Assessment,
+  Fullscreen,
+  FullscreenExit,
+  KeyboardArrowDown,
+  KeyboardArrowUp,
+} from "@material-ui/icons";
 
 import Distributions from "./Distributions";
+import { useWindowSize } from "../utils/hooks";
 import * as atoms from "../recoil/atoms";
 import { Resizable } from "re-resizable";
 
@@ -73,11 +78,30 @@ const TogglePlotsButton = animated(styled.div`
   }
 `);
 
+const ToggleMaximizeContainer = styled.div`
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  cursor: pointer;
+  width: 1.5rem;
+  height: 1.5rem;
+`;
+
+const ToggleMaximize = React.memo(({ maximized, setMaximized }) => {
+  return (
+    <ToggleMaximizeContainer onClick={() => setMaximized(!maximized)}>
+      {maximized ? <FullscreenExit /> : <Fullscreen />}
+    </ToggleMaximizeContainer>
+  );
+});
+
 const HorizontalNav = ({ entries }: Props) => {
   const theme = useContext(ThemeContext);
+  const { height: windowHeight } = useWindowSize();
   const [activePlot, setActivePlot] = useRecoilState(atoms.activePlot);
   const [expanded, setExpanded] = useState(false);
   const [openedHeight, setOpenedHeight] = useState(392);
+  const [maximized, setMaximized] = useState(false);
   const closedHeight = 64;
   const togglePlotButton = useSpring({
     opacity: 1,
@@ -91,12 +115,12 @@ const HorizontalNav = ({ entries }: Props) => {
 
   return (
     <Container
-      size={{ height }}
+      size={{ height: maximized ? windowHeight - 73 : height }}
       minHeight={closedHeight}
       enable={{
         top: false,
         right: false,
-        bottom: expanded,
+        bottom: expanded && !maximized,
         left: false,
         topRight: false,
         bottomRight: false,
@@ -123,15 +147,21 @@ const HorizontalNav = ({ entries }: Props) => {
           ))}
         </PlotsButtons>
         <TogglePlotsButton
-          onClick={() => setExpanded(!expanded)}
+          onClick={() => {
+            setExpanded(!expanded);
+            expanded && setMaximized(false);
+          }}
           style={togglePlotButton}
         >
-          <AssessmentIcon />
+          <Assessment />
           <span>{expanded ? "Hide" : "Show"}</span>
-          {expanded ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+          {expanded ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
         </TogglePlotsButton>
       </Nav>
       {expanded && <Distributions key={activePlot} group={activePlot} />}
+      {expanded && (
+        <ToggleMaximize maximized={maximized} setMaximized={setMaximized} />
+      )}
     </Container>
   );
 };

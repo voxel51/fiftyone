@@ -33,7 +33,6 @@ class CustomizedAxisTick extends PureComponent {
           textAnchor="end"
           fill={fill}
           transform="rotate(-80)"
-          xlinkTitle={v}
         >
           {isFloat(v)
             ? v.toFixed(3)
