@@ -59,7 +59,6 @@ const Distribution = ({ distribution }) => {
   const stroke = "hsl(210, 20%, 90%)";
   const fill = stroke;
   const isNumeric = _.indexOf(["int", "float"], type) >= 0;
-  const padding = 20;
 
   return (
     <Container ref={ref}>
@@ -67,8 +66,8 @@ const Distribution = ({ distribution }) => {
       <BarChart
         ref={container}
         height={height - 32}
-        width={data.length * (barWidth + 20) + 50}
-        barCategoryGap={"20px"}
+        width={data.length * (barWidth + 4) + 50}
+        barCategoryGap={"4px"}
         data={data}
         margin={{ top: 0, left: 0, bottom: 0, right: 0 }}
       >
