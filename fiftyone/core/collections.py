@@ -111,7 +111,7 @@ class SampleCollection(object):
         scalar_result = isinstance(aggregations, Aggregation)
         if scalar_result:
             aggregations = [aggregations]
-        elif len(aggregations) == 0:
+        elif not aggregations:
             return False, [], None
 
         # pylint: disable=no-member
@@ -147,7 +147,7 @@ class SampleCollection(object):
 
         return results[0] if scalar_result else results
 
-    def aggregate(self, aggregations):
+    def aggregate(self, aggregations, _attach_frames=True):
         """Aggregates one or more
         :class:`fiftyone.core.aggregations.Aggregation` instances.
 
@@ -170,7 +170,10 @@ class SampleCollection(object):
         )
         if len(aggregations) == 0:
             return []
-        pipeline = self._pipeline(pipeline=facets)
+        # pylint: disable=no-member
+        pipeline = self._pipeline(
+            pipeline=facets, attach_frames=_attach_frames
+        )
         try:
             # pylint: disable=no-member
             result = next(self._dataset._sample_collection.aggregate(pipeline))
@@ -183,8 +186,10 @@ class SampleCollection(object):
         scalar_result, aggregations, facets = self._build_aggregation(
             aggregations
         )
-        if len(aggregations) == 0:
+        if not aggregations:
             return []
+
+        # pylint: disable=no-member
         pipeline = self._pipeline(pipeline=facets)
         try:
             # pylint: disable=no-member

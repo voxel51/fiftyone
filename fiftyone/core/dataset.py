@@ -352,7 +352,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a string summary
         """
-        aggs = self.aggregate([foa.Count(), foa.Distinct("tags")])
+        aggs = self.aggregate(
+            [foa.Count(), foa.Distinct("tags")], _attach_frames=False
+        )
         elements = [
             "Name:           %s" % self.name,
             "Media type:     %s" % self.media_type,
@@ -1887,8 +1889,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _add_view_stage(self, stage):
         return self.view().add_stage(stage)
 
-    def _pipeline(self, pipeline=None, hide_frames=False, squash_frames=False):
-        if self.media_type == fom.VIDEO:
+    def _pipeline(
+        self,
+        pipeline=None,
+        hide_frames=False,
+        squash_frames=False,
+        attach_frames=True,
+    ):
+        if self.media_type == fom.VIDEO and attach_frames:
             _pipeline = self._attach_frames(hide_frames)
         else:
             _pipeline = []
@@ -1903,12 +1911,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return _pipeline
 
     def _aggregate(
-        self, pipeline=None, hide_frames=False, squash_frames=False
+        self,
+        pipeline=None,
+        hide_frames=False,
+        squash_frames=False,
+        attach_frames=True,
     ):
         _pipeline = self._pipeline(
             pipeline=pipeline,
             hide_frames=hide_frames,
             squash_frames=squash_frames,
+            attach_frames=attach_frames,
         )
         return self._sample_collection.aggregate(_pipeline)
 

@@ -113,7 +113,9 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a string summary
         """
-        aggs = self.aggregate([foa.Count(), foa.Distinct("tags")])
+        aggs = self.aggregate(
+            [foa.Count(), foa.Distinct("tags")], _attach_frames=False
+        )
         elements = [
             "Dataset:        %s" % self.dataset_name,
             "Media type:     %s" % self.media_type,
@@ -271,8 +273,13 @@ class DatasetView(foc.SampleCollection):
         d["samples"] = samples
         return d
 
-    def _pipeline(self, pipeline=None, hide_frames=False, squash_frames=False):
-
+    def _pipeline(
+        self,
+        pipeline=None,
+        hide_frames=False,
+        squash_frames=False,
+        attach_frames=True,
+    ):
         _pipeline = []
 
         for s in self._stages:
@@ -285,15 +292,21 @@ class DatasetView(foc.SampleCollection):
             pipeline=_pipeline,
             hide_frames=hide_frames,
             squash_frames=squash_frames,
+            attach_frames=attach_frames,
         )
 
     def _aggregate(
-        self, pipeline=None, hide_frames=False, squash_frames=False
+        self,
+        pipeline=None,
+        hide_frames=False,
+        squash_frames=False,
+        attach_frames=True,
     ):
         _pipeline = self._pipeline(
             pipeline=pipeline,
             hide_frames=hide_frames,
             squash_frames=squash_frames,
+            attach_frames=attach_frames,
         )
         return self._dataset._sample_collection.aggregate(_pipeline)
 
