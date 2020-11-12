@@ -54,7 +54,7 @@ const Title = styled.div`
 const Distribution = ({ distribution }) => {
   const { name, type, data } = distribution;
   const [ref, { height }] = useMeasure();
-  const barWidth = 30;
+  const barWidth = 24;
   const container = useRef(null);
   const stroke = "hsl(210, 20%, 90%)";
   const fill = stroke;
@@ -66,8 +66,8 @@ const Distribution = ({ distribution }) => {
       <BarChart
         ref={container}
         height={height - 32}
-        width={data.length * (barWidth + 20) + 50}
-        barCategoryGap={"20px"}
+        width={data.length * (barWidth + 4) + 50}
+        barCategoryGap={"4px"}
         data={data}
         margin={{ top: 0, left: 0, bottom: 0, right: 0 }}
       >

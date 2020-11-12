@@ -85,6 +85,7 @@ const Cell = ({
   modal,
   prefix = "",
 }) => {
+  const refreshColorMap = useSetRecoilState(refreshColorMapSelector);
   const theme = useContext(ThemeContext);
   const [expanded, setExpanded] = useState(true);
   const numSelected = entries.filter((e) => e.selected).length;
@@ -145,6 +146,12 @@ const Cell = ({
       ) : (
         <span>No options available</span>
       )}
+      {label === "Options" && (
+        <Button onClick={refreshColorMap}>
+          <Autorenew />
+          Refresh field colors
+        </Button>
+      )}
     </DropdownCell>
   );
 };
@@ -183,7 +190,6 @@ const FieldsSidebar = React.forwardRef(
   ) => {
     const [colorByLabel, setColorByLabel] = useRecoilState(colorByLabelAtom);
     const theme = useContext(ThemeContext);
-    const refreshColorMap = useSetRecoilState(refreshColorMapSelector);
     const colorMap = useRecoilValue(atoms.colorMap);
     const cellRest = { modal };
     const mediaType = useRecoilValue(selectors.mediaType);
@@ -256,13 +262,6 @@ const FieldsSidebar = React.forwardRef(
             },
           ]}
         />
-        {tags.length || labels.length || scalars.length ? (
-          <Button onClick={refreshColorMap}>
-            <Autorenew />
-            Refresh field colors
-          </Button>
-        ) : null}
-        <div style={{ height: "1rem", width: "100%" }} />
       </Container>
     );
   }

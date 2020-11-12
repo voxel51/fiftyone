@@ -6,6 +6,7 @@ import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
 
 import * as selectors from "../recoil/selectors";
+import { filter } from "lodash";
 
 export default () => {
   const socket = useRecoilValue(selectors.socket);
@@ -30,10 +31,14 @@ export default () => {
     setState(tile(results, more, state));
   });
 
+  console.log(filters);
+
   useEffect(() => {
-    setState(empty);
-    setPrevFilters(filters);
-  }, [JSON.stringify(filters) === JSON.stringify(prevFilters)]);
+    if (JSON.stringify(filters) !== JSON.stringify(prevFilters)) {
+      setState(empty);
+      setPrevFilters(filters);
+    }
+  }, [filters, prevFilters]);
   useEffect(() => {
     if (viewsAreEqual(view, prevView)) return;
     setState(empty);

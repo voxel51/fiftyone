@@ -4,6 +4,7 @@ import { useRecoilState } from "recoil";
 import styled, { ThemeContext } from "styled-components";
 import {
   Assessment,
+  DragHandle,
   Fullscreen,
   FullscreenExit,
   KeyboardArrowDown,
@@ -19,6 +20,17 @@ export type Props = {
   entries: string[];
 };
 
+const Drag = styled(DragHandle)`
+  position: absolute;
+  bottom: -0.8rem;
+  height: 1rem;
+  width: 1rem;
+  left: 50%;
+  margin-left: -0.5rem;
+  z-index: 1000;
+  pointer-events: none;
+`;
+
 const Container = styled(Resizable)`
   padding: 1rem 0 0;
   background-color: ${({ theme }) => theme.backgroundDark};
@@ -28,6 +40,11 @@ const Container = styled(Resizable)`
 const Nav = styled.div`
   padding: 0 1rem;
   width: 100%;
+  display: flex;
+  justify-content: space-between;
+`;
+
+const NavButtons = styled.div`
   display: flex;
   justify-content: space-between;
 `;
@@ -79,12 +96,10 @@ const TogglePlotsButton = animated(styled.div`
 `);
 
 const ToggleMaximizeContainer = styled.div`
-  position: absolute;
-  bottom: 1rem;
-  right: 1rem;
   cursor: pointer;
   width: 1.5rem;
   height: 1.5rem;
+  margin: 0.25rem;
 `;
 
 const ToggleMaximize = React.memo(({ maximized, setMaximized }) => {
@@ -146,22 +161,29 @@ const HorizontalNav = ({ entries }: Props) => {
             </PlotButton>
           ))}
         </PlotsButtons>
-        <TogglePlotsButton
-          onClick={() => {
-            setExpanded(!expanded);
-            expanded && setMaximized(false);
-          }}
-          style={togglePlotButton}
-        >
-          <Assessment />
-          <span>{expanded ? "Hide" : "Show"}</span>
-          {expanded ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
-        </TogglePlotsButton>
+        <NavButtons>
+          <ToggleMaximize
+            maximized={maximized}
+            setMaximized={() => {
+              setMaximized(!maximized);
+              setExpanded(true);
+            }}
+          />
+          <TogglePlotsButton
+            onClick={() => {
+              setExpanded(!expanded);
+              expanded && setMaximized(false);
+            }}
+            style={togglePlotButton}
+          >
+            <Assessment />
+            <span>{expanded ? "Hide" : "Show"}</span>
+            {expanded ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
+          </TogglePlotsButton>
+        </NavButtons>
       </Nav>
       {expanded && <Distributions key={activePlot} group={activePlot} />}
-      {expanded && (
-        <ToggleMaximize maximized={maximized} setMaximized={setMaximized} />
-      )}
+      {expanded && !maximized && <Drag />}
     </Container>
   );
 };
