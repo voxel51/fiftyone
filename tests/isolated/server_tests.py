@@ -56,7 +56,9 @@ class RouteTests(TestCase):
         with etau.TempDir() as tmp:
             path = os.path.join(tmp, "data.json")
             etas.write_json(data, path)
-            response = self.fetch_and_parse("/filepath%s" % path)
+            response = self.fetch_and_parse(
+                "/filepath%s" % path.split(":")[-1]
+            )
 
         self.assertEqual(response, data)
 
