@@ -10,7 +10,6 @@ import argparse
 from collections import defaultdict
 from copy import copy
 import json
-import logging
 import os
 import posixpath
 import traceback
@@ -49,9 +48,6 @@ from fiftyone.server.pipelines import (
     LABELS,
     SCALARS,
 )
-
-
-logger = logging.getLogger(__name__)
 
 
 # connect to the existing DB service to initialize global port information
@@ -295,7 +291,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         """
         message = self.loads(message)
         event = getattr(self, "on_%s" % message.pop("type"))
-        logger.debug("%s event" % event.__name__)
         await event(**message)
 
     async def on_as_app(self):
