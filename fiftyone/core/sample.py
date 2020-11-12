@@ -33,8 +33,8 @@ class _DatasetSample(Document):
 
     def __setattr__(self, name, value):
         if name == "frames" and self.media_type == fomm.VIDEO:
-            # @todo support `__setattr__("frames", value)`
-            raise ValueError("Setting frames is not yet supported")
+            self.set_field("frames", value)
+            return
 
         super().__setattr__(name, value)
 
@@ -55,7 +55,7 @@ class _DatasetSample(Document):
             return
 
         self._secure_media(field_name, value)
-        self.set_field(field_name, value=value)
+        self.set_field(field_name, value)
 
     @property
     def filename(self):
@@ -63,11 +63,16 @@ class _DatasetSample(Document):
         return os.path.basename(self.filepath)
 
     @property
+    def media_type(self):
+        """The media type of the sample."""
+        return self._media_type
+
+    @property
     def _skip_iter_field_names(self):
         if self.media_type == fomm.VIDEO:
-            return ("media_type", "frames")
+            return ("frames",)
 
-        return ("media_type",)
+        return tuple()
 
     def get_field(self, field_name):
         if field_name == "frames" and self.media_type == fomm.VIDEO:
@@ -77,15 +82,16 @@ class _DatasetSample(Document):
 
     def set_field(self, field_name, value, create=True):
         if field_name == "frames" and self.media_type == fomm.VIDEO:
-            # @todo support `set_field("frames")`
-            raise ValueError("Setting frames is not yet supported")
+            self.frames.clear()
+            self.frames.update(value)
+            return
 
         super().set_field(field_name, value, create=create)
 
     def clear_field(self, field_name):
         if field_name == "frames" and self.media_type == fomm.VIDEO:
-            # @todo support `clear_field("frames")`
-            raise ValueError("Clearing frames is not yet supported")
+            self.frames.clear()
+            return
 
         super().clear_field(field_name)
 
@@ -122,13 +128,22 @@ class _DatasetSample(Document):
         if self.media_type == fomm.VIDEO:
             self.frames.merge(sample.frames, overwrite=overwrite)
 
-    def _secure_media(self, field_name, value):
-        if field_name == "media_type" and value != self.media_type:
-            raise fomm.MediaTypeError(
-                "Cannot modify 'media_type' field; it is automatically "
-                "derived from the 'filepath' of the sample"
-            )
+    def copy(self):
+        """Returns a deep copy of the sample that has not been added to the
+        database.
 
+        Returns:
+            a :class:`Sample`
+        """
+        kwargs = {k: deepcopy(v) for k, v in self.iter_fields()}
+        sample = Sample(**kwargs)
+
+        if self.media_type == fomm.VIDEO:
+            sample.frames.update({k: v.copy() for k, v in self.frames.items()})
+
+        return sample
+
+    def _secure_media(self, field_name, value):
         if field_name == "filepath":
             value = os.path.abspath(os.path.expanduser(value))
             # pylint: disable=no-member
@@ -146,6 +161,28 @@ class _DatasetSample(Document):
                 frame_doc_cls = self._dataset._frame_doc_cls
             except:
                 frame_doc_cls = None
+
+    def to_dict(self, include_frames=False):
+        """Serializes the sample to a JSON dictionary.
+
+        Sample IDs and private fields are excluded in this representation.
+
+        Args:
+            include_frames (False): whether to include the frame labels for
+                video samples
+
+        Returns:
+            a JSON dict
+        """
+        d = super().to_dict()
+
+        if self.media_type == fomm.VIDEO:
+            if include_frames:
+                d["frames"] = self.frames._to_frames_dict()
+            else:
+                d.pop("frames", None)
+
+        return d
 
     def to_mongo_dict(self):
         """Serializes the sample to a BSON dictionary equivalent to the
@@ -209,21 +246,6 @@ class Sample(_DatasetSample):
             return self._frames._serve(self).__iter__()
 
         raise StopIteration
-
-    def copy(self):
-        """Returns a deep copy of the sample that has not been added to the
-        database.
-
-        Returns:
-            a :class:`Sample`
-        """
-        kwargs = {k: deepcopy(v) for k, v in self.iter_fields()}
-        sample = self.__class__(**kwargs)
-
-        if self.media_type == fomm.VIDEO:
-            sample.frames.update({k: v.copy() for k, v in self.frames.items()})
-
-        return sample
 
     def save(self):
         """Saves the sample to the database."""
@@ -483,16 +505,6 @@ class SampleView(_DatasetSample):
         ``None`` if no fields were explicitly excluded.
         """
         return self._excluded_fields
-
-    def copy(self):
-        """Returns a deep copy of the sample that has not been added to the
-        database.
-
-        Returns:
-            a :class:`Sample`
-        """
-        kwargs = {f: deepcopy(self[f]) for f in self.field_names}
-        return Sample(**kwargs)
 
     def to_dict(self):
         """Serializes the sample to a JSON dictionary.
