@@ -63,6 +63,13 @@ const ViewBar = React.memo(() => {
   const [state, send] = useMachine(viewBarMachine);
   const [view, setView] = useRecoilState(selectors.view);
   const fieldPaths = useRecoilValue(selectors.fieldPaths);
+  const setDatasetStats = useSetRecoilState(atoms.datasetStats);
+  const setExtendedDatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
+
+  const clearStats = () => {
+    setDatasetStats([]);
+    setExtendedDatasetStats([]);
+  };
 
   const port = useRecoilValue<number>(atoms.port);
 
@@ -73,6 +80,7 @@ const ViewBar = React.memo(() => {
       view,
       setView,
       fieldNames: fieldPaths,
+      clearStats,
     });
   }, [port, view]);
 
