@@ -54,7 +54,7 @@ const Title = styled.div`
 const Distribution = ({ distribution }) => {
   const { name, type, data } = distribution;
   const [ref, { height }] = useMeasure();
-  const barWidth = 30;
+  const barWidth = 24;
   const container = useRef(null);
   const stroke = "hsl(210, 20%, 90%)";
   const fill = stroke;
