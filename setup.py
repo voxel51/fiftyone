@@ -52,7 +52,7 @@ setup(
         "Pillow<7,>=6.2",
         "pprintpp",
         "psutil",
-        "pymongo",
+        "pymongo<4,>=3.11",
         "retrying",
         "scikit-image",
         "setuptools",
