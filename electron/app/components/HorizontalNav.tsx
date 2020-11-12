@@ -162,13 +162,15 @@ const HorizontalNav = ({ entries }: Props) => {
           ))}
         </PlotsButtons>
         <NavButtons>
-          <ToggleMaximize
-            maximized={maximized}
-            setMaximized={() => {
-              setMaximized(!maximized);
-              setExpanded(true);
-            }}
-          />
+          {expanded && (
+            <ToggleMaximize
+              maximized={maximized}
+              setMaximized={() => {
+                setMaximized(!maximized);
+                setExpanded(true);
+              }}
+            />
+          )}
           <TogglePlotsButton
             onClick={() => {
               setExpanded(!expanded);
