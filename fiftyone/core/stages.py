@@ -1832,9 +1832,11 @@ class SelectObjects(ViewStage):
         pipeline = []
 
         stage = Select(self._sample_ids)
+        stage.validate(sample_collection)
         pipeline.extend(stage.to_mongo(sample_collection))
 
         stage = SelectFields(list(self._object_ids.keys()))
+        stage.validate(sample_collection)
         pipeline.extend(stage.to_mongo(sample_collection))
 
         for field, object_ids in self._object_ids.items():
