@@ -14,17 +14,15 @@ import warnings
 from bson import ObjectId
 from pymongo import ASCENDING, DESCENDING
 
+import eta.core.utils as etau
+
 import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 from fiftyone.core.odm.frame import DatasetFrameSampleDocument
-from fiftyone.core.odm.sample import (
-    DatasetSampleDocument,
-    default_sample_fields,
-)
-
-import eta.core.utils as etau
+from fiftyone.core.odm.mixins import default_sample_fields
+from fiftyone.core.odm.sample import DatasetSampleDocument
 
 
 _FRAMES_PREFIX = "frames."
@@ -295,7 +293,7 @@ class ExcludeFields(ViewStage):
             field_names = [field_names]
 
         self._field_names = list(field_names)
-        self._validate_params()
+        self._dataset = None
 
     @property
     def field_names(self):
@@ -304,25 +302,51 @@ class ExcludeFields(ViewStage):
 
     def get_excluded_fields(self, frames=False):
         if frames:
-            fn = lambda n: n.startswith(_FRAMES_PREFIX)
+            default_fields = default_sample_fields(
+                DatasetFrameSampleDocument, include_private=True
+            )
+            excluded_fields = [
+                f[len(_FRAMES_PREFIX) :]
+                for f in self.field_names
+                if f.startswith(_FRAMES_PREFIX)
+            ]
         else:
-            fn = lambda n: not n.startswith(_FRAMES_PREFIX)
+            default_fields = default_sample_fields(
+                DatasetSampleDocument, include_private=True
+            )
+            if not frames and (self._dataset.media_type == fom.VIDEO):
+                default_fields += ("frames",)
 
-        return list(filter(fn, self._field_names))
+            excluded_fields = [
+                f for f in self.field_names if not f.startswith(_FRAMES_PREFIX)
+            ]
+
+        for field_name in excluded_fields:
+            if field_name.startswith("_"):
+                raise ValueError(
+                    "Cannot exclude private field '%s'" % field_name
+                )
+
+            if field_name in default_fields:
+                raise ValueError(
+                    "Cannot exclude default field '%s'" % field_name
+                )
+
+        return excluded_fields
 
     def to_mongo(self, _):
         fields = self.get_excluded_fields()
-        if len(fields) == 0:
+        if not fields:
             return []
 
         return [{"$unset": fields}]
 
     def to_frames_mongo(self, _):
         fields = self.get_excluded_fields(frames=True)
-        if len(fields) == 0:
+        if not fields:
             return []
 
-        return [{"$unset": [".".join(f.split(".", 1)[1:]) for f in fields]}]
+        return [{"$unset": fields}]
 
     def _kwargs(self):
         return [["field_names", self._field_names]]
@@ -337,29 +361,16 @@ class ExcludeFields(ViewStage):
             }
         ]
 
-    def _validate_params(self):
-        default_fields = set(default_sample_fields(DatasetSampleDocument))
-        for field_name in self._field_names:
-            if field_name.startswith("_"):
-                raise ValueError(
-                    "Cannot exclude private field '%s'" % field_name
-                )
-
-            if (field_name == "id") or (field_name in default_fields):
-                raise ValueError(
-                    "Cannot exclude default field '%s'" % field_name
-                )
-
     def validate(self, sample_collection):
         import fiftyone.core.view as fov
 
-        # Allows a field to be excluded multiple times, if desired
         if isinstance(sample_collection, fov.DatasetView):
-            dataset = sample_collection._dataset
+            self._dataset = sample_collection._dataset
         else:
-            dataset = sample_collection
+            self._dataset = sample_collection
 
-        dataset.validate_fields_exist(self.field_names)
+        # Using dataset here allows a field to be excluded multiple times
+        self._dataset.validate_fields_exist(self.field_names)
 
 
 class ExcludeObjects(ViewStage):
@@ -1655,8 +1666,11 @@ class SelectFields(ViewStage):
     def __init__(self, field_names=None):
         if etau.is_str(field_names):
             field_names = [field_names]
+        elif field_names:
+            field_names = list(field_names)
 
         self._field_names = field_names
+        self._dataset = None
 
     @property
     def field_names(self):
@@ -1664,40 +1678,42 @@ class SelectFields(ViewStage):
         return self._field_names or []
 
     def get_selected_fields(self, frames=False):
-        doc_cls = (
-            DatasetFrameSampleDocument if frames else DatasetSampleDocument
-        )
-        default_fields = default_sample_fields(doc_cls, include_private=True)
-
         if frames:
-            fn = lambda n: n.startswith(_FRAMES_PREFIX)
+            default_fields = default_sample_fields(
+                DatasetFrameSampleDocument, include_private=True
+            )
+
+            selected_fields = [
+                f[len(_FRAMES_PREFIX) :]
+                for f in self.field_names
+                if f.startswith(_FRAMES_PREFIX)
+            ]
         else:
-            fn = lambda n: not n.startswith(_FRAMES_PREFIX)
+            default_fields = default_sample_fields(
+                DatasetSampleDocument, include_private=True
+            )
+            if not frames and (self._dataset.media_type == fom.VIDEO):
+                default_fields += ("frames",)
 
-        field_names = self._field_names or []
+            selected_fields = [
+                f for f in self.field_names if not f.startswith(_FRAMES_PREFIX)
+            ]
 
-        return list(set(filter(fn, field_names)) | set(default_fields))
+        return list(set(selected_fields) | set(default_fields))
 
     def to_mongo(self, _):
         selected_fields = self.get_selected_fields()
-        if len(selected_fields) == 0:
+        if not selected_fields:
             return []
 
         return [{"$project": {fn: True for fn in selected_fields}}]
 
     def to_frames_mongo(self, _):
         selected_fields = self.get_selected_fields(frames=True)
-        if len(selected_fields) == 0:
+        if not selected_fields:
             return []
 
-        return [
-            {
-                "$project": {
-                    ".".join(fn.split(".", 1)[1:]): True
-                    for fn in selected_fields
-                }
-            }
-        ]
+        return [{"$project": {fn: True for fn in selected_fields}}]
 
     def _kwargs(self):
         return [["field_names", self._field_names]]
@@ -1721,6 +1737,13 @@ class SelectFields(ViewStage):
                 )
 
     def validate(self, sample_collection):
+        import fiftyone.core.view as fov
+
+        if isinstance(sample_collection, fov.DatasetView):
+            self._dataset = sample_collection._dataset
+        else:
+            self._dataset = sample_collection
+
         sample_collection.validate_fields_exist(self.field_names)
 
 
