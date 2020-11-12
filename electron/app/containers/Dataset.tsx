@@ -153,7 +153,7 @@ function Dataset(props) {
   let src = null;
   let s = null;
   if (modal.sample) {
-    const path = modal.sample.filepath.split(":").slice(-1);
+    const path = modal.sample.filepath;
     const id = modal.sample._id;
     const host = `http://127.0.0.1:${port}/filepath`;
     src = `${host}${path}?id=${id}`;

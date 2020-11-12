@@ -15,6 +15,7 @@ import asyncio
 from collections import defaultdict
 import json
 import os
+import posixpath
 import time
 import unittest
 import urllib
@@ -57,7 +58,7 @@ class RouteTests(TestCase):
             path = os.path.join(tmp, "data.json")
             etas.write_json(data, path)
             response = self.fetch_and_parse(
-                "/filepath%s" % path.split(":")[-1]
+                "/filepath%s" % path.replace(os.sep, posixpath.sep)
             )
 
         self.assertEqual(response, data)

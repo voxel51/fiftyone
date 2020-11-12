@@ -12,6 +12,7 @@ from copy import copy
 import json
 import logging
 import os
+import posixpath
 import traceback
 import uuid
 
@@ -443,7 +444,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
             labels.add_frame(frame_labels, overwrite=False)
 
-        fps = etav.get_frame_rate(filepath)
+        fps = etav.get_frame_rate(sample["filepath"])
         self.write_message(
             {
                 "type": "video_data-%s" % _id,
@@ -568,6 +569,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             r["width"] = w
             r["height"] = h
             # default to image
+
+        for r in results:
+            s = r["sample"]
+            s["filepath"] = s["filepath"].replace(os.sep, posixpath.sep)
 
         message = {
             "type": "page",
