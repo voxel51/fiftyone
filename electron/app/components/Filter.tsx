@@ -8,14 +8,14 @@ import { animated, useSpring } from "react-spring";
 import useMeasure from "react-use-measure";
 
 import * as atoms from "../recoil/atoms";
-import { getSocket } from "../utils/socket";
 import * as selectors from "../recoil/selectors";
 import { SampleContext } from "../utils/context";
 import { useOutsideClick } from "../utils/hooks";
 import SearchResults from "./ViewBar/ViewStage/SearchResults";
 import { NamedRangeSlider } from "./RangeSlider";
-import { VALID_LIST_TYPES } from "../utils/labels";
+import { CONFIDENCE_LABELS, VALID_LIST_TYPES } from "../utils/labels";
 import { removeObjectIDsFromSelection } from "../utils/selection";
+import { packageMessage } from "../utils/socket";
 
 const classFilterMachine = Machine({
   id: "classFilter",
@@ -224,6 +224,7 @@ const Selected = styled.div`
   display: flex;
   justify-content: flex-start;
   margin: 0 -0.25rem;
+  padding-bottom: 0.5rem;
   flex-wrap: wrap;
 `;
 
@@ -249,7 +250,7 @@ const ClassFilterContainer = styled.div`
   margin: 0.25rem 0;
 `;
 
-const ClassFilter = ({ name, atoms, path }) => {
+const ClassFilter = ({ entry: { path, type, color }, atoms }) => {
   const theme = useContext(ThemeContext);
   const classes = useRecoilValue(selectors.labelClasses(path));
   const [selectedClasses, setSelectedClasses] = useRecoilState(
@@ -330,19 +331,21 @@ const ClassFilter = ({ name, atoms, path }) => {
             />
           )}
         </div>
-        <Selected>
-          {selected.map((s) => (
-            <ClassButton
-              key={s}
-              onClick={() => {
-                send({ type: "REMOVE", value: s });
-              }}
-            >
-              {s + " "}
-              <a style={{ color: theme.fontDark }}>x</a>
-            </ClassButton>
-          ))}
-        </Selected>
+        {selected.length ? (
+          <Selected>
+            {selected.map((s) => (
+              <ClassButton
+                key={s}
+                onClick={() => {
+                  send({ type: "REMOVE", value: s });
+                }}
+              >
+                {s + " "}
+                <a style={{ color: theme.fontDark }}>x</a>
+              </ClassButton>
+            ))}
+          </Selected>
+        ) : null}
       </ClassFilterContainer>
     </>
   );
@@ -429,12 +432,12 @@ const HiddenObjectFilter = ({ entry }) => {
 };
 
 const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
-  const port = useRecoilValue(atoms.port);
-  const socket = getSocket(port, "state");
+  const socket = useRecoilValue(selectors.socket);
   const [range, setRange] = useRecoilState(rest.confidenceRange(entry.path));
   const [includeNone, setIncludeNone] = useRecoilState(
     rest.includeNoConfidence(entry.path)
   );
+
   const bounds = useRecoilValue(rest.confidenceBounds(entry.path));
   const [labels, setLabels] = useRecoilState(rest.includeLabels(entry.path));
   const fieldIsFiltered = useRecoilValue(rest.fieldIsFiltered(entry.path));
@@ -498,17 +501,13 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
         newState.filters[entry.path] = filter;
       }
       setStateDescription(newState);
-      socket.emit("update", {
-        data: newState,
-        include_self: false,
-      });
       const extendedView = [...(newState.view || [])];
       for (const stage in newState.filters) {
         extendedView.push(newState.filters[stage]);
       }
-      socket.emit("get_statistics", extendedView, (data) => {
-        setExtendedDatasetStats(data);
-      });
+      socket.send(
+        packageMessage("filters_update", { filters: newState.filters })
+      );
     }, [bounds, range, includeNone, labels, fieldIsFiltered]);
   }
 
@@ -516,18 +515,20 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
     <animated.div style={{ ...props, overflow }}>
       <div ref={ref}>
         <div style={{ margin: 3 }}>
-          <ClassFilter name={entry.name} atoms={rest} path={entry.path} />
+          <ClassFilter entry={entry} atoms={rest} />
           <HiddenObjectFilter entry={entry} />
-          <NamedRangeSlider
-            color={entry.color}
-            name={"Confidence"}
-            valueName={"confidence"}
-            includeNoneAtom={rest.includeNoConfidence(entry.path)}
-            boundsAtom={rest.confidenceBounds(entry.path)}
-            rangeAtom={rest.confidenceRange(entry.path)}
-            maxMin={0}
-            minMax={1}
-          />
+          {CONFIDENCE_LABELS.includes(entry.type) && (
+            <NamedRangeSlider
+              color={entry.color}
+              name={"Confidence"}
+              valueName={"confidence"}
+              includeNoneAtom={rest.includeNoConfidence(entry.path)}
+              boundsAtom={rest.confidenceBounds(entry.path)}
+              rangeAtom={rest.confidenceRange(entry.path)}
+              maxMin={0}
+              minMax={1}
+            />
+          )}
         </div>
       </div>
     </animated.div>

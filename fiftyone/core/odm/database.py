@@ -6,11 +6,13 @@ Database connection.
 |
 """
 from mongoengine import connect
+import motor
 import pymongo
 
 
 _DEFAULT_DATABASE = "fiftyone"
 _client = None
+_async_client = None
 _default_port = 27017
 
 
@@ -23,6 +25,14 @@ def _connect():
     if _client is None:
         connect(_DEFAULT_DATABASE, port=_default_port)
         _client = pymongo.MongoClient(port=_default_port)
+
+
+def _async_connect():
+    global _async_client
+    if _async_client is None:
+        _async_client = motor.motor_tornado.MotorClient(
+            "localhost", _default_port
+        )
 
 
 def set_default_port(port):
@@ -43,6 +53,16 @@ def get_db_conn():
     """
     _connect()
     return _client[_DEFAULT_DATABASE]
+
+
+def get_async_db_conn():
+    """Returns an async connection to the database.
+
+    Returns:
+        a ``motor.motor_tornado.MotorDatabase``
+    """
+    _async_connect()
+    return _async_client[_DEFAULT_DATABASE]
 
 
 def drop_database():

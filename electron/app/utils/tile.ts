@@ -108,6 +108,7 @@ export default function tile(data, newHasMore, state) {
       extraMargins,
     });
   }
+
   return {
     hasMore: Boolean(newHasMore),
     rows: rows,

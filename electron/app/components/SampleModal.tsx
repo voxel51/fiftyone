@@ -4,7 +4,7 @@ import styled from "styled-components";
 import { Check, Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
 import { useRecoilState, useRecoilValue } from "recoil";
 
-import DisplayOptionsSidebar from "./DisplayOptionsSidebar";
+import FieldsSidebar from "./FieldsSidebar";
 import JSONView from "./JSONView";
 import Player51 from "./Player51";
 import SelectObjectsMenu from "./SelectObjectsMenu";
@@ -246,6 +246,7 @@ const SampleModal = ({
   const frameLabelNameGroups = useRecoilValue(
     selectors.labelNameGroups("frame")
   );
+  const colorByLabel = useRecoilValue(atoms.modalColorByLabel);
   const socket = useRecoilValue(selectors.socket);
   const viewCounter = useRecoilValue(atoms.viewCounter);
   const [requested, requestLabels] = useVideoData(socket, sample);
@@ -483,9 +484,11 @@ const SampleModal = ({
                 ...playerStyle,
               }}
               sample={sample}
+              keep={true}
               overlay={videoLabels}
               metadata={metadata}
               colorMap={colorMap}
+              colorByLabel={colorByLabel}
               activeLabels={activeLabels}
               activeFrameLabels={activeFrameLabels}
               fieldSchema={fieldSchema}
@@ -541,7 +544,7 @@ const SampleModal = ({
               <Row key={"metadata-" + name} name={name} value={value} />
             ))}
             <h2>
-              Display Options
+              Fields
               <span className="push-right" />
             </h2>
             <div className="select-objects-wrapper">
@@ -550,7 +553,7 @@ const SampleModal = ({
                 frameNumberRef={frameNumberRef}
               />
             </div>
-            <DisplayOptionsSidebar
+            <FieldsSidebar
               colorMap={colorMap}
               tags={getDisplayOptions(
                 tagNames.map((t) => ({ name: t })),
@@ -590,6 +593,7 @@ const SampleModal = ({
                 overflowX: "hidden",
                 height: "auto",
               }}
+              colorByLabelAtom={atoms.modalColorByLabel}
               modal={true}
             />
             <TopRightNavButton

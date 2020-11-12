@@ -1,50 +1,63 @@
 import { remote, ipcRenderer } from "electron";
-import React, { ReactNode, useState, useEffect, useRef } from "react";
+import React, { ReactNode, useState, useRef, useEffect } from "react";
 import { Button, Modal } from "semantic-ui-react";
 import { useRecoilState, useSetRecoilState, useRecoilValue } from "recoil";
 import { ErrorBoundary } from "react-error-boundary";
 import NotificationHub from "../components/NotificationHub";
 import ReactGA from "react-ga";
+import styled from "styled-components";
 
 import Header from "../components/Header";
 import PortForm from "../components/PortForm";
 
-import { useHashChangeHandler } from "../utils/hooks";
-import { useSubscribe } from "../utils/socket";
+import {
+  useEventHandler,
+  useHashChangeHandler,
+  useMessageHandler,
+} from "../utils/hooks";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { convertSelectedObjectsListToMap } from "../utils/selection";
 import gaConfig from "../constants/ga.json";
 import Error from "./Error";
+import { scrollbarStyles } from "../components/utils";
 
 type Props = {
   children: ReactNode;
 };
 
-const useGA = (socket) => {
+const Body = styled.div`
+  ${scrollbarStyles}
+  padding: 0;
+  overflow-y: hidden;
+  flex-grow: 1;
+  display: flex:
+  flex-direction: column;
+`;
+
+const useGA = () => {
   const [gaInitialized, setGAInitialized] = useState(false);
-  useEffect(() => {
+  useMessageHandler("fiftyone", (info) => {
     const dev = process.env.NODE_ENV == "development";
     const buildType = dev ? "dev" : "prod";
-    socket.emit("get_fiftyone_info", (info) => {
-      ReactGA.initialize(gaConfig.app_ids[buildType], {
-        debug: dev,
-        gaOptions: {
-          storage: "none",
-          cookieDomain: "none",
-          clientId: info.user_id,
-        },
-      });
-      ReactGA.set({
-        userId: info.user_id,
-        checkProtocolTask: null, // disable check, allow file:// URLs
-        [gaConfig.dimensions.dev]: buildType,
-        [gaConfig.dimensions.version]: info.version,
-      });
-      setGAInitialized(true);
-      ReactGA.pageview(window.location.hash.replace(/^#/, ""));
+
+    ReactGA.initialize(gaConfig.app_ids[buildType], {
+      debug: dev,
+      gaOptions: {
+        storage: "none",
+        cookieDomain: "none",
+        clientId: info.user_id,
+      },
     });
-  }, []);
+    ReactGA.set({
+      userId: info.user_id,
+      checkProtocolTask: null, // disable check, allow file:// URLs
+      [gaConfig.dimensions.dev]: buildType,
+      [gaConfig.dimensions.version]: info.version,
+    });
+    setGAInitialized(true);
+    ReactGA.pageview(window.location.hash.replace(/^#/, ""));
+  });
   useHashChangeHandler(() => {
     if (gaInitialized) {
       ReactGA.pageview(window.location.hash.replace(/^#/, ""));
@@ -65,88 +78,43 @@ function App(props: Props) {
   const setSelectedSamples = useSetRecoilState(atoms.selectedSamples);
   const [viewCounterValue, setViewCounter] = useRecoilState(atoms.viewCounter);
   const [result, setResultFromForm] = useState({ port, connected });
-  const setDatasetStats = useSetRecoilState(atoms.datasetStats);
   const setSelectedObjects = useSetRecoilState(atoms.selectedObjects);
-  const setExtendedDatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
+  const setDatasetStats = useSetRecoilState(atoms.datasetStats);
+  const setDExtendedatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
 
-  useGA(socket);
-  const getStats = (view, setter) => {
-    socket.emit("get_statistics", view, (d) => setter(d));
+  useGA();
+  const handleStateUpdate = (state) => {
+    setStateDescription(state);
+    setSelectedSamples(new Set(state.selected));
+    setSelectedObjects(convertSelectedObjectsListToMap(state.selected_objects));
   };
 
-  const getAllStats = ({ view: newView, filters }) => {
-    newView = newView || [];
-    setDatasetStats([]);
-    setExtendedDatasetStats([]);
-    getStats(newView, setDatasetStats);
-    filters.length &&
-      getStats(newView.concat(Object.values(filters)), setExtendedDatasetStats);
-  };
-  const handleStateUpdate = (data) => {
-    setStateDescription(data);
-    setSelectedSamples(new Set(data.selected));
-    setSelectedObjects(convertSelectedObjectsListToMap(data.selected_objects));
-  };
-
-  useSubscribe(socket, "connect", () => {
+  useEventHandler(socket, "open", () => {
     setConnected(true);
     if (!loading) {
       setLoading(true);
-
-      socket.emit("get_current_state", "", (data) => {
-        handleStateUpdate(data);
-        getAllStats(data);
-        setLoading(false);
-      });
     }
   });
-  if (socket.connected && !connected) {
-    setConnected(true);
-    setLoading(true);
-    socket.emit("get_current_state", "", (data) => {
-      setViewCounter(viewCounterValue + 1);
-      handleStateUpdate(data);
-      setLoading(false);
-      getAllStats(data);
-    });
-  }
-  setTimeout(() => {
-    if (loading && !connected) {
-      setLoading(false);
-    }
-  }, 250);
-  useSubscribe(socket, "disconnect", () => {
+
+  useEventHandler(socket, "close", () => {
     setConnected(false);
   });
-  useSubscribe(socket, "update", (data) => {
+  useMessageHandler("update", ({ state }) => {
     setViewCounter(viewCounterValue + 1);
-    if (data.close) {
+    if (state.close) {
       remote.getCurrentWindow().close();
     }
-    getAllStats(data);
-    handleStateUpdate(data);
+    setDatasetStats([]);
+    setDExtendedatasetStats([]);
+    setLoading(false);
+    handleStateUpdate(state);
   });
 
-  useSubscribe(socket, "notification", (data) => {
-    addNotification.current(data);
-  });
-
-  useEffect(() => {
-    if (reset) {
-      socket.emit("get_current_state", "", (data) => {
-        getAllStats(data);
-        handleStateUpdate(data);
-        setLoading(false);
-      });
-    }
-  }, [reset]);
+  useMessageHandler("notification", (data) => addNotification.current(data));
 
   ipcRenderer.on("update-session-config", (event, message) => {
     portRef.current.ref.current.click();
   });
-  const bodyStyle = {
-    padding: "0 2rem 2rem 2rem",
-  };
   return (
     <ErrorBoundary
       FallbackComponent={Error}
@@ -154,29 +122,31 @@ function App(props: Props) {
       resetKeys={[reset]}
     >
       <Header />
-      {children}
-      <Modal
-        trigger={
-          <Button
-            style={{ padding: "1rem", display: "none" }}
-            ref={portRef}
-          ></Button>
-        }
-        size="tiny"
-        onClose={() => setPort(result.port)}
-      >
-        <Modal.Header>Port number</Modal.Header>
-        <Modal.Content>
-          <Modal.Description>
-            <PortForm
-              setResult={setResultFromForm}
-              connected={connected}
-              port={port}
-              invalid={false}
-            />
-          </Modal.Description>
-        </Modal.Content>
-      </Modal>
+      <Body>
+        {children}
+        <Modal
+          trigger={
+            <Button
+              style={{ padding: "1rem", display: "none" }}
+              ref={portRef}
+            ></Button>
+          }
+          size="tiny"
+          onClose={() => setPort(result.port)}
+        >
+          <Modal.Header>Port number</Modal.Header>
+          <Modal.Content>
+            <Modal.Description>
+              <PortForm
+                setResult={setResultFromForm}
+                connected={connected}
+                port={port}
+                invalid={false}
+              />
+            </Modal.Description>
+          </Modal.Content>
+        </Modal>
+      </Body>
       <NotificationHub children={(add) => (addNotification.current = add)} />
     </ErrorBoundary>
   );

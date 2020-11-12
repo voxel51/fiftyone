@@ -3,19 +3,22 @@ import { useRecoilState, useRecoilValue } from "recoil";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+import { packageMessage } from "../utils/socket";
 
 import DropdownTag from "./Tags/DropdownTag";
 
 const SelectionMenu = () => {
   const socket = useRecoilValue(selectors.socket);
-  const stateDescription = useRecoilValue(atoms.stateDescription);
+  const [stateDescription, setStateDescription] = useRecoilState(
+    atoms.stateDescription
+  );
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     atoms.selectedSamples
   );
 
   const clearSelection = () => {
     setSelectedSamples(new Set());
-    socket.emit("clear_selection");
+    socket.send(packageMessage("clear_selection", {}));
   };
 
   const addStage = (name, callback = () => {}) => {
@@ -26,9 +29,9 @@ const SelectionMenu = () => {
       kwargs: [["sample_ids", Array.from(selectedSamples)]],
     });
     newState.view = newView;
-    socket.emit("update", { data: newState, include_self: true }, () => {
-      callback();
-    });
+    socket.send(packageMessage("update", { state: newState }));
+    setStateDescription(newState);
+    callback();
   };
 
   const size = selectedSamples.size;

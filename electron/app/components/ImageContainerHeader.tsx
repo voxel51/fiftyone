@@ -5,6 +5,7 @@ import { useRecoilValue } from "recoil";
 import DropdownHandle from "./DropdownHandle";
 import SelectionMenu from "./SelectionMenu";
 import * as selectors from "../recoil/selectors";
+import { count } from "console";
 
 type Props = {
   showSidebar: boolean;
@@ -29,28 +30,37 @@ const SamplesHeader = styled.div`
   overflow-x: hidden;
   margin-left: 1rem;
   margin-right: -1rem;
+  padding: 0.5rem 0;
 `;
 
 const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
   const totalCount = useRecoilValue(selectors.totalCount);
   const filteredCount = useRecoilValue(selectors.filteredCount);
-  const countStr =
-    typeof filteredCount === "number" && filteredCount !== totalCount
-      ? `${filteredCount.toLocaleString()} of ${totalCount.toLocaleString()}`
-      : (totalCount || 0).toLocaleString();
+  let countStr = null;
+  if (
+    typeof filteredCount === "number" &&
+    filteredCount !== totalCount &&
+    typeof totalCount === "number"
+  ) {
+    countStr = `${filteredCount.toLocaleString()} of ${totalCount.toLocaleString()}`;
+  } else if (typeof totalCount === "number") {
+    countStr = totalCount.toLocaleString();
+  }
   return (
     <Wrapper>
       <DropdownHandle
-        label="Display Options"
+        label="Fields"
         expanded={showSidebar}
         onClick={onShowSidebar && (() => onShowSidebar(!showSidebar))}
         style={{ width: 240 }}
       />
       <SamplesHeader>
         <SelectionMenu />
-        <div className="total" style={{ paddingRight: "1rem" }}>
-          Viewing <strong>{countStr} samples</strong>
-        </div>
+        {countStr !== null ? (
+          <div className="total" style={{ paddingRight: "1rem" }}>
+            Viewing <strong>{countStr} samples</strong>
+          </div>
+        ) : null}
       </SamplesHeader>
     </Wrapper>
   );

@@ -6,6 +6,7 @@ import { Grid } from "semantic-ui-react";
 import { ThemeContext } from "styled-components";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import styled from "styled-components";
+import Loading from "./Loading";
 
 import Sample from "./Sample";
 import tile from "./Samples.hooks";
@@ -85,20 +86,10 @@ function Samples({ setView }) {
             />
           </React.Fragment>
         ))}
-        {scrollState.isLoading ? (
-          <Grid columns={1}>
-            <Grid.Column
-              style={{
-                width: "100%",
-                textAlign: "center",
-                color: theme.fontDark,
-              }}
-            >
-              <CircularProgress color="inherit" />
-            </Grid.Column>
-          </Grid>
-        ) : null}
       </InfiniteScroll>
+      {scrollState.isLoading && scrollState.rows.length === 0 ? (
+        <Loading />
+      ) : null}
     </Container>
   );
 }

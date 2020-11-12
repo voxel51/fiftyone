@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 
-import DisplayOptionsSidebar from "../components/DisplayOptionsSidebar";
+import FieldsSidebar from "../components/FieldsSidebar";
 import ContainerHeader from "../components/ImageContainerHeader";
 import Samples from "../components/Samples";
 import ViewBar from "../components/ViewBar/ViewBar";
@@ -20,11 +20,10 @@ const SidebarColumn = styled.div`
 `;
 
 const ContentColumn = styled.div`
-  flex: 1;
-  height: 100%;
+  flex-grow: 1;
 `;
 
-const DisplayOptionsWrapper = () => {
+const FieldsWrapper = () => {
   const [activeTags, setActiveTags] = useRecoilState(atoms.activeTags);
   const [activeLabels, setActiveLabels] = useRecoilState(
     atoms.activeLabels("sample")
@@ -82,7 +81,7 @@ const DisplayOptionsWrapper = () => {
 
   return (
     <SidebarColumn>
-      <DisplayOptionsSidebar
+      <FieldsSidebar
         tags={getDisplayOptions(
           tagNames.map((t) => ({ name: t })),
           filteredLabelSampleCounts,
@@ -117,6 +116,7 @@ const DisplayOptionsWrapper = () => {
           labelSampleCounts,
           activeLabels
         )}
+        colorByLabelAtom={atoms.colorByLabel}
         style={{
           scrollbarWidth: "thin",
         }}
@@ -128,12 +128,12 @@ const DisplayOptionsWrapper = () => {
 const Container = styled.div`
   display: flex;
   justify-content: space-between;
-  height: 100%;
   margin-right: -1rem;
-  height: calc(100% - 129px);
+  flex-grow: 1;
+  overflow: hidden;
 `;
 
-const SamplesContainer = (props) => {
+const SamplesContainer = React.memo((props) => {
   const [showSidebar, setShowSidebar] = useRecoilState(atoms.sidebarVisible);
 
   return (
@@ -144,13 +144,13 @@ const SamplesContainer = (props) => {
         onShowSidebar={setShowSidebar}
       />
       <Container>
-        {showSidebar ? <DisplayOptionsWrapper /> : null}
+        {showSidebar ? <FieldsWrapper /> : null}
         <ContentColumn>
           <Samples {...props} />
         </ContentColumn>
       </Container>
     </>
   );
-};
+});
 
 export default SamplesContainer;

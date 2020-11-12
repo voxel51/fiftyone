@@ -1,13 +1,22 @@
 import { useEffect, useState } from "react";
 import { useRecoilValue } from "recoil";
+import { useMessageHandler } from "../utils/hooks";
+import tile from "../utils/tile";
+import { packageMessage } from "../utils/socket";
+import { viewsAreEqual } from "../utils/view";
 
 import * as selectors from "../recoil/selectors";
-import { useSubscribe } from "../utils/socket";
-import tile from "../utils/tile";
+import { filter } from "lodash";
 
 export default () => {
   const socket = useRecoilValue(selectors.socket);
-  const [state, setState] = useState({
+  const [prevFilters, setPrevFilters] = useState({});
+  const filters = useRecoilValue(selectors.paginatedFilterStages);
+  const datasetName = useRecoilValue(selectors.datasetName);
+  const view = useRecoilValue(selectors.view);
+  const [prevView, setPrevView] = useState([]);
+
+  const empty = {
     initialized: false,
     loadMore: false,
     isLoading: false,
@@ -15,32 +24,33 @@ export default () => {
     pageToLoad: 1,
     rows: [],
     remainder: [],
-  });
-  const [prevFilters, setPrevFilters] = useState({});
-  const filters = useRecoilValue(selectors.paginatedFilterStages);
-  const clearState = () =>
-    setState({
-      initialized: false,
-      loadMore: false,
-      isLoading: false,
-      hasMore: true,
-      rows: [],
-      pageToLoad: 1,
-      remainder: [],
-    });
+  };
+  const [state, setState] = useState(empty);
 
-  useSubscribe(socket, "update", () => clearState());
+  useMessageHandler("page", ({ results, more }) => {
+    setState(tile(results, more, state));
+  });
+
   useEffect(() => {
-    clearState();
-    setPrevFilters(filters);
-  }, [JSON.stringify(filters) === JSON.stringify(prevFilters)]);
+    if (JSON.stringify(filters) !== JSON.stringify(prevFilters)) {
+      setState(empty);
+      setPrevFilters(filters);
+    }
+  }, [filters, prevFilters]);
+  useEffect(() => {
+    if (viewsAreEqual(view, prevView)) return;
+    setState(empty);
+    setPrevView(view);
+  }, [view, prevView]);
+
+  useEffect(() => {
+    setState(empty);
+  }, [datasetName]);
 
   useEffect(() => {
     if (!state.loadMore || state.isLoading || !state.hasMore) return;
     setState({ ...state, isLoading: true, loadMore: false, initialized: true });
-    socket.emit("page", state.pageToLoad, (data) => {
-      setState(tile(data.results, data.more, state));
-    });
+    socket.send(packageMessage("page", { page: state.pageToLoad }));
   }, [state.loadMore, state.pageToLoad, state.hasMore]);
 
   return [state, setState];

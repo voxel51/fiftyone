@@ -1,7 +1,7 @@
-import React, { useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useEffect, useCallback, useRef } from "react";
 import styled from "styled-components";
 import { useMachine } from "@xstate/react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { GlobalHotKeys } from "react-hotkeys";
 import { Close, Help } from "@material-ui/icons";
 
@@ -63,6 +63,13 @@ const ViewBar = React.memo(() => {
   const [state, send] = useMachine(viewBarMachine);
   const [view, setView] = useRecoilState(selectors.view);
   const fieldPaths = useRecoilValue(selectors.fieldPaths);
+  const setDatasetStats = useSetRecoilState(atoms.datasetStats);
+  const setExtendedDatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
+
+  const clearStats = () => {
+    setDatasetStats([]);
+    setExtendedDatasetStats([]);
+  };
 
   const port = useRecoilValue<number>(atoms.port);
 
@@ -73,6 +80,7 @@ const ViewBar = React.memo(() => {
       view,
       setView,
       fieldNames: fieldPaths,
+      clearStats,
     });
   }, [port, view]);
 
