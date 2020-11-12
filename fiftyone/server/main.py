@@ -770,9 +770,14 @@ class Application(tornado.web.Application):
     """FiftyOne Tornado Application"""
 
     def __init__(self, **settings):
+        static_path = "C:/" if os.name == "nt" else "/"
         handlers = [
             (r"/fiftyone", FiftyOneHandler),
-            (r"/filepath/(.*)", tornado.web.StaticFileHandler, {"path": "/"}),
+            (
+                r"/filepath/(.*)",
+                tornado.web.StaticFileHandler,
+                {"path": static_path},
+            ),
             (r"/stages", StagesHandler),
             (r"/state", StateHandler),
         ]
