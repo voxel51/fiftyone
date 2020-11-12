@@ -7,9 +7,28 @@ FiftyOne 0.6.4
 --------------
 *Released November 12, 2020*
 
+Documentation
+^^^^^^^^^^^^^
+- Added an :doc:`Environments </environments/index>` page which outlines how
+  to work with local, remote, and cloud data. Includes instructions for AWS,
+  Azure, Google Cloud.
+- Add an :doc:`FAQ </faq/index>` page
+
 App
 ^^^
-- todo
+- Added concurrency to the server wich greatly improves loading speeds and
+  time-to-interaction in the Grid, View Bar, and Fields Sidebar for larger
+  datasets and views
+- Renamed the Display Options Sidebar to the Fields Sidebar
+- Added support for filtering
+  :class:`keypoint <fiftyone.core.labels.Keypoint>`,
+  :class:`keypoints <fiftyone.core.labels.Keypoints>`,
+  :class:`polyline <fiftyone.core.labels.Polyline>`,
+  :class:`polylines <fiftyone.core.labels.Polylines>` fields by label value
+  in the Fields sidebar
+- Moved plot tabs into an expandable window that can be resized and maximized.
+  This allows for viewing distributions and the sample grid at the same time
+- Fixed video loading in the grid and modal for video samples with metadata
 
 Core
 ^^^^
@@ -19,7 +38,6 @@ Utils
 ^^^^^
 - todo
  
-
 FiftyOne 0.6.4
 --------------
 *Released October 29, 2020*
