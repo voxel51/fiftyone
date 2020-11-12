@@ -138,28 +138,6 @@ class StateTests(TestCase):
                 results[client].append(message)
         return results
 
-    """
-    def test_update(self):
-        state = fos.StateDescription(dataset=self.dataset).serialize()
-        self.send(self.session, "update", {"state": state})
-        results = self.gather_events({self.app: 2})
-        for client, result in results.items():
-            for message in result:
-                if message["type"] == "update":
-                    result_state = fos.StateDescription.from_dict(
-                        message["state"]
-                    ).serialize()
-                    self.assertNormalizedEqual(result_state, state)
-                if message["type"] == "statistics":
-                    aggs = fos.DatasetStatistics(self.dataset).aggregations
-                    stats = self.dataset.aggregate(aggs)
-                    stats = [r.serialize(reflective=True) for r in stats]
-                    self.assertNormalizedEqual(message["stats"], stats)
-                    self.assertFalse(message["extended"])
-                if message["type"] == "notification":
-                    print(message)
-    """
-
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
