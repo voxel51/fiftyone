@@ -40,7 +40,9 @@ const NumericFieldFilter = ({ expanded, entry }) => {
   const rangeAtom = atoms.filterNumericFieldRange(entry.path);
   const includeNoneAtom = atoms.filterNumericFieldIncludeNone(entry.path);
   const [includeNone, setIncludeNone] = useRecoilState(includeNoneAtom);
-  const stateDescription = useRecoilValue(atoms.stateDescription);
+  const [stateDescription, setStateDescription] = useRecoilState(
+    atoms.stateDescription
+  );
   const bounds = useRecoilValue(boundsAtom);
   const [range, setRange] = useRecoilState(rangeAtom);
   const hasBounds = bounds.every((b) => b !== null);
@@ -86,6 +88,7 @@ const NumericFieldFilter = ({ expanded, entry }) => {
         state: newState,
       })
     );
+    setStateDescription(newState);
   }, [range, includeNone]);
 
   const [ref, { height }] = useMeasure();

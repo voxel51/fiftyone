@@ -38,9 +38,6 @@ type Props = {
 };
 
 const Container = styled.div`
-  height: 100%;
-  ${scrollbarStyles};
-
   .MuiCheckbox-root {
     padding: 4px 8px 4px 4px;
   }

@@ -31,8 +31,6 @@ export default () => {
     setState(tile(results, more, state));
   });
 
-  console.log(filters);
-
   useEffect(() => {
     if (JSON.stringify(filters) !== JSON.stringify(prevFilters)) {
       setState(empty);
