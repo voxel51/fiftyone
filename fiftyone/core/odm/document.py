@@ -46,6 +46,8 @@ class SerializableDocument(object):
             class_name (None): optional class name to use
             select_fields (None): iterable of field names to restrict to
             exclude_fields (None): iterable of field names to exclude
+            **kwargs: additional key-value pairs to include in the string
+                representation
 
         Returns:
             a string representation of the document
@@ -60,6 +62,7 @@ class SerializableDocument(object):
                 )
             ):
                 continue
+
             if f in kwargs:
                 d[f] = kwargs[f]
             else:
@@ -72,6 +75,67 @@ class SerializableDocument(object):
         doc_name = class_name or self.__class__.__name__
         doc_str = fou.pformat(d)
         return "<%s: %s>" % (doc_name, doc_str)
+
+    def has_field(self, field_name):
+        """Determines whether the document has a field of the given name.
+
+        Args:
+            field_name: the field name
+
+        Returns:
+            True/False
+        """
+        raise NotImplementedError("Subclass must implement `has_field()`")
+
+    def get_field(self, field_name):
+        """Gets the field of the document.
+
+        Args:
+            field_name: the field name
+
+        Returns:
+            the field value
+
+        Raises:
+            AttributeError: if the field does not exist
+        """
+        raise NotImplementedError("Subclass must implement `get_field()`")
+
+    def set_field(self, field_name, value, create=False):
+        """Sets the value of a field of the document.
+
+        Args:
+            field_name: the field name
+            value: the field value
+            create (False): whether to create the field if it does not exist
+
+        Raises:
+            ValueError: if ``field_name`` is not an allowed field name or does
+                not exist and ``create == False``
+        """
+        raise NotImplementedError("Subclass must implement `set_field()`")
+
+    def clear_field(self, field_name):
+        """Clears the field from the document.
+
+        Args:
+            field_name: the field name
+
+        Raises:
+            ValueError: if the field does not exist
+        """
+        raise NotImplementedError("Subclass must implement `clear_field()`")
+
+    def _get_field_names(self, include_private=False):
+        """Returns an ordered tuple of field names of this document.
+
+        Args:
+            include_private (False): whether to include private fields
+
+        Returns:
+            a tuple of field names
+        """
+        raise NotImplementedError("Subclass must implement `_get_field_names`")
 
     def _get_repr_fields(self):
         """Returns an ordered tuple of field names that should be included in
@@ -147,6 +211,11 @@ class SampleDocument(SerializableDocument):
         super().__init__(*args, **kwargs)
 
     @property
+    def media_type(self):
+        """The media type of the sample."""
+        raise NotImplementedError("Subclass must implement `media_type`")
+
+    @property
     def collection_name(self):
         """The name of the MongoDB collection to which this sample belongs, or
         ``None`` if it has not been added to a dataset.
@@ -165,61 +234,17 @@ class SampleDocument(SerializableDocument):
         """
         return None
 
-    def has_field(self, field_name):
-        """Determines whether the sample has a field of the given name.
-
-        Args:
-            field_name: the field name
-
-        Returns:
-            True/False
-        """
-        raise NotImplementedError("Subclass must implement `has_field()`")
-
-    def get_field(self, field_name):
-        """Gets the field of the sample.
-
-        Args:
-            field_name: the field name
-
-        Returns:
-            the field value
-
-        Raises:
-            AttributeError: if the field does not exist
-        """
-        raise NotImplementedError("Subclass must implement `get_field()`")
-
-    def set_field(self, field_name, value, create=False):
-        """Sets the value of a field of the sample.
-
-        Args:
-            field_name: the field name
-            value: the field value
-            create (False): whether to create the field if it does not exist
-
-        Raises:
-            ValueError: if ``field_name`` is not an allowed field name or does
-                not exist and ``create == False``
-        """
-        raise NotImplementedError("Subclass must implement `set_field()`")
-
-    def clear_field(self, field_name):
-        """Clears the value of a field of the sample.
-
-        Args:
-            field_name: the field name
-
-        Raises:
-            ValueError: if the field does not exist
-        """
-        raise NotImplementedError("Subclass must implement `clear_field()`")
-
 
 class MongoEngineBaseDocument(SerializableDocument):
     """Mixin for all ``mongoengine.base.BaseDocument`` subclasses that
     implements the :class:`SerializableDocument` interface.
     """
+
+    def __delattr__(self, field_name):
+        self.clear_field(field_name)
+
+    def __delitem__(self, field_name):
+        self.clear_field(field_name)
 
     def __deepcopy__(self, memo):
         # pylint: disable=no-member, unsubscriptable-object
@@ -229,6 +254,38 @@ class MongoEngineBaseDocument(SerializableDocument):
             if f not in ("_cls", "_id", "id")
         }
         return self.__class__(**kwargs)
+
+    def has_field(self, field_name):
+        return field_name in self._fields_ordered
+
+    def get_field(self, field_name):
+        return getattr(self, field_name)
+
+    def set_field(self, field_name, value, create=False):
+        if not create and not self.has_field(field_name):
+            raise ValueError("Document has no field '%s'" % field_name)
+
+        setattr(self, field_name, value)
+
+    def clear_field(self, field_name):
+        if not self.has_field(field_name):
+            raise ValueError("Document has no field '%s'" % field_name)
+
+        super().__delattr__(field_name)
+
+        # pylint: disable=no-member
+        if field_name not in self.__class__._fields_ordered:
+            self._fields_ordered = tuple(
+                f for f in self._fields_ordered if f != field_name
+            )
+
+    def _get_field_names(self, include_private=False):
+        if not include_private:
+            return tuple(
+                f for f in self._fields_ordered if not f.startswith("_")
+            )
+
+        return self._fields_ordered
 
     def _get_repr_fields(self):
         # pylint: disable=no-member
