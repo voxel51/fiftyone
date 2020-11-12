@@ -224,6 +224,7 @@ const Selected = styled.div`
   display: flex;
   justify-content: flex-start;
   margin: 0 -0.25rem;
+  padding-bottom: 0.5rem;
   flex-wrap: wrap;
 `;
 
@@ -330,19 +331,21 @@ const ClassFilter = ({ entry: { path, type, color }, atoms }) => {
             />
           )}
         </div>
-        <Selected>
-          {selected.map((s) => (
-            <ClassButton
-              key={s}
-              onClick={() => {
-                send({ type: "REMOVE", value: s });
-              }}
-            >
-              {s + " "}
-              <a style={{ color: theme.fontDark }}>x</a>
-            </ClassButton>
-          ))}
-        </Selected>
+        {selected.length ? (
+          <Selected>
+            {selected.map((s) => (
+              <ClassButton
+                key={s}
+                onClick={() => {
+                  send({ type: "REMOVE", value: s });
+                }}
+              >
+                {s + " "}
+                <a style={{ color: theme.fontDark }}>x</a>
+              </ClassButton>
+            ))}
+          </Selected>
+        ) : null}
       </ClassFilterContainer>
     </>
   );
