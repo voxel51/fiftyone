@@ -9,7 +9,9 @@ import DropdownTag from "./Tags/DropdownTag";
 
 const SelectionMenu = () => {
   const socket = useRecoilValue(selectors.socket);
-  const stateDescription = useRecoilValue(atoms.stateDescription);
+  const [stateDescription, setStateDescription] = useRecoilState(
+    atoms.stateDescription
+  );
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     atoms.selectedSamples
   );
@@ -28,6 +30,7 @@ const SelectionMenu = () => {
     });
     newState.view = newView;
     socket.send(packageMessage("update", { state: newState }));
+    setStateDescription(newState);
     callback();
   };
 
