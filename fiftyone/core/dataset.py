@@ -695,7 +695,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample.frames._serve(self)
             sample.frames._save(insert=True)
 
-        self._doc.reload()
         return str(d["_id"])
 
     def add_samples(self, samples, expand_schema=True, num_samples=None):
@@ -742,7 +741,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 )
                 pb.update(count=len(batch))
 
-        self._doc.reload()
         return sample_ids
 
     def _add_samples_batch(self, samples, expand_schema):

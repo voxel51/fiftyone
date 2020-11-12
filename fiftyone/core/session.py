@@ -203,6 +203,8 @@ class Session(foc.HasClient):
     @dataset.setter
     @_update_state
     def dataset(self, dataset):
+        if dataset is not None:
+            dataset._doc.reload()
         self.state.dataset = dataset
         self.state.view = None
         self.state.selected = []
@@ -235,6 +237,7 @@ class Session(foc.HasClient):
         self.state.view = view
         if view is not None:
             self.state.dataset = self.state.view._dataset
+            self.state.dataset._doc.reload()
 
         self.state.selected = []
         self.state.selected_objects = []
