@@ -15,7 +15,6 @@ import CellHeader from "./CellHeader";
 import CheckboxGrid from "./CheckboxGrid";
 import DropdownCell from "./DropdownCell";
 import SelectionTag from "./Tags/SelectionTag";
-import { Button, scrollbarStyles } from "./utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { refreshColorMap as refreshColorMapSelector } from "../recoil/selectors";
@@ -36,6 +35,33 @@ type Props = {
   unsupported: Entry[];
   onSelectTag: (entry: Entry) => void;
 };
+
+const Button = styled.div`
+  cursor: pointer;
+  width: 100%;
+  margin-top: 3px;
+  margin-left: 0;
+  margin-right: 0;
+  padding: 0 0.2em;
+  border-radius: 2px;
+  display: flex;
+  height: 32px;
+  background-color: ${({ theme }) => theme.backgroundLight};
+`;
+
+const ButtonText = styled.div`
+  padding-right: 4px;
+  padding-left: 2px;
+  white-space: nowrap;
+  overflow-x: hidden;
+  text-overflow: ellipsis;
+  font-weight: bold;
+  padding-top: 4px;
+  color: ${({ theme }) => theme.font};
+  letter-spacing: 0.00938em;
+  font-family: Liberation Sans;
+  line-height: 24px;
+`;
 
 const Container = styled.div`
   .MuiCheckbox-root {
@@ -119,6 +145,12 @@ const Cell = ({
       expanded={expanded}
       onExpand={setExpanded}
     >
+      {label === "Options" && (
+        <Button onClick={refreshColorMap}>
+          <Autorenew style={{ marginTop: 4 }} />
+          <ButtonText>Refresh field colors</ButtonText>
+        </Button>
+      )}
       {entries.length ? (
         <CheckboxGrid
           columnWidths={[3, 2]}
@@ -142,12 +174,6 @@ const Cell = ({
         />
       ) : (
         <span>No options available</span>
-      )}
-      {label === "Options" && (
-        <Button onClick={refreshColorMap}>
-          <Autorenew />
-          Refresh field colors
-        </Button>
       )}
     </DropdownCell>
   );
