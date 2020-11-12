@@ -593,6 +593,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             subfield=subfield,
         )
 
+    def clear_sample_field(self, field_name):
+        """Clears the values of the field from all samples in the dataset.
+
+        The field will remain in the dataset's schema, and all samples will
+        have the value ``None`` for the field.
+
+        Args:
+            field_name: the field name
+
+        Raises:
+            AttributeError: if the field does not exist
+        """
+        if "." in field_name:
+            raise ValueError(
+                "Use `delete_sample_field()` to clear embedded sample fields"
+            )
+
+        self._sample_doc_cls.delete_field(field_name, update_schema=False)
+        fos.Sample._purge_field(self._sample_collection_name, field_name)
+
     def delete_sample_field(self, field_name):
         """Deletes the field from all samples in the dataset.
 
@@ -609,8 +629,34 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._sample_doc_cls.delete_embedded_field(field_name)
             fos.Sample._reload_docs(self._sample_collection_name)
         else:
-            self._sample_doc_cls.delete_field(field_name)
+            self._sample_doc_cls.delete_field(field_name, update_schema=True)
             fos.Sample._purge_field(self._sample_collection_name, field_name)
+
+    def clear_frame_field(self, field_name):
+        """Clears the values of the frame field from all samples in the
+        dataset.
+
+        The field will remain in the dataset's frame schema, and all frames
+        will have the value ``None`` for the field.
+
+        Args:
+            field_name: the field name
+
+        Raises:
+            AttributeError: if the field does not exist
+        """
+        if self.media_type != fom.VIDEO:
+            raise ValueError("Only video datasets have frame fields")
+
+        if "." in field_name:
+            raise ValueError(
+                "Use `delete_frame_field()` to clear embedded frame fields"
+            )
+
+        self._frame_doc_cls.delete_field(
+            field_name, is_frame_field=True, update_schema=False
+        )
+        fofr.Frame._purge_field(self._frame_collection_name, field_name)
 
     def delete_frame_field(self, field_name):
         """Deletes the frame-level field from all samples in the dataset.
@@ -635,7 +681,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
             fofr.Frame._reload_docs(self._frame_collection_name)
         else:
-            self._frame_doc_cls.delete_field(field_name, is_frame_field=True)
+            self._frame_doc_cls.delete_field(
+                field_name, is_frame_field=True, update_schema=True
+            )
             fofr.Frame._purge_field(self._frame_collection_name, field_name)
 
     def get_tags(self):

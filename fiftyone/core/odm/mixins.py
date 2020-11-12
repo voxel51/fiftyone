@@ -391,7 +391,9 @@ class DatasetMixin(object):
 
     @classmethod
     @no_delete_default_field
-    def delete_field(cls, field_name, is_frame_field=False):
+    def delete_field(
+        cls, field_name, is_frame_field=False, update_schema=False
+    ):
         """Deletes the field from the sample(s).
 
         If the sample is in a dataset, the field will be removed from all
@@ -400,6 +402,8 @@ class DatasetMixin(object):
         Args:
             field_name: the field name
             is_frame_field (False): whether this is a frame-level field
+            update_schema (False): whether to remove the field from the dataset
+                schema
 
         Raises:
             AttributeError: if the field does not exist
@@ -410,6 +414,9 @@ class DatasetMixin(object):
             cls.objects.update(**{"unset__%s" % field_name: None})
         except InvalidQueryError:
             raise AttributeError("Sample has no field '%s'" % field_name)
+
+        if not update_schema:
+            return
 
         # Remove from dataset
         # pylint: disable=no-member
