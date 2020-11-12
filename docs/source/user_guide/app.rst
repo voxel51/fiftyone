@@ -97,8 +97,8 @@ _______________
 
 If your data is stored on a remote machine, you can forward a session from
 the remote machine to the FiftyOne App on your local machine and seemlessly
-browse your remote dataset. This is defined in detail in the :ref:`Environments
-<environments>` section.
+browse your remote dataset. This is defined in detail in the :doc:`Environments
+</environments/index>` section.
 
 Remote machine
 --------------

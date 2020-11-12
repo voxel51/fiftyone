@@ -1,7 +1,5 @@
 FiftyOne Environments
 =====================
-.. _environments:
-
 .. default-role:: code
 
 This is a guide to using FiftyOne with data stored in various environments, for

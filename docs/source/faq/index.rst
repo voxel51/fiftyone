@@ -5,12 +5,12 @@ FiftyOne Frequently Asked Questions
 
 **Can I run this in a browser?**
 
-Browers are not yet supported, but see the :ref:`Environments <environments>` page for instructions for using
+Browers are not yet supported, but see the :doc:`Environments </environments/index>` page for instructions for using
 FiftyOne in common local, remote, and cloud environments.
 
 **Can I access data stored in the cloud or on a remote server like on AWS, Azure, or Google Cloud from my client application?**
 
-Yes! If you install FiftyOne on both your :ref:`remote server and your local machine <remote-data>`, then you can load a dataset remotely and :ref:`explore it with the App <creating-an-app-session>` locally. See the :ref:`Environments <environments>` section for details.
+Yes! If you install FiftyOne on both your :ref:`remote server and your local machine <remote-data>`, then you can load a dataset remotely and :ref:`explore it with the App <creating-an-app-session>` locally. See the :doc:`Environments </environments/index>` section for details.
 
 **What label types are supported?**
 
