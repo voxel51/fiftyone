@@ -48,6 +48,7 @@ export default ({
   onLoad = () => {},
   onMouseEnter = () => {},
   onMouseLeave = () => {},
+  keep = false,
   activeLabels,
   activeFrameLabels,
   colorByLabel,
@@ -153,7 +154,7 @@ export default ({
   }, [player, selectedObjects]);
 
   useEffect(() => {
-    return () => player && player.destroy();
+    return () => player && !keep && player.destroy();
   }, [player]);
 
   useEventHandler(player, "load", () => setMediaLoading(false));

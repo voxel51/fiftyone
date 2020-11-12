@@ -484,6 +484,7 @@ const SampleModal = ({
                 ...playerStyle,
               }}
               sample={sample}
+              keep={true}
               overlay={videoLabels}
               metadata={metadata}
               colorMap={colorMap}

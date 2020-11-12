@@ -57,7 +57,6 @@ const DropdownTag = React.memo(
         onOpen();
       }
     };
-    console.log(isOpen);
 
     const handleClose = () => {
       // setOpen(false);
