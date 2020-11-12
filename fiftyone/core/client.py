@@ -21,7 +21,7 @@ from tornado.websocket import websocket_connect
 from fiftyone.constants import SERVER_NAME
 
 
-logger = logging.getLogger(__name__)
+logging.getLogger("tornado").setLevel(logging.ERROR)
 
 
 # We only want one session to print notifications per namespace and per process
@@ -54,9 +54,7 @@ class HasClient(object):
                 message = await self._client.read_message()
 
                 if message is None:
-                    logger.warn(
-                        "\r\n%s disconnected, trying to reconnect\r\n", self
-                    )
+                    print("\r\n%s disconnected, trying to reconnect\r\n", self)
                     fiftyone_url = "http://%s:%d/fiftyone" % (
                         SERVER_NAME,
                         port,
@@ -70,13 +68,13 @@ class HasClient(object):
                                 url=self._url
                             )
                         except:
-                            logger.warn(
+                            print(
                                 "\r\nCould not connect %s, trying again in 10 seconds\r\n",
                                 self,
                             )
                             time.sleep(10)
 
-                    logger.info("\r\nSession %s reconnected\r\n", self)
+                    print("\r\nSession %s reconnected\r\n", self)
                     continue
 
                 message = json_util.loads(message)
@@ -109,7 +107,6 @@ class HasClient(object):
 
     def __del__(self):
         _printer[self._url] = None
-        self._thread.join()
 
     def __getattr__(self, name):
         """Gets the data via the attribute defined by ``_HC_ATTR_NAME``."""
