@@ -1,52 +1,103 @@
-FiftyOne Frequently Asked Questions
-===================================
+Frequently Asked Questions
+==========================
 
 .. default-role:: code
 
-**Can I run this in a browser?**
+Can I run this in a browser?
+----------------------------
 
-Browers are not yet supported, but see the :doc:`Environments </environments/index>` page for instructions for using
-FiftyOne in common local, remote, and cloud environments.
+Browsers are not yet supported; you must
+:ref:`install FiftyOne <installing-fiftyone>` on each machine from which you
+want to use the library or the App.
 
-**Can I access data stored in the cloud or on a remote server like on AWS, Azure, or Google Cloud from my client application?**
+However, check out the :doc:`environments guide </environments/index>` for
+best practices on using FiftyOne in common local, remote, and cloud
+environments.
 
-Yes! If you install FiftyOne on both your :ref:`remote server and your local machine <remote-data>`, then you can load a dataset remotely and :ref:`explore it with the App <creating-an-app-session>` locally. See the :doc:`Environments </environments/index>` section for details.
+Can I access data stored on a remote server?
+--------------------------------------------
 
-**What label types are supported?**
+Yes! If you install FiftyOne on both your remote server and local machine, then
+you can :ref:`load a dataset remotely <remote-data>` and then explore it via an
+:ref:`App session on your local machine <creating-an-app-session>`.
 
-FiftyOne provides both image and video support for :ref:`classifications (including
-multi label classifications), object detections in multiple coordinate formats,
-semantic and instance segmentation, key points, and polylines.
-<manually-building-datasets>`
+Can I access data stored in the cloud?
+--------------------------------------
 
-**What image file types are supported?**
+Yes! The recommended best practice is to mount the cloud bucket to a cloud
+compute instance in your cloud environment and then use the
+:ref:`remote server workflow <remote-data>` to work with the data.
 
-Most standard image types like `JPEG`, `PNG`, and `BMP` are supported. In general,
-all `image types supported by Chromium
-<https://en.wikipedia.org/wiki/Comparison_of_browser_engines_(graphics_support)>`_ are supported by FiftyOne.
+Check out the :doc:`environments guide </environments/index>` for instructions
+for working in AWS, GCP, and Azure.
 
-**What video file types are supported?**
+What label types are supported?
+-------------------------------
 
-Any video filetype that is supported by HTML5 video, like `.mp4`, is able to be
-viewed in the App. If you are
-having trouble viewing your video file, use the provided :func:`reencode_videos() <fiftyone.utils.video.reencode_videos>`
-untility to reencode the source video so it is viewable in the app.
+FiftyOne provides support for all of the following label types for both image
+and video datasets:
 
-**What operating systems does FiftyOne support?**
+- :ref:`Classifications <classification>`
+- :ref:`Multilabel classifications <multilabel-classification>`
+- :ref:`Object detections <object-detection>`
+- :ref:`Instance segmentations <objects-with-instance-segmentations>`
+- :ref:`Object attributes <objects-with-attributes>`
+- :ref:`Polylines and polygons <polylines>`
+- :ref:`Keypoints <keypoints>`
+- :ref:`Semantic segmentations <semantic-segmentation>`
 
-FiftyOne is guaranteed to support the latest versions of popular Linux Distributions, Windows and MacOS (ex. Ubuntu 18.04, Windows 10) along with :ref:`specific install instructions for older versions like Ubuntu 16.04 and Debian 9. <alternative-builds>`
+Check out :ref:`this guide <manually-building-datasets>` for simple recipes to
+load labels in each of these formats.
 
-**Can you share a dataset with someone else?**
+What image file types are supported?
+------------------------------------
 
-You can easily :doc:`export a dataset </user_guide/export_datasets>` in one line of code, zip it, and send it to someone else who can then :doc:`load it in a few lines of code. </user_guide/dataset_creation/datasets>`
+In general, FiftyOne supports `all image types supported by Chromium
+<https://en.wikipedia.org/wiki/Comparison_of_browser_engines_(graphics_support)>`_,
+which includes standard image types like JPEG, PNG, TIFF, and BMP.
 
-Alternatively, you could launch a :ref:`remote session <remote-data>` of the FiftyOne App on your
-machine that
-another user can access using FiftyOne on their local machine.
+What video file types are supported?
+------------------------------------
 
-**Are the Brain methods open-source?**
+Core methods that process videos can generally handle any
+`codec supported by ffmpeg <https://www.ffmpeg.org/general.html#Video-Codecs>`_.
 
-No, FiftyOne is open core. The :doc:`Brain methods </user_guide/brain>` exist in a separate repository that is
-installed along-side the core FiftyOne repository. However, the :doc:`documentation
-includes detailed instructions of how to use Brain methods. </user_guide/brain>`
+The App can play any video codec that is supported by
+`HTML5 video on Chromium <https://en.wikipedia.org/wiki/HTML5_video#Browser_support>`_,
+including MP4 (H.264), WebM, and Ogg.
 
+If you try to view a video with an unsupported codec in the App, you will be
+prompted to use the :func:`reencode_videos() <fiftyone.utils.video.reencode_videos>`
+utility method to reencode the source video so it is viewable in the App.
+
+What operating systems does FiftyOne support?
+---------------------------------------------
+
+FiftyOne is guaranteed to support the latest versions of MacOS, Windows, and
+popular Linux distributions. FiftyOne will generally also support any version
+of these popular operating systems from the past few years.
+
+We also provide :ref:`custom install instructions <alternative-builds>` to use
+FiftyOne on old-but-popular setups like Ubuntu 16.04 and Debian 9.
+
+Can you share a dataset with someone else?
+------------------------------------------
+
+You can easily :doc:`export a dataset </user_guide/export_datasets>` in one
+ine of code, zip it, and send it to someone else who can then
+:doc:`load it in a few lines of code. </user_guide/dataset_creation/datasets>`.
+
+Alternatively, you could launch a :ref:`remote session <remote-data>` of the
+FiftyOne App on your machine that another user can connect to from their local
+machine. This workflow does require that both users have the
+
+Are the Brain methods open source?
+----------------------------------
+
+No. Although the :ref:`core library <https://github.com/voxel51/fiftyone>` is
+open source and the :doc:`Brain methods </user_guide/brain>` are freely
+available for use for any commerical or non-commerical purposes, the Brain
+methods are closed source.
+
+Check out the :doc:`Brain documentation </user_guide/brain>`` for detailed
+instructions on using the various Brain methods.
