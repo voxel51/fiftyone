@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useRecoilValue } from "recoil";
 
 import * as selectors from "../recoil/selectors";
-import { getSocket, useSubscribe } from "../utils/socket";
+import { useSubscribe } from "../utils/socket";
 import tile from "../utils/tile";
 
 export default () => {

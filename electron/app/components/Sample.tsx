@@ -17,6 +17,26 @@ const SampleDiv = animated(styled.div`
   background-color: ${({ theme }) => theme.backgroundLight};
 `);
 
+const SampleInfo = styled.div`
+  position: absolute;
+  width: 100%;
+  max-height: 100%;
+  display: block;
+  z-index: 100;
+  overflow-y: hidden;
+  padding: 0.5rem;
+  bottom: 0;
+  &::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+    display: none;
+  }
+  &::-webkit-scrollbar-thumb {
+    width: 0px;
+    display: none;
+  }
+`;
+
 const LoadingBar = animated(styled.div`
   position: absolute;
   bottom: 0;
@@ -190,7 +210,7 @@ const Sample = ({ sample, metadata, setView }) => {
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
       />
-      <div className="sample-info" {...eventHandlers}>
+      <SampleInfo {...eventHandlers}>
         {Object.keys(sample)
           .sort()
           .reduce((acc, name) => {
@@ -214,7 +234,7 @@ const Sample = ({ sample, metadata, setView }) => {
           ) : null;
         })}
         {Object.keys(sample).sort().map(renderScalar)}
-      </div>
+      </SampleInfo>
       {selectedSamples.has(id) ? (
         <div
           style={{
