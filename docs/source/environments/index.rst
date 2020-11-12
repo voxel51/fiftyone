@@ -8,10 +8,10 @@ example, how to work with remote data.
 
 Terminology:
 
-* :ref:`Local Machine <local-data>` - Data is stored on the same machine on which FiftyOne
-  is installed
+* :ref:`Local Machine <local-data>` - Data is stored on the same personal computer or laptop with a GUI that will be used to launch the App
 
-* :ref:`Remote Machine <remote-data>` - Data is stored on a disk remotely
+* :ref:`Remote Machine <remote-data>` - Data is stored on disk on a machine
+  separate from the one that will be used to launch the App
 
 * :ref:`Cloud <cloud-data>` - Data is stored in a cloud bucket like :ref:`AWS <AWS>`/:ref:`Azure <Azure>`/:ref:`GCS <google-cloud>`
 
@@ -50,7 +50,7 @@ access to, you can easily load up a FiftyOne dataset remotely and view it
 locally.
 
 
-First `ssh` into your remote machine, and :doc:`install FiftyOne </getting_started/install.html>` if it is not already.
+First `ssh` into your remote machine, and :doc:`install FiftyOne </getting_started/install>` if it is not already.
 Then :doc:`create a Dataset in FiftyOne </user_guide/dataset_creation/index>` using Python on the remote machine and
 launch a remote session. 
 
