@@ -7,13 +7,6 @@ FiftyOne 0.6.5
 --------------
 *Released November 12, 2020*
 
-Documentation
-^^^^^^^^^^^^^
-- Added an :doc:`Environments </environments/index>` page which outlines how
-  to work with local, remote, and cloud data. Includes instructions for AWS,
-  Azure, Google Cloud.
-- Add an :doc:`FAQ </faq/index>` page
-
 App
 ^^^
 - Added concurrency to the server wich greatly improves loading speeds and
@@ -32,12 +25,22 @@ App
 
 Core
 ^^^^
-- todo
+- Added `Cityscapes <https://www.cityscapes-dataset.com/>`_ to the
+  :ref:`Dataset Zoo <dataset-zoo>`
 
 Utils
 ^^^^^
-- todo
+- Added support for import and exporting from
+  :mod:`Scale <fiftyone.utils.scale>` and
+  :mod:`LabelBox <fiftyone.utils.labelbox>`
  
+Docs
+^^^^
+- Added an :doc:`Environments </environments>` page which outlines how
+  to work with local, remote, and cloud data. Includes instructions for AWS,
+  Azure, Google Cloud.
+- Add an :doc:`FAQ </faq>` page
+
 FiftyOne 0.6.4
 --------------
 *Released October 29, 2020*
