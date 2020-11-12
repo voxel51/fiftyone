@@ -216,9 +216,11 @@ or reach out to us at support@voxel51.com.
 
    Overview <self>
    Installation <getting_started/install>
+   Environments <environments/index>
    Tutorials <tutorials/index>
    Recipes <recipes/index>
    User Guide <user_guide/index>
    Release Notes <release-notes>
    CLI Documentation <cli/index>
    API Reference <api/fiftyone>
+   FAQ <faq/index>
