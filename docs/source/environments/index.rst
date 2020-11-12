@@ -50,7 +50,7 @@ access to, you can easily load up a FiftyOne dataset remotely and view it
 locally.
 
 
-First `ssh` into your remote machine.
+First `ssh` into your remote machine, and :doc:`install FiftyOne </getting_started/install.html>` if it is not already.
 Then :doc:`create a Dataset in FiftyOne </user_guide/dataset_creation/index>` using Python on the remote machine and
 launch a remote session. 
 
