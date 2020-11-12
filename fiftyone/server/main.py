@@ -8,7 +8,7 @@ FiftyOne Tornado server.
 import asyncio
 import argparse
 from collections import defaultdict
-from copy import copy
+from copy import deepcopy
 import json
 import os
 import posixpath
@@ -662,9 +662,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
 
 async def _get_distributions(coll, view, group):
-    pipeline = DISTRIBUTION_PIPELINES[group]
+    pipeline = deepcopy(DISTRIBUTION_PIPELINES[group])
     await _numeric_distribution_pipelines(coll, view, pipeline)
-
     pipeline = view._pipeline(pipeline=pipeline)
     response = await coll.aggregate(pipeline).to_list(1)
 
@@ -699,7 +698,6 @@ async def _numeric_bounds(coll, view, numerics):
 async def _numeric_distribution_pipelines(coll, view, pipeline, buckets=50):
     numerics = view._dataset.get_field_schema(ftype=fof.IntField)
     numerics.update(view._dataset.get_field_schema(ftype=fof.FloatField))
-
     # here we query the min and max for each numeric field
     # unfortunately, it looks like this has to be a separate query
     bounds = await _numeric_bounds(coll, view, numerics)

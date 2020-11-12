@@ -114,15 +114,22 @@ const DistributionsContainer = styled.div`
 
 const Distributions = ({ group }) => {
   const view = useRecoilValue(selectors.view);
+  const datasetName = useRecoilValue(selectors.datasetName);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
 
-  useSendMessage("distributions", { group }, null, [group, view]);
+  useSendMessage("distributions", { group }, null, [view, datasetName]);
 
   useMessageHandler("distributions", ({ results }) => {
     setLoading(false);
     setData(results);
   });
+
+  useEffect(() => {
+    setData([]);
+  }, [view, datasetName]);
+
+  console.log(data);
 
   if (loading) {
     return <Loading />;
