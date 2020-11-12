@@ -58,7 +58,8 @@ class RouteTests(TestCase):
             path = os.path.join(tmp, "data.json")
             etas.write_json(data, path)
             response = self.fetch_and_parse(
-                "/filepath%s" % path.replace(os.sep, posixpath.sep)
+                "/filepath%s"
+                % path.replace(os.sep, posixpath.sep).split(":")[-1]
             )
 
         self.assertEqual(response, data)
@@ -138,7 +139,6 @@ class StateTests(TestCase):
         return results
 
     """
-    @todo figure out tests
     def test_update(self):
         state = fos.StateDescription(dataset=self.dataset).serialize()
         self.send(self.session, "update", {"state": state})

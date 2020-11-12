@@ -572,7 +572,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         for r in results:
             s = r["sample"]
-            s["filepath"] = s["filepath"].replace(os.sep, posixpath.sep)
+            s["filepath"] = (
+                s["filepath"].replace(os.sep, posixpath.sep).split(":")[-1]
+            )
 
         message = {
             "type": "page",
