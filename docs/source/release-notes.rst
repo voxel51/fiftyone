@@ -3,7 +3,7 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
-FiftyOne 0.6.4
+FiftyOne 0.6.5
 --------------
 *Released November 12, 2020*
 
@@ -25,7 +25,7 @@ App
   :class:`keypoints <fiftyone.core.labels.Keypoints>`,
   :class:`polyline <fiftyone.core.labels.Polyline>`,
   :class:`polylines <fiftyone.core.labels.Polylines>` fields by label value
-  in the Fields sidebar
+  in the Fields Sidebar
 - Moved plot tabs into an expandable window that can be resized and maximized.
   This allows for viewing distributions and the sample grid at the same time
 - Fixed video loading in the grid and modal for video samples with metadata
