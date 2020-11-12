@@ -250,7 +250,7 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset.create_index(field)
 
-    def to_dict(self, rel_dir=None):
+    def to_dict(self, rel_dir=None, frame_labels_dir=None, pretty_print=False):
         """Returns a JSON dictionary representation of the view.
 
         Args:
@@ -261,11 +261,23 @@ class DatasetView(foc.SampleCollection):
                 use case for this argument is that your source data lives in
                 a single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
+            frame_labels_dir (None): a directory in which to write per-sample
+                JSON files containing the frame labels for video samples. If
+                omitted, frame labels will be included directly in the returned
+                JSON dict (which can be quite quite large for video datasets
+                containing many frames). Only applicable to video datasets
+            pretty_print (False): whether to render frame labels JSON in human
+                readable format with newlines and indentations. Only applicable
+                to video datasets when a ``frame_labels_dir`` is provided
 
         Returns:
             a JSON dict
         """
-        d = super().to_dict(rel_dir=rel_dir)
+        d = super().to_dict(
+            rel_dir=rel_dir,
+            frame_labels_dir=frame_labels_dir,
+            pretty_print=pretty_print,
+        )
         samples = d.pop("samples")  # hack so that `samples` is last in JSON
         d["stages"] = [s._serialize() for s in self._stages]
         d["samples"] = samples
@@ -276,7 +288,6 @@ class DatasetView(foc.SampleCollection):
     ):
         _pipeline = []
 
-        _frames_pipeline = []
         for s in self._stages:
             _pipeline.extend(s.to_mongo(self))
 
@@ -344,7 +355,7 @@ class DatasetView(foc.SampleCollection):
 
     def _get_filtered_schema(self, schema, frames=False):
         selected_fields, excluded_fields = self._get_selected_excluded_fields(
-            frames
+            frames=frames
         )
         if selected_fields is not None:
             schema = OrderedDict(
@@ -367,14 +378,14 @@ class DatasetView(foc.SampleCollection):
         excluded_fields = set()
 
         for stage in self._stages:
-            _selected_fields = stage.get_selected_fields(frames)
+            _selected_fields = stage.get_selected_fields(frames=frames)
             if _selected_fields:
                 if selected_fields is None:
                     selected_fields = set(_selected_fields)
                 else:
                     selected_fields.intersection_update(_selected_fields)
 
-            _excluded_fields = stage.get_excluded_fields(frames)
+            _excluded_fields = stage.get_excluded_fields(frames=frames)
             if _excluded_fields:
                 excluded_fields.update(_excluded_fields)
 
