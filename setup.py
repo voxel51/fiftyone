@@ -46,7 +46,7 @@ setup(
         "future",
         "Jinja2",
         "mongoengine",
-        "motor",
+        "motor<3,>=2.3",
         "numpy",
         "packaging",
         "Pillow<7,>=6.2",
