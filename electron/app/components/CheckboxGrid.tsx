@@ -220,6 +220,7 @@ const Entry = ({ entry, onCheck, modal }) => {
                   color: theme.font,
                   height: 16,
                   width: 16,
+                  minWidth: 16,
                 }}
               />
             )}
