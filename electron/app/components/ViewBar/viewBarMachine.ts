@@ -492,7 +492,6 @@ const viewBarMachine = Machine(
             view: (_, { view }) => view,
             setView: (_, { setView }) => setView,
             fieldNames: (_, { fieldNames }) => fieldNames,
-            clearStats: (_, { clearStats }) => clearStats,
           }),
           "sendStagesUpdate",
         ],
@@ -513,20 +512,12 @@ const viewBarMachine = Machine(
           })
         );
       },
-      submit: ({
-        clearStats,
-        stages,
-        stageInfo,
-        fieldNames,
-        setView,
-        view,
-      }) => {
+      submit: ({ stages, stageInfo, fieldNames, setView, view }) => {
         const stageMap = Object.fromEntries(
           stageInfo.map((s) => [s.name, s.params])
         );
         const newView = serializeView(stages, stageMap, fieldNames);
         if (viewsAreEqual(newView, view)) return;
-        clearStats();
         setView(newView);
       },
     },

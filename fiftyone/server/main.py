@@ -336,7 +336,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         """
         StateHandler.state = state
         awaitables = [
-            self.send_updates(ignore=self),
+            self.send_updates(),
         ]
         awaitables += self.get_statistics_awaitables()
         asyncio.gather(*awaitables)
