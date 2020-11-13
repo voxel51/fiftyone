@@ -706,6 +706,8 @@ async def _numeric_distribution_pipelines(coll, view, pipeline, buckets=50):
     # min/max results when adding the field's sub-pipeline
     for idx, (k, v) in enumerate(numerics.items()):
         sub_pipeline = "numeric-%d" % idx
+        if not bounds[sub_pipeline]:
+            continue
         field_bounds = bounds[sub_pipeline][0]
         mn = field_bounds["min"]
         mx = field_bounds["max"]
