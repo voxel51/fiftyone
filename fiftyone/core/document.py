@@ -121,6 +121,17 @@ class Document(object):
         """
         return tuple()
 
+    def _get_field_names(self, include_private=False):
+        """Returns an ordered tuple of field names of this document.
+
+        Args:
+            include_private (False): whether to include private fields
+
+        Returns:
+            a tuple of field names
+        """
+        return self._doc._get_field_names(include_private=include_private)
+
     def get_field(self, field_name):
         """Gets the value of a field of the document.
 
@@ -174,11 +185,13 @@ class Document(object):
         Raises:
             ValueError: if the field does not exist
         """
-        self._doc.clear_field(field_name=field_name)
+        self._doc.clear_field(field_name)
 
     def iter_fields(self):
         """Returns an iterator over the ``(name, value)`` pairs of the fields
         of the document.
+
+        Private fields are omitted.
 
         Returns:
             an iterator that emits ``(name, value)`` tuples
@@ -320,6 +333,17 @@ class Document(object):
         """
         for document in cls._instances[collection_name].values():
             document._doc._data.pop(field_name, None)
+
+    @classmethod
+    def _reload_docs(cls, collection_name):
+        """Reloads the backing documents for all in-memory document instances
+        that belong to the specified collection.
+
+        Args:
+            collection_name: the name of the MongoDB collection
+        """
+        for document in cls._instances[collection_name].values():
+            document.reload()
 
     def _set_backing_doc(self, doc, dataset=None):
         """Sets the backing doc for the document.

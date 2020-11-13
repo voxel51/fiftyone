@@ -826,16 +826,16 @@ class Segmentation(ImageLabel):
 
 
 class _FrameLabels(Label):
-    """Hidden label class strictly for storing labels for the first frame of
-    video samples.
+    """Private label class used for storing labels for the first frame of video
+    samples.
     """
 
     pass
 
 
 class _Frames(Label):
-    """Hidden label class strictly for storing quick access information about
-    frame labels for video samples.
+    """Private label class used for storing quick access information about
+    the frame labels of video samples.
     """
 
     frame_count = fof.IntField(required=True, null=False, default=0)

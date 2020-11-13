@@ -880,11 +880,7 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
         )
 
     def _export_frame_labels(self, sample, uuid):
-        frames = {}
-        for frame_number, frame in sample.frames.items():
-            frames[str(frame_number)] = frame.to_dict()
-
-        frames_dict = {"frames": frames}
+        frames_dict = {"frames": sample.frames._to_frames_dict()}
         outpath = os.path.join(self._frame_labels_dir, uuid + ".json")
         etas.write_json(frames_dict, outpath, pretty_print=self.pretty_print)
 
