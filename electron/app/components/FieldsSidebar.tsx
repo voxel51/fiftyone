@@ -111,6 +111,9 @@ const Cell = ({
   const refreshColorMap = useSetRecoilState(refreshColorMapSelector);
   const theme = useContext(ThemeContext);
   const [expanded, setExpanded] = useState(true);
+  const colorByLabel = useRecoilValue(
+    modal ? atoms.modalColorByLabel : atoms.colorByLabel
+  );
   const numSelected = entries.filter((e) => e.selected).length;
   const handleClear = (e) => {
     if (!onSelect) {
@@ -161,7 +164,9 @@ const Cell = ({
             data: e.icon ? e.icon : makeData(e.filteredCount, e.totalCount),
             totalCount: e.totalCount,
             filteredCount: e.filteredCount,
-            color: colorMap[prefix + e.name]
+            color: colorByLabel
+              ? theme.brand
+              : colorMap[prefix + e.name]
               ? colorMap[prefix + e.name]
               : theme.backgroundLight,
             hideCheckbox: e.hideCheckbox,
