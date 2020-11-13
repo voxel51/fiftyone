@@ -1,8 +1,6 @@
 import React, { useState } from "react";
 import { Input, Label } from "semantic-ui-react";
 
-import { getSocket } from "../utils/socket";
-
 export default ({ connected, port, setResult }) => {
   const [initialState] = useState({ port, connected });
   const [formState, setFormState] = useState({
@@ -21,15 +19,15 @@ export default ({ connected, port, setResult }) => {
       });
       setResult(initialState);
     } else if (parseInt(input.value) <= 65535) {
-      const socket = getSocket(input.value, "state");
+      const socket = new WebSocket(`ws://localhost:${input.value}/state`);
       const tempFormState = {
         ...formState,
-        connected: socket.connected,
+        connected: socket.readyState === WebSocket.OPEN,
         invalid: false,
         port: input.value,
       };
       setFormState(tempFormState);
-      if (socket.connected) {
+      if (socket.readyState === WebSocket.OPEN) {
         setResult({ port: input.value, connected: true });
       }
     } else {

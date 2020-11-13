@@ -6,6 +6,7 @@ import CellHeader from "./CellHeader";
 
 const Body = styled(CellHeader)`
   width: 100%;
+  padding: 0.5rem;
 
   svg {
     font-size: 1.25em;

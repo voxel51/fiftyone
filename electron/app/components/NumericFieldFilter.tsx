@@ -4,9 +4,9 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { NamedRangeSlider } from "./RangeSlider";
-import { getSocket } from "../utils/socket";
 import { animated, useSpring } from "react-spring";
 import useMeasure from "react-use-measure";
+import { packageMessage } from "../utils/socket";
 
 const makeFilter = (fieldName, range, includeNone, isDefaultRange) => {
   let expr,
@@ -40,7 +40,9 @@ const NumericFieldFilter = ({ expanded, entry }) => {
   const rangeAtom = atoms.filterNumericFieldRange(entry.path);
   const includeNoneAtom = atoms.filterNumericFieldIncludeNone(entry.path);
   const [includeNone, setIncludeNone] = useRecoilState(includeNoneAtom);
-  const stateDescription = useRecoilValue(atoms.stateDescription);
+  const [stateDescription, setStateDescription] = useRecoilState(
+    atoms.stateDescription
+  );
   const bounds = useRecoilValue(boundsAtom);
   const [range, setRange] = useRecoilState(rangeAtom);
   const hasBounds = bounds.every((b) => b !== null);
@@ -48,8 +50,6 @@ const NumericFieldFilter = ({ expanded, entry }) => {
   const [localBounds, setLocalBounds] = useState([null, null]);
   const isDefaultRange = range[0] === bounds[0] && range[1] === bounds[1];
   const filterStage = useRecoilValue(selectors.filterStage(entry.path));
-  const setStateDescription = useSetRecoilState(atoms.stateDescription);
-  const setExtendedDatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
 
   useEffect(() => {
     if (filterStage) return;
@@ -57,8 +57,8 @@ const NumericFieldFilter = ({ expanded, entry }) => {
     setRange(bounds);
   }, [filterStage]);
   useEffect(() => {
-    setRange(bounds);
-  }, [bounds]);
+    localBounds.some((b, i) => b !== bounds[i]) && setRange(bounds);
+  }, [bounds, localBounds]);
   useEffect(() => {
     if (!hasBounds) {
       return;
@@ -83,18 +83,12 @@ const NumericFieldFilter = ({ expanded, entry }) => {
       newState.filters[entry.path] = filter;
     }
     if (!hasBounds) return;
+    socket.send(
+      packageMessage("update", {
+        state: newState,
+      })
+    );
     setStateDescription(newState);
-    socket.emit("update", {
-      data: newState,
-      include_self: false,
-    });
-    const extendedView = [...(newState.view || [])];
-    for (const stage in newState.filters) {
-      extendedView.push(newState.filters[stage]);
-    }
-    socket.emit("get_statistics", extendedView, (data) => {
-      setExtendedDatasetStats(data);
-    });
   }, [range, includeNone]);
 
   const [ref, { height }] = useMeasure();

@@ -5,83 +5,99 @@ Web socket client mixins.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import asyncio
 from collections import defaultdict
 import logging
-import signal
-import threading
-
+import requests
 from retrying import retry
-import socketio
+from threading import Thread
+import time
 
-import fiftyone.constants as foc
+from bson import json_util
+from tornado import gen
+from tornado.ioloop import IOLoop
+from tornado.websocket import websocket_connect
 
-logging.getLogger("socketio").setLevel(logging.ERROR)
-logging.getLogger("engineio").setLevel(logging.ERROR)
+from fiftyone.constants import SERVER_NAME
+
+
+logging.getLogger("tornado").setLevel(logging.ERROR)
 
 
 # We only want one session to print notifications per namespace and per process
 _printer = defaultdict(lambda: None)
 
 
-class BaseClient(socketio.ClientNamespace):
-    """SocketIO Client.
+@retry(wait_fixed=500, stop_max_delay=5000)
+def _ping(url):
+    requests.get(url)
 
-    It is possible to add any arbitrary ``on_my_event()`` method to a socketio
-    ClientNamespace, but using a single generic ``on_update()`` is sufficient.
 
-    Organizing message categories can instead be done by subclassing
-    :class:`HasClient`.
+class HasClient(object):
 
-    Attributes:
-        data: the current data
-        data_cls: the data cls to load updated data as
+    _HC_NAMESPACE = None
+    _HC_ATTR_NAME = None
+    _HC_ATTR_TYPE = None
 
-    Args:
-        namespace: client namespace
-        data_cls: data class type (must be ``eta.core.serial.Serializable``)
-    """
+    def __init__(self, port):
+        self._port = port
+        self._data = None
+        self._client = None
+        self._initial_connection = True
+        self._url = "ws://%s:%d/%s" % (SERVER_NAME, port, self._HC_NAMESPACE)
 
-    def __init__(self, namespace, data_cls):
-        self.data_cls = data_cls
-        self.data = data_cls()
-        self.connected = False
-        self.updated = False
-        self.namespace = namespace
-        super().__init__(namespace)
-        # disable socketio's interrupt handler because it closes the connection
-        # on ctrl-c in interactive sessions
-        signal.signal(signal.SIGINT, signal.default_int_handler)
+        async def connect():
+            self._client = await websocket_connect(url=self._url)
+            self._initial_connection = False
 
-    def __del__(self):
-        _printer[self.namespace] = None
+            while True:
+                message = await self._client.read_message()
 
-    def on_connect(self):
-        """Receives the "connect" event."""
-        self.connected = True
+                if message is None:
+                    print(
+                        "\r\n%s disconnected, trying to reconnect\r\n" % self
+                    )
+                    fiftyone_url = "http://%s:%d/fiftyone" % (
+                        SERVER_NAME,
+                        port,
+                    )
 
-    def on_disconnect(self):
-        """Receives the "disconnect" event."""
-        self.connected = False
+                    self._client = None
+                    while not self._client:
+                        try:
+                            _ping(fiftyone_url)
+                            self._client = await websocket_connect(
+                                url=self._url
+                            )
+                        except:
+                            print(
+                                "\r\nCould not connect %s, trying again in 10 seconds\r\n"
+                                % self
+                            )
+                            time.sleep(10)
 
-    def on_update(self, data):
-        """Receives an update.
+                    print("\r\nSession %s reconnected\r\n" % self)
+                    continue
 
-        Args:
-            data: the new data
-        """
-        self.updated = True
-        self.data = self.data_cls.from_dict(data)
+                message = json_util.loads(message)
+                event = message.pop("type")
+                if event == "update":
+                    self._data = self._HC_ATTR_TYPE.from_dict(message["state"])
+                if event == "notification":
+                    self.on_notification(message)
+
+        def run_client():
+            io_loop = IOLoop(make_current=True)
+            io_loop.run_sync(connect)
+
+        self._thread = Thread(target=run_client, daemon=True)
+        self._thread.start()
 
     def on_notification(self, data):
-        """Receives a server error.
+        if _printer[self._url] is None:
+            _printer[self._url] = self
 
-        Args:
-            data: the error message
-        """
-        if _printer[self.namespace] is None:
-            _printer[self.namespace] = self
-
-        if _printer[self.namespace] != self:
+        if _printer[self._url] != self:
             return
 
         print(data["kind"])
@@ -91,52 +107,17 @@ class BaseClient(socketio.ClientNamespace):
         for value in data["session_items"]:
             print(value)
 
-    def update(self, data):
-        """Sends an update.
-
-        Args:
-            data: the new data
-        """
-        self.data = data
-        self.emit("update", {"data": data.serialize(), "include_self": False})
-
-
-@retry(wait_fixed=500, stop_max_delay=5000)
-def _connect(sio, addr):
-    sio.connect(addr)
-
-
-class HasClient(object):
-    """Mixin that supports maintaining a shared state of data using web
-    sockets.
-
-    Subclasses must set the ``_HC_NAMESPACE`` and ``_HC_ATTR_NAME`` class
-    attributes.
-
-    Attributes:
-        _HC_NAMESPACE: The socketio namespace to use
-        _HC_ATTR_NAME: The attribute name to use for that shared data. The data
-            must be a subclass of ``eta.core.serial.Serializable``
-    """
-
-    _HC_NAMESPACE = None
-    _HC_ATTR_NAME = None
-    _HC_ATTR_TYPE = None
-
-    def __init__(self, port):
-        self._hc_sio = socketio.Client()
-        # the following is a monkey patch to set threads to daemon mode
-        self._hc_sio.eio.start_background_task = _start_background_task
-        self._hc_client = BaseClient(
-            "/" + self._HC_NAMESPACE, self._HC_ATTR_TYPE
-        )
-        self._hc_sio.register_namespace(self._hc_client)
-        _connect(self._hc_sio, foc.SERVER_ADDR % port)
+    def __del__(self):
+        _printer[self._url] = None
 
     def __getattr__(self, name):
         """Gets the data via the attribute defined by ``_HC_ATTR_NAME``."""
         if name == self._HC_ATTR_NAME:
-            return self._hc_client.data
+            if self._client is None and not self._initial_connection:
+                raise RuntimeError("Session %s is not connected" % self)
+            while self._data is None:
+                time.sleep(0.2)
+            return self._data
 
         return None
 
@@ -150,33 +131,13 @@ class HasClient(object):
                     "Client expected type %s, but got type %s"
                     % (self._HC_ATTR_TYPE, type(value))
                 )
-            self._hc_client.update(value)
+            if self._client is None and not self._initial_connection:
+                raise RuntimeError("Session %s is not connected" % self)
+            while self._data is None:
+                time.sleep(0.2)
+            self._data = value
+            self._client.write_message(
+                json_util.dumps({"type": "update", "state": value.serialize()})
+            )
         else:
             super().__setattr__(name, value)
-
-
-def _start_background_task(target, *args, **kwargs):
-    """We are monkey patching here to start threads in ``daemon`` mode.
-
-    Original docs below:
-
-        The patch allows for clean exits out of python.
-
-        Start a background task.
-
-        This is a utility function that applications can use to start a
-        background task.
-
-    Args:
-        target: the target function to execute
-        *args: arguments to pass to the function
-        **kwargs: keyword arguments to pass to the function
-
-    Returns:
-        an object compatible with the ``Thread`` class in the Python standard
-        library. The ``start()`` method on this object is called by this
-        function before returning it
-    """
-    th = threading.Thread(target=target, args=args, kwargs=kwargs, daemon=True)
-    th.start()
-    return th

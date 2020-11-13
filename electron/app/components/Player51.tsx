@@ -48,8 +48,10 @@ export default ({
   onLoad = () => {},
   onMouseEnter = () => {},
   onMouseLeave = () => {},
+  keep = false,
   activeLabels,
   activeFrameLabels,
+  colorByLabel,
   fieldSchema = {},
   filterSelector,
   playerRef,
@@ -60,7 +62,6 @@ export default ({
   const filter = useRecoilValue(filterSelector);
   const fps = useRecoilValue(atoms.sampleFrameRate(sample._id));
   const colorMap = useRecoilValue(atoms.colorMap);
-  const mediaType = useRecoilValue(selectors.mediaType);
   if (overlay === null) {
     overlay = convertSampleToETA(sample, fieldSchema);
   }
@@ -127,6 +128,7 @@ export default ({
     } else {
       player.updateOptions({
         activeLabels: playerActiveLabels,
+        colorByLabel,
         filter,
         colorMap,
         fps,
@@ -135,13 +137,25 @@ export default ({
         player.updateOverlay(overlay);
       }
     }
-  }, [player, filter, overlay, playerActiveLabels, colorMap, fps]);
+  }, [
+    player,
+    filter,
+    overlay,
+    playerActiveLabels,
+    colorMap,
+    colorByLabel,
+    fps,
+  ]);
 
   useEffect(() => {
     if (player && selectedObjects) {
       player.updateOptions({ selectedObjects });
     }
   }, [player, selectedObjects]);
+
+  useEffect(() => {
+    return () => player && !keep && player.destroy();
+  }, [player]);
 
   useEventHandler(player, "load", () => setMediaLoading(false));
   useEventHandler(player, "load", onLoad);

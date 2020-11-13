@@ -5,6 +5,7 @@ import { useRecoilValue } from "recoil";
 import DropdownHandle from "./DropdownHandle";
 import SelectionMenu from "./SelectionMenu";
 import * as selectors from "../recoil/selectors";
+import { count } from "console";
 
 type Props = {
   showSidebar: boolean;
@@ -13,55 +14,54 @@ type Props = {
 
 const Wrapper = styled.div`
   background: ${({ theme }) => theme.background};
-  display: grid;
-  grid-template-columns: 264px auto auto;
-  padding-top: 5px;
-  padding-bottom: 5px;
-
-  > div {
-    display: flex;
-    align-items: center;
-  }
-
-  > div:last-child {
-    justify-content: flex-end;
-  }
-
-  > div > div {
-    display: inline-block;
-  }
+  display: flex;
+  margin-bottom: 0.5rem;
 
   ${DropdownHandle.Body} {
-    padding-top: 0.5em;
-    padding-bottom: 0.5em;
+    width: 264px;
   }
+`;
+
+const SamplesHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  flex-grow: 1;
+  height: 45px;
+  overflow-x: hidden;
+  margin-left: 1rem;
+  margin-right: -1rem;
+  padding: 0.5rem 0;
 `;
 
 const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
   const totalCount = useRecoilValue(selectors.totalCount);
   const filteredCount = useRecoilValue(selectors.filteredCount);
-  const countStr =
-    typeof filteredCount === "number" && filteredCount !== totalCount
-      ? `${filteredCount.toLocaleString()} of ${totalCount.toLocaleString()}`
-      : (totalCount || 0).toLocaleString();
+  let countStr = null;
+  if (
+    typeof filteredCount === "number" &&
+    filteredCount !== totalCount &&
+    typeof totalCount === "number"
+  ) {
+    countStr = `${filteredCount.toLocaleString()} of ${totalCount.toLocaleString()}`;
+  } else if (typeof totalCount === "number") {
+    countStr = totalCount.toLocaleString();
+  }
   return (
     <Wrapper>
-      <div>
-        <DropdownHandle
-          label="Display Options"
-          expanded={showSidebar}
-          onClick={onShowSidebar && (() => onShowSidebar(!showSidebar))}
-          style={{ width: 240 }}
-        />
-      </div>
-      <div>
+      <DropdownHandle
+        label="Fields"
+        expanded={showSidebar}
+        onClick={onShowSidebar && (() => onShowSidebar(!showSidebar))}
+        style={{ width: 240 }}
+      />
+      <SamplesHeader>
         <SelectionMenu />
-      </div>
-      <div>
-        <div className="total">
-          Viewing <strong>{countStr} samples</strong>
-        </div>
-      </div>
+        {countStr !== null ? (
+          <div className="total" style={{ paddingRight: "1rem" }}>
+            Viewing <strong>{countStr} samples</strong>
+          </div>
+        ) : null}
+      </SamplesHeader>
     </Wrapper>
   );
 };
