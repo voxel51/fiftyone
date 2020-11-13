@@ -65,11 +65,11 @@ const Distribution = ({ distribution }) => {
       <Title>{`${name}: ${type}`}</Title>
       <BarChart
         ref={container}
-        height={height - 32}
+        height={height - 37}
         width={data.length * (barWidth + 4) + 50}
         barCategoryGap={"4px"}
         data={data}
-        margin={{ top: 0, left: 0, bottom: 0, right: 0 }}
+        margin={{ top: 0, left: 0, bottom: 5, right: 5 }}
       >
         <XAxis
           dataKey="key"
