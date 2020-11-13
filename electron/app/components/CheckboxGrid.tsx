@@ -62,6 +62,7 @@ const Body = styled.div`
       align-items: center;
       padding-right: 3px;
       max-width: 100%;
+      font-family: "Palanquin", sans-serif;
     }
 
     .MuiTypography-body1.with-checkbox {

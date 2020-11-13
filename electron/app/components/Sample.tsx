@@ -56,7 +56,7 @@ const LoadingBar = animated(styled.div`
 `);
 
 const useHoverLoad = (socket, sample) => {
-  if (sample.media_type !== "video") {
+  if (sample._media_type !== "video") {
     return [[], null, null];
   }
   const [barItem, setBarItem] = useState([]);
