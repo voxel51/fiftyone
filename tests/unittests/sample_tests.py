@@ -756,22 +756,29 @@ class SampleFieldTests(unittest.TestCase):
             sample.save()
 
         # clear field (default)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             sample.clear_field("filepath")
             sample.save()
 
+        sample.filepath = filename
+        sample.save()
+
         sample.tags = None
+        sample.save()
         self.assertEqual(sample.tags, [])
 
         sample.clear_field("tags")
+        sample.save()
         self.assertListEqual(sample.tags, [])
 
         sample.clear_field("metadata")
+        sample.save()
         self.assertIsNone(sample.metadata)
 
         # set field (new)
         with self.assertRaises(ValueError):
             sample.set_field("field_1", 51, create=False)
+            sample.save()
 
         sample.set_field("field_1", 51)
         sample.save()
@@ -787,10 +794,14 @@ class SampleFieldTests(unittest.TestCase):
         self.assertEqual(sample["field_2"], "fiftyone")
         self.assertEqual(sample.field_2, "fiftyone")
 
-        # clear field (new)
+        # clear field
         sample.clear_field("field_1")
         sample.save()
-        self.assertNotIn("field_1", sample.field_names)
+        self.assertIsNone(sample["field_1"])
+
+        # delete field
+        dataset.delete_sample_field("field_1")
+
         with self.assertRaises(AttributeError):
             sample.get_field("field_1")
 
