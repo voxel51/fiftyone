@@ -88,7 +88,7 @@ export const RESERVED_DETECTION_FIELDS = [
 export const METADATA_FIELDS = [
   { name: "Size (bytes)", key: "size_bytes" },
   { name: "Type", key: "mime_type" },
-  { name: "Media type", key: "media_type" },
+  { name: "Media type", key: "_media_type" },
   {
     name: "Dimensions",
     value: (metadata) => {
@@ -292,9 +292,9 @@ const _addToETAContainer = (obj, key, item) => {
 };
 
 export const convertSampleToETA = (sample, fieldSchema) => {
-  if (sample.media_type === "image") {
+  if (sample._media_type === "image") {
     return convertImageSampleToETA(sample, fieldSchema);
-  } else if (sample.media_type === "video") {
+  } else if (sample._media_type === "video") {
     let first_frame = {};
     if (sample.frames.first_frame) {
       first_frame = convertImageSampleToETA(
