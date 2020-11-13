@@ -127,9 +127,7 @@ const Distributions = ({ group }) => {
 
   useEffect(() => {
     setData([]);
-  }, [view, datasetName]);
-
-  console.log(data);
+  }, [JSON.stringify(view), datasetName]);
 
   if (loading) {
     return <Loading />;
