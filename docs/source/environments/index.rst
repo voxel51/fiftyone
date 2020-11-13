@@ -1,75 +1,85 @@
 FiftyOne Environments
 =====================
+
 .. default-role:: code
 
-This is a guide to using FiftyOne with data stored in various environments, for
-example, how to work with remote data.
+This guide describes best practices for using FiftyOne with data stored in
+various environments, including local machines, remote servers, and cloud
+storage.
 
+Terminology
+___________
 
-Terminology:
+- :ref:`Local machine <local-data>`: Data is stored on the same computer that
+  will be used to launch the App
 
-* :ref:`Local Machine <local-data>` - Data is stored on the same personal computer or laptop with a GUI that will be used to launch the App
+* :ref:`Remote machine <remote-data>`: Data is stored on disk on a separate
+  machine (typically a remote server) from the one that will be used to launch
+  the App
 
-* :ref:`Remote Machine <remote-data>` - Data is stored on disk on a machine
-  separate from the one that will be used to launch the App
-
-* :ref:`Cloud <cloud-data>` - Data is stored in a cloud bucket like :ref:`AWS <AWS>`/:ref:`Azure <Azure>`/:ref:`GCS <google-cloud>`
-
+* :ref:`Cloud storage <cloud-storage>`: Data is stored in a cloud bucket
+  (e.g., :ref:`S3 <AWS>`, :ref:`GCS <google-cloud>`, or :ref:`Azure <azure>`)
 
 .. _local-data:
 
-Local Data
+Local data
 __________
 
-When working with data that is stored on disk on the same machine that is
-running FiftyOne, the data can be loaded into the App directly.
+When working with data that is stored on disk on a machine with a display, you
+can directly :ref:`load a dataset <loading-datasets>` and then
+:ref:`launch the App <creating-an-app-session>`:
 
 .. code-block:: python
     :linenos:
 
+    # On local machine
     import fiftyone as fo
 
     dataset = fo.Dataset(name="my_dataset")
 
-    session = fo.launch_app(dataset)
+    session = fo.launch_app(dataset)  # (optional) port=XXXX
 
+From here, you can explore the dataset interactively from the App and from your
+Python shell by manipulating the
+:class:`session object <fiftyone.core.session.Session>`.
 
-The FiftyOne App will then be launched with the |Dataset| loaded. The suggested workflow
-is to use the App in conjuction with an `ipython` session where you loaded
-your |Dataset|.
+.. note::
 
+    You can use custom ports when launching the App in order to operate
+    multiple App instances simultaneously on your machine.
 
 .. _remote-data:
 
-Remote Data
+Remote data
 ___________
 
-If you are accessing data that is stored on a remote machine that you have
-`ssh`
-access to, you can easily load up a FiftyOne dataset remotely and view it
-locally.
+FiftyOne supports working with data that is stored on a remote machine that you
+have `ssh` access to. The basic workflow is to load a dataset on the remote
+machine via the FiftyOne Python library, launch a
+:ref:`remote session <remote-session>`, and connect to the session on your
+local machine where you can then interact with the App.
 
+First, `ssh` into your remote machine and
+:ref:`install FiftyOne <installing-fiftyone>` if necessary.
 
-First `ssh` into your remote machine, and :doc:`install FiftyOne </getting_started/install>` if it is not already.
-Then :doc:`create a Dataset in FiftyOne </user_guide/dataset_creation/index>` using Python on the remote machine and
-launch a remote session. 
+Then :ref:`load a dataset <loading-datasets>` using Python on the remote
+machine and launch a remote session:
 
 .. code-block:: python
     :linenos:
 
     # On remote machine
-
     import fiftyone as fo
 
     dataset = fo.Dataset(name="my_dataset")
 
-    session = fo.launch_app(dataset, remote=True) # (Optional) port=XXXX
+    session = fo.launch_app(dataset, remote=True)  # (optional) port=XXXX
 
+Leave this session running, and note that instructions for connecting to this
+remote session were printed to your terminal (these are described below).
 
-Leave this session running and go back to your local
-machine.
-On your local machine, you need to set up port forwarding via `ssh` and connect
-to the App. This can be done either through the CLI or Python.
+On your local machine, you need to set up `ssh` port forwarding so that you can
+connect to the App. This can be done either through the CLI or Python.
 
 .. tabs::
 
@@ -83,18 +93,34 @@ to the App. This can be done either through the CLI or Python.
     .. code-block:: shell
 
         # On local machine
-        fiftyone app connect --destination username@remote_machine_ip --port 5151
+        fiftyone app connect --destination <user>@<remote-ip-address> --port 5151
 
-  .. group-tab:: Python
-
-    Open two terminal windows on the local machine. In order to forward the
-    port `5151` from the remote machine to the local machine, run the following
-    command in one terminal and leave the process running:
+    Alternatively, you can manually configure port forwarding:
 
     .. code-block:: shell
 
         # On local machine
-        ssh -N -L 5151:127.0.0.1:5151 username@remote_machine_ip
+        ssh -N -L 5151:127.0.0.1:5151 <user>@<remote-ip-address>
+
+    and then connect to the App via:
+
+    .. code-block:: shell
+
+        # On local machine
+        fiftyone app connect
+
+  .. group-tab:: Python
+
+    Open two terminal windows on the local machine.
+
+    In order to forward the port `5151` from the remote machine to the local
+    machine, run the following command in one terminal and leave the process
+    running:
+
+    .. code-block:: shell
+
+        # On local machine
+        ssh -N -L 5151:127.0.0.1:5151 <user>@<remote-ip-address>
 
     Port `5151` is now being forwarded from the remote machine to port
     `5151` of the local machine.
@@ -110,251 +136,317 @@ to the App. This can be done either through the CLI or Python.
 
         fos.launch_app()
 
+The above instructions assume that you used the default port `5151` when
+launching the remote session on the remote machine. If you used a custom port,
+then substitute the appropriate value in the local commands too.
 
-The default port is `5151`, but if you entered an optional port, then
-use that port here.
-You will have to use a separate port in order to launch two remote sessions
-from the same machine
+.. note::
 
-.. _cloud-data:
+    You can use custom ports when launching remote sessions in order to serve
+    multiple remote sessions simultaneously.
 
-Cloud Data
-__________
+.. _cloud-storage:
 
+Cloud storage
+_____________
 
-FiftyOne does not yet support accessing data directly in a cloud bucket, but
-there are best practices for mounting data stored in:
+FiftyOne does not yet support accessing data directly in a cloud bucket.
+Instead, the best practice that we recommend is to mount the cloud bucket as a
+local drive on a cloud compute instance.
 
-* :ref:`AWS <AWS>`
+The following sections describe how to do this in the :ref:`AWS <aws>`,
+:ref:`Google Cloud <google-cloud>`, and :ref:`Miscrosoft Azure <azure>` cloud
+environments.
 
-* :ref:`Azure <Azure>`
+.. _aws:
 
-* :ref:`Google Cloud <google-cloud>`
+Amazon Web Services
+-------------------
 
+If your data is stored in an AWS S3 bucket, we recommend mounting the bucket as
+a local drive on an EC2 instance and then accessing the data using the standard
+workflow for remote data.
 
+The steps below outline the process.
 
+**Step 1**
 
-.. _AWS:
+`Create an EC2 instance <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EC2_GetStarted.html>`_.
+We recommend a Linux instance.
 
-AWS
----
+**Step 2**
 
-You can use FiftyOne if your data is stored in an AWS S3 bucket.
-For the best results, it is recommended to mount the container in an AWS VM
-instance
-and then access the data remotely from there. The steps to do so are outline
-below.
+Now `ssh into the instance <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AccessingInstancesLinux.html>`_
+and :ref:`install FiftyOne <installing-fiftyone>` if necessary.
 
-Step 1
-^^^^^^
+.. code-block:: shell
 
-`Start a Linux VM on AWS that you can ssh into.
-<https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EC2_GetStarted.html>`_
-
-
-Step 2
-^^^^^^
-
-`ssh into the VM and install FiftyOne.
-<https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AccessingInstancesLinux.html>`_
-
-.. code-block:: bash
-    
+    # On remote machine
     pip install --index https://pypi.voxel51.com fiftyone
 
+.. note::
 
-Step 3
-^^^^^^
+    You may need to :ref:`install some system packages <compute-instance-setup>`
+    on your compute instance instance in order to run FiftyOne.
 
-Mount the S3 bucket in the VM.
-We recommend you use the open source project `s3fs-fuse
-<https://github.com/s3fs-fuse/s3fs-fuse>`_. You will need to make a
-`.passwd-s3fs` file including your AWS credentials as outlined in the `s3fs-fuse
-<https://github.com/s3fs-fuse/s3fs-fuse>`_ README.
+**Step 3**
 
-.. code-block:: bash
+Mount the S3 bucket as a local drive.
 
-    s3fs <bucket name> /path/to/mount/point -o passwd_file=.passwd-s3fs -o umask=0007,uid=<your user id>
+We recommend using `s3fs-fuse <https://github.com/s3fs-fuse/s3fs-fuse>`_ for
+this. You will need to make a `.passwd-s3fs` file that contains your AWS
+credentials as outlined in the
+`s3fs-fuse README <https://github.com/s3fs-fuse/s3fs-fuse>`_.
 
+.. code-block:: shell
 
-Step 4
-^^^^^^
+    # On remote machine
+    s3fs <bucket-name> /path/to/mount/point \
+        -o passwd_file=.passwd-s3fs \
+        -o umask=0007,uid=<your-user-id>
 
-Now that you can access your data from within the VM, start up Python and
-:doc:`create a FiftyOne Dataset. </user_guide/dataset_creation/index>`
+**Step 4**
 
-Then start a remote FiftyOne session.
-
-.. code-block:: python
-
-    session = fo.launch_app(dataset, remote=True) # (optional) port=XXXX
-
-
-Step 5
-^^^^^^
-
-On your local machine, connect to the port on the VM and launch the local App.
-
-First open an `ssh` connection connecting to port `5151` (or any other port if you
-set an optional port in the previous step)
-
-.. code-block:: bash
-
-    ssh -N -L 5151:127.0.0.1:5151 -i <key>.pem <user>@<VM address>
-
-
-Then launch the App from python on your local machine.
+Now that you can access your data from the compute instance, start up Python
+and :ref:`create a FiftyOne dataset <loading-datasets>` whose filepaths are in
+the mount point you specified above. Then launch the App as a
+:ref:`remote session <remote-session>`:
 
 .. code-block:: python
+    :linenos:
 
+    # On remote machine
     import fiftyone as fo
-    fo.launch_app()
 
+    dataset = fo.Dataset(name="my_dataset")
 
+    session = fo.launch_app(dataset, remote=True)  # (optional) port=XXXX
 
+**Step 5**
 
-.. _Azure:
+Finally, on your local machine, connect to the remote session that you started
+on the cloud instance.
 
-Azure
------
+To do so, first open an `ssh` connection connecting to port `5151` (or the
+custom port you chose in the previous step):
 
-You can use FiftyOne if your data is stored in an Azure storage container.
-For the best results, it is recommended to mount the container in an Azure VM
-and then access the data remotely from there. The steps to do so are outline
-below.
+.. code-block:: shell
 
-Step 1
-^^^^^^
+    # On local machine
+    ssh -N -L 5151:127.0.0.1:5151 -i <key>.pem <user>@<ec2-instance-ip-address>
 
-`Start a Linux VM on Azure that you can ssh into. <https://docs.microsoft.com/en-us/azure/virtual-machines/linux/quick-create-portal>`_
+Then launch an App instance connected to the remote session via the FiftyOne
+CLI:
 
+.. code-block:: shell
 
-Step 2
-^^^^^^
-
-`ssh into the VM and install FiftyOne. <https://docs.microsoft.com/en-us/azure/virtual-machines/linux/quick-create-portal#connect-to-virtual-machine>`_
-
-.. code-block:: bash
-    
-    pip install --index https://pypi.voxel51.com fiftyone
-
-
-Step 3
-^^^^^^
-
-Mount the Azure storage container in the VM.
-
-This is fairly straight forward if your data is stored in a blob container. 
-In this case, we recommend you use the open source project `blobfuse <https://github.com/Azure/azure-storage-fuse>`_
-
-
-Step 4
-^^^^^^
-
-Now that you can access your data from within the VM, start up Python and
-:doc:`create a FiftyOne Dataset. </user_guide/dataset_creation/index>`
-
-Then start a remote FiftyOne session.
-
-.. code-block:: python
-
-    session = fo.launch_app(dataset, remote=True) # (optional) port=XXXX
-
-
-Step 5
-^^^^^^
-
-On your local machine, connect to the port on the VM and launch the local App.
-
-First open an `ssh` connection connecting to port `5151` (or any other port if you
-set an optional port in the previous step)
-
-.. code-block:: bash
-
-    ssh -N -L 5151:127.0.0.1:5151 -i <key>.pem <user>@<VM ip address>
-
-
-Then launch the App from python on your local machine.
-
-.. code-block:: python
-
-    import fiftyone as fo
-    fo.launch_app()
-
+    # On local machine
+    fiftyone app connect
 
 .. _google-cloud:
 
 Google Cloud
 ------------
 
-You can use FiftyOne if your data is stored in an Google Cloud storage bucket.
-For the best results, it is recommended to mount the container in a Google
-Cloud Platform VM
-and then access the data remotely from there. The steps to do so are outline
-below.
+If your data is stored in a Google Cloud storage bucket, we recommend mounting
+the bucket as a local drive on a GC compute instance and then accessing the
+data using the standard workflow for remote data.
 
-Step 1
-^^^^^^
+The steps below outline the process.
 
-`Start a Linux VM on Google Cloud that you can ssh into.
-<https://cloud.google.com/compute/docs/quickstart-linux>`_
+**Step 1**
 
+`Create a GC compute instance <https://cloud.google.com/compute/docs/quickstart-linux>`_.
+We recommend a Linux instance.
 
-Step 2
-^^^^^^
+**Step 2**
 
-`ssh into the VM and install FiftyOne.
-<https://cloud.google.com/compute/docs/quickstart-linux#connect_to_your_instance>`_
+Now `ssh into the instance <https://cloud.google.com/compute/docs/quickstart-linux#connect_to_your_instance>`_
+and :ref:`install FiftyOne <installing-fiftyone>` if necessary.
 
-.. code-block:: bash
-    
+.. code-block:: shell
+
+    # On remote machine
     pip install --index https://pypi.voxel51.com fiftyone
 
+.. note::
 
-Step 3
-^^^^^^
+    You may need to :ref:`install some system packages <compute-instance-setup>`
+    on your compute instance instance in order to run FiftyOne.
 
-Mount the Google Cloud storage bucket in the VM.
-In this case, we recommend you use the open source project `gcsfuse
-<https://github.com/GoogleCloudPlatform/gcsfuse>`_
+**Step 3**
 
-.. code-block:: bash
+Mount the GCS bucket as a local drive.
 
+We recommend using `gcsfuse <https://github.com/GoogleCloudPlatform/gcsfuse>`_
+to do this:
+
+.. code-block:: shell
+
+    # On remote machine
     gcsfuse my-bucket /path/to/mount --implicit-dirs
 
+**Step 4**
 
-
-Step 4
-^^^^^^
-
-Now that you can access your data from within the VM, start up Python and
-:doc:`create a FiftyOne Dataset. </user_guide/dataset_creation/index>`
-
-Then start a remote FiftyOne session.
+Now that you can access your data from the compute instance, start up Python
+and :ref:`create a FiftyOne dataset <loading-datasets>` whose filepaths are in
+the mount point you specified above. Then launch the App as a
+:ref:`remote session <remote-session>`:
 
 .. code-block:: python
+    :linenos:
 
-    session = fo.launch_app(dataset, remote=True) # (optional) port=XXXX
-
-
-Step 5
-^^^^^^
-
-On your local machine, connect to the port on the VM and launch the local App.
-
-First open an `ssh` connection connecting to port `5151` (or any other port if you
-set an optional port in the previous step).
-You may need to `set up your ssh key.
-<https://cloud.google.com/compute/docs/instances/adding-removing-ssh-keys#project-wide>`_
-
-.. code-block:: bash
-
-    ssh -N -L 5151:127.0.0.1:5151 -i <key> <user>@<VM ip address>
-
-
-Then launch the App from Python on your local machine.
-
-.. code-block:: python
-
+    # On remote machine
     import fiftyone as fo
-    fo.launch_app()
+
+    dataset = fo.Dataset(name="my_dataset")
+
+    session = fo.launch_app(dataset, remote=True)  # (optional) port=XXXX
+
+**Step 5**
+
+Finally, on your local machine, connect to the remote session that you started
+on the cloud instance.
+
+To do so, first open an `ssh` connection connecting to port `5151` (or the
+custom port you chose in the previous step):
+
+.. code-block:: shell
+
+    # On local machine
+    ssh -N -L 5151:127.0.0.1:5151 -i <key> <user>@<gc-instance-ip-address>
+
+You may need to
+`set up your ssh key <https://cloud.google.com/compute/docs/instances/adding-removing-ssh-keys#project-wide>`_
+in order to run the above command.
+
+Then launch an App instance connected to the remote session via the FiftyOne
+CLI:
+
+.. code-block:: shell
+
+    # On local machine
+    fiftyone app connect
+
+.. _azure:
+
+Microsoft Azure
+---------------
+
+If your data is stored in an Azure storage bucket, we recommend mounting the
+bucket as a local drive on an Azure compute instance and then accessing the
+data using the standard workflow for remote data.
+
+The steps below outline the process.
+
+**Step 1**
+
+`Create an Azure compute instance <https://docs.microsoft.com/en-us/azure/virtual-machines/linux/quick-create-portal>`_.
+We recommend a Linux instance.
+
+**Step 2**
+
+Now `ssh into the instance <https://docs.microsoft.com/en-us/azure/virtual-machines/linux/quick-create-portal#connect-to-virtual-machine>`_
+and :ref:`install FiftyOne <installing-fiftyone>` if necessary.
+
+.. code-block:: shell
+
+    # On remote machine
+    pip install --index https://pypi.voxel51.com fiftyone
+
+.. note::
+
+    You may need to :ref:`install some system packages <compute-instance-setup>`
+    on your compute instance instance in order to run FiftyOne.
+
+**Step 3**
+
+Mount the Azure storage container in the instance.
+
+This is fairly straight forward if your data is stored in a blob container.
+We recommend using `blobfuse <https://github.com/Azure/azure-storage-fuse>`_
+for this.
+
+**Step 4**
+
+Now that you can access your data from the compute instance, start up Python
+and :ref:`create a FiftyOne dataset <loading-datasets>` whose filepaths are in
+the mount point you specified above. Then launch the App as a
+:ref:`remote session <remote-session>`:
+
+.. code-block:: python
+    :linenos:
+
+    # On remote machine
+    import fiftyone as fo
+
+    dataset = fo.Dataset(name="my_dataset")
+
+    session = fo.launch_app(dataset, remote=True)  # (optional) port=XXXX
+
+**Step 5**
+
+Finally, on your local machine, connect to the remote session that you started
+on the cloud instance.
+
+To do so, first open an `ssh` connection connecting to port `5151` (or the
+custom port you chose in the previous step):
+
+.. code-block:: shell
+
+    # On local machine
+    ssh -N -L 5151:127.0.0.1:5151 -i <key>.pem <user>@<azure-instance-ip-address>
+
+Then launch an App instance connected to the remote session via the FiftyOne
+CLI:
+
+.. code-block:: shell
+
+    # On local machine
+    fiftyone app connect
+
+.. _compute-instance-setup:
+
+Setting up a cloud instance
+___________________________
+
+When you create a fresh cloud compute instance, you may need to install some
+system packages in order to install and use FiftyOne.
+
+For example, the script below shows a set of commands that may be used to
+configure a Debian-like Linux instance, after which you should be able to
+successfully :ref:`install FiftyOne <installing-fiftyone>`.
+
+.. code-block:: shell
+
+    # Example setup script for a Debian-like virtual machine
+
+    # System packages
+    sudo apt update
+    sudo apt -y upgrade
+    sudo apt install -y build-essential
+    sudo apt install -y unzip
+    sudo apt install -y cmake
+    sudo apt install -y cmake-data
+    sudo apt install -y pkg-config
+    sudo apt install -y libsm6
+    sudo apt install -y libxext6
+    sudo apt install -y libssl-dev
+    sudo apt install -y libffi-dev
+    sudo apt install -y libxml2-dev
+    sudo apt install -y libxslt1-dev
+    sudo apt install -y zlib1g-dev
+    sudo apt install -y python3
+    sudo apt install -y python-dev
+    sudo apt install -y python3-dev
+    sudo apt install -y python3-pip
+    sudo apt install -y python3-venv
+    sudo apt install -y ffmpeg  # if working with video
+
+    # (Recommended) Create a virtual environment
+    python3 -m venv fiftyone-env
+    . fiftyone-env/bin/activate
+
+    # Python packages
+    pip install --upgrade pip setuptools wheel
+    pip install ipython
