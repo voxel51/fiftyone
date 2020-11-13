@@ -711,29 +711,81 @@ class SampleFieldTests(unittest.TestCase):
         self.assertNotIn("field_1", sample.field_names)
         with self.assertRaises(AttributeError):
             sample.get_field("field_1")
+
         with self.assertRaises(KeyError):
             sample["field_1"]
+
         with self.assertRaises(AttributeError):
             sample.field_1
 
     @drop_datasets
     def test_field_get_set_clear_in_dataset(self):
-        dataset = fo.Dataset()
-        dataset.add_sample(fo.Sample("1.jpg"))
-        dataset.add_sample(fo.Sample("2.jpg"))
+        filename = "1.jpg"
+        tags = ["tag1", "tag2"]
+        sample = fo.Sample(filepath=filename, tags=tags)
 
-        # @todo(Tyler)
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+        self.assertTrue(sample.in_dataset)
+
         # get field (default)
+        self.assertEqual(sample.filename, filename)
+        self.assertListEqual(sample.tags, tags)
+        self.assertIsNone(sample.metadata)
 
         # get field (invalid)
+        with self.assertRaises(AttributeError):
+            sample.get_field("invalid_field")
+
+        with self.assertRaises(KeyError):
+            sample["invalid_field"]
+
+        with self.assertRaises(AttributeError):
+            sample.invalid_field
 
         # set field (default)
+        with self.assertRaises(ValidationError):
+            sample.tags = "invalid type"
+
+        sample.tags = None
 
         # clear field (default)
+        with self.assertRaises(ValueError):
+            sample.clear_field("filepath")
+
+        sample.clear_field("tags")
+        self.assertListEqual(sample.tags, [])
+
+        sample.clear_field("metadata")
+        self.assertIsNone(sample.metadata)
 
         # set field (new)
+        with self.assertRaises(ValueError):
+            sample.set_field("field_1", 51, create=False)
+
+        sample.set_field("field_1", 51)
+        self.assertIn("field_1", sample.field_names)
+        self.assertEqual(sample.get_field("field_1"), 51)
+        self.assertEqual(sample["field_1"], 51)
+        self.assertEqual(sample.field_1, 51)
+
+        sample["field_2"] = "fiftyone"
+        self.assertIn("field_2", sample.field_names)
+        self.assertEqual(sample.get_field("field_2"), "fiftyone")
+        self.assertEqual(sample["field_2"], "fiftyone")
+        self.assertEqual(sample.field_2, "fiftyone")
 
         # clear field (new)
+        sample.clear_field("field_1")
+        self.assertNotIn("field_1", sample.field_names)
+        with self.assertRaises(AttributeError):
+            sample.get_field("field_1")
+
+        with self.assertRaises(KeyError):
+            sample["field_1"]
+
+        with self.assertRaises(AttributeError):
+            sample.field_1
 
     @drop_datasets
     def test_vector_array_fields(self):
