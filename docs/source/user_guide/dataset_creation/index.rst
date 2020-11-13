@@ -18,6 +18,8 @@ formats.
     **Important!** Samples only store the `filepath` to the media, not the
     raw media itself. FiftyOne does not create duplicate copies of your data!
 
+.. _loading-datasets:
+
 Loading datasets
 ----------------
 
