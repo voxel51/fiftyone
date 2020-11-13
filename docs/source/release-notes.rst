@@ -35,15 +35,40 @@ App
 Core
 ^^^^
 - Added `Cityscapes <https://www.cityscapes-dataset.com/>`_ and
-  `Labeled Faces in  the Wild <http://vis-www.cs.umass.edu/lfw>_` to the
+  `LFW <http://vis-www.cs.umass.edu/lfw>`_ to the
   :ref:`Dataset Zoo <dataset-zoo>`
+- Added support for renaming and deleting embedded document fields of samples
+  via :meth:`Dataset.rename_sample_field() <fiftyone.core.dataset.Dataset.rename_sample_field>` and
+  :meth:`Dataset.delete_sample_field() <fiftyone.core.dataset.Dataset.delete_sample_field>`
+- Added support for renaming and deleting embedded document fields of frames
+  of video samples via :meth:`Dataset.rename_frame_field() <fiftyone.core.dataset.Dataset.rename_frame_field>` and
+  :meth:`Dataset.delete_frame_field() <fiftyone.core.dataset.Dataset.delete_frame_field>`
+- Added support for deleting fields and embedded fields of individual samples
+  via :meth:`Sample.clear_field() <fiftyone.core.sample.Sample.clear_field>`
+  and :meth:`del sample[field_name] <fiftyone.core.sample.Sample.__delitem__>`
+- Added support for deleting fields and embedded fields of frame labels via
+  :meth:`Frame.clear_field() <fiftyone.core.frame.Frame.clear_field>`
+  and :meth:`del frame[field_name] <fiftyone.core.frame.Frame.__delitem__>`
+- Added support for reading/writing video datasets in JSON format via
+  :meth:`Dataset.from_json() <fiftyone.core.dataset.Dataset.from_json>` and
+  :meth:`SampleCollection.write_json() <fiftyone.core.collections.SampleCollection.write_json>`,
+  respectively
+- Fixed a bug that prevented
+  :meth:`Dataset.add_sample() <fiftyone.core.dataset.Dataset.add_sample>` and
+  :meth:`Dataset.add_samples() <fiftyone.core.dataset.Dataset.add_samples>`
+  from working properly when provided samples that belong to other sample
+  collections
+- Fixed a bug that prevented frame labels from being properly cloned when
+  calling :meth:`Dataset.clone() <fiftyone.core.dataset.Dataset.clone>` on
+  video datasets
 
 Utils
 ^^^^^
-- Added support for import and exporting from
-  :mod:`Scale <fiftyone.utils.scale>` and
-  :mod:`LabelBox <fiftyone.utils.labelbox>`
- 
+- Added :mod:`a module <fiftyone.utils.scale>` for importing and exporting
+  annotations from `Scale AI <https://scale.com>`_
+- Added :mod:`a module <fiftyone.utils.labelbox>` for importing and exporting
+  annotations from `Labelbox <https://labelbox.com>`_
+
 Docs
 ^^^^
 - Added an :doc:`Environments </environments>` page which outlines how
