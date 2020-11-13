@@ -432,6 +432,7 @@ class VideoSampleTests(unittest.TestCase):
                     label="foo", bounding_box=[i / 100, i / 100, 0.9, 0.9]
                 )
             sample.save()
+
         for sample in dataset.iter_samples():
             for i in range(1, 50):
                 self.assertEqual(sample.frames[i]["box"].label, "foo")
@@ -443,6 +444,7 @@ class VideoSampleTests(unittest.TestCase):
                     label="foo", bounding_box=[i / 100, i / 100, 0.9, 0.9]
                 )
             sample.save()
+
         for sample in samples:
             for i in range(1, 50):
                 self.assertEqual(sample.frames[i]["box"].label, "foo")
@@ -452,7 +454,9 @@ class VideoSampleTests(unittest.TestCase):
         for sample in dataset.iter_samples():
             for i in range(1, 50):
                 sample[i]["label"] = i
+
             sample.save()
+
         for sample in dataset.iter_samples():
             for idx, frame_number in enumerate(sample):
                 self.assertEqual(frame_number - 1, idx)
@@ -470,6 +474,7 @@ class VideoSampleTests(unittest.TestCase):
         f = fo.Frame(frame_number=2)
         f["frame_number"] = 1
         self.assertEqual(f.frame_number, 1)
+
         s = fo.Sample(filepath="video.mp4")
         s[2] = f
         self.assertEqual(s[2].frame_number, 2)
@@ -482,17 +487,23 @@ class VideoSampleTests(unittest.TestCase):
         s[1]["label"] = label
         s[1].save()
         self.assertEqual(s[1]["label"], label)
+
         s[1].save()
         s[1]["label"] = new_label
         self.assertEqual(s[1]["label"], new_label)
+
         d.add_sample(s)
         self.assertEqual(s[1]["label"], new_label)
+
         s[1].save()
         self.assertEqual(s[1]["label"], new_label)
+
         for f in s:
             self.assertEqual(s[f]["label"], new_label)
+
         s[1]["label"] = label
         s[1].save()
+
         for f in s:
             self.assertEqual(s[f]["label"], label)
 
@@ -502,6 +513,7 @@ class VideoSampleTests(unittest.TestCase):
         s[1]["label"] = 1
         self.assertTrue(1 in s.frames)
         self.assertFalse(2 in s.frames)
+
         d.add_sample(s)
         self.assertTrue(1 in s.frames)
         self.assertFalse(2 in s.frames)
@@ -528,6 +540,7 @@ class VideoSampleTests(unittest.TestCase):
         s[1]["label"] = "label"
         s_copy = s.copy()
         self.assertEqual(s_copy[1]["label"], "label")
+
         d = fo.Dataset()
         d.add_sample(s)
         s_copy = s.copy()
@@ -558,13 +571,17 @@ class SampleFieldTests(unittest.TestCase):
         # access non-existent field
         with self.assertRaises(KeyError):
             dataset.get_field_schema()[field_name]
+
         for sample in [sample1, sample2, dataset[id1], dataset[id2]]:
             with self.assertRaises(AttributeError):
                 sample.get_field(field_name)
+
             with self.assertRaises(KeyError):
                 sample[field_name]
+
             with self.assertRaises(AttributeError):
                 getattr(sample, field_name)
+
             with self.assertRaises(KeyError):
                 sample.to_dict()[field_name]
 
@@ -581,6 +598,7 @@ class SampleFieldTests(unittest.TestCase):
             self.assertEqual(sample[field_name], field_test_value)
             self.assertEqual(getattr(sample, field_name), field_test_value)
             self.assertEqual(sample.to_dict()[field_name], field_test_value)
+
         for sample in [sample2, dataset[id2]]:
             self.assertIsInstance(field, ftype)
             # check field exists on sample and is None
@@ -599,13 +617,17 @@ class SampleFieldTests(unittest.TestCase):
         # access non-existent field
         with self.assertRaises(KeyError):
             dataset.get_field_schema()[field_name]
+
         for sample in [sample1, sample2, dataset[id1], dataset[id2]]:
             with self.assertRaises(AttributeError):
                 sample.get_field(field_name)
+
             with self.assertRaises(KeyError):
                 sample[field_name]
+
             with self.assertRaises(AttributeError):
                 getattr(sample, field_name)
+
             with self.assertRaises(KeyError):
                 sample.to_dict()[field_name]
 
@@ -625,6 +647,7 @@ class SampleFieldTests(unittest.TestCase):
             self.assertEqual(sample[field_name], field_test_value)
             self.assertEqual(getattr(sample, field_name), field_test_value)
             self.assertEqual(sample.to_dict()[field_name], field_test_value)
+
         for sample in [sample2, dataset[id2]]:
             self.assertIsInstance(field, ftype)
             # check field exists on sample and is None
@@ -647,8 +670,10 @@ class SampleFieldTests(unittest.TestCase):
         # get field (invalid)
         with self.assertRaises(AttributeError):
             sample.get_field("invalid_field")
+
         with self.assertRaises(KeyError):
             sample["invalid_field"]
+
         with self.assertRaises(AttributeError):
             sample.invalid_field
 
@@ -659,6 +684,7 @@ class SampleFieldTests(unittest.TestCase):
         # clear field (default)
         with self.assertRaises(ValueError):
             sample.clear_field("filepath")
+
         sample.clear_field("tags")
         self.assertListEqual(sample.tags, [])
         sample.clear_field("metadata")
