@@ -5,6 +5,7 @@ import viewStageMachine, {
   createParameter,
 } from "./ViewStage/viewStageMachine";
 import { PARSER as PARAM_PARSER } from "./ViewStage/viewStageParameterMachine";
+import { viewsAreEqual } from "../../utils/view";
 
 const { choose } = actions;
 
@@ -34,8 +35,6 @@ export const createStage = (
   loaded,
   fieldNames,
 });
-
-import { getSocket } from "../../utils/socket";
 
 function getStageInfo(context) {
   return fetch(`http://127.0.0.1:${context.port}/stages`).then((response) =>
@@ -101,16 +100,6 @@ function makeEmptyView(fieldNames, stageInfo) {
   ];
 }
 
-const viewCompareMapper = (stages) =>
-  stages.map(({ kwargs, _cls }) => ({ kwargs, _cls }));
-
-const viewsAreEqual = (viewOne, viewTwo) => {
-  return (
-    JSON.stringify(viewCompareMapper(viewOne)) ===
-    JSON.stringify(viewCompareMapper(viewTwo))
-  );
-};
-
 function setStages(ctx, stageInfo) {
   const view = ctx.view;
   const stageMap = Object.fromEntries(stageInfo.map((s) => [s.name, s.params]));
@@ -173,7 +162,6 @@ const viewBarMachine = Machine(
   {
     id: "stages",
     context: {
-      socket: undefined,
       stages: [],
       stageInfo: undefined,
       activeStage: 0,
@@ -501,10 +489,10 @@ const viewBarMachine = Machine(
         actions: [
           assign({
             port: (_, { port }) => port,
-            socket: (_, { port }) => getSocket(port, "state"),
             view: (_, { view }) => view,
             setView: (_, { setView }) => setView,
             fieldNames: (_, { fieldNames }) => fieldNames,
+            clearStats: (_, { clearStats }) => clearStats,
           }),
           "sendStagesUpdate",
         ],
@@ -525,12 +513,20 @@ const viewBarMachine = Machine(
           })
         );
       },
-      submit: ({ stages, stageInfo, fieldNames, setView, view }) => {
+      submit: ({
+        clearStats,
+        stages,
+        stageInfo,
+        fieldNames,
+        setView,
+        view,
+      }) => {
         const stageMap = Object.fromEntries(
           stageInfo.map((s) => [s.name, s.params])
         );
         const newView = serializeView(stages, stageMap, fieldNames);
         if (viewsAreEqual(newView, view)) return;
+        clearStats();
         setView(newView);
       },
     },

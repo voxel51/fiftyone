@@ -7,6 +7,8 @@ import Dataset from "./containers/Dataset";
 import Setup from "./containers/Setup";
 import Loading from "./containers/Loading";
 
+export const PLOTS = ["labels", "scalars", "tags"];
+
 function Routes() {
   return (
     <App>

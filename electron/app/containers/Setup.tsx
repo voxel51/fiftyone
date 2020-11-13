@@ -1,5 +1,5 @@
-import React, { useState, useContext } from "react";
-import { useRecoilValue } from "recoil";
+import React, { useContext, useEffect, useState } from "react";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { Redirect } from "react-router-dom";
 import styled, { ThemeContext } from "styled-components";
 import { animated, useSpring } from "react-spring";
@@ -103,7 +103,7 @@ const Tab = animated(styled.div`
   border-bottom-style: solid;
 `);
 
-function Setup(props) {
+function Setup() {
   const connected = useRecoilValue(atoms.connected);
   const theme = useContext(ThemeContext);
   const [activeTab, setActiveTab] = useState<string>("local");
@@ -115,6 +115,7 @@ function Setup(props) {
     borderBottomColor: activeTab === "remote" ? theme.brand : theme.background,
     color: activeTab === "remote" ? theme.font : theme.fontDark,
   });
+
   if (connected) {
     return <Redirect to={routes.DATASET} />;
   }
