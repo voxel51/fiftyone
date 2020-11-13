@@ -132,13 +132,9 @@ class StateDescription(etas.Serializable):
 _IGNORE = ("filepath", "media_type", "metadata", "tags")
 
 
-class DatasetStatistics(etas.Serializable):
+class DatasetStatistics(object):
     """Encapsulates the aggregation statistics required by the App's dataset
     view.
-
-    Attributes:
-        stats: a list of
-            :class:`AggregationResults <fiftyone.core.aggregation.AggregationResult>`
     """
 
     def __init__(self, view):
@@ -173,10 +169,11 @@ class DatasetStatistics(etas.Serializable):
                 elif _meets_type(field, foa._NUMBER_FIELDS):
                     aggregations.append(foa.Bounds(field_name))
 
-        self.stats = view.aggregate(aggregations)
+        self._aggregations = aggregations
 
-    def serialize(self):
-        return super().serialize(reflective=True)
+    @property
+    def aggregations(self):
+        return self._aggregations
 
 
 def _meets_type(field, t):

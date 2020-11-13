@@ -6,7 +6,7 @@ FiftyOne server json utilies.
 |
 """
 from bson import ObjectId, json_util
-from flask.json import JSONEncoder
+from json import JSONEncoder
 from collections import OrderedDict
 
 import numpy as np

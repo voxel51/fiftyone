@@ -20,11 +20,38 @@ export const VALID_LABEL_TYPES = [
   ...VALID_MASK_TYPES,
 ];
 
+export const OBJECT_TYPES = [
+  "Detection",
+  "Detections",
+  "Keypoints",
+  "Keypoint",
+  "Polylines",
+  "Polyline",
+];
+
 export const FILTERABLE_TYPES = [
   "Classification",
   "Classifications",
   "Detection",
   "Detections",
+  "Keypoints",
+  "Keypoint",
+  "Polylines",
+  "Polyline",
+];
+
+export const CONFIDENCE_LABELS = [
+  "Classification",
+  "Classifications",
+  "Detection",
+  "Detections",
+];
+
+export const LABEL_LISTS = [
+  "Classifications",
+  "Detections",
+  "Keypoints",
+  "Polylines",
 ];
 
 export const VALID_SCALAR_TYPES = [

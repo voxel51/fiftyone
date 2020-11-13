@@ -143,25 +143,6 @@ class _DatasetSample(Document):
 
         return sample
 
-    def _secure_media(self, field_name, value):
-        if field_name == "filepath":
-            value = os.path.abspath(os.path.expanduser(value))
-            # pylint: disable=no-member
-            new_media_type = fomm.get_media_type(value)
-            if self.media_type != new_media_type:
-                raise fomm.MediaTypeError(
-                    "A sample's 'filepath' can be changed, but its media type "
-                    "cannot; current '%s', new '%s'"
-                    % (self.media_type, new_media_type)
-                )
-
-        if value is not None:
-            # pylint: disable=no-member
-            try:
-                frame_doc_cls = self._dataset._frame_doc_cls
-            except:
-                frame_doc_cls = None
-
     def to_dict(self, include_frames=False):
         """Serializes the sample to a JSON dictionary.
 
@@ -198,6 +179,18 @@ class _DatasetSample(Document):
                 d["frames"]["first_frame"] = first_frame
 
         return d
+
+    def _secure_media(self, field_name, value):
+        if field_name == "filepath":
+            value = os.path.abspath(os.path.expanduser(value))
+            # pylint: disable=no-member
+            new_media_type = fomm.get_media_type(value)
+            if self.media_type != new_media_type:
+                raise fomm.MediaTypeError(
+                    "A sample's 'filepath' can be changed, but its media type "
+                    "cannot; current '%s', new '%s'"
+                    % (self.media_type, new_media_type)
+                )
 
 
 class Sample(_DatasetSample):
@@ -442,9 +435,14 @@ class SampleView(_DatasetSample):
         if self.media_type == fomm.VIDEO:
             kwargs["frames"] = self._frames._serve(self).__repr__()
 
+        if self._selected_fields is not None:
+            select_fields = ("id", "media_type") + tuple(self._selected_fields)
+        else:
+            select_fields = None
+
         return self._doc.fancy_repr(
             class_name=self.__class__.__name__,
-            select_fields=self._selected_fields,
+            select_fields=select_fields,
             exclude_fields=self._excluded_fields,
             **kwargs,
         )

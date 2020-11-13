@@ -3,6 +3,8 @@ import { useRecoilState, useSetRecoilState, useRecoilValue } from "recoil";
 import ResizeObserver from "resize-observer-polyfill";
 
 import * as atoms from "../recoil/atoms";
+import * as selectors from "../recoil/selectors";
+import { attachDisposableHandler, packageMessage } from "./socket";
 
 export const useEventHandler = (target, eventType, handler) => {
   // Adapted from https://reactjs.org/docs/hooks-faq.html#what-can-i-do-if-my-effect-dependencies-change-too-often
@@ -21,6 +23,28 @@ export const useEventHandler = (target, eventType, handler) => {
       target.removeEventListener(eventType, wrapper);
     };
   }, [target, eventType]);
+};
+
+export const useMessageHandler = (type, handler) => {
+  const socket = useRecoilValue(selectors.socket);
+  const wrapper = ({ data }) => {
+    data = JSON.parse(data);
+    data.type === type && handler(data);
+  };
+  useEventHandler(socket, "message", wrapper);
+};
+
+export const useSendMessage = (type, data, guard = null, deps = []) => {
+  const socket = useRecoilValue(selectors.socket);
+  useEffect(() => {
+    !guard &&
+      socket.send(
+        JSON.stringify({
+          ...data,
+          type,
+        })
+      );
+  }, [guard, ...deps]);
 };
 
 export const useObserve = (target, handler) => {
@@ -113,19 +137,43 @@ export const useVideoData = (socket, sample, callback = null) => {
     (...args) => {
       if (requested !== viewCounter) {
         setRequested(viewCounter);
-        socket.emit(
-          "get_video_data",
-          { _id: sampleId, filepath },
-          ({ labels, frames, fps }) => {
-            setVideoLabels(labels);
-            setFrameData(frames);
-            setFrameRate(fps);
-            callback && callback({ labels, frames }, ...args);
-          }
+        const event = `video_data-${sampleId}`;
+        const handler = ({ labels, frames, fps }) => {
+          setVideoLabels(labels);
+          setFrameData(frames);
+          setFrameRate(fps);
+          callback && callback({ labels, frames }, ...args);
+        };
+        attachDisposableHandler(socket, event, handler);
+        socket.send(
+          packageMessage("get_video_data", { _id: sampleId, filepath })
         );
       } else {
         callback && callback(null, ...args);
       }
     },
   ];
+};
+
+export const useWindowSize = () => {
+  const [windowSize, setWindowSize] = useState({
+    width: undefined,
+    height: undefined,
+  });
+
+  const handleResize = () => {
+    // Set window width/height to state
+    setWindowSize({
+      width: window.innerWidth,
+      height: window.innerHeight,
+    });
+  };
+
+  useEventHandler(window, "resize", handleResize);
+
+  useEffect(() => {
+    handleResize();
+  }, []);
+
+  return windowSize;
 };

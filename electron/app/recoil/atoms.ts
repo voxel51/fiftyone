@@ -12,6 +12,11 @@ export const connected = atom({
   default: false,
 });
 
+export const activePlot = atom({
+  key: "activePlot",
+  default: "labels",
+});
+
 export const datasetStats = atom({
   key: "datasetStats",
   default: [],
@@ -170,4 +175,14 @@ export const sampleVideoDataRequested = atomFamily({
 export const viewCounter = atom({
   key: "viewCounter",
   default: 0,
+});
+
+export const colorByLabel = atom({
+  key: "colorByLabel",
+  default: false,
+});
+
+export const modalColorByLabel = atom({
+  key: "modalColorByLabel",
+  default: false,
 });
