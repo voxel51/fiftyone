@@ -1,4 +1,5 @@
 import React, { useState, useContext } from "react";
+import { animated, useSpring } from "react-spring";
 import styled, { ThemeContext } from "styled-components";
 import { useRecoilValue, useSetRecoilState, useRecoilState } from "recoil";
 import {
@@ -36,7 +37,7 @@ type Props = {
   onSelectTag: (entry: Entry) => void;
 };
 
-const Button = styled.div`
+const Button = animated(styled.div`
   cursor: pointer;
   width: 100%;
   margin-top: 3px;
@@ -46,8 +47,7 @@ const Button = styled.div`
   border-radius: 2px;
   display: flex;
   height: 32px;
-  background-color: ${({ theme }) => theme.backgroundLight};
-`;
+`);
 
 const ButtonText = styled.div`
   padding-right: 4px;
@@ -57,9 +57,7 @@ const ButtonText = styled.div`
   text-overflow: ellipsis;
   font-weight: bold;
   padding-top: 4px;
-  color: ${({ theme }) => theme.font};
   letter-spacing: 0.00938em;
-  font-family: Liberation Sans;
   line-height: 24px;
 `;
 
@@ -98,6 +96,32 @@ const Container = styled.div`
   }
 `;
 
+const RefreshButton = () => {
+  const refreshColorMap = useSetRecoilState(refreshColorMapSelector);
+  const theme = useContext(ThemeContext);
+  const [clicked, setClicked] = useState(false);
+  const props = useSpring({
+    backgroundColor: clicked ? theme.backgroundLight : theme.background,
+    color: clicked ? theme.font : theme.fontDark,
+    onRest: () => clicked && setClicked(false),
+    config: {
+      duration: 250,
+    },
+  });
+  return (
+    <Button
+      style={props}
+      onClick={() => {
+        refreshColorMap(null);
+        setClicked(true);
+      }}
+    >
+      <Autorenew style={{ marginTop: 4 }} />
+      <ButtonText>Refresh field colors</ButtonText>
+    </Button>
+  );
+};
+
 const Cell = ({
   label,
   icon,
@@ -108,7 +132,6 @@ const Cell = ({
   modal,
   prefix = "",
 }) => {
-  const refreshColorMap = useSetRecoilState(refreshColorMapSelector);
   const theme = useContext(ThemeContext);
   const [expanded, setExpanded] = useState(true);
   const numSelected = entries.filter((e) => e.selected).length;
@@ -145,12 +168,7 @@ const Cell = ({
       expanded={expanded}
       onExpand={setExpanded}
     >
-      {label === "Options" && (
-        <Button onClick={refreshColorMap}>
-          <Autorenew style={{ marginTop: 4 }} />
-          <ButtonText>Refresh field colors</ButtonText>
-        </Button>
-      )}
+      {label === "Options" && <RefreshButton />}
       {entries.length ? (
         <CheckboxGrid
           columnWidths={[3, 2]}
