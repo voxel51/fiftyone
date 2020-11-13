@@ -69,8 +69,8 @@ export const VALID_NUMERIC_TYPES = [
 export const RESERVED_FIELDS = [
   "_id",
   "_rand",
+  "_media_type",
   "metadata",
-  "media_type",
   "tags",
   "filepath",
   "frames",
