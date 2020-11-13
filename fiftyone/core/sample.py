@@ -442,9 +442,14 @@ class SampleView(_DatasetSample):
         if self.media_type == fomm.VIDEO:
             kwargs["frames"] = self._frames._serve(self).__repr__()
 
+        if self._selected_fields is not None:
+            select_fields = ("id", "media_type") + tuple(self._selected_fields)
+        else:
+            select_fields = None
+
         return self._doc.fancy_repr(
             class_name=self.__class__.__name__,
-            select_fields=self._selected_fields,
+            select_fields=select_fields,
             exclude_fields=self._excluded_fields,
             **kwargs,
         )

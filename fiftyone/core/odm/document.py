@@ -54,12 +54,8 @@ class SerializableDocument(object):
         """
         d = {}
         for f in self._get_repr_fields():
-            if f.startswith("_") or (
-                f != "id"
-                and (
-                    (select_fields is not None and f not in select_fields)
-                    or (exclude_fields is not None and f in exclude_fields)
-                )
+            if (select_fields is not None and f not in select_fields) or (
+                exclude_fields is not None and f in exclude_fields
             ):
                 continue
 
