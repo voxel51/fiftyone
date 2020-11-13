@@ -50,8 +50,10 @@ class SampleTests(unittest.TestCase):
         # get missing
         with self.assertRaises(AttributeError):
             sample.get_field("missing_field")
+
         with self.assertRaises(KeyError):
             sample["missing_field"]
+
         with self.assertRaises(AttributeError):
             sample.missing_field
 
@@ -64,10 +66,13 @@ class SampleTests(unittest.TestCase):
         # set_field with create=False
         with self.assertRaises(ValueError):
             sample.set_field("field1", value, create=False)
+
         with self.assertRaises(AttributeError):
             sample.get_field("field1")
+
         with self.assertRaises(KeyError):
             sample["field1"]
+
         with self.assertRaises(AttributeError):
             sample.field1
 
@@ -87,8 +92,10 @@ class SampleTests(unittest.TestCase):
         # __setattr__
         with self.assertRaises(ValueError):
             sample.field4 = value
+
         with self.assertRaises(AttributeError):
             sample.get_field("field4")
+
         with self.assertRaises(KeyError):
             sample["field4"]
 
@@ -746,12 +753,15 @@ class SampleFieldTests(unittest.TestCase):
         # set field (default)
         with self.assertRaises(ValidationError):
             sample.tags = "invalid type"
-
-        sample.tags = None
+            sample.save()
 
         # clear field (default)
         with self.assertRaises(ValueError):
             sample.clear_field("filepath")
+            sample.save()
+
+        sample.tags = None
+        self.assertEqual(sample.tags, [])
 
         sample.clear_field("tags")
         self.assertListEqual(sample.tags, [])
@@ -764,12 +774,14 @@ class SampleFieldTests(unittest.TestCase):
             sample.set_field("field_1", 51, create=False)
 
         sample.set_field("field_1", 51)
+        sample.save()
         self.assertIn("field_1", sample.field_names)
         self.assertEqual(sample.get_field("field_1"), 51)
         self.assertEqual(sample["field_1"], 51)
         self.assertEqual(sample.field_1, 51)
 
         sample["field_2"] = "fiftyone"
+        sample.save()
         self.assertIn("field_2", sample.field_names)
         self.assertEqual(sample.get_field("field_2"), "fiftyone")
         self.assertEqual(sample["field_2"], "fiftyone")
@@ -777,6 +789,7 @@ class SampleFieldTests(unittest.TestCase):
 
         # clear field (new)
         sample.clear_field("field_1")
+        sample.save()
         self.assertNotIn("field_1", sample.field_names)
         with self.assertRaises(AttributeError):
             sample.get_field("field_1")

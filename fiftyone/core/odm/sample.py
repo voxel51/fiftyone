@@ -100,7 +100,7 @@ class DatasetSampleDocument(DatasetMixin, Document, SampleDocument):
 
     meta = {"abstract": True}
 
-    filepath = fof.StringField(unique=True)
+    filepath = fof.StringField(unique=True, required=True)
     tags = fof.ListField(fof.StringField())
     metadata = fof.EmbeddedDocumentField(fom.Metadata, null=True)
 
