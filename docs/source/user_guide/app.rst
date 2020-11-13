@@ -92,6 +92,8 @@ first 10 samples in the dataset sorted alphabetically by ground truth label:
    :alt: CIFAR-10 Sorted
    :align: center
 
+.. _remote-session:
+
 Remote sessions
 _______________
 
