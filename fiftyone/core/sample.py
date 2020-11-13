@@ -143,25 +143,6 @@ class _DatasetSample(Document):
 
         return sample
 
-    def _secure_media(self, field_name, value):
-        if field_name == "filepath":
-            value = os.path.abspath(os.path.expanduser(value))
-            # pylint: disable=no-member
-            new_media_type = fomm.get_media_type(value)
-            if self.media_type != new_media_type:
-                raise fomm.MediaTypeError(
-                    "A sample's 'filepath' can be changed, but its media type "
-                    "cannot; current '%s', new '%s'"
-                    % (self.media_type, new_media_type)
-                )
-
-        if value is not None:
-            # pylint: disable=no-member
-            try:
-                frame_doc_cls = self._dataset._frame_doc_cls
-            except:
-                frame_doc_cls = None
-
     def to_dict(self, include_frames=False):
         """Serializes the sample to a JSON dictionary.
 
@@ -198,6 +179,18 @@ class _DatasetSample(Document):
                 d["frames"]["first_frame"] = first_frame
 
         return d
+
+    def _secure_media(self, field_name, value):
+        if field_name == "filepath":
+            value = os.path.abspath(os.path.expanduser(value))
+            # pylint: disable=no-member
+            new_media_type = fomm.get_media_type(value)
+            if self.media_type != new_media_type:
+                raise fomm.MediaTypeError(
+                    "A sample's 'filepath' can be changed, but its media type "
+                    "cannot; current '%s', new '%s'"
+                    % (self.media_type, new_media_type)
+                )
 
 
 class Sample(_DatasetSample):
