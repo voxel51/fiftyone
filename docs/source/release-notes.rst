@@ -268,7 +268,7 @@ Core
   :ref:`exporting <writing-a-custom-dataset-exporter>` video datasets in
   custom formats
 - Improved the performance of
-  :meth:`Dataset.rename_field() <fiftyone.core.dataset.Dataset.rename_field>`
+  :meth:`Dataset.rename_sample_field() <fiftyone.core.dataset.Dataset.rename_sample_field>`
 - Added support for using disk space when running aggregation pipelines on
   large datasets
 - Added support for automatically creating database indexes when sorting by
@@ -301,7 +301,7 @@ Core
   :meth:`Dataset.merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>`
   method for merging samples in datasets via joining by ``filepath``
 - Added a
-  :meth:`Dataset.rename_field() <fiftyone.core.dataset.Dataset.rename_field>`
+  :meth:`Dataset.rename_sample_field() <fiftyone.core.dataset.Dataset.rename_sample_field>`
   method for renaming sample fields of datasets
 
 FiftyOne 0.5.5
