@@ -52,6 +52,7 @@ const FieldsWrapper = () => {
   const tagSampleCounts = useRecoilValue(selectors.tagSampleCounts);
 
   const filters = useRecoilValue(selectors.labelFilters);
+  const colorByLabel = useRecoilValue(atoms.colorByLabel);
   const setModalFilters = useSetRecoilState(selectors.modalLabelFilters);
   const labelNameGroups = useRecoilValue(selectors.labelNameGroups("sample"));
 
@@ -61,7 +62,7 @@ const FieldsWrapper = () => {
 
   useEffect(() => {
     setModalFilters(filters);
-  }, [filters]);
+  }, [filters, colorByLabel]);
 
   const getDisplayOptions = (values, filteredCounts, totalCounts, selected) => {
     return [...values].sort().map(({ name, type }) => ({

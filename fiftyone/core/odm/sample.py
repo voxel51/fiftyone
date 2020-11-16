@@ -63,7 +63,6 @@ import six
 import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.frame_utils as fofu
-import fiftyone.core.frame as fofr
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.utils as fou
@@ -101,25 +100,19 @@ class DatasetSampleDocument(DatasetMixin, Document, SampleDocument):
 
     meta = {"abstract": True}
 
-    media_type = fof.StringField()
-
-    # The path to the data on disk
-    filepath = fof.StringField(unique=True)
-
-    # The set of tags associated with the sample
+    filepath = fof.StringField(unique=True, required=True)
     tags = fof.ListField(fof.StringField())
-
-    # Metadata about the sample media
     metadata = fof.EmbeddedDocumentField(fom.Metadata, null=True)
 
-    # Random float used for random dataset operations (e.g. shuffle)
+    _media_type = fof.StringField()
     _rand = fof.FloatField(default=_generate_rand)
 
-    def set_field(self, field_name, value, create=True):
-        if field_name == "frames" and isinstance(value, fofr.Frames):
-            value = value.doc.frames
+    @property
+    def media_type(self):
+        return self._media_type
 
-        super().set_field(field_name, value, create=create)
+    def _get_repr_fields(self):
+        return ("id", "media_type") + self.field_names
 
     @classmethod
     def from_dict(cls, d, extended=False):
@@ -158,16 +151,15 @@ class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
 
     def __init__(self, **kwargs):
         self._data = OrderedDict()
-        filepath = os.path.abspath(
-            os.path.expanduser(kwargs.get("filepath", None))
-        )
-        media_type = fomm.get_media_type(filepath)
-        if "media_type" in kwargs and kwargs["media_type"] != media_type:
-            raise fomm.MediaTypeError("media_type cannot be set")
 
-        kwargs["media_type"] = media_type
-        if media_type == fomm.VIDEO:
-            kwargs["frames"] = {"frame_count": 0}
+        filepath = os.path.abspath(os.path.expanduser(kwargs["filepath"]))
+        _media_type = fomm.get_media_type(filepath)
+        kwargs["_media_type"] = _media_type
+
+        if _media_type == fomm.VIDEO:
+            from fiftyone.core.labels import _Frames
+
+            kwargs["frames"] = _Frames(frame_count=0)
 
         for field_name in self.default_fields_ordered:
             value = kwargs.pop(field_name, None)
@@ -184,3 +176,10 @@ class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
             self._data[field_name] = value
 
         self._data.update(kwargs)
+
+    @property
+    def media_type(self):
+        return self._media_type
+
+    def _get_repr_fields(self):
+        return ("id", "media_type") + self.field_names

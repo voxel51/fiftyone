@@ -16,7 +16,13 @@ from pymongo import ReplaceOne
 
 import fiftyone as fo
 from fiftyone.core.document import Document
+import fiftyone.core.fields as fof
 import fiftyone.core.frame_utils as fofu
+import fiftyone.core.labels as fol
+from fiftyone.core.odm.document import (
+    DynamicEmbeddedDocument,
+    EmbeddedDocument,
+)
 from fiftyone.core.odm.frame import (
     NoDatasetFrameSampleDocument,
     DatasetFrameSampleDocument,
@@ -45,7 +51,6 @@ class Frames(object):
         self._iter = None
         self._iter_frame = None
         self._replacements = {}
-        self._replacements_complete = False
 
     def __str__(self):
         return "<%s: %s>" % (self.__class__.__name__, fou.pformat(dict(self)))
@@ -56,7 +61,7 @@ class Frames(object):
         return "{ <%d frame%s> }" % (num_frames, plural)
 
     def __len__(self):
-        return self._sample._doc.frames["frame_count"]
+        return self._sample._doc.frames.frame_count
 
     def _set_replacement(self, frame):
         self._replacements[frame.frame_number] = frame
@@ -125,7 +130,7 @@ class Frames(object):
         if frame_number in self._replacements:
             return True
 
-        if self._sample._in_db:
+        if self._in_db:
             find_d = self._make_filter(frame_number, self._sample._id)
             return self._frame_collection.find_one(find_d) is not None
 
@@ -134,7 +139,6 @@ class Frames(object):
     def __getitem__(self, frame_number):
         fofu.validate_frame_number(frame_number)
 
-        dataset = None
         frame = None
         d = None
         default_d = {
@@ -148,11 +152,11 @@ class Frames(object):
             frame = self._iter_frame
         elif frame_number in self._replacements:
             frame = self._replacements[frame_number]
-        elif self._sample._in_db:
+        elif self._in_db:
             d = self._frame_collection.find_one(default_d)
             if d is None:
                 d = default_d
-                self._sample._doc.frames["frame_count"] += 1
+                self._sample._doc.frames.frame_count += 1
 
             frame = Frame.from_doc(
                 self._sample._dataset._frame_dict_to_doc(d),
@@ -161,11 +165,8 @@ class Frames(object):
             self._set_replacement(frame)
         else:
             frame = Frame.from_doc(NoDatasetFrameSampleDocument(**default_d))
-            self._sample._doc.frames["frame_count"] += 1
+            self._sample._doc.frames.frame_count += 1
             self._set_replacement(frame)
-
-        if self._sample._in_db:
-            dataset = self._sample._dataset
 
         return frame
 
@@ -179,9 +180,9 @@ class Frames(object):
         doc.set_field("frame_number", frame_number)
         doc._sample_id = self._sample._id
 
-        if not self._sample._in_db and frame_number not in self._replacements:
-            self._sample._doc.frames["frame_count"] += 1
-        elif self._sample._in_db:
+        if not self._in_db and frame_number not in self._replacements:
+            self._sample._doc.frames.frame_count += 1
+        elif self._in_db:
             if (
                 self._iter_frame is not None
                 and frame_number != self._iter_frame.frame_number
@@ -192,7 +193,7 @@ class Frames(object):
                 }
                 exists = self._frame_collection.find(find_d)
                 if exists is None:
-                    self._sample._doc.frames["frame_count"] += 1
+                    self._sample._doc.frames.frame_count += 1
 
         self._set_replacement(frame)
 
@@ -287,27 +288,40 @@ class Frames(object):
             else:
                 self[frame_number] = frame
 
-    @property
-    def _first_frame(self):
-        first_frame = self._replacements.get(1, None)
-        if first_frame is None and self._sample._in_db:
-            first_frame = self._sample._doc.frames["first_frame"]
-
-        return first_frame
+    def clear(self):
+        """Removes all frames from this instance."""
+        self._replacements = {}
+        if self._in_db:
+            self._frame_collection.delete_many(
+                {"_sample_id": self._sample._id}
+            )
+            self._sample._doc.clear_field("frames")
 
     def to_mongo_dict(self):
         first_frame = self._first_frame
         return {
-            "frame_count": self._sample._doc.frames["frame_count"],
+            "frame_count": self._sample._doc.frames.frame_count,
             "first_frame": self._first_frame,
         }
+
+    @property
+    def _in_db(self):
+        return self._sample._in_db
+
+    @property
+    def _first_frame(self):
+        first_frame = self._replacements.get(1, None)
+        if first_frame is None and self._in_db:
+            first_frame = self._sample._doc.frames.first_frame
+
+        return first_frame
 
     @property
     def _frame_collection(self):
         return self._sample._dataset._frame_collection
 
     def _iter_frames(self):
-        if self._sample._in_db:
+        if self._in_db:
             repl_fns = sorted(self._replacements.keys())
             repl_fn = repl_fns[0] if len(repl_fns) else None
             find_d = {"_sample_id": self._sample._id}
@@ -329,6 +343,12 @@ class Frames(object):
                 self._set_replacement(self._iter_frame)
                 yield self._iter_frame
 
+    def _to_frames_dict(self):
+        return {
+            str(frame_number): frame.to_dict()
+            for frame_number, frame in self.items()
+        }
+
     def _get_field_cls(self):
         return self._sample._doc.frames.__class__
 
@@ -341,11 +361,8 @@ class Frames(object):
         return None
 
     def _save(self, insert=False):
-        if not self._sample._in_db:
+        if not self._in_db:
             return
-
-        # @todo avoid local import?
-        from fiftyone.core.labels import _FrameLabels
 
         d = self._get_first_frame()
         if d is not None:
@@ -367,7 +384,7 @@ class Frames(object):
                 else:
                     d[k] = v
 
-            self._sample._doc.frames.first_frame = _FrameLabels(**d)
+            self._sample._doc.frames.first_frame = fol._FrameLabels(**d)
 
         self._save_replacements(insert)
 
@@ -414,6 +431,9 @@ class Frame(Document):
     @property
     def _skip_iter_field_names(self):
         return ("frame_number",)
+
+    def _get_field_names(self, include_private=False):
+        return self._doc._get_field_names(include_private=include_private)
 
     def copy(self):
         """Returns a deep copy of the frame that has not been added to the
@@ -474,6 +494,12 @@ class Frame(Document):
         for samples in cls._instances[collection_name].values():
             for document in samples.values():
                 document._doc._data.pop(field_name, None)
+
+    @classmethod
+    def _reload_docs(cls, collection_name):
+        for samples in cls._instances[collection_name].values():
+            for document in samples.values():
+                document.reload()
 
     def _set_backing_doc(self, doc, dataset=None):
         """Sets the backing doc for the sample.
