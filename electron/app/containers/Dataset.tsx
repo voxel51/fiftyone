@@ -8,7 +8,6 @@ import {
 } from "recoil";
 import styled from "styled-components";
 
-import { PLOTS } from "../Routes";
 import SamplesContainer from "./SamplesContainer";
 import HorizontalNav from "../components/HorizontalNav";
 import SampleModal from "../components/SampleModal";
@@ -19,7 +18,8 @@ import * as selectors from "../recoil/selectors";
 import { VALID_LABEL_TYPES } from "../utils/labels";
 import { useMessageHandler, useSendMessage } from "../utils/hooks";
 import Loading from "../components/Loading";
-import { scrollbarStyles } from "../components/utils";
+
+const PLOTS = ["labels", "scalars", "tags"];
 
 const Container = styled.div`
   height: 100%;
