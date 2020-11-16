@@ -9,27 +9,40 @@ from mongoengine import connect
 import motor
 import pymongo
 
+import fiftyone.core.service as fos
+
 
 _DEFAULT_DATABASE = "fiftyone"
 _client = None
 _async_client = None
 _default_port = 27017
+_database_service = fos.DatabaseService(start=False)
 
 
 ASC = pymongo.ASCENDING
 DESC = pymongo.DESCENDING
 
 
+def start_db_service_if_necessary():
+    """Starts the database service, if necessary."""
+    if not _database_service.is_running:
+        _database_service.start()
+
+
 def _connect():
     global _client
+
     if _client is None:
+        start_db_service_if_necessary()
         connect(_DEFAULT_DATABASE, port=_default_port)
         _client = pymongo.MongoClient(port=_default_port)
 
 
 def _async_connect():
     global _async_client
+
     if _async_client is None:
+        start_db_service_if_necessary()
         _async_client = motor.motor_tornado.MotorClient(
             "localhost", _default_port
         )

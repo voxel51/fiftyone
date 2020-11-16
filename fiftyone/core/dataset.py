@@ -52,6 +52,7 @@ def list_datasets():
         a list of :class:`Dataset` names
     """
     # pylint: disable=no-member
+    foo.start_db_service_if_necessary()
     return sorted(foo.DatasetDocument.objects.distinct("name"))
 
 
@@ -66,6 +67,7 @@ def dataset_exists(name):
     """
     try:
         # pylint: disable=no-member
+        foo.start_db_service_if_necessary()
         foo.DatasetDocument.objects.get(name=name)
         return True
     except DoesNotExist:
@@ -2174,6 +2176,7 @@ def _create_frame_document_cls(frame_collection_name):
 def _load_dataset(name):
     try:
         # pylint: disable=no-member
+        foo.start_db_service_if_necessary()
         dataset_doc = foo.DatasetDocument.objects.get(name=name)
     except DoesNotExist:
         raise DoesNotExistError("Dataset '%s' not found" % name)
@@ -2259,6 +2262,7 @@ def _load_dataset(name):
 def _drop_dataset(name, drop_persistent=True):
     try:
         # pylint: disable=no-member
+        foo.start_db_service_if_necessary()
         dataset_doc = foo.DatasetDocument.objects.get(name=name)
     except DoesNotExist:
         raise DoesNotExistError("Dataset '%s' not found" % name)

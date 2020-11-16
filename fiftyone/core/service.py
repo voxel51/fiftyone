@@ -55,14 +55,16 @@ class Service(object):
     to ensure that they are shut down when the main Python process exits. The
     ``command`` and ``working_dir`` properties control the execution of the
     service in the subprocess.
+
+    Args:
+        start (True): whether to start the service immediately
     """
 
     service_name = None
     working_dir = "."
     allow_headless = False
 
-    def __init__(self):
-        """Creates (starts) the Service."""
+    def __init__(self, start=True):
         self._system = os.system
         self._disabled = (
             os.environ.get("FIFTYONE_SERVER", False)
@@ -74,7 +76,9 @@ class Service(object):
             )
         )
         self.child = None
-        if not self._disabled:
+        self._is_running = False
+
+        if not self._disabled and start:
             self.start()
 
     def __del__(self):
@@ -96,16 +100,24 @@ class Service(object):
         return {}
 
     @property
+    def is_running(self):
+        return self._is_running
+
+    @property
     def _service_args(self):
         """Arguments passed to the service entrypoint"""
         if not self.service_name:
             raise NotImplementedError(
                 "%r must define `service_name`" % type(self)
             )
+
         return ["--51-service", self.service_name]
 
     def start(self):
-        """Starts the Service."""
+        """Starts the service, if necessary."""
+        if self._is_running:
+            return
+
         service_main_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             "service",
@@ -122,13 +134,19 @@ class Service(object):
             env={**os.environ, "FIFTYONE_DISABLE_SERVICES": "1", **self.env},
         )
 
+        self._is_running = True
+
     def stop(self):
-        """Stops the Service."""
+        """Stops the service, if necessary."""
+        if not self._is_running:
+            return
+
         self.child.stdin.close()
         self.child.wait()
+        self._is_running = False
 
     def wait(self):
-        """Waits for the Service to exit and returns its exit code."""
+        """Waits for the service to exit and returns its exit code."""
         return self.child.wait()
 
     @staticmethod
@@ -171,6 +189,7 @@ class Service(object):
                             return local_port
                 except psutil.Error:
                     pass
+
             raise ServiceListenTimeout(etau.get_class_name(self), port)
 
         return find_port()
@@ -180,10 +199,12 @@ class Service(object):
         for subclass in cls.__subclasses__():
             if subclass.service_name == name:
                 return subclass
+
             try:
                 return subclass.find_subclass_by_name(name)
             except ValueError:
                 pass
+
         raise ValueError("Unrecognized %s subclass: %s" % (cls.__name__, name))
 
 
@@ -192,9 +213,6 @@ class MultiClientService(Service):
 
     # set when attaching to an existing process
     attached = False
-
-    def __init__(self):
-        super().__init__()
 
     @property
     def _service_args(self):
@@ -218,8 +236,8 @@ class MultiClientService(Service):
                     self.attached = True
                     self.child = process
                     return
-                else:
-                    logger.warn("Failed to connect to %s: %r", desc, reply)
+
+                logger.warn("Failed to connect to %s: %r", desc, reply)
             except IOError:
                 logger.warn("%s did not respond", desc)
 
@@ -232,6 +250,7 @@ class MultiClientService(Service):
         elif self.child is not None:
             # this process is the original parent
             self.child.stdin.close()
+
         self.child = None
 
 
@@ -260,6 +279,7 @@ class DatabaseService(MultiClientService):
         ]
         if not sys.platform.startswith("win"):
             args.append("--nounixsocket")
+
         return args
 
     @property
@@ -267,7 +287,9 @@ class DatabaseService(MultiClientService):
         return self._wait_for_child_port()
 
     def start(self):
-        """Starts the DatabaseService."""
+        if self.is_running:
+            return
+
         for folder in (foc.DB_PATH, os.path.dirname(foc.DB_LOG_PATH)):
             if not os.path.isdir(folder):
                 os.makedirs(folder)
@@ -351,7 +373,11 @@ class DatabaseService(MultiClientService):
 
 
 class ServerService(Service):
-    """Service that controls the FiftyOne web server."""
+    """Service that controls the FiftyOne web server.
+
+    Args:
+        port: the port to use
+    """
 
     service_name = "server"
     working_dir = foc.SERVER_DIR
@@ -362,6 +388,9 @@ class ServerService(Service):
         super().__init__()
 
     def start(self):
+        if self.is_running:
+            return
+
         server_version = None
         try:
             server_version = requests.get(
@@ -406,7 +435,11 @@ class ServerService(Service):
 
 
 class AppService(Service):
-    """Service that controls the FiftyOne app."""
+    """Service that controls the FiftyOne App.
+
+    Args:
+        server_port (None): a server port to use
+    """
 
     service_name = "app"
     working_dir = foc.FIFTYONE_APP_DIR
@@ -435,6 +468,7 @@ class AppService(Service):
                 raise RuntimeError(
                     "Could not find FiftyOne app in %r" % foc.FIFTYONE_APP_DIR
                 )
+
         return args
 
     @property
@@ -446,4 +480,5 @@ class AppService(Service):
                 # override port 1212 used by "yarn dev" for hot-reloading
                 # (specifying port 0 doesn't work here)
                 env["PORT"] = str(self.server_port + 1)
+
         return env

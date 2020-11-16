@@ -13,9 +13,9 @@ from bson import json_util, ObjectId
 import mongoengine
 import pymongo
 
-import fiftyone.core.utils as fou
-
 import eta.core.serial as etas
+
+import fiftyone.core.utils as fou
 
 
 class SerializableDocument(object):
