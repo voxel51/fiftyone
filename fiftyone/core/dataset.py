@@ -633,7 +633,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if "." in field_name:
             self._frame_doc_cls.rename_embedded_field(
-                field_name, new_field_name, is_frame_field=True
+                field_name, new_field_name
             )
             fofr.Frame._reload_docs(self._frame_collection_name)
         else:
@@ -727,9 +727,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise ValueError("Only video datasets have frame fields")
 
         if "." in field_name:
-            self._frame_doc_cls.delete_embedded_field(
-                field_name, is_frame_field=True
-            )
+            self._frame_doc_cls.delete_embedded_field(field_name)
             fofr.Frame._reload_docs(self._frame_collection_name)
         else:
             self._frame_doc_cls.delete_field(

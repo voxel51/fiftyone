@@ -363,9 +363,7 @@ class DatasetMixin(object):
             dataset_doc.save()
 
     @classmethod
-    def rename_embedded_field(
-        cls, field_name, new_field_name, is_frame_field=False
-    ):
+    def rename_embedded_field(cls, field_name, new_field_name):
         """Renames the embedded field of the sample(s).
 
         If the sample is in a dataset, the embedded field will be renamed on
@@ -374,18 +372,11 @@ class DatasetMixin(object):
         Args:
             field_name: the "embedded.field.name"
             new_field_name: the "new.embedded.field.name"
-            is_frame_field (False): whether this is a frame-level field
 
         Raises:
             AttributeError: if the field does not exist
         """
-        if is_frame_field:
-            # @todo this hack assumes that
-            # frames_collection_name = "frames." + sample_collection_name
-            collection_name = cls.__name__[7:]
-        else:
-            collection_name = cls.__name__
-
+        collection_name = cls.__name__
         collection = get_db_conn()[collection_name]
         collection.update_many({}, {"$rename": {field_name: new_field_name}})
 
@@ -448,7 +439,7 @@ class DatasetMixin(object):
             dataset_doc.save()
 
     @classmethod
-    def delete_embedded_field(cls, field_name, is_frame_field=False):
+    def delete_embedded_field(cls, field_name):
         """Deletes the embedded field from the sample(s).
 
         If the sample is in a dataset, the embedded field will be removed from
@@ -456,16 +447,8 @@ class DatasetMixin(object):
 
         Args:
             field_name: the "embedded.field.name"
-            is_frame_field (False): whether this is a frame-level embedded
-                field
         """
-        if is_frame_field:
-            # @todo this hack assumes that
-            # frames_collection_name = "frames." + sample_collection_name
-            collection_name = cls.__name__[7:]
-        else:
-            collection_name = cls.__name__
-
+        collection_name = cls.__name__
         collection = get_db_conn()[collection_name]
         collection.update_many({}, {"$unset": {field_name: ""}})
 
