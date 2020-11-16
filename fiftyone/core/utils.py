@@ -297,9 +297,47 @@ def parse_serializable(obj, cls):
     )
 
 
+def set_resource_limit(limit, soft=None, hard=None, warn_on_failure=False):
+    """Uses the ``resource`` package to change a resource limit for the current
+    process.
+
+    If the ``resource`` package cannot be imported, this command does nothing.
+
+    Args:
+        limit: the name of the resource to limit. Must be the name of a
+            constant in the ``resource`` module starting with ``RLIMIT``. See
+            the documentation of the ``resource`` module for supported values
+        soft (None): a new soft limit to apply, which cannot exceed the hard
+            limit. If omitted, the current soft limit is maintained
+        hard (None): a new hard limit to apply. If omitted, the current hard
+            limit is maintained
+        warn_on_failure (False): whether to issue a warning rather than an
+            error if the resource limit change is not successful
+    """
+    try:
+        import resource
+    except ImportError as e:
+        if warn_on_failure:
+            logger.warning(e)
+        else:
+            return
+
+    try:
+        _limit = getattr(resource, limit)
+        soft_orig, hard_orig = resource.getrlimit(_limit)
+        soft = soft or soft_orig
+        hard = hard or hard_orig
+        resource.setrlimit(_limit, (soft, hard))
+    except ValueError as e:
+        if warn_on_failure:
+            logger.warning(e)
+        else:
+            raise
+
+
 class ResourceLimit(object):
     """Context manager that allows for a temporary change to a resource limit
-    exposed by the `resource` package.
+    exposed by the ``resource`` package.
 
     Example::
 
@@ -308,32 +346,29 @@ class ResourceLimit(object):
         with ResourceLimit(resource.RLIMIT_NOFILE, soft=4096):
             # temporarily do things with up to 4096 open files
 
-    Args:
+     Args:
         limit: the name of the resource to limit. Must be the name of a
-            constant in the `resource` module starting with `RLIMIT`. See the
-            documentation of the `resource` module for supported values
-        soft: a new soft limit to apply, which cannot exceed the hard limit
-        hard: a new hard limit to apply, which cannot exceed the current
-            hard limit
-        warn_on_failure: whether to issue a warning rather than an error
-            if the resource limit change is not successful
+            constant in the ``resource`` module starting with ``RLIMIT``. See
+            the documentation of the ``resource`` module for supported values
+        soft (None): a new soft limit to apply, which cannot exceed the hard
+            limit. If omitted, the current soft limit is maintained
+        hard (None): a new hard limit to apply. If omitted, the current hard
+            limit is maintained
+        warn_on_failure (False): whether to issue a warning rather than an
+            error if the resource limit change is not successful
     """
 
-    def __init__(
-        self, limit_name, soft=None, hard=None, warn_on_failure=False
-    ):
-        if not limit_name.startswith("RLIMIT_"):
-            raise ValueError("Invalid limit name: %r")
-
-        self._supported_platform = False
+    def __init__(self, limit, soft=None, hard=None, warn_on_failure=False):
         try:
             import resource
 
             self._supported_platform = True
-        except ImportError:
-            return
+        except ImportError as e:
+            self._supported_platform = False
+            if warn_on_failure:
+                logger.warning(e)
 
-        self._limit = getattr(resource, limit_name)
+        self._limit = limit
         self._soft = soft
         self._hard = hard
         self._soft_orig = None
@@ -346,31 +381,28 @@ class ResourceLimit(object):
 
         import resource
 
-        self._soft_orig, self._hard_orig = resource.getrlimit(self._limit)
-        soft = self._soft or self._soft_orig
-        hard = self._hard or self._hard_orig
-        self._set_resource_limit(soft, hard)
+        limit = getattr(resource, self._limit)
+        self._soft_orig, self._hard_orig = resource.getrlimit(limit)
+
+        set_resource_limit(
+            self._limit,
+            soft=(self._soft or self._soft_orig),
+            hard=(self._hard or self._hard_orig),
+            warn_on_failure=self._warn_on_failure,
+        )
+
         return self
 
     def __exit__(self, *args):
         if not self._supported_platform:
             return
 
-        self._set_resource_limit(self._soft_orig, self._hard_orig)
-
-    def _set_resource_limit(self, soft, hard):
-        if not self._supported_platform:
-            return
-
-        import resource
-
-        try:
-            resource.setrlimit(self._limit, (soft, hard))
-        except ValueError as e:
-            if self._warn_on_failure:
-                logger.warning(e)
-            else:
-                raise
+        set_resource_limit(
+            self._limit,
+            soft=self._soft_orig,
+            hard=self._hard_orig,
+            warn_on_failure=self._warn_on_failure,
+        )
 
 
 class ProgressBar(etau.ProgressBar):
