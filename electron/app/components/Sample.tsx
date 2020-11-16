@@ -3,6 +3,7 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { animated, useSpring, useTransition } from "react-spring";
 
+import { getColor } from "../player51/build/cjs/player51.min.js";
 import Player51 from "./Player51";
 import Tag from "./Tags/Tag";
 import * as atoms from "../recoil/atoms";
@@ -55,7 +56,7 @@ const LoadingBar = animated(styled.div`
 `);
 
 const useHoverLoad = (socket, sample) => {
-  if (sample.media_type !== "video") {
+  if (sample._media_type !== "video") {
     return [[], null, null];
   }
   const [barItem, setBarItem] = useState([]);
@@ -165,7 +166,7 @@ const Sample = ({ sample, metadata, setView }) => {
         key={"label-" + name + "-" + value + (idx ? "-" + idx : "")}
         title={name}
         name={value}
-        color={colorMap[name]}
+        color={colorByLabel ? getColor(value) : colorMap[name]}
       />
     );
   };
@@ -177,12 +178,13 @@ const Sample = ({ sample, metadata, setView }) => {
     ) {
       return null;
     }
+    const value = stringify(sample[name]);
     return (
       <Tag
         key={"scalar-" + name}
         title={name}
-        name={stringify(sample[name])}
-        color={colorMap[name]}
+        name={value}
+        color={colorByLabel ? value : colorMap[name]}
       />
     );
   };

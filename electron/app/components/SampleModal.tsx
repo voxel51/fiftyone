@@ -385,7 +385,7 @@ const SampleModal = ({
   );
 
   const labelSampleValuesReducer = (s, groups, filterData = false) => {
-    const isVideo = s.media_type === "video";
+    const isVideo = s._media_type === "video";
     return groups.labels.reduce((obj, { name, type }) => {
       let value = 0;
       const resolver = (frame, prefix = "") => {
@@ -539,7 +539,7 @@ const SampleModal = ({
             </h2>
             <Row name="ID" value={sample._id} />
             <Row name="Source" value={sample.filepath} />
-            <Row name="Media type" value={sample.media_type} />
+            <Row name="Media type" value={sample._media_type} />
             {formatMetadata(sample.metadata).map(({ name, value }) => (
               <Row key={"metadata-" + name} name={name} value={value} />
             ))}

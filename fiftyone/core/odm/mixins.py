@@ -17,6 +17,7 @@ from mongoengine.errors import InvalidQueryError
 import numpy as np
 
 import fiftyone as fo
+from .database import get_db_conn
 from .dataset import SampleFieldDocument, DatasetDocument
 from .document import Document, BaseEmbeddedDocument, SampleDocument
 import fiftyone.core.fields as fof
@@ -28,6 +29,7 @@ def default_sample_fields(cls, include_private=False, include_id=False):
     """The default fields present on all :class:`SampleDocument` objects.
 
     Args:
+        cls: the :class:`SampleDocument` class
         include_private (False): whether to include fields that start with `_`
         include_id (False): whether to include the ``id`` field
 
@@ -113,11 +115,10 @@ class DatasetMixin(object):
 
     @property
     def field_names(self):
-        return tuple(
-            f
-            for f in self._get_fields_ordered(include_private=False)
-            if f != "id"
-        )
+        return self._get_fields_ordered(include_private=False)
+
+    def _get_field_names(self, include_private=False):
+        return self._get_fields_ordered(include_private=include_private)
 
     @classmethod
     def get_field_schema(
@@ -287,8 +288,8 @@ class DatasetMixin(object):
             else:
                 msg = "Sample does not have field '%s'." % field_name
                 if value is not None:
-                    # don't report this when clearing a field.
-                    msg += " Use `create=True` to create a new field."
+                    msg += " Use `create=True` to create a new field"
+
                 raise ValueError(msg)
 
         self.__setattr__(field_name, value)
@@ -307,26 +308,17 @@ class DatasetMixin(object):
         Args:
             field_name: the field name
             new_field_name: the new field name
-            is_frame_field (False): whether this is a frame-level field of a
-                dataset
+            is_frame_field (False): whether this is a frame-level field
 
         Raises:
             AttributeError: if the field does not exist
         """
         try:
-            # https://docs.mongoengine.org/guide/querying.html#filtering-queries
-            _field_name = field_name.replace(".", "__")
-            _new_field_name = new_field_name.replace(".", "__")
-
             # Rename field on all samples
             # pylint: disable=no-member
-
-            cls.objects.update(**{"rename__%s" % _field_name: _new_field_name})
+            cls.objects.update(**{"rename__%s" % field_name: new_field_name})
         except InvalidQueryError:
             raise AttributeError("Sample has no field '%s'" % field_name)
-
-        if "." in field_name:
-            return
 
         # Rename field on dataset
         # pylint: disable=no-member
@@ -371,8 +363,28 @@ class DatasetMixin(object):
             dataset_doc.save()
 
     @classmethod
+    def rename_embedded_field(cls, field_name, new_field_name):
+        """Renames the embedded field of the sample(s).
+
+        If the sample is in a dataset, the embedded field will be renamed on
+        all samples in the dataset.
+
+        Args:
+            field_name: the "embedded.field.name"
+            new_field_name: the "new.embedded.field.name"
+
+        Raises:
+            AttributeError: if the field does not exist
+        """
+        collection_name = cls.__name__
+        collection = get_db_conn()[collection_name]
+        collection.update_many({}, {"$rename": {field_name: new_field_name}})
+
+    @classmethod
     @no_delete_default_field
-    def delete_field(cls, field_name, is_frame_field=False):
+    def delete_field(
+        cls, field_name, is_frame_field=False, update_schema=False
+    ):
         """Deletes the field from the sample(s).
 
         If the sample is in a dataset, the field will be removed from all
@@ -380,23 +392,21 @@ class DatasetMixin(object):
 
         Args:
             field_name: the field name
-            is_frame_field (False): whether this is a frame-level field of a
-                dataset
+            is_frame_field (False): whether this is a frame-level field
+            update_schema (False): whether to remove the field from the dataset
+                schema
 
         Raises:
             AttributeError: if the field does not exist
         """
         try:
-            # https://docs.mongoengine.org/guide/querying.html#filtering-queries
-            _field_name = field_name.replace(".", "__")
-
             # Delete from all samples
             # pylint: disable=no-member
-            cls.objects.update(**{"unset__%s" % _field_name: None})
+            cls.objects.update(**{"unset__%s" % field_name: None})
         except InvalidQueryError:
             raise AttributeError("Sample has no field '%s'" % field_name)
 
-        if "." in field_name:
+        if not update_schema:
             return
 
         # Remove from dataset
@@ -427,6 +437,20 @@ class DatasetMixin(object):
                 f for f in dataset_doc.sample_fields if f.name != field_name
             ]
             dataset_doc.save()
+
+    @classmethod
+    def delete_embedded_field(cls, field_name):
+        """Deletes the embedded field from the sample(s).
+
+        If the sample is in a dataset, the embedded field will be removed from
+        all samples in the dataset.
+
+        Args:
+            field_name: the "embedded.field.name"
+        """
+        collection_name = cls.__name__
+        collection = get_db_conn()[collection_name]
+        collection.update_many({}, {"$unset": {field_name: ""}})
 
     def _update(self, object_id, update_doc, filtered_fields=None, **kwargs):
         """Updates an existing document.
@@ -548,9 +572,13 @@ class DatasetMixin(object):
     @classmethod
     def _get_fields_ordered(cls, include_private=False):
         if include_private:
-            return cls._fields_ordered
+            return tuple(f for f in cls._fields_ordered if f != "id")
 
-        return tuple(f for f in cls._fields_ordered if not f.startswith("_"))
+        return tuple(
+            f
+            for f in cls._fields_ordered
+            if f != "id" and not f.startswith("_")
+        )
 
 
 class NoDatasetMixin(object):
@@ -589,12 +617,20 @@ class NoDatasetMixin(object):
     def id(self):
         return None
 
+    def _get_field_names(self, include_private=False):
+        if include_private:
+            return tuple(k for k in self._data.keys() if k != "id")
+
+        return tuple(
+            k for k in self._data.keys() if k != "id" and not k.startswith("_")
+        )
+
     def _get_repr_fields(self):
         return ("id",) + self.field_names
 
     @property
     def field_names(self):
-        return tuple(k for k in self._data.keys() if not k.startswith("_"))
+        return self._get_field_names(include_private=False)
 
     @staticmethod
     def _get_default(field):
@@ -648,8 +684,8 @@ class NoDatasetMixin(object):
             else:
                 msg = "Sample does not have field '%s'." % field_name
                 if value is not None:
-                    # don't report this when clearing a field.
-                    msg += " Use `create=True` to create a new field."
+                    msg += " Use `create=True` to create a new field"
+
                 raise ValueError(msg)
 
         self.__setattr__(field_name, value)
@@ -658,15 +694,17 @@ class NoDatasetMixin(object):
         if field_name in self.default_fields:
             default_value = self._get_default(self.default_fields[field_name])
             self.set_field(field_name, default_value)
-        else:
-            self._data.pop(field_name, None)
+            return
+
+        if field_name not in self._data:
+            raise ValueError("Sample has no field '%s'" % field_name)
+
+        self._data.pop(field_name)
 
     def to_dict(self, extended=False):
         d = {}
         for k, v in self._data.items():
-            if k == "frames" and self.media_type == fomm.VIDEO:
-                d[k] = {str(fk): fv for fk, fv in v.items()}
-            elif hasattr(v, "to_dict"):
+            if hasattr(v, "to_dict"):
                 # Embedded document
                 d[k] = v.to_dict(extended=extended)
             elif isinstance(v, np.ndarray):
@@ -680,6 +718,7 @@ class NoDatasetMixin(object):
             else:
                 # JSON primitive
                 d[k] = v
+
         return d
 
     @classmethod
