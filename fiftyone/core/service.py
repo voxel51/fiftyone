@@ -319,6 +319,7 @@ class DatabaseService(MultiClientService):
             # mongod may have exited - ok to wait until next time
             return
 
+        # @todo this fails...
         food.set_default_port(port)
         food.get_db_conn()
         fod.delete_non_persistent_datasets()
