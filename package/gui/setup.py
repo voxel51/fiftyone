@@ -13,6 +13,8 @@ from setuptools import setup, find_packages
 from setuptools.command.install import install
 from wheel.bdist_wheel import bdist_wheel
 
+import eta.core.utils as etau
+
 
 class CustomBdistWheel(bdist_wheel):
     def finalize_options(self):
@@ -83,12 +85,14 @@ class CustomBdistWheel(bdist_wheel):
         if os.path.isfile(app_path):
             # use copy2 to maintain executable permission
             ext = os.path.splitext(app_path)[-1]
-            shutil.copy2(app_path, os.path.join(bin_dir, "FiftyOne" + ext))
         elif os.path.isdir(app_path):
             # Mac app bundle
-            shutil.copytree(app_path, os.path.join(bin_dir, "FiftyOne.app"))
+            ext = ".app"
         else:
             raise RuntimeError("Unsupported file type: %r" % app_path)
+
+        ext += ".tar.gz"
+        etau.make_tar(app_path, os.path.join(bin_dir, "FiftyOne" + ext))
 
 
 cmdclass = {
