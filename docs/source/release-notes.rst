@@ -13,14 +13,7 @@ App
   time-to-interaction in the Grid, View Bar, and Fields Sidebar for larger
   datasets and views
 - Renamed the Display Options Sidebar to the Fields Sidebar
-- Added support for coloring by `label` value for
-  :class:`keypoint <fiftyone.core.labels.Keypoint>`,
-  :class:`keypoints <fiftyone.core.labels.Keypoints>`,
-  :class:`detection <fiftyone.core.labels.Detection>`,
-  :class:`detections <fiftyone.core.labels.Detections>`,
-  :class:`polyline <fiftyone.core.labels.Polyline>`,
-  :class:`polylines <fiftyone.core.labels.Polylines>` fields in the Fields
-  Sidebar
+- Added support for coloring by `label` value in the Fields Sidebar
 - Added support for filtering
   :class:`keypoint <fiftyone.core.labels.Keypoint>`,
   :class:`keypoints <fiftyone.core.labels.Keypoints>`,
@@ -31,6 +24,7 @@ App
   This allows for viewing distributions and the sample grid at the same time
 - Fixed video loading in the grid and modal for video samples with metadata
 - Fixed showing and hiding samples in the select sample menu
+- Fixed a memory usage bug in the sample grid
 
 Core
 ^^^^
