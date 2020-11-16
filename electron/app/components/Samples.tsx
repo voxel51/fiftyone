@@ -5,10 +5,20 @@ import { useSetRecoilState, useRecoilValue } from "recoil";
 import { Grid } from "semantic-ui-react";
 import { ThemeContext } from "styled-components";
 import CircularProgress from "@material-ui/core/CircularProgress";
+import styled from "styled-components";
+import Loading from "./Loading";
 
 import Sample from "./Sample";
 import tile from "./Samples.hooks";
 import * as atoms from "../recoil/atoms";
+import { scrollbarStyles } from "./utils";
+
+const Container = styled.div`
+  ${scrollbarStyles}
+  overflow-y: scroll;
+  overflow-x: hidden;
+  height: 100%;
+`;
 
 function Samples({ setView }) {
   const theme = useContext(ThemeContext);
@@ -22,7 +32,7 @@ function Samples({ setView }) {
   }, [scrollState.rows]);
 
   return (
-    <div ref={containerRef}>
+    <Container ref={containerRef}>
       <InfiniteScroll
         pageStart={1}
         initialLoad={true}
@@ -32,13 +42,16 @@ function Samples({ setView }) {
             : null
         }
         hasMore={scrollState.hasMore}
-        useWindow={true}
+        useWindow={false}
       >
         {scrollState.rows.map((r, i) => (
           <React.Fragment key={i}>
             <Grid
               columns={r.columns}
-              style={{ ...r.style, height: bounds.width / r.aspectRatio }}
+              style={{
+                ...r.style,
+                height: (bounds.width - 16) / r.aspectRatio,
+              }}
               key={i}
             >
               {r.samples.map((s, j) => (
@@ -69,25 +82,15 @@ function Samples({ setView }) {
               ))}
             </Grid>
             <div
-              style={{ width: "100%", display: "block", paddingTop: "0.5%" }}
+              style={{ width: "100%", display: "block", paddingTop: "0.2%" }}
             />
           </React.Fragment>
         ))}
-        {scrollState.isLoading ? (
-          <Grid columns={1}>
-            <Grid.Column
-              style={{
-                width: "100%",
-                textAlign: "center",
-                color: theme.fontDark,
-              }}
-            >
-              <CircularProgress color="inherit" />
-            </Grid.Column>
-          </Grid>
-        ) : null}
       </InfiniteScroll>
-    </div>
+      {scrollState.isLoading && scrollState.rows.length === 0 ? (
+        <Loading />
+      ) : null}
+    </Container>
   );
 }
 

@@ -3,7 +3,7 @@ import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { useFastRerender } from "../utils/hooks";
+import { useFastRerender, useSendMessage } from "../utils/hooks";
 import { listSampleObjects } from "../utils/labels";
 import {
   SelectedObjectMap,
@@ -11,7 +11,6 @@ import {
   removeMatchingObjectsFromSelection,
   convertSelectedObjectsMapToList,
 } from "../utils/selection";
-import { getSocket } from "../utils/socket";
 
 import Menu from "./Menu";
 import DropdownTag from "./Tags/DropdownTag";
@@ -34,13 +33,12 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
   const isVideo = useRecoilValue(selectors.mediaType) == "video";
   const frameNumber = isVideo ? frameNumberRef.current : null;
 
-  const socket = getSocket(useRecoilValue(atoms.port), "state");
-  useEffect(() => {
-    socket.emit(
-      "set_selected_objects",
-      convertSelectedObjectsMapToList(selectedObjects)
-    );
-  }, [selectedObjects]);
+  useSendMessage(
+    "set_selected_objects",
+    { selected_objects: convertSelectedObjectsMapToList(selectedObjects) },
+    null,
+    [selectedObjects]
+  );
 
   const sampleObjects = isVideo
     ? sampleFrameData

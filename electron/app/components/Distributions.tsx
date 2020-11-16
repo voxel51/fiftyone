@@ -1,12 +1,24 @@
-import React, { useState, useRef, PureComponent } from "react";
+import React, { useState, useRef, PureComponent, useEffect } from "react";
 import { Bar, BarChart, XAxis, YAxis, Tooltip } from "recharts";
 import { useRecoilValue } from "recoil";
-import { Dimmer, Header, Loader, Message, Segment } from "semantic-ui-react";
+import styled from "styled-components";
+import useMeasure from "react-use-measure";
 import _ from "lodash";
+import { scrollbarStyles } from "./utils";
 
-import { useSubscribe } from "../utils/socket";
+import Loading from "./Loading";
 import { isFloat } from "../utils/generic";
+import { useMessageHandler, useSendMessage } from "../utils/hooks";
 import * as selectors from "../recoil/selectors";
+
+const Container = styled.div`
+  ${scrollbarStyles}
+  overflow-y: hidden;
+  overflow-x: scroll;
+  width: 100%;
+  height: 100%;
+  padding-left: 1rem;
+`;
 
 class CustomizedAxisTick extends PureComponent {
   render() {
@@ -22,39 +34,48 @@ class CustomizedAxisTick extends PureComponent {
           fill={fill}
           transform="rotate(-80)"
         >
-          {isFloat(v) ? v.toFixed(3) : v}
+          {isFloat(v)
+            ? v.toFixed(3)
+            : v.length > 24
+            ? v.slice(0, 21) + "..."
+            : v}
         </text>
       </g>
     );
   }
 }
 
+const Title = styled.div`
+  font-weight: bold;
+  font-size: 1rem;
+  line-height: 2rem;
+`;
+
 const Distribution = ({ distribution }) => {
   const { name, type, data } = distribution;
-  const barWidth = 30;
-  const [rightMargin, setRightMargin] = useState(0);
+  const [ref, { height }] = useMeasure();
+  const barWidth = 24;
   const container = useRef(null);
   const stroke = "hsl(210, 20%, 90%)";
   const fill = stroke;
   const isNumeric = _.indexOf(["int", "float"], type) >= 0;
-  const padding = isNumeric ? 0 : 20;
 
   return (
-    <Segment style={{ overflowY: "auto", margin: "2rem 0" }}>
-      <Header as="h3">{`${name}: ${type}`}</Header>
+    <Container ref={ref}>
+      <Title>{`${name}: ${type}`}</Title>
       <BarChart
         ref={container}
-        height={500}
-        width={data.length * (barWidth + padding)}
-        barCategoryGap={"20px"}
+        height={height - 37}
+        width={data.length * (barWidth + 4) + 50}
+        barCategoryGap={"4px"}
         data={data}
-        margin={{ top: 0, left: 0, bottom: 0, right: rightMargin + 5 }}
+        margin={{ top: 0, left: 0, bottom: 5, right: 5 }}
       >
         <XAxis
           dataKey="key"
           type="category"
           interval={isNumeric ? "preserveStartEnd" : 0}
-          height={100}
+          height={0.2 * height}
           axisLine={false}
           tick={<CustomizedAxisTick {...{ fill }} />}
           tickLine={{ stroke }}
@@ -79,59 +100,49 @@ const Distribution = ({ distribution }) => {
           barSize={barWidth}
         />
       </BarChart>
-    </Segment>
+    </Container>
   );
 };
 
-function NoDistributions({ name }) {
-  return (
-    <Segment>
-      <Message>No {name}</Message>
-    </Segment>
-  );
-}
+const DistributionsContainer = styled.div`
+  overflow-y: scroll;
+  overflow-x: hidden;
+  width: 100%;
+  height: calc(100% - 3rem);
+  ${scrollbarStyles}
+`;
 
 const Distributions = ({ group }) => {
-  const socket = useRecoilValue(selectors.socket);
-  const [initialLoad, setInitialLoad] = useState(true);
+  const view = useRecoilValue(selectors.view);
+  const datasetName = useRecoilValue(selectors.datasetName);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
 
-  const getData = () => {
-    socket.emit("get_distributions", group, (data) => {
-      setInitialLoad(false);
-      setLoading(false);
-      setData(data);
-    });
-  };
+  useSendMessage("distributions", { group }, null, [view, datasetName]);
 
-  if (initialLoad) {
-    getData();
-  }
-
-  useSubscribe(socket, "update", () => {
-    setLoading(true);
-    getData();
+  useMessageHandler("distributions", ({ results }) => {
+    setLoading(false);
+    setData(results);
   });
 
+  useEffect(() => {
+    setData([]);
+  }, [JSON.stringify(view), datasetName]);
+
   if (loading) {
-    return (
-      <Dimmer active className="samples-dimmer" key={-1}>
-        <Loader />
-      </Dimmer>
-    );
+    return <Loading />;
   }
 
-  if (!data.length) {
-    return <NoDistributions name={group} />;
+  if (data.length === 0) {
+    return <Loading text={`No ${group}`} />;
   }
 
   return (
-    <>
+    <DistributionsContainer>
       {data.map((distribution, i) => {
         return <Distribution key={i} distribution={distribution} />;
       })}
-    </>
+    </DistributionsContainer>
   );
 };
 

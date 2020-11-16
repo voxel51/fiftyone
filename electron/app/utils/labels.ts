@@ -20,11 +20,38 @@ export const VALID_LABEL_TYPES = [
   ...VALID_MASK_TYPES,
 ];
 
+export const OBJECT_TYPES = [
+  "Detection",
+  "Detections",
+  "Keypoints",
+  "Keypoint",
+  "Polylines",
+  "Polyline",
+];
+
 export const FILTERABLE_TYPES = [
   "Classification",
   "Classifications",
   "Detection",
   "Detections",
+  "Keypoints",
+  "Keypoint",
+  "Polylines",
+  "Polyline",
+];
+
+export const CONFIDENCE_LABELS = [
+  "Classification",
+  "Classifications",
+  "Detection",
+  "Detections",
+];
+
+export const LABEL_LISTS = [
+  "Classifications",
+  "Detections",
+  "Keypoints",
+  "Polylines",
 ];
 
 export const VALID_SCALAR_TYPES = [
@@ -42,8 +69,8 @@ export const VALID_NUMERIC_TYPES = [
 export const RESERVED_FIELDS = [
   "_id",
   "_rand",
+  "_media_type",
   "metadata",
-  "media_type",
   "tags",
   "filepath",
   "frames",
@@ -61,7 +88,7 @@ export const RESERVED_DETECTION_FIELDS = [
 export const METADATA_FIELDS = [
   { name: "Size (bytes)", key: "size_bytes" },
   { name: "Type", key: "mime_type" },
-  { name: "Media type", key: "media_type" },
+  { name: "Media type", key: "_media_type" },
   {
     name: "Dimensions",
     value: (metadata) => {
@@ -265,9 +292,9 @@ const _addToETAContainer = (obj, key, item) => {
 };
 
 export const convertSampleToETA = (sample, fieldSchema) => {
-  if (sample.media_type === "image") {
+  if (sample._media_type === "image") {
     return convertImageSampleToETA(sample, fieldSchema);
-  } else if (sample.media_type === "video") {
+  } else if (sample._media_type === "video") {
     let first_frame = {};
     if (sample.frames.first_frame) {
       first_frame = convertImageSampleToETA(

@@ -92,12 +92,15 @@ first 10 samples in the dataset sorted alphabetically by ground truth label:
    :alt: CIFAR-10 Sorted
    :align: center
 
+.. _remote-session:
+
 Remote sessions
 _______________
 
 If your data is stored on a remote machine, you can forward a session from
 the remote machine to the FiftyOne App on your local machine and seemlessly
-browse your remote dataset.
+browse your remote dataset. This is defined in detail in the :doc:`Environments
+</environments/index>` section.
 
 Remote machine
 --------------

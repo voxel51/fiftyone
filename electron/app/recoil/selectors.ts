@@ -1,4 +1,6 @@
 import { selector, selectorFamily } from "recoil";
+import ReconnectingWebSocket from "reconnecting-websocket";
+
 import * as atoms from "./atoms";
 import { generateColorMap } from "../utils/colors";
 import {
@@ -10,12 +12,12 @@ import {
   makeLabelNameGroups,
   labelTypeHasColor,
 } from "../utils/labels";
-import { getSocket } from "../utils/socket";
+import { packageMessage } from "../utils/socket";
 
 export const socket = selector({
   key: "socket",
-  get: ({ get }) => {
-    return getSocket(get(atoms.port), "state");
+  get: ({ get }): ReconnectingWebSocket => {
+    return new ReconnectingWebSocket(`ws://localhost:${get(atoms.port)}/state`);
   },
   dangerouslyAllowMutability: true,
 });
@@ -48,13 +50,16 @@ export const view = selector({
   get: ({ get }) => {
     return get(atoms.stateDescription).view || [];
   },
-  set: ({ get }, stages) => {
+  set: ({ get, set }, stages) => {
     const state = get(atoms.stateDescription);
     const newState = {
       ...state,
       view: stages,
     };
-    get(socket).emit("update", { data: newState, include_self: true });
+    set(atoms.datasetStats, []);
+    set(atoms.extendedDatasetStats, []);
+    set(atoms.stateDescription, newState);
+    get(socket).send(packageMessage("update", { state: newState }));
   },
 });
 
@@ -97,7 +102,7 @@ export const totalCount = selector({
     const stats = get(atoms.datasetStats) || [];
     return stats.reduce(
       (acc, cur) => (cur.name === "count" ? cur.count : acc),
-      0
+      null
     );
   },
 });
@@ -221,6 +226,15 @@ export const labelNames = selectorFamily({
   get: (dimension: string) => ({ get }) => {
     const l = get(labels(dimension));
     return l.map((l) => l.name);
+  },
+});
+
+export const labelPaths = selector({
+  key: "labelPaths",
+  get: ({ get }) => {
+    const sampleLabels = get(labelNames("sample"));
+    const frameLabels = get(labelNames("frame"));
+    return sampleLabels.concat(frameLabels.map((l) => "frames." + l));
   },
 });
 
@@ -378,9 +392,12 @@ export const modalLabelFilters = selector({
     return filters;
   },
   set: ({ get, set }, _) => {
-    const active = get(atoms.activeLabels("sample"));
-    set(atoms.modalActiveLabels("sample"), active);
-    for (const label in active) {
+    const paths = get(labelPaths);
+    const activeLabels = get(atoms.activeLabels("sample"));
+    set(atoms.modalActiveLabels("sample"), activeLabels);
+    const activeFrameLabels = get(atoms.activeLabels("frame"));
+    set(atoms.modalActiveLabels("frame"), activeFrameLabels);
+    for (const label of paths) {
       set(
         atoms.modalFilterLabelConfidenceRange(label),
         get(atoms.filterLabelConfidenceRange(label))
@@ -395,6 +412,8 @@ export const modalLabelFilters = selector({
         atoms.modalFilterIncludeLabels(label),
         get(atoms.filterIncludeLabels(label))
       );
+
+      set(atoms.modalColorByLabel, get(atoms.colorByLabel));
     }
   },
 });

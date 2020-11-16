@@ -1063,7 +1063,7 @@ detection can be stored in the
         }>,
     }>
 
-.. -objects-with-instance-segmentations:
+.. _objects-with-instance-segmentations:
 
 Objects with instance segmentations
 -----------------------------------
@@ -1133,7 +1133,7 @@ object's bounding box when visualizing in the App.
         }>,
     }>
 
-.. -objects-with-attributes:
+.. _objects-with-attributes:
 
 Objects with attributes
 -----------------------
@@ -1331,7 +1331,7 @@ Polylines can also have string labels, which are stored in their
         }>,
     }>
 
-.. -polylines-with-attributes:
+.. _polylines-with-attributes:
 
 Polylines with attributes
 -------------------------
@@ -1470,7 +1470,7 @@ list of ``(x, y)`` coordinates defining a set of keypoints in the image. Each
         }>,
     }>
 
-.. -keypoints-with-attributes:
+.. _keypoints-with-attributes:
 
 Keypoints with attributes
 -------------------------

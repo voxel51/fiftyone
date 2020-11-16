@@ -107,29 +107,12 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement info")
 
-    def aggregate(self, aggregations):
-        """Aggregates one or more
-        :class:`fiftyone.core.aggregations.Aggregation` instances.
-
-        Note that it is best practice to group aggregations into a single call
-        to :meth:`aggregate() <aggregate>`, as this will be more efficient than
-        performing multiple aggregations in series.
-
-        Args:
-            aggregations: an :class:`fiftyone.core.aggregations.Aggregation` or
-                iterable of :class:`<fiftyone.core.aggregations.Aggregation>`
-                instances
-
-        Returns:
-            an :class:`fiftyone.core.aggregations.AggregationResult` or list of
-            :class:`fiftyone.core.aggregations.AggregationResult` instances
-            corresponding to the input aggregations
-        """
+    def _build_aggregation(self, aggregations):
         scalar_result = isinstance(aggregations, Aggregation)
         if scalar_result:
             aggregations = [aggregations]
-        elif len(aggregations) == 0:
-            return []
+        elif not aggregations:
+            return False, [], None
 
         # pylint: disable=no-member
         schema = self.get_field_schema()
@@ -149,22 +132,73 @@ class SampleCollection(object):
             )
 
         result_d = {}
-        try:
-            # pylint: disable=no-member
-            result_d = next(self._aggregate([{"$facet": pipelines}]))
-        except StopIteration:
-            pass
 
+        return scalar_result, aggregations, [{"$facet": pipelines}]
+
+    def _process_aggregations(self, aggregations, result, scalar_result):
         results = []
         for agg in aggregations:
             try:
                 results.append(
-                    agg._get_result(result_d[agg._get_output_field(self)][0])
+                    agg._get_result(result[agg._get_output_field(self)][0])
                 )
             except:
                 results.append(agg._get_default_result())
 
         return results[0] if scalar_result else results
+
+    def aggregate(self, aggregations, _attach_frames=True):
+        """Aggregates one or more
+        :class:`fiftyone.core.aggregations.Aggregation` instances.
+
+        Note that it is best practice to group aggregations into a single call
+        to :meth:`aggregate() <aggregate>`, as this will be more efficient than
+        performing multiple aggregations in series.
+
+        Args:
+            aggregations: an :class:`fiftyone.core.aggregations.Aggregation` or
+                iterable of :class:`<fiftyone.core.aggregations.Aggregation>`
+                instances
+
+        Returns:
+            an :class:`fiftyone.core.aggregations.AggregationResult` or list of
+            :class:`fiftyone.core.aggregations.AggregationResult` instances
+            corresponding to the input aggregations
+        """
+        scalar_result, aggregations, facets = self._build_aggregation(
+            aggregations
+        )
+        if len(aggregations) == 0:
+            return []
+        # pylint: disable=no-member
+        pipeline = self._pipeline(
+            pipeline=facets, attach_frames=_attach_frames
+        )
+        try:
+            # pylint: disable=no-member
+            result = next(self._dataset._sample_collection.aggregate(pipeline))
+        except StopIteration:
+            pass
+
+        return self._process_aggregations(aggregations, result, scalar_result)
+
+    async def _async_aggregate(self, coll, aggregations):
+        scalar_result, aggregations, facets = self._build_aggregation(
+            aggregations
+        )
+        if not aggregations:
+            return []
+
+        # pylint: disable=no-member
+        pipeline = self._pipeline(pipeline=facets)
+        try:
+            # pylint: disable=no-member
+            result = await coll.aggregate(pipeline).to_list(1)
+            result = result[0]
+        except StopIteration:
+            pass
+
+        return self._process_aggregations(aggregations, result, scalar_result)
 
     def summary(self):
         """Returns a string summary of the collection.
@@ -1732,7 +1766,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement make_index()")
 
-    def to_dict(self, rel_dir=None):
+    def to_dict(self, rel_dir=None, frame_labels_dir=None, pretty_print=False):
         """Returns a JSON dictionary representation of the collection.
 
         Args:
@@ -1743,41 +1777,64 @@ class SampleCollection(object):
                 use case for this argument is that your source data lives in
                 a single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
+            frame_labels_dir (None): a directory in which to write per-sample
+                JSON files containing the frame labels for video samples. If
+                omitted, frame labels will be included directly in the returned
+                JSON dict (which can be quite quite large for video datasets
+                containing many frames). Only applicable to video datasets
+            pretty_print (False): whether to render frame labels JSON in human
+                readable format with newlines and indentations. Only applicable
+                to video datasets when a ``frame_labels_dir`` is provided
 
         Returns:
             a JSON dict
         """
-        # @todo support serializing video datasets?
-        # That would be a lot of labels to store in one JSON......
-        if self.media_type == fom.VIDEO:
-            raise ValueError("Serializing video datasets is not supported")
-
         if rel_dir is not None:
             rel_dir = (
                 os.path.abspath(os.path.expanduser(rel_dir)) + os.path.sep
             )
             len_rel_dir = len(rel_dir)
 
+        is_video = self.media_type == fom.VIDEO
+        write_frame_labels = is_video and frame_labels_dir is not None
+
+        d = {
+            "name": self.name,
+            "media_type": self.media_type,
+            "num_samples": len(self),
+            "sample_fields": self._serialize_field_schema(),
+        }
+
+        if is_video:
+            d["frame_fields"] = self._serialize_frame_field_schema()
+
+        d["info"] = self.info
+
         # Serialize samples
         samples = []
         with fou.ProgressBar() as pb:
             for sample in pb(self):
-                d = sample.to_dict()
-                if rel_dir and d["filepath"].startswith(rel_dir):
-                    d["filepath"] = d["filepath"][len_rel_dir:]
+                sd = sample.to_dict(include_frames=True)
 
-                samples.append(d)
+                if write_frame_labels:
+                    frames = {"frames": sd.pop("frames", {})}
+                    filename = sample.id + ".json"
+                    sd["frames"] = filename
+                    frames_path = os.path.join(frame_labels_dir, filename)
+                    etas.write_json(
+                        frames, frames_path, pretty_print=pretty_print
+                    )
 
-        return {
-            "name": self.name,
-            "num_samples": len(self),
-            "tags": self.get_tags(),
-            "info": self.info,
-            "sample_fields": self._serialize_field_schema(),
-            "samples": samples,
-        }
+                if rel_dir and sd["filepath"].startswith(rel_dir):
+                    sd["filepath"] = sd["filepath"][len_rel_dir:]
 
-    def to_json(self, rel_dir=None, pretty_print=False):
+                samples.append(sd)
+
+        d["samples"] = samples
+
+        return d
+
+    def to_json(self, rel_dir=None, frame_labels_dir=None, pretty_print=False):
         """Returns a JSON string representation of the collection.
 
         The samples will be written as a list in a top-level ``samples`` field
@@ -1791,17 +1848,31 @@ class SampleCollection(object):
                 use case for this argument is that your source data lives in
                 a single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
+            frame_labels_dir (None): a directory in which to write per-sample
+                JSON files containing the frame labels for video samples. If
+                omitted, frame labels will be included directly in the returned
+                JSON dict (which can be quite quite large for video datasets
+                containing many frames). Only applicable to video datasets
             pretty_print (False): whether to render the JSON in human readable
                 format with newlines and indentations
 
         Returns:
             a JSON string
         """
-        return etas.json_to_str(
-            self.to_dict(rel_dir=rel_dir), pretty_print=pretty_print
+        d = self.to_dict(
+            rel_dir=rel_dir,
+            frame_labels_dir=frame_labels_dir,
+            pretty_print=pretty_print,
         )
+        return etas.json_to_str(d, pretty_print=pretty_print)
 
-    def write_json(self, json_path, rel_dir=None, pretty_print=False):
+    def write_json(
+        self,
+        json_path,
+        rel_dir=None,
+        frame_labels_dir=None,
+        pretty_print=False,
+    ):
         """Writes the colllection to disk in JSON format.
 
         Args:
@@ -1813,14 +1884,20 @@ class SampleCollection(object):
                 use case for this argument is that your source data lives in
                 a single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
+            frame_labels_dir (None): a directory in which to write per-sample
+                JSON files containing the frame labels for video samples. If
+                omitted, frame labels will be included directly in the returned
+                JSON dict (which can be quite quite large for video datasets
+                containing many frames). Only applicable to video datasets
             pretty_print (False): whether to render the JSON in human readable
                 format with newlines and indentations
         """
-        etas.write_json(
-            self.to_dict(rel_dir=rel_dir),
-            json_path,
+        d = self.to_dict(
+            rel_dir=rel_dir,
+            frame_labels_dir=frame_labels_dir,
             pretty_print=pretty_print,
         )
+        etas.write_json(d, json_path, pretty_print=pretty_print)
 
     def _add_view_stage(self, stage):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the

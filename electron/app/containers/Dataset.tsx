@@ -1,15 +1,14 @@
-import React, { useState, useEffect } from "react";
-import { Switch, Route, Redirect } from "react-router-dom";
+import React, { useState, useEffect, useMemo } from "react";
+import { Redirect } from "react-router-dom";
 import {
   useRecoilState,
   useRecoilValue,
   useSetRecoilState,
   useResetRecoilState,
 } from "recoil";
-import { Container, Message, Segment } from "semantic-ui-react";
+import styled from "styled-components";
 
 import SamplesContainer from "./SamplesContainer";
-import Distributions from "../components/Distributions";
 import HorizontalNav from "../components/HorizontalNav";
 import SampleModal from "../components/SampleModal";
 import { ModalWrapper, Overlay } from "../components/utils";
@@ -17,14 +16,25 @@ import routes from "../constants/routes.json";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { VALID_LABEL_TYPES } from "../utils/labels";
+import { useMessageHandler, useSendMessage } from "../utils/hooks";
+import Loading from "../components/Loading";
 
-function NoDataset() {
-  return (
-    <Segment>
-      <Message>No dataset loaded</Message>
-    </Segment>
-  );
-}
+const PLOTS = ["labels", "scalars", "tags"];
+
+const Container = styled.div`
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+`;
+
+const Body = styled.div`
+  padding: 0 1rem;
+  width: 100%;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+`;
 
 const applyActiveLabels = (tuples, current, setter) => {
   const newSelection = { ...current };
@@ -37,7 +47,6 @@ const applyActiveLabels = (tuples, current, setter) => {
 };
 
 function Dataset(props) {
-  const tabs = [routes.SAMPLES, routes.TAGS, routes.LABELS, routes.SCALARS];
   const [modal, setModal] = useState({
     visible: false,
     sample: null,
@@ -55,6 +64,8 @@ function Dataset(props) {
   const labelTuples = useRecoilValue(selectors.labelTuples("sample"));
   const frameLabelTuples = useRecoilValue(selectors.labelTuples("frame"));
   const tagNames = useRecoilValue(selectors.tagNames);
+  const setExtendedDatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
+  const setDatasetStats = useSetRecoilState(atoms.datasetStats);
   const [activeLabels, setActiveLabels] = useRecoilState(
     atoms.activeLabels("sample")
   );
@@ -63,6 +74,12 @@ function Dataset(props) {
   );
   const activeOther = useRecoilValue(atoms.activeOther("sample"));
   const activeFrameOther = useRecoilValue(atoms.activeOther("frame"));
+
+  useMessageHandler("statistics", ({ stats, extended }) => {
+    extended && setExtendedDatasetStats(stats);
+    !extended && setDatasetStats(stats);
+  });
+  useSendMessage("as_app", {});
 
   // update color map
   useEffect(() => {
@@ -90,7 +107,6 @@ function Dataset(props) {
     setModal({ visible: false, sample: null });
     resetSelectedObjects();
     resetHiddenObjects();
-    socket.emit("set_selected_objects", []);
   };
 
   useEffect(() => {
@@ -113,13 +129,16 @@ function Dataset(props) {
     });
   }, [modal.visible]);
 
-  useEffect(() => {
-    if (
+  const hideModal = useMemo(() => {
+    return (
       modal.visible &&
       !currentSamples.some((i) => i.sample._id === modal.sample._id)
-    ) {
-      handleHideModal();
-    } else if (modal.visible) {
+    );
+  }, [currentSamples]);
+
+  useEffect(() => {
+    hideModal && handleHideModal();
+    if (!hideModal && modal.visible) {
       setModal({
         ...modal,
         sample: currentSamples.filter(
@@ -127,15 +146,17 @@ function Dataset(props) {
         )[0].sample,
       });
     }
-  }, [currentSamples]);
+  }, [hideModal]);
+
+  useSendMessage("set_selected_objects", { selected_objects: [] }, !hideModal);
 
   let src = null;
   let s = null;
   if (modal.sample) {
     const path = modal.sample.filepath;
     const id = modal.sample._id;
-    const host = `http://127.0.0.1:${port}/`;
-    src = `${host}?path=${path}&id=${id}`;
+    const host = `http://127.0.0.1:${port}/filepath`;
+    src = `${host}${path}?id=${id}`;
     s = modal.sample;
   }
   if (loading) {
@@ -178,45 +199,26 @@ function Dataset(props) {
           />
         </ModalWrapper>
       ) : null}
-      <Container fluid={true}>
-        <HorizontalNav
-          currentPath={props.location.pathname}
-          entries={tabs.map((path) => ({ path, name: path.slice(1) }))}
-        />
-        <Switch>
-          <Route exact path={routes.DATASET}>
-            <Redirect to={routes.SAMPLES} />
-          </Route>
-          {hasDataset ? (
-            <>
-              <Route path={routes.SAMPLES}>
-                <SamplesContainer
-                  {...props.socket}
-                  setView={(sample, metadata) =>
-                    setModal({
-                      ...modal,
-                      visible: true,
-                      sample,
-                      metadata,
-                    })
-                  }
-                  colorMap={colorMap}
-                />
-              </Route>
-              <Route path={routes.LABELS}>
-                <Distributions group="labels" />
-              </Route>
-              <Route path={routes.TAGS}>
-                <Distributions group="tags" />
-              </Route>
-              <Route path={routes.SCALARS}>
-                <Distributions group="scalars" />
-              </Route>
-            </>
-          ) : (
-            <NoDataset />
-          )}
-        </Switch>
+      <Container>
+        {hasDataset && <HorizontalNav entries={PLOTS} />}
+        {hasDataset ? (
+          <Body>
+            <SamplesContainer
+              {...props.socket}
+              setView={(sample, metadata) =>
+                setModal({
+                  ...modal,
+                  visible: true,
+                  sample,
+                  metadata,
+                })
+              }
+              colorMap={colorMap}
+            />
+          </Body>
+        ) : (
+          <Loading text={"No dataset loaded"} />
+        )}
       </Container>
     </>
   );

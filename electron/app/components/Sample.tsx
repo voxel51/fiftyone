@@ -3,11 +3,13 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { animated, useSpring, useTransition } from "react-spring";
 
+import { getColor } from "../player51/build/cjs/player51.min.js";
 import Player51 from "./Player51";
 import Tag from "./Tags/Tag";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { getLabelText, stringify } from "../utils/labels";
+import { packageMessage } from "../utils/socket";
 import { useFastRerender, useVideoData } from "../utils/hooks";
 
 const SampleDiv = animated(styled.div`
@@ -16,6 +18,26 @@ const SampleDiv = animated(styled.div`
   box-shadow: 0 2px 10px ${({ theme }) => theme.backgroundDark};
   background-color: ${({ theme }) => theme.backgroundLight};
 `);
+
+const SampleInfo = styled.div`
+  position: absolute;
+  width: 100%;
+  max-height: 100%;
+  display: block;
+  z-index: 100;
+  overflow-y: hidden;
+  padding: 0.5rem;
+  bottom: 0;
+  &::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+    display: none;
+  }
+  &::-webkit-scrollbar-thumb {
+    width: 0px;
+    display: none;
+  }
+`;
 
 const LoadingBar = animated(styled.div`
   position: absolute;
@@ -34,7 +56,7 @@ const LoadingBar = animated(styled.div`
 `);
 
 const useHoverLoad = (socket, sample) => {
-  if (sample.media_type !== "video") {
+  if (sample._media_type !== "video") {
     return [[], null, null];
   }
   const [barItem, setBarItem] = useState([]);
@@ -88,17 +110,20 @@ const useHoverLoad = (socket, sample) => {
 
 const Sample = ({ sample, metadata, setView }) => {
   const port = useRecoilValue(atoms.port);
-  const host = `http://127.0.0.1:${port}`;
+  const host = `http://127.0.0.1:${port}/filepath`;
   const id = sample._id;
-  const src = `${host}?path=${sample.filepath}&id=${id}`;
+  const src = `${host}${sample.filepath}?id=${id}`;
   const socket = useRecoilValue(selectors.socket);
   const filter = useRecoilValue(selectors.labelFilters);
   const colorMap = useRecoilValue(atoms.colorMap);
+  const colorByLabel = useRecoilValue(atoms.colorByLabel);
   const activeLabels = useRecoilValue(atoms.activeLabels("sample"));
   const activeFrameLabels = useRecoilValue(atoms.activeLabels("frame"));
   const activeTags = useRecoilValue(atoms.activeTags);
   const activeOther = useRecoilValue(atoms.activeOther("sample"));
-  const setStateDescription = useSetRecoilState(atoms.stateDescription);
+  const [stateDescription, setStateDescription] = useRecoilState(
+    atoms.stateDescription
+  );
 
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     atoms.selectedSamples
@@ -117,7 +142,8 @@ const Sample = ({ sample, metadata, setView }) => {
     }
     setSelectedSamples(newSelected);
     rerender();
-    socket.emit(event, id, (data) => setStateDescription(data));
+    socket.send(packageMessage(event, { _id: id }));
+    setStateDescription({ ...stateDescription, selected: [...newSelected] });
   };
   const eventHandlers = {
     onClick: () => handleClick(),
@@ -140,7 +166,7 @@ const Sample = ({ sample, metadata, setView }) => {
         key={"label-" + name + "-" + value + (idx ? "-" + idx : "")}
         title={name}
         name={value}
-        color={colorMap[name]}
+        color={colorByLabel ? getColor(value) : colorMap[name]}
       />
     );
   };
@@ -152,12 +178,13 @@ const Sample = ({ sample, metadata, setView }) => {
     ) {
       return null;
     }
+    const value = stringify(sample[name]);
     return (
       <Tag
         key={"scalar-" + name}
         title={name}
-        name={stringify(sample[name])}
-        color={colorMap[name]}
+        name={value}
+        color={colorByLabel ? value : colorMap[name]}
       />
     );
   };
@@ -171,6 +198,7 @@ const Sample = ({ sample, metadata, setView }) => {
   });
 
   const [bar, onMouseEnter, onMouseLeave] = useHoverLoad(socket, sample);
+
   return (
     <SampleDiv className="sample" style={showSamples} title={tooltip}>
       <Player51
@@ -185,12 +213,13 @@ const Sample = ({ sample, metadata, setView }) => {
         thumbnail={true}
         activeLabels={activeLabels}
         activeFrameLabels={activeFrameLabels}
+        colorByLabel={colorByLabel}
         {...eventHandlers}
         filterSelector={selectors.labelFilters}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
       />
-      <div className="sample-info" {...eventHandlers}>
+      <SampleInfo {...eventHandlers}>
         {Object.keys(sample)
           .sort()
           .reduce((acc, name) => {
@@ -214,7 +243,7 @@ const Sample = ({ sample, metadata, setView }) => {
           ) : null;
         })}
         {Object.keys(sample).sort().map(renderScalar)}
-      </div>
+      </SampleInfo>
       {selectedSamples.has(id) ? (
         <div
           style={{

@@ -68,17 +68,21 @@ export const ModalFooter = styled.footer`
 `;
 
 export const scrollbarStyles = ({ theme }) => `
-  &::-webkit-scrollbar {
-    width: 10px;
-    background: transparent;
-  }
-  &::-webkit-scrollbar-thumb {
-    width: 10px;
-    border-radius: 5px;
-    background-color: transparent;
-    transition: background-color linear 0.5s;
-  }
-  &:hover::-webkit-scrollbar-thumb {
-    background-color: ${theme.fontDarkest};
-  }
+::-webkit-scrollbar {
+  width: 16px;
+}
+
+::-webkit-scrollbar-track {
+  border: solid 4px transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  box-shadow: inset 0 0 10px 10px transparent;
+  border: solid 4px transparent;
+  border-radius: 16px;
+  transition: box-shadow linear 0.5s;
+}
+&:hover::-webkit-scrollbar-thumb {
+  box-shadow: inset 0 0 10px 10px ${theme.fontDarkest};
+}
 `;

@@ -1,6 +1,10 @@
 import React, { useContext, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
-import { Checkbox, FormControlLabel } from "@material-ui/core";
+import {
+  Checkbox,
+  FormControlLabel,
+  CircularProgress,
+} from "@material-ui/core";
 import { ArrowDropDown, ArrowDropUp } from "@material-ui/icons";
 import { useRecoilValue } from "recoil";
 import { animated, useSpring } from "react-spring";
@@ -8,12 +12,13 @@ import { animated, useSpring } from "react-spring";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { SampleContext } from "../utils/context";
-import { labelTypeIsFilterable } from "../utils/labels";
+import { labelTypeIsFilterable, LABEL_LISTS } from "../utils/labels";
 
 import Filter from "./Filter";
 import NumericFieldFilter from "./NumericFieldFilter";
 
 const GLOBAL_ATOMS = {
+  colorByLabel: atoms.colorByLabel,
   includeLabels: atoms.filterIncludeLabels,
   invertInclude: atoms.filterInvertIncludeLabels,
   includeNoConfidence: atoms.filterLabelIncludeNoConfidence,
@@ -23,6 +28,7 @@ const GLOBAL_ATOMS = {
 };
 
 const MODAL_ATOMS = {
+  colorByLabel: atoms.modalColorByLabel,
   includeLabels: atoms.modalFilterIncludeLabels,
   invertInclude: atoms.modalFilterInvertIncludeLabels,
   includeNoConfidence: atoms.modalFilterLabelIncludeNoConfidence,
@@ -56,6 +62,7 @@ const Body = styled.div`
       align-items: center;
       padding-right: 3px;
       max-width: 100%;
+      font-family: "Palanquin", sans-serif;
     }
 
     .MuiTypography-body1.with-checkbox {
@@ -191,23 +198,33 @@ const Entry = ({ entry, onCheck, modal }) => {
             <span className="name" title={entry.name}>
               {entry.name}
             </span>
-            <span className="count" title={entry.data}>
-              {entry.data}
-            </span>
-            {!(
-              entry.icon &&
-              !["Detections", "Classifications"].includes(entry.type)
-            ) &&
-            ((entry.type && labelTypeIsFilterable(entry.type)) ||
-              (isNumericField && !modal)) ? (
-              <ArrowType
-                onClick={(e) => {
-                  e.preventDefault();
-                  setExpanded(!expanded);
+            {entry.data !== undefined ? (
+              <>
+                <span className="count" title={entry.data}>
+                  {entry.data}
+                </span>
+                {!(entry.icon && !LABEL_LISTS.includes(entry.type)) &&
+                ((entry.type && labelTypeIsFilterable(entry.type)) ||
+                  (isNumericField && !modal)) ? (
+                  <ArrowType
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setExpanded(!expanded);
+                    }}
+                    style={{ marginRight: -4 }}
+                  />
+                ) : null}
+              </>
+            ) : (
+              <CircularProgress
+                style={{
+                  color: theme.font,
+                  height: 16,
+                  width: 16,
+                  minWidth: 16,
                 }}
-                style={{ marginRight: -4 }}
               />
-            ) : null}
+            )}
           </>
         }
         classes={{
