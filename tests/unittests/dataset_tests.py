@@ -160,7 +160,7 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(common21.field, common2.field)
 
     @drop_datasets
-    def test_rename_field(self):
+    def test_rename_sample_field(self):
         dataset = fo.Dataset()
 
         value = 1
@@ -168,7 +168,7 @@ class DatasetTests(unittest.TestCase):
 
         dataset.add_sample(sample)
 
-        dataset.rename_field("field", "new_field")
+        dataset.rename_sample_field("field", "new_field")
 
         self.assertFalse("field" in dataset.get_field_schema())
         self.assertTrue("new_field" in dataset.get_field_schema())

@@ -173,4 +173,4 @@ def convert_classification_field_to_detections(
         dataset.delete_sample_field(classification_field)
 
     if overwrite:
-        dataset.rename_field(detections_field, classification_field)
+        dataset.rename_sample_field(detections_field, classification_field)
