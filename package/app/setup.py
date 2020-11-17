@@ -16,6 +16,20 @@ from wheel.bdist_wheel import bdist_wheel
 import os
 import shutil
 
+VERSION = "0.6.5.1"
+
+def get_version():
+    if "RELEASE_VERSION" in os.environ:
+        version = os.environ["RELEASE_VERSION"]
+        if not version.startswith(VERSION):
+            raise ValueError(
+                "Release version doest not match version: %s and %s"(
+                    version, VERSION
+                )
+            )
+        return version
+
+    return VERSION
 
 def make_tar(dir_path, tar_path):
     """Makes a tarfile containing the given directory.
@@ -136,7 +150,7 @@ cmdclass = {
 
 setup(
     name="fiftyone_app",
-    version="0.6.5.1",
+    version=get_version(),
     description="FiftyOne App",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
