@@ -2,10 +2,14 @@ name: 'manylinux'
 description: 'builds manylinux wheels'
 inputs:
   pkg:
-    description: 'package to build; app or db'
+    description: 'package to build'
+    required: true
+  pkg_path:
+    description: 'path to the package to build'
     required: true
 runs:
   using: 'docker'
   image: 'Dockerfile'
   args:
     - ${{ inputs.pkg }}
+    - ${{ inputs.pkg_path }}
