@@ -1,6 +1,6 @@
-
 #!/bin/bash
 set -e -u -x
+rm -rf /opt/python/cp2*
 
 function repair_wheel {
     wheel="$1"
@@ -17,7 +17,6 @@ yum install -y atlas-devel
 
 # Compile wheels
 for PYBIN in /opt/python/*/bin; do
-    "${PYBIN}/pip" install -r /io/requirements/dev.txt
     "${PYBIN}/pip" wheel /io/package/app --no-deps -w wheelhouse/
 done
 
