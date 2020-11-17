@@ -1015,6 +1015,9 @@ class AppConnectCommand(Command):
 
         # Connect to a remote App session
         fiftyone app connect --destination <destination> --port <port>
+
+        # Connect to a remote App using a custom local port
+        fiftyone app connect --local-port <port>
     """
 
     @staticmethod
@@ -1033,6 +1036,14 @@ class AppConnectCommand(Command):
             default=5151,
             type=int,
             help="the remote port to connect to",
+        )
+        parser.add_argument(
+            "-l",
+            "--local-port",
+            metavar="PORT",
+            default=5151,
+            type=int,
+            help="the local port to use to serve the App",
         )
 
     @staticmethod
@@ -1082,7 +1093,7 @@ class AppConnectCommand(Command):
 
             fou.call_on_exit(stop_port_forward)
 
-        session = fos.launch_app()
+        session = fos.launch_app(port=args.local_port)
 
         _watch_session(session)
 

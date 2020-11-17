@@ -786,6 +786,8 @@ Connect to a remote FiftyOne App.
       -d DESTINATION, --destination DESTINATION
                             the destination to connect to, e.g., [username@]hostname
       -p PORT, --port PORT  the remote port to connect to
+      -l PORT, --local-port PORT
+                            the local port to use to serve the App
 
 **Examples**
 
@@ -798,6 +800,11 @@ Connect to a remote FiftyOne App.
 
     # Connect to a remote App session
     fiftyone app connect --destination <destination> --port <port>
+
+.. code-block:: shell
+
+    # Connect to a remote App using a custom local port
+    fiftyone app connect --local-port <port>
 
 .. _cli-fiftyone-zoo:
 
