@@ -1050,8 +1050,9 @@ class AppConnectCommand(Command):
             help="the local port to use to serve the App",
         )
         parser.add_argument(
-            "-k",
+            "-i",
             "--ssh-key",
+            metavar="KEY",
             default=None,
             type=str,
             help="optional ssh key to use to login",
