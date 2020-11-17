@@ -81,8 +81,10 @@ jobs:
            electronuserland/builder:wine \
            yarn package-win --publish never
       - name: Build wheel (Linux)
-        working-directory: package/app
-        run: python setup.py bdist_wheel --plat-name linux
+        uses: ./github/actions/manylinux
+        with:
+          pkg: app
+          pkg_path: package/app
       - name: Build wheel (macOS)
         working-directory: package/app
         run: python setup.py bdist_wheel --plat-name mac
