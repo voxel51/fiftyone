@@ -13,7 +13,7 @@ from setuptools import setup, find_packages
 from setuptools.command.install import install
 from wheel.bdist_wheel import bdist_wheel
 
-import eta.core.utils as etau
+import setup_utils
 
 
 class CustomBdistWheel(bdist_wheel):
@@ -92,7 +92,7 @@ class CustomBdistWheel(bdist_wheel):
             raise RuntimeError("Unsupported file type: %r" % app_path)
 
         ext += ".tar.gz"
-        etau.make_tar(app_path, os.path.join(bin_dir, "FiftyOne" + ext))
+        setup_utils.make_tar(app_path, os.path.join(bin_dir, "FiftyOne" + ext))
 
 
 cmdclass = {

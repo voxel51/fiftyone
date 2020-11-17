@@ -1,0 +1,11 @@
+name: 'manylinux'
+description: 'builds manylinux wheels'
+inputs:
+  pkg:
+    description: 'package to build; app or db'
+    required: true
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.pkg }}
