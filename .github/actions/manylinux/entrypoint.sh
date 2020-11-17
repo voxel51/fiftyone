@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e -u -x
+set -e -x
 rm -rf /opt/python/cp2*
 
 PKG="$2"
