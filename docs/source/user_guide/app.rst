@@ -122,6 +122,9 @@ argument. This will open the session on port `5151` on your machine:
 You can manipulate the `session` object as usual to programmatically interact
 with the remote App instance that you'll connect to next.
 
+
+.. _remote-app-local-machine:
+
 Local machine
 -------------
 
