@@ -45,7 +45,7 @@ jobs:
       - name: Validate version
         run: |
           SETUP_VERSION="$(pip list --format json | jq -r '.[] | select(.name=="fiftyone-app") | .version')"
-          TAG_VERSION="$(echo "${{ github.ref }}" | sed 's/^refs\/tags\/gui-v//' | sed 's/-rc\..*//')"
+          TAG_VERSION="$(echo "${{ github.ref }}" | sed 's/^refs\/tags\/app-v//' | sed 's/-rc\..*//')"
           echo "setup.py version: ${SETUP_VERSION}"
           echo "tagged version: ${TAG_VERSION}"
           test "${SETUP_VERSION}" = "${TAG_VERSION}"
