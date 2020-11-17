@@ -102,8 +102,8 @@ methods are closed source.
 Check out the :doc:`Brain documentation </user_guide/brain>` for detailed
 instructions on using the various Brain methods.
 
-Can you connect multiple App sessions to the same dataset?
-----------------------------------------------------------
+Can you connect multiple App instances to the same dataset?
+-----------------------------------------------------------
 
 Yes, multiple users can remotely access the same
 |Dataset|. You just need to create a remote session on the system that has the
