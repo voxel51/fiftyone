@@ -116,7 +116,7 @@ class QuickstartCommand(Command):
             "-r",
             "--remote",
             action="store_true",
-            help="whether to launch a remote app session",
+            help="whether to launch a remote App session",
         )
 
     @staticmethod
@@ -770,10 +770,10 @@ class AppLaunchCommand(Command):
 
     Examples::
 
-        # Launch the app with the given dataset
+        # Launch the App with the given dataset
         fiftyone app launch <name>
 
-        # Launch a remote app session
+        # Launch a remote App session
         fiftyone app launch <name> --remote
     """
 
@@ -794,7 +794,7 @@ class AppLaunchCommand(Command):
             "-r",
             "--remote",
             action="store_true",
-            help="whether to launch a remote app session",
+            help="whether to launch a remote App session",
         )
 
     @staticmethod
@@ -812,7 +812,7 @@ def _watch_session(session, remote=False):
         if remote:
             print("\nTo exit, press ctrl + c\n")
         else:
-            print("\nTo exit, close the app or press ctrl + c\n")
+            print("\nTo exit, close the App or press ctrl + c\n")
         session.wait()
     except KeyboardInterrupt:
         pass
@@ -823,31 +823,31 @@ class AppViewCommand(Command):
 
     Examples::
 
-        # View a dataset stored on disk in the app
+        # View a dataset stored on disk in the App
         fiftyone app view --dataset-dir <dataset-dir> --type <type>
 
-        # View a zoo dataset in the app
+        # View a zoo dataset in the App
         fiftyone app view --zoo-dataset <name> --splits <split1> ...
 
-        # View a directory of images in the app
+        # View a directory of images in the App
         fiftyone app view --images-dir <images-dir>
 
-        # View a glob pattern of images in the app
+        # View a glob pattern of images in the App
         fiftyone app view --images-patt <images-patt>
 
-        # View a directory of videos in the app
+        # View a directory of videos in the App
         fiftyone app view --videos-dir <videos-dir>
 
-        # View a glob pattern of videos in the app
+        # View a glob pattern of videos in the App
         fiftyone app view --videos-patt <videos-patt>
 
-        # View a dataset stored in JSON format on disk in the app
+        # View a dataset stored in JSON format on disk in the App
         fiftyone app view --json-path <json-path>
 
-        # View a random subset of the data stored on disk in the app
+        # View a random subset of the data stored on disk in the App
         fiftyone app view ... --shuffle --max-samples <max-samples>
 
-        # View the dataset in a remote app session
+        # View the dataset in a remote App session
         fiftyone app view ... --remote
     """
 
@@ -942,7 +942,7 @@ class AppViewCommand(Command):
             "-r",
             "--remote",
             action="store_true",
-            help="whether to launch a remote app session",
+            help="whether to launch a remote App session",
         )
 
     @staticmethod
@@ -1010,10 +1010,10 @@ class AppConnectCommand(Command):
 
     Examples::
 
-        # Connect to a remote app with port forwarding already configured
+        # Connect to a remote App with port forwarding already configured
         fiftyone app connect
 
-        # Connect to a remote app session
+        # Connect to a remote App session
         fiftyone app connect --destination <destination> --port <port>
     """
 
