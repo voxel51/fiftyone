@@ -94,13 +94,16 @@ class CustomBdistWheel(bdist_wheel):
 
     def write_wheelfile(self, *args, **kwargs):
         bdist_wheel.write_wheelfile(self, *args, **kwargs)
-        release_dir = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "..",
-            "..",
-            "electron",
-            "release",
-        )
+        if os.environ.get("RELEASE_DIR"):
+            release_dir = os.environ["RELEASE_DIR"]
+        else:
+            release_dir = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "..",
+                "..",
+                "electron",
+                "release",
+            )
         bin_dir = os.path.join(
             self.bdist_dir, self.data_dir, "purelib", "fiftyone", "app", "bin"
         )
@@ -141,7 +144,7 @@ class CustomBdistWheel(bdist_wheel):
             raise RuntimeError("Unsupported file type: %r" % app_path)
 
         ext += ".tar.gz"
-        setup_utils.make_tar(app_path, os.path.join(bin_dir, "FiftyOne" + ext))
+        make_tar(app_path, os.path.join(bin_dir, "FiftyOne" + ext))
 
 
 cmdclass = {
