@@ -25,8 +25,7 @@ DESC = pymongo.DESCENDING
 
 def start_db_service_if_necessary():
     """Starts the database service, if necessary."""
-    if not _database_service.is_running:
-        _database_service.start()
+    _database_service.start()
 
 
 def _connect():

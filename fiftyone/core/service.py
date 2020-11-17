@@ -43,6 +43,7 @@ class ServiceListenTimeout(ServiceException):
         message = "%s failed to bind to port" % self.name
         if self.port is not None:
             message += " " + str(self.port)
+
         return message
 
 
@@ -78,11 +79,10 @@ class Service(object):
         self.child = None
         self._is_running = False
 
-        if not self._disabled and start:
+        if start:
             self.start()
 
     def __del__(self):
-        """Deletes (stops) the Service."""
         if not self._disabled:
             try:
                 self.stop()
@@ -100,12 +100,16 @@ class Service(object):
         return {}
 
     @property
+    def disabled(self):
+        return self._disabled
+
+    @property
     def is_running(self):
         return self._is_running
 
     @property
     def _service_args(self):
-        """Arguments passed to the service entrypoint"""
+        """Arguments passed to the service entrypoint."""
         if not self.service_name:
             raise NotImplementedError(
                 "%r must define `service_name`" % type(self)
@@ -115,7 +119,7 @@ class Service(object):
 
     def start(self):
         """Starts the service, if necessary."""
-        if self._is_running:
+        if self._disabled or self._is_running:
             return
 
         service_main_path = os.path.join(
@@ -287,7 +291,7 @@ class DatabaseService(MultiClientService):
         return self._wait_for_child_port()
 
     def start(self):
-        if self.is_running:
+        if self.disabled or self.is_running:
             return
 
         for folder in (foc.DB_PATH, os.path.dirname(foc.DB_LOG_PATH)):
@@ -389,7 +393,7 @@ class ServerService(Service):
         super().__init__()
 
     def start(self):
-        if self.is_running:
+        if self.disabled or self.is_running:
             return
 
         server_version = None
