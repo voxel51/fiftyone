@@ -1069,7 +1069,7 @@ class AppConnectCommand(Command):
                     "-S",
                     control_path,
                     "-L",
-                    "5151:127.0.0.1:%d" % args.port,
+                    "%d:127.0.0.1:%d" % (args.local_port, args.port),
                     args.destination,
                 ]
             )
