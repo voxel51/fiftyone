@@ -82,7 +82,7 @@ jobs:
            electronuserland/builder:wine \
            yarn package-win --publish never
       - name: Build wheel (Linux)
-        uses: ./github/actions/manylinux
+        uses: ./.github/actions/manylinux
         with:
           pkg: app
           pkg_path: package/app
