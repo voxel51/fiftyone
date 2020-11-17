@@ -1016,6 +1016,10 @@ class AppConnectCommand(Command):
         # Connect to a remote App session
         fiftyone app connect --destination <destination> --port <port>
 
+        # Connect to a remote App session using an ssh key
+        fiftyone app connect --destination <destination> --port <port> \\
+            --ssh-key <path/to/key>
+
         # Connect to a remote App using a custom local port
         fiftyone app connect --local-port <port>
     """
