@@ -30,6 +30,7 @@ done
 
 # Install packages and test
 for PYBIN in /opt/python/*/bin/; do
+    cd "/io/${PKG_PATH}"
     "${PYBIN}/pip" install "fiftyone-${PKG}" --no-index -f "/io/${PKG_PATH}/dist"
     (cd "$HOME"; "${PYBIN}/nosetests" "fiftyone-${PKG}")
 done
