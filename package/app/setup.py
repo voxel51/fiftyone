@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Installs FiftyOne.
+Installs FiftyOne App.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -53,11 +53,11 @@ class CustomBdistWheel(bdist_wheel):
             "release",
         )
         bin_dir = os.path.join(
-            self.bdist_dir, self.data_dir, "purelib", "fiftyone", "gui", "bin"
+            self.bdist_dir, self.data_dir, "purelib", "fiftyone", "app", "bin"
         )
 
-        if os.environ.get("FIFTYONE_GUI_EXE_PATH"):
-            apps = [os.environ["FIFTYONE_GUI_EXE_PATH"]]
+        if os.environ.get("FIFTYONE_APP_EXE_PATH"):
+            apps = [os.environ["FIFTYONE_APP_EXE_PATH"]]
         elif self.plat_name.startswith("linux"):
             apps = glob.glob(os.path.join(release_dir, "FiftyOne*.AppImage"))
         elif self.plat_name.startswith("mac"):
@@ -100,15 +100,15 @@ cmdclass = {
 }
 
 setup(
-    name="fiftyone_gui",
+    name="fiftyone_app",
     version="0.6.5.1",
     description="FiftyOne App",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/fiftyone",
     license="Apache",
-    packages=["fiftyone.gui"],
-    package_dir={"fiftyone.gui": "src"},
+    packages=["fiftyone.app"],
+    package_dir={"fiftyone.app": "src"},
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",
