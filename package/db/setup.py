@@ -35,6 +35,22 @@ MONGODB_BINARIES = ["mongod"]
 LINUX_DISTRO = os.environ.get("FIFTYONE_DB_BUILD_LINUX_DISTRO")
 
 
+VERSION = "0.1.2"
+
+
+def get_version():
+    if "RELEASE_VERSION" in os.environ:
+        version = os.environ["RELEASE_VERSION"]
+        if not version.startswith(VERSION):
+            raise ValueError(
+                "Release version doest not match version: %s and %s"
+                % (version, VERSION)
+            )
+        return version
+
+    return VERSION
+
+
 class CustomBdistWheel(bdist_wheel):
     def finalize_options(self):
         bdist_wheel.finalize_options(self)
@@ -154,7 +170,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="fiftyone_db" + name_suffix,
-    version="0.1.2",
+    version=get_version(),
     description="FiftyOne DB",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
