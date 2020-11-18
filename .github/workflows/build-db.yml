@@ -35,22 +35,30 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip setuptools wheel
+      - name: Set environment
+        env:
+          RELEASE_TAG: ${{ github.ref }}
+        run: |
+             if [[ $RELEASE_TAG =~ ^refs\/tags\/db-v.*-rc\..*$ ]]; then
+                echo "RELEASE_VERSION="$(echo "${{ github.ref }}" | sed 's/^refs\/tags\/v//')"" >> $GITHUB_ENV
+             fi
       - name: Build wheel (Linux)
-        run: |
-          cd package/db
-          python setup.py bdist_wheel --plat-name linux
+        uses: ./.github/actions/manylinux
+        with:
+          pkg: db
+          pkg_path: package/db
       - name: Build wheel (Ubuntu 16.04)
-        env:
-          FIFTYONE_DB_BUILD_LINUX_DISTRO: ubuntu1604
-        run: |
-          cd package/db
-          python setup.py bdist_wheel --plat-name linux
+        uses: ./.github/actions/manylinux
+        with:
+          pkg: db
+          pkg_path: package/db
+          linux_dist: ubuntu1604
       - name: Build wheel (Debian 9)
-        env:
-          FIFTYONE_DB_BUILD_LINUX_DISTRO: debian9
-        run: |
-          cd package/db
-          python setup.py bdist_wheel --plat-name linux
+        uses: ./.github/actions/manylinux
+        with:
+          pkg: db
+          pkg_path: package/db
+          linux_dist: debian9
       - name: Build wheel (macOS)
         run: |
           cd package/db
@@ -84,18 +92,6 @@ jobs:
         with:
           name: wheel-windows
           path: package/db/dist/*win*.whl
-
-  check:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Clone fiftyone
-        uses: actions/checkout@v1
-        with:
-          fetch-depth: 1
-      - name: Check tag
-        if: startsWith(github.ref, 'refs/tags/db-v')
-        run: |
-          python .github/tools/check-setup-version.py package/db/setup.py $(echo ${{ github.ref }} | sed 's/refs\/tags\/db-v//')
 
   test:
     runs-on: ubuntu-18.04
@@ -131,10 +127,20 @@ jobs:
       - name: Install dependencies
         run: |
           pip3 install twine
+      - name: Set environment
+        env:
+          RELEASE_TAG: ${{ github.ref }}
+        run: |
+             if [[ $RELEASE_TAG =~ ^refs\/tags\/db-v.*-rc\..*$ ]]; then
+                echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_TEST_PYPI_TOKEN }}" >> $GITHUB_ENV
+                echo "TWINE_REPOSITORY=testpypi" >> $GITHUB_ENV
+             else
+                echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_PYPI_TOKEN }}" >> $GITHUB_ENV
+                echo "TWINE_REPOSITORY=pypi" >> $GITHUB_ENV
+             fi
       - name: Upload to pypi.voxel51.com
         env:
-          TWINE_USERNAME: voxel51-ci
-          TWINE_PASSWORD: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          TWINE_USERNAME: __token__
           TWINE_NON_INTERACTIVE: 1
         run: |
-          python3 -m twine upload --repository-url https://pypi.voxel51.com downloads/wheel-*/*.whl
+          twine upload downloads/wheel-*/*.whl
