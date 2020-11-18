@@ -22,6 +22,9 @@ class BdistWheelCustom(bdist_wheel):
         ]
 
 
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
 setup(
     name="fiftyone",
     version="0.6.5.2",
@@ -33,6 +36,8 @@ setup(
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/fiftyone",
     license="Apache",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     packages=find_packages() + ["fiftyone.recipes", "fiftyone.tutorials"],
     package_dir={
         "fiftyone.recipes": "docs/source/recipes",
