@@ -18,18 +18,19 @@ import shutil
 
 VERSION = "0.6.5.1"
 
+
 def get_version():
     if "RELEASE_VERSION" in os.environ:
         version = os.environ["RELEASE_VERSION"]
         if not version.startswith(VERSION):
             raise ValueError(
-                "Release version doest not match version: %s and %s" % (
-                    version, VERSION
-                )
+                "Release version doest not match version: %s and %s"
+                % (version, VERSION)
             )
         return version
 
     return VERSION
+
 
 def make_tar(dir_path, tar_path):
     """Makes a tarfile containing the given directory.
@@ -151,6 +152,9 @@ cmdclass = {
     "bdist_wheel": CustomBdistWheel,
 }
 
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
 setup(
     name="fiftyone_app",
     version=get_version(),
@@ -159,6 +163,8 @@ setup(
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/fiftyone",
     license="Apache",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     packages=["fiftyone.app"],
     package_dir={"fiftyone.app": "src"},
     classifiers=[
