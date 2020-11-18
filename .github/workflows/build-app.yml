@@ -86,7 +86,7 @@ jobs:
           RELEASE_TAG: ${{ github.ref }}
         run: |
              if [[ $RELEASE_TAG =~ ^refs\/tags\/app-v.*-rc\..*$ ]]; then
-                echo "RELEASE_VERSION='$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/app-v//")'" >> $GITHUB_ENV
+                echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/app-v//")" >> $GITHUB_ENV
              fi
       - name: Build wheel (Linux)
         uses: ./.github/actions/manylinux
@@ -139,7 +139,7 @@ jobs:
                 echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_PYPI_TOKEN }}" >> $GITHUB_ENV
                 echo "TWINE_REPOSITORY=pypi" >> $GITHUB_ENV
              fi
-      - name: Upload to pypi.voxel51.com
+      - name: Upload to pypi
         env:
           TWINE_USERNAME: __token__
           TWINE_NON_INTERACTIVE: 1
