@@ -29,14 +29,15 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip setuptools wheel
-      - name: Build wheel
+      - name: Build dist
         run: |
           python setup.py bdist_wheel
-      - name: Upload wheel
+          python setup.py sdist
+      - name: Upload dist
         uses: actions/upload-artifact@v2
         with:
-          name: wheel
-          path: dist/*.whl
+          name: dist
+          path: dist/
 
   test:
     runs-on: ${{ matrix.os }}
@@ -79,10 +80,10 @@ jobs:
             pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements/*.txt') }}
             pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('setup.py') }}-
             pip-${{ runner.os }}-${{ matrix.python-version }}-
-      - name: Download fiftyone wheel
+      - name: Download fiftyone dist
         uses: actions/download-artifact@v2
         with:
-          name: wheel
+          name: dist
           path: downloads
       - name: Fetch DB cache
         uses: actions/cache@v2
@@ -178,10 +179,10 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-18.04
     steps:
-      - name: Download wheel
+      - name: Download dist
         uses: actions/download-artifact@v2
         with:
-          name: wheel
+          name: dist
           path: downloads
       - name: Install dependencies
         run: |
