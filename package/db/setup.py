@@ -44,7 +44,7 @@ def get_version():
         print("R VERSION", version)
         if not version.startswith(VERSION):
             raise ValueError(
-                "Release version doest not match version: %s and %s"
+                "Release version does not match version: %s and %s"
                 % (version, VERSION)
             )
         return version
