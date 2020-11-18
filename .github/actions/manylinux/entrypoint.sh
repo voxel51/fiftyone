@@ -2,11 +2,13 @@
 set -e -x
 rm -rf /opt/python/cp2*
 echo "$FIFTYONE_DB_BUILD_LINUX_DISTRO"
+echo "REF $GITHUB_REF"
 PKG="$1"
 PKG_PATH="/github/workspace/${2}"
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 export RELEASE_DIR=/github/workspace/electron/release
-
+RELEASE_VERSION=$(echo "$GITHUB_REF" | sed 's/^refs\/tags\/v//')
+echo "REF $GITHUB_REF"
 function repair_wheel {
     wheel="$1"
     if ! auditwheel show "$wheel"; then

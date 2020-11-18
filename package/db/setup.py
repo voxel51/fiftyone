@@ -41,6 +41,7 @@ VERSION = "0.1.2"
 def get_version():
     if "RELEASE_VERSION" in os.environ:
         version = os.environ["RELEASE_VERSION"]
+        print("R VERSION", version)
         if not version.startswith(VERSION):
             raise ValueError(
                 "Release version doest not match version: %s and %s"
