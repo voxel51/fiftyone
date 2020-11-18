@@ -1,9 +1,9 @@
-#!/bin/bash
+#!/bin/sh -l
 set -e -x
 rm -rf /opt/python/cp2*
 
-PKG="$2"
-PKG_PATH="$3"
+PKG="$1"
+PKG_PATH="$2"
 export RELEASE_DIR=/io/electron/release
 function repair_wheel {
     wheel="$1"
