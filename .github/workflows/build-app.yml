@@ -88,10 +88,10 @@ jobs:
           pkg_path: package/app
       - name: Build wheel (macOS)
         working-directory: package/app
-        run: python setup.py bdist_wheel --plat-name mac
+        run: RELEASE_VERSION=$(echo "${{ github.ref }}" | sed 's/^refs\/tags\/v//') python setup.py bdist_wheel --plat-name mac
       - name: Build wheel (Windows)
         working-directory: package/app
-        run: python setup.py bdist_wheel --plat-name win
+        run: RELEASE_VERSION=$(echo "${{ github.ref }}" | sed 's/^refs\/tags\/v//') python setup.py bdist_wheel --plat-name win
       - name: Upload wheel (Linux)
         uses: actions/upload-artifact@v2
         with:
