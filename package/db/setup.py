@@ -149,23 +149,27 @@ name_suffix = ""
 if LINUX_DISTRO:
     name_suffix = "_" + LINUX_DISTRO
 
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
 setup(
     name="fiftyone_db" + name_suffix,
     version="0.1.2",
-    description="Project FiftyOne database",
+    description="FiftyOne DB",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/fiftyone",
-    license="",
+    license="Apache",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     packages=["fiftyone.db"],
     package_dir={"fiftyone.db": "src"},
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",
         "Operating System :: Microsoft :: Windows",
-        "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
     ],
-    python_requires=">=2.7",
+    python_requires=">=3.5",
     cmdclass=cmdclass,
 )
