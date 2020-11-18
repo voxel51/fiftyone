@@ -1,7 +1,7 @@
-#!/bin/sh -l
+#!/bin/sh
 set -e -x
 rm -rf /opt/python/cp2*
-
+sh -c "echo $*"
 PKG="$1"
 PKG_PATH="$2"
 export RELEASE_DIR=/io/electron/release
