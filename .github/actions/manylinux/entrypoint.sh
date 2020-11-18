@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e -x
 rm -rf /opt/python/cp2*
-
+echo "$FIFTYONE_DB_BUILD_LINUX_DISTRO"
 PKG="$1"
 PKG_PATH="/github/workspace/${2}"
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib

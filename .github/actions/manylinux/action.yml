@@ -7,9 +7,15 @@ inputs:
   pkg_path:
     description: 'path to the package to build'
     required: true
+  linux_dist:
+    description: 'optional linux distribution to target'
+    required: false
+    default: null
 runs:
   using: 'docker'
   image: 'Dockerfile'
   args:
     - ${{ inputs.pkg }}
     - ${{ inputs.pkg_path }}
+  env:
+    FIFTYONE_DB_BUILD_LINUX_DISTRO: ${{ inputs.linux_dist }}
