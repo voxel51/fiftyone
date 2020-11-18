@@ -23,7 +23,7 @@ def get_version():
         version = os.environ["RELEASE_VERSION"]
         if not version.startswith(VERSION):
             raise ValueError(
-                "Release version doest not match version: %s and %s"(
+                "Release version doest not match version: %s and %s" % (
                     version, VERSION
                 )
             )
