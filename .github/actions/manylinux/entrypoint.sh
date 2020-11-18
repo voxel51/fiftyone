@@ -2,15 +2,17 @@
 set -e -x
 rm -rf /opt/python/cp2*
 sh -c "echo $*"
+pwd
+ls /github/workspace
 PKG="$1"
-PKG_PATH="$2"
-export RELEASE_DIR=/io/electron/release
+PKG_PATH="/github/workspace/${2}"
+export RELEASE_DIR=/github/workspace/electron/release
 function repair_wheel {
     wheel="$1"
     if ! auditwheel show "$wheel"; then
         echo "Skipping non-platform wheel $wheel"
     else
-        auditwheel repair "$wheel" --plat manylinux1_x86_64 -w /io/wheelhouse/
+        auditwheel repair "$wheel" --plat manylinux1_x86_64 -w "${PKG_PATH}/dist/"
     fi
 }
 
@@ -19,16 +21,16 @@ function repair_wheel {
 yum install -y atlas-devel
 # Compile wheels
 for PYBIN in /opt/python/*/bin; do
-    "${PYBIN}/pip" wheel "/io/${PKG_PATH}" --no-deps -w "/io/${PKG_PATH}/dist"
+    "${PYBIN}/pip" wheel "$PKG_PATH" --no-deps -w "${PKG_PATH}/dist"
 done
 
 # Bundle external shared libraries into the wheels
-for whl in "/io/package/${PKG_PATH}/*.whl"; do
+for whl in "${PKG_PATH}/dist/*.whl"; do
     repair_wheel "$whl"
 done
 
 # Install packages
 for PYBIN in /opt/python/*/bin/; do
-    cd "/io/${PKG_PATH}"
-    "${PYBIN}/pip" install "fiftyone-${PKG}" --no-index -f "/io/${PKG_PATH}/dist"
+    cd "${PKG_PATH}"
+    "${PYBIN}/pip" install "fiftyone-${PKG}" --no-index -f "${PKG_PATH}/dist"
 done
