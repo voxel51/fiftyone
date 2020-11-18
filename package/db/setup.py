@@ -92,7 +92,7 @@ class CustomBdistWheel(bdist_wheel):
             for k, v in MONGODB_DOWNLOAD_URLS.items()
             if self.plat_name.startswith(k)
         )
-        if LINUX_DISTRO is not None:
+        if LINUX_DISTRO:
             if not self.plat_name.startswith("linux"):
                 raise ValueError(
                     "Cannot build for distro %r on platform %r"
