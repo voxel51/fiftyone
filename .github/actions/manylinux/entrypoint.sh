@@ -1,12 +1,12 @@
 #!/bin/sh
 set -e -x
 rm -rf /opt/python/cp2*
-sh -c "echo $*"
-pwd
-ls /github/workspace
+
 PKG="$1"
 PKG_PATH="/github/workspace/${2}"
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 export RELEASE_DIR=/github/workspace/electron/release
+
 function repair_wheel {
     wheel="$1"
     if ! auditwheel show "$wheel"; then
