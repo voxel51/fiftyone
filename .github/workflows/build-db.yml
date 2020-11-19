@@ -39,9 +39,17 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref }}
         run: |
-             if [[ $RELEASE_TAG =~ ^refs\/tags\/db-v.*-rc\..*$ ]]; then
-                echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/db-v//")" >> $GITHUB_ENV
-             fi
+          if [[ $RELEASE_TAG =~ ^refs\/tags\/db-v.*-rc\..*$ ]]; then
+             echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/db-v//")" >> $GITHUB_ENV
+          fi
+      - name: Build wheel (macOS)
+        run: |
+          cd package/db
+          python setup.py bdist_wheel --plat-name mac
+      - name: Build wheel (Windows)
+        run: |
+          cd package/db
+          python setup.py bdist_wheel --plat-name win
       - name: Build wheel (Linux)
         uses: ./.github/actions/manylinux
         with:
@@ -59,14 +67,6 @@ jobs:
           pkg: db
           pkg_path: package/db
           linux_dist: debian9
-      - name: Build wheel (macOS)
-        run: |
-          cd package/db
-          python setup.py bdist_wheel --plat-name mac
-      - name: Build wheel (Windows)
-        run: |
-          cd package/db
-          python setup.py bdist_wheel --plat-name win
       - name: Upload wheel (Linux)
         uses: actions/upload-artifact@v2
         with:
@@ -131,13 +131,13 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref }}
         run: |
-             if [[ $RELEASE_TAG =~ ^refs\/tags\/db-v.*-rc\..*$ ]]; then
-                echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_TEST_PYPI_TOKEN }}" >> $GITHUB_ENV
-                echo "TWINE_REPOSITORY=testpypi" >> $GITHUB_ENV
-             else
-                echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_PYPI_TOKEN }}" >> $GITHUB_ENV
-                echo "TWINE_REPOSITORY=pypi" >> $GITHUB_ENV
-             fi
+          if [[ $RELEASE_TAG =~ ^refs\/tags\/db-v.*-rc\..*$ ]]; then
+             echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_TEST_PYPI_TOKEN }}" >> $GITHUB_ENV
+             echo "TWINE_REPOSITORY=testpypi" >> $GITHUB_ENV
+          else
+             echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_PYPI_TOKEN }}" >> $GITHUB_ENV
+             echo "TWINE_REPOSITORY=pypi" >> $GITHUB_ENV
+          fi
       - name: Upload to pypi
         env:
           TWINE_USERNAME: __token__
