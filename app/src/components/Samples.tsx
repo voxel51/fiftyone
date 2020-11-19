@@ -2,7 +2,6 @@ import React, { useState, useEffect, useContext } from "react";
 import InfiniteScroll from "react-infinite-scroller";
 import useMeasure from "react-use-measure";
 import { useSetRecoilState, useRecoilValue } from "recoil";
-import { Grid } from "semantic-ui-react";
 import { ThemeContext } from "styled-components";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import styled from "styled-components";
@@ -46,7 +45,7 @@ function Samples({ setView }) {
       >
         {scrollState.rows.map((r, i) => (
           <React.Fragment key={i}>
-            <Grid
+            <div
               columns={r.columns}
               style={{
                 ...r.style,
@@ -56,18 +55,15 @@ function Samples({ setView }) {
             >
               {r.samples.map((s, j) => (
                 <React.Fragment key={j}>
-                  <Grid.Column
-                    key={"column"}
-                    style={{ padding: 0, width: "100%" }}
-                  >
+                  <div key={"column"} style={{ padding: 0, width: "100%" }}>
                     <Sample
                       sample={s.sample}
                       metadata={s.metadata}
                       setView={setView}
                     />
-                  </Grid.Column>
+                  </div>
                   {j < r.samples.length - 1 && (
-                    <Grid.Column
+                    <div
                       key={"separator"}
                       style={{ padding: 0, width: "100%" }}
                     />
@@ -75,12 +71,12 @@ function Samples({ setView }) {
                 </React.Fragment>
               ))}
               {Array.from(Array(r.extraMargins).keys()).map((i) => (
-                <Grid.Column
+                <div
                   key={`separator-${i}`}
                   style={{ padding: 0, width: "100%" }}
                 />
               ))}
-            </Grid>
+            </div>
             <div
               style={{ width: "100%", display: "block", paddingTop: "0.2%" }}
             />

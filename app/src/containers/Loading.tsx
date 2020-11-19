@@ -1,6 +1,5 @@
 import React from "react";
 import { useRecoilValue } from "recoil";
-import { Loader, Dimmer } from "semantic-ui-react";
 import { Redirect } from "react-router-dom";
 
 import routes from "../constants/routes.json";
@@ -15,11 +14,7 @@ function Loading() {
   } else if (!loading && !connected) {
     return <Redirect to={routes.SETUP} />;
   }
-  return (
-    <Dimmer active>
-      <Loader />
-    </Dimmer>
-  );
+  return null;
 }
 
 export default Loading;

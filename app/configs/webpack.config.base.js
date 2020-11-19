@@ -4,8 +4,8 @@
 
 import path from "path";
 import webpack from "webpack";
-import { dependencies as externals } from "../app/package.json";
 import RewriteImportPlugin from "less-plugin-rewrite-import";
+import { dependencies as externals } from "../package.json";
 const ROOT_DIR = path.resolve(__dirname, "../");
 const NODE_MODULES_DIR = path.resolve(__dirname, "../node_modules");
 
@@ -37,29 +37,13 @@ export default {
           {
             loader: "css-loader",
           },
-          {
-            loader: "less-loader",
-            options: {
-              lessOptions: {
-                paths: [ROOT_DIR, NODE_MODULES_DIR], // this will force less-loader to use its own resolver, both should be absolute path
-                plugins: [
-                  new RewriteImportPlugin({
-                    paths: {
-                      "../../theme.config":
-                        __dirname + "/../app/semantic-ui/theme.config",
-                    },
-                  }),
-                ],
-              },
-            },
-          },
         ],
       },
     ],
   },
 
   output: {
-    path: path.join(__dirname, "..", "app"),
+    path: path.join(__dirname, "..", "src"),
     // https://github.com/webpack/webpack/issues/1114
     libraryTarget: "commonjs2",
   },
@@ -69,9 +53,9 @@ export default {
    */
   resolve: {
     extensions: [".js", ".jsx", ".json", ".ts", ".tsx"],
-    modules: [path.join(__dirname, "..", "app"), "node_modules"],
+    modules: [path.join(__dirname, "..", "src"), "node_modules"],
     alias: {
-      player51: path.join(__dirname, "../app/player51/"),
+      player51: path.join(__dirname, "../src/player51/"),
     },
   },
 

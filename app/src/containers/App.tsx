@@ -1,6 +1,5 @@
 import { remote, ipcRenderer } from "electron";
 import React, { ReactNode, useState, useRef, useEffect } from "react";
-import { Button, Modal } from "semantic-ui-react";
 import { useRecoilState, useSetRecoilState, useRecoilValue } from "recoil";
 import { ErrorBoundary } from "react-error-boundary";
 import NotificationHub from "../components/NotificationHub";
@@ -122,31 +121,7 @@ function App(props: Props) {
       resetKeys={[reset]}
     >
       <Header />
-      <Body>
-        {children}
-        <Modal
-          trigger={
-            <Button
-              style={{ padding: "1rem", display: "none" }}
-              ref={portRef}
-            ></Button>
-          }
-          size="tiny"
-          onClose={() => setPort(result.port)}
-        >
-          <Modal.Header>Port number</Modal.Header>
-          <Modal.Content>
-            <Modal.Description>
-              <PortForm
-                setResult={setResultFromForm}
-                connected={connected}
-                port={port}
-                invalid={false}
-              />
-            </Modal.Description>
-          </Modal.Content>
-        </Modal>
-      </Body>
+      <Body>{children}</Body>
       <NotificationHub children={(add) => (addNotification.current = add)} />
     </ErrorBoundary>
   );
