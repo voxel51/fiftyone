@@ -85,21 +85,21 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref }}
         run: |
-             if [[ $RELEASE_TAG =~ ^refs\/tags\/app-v.*-rc\..*$ ]]; then
-                echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/app-v//")" >> $GITHUB_ENV
-             fi
-      - name: Build wheel (Linux)
-        uses: ./.github/actions/manylinux
-        with:
-          pkg: app
-          pkg_path: package/app
-          github_ref: ${{ github.ref }}
+          if [[ $RELEASE_TAG =~ ^refs\/tags\/app-v.*-rc\..*$ ]]; then
+             echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/app-v//")" >> $GITHUB_ENV
+          fi
       - name: Build wheel (macOS)
         working-directory: package/app
         run: python setup.py bdist_wheel --plat-name mac
       - name: Build wheel (Windows)
         working-directory: package/app
         run: python setup.py bdist_wheel --plat-name win
+      - name: Build wheel (Linux)
+        uses: ./.github/actions/manylinux
+        with:
+          pkg: app
+          pkg_path: package/app
+          github_ref: ${{ github.ref }}
       - name: Upload wheel (Linux)
         uses: actions/upload-artifact@v2
         with:
@@ -132,16 +132,16 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref }}
         run: |
-             if [[ $RELEASE_TAG =~ ^refs\/tags\/app-v.*-rc\..*$ ]]; then
-                echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_TEST_PYPI_TOKEN }}" >> $GITHUB_ENV
-                echo "TWINE_REPOSITORY=testpypi" >> $GITHUB_ENV
-             else
-                echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_PYPI_TOKEN }}" >> $GITHUB_ENV
-                echo "TWINE_REPOSITORY=pypi" >> $GITHUB_ENV
-             fi
+          if [[ $RELEASE_TAG =~ ^refs\/tags\/app-v.*-rc\..*$ ]]; then
+             echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_TEST_PYPI_TOKEN }}" >> $GITHUB_ENV
+             echo "TWINE_REPOSITORY=testpypi" >> $GITHUB_ENV
+          else
+             echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_PYPI_TOKEN }}" >> $GITHUB_ENV
+             echo "TWINE_REPOSITORY=pypi" >> $GITHUB_ENV
+          fi
       - name: Upload to pypi
         env:
           TWINE_USERNAME: __token__
           TWINE_NON_INTERACTIVE: 1
         run: |
-          twine upload downloads/wheel-*/*.whl
+          python3 -m twine upload downloads/wheel-*/*.whl
