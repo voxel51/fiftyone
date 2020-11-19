@@ -7,7 +7,7 @@ import CircularProgress from "@material-ui/core/CircularProgress";
 import { Warning } from "@material-ui/icons";
 
 import ExternalLink from "./ExternalLink";
-import Player51 from "../player51/build/cjs/player51.min.js";
+import Player51 from "player51";
 import { useEventHandler } from "../utils/hooks";
 import { convertSampleToETA } from "../utils/labels";
 

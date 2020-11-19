@@ -9,6 +9,11 @@ module.exports = {
     "@snowpack/plugin-dotenv",
     "@snowpack/plugin-typescript",
   ],
+  exclude: [
+    "**/node_modules/**/*",
+    "**/*.@(spec|test|stories).@(ts|tsx)",
+    "player51/",
+  ],
   install: [
     /* ... */
   ],

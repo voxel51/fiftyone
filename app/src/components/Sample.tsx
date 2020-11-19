@@ -3,7 +3,7 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { animated, useSpring, useTransition } from "react-spring";
 
-import { getColor } from "../player51/build/cjs/player51.min.js";
+import { getColor } from "player51";
 import Player51 from "./Player51";
 import Tag from "./Tags/Tag";
 import * as atoms from "../recoil/atoms";

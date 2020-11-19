@@ -1,4 +1,3 @@
-import { remote, ipcRenderer } from "electron";
 import React, { ReactNode, useState, useRef, useEffect } from "react";
 import { useRecoilState, useSetRecoilState, useRecoilValue } from "recoil";
 import { ErrorBoundary } from "react-error-boundary";
@@ -100,9 +99,6 @@ function App(props: Props) {
   });
   useMessageHandler("update", ({ state }) => {
     setViewCounter(viewCounterValue + 1);
-    if (state.close) {
-      remote.getCurrentWindow().close();
-    }
     setDatasetStats([]);
     setDExtendedatasetStats([]);
     setLoading(false);
@@ -111,9 +107,6 @@ function App(props: Props) {
 
   useMessageHandler("notification", (data) => addNotification.current(data));
 
-  ipcRenderer.on("update-session-config", (event, message) => {
-    portRef.current.ref.current.click();
-  });
   return (
     <ErrorBoundary
       FallbackComponent={Error}

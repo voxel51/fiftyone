@@ -2,7 +2,7 @@ import React, { useEffect, useCallback, useRef } from "react";
 import styled from "styled-components";
 import { useMachine } from "@xstate/react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
-import { GlobalHotKeys } from "react-hotkeys";
+import HotKeys from "react-hotkeys";
 import { Close, Help } from "@material-ui/icons";
 
 import { useOutsideClick } from "../../utils/hooks";
@@ -99,7 +99,7 @@ const ViewBar = React.memo(() => {
 
   return (
     <ViewBarContainer>
-      <GlobalHotKeys handlers={handlers} keyMap={viewBarKeyMap} />
+      <HotKeys.GlobalHotKeys handlers={handlers} keyMap={viewBarKeyMap} />
       <ViewBarDiv
         onClick={() =>
           state.matches("running.focus.blurred") && send("TOGGLE_FOCUS")
