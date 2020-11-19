@@ -58,6 +58,4 @@ SERVER_NAME = "localhost"
 try:
     from fiftyone.gui import FIFTYONE_APP_DIR
 except ImportError:
-    FIFTYONE_APP_DIR = os.path.normpath(
-        os.path.join(FIFTYONE_DIR, "../electron")
-    )
+    FIFTYONE_APP_DIR = os.path.normpath(os.path.join(FIFTYONE_DIR, "../app"))

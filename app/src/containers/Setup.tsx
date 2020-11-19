@@ -6,9 +6,6 @@ import { animated, useSpring } from "react-spring";
 
 import routes from "../constants/routes.json";
 import * as atoms from "../recoil/atoms";
-import localSnippet from "../snippets/local.py";
-import bashSnippet from "../snippets/remote.bash";
-import remoteSnippet from "../snippets/remote.py";
 
 const SectionTitle = styled.div`
   font-size: 2rem;
@@ -31,6 +28,47 @@ const Code = styled.pre`
   border: 1px solid ${({ theme }) => theme.backgroundDarkBorder};
   color: ${({ theme }) => theme.font};
   border-radius: 3px;
+`;
+
+const localSnippet = `
+import fiftyone as fo
+
+# Load your FiftyOne dataset
+dataset = ...
+
+# Launch the app locally
+# (if you're reading this from the app, you've already done this!)
+session = fo.launch_app()
+
+# Load a dataset
+session.dataset = dataset
+
+# Load a specific view into your dataset
+session.view = view
+`;
+
+const remoteSnippet = `
+import fiftyone as fo
+
+# Load your FiftyOne dataset
+dataset = ...
+
+# Launch the app that you'll connect to from your local machine
+session = fo.launch_app(remote=True)
+
+# Load a dataset
+session.dataset = dataset
+
+# Load a specific view into your dataset
+session.view = view
+`;
+
+const bashSnippet = `
+# Configure port forwarding to access the session on your remote machine
+ssh -L 5151:127.0.0.1:5151 username@remote_machine_ip
+
+# Or you can use the FiftyOne CLI to launch the app
+fiftyone remote
 `;
 
 const LocalInstructions = () => (

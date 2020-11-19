@@ -80,6 +80,11 @@ def get_user_id():
 class RequestHandler(tornado.web.RequestHandler):
     """"Base class for HTTP request handlers"""
 
+    def set_default_headers(self, *args, **kwargs):
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+        self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+
     async def get(self):
         self.write(self.get_response())
 

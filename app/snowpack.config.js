@@ -8,6 +8,18 @@ module.exports = {
     "@snowpack/plugin-react-refresh",
     "@snowpack/plugin-dotenv",
     "@snowpack/plugin-typescript",
+    "snowpack-plugin-mdx",
+    [
+      "snowpack-plugin-replace",
+      {
+        list: [
+          {
+            from: "process.env",
+            to: "import.meta.env",
+          },
+        ],
+      },
+    ],
   ],
   exclude: [
     "**/node_modules/**/*",
@@ -18,10 +30,11 @@ module.exports = {
     /* ... */
   ],
   installOptions: {
-    /* ... */
+    namedExports: ["recharts", "recharts-scale", "decimal.js-light"],
+    polyfillNode: true,
   },
   devOptions: {
-    /* ... */
+    hmrErrorOverlay: false,
   },
   buildOptions: {
     /* ... */

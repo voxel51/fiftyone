@@ -4,7 +4,7 @@ import { SelectedObjectMap } from "../utils/selection";
 
 export const port = atom({
   key: "port",
-  default: parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151,
+  default: 5151,
 });
 
 export const connected = atom({

@@ -1,28 +1,36 @@
 {
   "compilerOptions": {
-    "target": "ES2018",
-    "module": "CommonJS",
-    "lib": ["dom", "esnext"],
     "declaration": true,
     "declarationMap": true,
-    "noEmit": true,
-    "jsx": "react",
     "strict": false,
     "pretty": true,
     "sourceMap": true,
-    /* Additional Checks */
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noImplicitReturns": false,
     "noImplicitAny": false,
     "noFallthroughCasesInSwitch": false,
-    /* Module Resolution Options */
     "moduleResolution": "node",
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": false,
+    "allowSyntheticDefaultImports": false,
     "resolveJsonModule": true,
-    "allowJs": true
+    "allowJs": false,
+    "target": "ES2018",
+    "module": "CommonJS",
+    "lib": ["dom", "esnext"],
+    "moduleResolution": "node",
+    "jsx": "preserve",
+    "baseUrl": "./",
+    "paths": {},
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "importsNotUsedAsValues": "error"
   },
+  "include": ["src", "types"],
   "exclude": [
     "test",
     "release",
@@ -33,6 +41,7 @@
     "src/style.css",
     "src/style.css.map",
     "src/dist",
-    "dll"
+    "dll",
+    "node_modules"
   ]
 }
