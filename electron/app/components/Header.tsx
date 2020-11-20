@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import styled from "styled-components";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import AuosizeInput from "react-input-autosize";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
@@ -9,8 +9,10 @@ import { BestMatchDiv } from "./ViewBar/ViewStage/BestMatch";
 import ErrorMessage from "./ViewBar/ViewStage/ErrorMessage";
 import { getMatch, computeBestMatchString } from "./ViewBar/ViewStage/utils";
 import { packageMessage } from "../utils/socket";
+import { animated, useSpring } from "react-spring";
 
 import ExternalLink from "./ExternalLink";
+import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import logo from "../logo.png";
 import { GitHub, MenuBook } from "@material-ui/icons";
@@ -61,12 +63,12 @@ const TitleDiv = styled.div`
   display: flex;
 `;
 
-const LogoImg = styled.img`
+const LogoImg = animated(styled.img`
   height: 100%;
   width: auto;
   cursor: pointer;
   margin-right: 1rem;
-`;
+`);
 
 const LeftDiv = styled.div`
   display: flex;
@@ -281,11 +283,12 @@ const selectorMachine = Machine({
   },
 });
 
-const DatasetSelector = () => {
+const DatasetSelector = React.memo(() => {
   const datasetName = useRecoilValue(selectors.datasetName);
   const socket = useRecoilValue(selectors.socket);
   const datasets = useRecoilValue(selectors.datasets);
   const [state, send] = useMachine(selectorMachine);
+
   const inputRef = useRef();
   const { results, currentResult, value, bestMatch, values } = state.context;
 
@@ -373,15 +376,24 @@ const DatasetSelector = () => {
       <ErrorMessage machine={[state, send]} style={{ marginTop: 8 }} />
     </DatasetDiv>
   );
-};
+});
 
 const Header = () => {
   const socket = useRecoilValue(selectors.socket);
+  const [refresh, setRefresh] = useRecoilState(atoms.refresh);
+  const logoProps = useSpring({
+    transform: refresh ? `rotate(0turn)` : `rotate(1turn)`,
+  });
   return (
     <HeaderDiv>
       <LeftDiv>
-        <TitleDiv onClick={() => socket.send(packageMessage("refresh", {}))}>
-          <LogoImg src={logo} />
+        <TitleDiv
+          onClick={() => {
+            socket.send(packageMessage("refresh", {}));
+            setRefresh(!refresh);
+          }}
+        >
+          <LogoImg style={logoProps} src={logo} />
           <FiftyOneDiv>FiftyOne</FiftyOneDiv>
         </TitleDiv>
         <DatasetSelector />

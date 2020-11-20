@@ -623,7 +623,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             results = []
 
-        for stage_dict in state.filters:
+        for stage_dict in state.filters.values():
             stage = fosg.ViewStage._from_dict(stage_dict)
             view = view.add_stage(stage)
 

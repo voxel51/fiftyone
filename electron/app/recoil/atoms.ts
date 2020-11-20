@@ -12,6 +12,11 @@ export const connected = atom({
   default: false,
 });
 
+export const refresh = atom({
+  key: "refresh",
+  default: false,
+});
+
 export const activePlot = atom({
   key: "activePlot",
   default: "labels",
