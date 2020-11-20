@@ -41,7 +41,7 @@ jobs:
 
   test:
     runs-on: ${{ matrix.os }}
-    needs: [build, check]
+    needs: [build]
     strategy:
       fail-fast: false
       matrix:
@@ -175,7 +175,7 @@ jobs:
       - run: sh -c ${{ needs.test.result == 'success' }}
 
   publish:
-    needs: [build, check, test]
+    needs: [build, test]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-18.04
     steps:
