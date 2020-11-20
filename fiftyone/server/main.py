@@ -30,6 +30,7 @@ import eta.core.video as etav
 os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone.core.aggregations as foa
 import fiftyone.constants as foc
+import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -388,6 +389,17 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         StateHandler.state["selected_objects"] = selected_objects
         await self.send_updates(ignore=self)
+
+    async def on_set_dataset(self, dataset_name):
+        """Event for setting the current dataset by name.
+
+        Args:
+            dataset_name: the dataset name
+        """
+        StateHandler.state["dataset"] = fod.load_dataset(
+            dataset_name
+        )._serialize()
+        await self.on_update(StateHandler.state)
 
     async def on_get_video_data(self, _id, filepath):
         """Gets the frame labels for video samples.
