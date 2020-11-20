@@ -19,6 +19,7 @@ import SearchResults from "./ViewBar/ViewStage/SearchResults";
 
 const DatasetContainerInput = styled.div`
   font-size: 1.2rem;
+  display: flex;
   border-bottom: 1px ${({ theme }) => theme.brand} solid;
 `;
 
@@ -212,6 +213,12 @@ const selectorMachine = Machine({
         },
         BLUR: {
           target: "reading",
+          actions: [
+            assign({
+              value: ({ value, prevValue, values }) =>
+                values.indexOf(value) > 0 ? value : prevValue,
+            }),
+          ],
         },
         COMMIT: [
           {
@@ -252,7 +259,7 @@ const selectorMachine = Machine({
                 if (i > 0) return i;
                 return null;
               },
-              bestMatch: ({ values, value }) =>
+              bestMatch: ({ values }, { value }) =>
                 computeBestMatchString(values, value),
             }),
           ],
@@ -303,7 +310,7 @@ const DatasetSelector = () => {
     <DatasetDiv>
       <DatasetContainerInput>
         <DatasetInput
-          placeholder={"Choose a dataset"}
+          placeholder={"Select a dataset"}
           value={value}
           onFocus={() => state.matches("reading") && send("EDIT")}
           onBlur={(e) => {
@@ -344,7 +351,9 @@ const DatasetSelector = () => {
           }}
         />
         {state.matches("editing") || value === "" ? (
-          <BestMatchDiv>{bestMatch ? bestMatch.placeholder : ""}</BestMatchDiv>
+          <BestMatchDiv style={{ lineHeight: "40px", margin: 0 }}>
+            {bestMatch ? bestMatch.placeholder : ""}
+          </BestMatchDiv>
         ) : null}
       </DatasetContainerInput>
       {state.matches("editing") && (
@@ -367,10 +376,11 @@ const DatasetSelector = () => {
 };
 
 const Header = () => {
+  const socket = useRecoilValue(selectors.socket);
   return (
     <HeaderDiv>
       <LeftDiv>
-        <TitleDiv onClick={() => window.location.reload()}>
+        <TitleDiv onClick={() => socket.send(packageMessage("refresh", {}))}>
           <LogoImg src={logo} />
           <FiftyOneDiv>FiftyOne</FiftyOneDiv>
         </TitleDiv>
