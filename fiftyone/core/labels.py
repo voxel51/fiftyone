@@ -824,6 +824,18 @@ class Segmentation(ImageLabel):
         """
         return etai.ImageLabels(mask=self.mask)
 
+    @classmethod
+    def from_mask(cls, mask):
+        """Creates a :class:`Segmentation` instance from a mask.
+
+        Args:
+            mask: a semantic segmentation mask
+
+        Returns:
+            a :class:`Segmentation`
+        """
+        return cls(mask=mask)
+
 
 class _FrameLabels(Label):
     """Private label class used for storing labels for the first frame of video
