@@ -9,6 +9,8 @@ Utilities for interfacing with the
 from collections import defaultdict
 import warnings
 
+import numpy as np
+
 import eta.core.data as etad
 import eta.core.frames as etaf
 import eta.core.keypoints as etak
@@ -19,6 +21,79 @@ import eta.core.utils as etau
 import eta.core.video as etav
 
 import fiftyone.core.labels as fol
+
+
+def parse_eta_labels(eta_labels):
+    """Parses the ``eta.core.labels.Labels`` instance and returns the
+    corresponding :class:`fiftyone.core.labels.Label` instance(s).
+
+    The table below summarizes the conversions that are performed:
+
+    .. table::
+
+        +-----------------------------------------------+-----------------------------------------------+
+        | Input type                                    | Output type                                   |
+        +===============================================+===============================================+
+        | ``eta.core.data.Attribute``                   | :class:`fiftyone.core.labels.Classification`  |
+        +-----------------------------------------------+-----------------------------------------------+
+        | ``eta.core.data.AttributeContainer``          | :class:`fiftyone.core.labels.Classifications` |
+        +-----------------------------------------------+-----------------------------------------------+
+        | ``eta.core.objects.DetectedObject``           | :class:`fiftyone.core.labels.Detection`       |
+        +-----------------------------------------------+-----------------------------------------------+
+        | ``eta.core.objects.DetectedObjectContainer``  | :class:`fiftyone.core.labels.Detections`      |
+        +-----------------------------------------------+-----------------------------------------------+
+        | ``eta.core.polylines.Polyline``               | :class:`fiftyone.core.labels.Polyline`        |
+        +-----------------------------------------------+-----------------------------------------------+
+        | ``eta.core.polylines.PolylineContainer``      | :class:`fiftyone.core.labels.Polylines`       |
+        +-----------------------------------------------+-----------------------------------------------+
+        | ``eta.core.keypoints.Keypoints``              | :class:`fiftyone.core.labels.Keypoint`        |
+        +-----------------------------------------------+-----------------------------------------------+
+        | ``eta.core.keypoints.KeypointsContainer``     | :class:`fiftyone.core.labels.Keypoints`       |
+        +-----------------------------------------------+-----------------------------------------------+
+        | ``np.ndarray``                                | :class:`fiftyone.core.labels.Segmentation`    |
+        +-----------------------------------------------+-----------------------------------------------+
+        | ``eta.core.image.ImageLabels``                | a dictionary mapping field names to           |
+        |                                               | :class:`fiftyone.core.labels.Label` instances |
+        +-----------------------------------------------+-----------------------------------------------+
+        | ``eta.core.video.VideoLabels``                | a ``frames`` dict mapping frame numbers       |
+        |                                               | to dictionaries of frame labels               |
+        +-----------------------------------------------+-----------------------------------------------+
+
+    Args:
+        eta_labels: an ````eta.core.labels.Labels`` instance
+
+    Returns:
+        the FiftyOne labels according to the table above
+    """
+    if isinstance(eta_labels, etad.AttributeContainer):
+        label = fol.Classifications.from_attributes(eta_labels)
+    elif isinstance(eta_labels, etad.Attribute):
+        label = fol.Classification.from_attribute(eta_labels)
+    elif isinstance(eta_labels, etao.DetectedObjectContainer):
+        label = fol.Detections.from_detected_objects(eta_labels)
+    elif isinstance(eta_labels, etao.DetectedObject):
+        label = fol.Detection.from_detected_object(eta_labels)
+    elif isinstance(eta_labels, etap.PolylineContainer):
+        label = fol.Polylines.from_eta_polylines(eta_labels)
+    elif isinstance(eta_labels, etap.Polyline):
+        label = fol.Polyline.from_eta_polyline(eta_labels)
+    elif isinstance(eta_labels, etak.KeypointsContainer):
+        label = fol.Keypoints.from_eta_keypoints(eta_labels)
+    elif isinstance(eta_labels, etak.Keypoints):
+        label = fol.Keypoint.from_eta_keypoints(eta_labels)
+    elif isinstance(eta_labels, etav.VideoLabels):
+        label = load_video_labels(eta_labels)
+    elif isinstance(eta_labels, etaf.FrameLabels):
+        label = load_image_labels(eta_labels)
+    elif isinstance(eta_labels, np.ndarray):
+        label = fol.Segmentation.from_mask(eta_labels)
+    elif eta_labels is None:
+        label = None
+    else:
+        msg = "Ignoring unsupported ETA label type '%s'" % eta_labels.__class__
+        warnings.warn(msg)
+
+    return label
 
 
 def load_image_labels(
@@ -52,6 +127,8 @@ def load_image_labels(
     Keypoints are expanded into fields with names
     ``prefix + keypoints.name``, or ``prefix + "keypoints"`` for keypoints
     that do not have their ``name`` field populated.
+
+    Segmentation masks are expanded into a field with name ``prefix + "mask"``.
 
     Args:
         image_labels_or_path: can be a ``eta.core.image.ImageLabels`` instance,
@@ -210,7 +287,7 @@ def _to_frame_labels(frame, frame_number):
 
 
 def _expand_with_prefix(
-    image_labels, prefix, multilabel, skip_non_categorical
+    frame_labels, prefix, multilabel, skip_non_categorical
 ):
     if prefix is None:
         prefix = ""
@@ -225,11 +302,11 @@ def _expand_with_prefix(
         # Store frame attributes as multilabels
         # pylint: disable=no-member
         labels[prefix + "attributes"] = fol.Classifications.from_attributes(
-            image_labels.attrs, skip_non_categorical=skip_non_categorical,
+            frame_labels.attrs, skip_non_categorical=skip_non_categorical,
         )
     else:
         # Store each frame attribute separately
-        for attr in image_labels.attrs:  # pylint: disable=no-member
+        for attr in frame_labels.attrs:  # pylint: disable=no-member
             if skip_non_categorical and not etau.is_str(attr.value):
                 continue
 
@@ -243,7 +320,7 @@ def _expand_with_prefix(
 
     objects_map = defaultdict(etao.DetectedObjectContainer)
 
-    for dobj in image_labels.objects:
+    for dobj in frame_labels.objects:
         objects_map[prefix + (dobj.name or "detections")].add(dobj)
 
     for name, objects in objects_map.items():
@@ -256,7 +333,7 @@ def _expand_with_prefix(
 
     polylines_map = defaultdict(etap.PolylineContainer)
 
-    for polyline in image_labels.polylines:
+    for polyline in frame_labels.polylines:
         polylines_map[prefix + (polyline.name or "polylines")].add(polyline)
 
     for name, polylines in polylines_map.items():
@@ -269,12 +346,19 @@ def _expand_with_prefix(
 
     keypoints_map = defaultdict(etak.KeypointsContainer)
 
-    for keypoints in image_labels.keypoints:
+    for keypoints in frame_labels.keypoints:
         keypoints_map[prefix + (keypoints.name or "keypoints")].add(keypoints)
 
     for name, keypoints in keypoints_map.items():
         # pylint: disable=no-member
         labels[name] = fol.Keypoints.from_eta_keypoints(keypoints)
+
+    #
+    # Segmentations
+    #
+
+    if frame_labels.has_mask:
+        labels[prefix + "mask"] = fol.Segmentation.from_mask(frame_labels.mask)
 
     return labels
 
@@ -361,5 +445,12 @@ def _expand_with_labels_dict(
     for name, keypoints in keypoints_map.items():
         # pylint: disable=no-member
         labels[name] = fol.Keypoints.from_eta_keypoints(keypoints)
+
+    #
+    # Segmentations
+    #
+
+    if frame_labels.has_mask and "mask" in labels_dict:
+        labels["mask"] = fol.Segmentation.from_mask(frame_labels.mask)
 
     return labels
