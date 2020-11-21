@@ -196,8 +196,8 @@ const selectorMachine = Machine({
               if (currentResult === null) return results[0];
               return results[Math.min(currentResult + 1, results.length - 1)];
             },
+            bestMatch: {},
           }),
-          bestMatch: {},
         },
         PREVIOUS_RESULT: {
           actions: assign({
@@ -210,15 +210,14 @@ const selectorMachine = Machine({
                 return prevValue;
               return results[currentResult - 1];
             },
+            bestMatch: {},
           }),
-          bestMatch: {},
         },
         BLUR: {
           target: "reading",
           actions: [
             assign({
-              value: ({ value, prevValue, values }) =>
-                values.indexOf(value) > 0 ? value : prevValue,
+              value: ({ value, prevValue, values }) => prevValue,
             }),
           ],
         },
@@ -254,7 +253,6 @@ const selectorMachine = Machine({
             assign({
               value: (_, { value }) => value,
               results: ({ values }) => values,
-              prevValue: ({ value }) => value,
               errorId: null,
               currentResult: ({ values }, { value }) => {
                 const i = values.indexOf(value);
@@ -313,7 +311,10 @@ const DatasetSelector = React.memo(() => {
     <DatasetDiv>
       <DatasetContainerInput>
         <DatasetInput
-          placeholder={"Select a dataset"}
+          placeholder={
+            datasets.length > 0 ? "Select a dataset" : "No datasets available"
+          }
+          disabled={!datasets.length}
           value={value}
           onFocus={() => state.matches("reading") && send("EDIT")}
           onBlur={(e) => {
