@@ -27,6 +27,15 @@ class FiftyOneConfig(EnvConfig):
     """FiftyOne configuration settings."""
 
     def __init__(self, d):
+        self.dataset_zoo_dir = self.parse_string(
+            d,
+            "dataset_zoo_dir",
+            env_var="FIFTYONE_DATASET_ZOO_DIR",
+            default=None,
+        )
+        self.model_zoo_dir = self.parse_string(
+            d, "model_zoo_dir", env_var="FIFTYONE_MODEL_ZOO_DIR", default=None,
+        )
         self.default_dataset_dir = self.parse_string(
             d,
             "default_dataset_dir",
@@ -89,6 +98,14 @@ class FiftyOneConfig(EnvConfig):
         if self.default_dataset_dir is None:
             self.default_dataset_dir = os.path.join(
                 os.path.expanduser("~"), "fiftyone"
+            )
+
+        if self.dataset_zoo_dir is None:
+            self.dataset_zoo_dir = self.default_dataset_dir
+
+        if self.model_zoo_dir is None:
+            self.model_zoo_dir = os.path.join(
+                self.default_dataset_dir, "__models__"
             )
 
         if self.default_ml_backend is None:

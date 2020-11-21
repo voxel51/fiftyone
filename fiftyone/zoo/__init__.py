@@ -15,7 +15,6 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.dataset as fod
 
 
 logger = logging.getLogger(__name__)
@@ -95,8 +94,8 @@ def download_zoo_dataset(
             downloaded. Consult the documentation for the :class:`ZooDataset`
             you specified to see the supported splits
         dataset_dir (None): the directory into which to download the dataset.
-            By default, :func:`fiftyone.core.dataset.get_default_dataset_dir`
-            is used to select the directory
+            By default, it is downloaded to a subdirectory of
+            ``fiftyone.config.dataset_zoo_dir``
         overwrite (False): whether to overwrite any existing files
         cleanup (True): whether to cleanup any temporary files generated during
             download
@@ -159,9 +158,8 @@ def load_zoo_dataset(
             :class:`fiftyone.core.dataset.Dataset`. By default, a name will be
             constructed based on the dataset and split(s) you are loading
         dataset_dir (None): the directory in which the dataset is stored or
-            will be downloaded. By default,
-            :func:`fiftyone.core.dataset.get_default_dataset_dir` is used to
-            select the directory
+            will be downloaded. By default, the dataset will be located in
+            ``fiftyone.config.dataset_zoo_dir``
         download_if_necessary (True): whether to download the dataset if it is
             not found in the specified dataset directory
         drop_existing_dataset (False): whether to drop an existing dataset
@@ -275,8 +273,8 @@ def load_zoo_dataset_info(name, dataset_dir=None):
     Args:
         name: the name of the zoo dataset
         dataset_dir (None): the directory in which the dataset is stored. By
-            default, :func:`fiftyone.core.dataset.get_default_dataset_dir` is
-            used to select the directory
+            default, the dataset is located in
+            ``fiftyone.config.dataset_zoo_dir``
 
     Returns:
         the :class:`ZooDatasetInfo` for the dataset
@@ -414,9 +412,13 @@ def _parse_dataset_details(name, dataset_dir, **kwargs):
     zoo_dataset = get_zoo_dataset(name, **kwargs)
 
     if dataset_dir is None:
-        dataset_dir = fod.get_default_dataset_dir(zoo_dataset.name)
+        dataset_dir = _get_zoo_dataset_dir(zoo_dataset.name)
 
     return zoo_dataset, dataset_dir
+
+
+def _get_zoo_dataset_dir(name):
+    return os.path.join(fo.config.dataset_zoo_dir, name)
 
 
 class ZooDatasetInfo(etas.Serializable):
@@ -727,9 +729,8 @@ class ZooDataset(object):
 
         Args:
             dataset_dir (None): the directory in which to construct the
-                dataset. By default,
-                :func:`fiftyone.core.dataset.get_default_dataset_dir` is used
-                to select the directory
+                dataset. By default, it is written to a subdirectory of
+                ``fiftyone.config.dataset_zoo_dir``
             split (None) a split to download, if applicable. If neither
                 ``split`` nor ``splits`` are provided, the full dataset is
                 downloaded
@@ -747,7 +748,7 @@ class ZooDataset(object):
             -   dataset_dir: the directory containing the dataset
         """
         if dataset_dir is None:
-            dataset_dir = fod.get_default_dataset_dir(self.name)
+            dataset_dir = _get_zoo_dataset_dir(self.name)
 
         # Parse splits
         splits = _parse_splits(split, splits)

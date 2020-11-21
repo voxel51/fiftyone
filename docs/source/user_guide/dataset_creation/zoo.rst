@@ -446,9 +446,9 @@ Controlling where zoo datasets are downloaded
 ---------------------------------------------
 
 By default, zoo datasets are downloaded into subdirectories of
-``fiftyone.config.default_dataset_dir`` corresponding to their names.
+``fiftyone.config.dataset_zoo_dir`` corresponding to their names.
 
-You can customize this backend by modifying the `default_dataset_dir` setting
+You can customize this backend by modifying the `dataset_zoo_dir` setting
 of your :doc:`FiftyOne config </user_guide/config>`.
 
 .. tabs::
@@ -462,21 +462,21 @@ of your :doc:`FiftyOne config </user_guide/config>`.
             # Print your current config
             fiftyone config
 
-            # Locate your config (and edit the `default_dataset_dir` field)
+            # Locate your config (and edit the `dataset_zoo_dir` field)
             fiftyone constants FIFTYONE_CONFIG_PATH
 
     .. group-tab:: Environment
 
-        Set the ``FIFTYONE_DEFAULT_DATASET_DIR`` environment variable:
+        Set the ``FIFTYONE_DATASET_ZOO_DIR`` environment variable:
 
         .. code-block:: shell
 
             # Customize where zoo datasets are downloaded
-            export FIFTYONE_DEFAULT_DATASET_DIR=/your/custom/directory
+            export FIFTYONE_DATASET_ZOO_DIR=/your/custom/directory
 
     .. group-tab:: Code
 
-        Set the `default_dataset_dir` config setting from Python code:
+        Set the `dataset_zoo_dir` config setting from Python code:
 
         .. code-block:: python
             :linenos:
@@ -484,7 +484,7 @@ of your :doc:`FiftyOne config </user_guide/config>`.
             # Customize where zoo datasets are downloaded
             import fiftyone.core.config as foc
 
-            foc.set_config_settings(default_dataset_dir="/your/custom/directory")
+            foc.set_config_settings(dataset_zoo_dir="/your/custom/directory")
 
 .. _zoo-customizing-your-ml-backend:
 
