@@ -80,6 +80,7 @@ function Dataset(props) {
   const activeFrameOther = useRecoilValue(atoms.activeOther("frame"));
 
   useMessageHandler("statistics", ({ stats, extended }) => {
+    console.log("STATS", extended, stats);
     if (extended) {
       setExtendedDatasetStatsLoading(false);
       setExtendedDatasetStats(stats);

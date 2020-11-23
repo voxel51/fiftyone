@@ -320,7 +320,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         state = StateHandler.state
         view = state["view"] or []
         await self.send_statistics(
-            view + list(state["filters"].values()), extended=True
+            view + _make_filter_stages(state["filters"]), extended=True
         )
 
     async def on_page(self, **kwargs):
@@ -468,7 +468,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         if len(state["filters"]):
             awaitables.append(
                 self.send_statistics(
-                    view + list(state["filters"].values()),
+                    view + _make_filter_stages(state["filters"]),
                     extended=True,
                     only=only,
                 )
@@ -659,6 +659,11 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             )
 
         self.write_message({"type": "distributions", "results": results})
+
+
+def _make_filter_stages(filters):
+    for path, args in filters.values():
+        pass
 
 
 async def _get_distributions(coll, view, group):

@@ -82,31 +82,6 @@ export const currentSamples = atom({
   default: [],
 });
 
-export const filterInvertIncludeLabels = atomFamily({
-  key: "filterInvertIncludeLabels",
-  default: false,
-});
-
-export const modalFilterInvertIncludeLabels = atomFamily({
-  key: "modalFilterInvertIncludeLabels",
-  default: false,
-});
-
-export const filterIncludeLabels = atomFamily({
-  key: "filterIncludeLabels",
-  default: [],
-});
-
-export const filterLabelConfidenceRange = atomFamily({
-  key: "filterLabelConfidenceRange",
-  default: [null, null],
-});
-
-export const filterLabelIncludeNoConfidence = atomFamily({
-  key: "filterLabelIncludeNoConfidence",
-  default: true,
-});
-
 export const modalFilterIncludeLabels = atomFamily({
   key: "modalFilterIncludeLabels",
   default: [],
@@ -150,16 +125,6 @@ export const activeTags = atom({
 export const modalActiveTags = atom({
   key: "modalActiveTags",
   default: {},
-});
-
-export const filterNumericFieldRange = atomFamily({
-  key: "filterNumericFieldRange",
-  default: [null, null],
-});
-
-export const filterNumericFieldIncludeNone = atomFamily({
-  key: "filterNumericFieldIncludeNone",
-  default: true,
 });
 
 export const sampleVideoLabels = atomFamily({

@@ -68,6 +68,33 @@ export const filterStages = selector({
   get: ({ get }) => {
     return get(atoms.stateDescription).filters;
   },
+  set: ({ get, set }, filters) => {
+    const state = {
+      ...get(atoms.stateDescription),
+      filters,
+    };
+    const sock = get(socket);
+    sock.send(packageMessage("filters_update", { filters }));
+    set(atoms.stateDescription, state);
+  },
+});
+
+export const filterStage = selectorFamily({
+  key: "filterStage",
+  get: (path) => ({ get }) => {
+    return get(filterStages)[path];
+  },
+  set: (path: string) => ({ get, set }, value) => {
+    const filters = Object.assign({}, get(filterStages));
+    if (!value && !filters[path]) return;
+    if (JSON.stringify(value) === JSON.stringify(filters[path])) return;
+    if (!value && path in filters) {
+      delete filters[path];
+    } else {
+      filters[path] = value;
+    }
+    set(filterStages, filters);
+  },
 });
 
 export const paginatedFilterStages = selector({
@@ -104,14 +131,6 @@ export const totalCount = selector({
       (acc, cur) => (cur.name === "count" ? cur.count : acc),
       null
     );
-  },
-});
-
-export const filterStage = selectorFamily({
-  key: "filterStage",
-  get: (fieldName: string) => ({ get }) => {
-    const state = get(atoms.stateDescription);
-    return state.filters ? state.filters[fieldName] : null;
   },
 });
 
@@ -370,6 +389,13 @@ export const modalLabelFilters = selector({
           ...acc,
           ["frames." + cur]: frameLabels[cur],
         };
+        const filter =
+          range.every((r, i) => r === bounds[i]) && none
+            ? null
+            : {
+                range,
+                none,
+              };
       }, {}),
     };
     const hiddenObjects = get(atoms.hiddenObjects);
@@ -636,5 +662,67 @@ export const sampleModalFilter = selector({
         return acc;
       }, {});
     };
+  },
+});
+
+export const filterIncludeLabels = selectorFamily({
+  key: "filterIncludeLabels",
+  get: (path) => ({ get }) => {
+    const filter = get(filterStages);
+    return filter?.[path].labels ?? [];
+  },
+  set: (path) => ({ get, set }, value) => {},
+});
+
+export const filterLabelConfidenceRange = selectorFamily({
+  key: "filterLabelConfidenceRange",
+  get: (path) => ({ get }) => {
+    const filter = get(filterStages);
+    return filter?.[path].range ?? get(labelConfidenceBounds(path));
+  },
+  set: (path) => ({ get, set }, value) => {
+    const filter = get(filterStages);
+  },
+});
+
+export const filterLabelIncludeNoConfidence = selectorFamily({
+  key: "filterLabelIncludeNoConfidence",
+  get: (path) => ({ get }) => {
+    const filter = get(filterStages);
+    return filter?.[path].none ?? true;
+  },
+  set: (path) => ({ get, set }, value) => {},
+});
+
+export const filterNumericFieldRange = selectorFamily({
+  key: "filterNumericFieldRange",
+  get: (path) => ({ get }) => {
+    const filter = get(filterStages);
+    return filter?.[path].range ?? get(labelConfidenceBounds(path));
+  },
+  set: (path) => ({ get, set }, value) => {
+    const filter = get(filterStages);
+  },
+});
+
+export const filterNumericFieldIncludeNone = selectorFamily({
+  key: "filterNumericFieldIncludeNone",
+  get: (path) => ({ get }) => {
+    const filter = get(filterStages);
+    return filter?.[path].range ?? get(labelConfidenceBounds(path));
+  },
+  set: (path) => ({ get, set }, none) => {
+    const range = get(filterNumericFieldRange(path));
+    const bounds = get(numericFieldBounds(path));
+    const filter =
+      range.every((r, i) => r === bounds[i]) && none
+        ? null
+        : {
+            range,
+            none,
+          };
+    set(filterStage(path), {
+      filter,
+    });
   },
 });

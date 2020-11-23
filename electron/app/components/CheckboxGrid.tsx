@@ -19,10 +19,9 @@ import NumericFieldFilter from "./NumericFieldFilter";
 
 const GLOBAL_ATOMS = {
   colorByLabel: atoms.colorByLabel,
-  includeLabels: atoms.filterIncludeLabels,
-  invertInclude: atoms.filterInvertIncludeLabels,
-  includeNoConfidence: atoms.filterLabelIncludeNoConfidence,
-  confidenceRange: atoms.filterLabelConfidenceRange,
+  includeLabels: selectors.filterIncludeLabels,
+  includeNoConfidence: selectors.filterLabelIncludeNoConfidence,
+  confidenceRange: selectors.filterLabelConfidenceRange,
   confidenceBounds: selectors.labelConfidenceBounds,
   fieldIsFiltered: selectors.fieldIsFiltered,
 };
@@ -30,7 +29,6 @@ const GLOBAL_ATOMS = {
 const MODAL_ATOMS = {
   colorByLabel: atoms.modalColorByLabel,
   includeLabels: atoms.modalFilterIncludeLabels,
-  invertInclude: atoms.modalFilterInvertIncludeLabels,
   includeNoConfidence: atoms.modalFilterLabelIncludeNoConfidence,
   confidenceRange: atoms.modalFilterLabelConfidenceRange,
   confidenceBounds: selectors.labelConfidenceBounds,
@@ -260,12 +258,7 @@ const Entry = ({ entry, onCheck, modal }) => {
         <NumericFieldFilter expanded={expanded} entry={entry} />
       ) : null}
       {entry.type && labelTypeIsFilterable(entry.type) ? (
-        <Filter
-          expanded={expanded}
-          entry={entry}
-          {...filterAtoms}
-          modal={modal}
-        />
+        <Filter expanded={expanded} entry={entry} {...filterAtoms} />
       ) : null}
     </CheckboxContainer>
   );

@@ -362,45 +362,6 @@ const CLS_TO_STAGE = {
   Keypoints: "FilterKeypoints",
 };
 
-const makeFilter = (fieldName, cls, labels, range, includeNone, hasBounds) => {
-  let fieldStr = VALID_LIST_TYPES.includes(cls) ? "$$this" : `$${fieldName}`;
-  const confidenceStr = `${fieldStr}.confidence`;
-  const labelStr = `${fieldStr}.label`;
-  let rangeExpr = null;
-  if (hasBounds) {
-    rangeExpr = {
-      $and: [
-        { $gte: [confidenceStr, range[0]] },
-        { $lte: [confidenceStr, range[1]] },
-      ],
-    };
-  }
-  if (includeNone && hasBounds) {
-    rangeExpr = { $or: [rangeExpr, { $eq: [confidenceStr, null] }] };
-  } else if (hasBounds) {
-    rangeExpr = {
-      $or: [rangeExpr, confidenceStr, { $eq: [confidenceStr, null] }],
-    };
-  } else if (!includeNone) {
-    rangeExpr = { $or: [confidenceStr, { $eq: [confidenceStr, null] }] };
-  }
-  const labelsExpr = { $in: [labelStr, labels] };
-  return {
-    kwargs: [
-      ["field", fieldName],
-      [
-        "filter",
-        labels.length && rangeExpr
-          ? { $and: [labelsExpr, rangeExpr] }
-          : rangeExpr
-          ? rangeExpr
-          : labelsExpr,
-      ],
-    ],
-    _cls: `fiftyone.core.stages.${CLS_TO_STAGE[cls]}`,
-  };
-};
-
 const HiddenObjectFilter = ({ entry }) => {
   const fieldName = entry.name;
   const sample = useContext(SampleContext);
@@ -431,42 +392,8 @@ const HiddenObjectFilter = ({ entry }) => {
   );
 };
 
-const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
-  const socket = useRecoilValue(selectors.socket);
-  const [range, setRange] = useRecoilState(rest.confidenceRange(entry.path));
-  const [includeNone, setIncludeNone] = useRecoilState(
-    rest.includeNoConfidence(entry.path)
-  );
-
-  const bounds = useRecoilValue(rest.confidenceBounds(entry.path));
-  const [labels, setLabels] = useRecoilState(rest.includeLabels(entry.path));
-  const fieldIsFiltered = useRecoilValue(rest.fieldIsFiltered(entry.path));
-  const setExtendedDatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
-
-  const [stateDescription, setStateDescription] = useRecoilState(
-    atoms.stateDescription
-  );
-  const filterStage = useRecoilValue(selectors.filterStage(entry.path));
-  useEffect(() => {
-    if (filterStage) return;
-    setLabels([]);
-    setIncludeNone(true);
-    setRange([
-      0 < bounds[0] && bounds[0] !== bounds[1] ? 0 : bounds[0],
-      1 > bounds[1] && bounds[0] !== bounds[1] ? 1 : bounds[1],
-    ]);
-  }, [filterStage]);
-  const hasBounds = bounds.every((b) => b !== null);
+const Filter = React.memo(({ expanded, style, entry, ...rest }) => {
   const [overflow, setOverflow] = useState("hidden");
-
-  useEffect(() => {
-    hasBounds &&
-      range.every((r) => r === null) &&
-      setRange([
-        0 < bounds[0] && bounds[0] !== bounds[1] ? 0 : bounds[0],
-        1 > bounds[1] && bounds[0] !== bounds[1] ? 1 : bounds[1],
-      ]);
-  }, [bounds]);
 
   const [ref, { height }] = useMeasure();
   const props = useSpring({
@@ -477,38 +404,6 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
     onStart: () => !expanded && setOverflow("hidden"),
     onRest: () => expanded && setOverflow("visible"),
   });
-
-  if (!modal) {
-    useEffect(() => {
-      const newState = JSON.parse(JSON.stringify(stateDescription));
-      if (!fieldIsFiltered && !(entry.name in newState.filters)) return;
-      const filter = makeFilter(
-        entry.path,
-        entry.type,
-        labels,
-        range,
-        includeNone,
-        hasBounds
-      );
-      if (
-        JSON.stringify(filter) === JSON.stringify(newState.filters[entry.path])
-      )
-        return;
-      if (!fieldIsFiltered && entry.path in newState.filters) {
-        delete newState.filters[entry.path];
-      } else {
-        newState.filters[entry.path] = filter;
-      }
-      setStateDescription(newState);
-      const extendedView = [...(newState.view || [])];
-      for (const stage in newState.filters) {
-        extendedView.push(newState.filters[stage]);
-      }
-      socket.send(
-        packageMessage("filters_update", { filters: newState.filters })
-      );
-    }, [bounds, range, includeNone, labels, fieldIsFiltered]);
-  }
 
   return (
     <animated.div style={{ ...props, overflow }}>
