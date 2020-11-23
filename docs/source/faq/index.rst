@@ -1,7 +1,12 @@
+
+.. _faq:
+
 Frequently Asked Questions
 ==========================
 
 .. default-role:: code
+
+.. _faq-browser-support:
 
 Can I run this in a browser?
 ----------------------------
@@ -14,12 +19,16 @@ However, check out the :doc:`environments guide </environments/index>` for
 best practices on using FiftyOne in common local, remote, and cloud
 environments.
 
+.. _faq-remote-server-data:
+
 Can I access data stored on a remote server?
 --------------------------------------------
 
 Yes! If you install FiftyOne on both your remote server and local machine, then
 you can :ref:`load a dataset remotely <remote-data>` and then explore it via an
 :ref:`App session on your local machine <creating-an-app-session>`.
+
+.. _faq-cloud-data:
 
 Can I access data stored in the cloud?
 --------------------------------------
@@ -30,6 +39,8 @@ compute instance in your cloud environment and then use the
 
 Check out the :doc:`environments guide </environments/index>` for instructions
 for working in AWS, GCP, and Azure.
+
+.. _faq-supported-labels:
 
 What label types are supported?
 -------------------------------
@@ -49,12 +60,16 @@ and video datasets:
 Check out :ref:`this guide <manually-building-datasets>` for simple recipes to
 load labels in each of these formats.
 
+.. _faq-image-types:
+
 What image file types are supported?
 ------------------------------------
 
 In general, FiftyOne supports `all image types supported by Chromium
 <https://en.wikipedia.org/wiki/Comparison_of_browser_engines_(graphics_support)>`_,
 which includes standard image types like JPEG, PNG, TIFF, and BMP.
+
+.. _faq-video-types:
 
 What video file types are supported?
 ------------------------------------
@@ -70,6 +85,8 @@ If you try to view a video with an unsupported codec in the App, you will be
 prompted to use the :func:`reencode_videos() <fiftyone.utils.video.reencode_videos>`
 utility method to reencode the source video so it is viewable in the App.
 
+.. _faq-supported-os:
+
 What operating systems does FiftyOne support?
 ---------------------------------------------
 
@@ -80,274 +97,225 @@ of these popular operating systems from the past few years.
 We also provide :ref:`custom install instructions <alternative-builds>` to use
 FiftyOne on old-but-popular setups like Ubuntu 16.04 and Debian 9.
 
-Can you share a dataset with someone else?
-------------------------------------------
+.. _faq-share-dataset-export:
 
-You can easily :doc:`export a dataset </user_guide/export_datasets>` in one
-ine of code, zip it, and send it to someone else who can then
-:doc:`load it in a few lines of code. </user_guide/dataset_creation/datasets>`.
+Can I share a dataset with someone else?
+----------------------------------------
 
-Alternatively, you could launch a :ref:`remote session <remote-data>` of the
-FiftyOne App on your machine that another user can connect to from their local
-machine. This workflow does require that both users have the
+Yes! Here's a couple options:
+
+**Option 1: Export and share**
+
+You can easily :ref:`export a dataset <exporting-datasets>` in one line of
+code, zip it, and share the zip with your collaborator, who can then
+:ref:`load it in a few lines of code <loading-datasets-from-disk>`.
+
+**Option 2: Sharing a remote session**
+
+Alternatively, :ref:`see this FAQ <faq-multiple-sessions-same-dataset>` for
+instructions on launching a remote session and inviting collaborator(s) to
+connect to it from their local machines.
+
+.. _faq-brain-closed-source:
 
 Are the Brain methods open source?
 ----------------------------------
 
-No. Although the `core library <https://github.com/voxel51/fiftyone>`_ is
-open source and the :doc:`Brain methods </user_guide/brain>` are freely
-available for use for any commerical or non-commerical purposes, the Brain
-methods are closed source.
+No. Although the `core library <https://github.com/voxel51/fiftyone>`_ is open
+source and the :ref:`Brain methods <fiftyone-brain>` are freely available for
+use for any commerical or non-commerical purposes, the Brain methods are closed
+source.
 
-Check out the :doc:`Brain documentation </user_guide/brain>` for detailed
+Check out the :ref:`Brain documentation <fiftyone-brain>` for detailed
 instructions on using the various Brain methods.
 
-Can you connect multiple App instances to the same dataset?
------------------------------------------------------------
+.. _faq-multiple-sessions-same-dataset:
 
-Yes, multiple users can remotely access the same
-|Dataset|. You just need to create a remote session on the system that has the
-|Dataset|. This can be done either through the CLI or Python:
+Can I connect multiple App instances to the same dataset?
+---------------------------------------------------------
+
+Yes, multiple App instances can be connected to the same |Dataset| via remote
+sessions.
+
+.. note:
+
+    Keep in mind that all users must have ssh access to the system from which
+    the remote session(s) are launched in order to connect to them.
+
+    In addition, and all users must have
+    :ref:`FiftyOne installed <installing-fiftyone>` on their local machines in
+    order to launch an App instance.
+
+You can achieve multiple connections in two ways:
+
+**Option 1: Same dataset, multiple sessions**
+
+The typical way to connect multiple App instances to the same dataset is to
+create a separate remote session instance on the machine that houses the
+|Dataset| of interest for each local App instance that you want to create.
+:ref:`See this FAQ <faq-serve-multiple-remote-sessions>` for instructions on
+doing this.
+
+**Option 2: Same dataset, same session**
+
+Another option is to connect multiple App instances to a single remote session.
+
+First, :ref:`create a remote session <remote-session>` on the system that
+houses the |Dataset| using either the CLI or Python:
 
 .. tabs::
 
   .. group-tab:: CLI
 
-    Load a |Dataset| and launch a remote |Session| through the CLI
+    .. code-block:: shell
 
-    .. code-block:: bash
-
-        fiftyone app launch <dataset> --remote --port XXXX 
-
+        # On remote machine
+        fiftyone app launch <dataset> --remote  # (optional) --port XXXX
 
   .. group-tab:: Python
-
-    Load a |Dataset| and launch a remote |Session| through Python
 
     .. code-block:: python
         :linenos:
 
+        # On remote machine
         import fiftyone as fo
 
         dataset = fo.load_dataset(...)
-        session = fo.launch_app(dataset, remote=True, port=XXXX)
+
+        session = fo.launch_app(dataset, remote=True)  # (optional) port=XXXX
+
+Then one or more users can use the CLI on their local machine to
+:ref:`connect to the remote session: <remote-app-local-machine>`:
+
+.. code-block:: shell
+
+    # On local machine(s)
+    # If a custom port was used, append --port XXXX
+    fiftyone app connect --destination <username>@<remote-ip-address>
+
+.. note:
+
+    When multiple App instances are connected to the same |Session|, any
+    actions taken that affect the session (e.g.,
+    :ref:`loading a view <app-create-view>`) will be reflected in all connected
+    App instances.
 
 
-:ref:`Each user can then use the CLI to launch the App and connect to the remote
-session: <remote-app-local-machine>`
+.. _faq-connect-to-multiple-remote-sessions:
 
-.. code-block:: bash
+Can I connect to multiple remote sessions?
+------------------------------------------
 
-    fiftyone app connect --destination username@remote_system_ip --port XXXX
+Yes, you can launch multiple instances of the App locally, each connected to a
+different remote session.
 
+The key here is to specify a different *local port* for each App instance that
+you create.
 
-If the remote session was launched from your local system, you don't need to
-specify the destination:
-
-.. code-block:: bash
-
-    fiftyone app connect --port XXXX
-
-
-
-Can you use the App to connect to multiple remote sessions?
------------------------------------------------------------
-
-Yes, you can launch multiple instances of the App locally, each connected to a different
-remote session. 
-
-**Requirements**
-
-You need:
-
-* `ssh` access to the remote systems hosting the sessions you want to connect
-  to
-
-* To know the port that the |Session| is being hosted on
-
-* The ports of all of the local instances of the App you currently have open.
-  Every instance of the App needs to be opened on a unique `local-port`.
-
-
-Suppose there are multiple remote systems, one a server that you own and one an
-EC2 instance on AWS. On each system, someone has run code similar to the following to load a
-FiftyOne |Dataset| and start a remote |Session|:
+Suppose you are connecting to multiple remote |Session| instances that were
+created on different remote systems (e.g., an EC2 instance and a remote server
+that you own), using commands similar to:
 
 .. tabs::
 
   .. group-tab:: CLI
 
-    Loaded a |Dataset| and launched a |Session| through the CLI
+    .. code-block:: shell
 
-    .. code-block:: bash
-
-        # Remote systems
-        fiftyone app launch <dataset> --remote --port XXXX  # port=YYYY on the other system
-
+        # On each remote machine
+        fiftyone app launch <dataset> --remote
 
   .. group-tab:: Python
-
-    Loaded a |Dataset| and launched a |Session| through Python
 
     .. code-block:: python
         :linenos:
 
-        # Remote systems
+        # On each remote machine
         import fiftyone as fo
 
         dataset = fo.load_dataset(...)
-        session = fo.launch_app(dataset, remote=True, port=XXXX) # port=YYYY on the other system
 
+        session = fo.launch_app(dataset, remote=True)
 
-**Connecting to remote sessions**
+On your local machine, you can launch App instances to
+:ref:`connect to the remote sessions <remote-app-local-machine>` on each
+machine by specifying a different `--local-port` for each App instance to use:
 
-On your local system, you can now launch two instances of the App and :ref:`connect
-to the session hosted on the two systems <remote-app-local-machine>` 
-on ports `XXXX` and `YYYY` respectively (`XXXX` and
-`YYYY` can be any 4 integer port you want):
+.. code-block:: shell
 
-.. code-block:: bash
+    # Connect to first remote session
+    fiftyone app connect --destination <username1>@<remote-ip-address1> --local-port XXXX
 
-    # Local system
-    fiftyone app connect --destination username@remote_system1_ip --port XXXX --local-port XXXX
-    fiftyone app connect --destination username@remote_system2_ip --port YYYY --local-port YYYY
+.. code-block:: shell
 
-    # The local ports can be anything as long as they are unique from one another
+    # Connect to second remote session
+    fiftyone app connect --destination <username2>@<remote-ip-address2> --local-port YYYY
 
+where `XXXX` and `YYYY` are any open ports on your machine.
 
-.. _collaborate-nonprogrammatically:
+.. _faq-serve-multiple-remote-sessions:
 
-Can I share my dataset with other users who want to visualize it?
------------------------------------------------------------------
+Can I serve multiple remote sessions from a machine?
+----------------------------------------------------
 
-Yes! This workflow is common if multiple people want to collaborate and visualize the same
-remote FiftyOne |Dataset|. Though they will not be able to programmatically
-interact with the |Dataset|, only through the App. 
-
-If you want to let everyone programmatically interact with the |Dataset|,
-:ref:`the process is a bit more complicated <collaborate-programmatically>`.
-
-This assumes that there is a |Dataset| loaded on a machine or cloud instance
-and other users want to launch the App on their local systems to
-connect to this |Dataset|. 
-
-**Note: All users must have ssh
-access to the system containing the Dataset.**
-
-On the system that has the
-|Dataset|, start a remote |Session| either through the CLI or Python.
+Yes, you can create multiple remote sessions on the same remote machine by
+specifying different ports for each |Session| that you create:
 
 .. tabs::
 
   .. group-tab:: CLI
 
-    .. code-block:: bash
+    .. code-block:: shell
 
-        # Remote machine
-        fiftyone app launch <dataset> --remote --port XXXX 
+        # On remote machine
+
+        # Create first remote session
+        fiftyone app launch <dataset1> --remote --port XXXX
+
+    .. code-block:: shell
+
+        # On remote machine
+
+        # Create second remote session
+        fiftyone app launch <dataset2> --remote --port YYYY
 
   .. group-tab:: Python
 
     .. code-block:: python
         :linenos:
 
-        # Remote machine
+        # On remote machine
         import fiftyone as fo
 
-        dataset = fo.load_dataset(....)
+        # Create first remote session
+        dataset1 = fo.load_dataset(...)
+        session1 = fo.launch_app(dataset1, remote=True, port=XXXX)
 
-        session = fo.launch_app(dataset, remote=True, port=XXXX)
+        # Create second remote session
+        # This can be done in either the same or another process
+        dataset2 = fo.load_dataset(...)
+        session2 = fo.launch_app(dataset2, remote=True, port=YYYY)
 
+On your local machine(s), you can launch App instances to
+:ref:`connect to the remote sessions <remote-app-local-machine>` that you
+created by specifying the corresponding remote ports that you used:
 
+.. code-block:: shell
 
-After :ref:`installing FiftyOne <installing-fiftyone>` on
-their local machines, other users can then :ref:`run the following command to connect <remote-app-local-machine>`
-to the remote |Session| and launch the App.
+    # On a local machine
 
-.. code-block:: bash
+    # Connect to first remote session
+    fiftyone app connect \
+        --destination <username>@<remote-ip-address> \
+        --port XXXX --local-port WWWW
 
-    # Local machines
-    fiftyone app connect --destination username@remote_system_ip --port XXXX
+.. code-block:: shell
 
+    # On a local machine
 
+    # Connect to second remote session
+    fiftyone app connect \
+        --destination <username>@<remote-ip-address> \
+        --port YYYY --local-port ZZZZ
 
-This workflow is common if you have data stored in a common place (like in the
-cloud on AWS or on a remote server) and have a team of people trying to access
-the same data. Anyone with `ssh` access to the machine or instance containing
-the data will be able to view the it in FiftyOne.
-
-
-.. _collaborate-programmatically: 
-
-Can I collaborate with others to programmatically work on the same remote data?
--------------------------------------------------------------------------------
-
-Yes, the main idea here is that every user will need to `ssh` into the remote
-system and load their own |Dataset| object in an `ipython` shell. They will
-not be able to modify the same FiftyOne |Dataset|, but they can work with the
-same data stored on disk.
-
-If you do not want to programmatically interact with the data using `ipython`
-and instead just want to visualize the data in the App,
-:ref:`then the setup is slightly less complicated.
-<collaborate-nonprogrammatically>`
-
-Every user should follow the steps below:
-
-**Step 1**
-
-`ssh` into the remote system through a terminal.
-
-**Step 2**
-
-Open an `ipython` shell, import FiftyOne, load their dataset, and launch a
-remote session
-
-.. code-block:: python
-    :linenos:
-    
-    # Remote System
-    import fiftyone as fo
-
-    dataset = fo.load_dataset(...)
-
-    session = fo.launch_app(dataset, remote=True, port=XXXX)
-
-
-**Step 3**
-
-:ref:`On the user's local machine, connect to the remote session using the CLI <remote-app-local-machine>`
-
-.. code-block:: bash
-
-    # Local System
-    fiftyone app connect --destination username@remote_system_ip --port XXXX
-
-**Step 4**
-
-Back in the remote `ipython` shell, programmatically work with the |Dataset|
-and see all changes in the App launched on your local system.
-
-.. code-block:: python
-    :linenos:
-
-    # Remote System (Continued from step 2)
-
-    view = dataset.take(10)
-    session.view = view
-    
-    # See the App automatically update
-
-**(Optional) Step 5**
-
-Connect to another user's remote |Session| to see their |Dataset| assuming they 
-are using the same system. The only difference here is that you need to connect
-to their unique remote |Session| port (`YYYY`) and you need to specify a new
-`local-port` so that it does not interfere with the App you already have open
-connected to your |Session| on port `XXXX` 
-
-.. code-block:: bash
-    
-    # Local System
-    fiftyone app connect --destination username@remote_system_ip --port YYYY --local-port ZZZZ
-
+where `WWWW` and `ZZZZ` are any 4 digit ports on your local machine(s).
