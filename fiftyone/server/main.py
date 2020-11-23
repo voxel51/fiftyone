@@ -30,6 +30,7 @@ import eta.core.video as etav
 os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone.core.aggregations as foa
 import fiftyone.constants as foc
+from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -320,7 +321,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         state = StateHandler.state
         view = state["view"] or []
         await self.send_statistics(
-            view + _make_filter_stages(state["filters"]), extended=True
+            view + _make_filter_stages(view, state["filters"]), extended=True
         )
 
     async def on_page(self, **kwargs):
@@ -468,7 +469,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         if len(state["filters"]):
             awaitables.append(
                 self.send_statistics(
-                    view + _make_filter_stages(state["filters"]),
+                    view + _make_filter_stages(view, state["filters"]),
                     extended=True,
                     only=only,
                 )
@@ -539,8 +540,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             )
             return
 
-        for stage_dict in state.filters.values():
-            stage = fosg.ViewStage._from_dict(stage_dict)
+        for stage in _make_filter_stages(view, state.filters):
             if type(stage) in _WITHOUT_PAGINATION_EXTENDED_STAGES:
                 continue
 
@@ -661,9 +661,51 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         self.write_message({"type": "distributions", "results": results})
 
 
-def _make_filter_stages(filters):
+def _make_range_expression(f, args):
+    expr = None
+    if "range" in args:
+        mn, mx = args["range"]
+        none = args["none"]
+        expr = (f >= mn) & (f <= mx)
+        if args.get("none", False):
+            expr |= ~f
+    elif "none" in args:
+        if not none:
+            expr = f
+        else:
+            raise ValueError("invalid")
+
+    return f
+
+
+def _make_filter_stages(view, filters):
+    field_schema = view.get_field_schema()
+    frame_field_schema = view.get_frame_field_schema()
+    stages = []
     for path, args in filters.values():
-        pass
+        if path.startswith("frames."):
+            schema = frame_field_schema
+            path = path[len("frames.") :]
+        else:
+            schema = field_schema
+        field = schema[path]
+
+        if isinstance(field, fof.EmbeddedDocumentField):
+            stage_cls = fosg.FilterField
+            if issubclass(field.document_type, foa._LABELS):
+                stage_cls = fosg.FilterLabels
+            expr = _make_range_expression(F("confidence"), args)
+            if "labels" in args:
+                labels_expr = F("label").is_in(args["labels"])
+                if expr is not None:
+                    expr &= labels_expr
+                else:
+                    expr = labels_expr
+
+            stages.append(stage_cls(path, expr))
+        else:
+            expr = _make_range_expression(F(path), args)
+            stages.append(fosg.Match(expr))
 
 
 async def _get_distributions(coll, view, group):

@@ -75,6 +75,7 @@ export const filterStages = selector({
     };
     const sock = get(socket);
     sock.send(packageMessage("filters_update", { filters }));
+    set(atoms.extendedDatasetStatsLoading, true);
     set(atoms.stateDescription, state);
   },
 });
@@ -665,64 +666,94 @@ export const sampleModalFilter = selector({
   },
 });
 
+const resolveFilter = (bounds, range, none, labels = null) => {
+  const defaultRange = range.every((r, i) => r === bounds[i]);
+  if (defaultRange && none && (labels === null || labels.length === 0)) {
+    return null;
+  }
+  const filter = {};
+  if (!defaultRange) {
+    filter.range = range;
+    filter.none = none;
+  }
+  if (defaultRange && !none) {
+    filter.none = none;
+  }
+  if (labels !== null) {
+    filter.labels = labels;
+  }
+  return filter;
+};
+
 export const filterIncludeLabels = selectorFamily({
   key: "filterIncludeLabels",
   get: (path) => ({ get }) => {
     const filter = get(filterStages);
     return filter?.[path].labels ?? [];
   },
-  set: (path) => ({ get, set }, value) => {},
+  set: (path) => ({ get, set }, labels) => {
+    const bounds = get(labelConfidenceBounds(path));
+    const range = get(filterLabelConfidenceRange(path));
+    const none = get(filterLabelIncludeNoConfidence(path));
+    const filter = resolveFilter(bounds, range, none, labels);
+    set(filterStage(path), filter);
+  },
 });
 
 export const filterLabelConfidenceRange = selectorFamily({
   key: "filterLabelConfidenceRange",
   get: (path) => ({ get }) => {
-    const filter = get(filterStages);
-    return filter?.[path].range ?? get(labelConfidenceBounds(path));
+    const filter = get(filterStage(path));
+    return filter?.range ?? get(labelConfidenceBounds(path));
   },
-  set: (path) => ({ get, set }, value) => {
-    const filter = get(filterStages);
+  set: (path) => ({ get, set }, range) => {
+    const bounds = get(labelConfidenceBounds(path));
+    const none = get(filterLabelIncludeNoConfidence(path));
+    const labels = get(filterIncludeLabels(path));
+    const filter = resolveFilter(bounds, range, none, labels);
+    set(filterStage(path), filter);
   },
 });
 
 export const filterLabelIncludeNoConfidence = selectorFamily({
   key: "filterLabelIncludeNoConfidence",
   get: (path) => ({ get }) => {
-    const filter = get(filterStages);
-    return filter?.[path].none ?? true;
+    const filter = get(filterStage(path));
+    return filter?.none ?? true;
   },
-  set: (path) => ({ get, set }, value) => {},
+  set: (path) => ({ get, set }, none) => {
+    const range = get(filterLabelConfidenceRange(path));
+    const bounds = get(labelConfidenceBounds(path));
+    const labels = get(filterIncludeLabels(path));
+    const filter = resolveFilter(bounds, range, none, labels);
+    set(filterStage(path), filter);
+  },
 });
 
 export const filterNumericFieldRange = selectorFamily({
   key: "filterNumericFieldRange",
   get: (path) => ({ get }) => {
-    const filter = get(filterStages);
-    return filter?.[path].range ?? get(labelConfidenceBounds(path));
+    const filter = get(filterStage(path));
+    return filter?.range ?? get(labelConfidenceBounds(path));
   },
-  set: (path) => ({ get, set }, value) => {
-    const filter = get(filterStages);
+  set: (path) => ({ get, set }, range) => {
+    const bounds = get(numericFieldBounds(path));
+    const none = get(filterNumericFieldIncludeNone(path));
+    const filter = resolveFilter(bounds, range, none);
+    set(filterStage(path), filter);
   },
 });
 
 export const filterNumericFieldIncludeNone = selectorFamily({
   key: "filterNumericFieldIncludeNone",
   get: (path) => ({ get }) => {
-    const filter = get(filterStages);
-    return filter?.[path].range ?? get(labelConfidenceBounds(path));
+    const filter = get(filterStage(path));
+    return filter?.none ?? true;
   },
   set: (path) => ({ get, set }, none) => {
     const range = get(filterNumericFieldRange(path));
     const bounds = get(numericFieldBounds(path));
-    const filter =
-      range.every((r, i) => r === bounds[i]) && none
-        ? null
-        : {
-            range,
-            none,
-          };
-    set(filterStage(path), {
-      filter,
-    });
+    const filter = resolveFilter(bounds, range, none);
+    set(filterStage(path), filter);
   },
 });
