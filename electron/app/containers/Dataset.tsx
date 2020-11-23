@@ -65,7 +65,11 @@ function Dataset(props) {
   const frameLabelTuples = useRecoilValue(selectors.labelTuples("frame"));
   const tagNames = useRecoilValue(selectors.tagNames);
   const setExtendedDatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
+  const setExtendedDatasetStatsLoading = useSetRecoilState(
+    atoms.extendedDatasetStatsLoading
+  );
   const setDatasetStats = useSetRecoilState(atoms.datasetStats);
+  const setDatasetStatsLoading = useSetRecoilState(atoms.datasetStatsLoading);
   const [activeLabels, setActiveLabels] = useRecoilState(
     atoms.activeLabels("sample")
   );
@@ -76,8 +80,13 @@ function Dataset(props) {
   const activeFrameOther = useRecoilValue(atoms.activeOther("frame"));
 
   useMessageHandler("statistics", ({ stats, extended }) => {
-    extended && setExtendedDatasetStats(stats);
-    !extended && setDatasetStats(stats);
+    if (extended) {
+      setExtendedDatasetStatsLoading(false);
+      setExtendedDatasetStats(stats);
+    } else {
+      setDatasetStatsLoading(false);
+      setDatasetStats(stats);
+    }
   });
   useSendMessage("as_app", {});
 

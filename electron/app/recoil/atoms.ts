@@ -22,9 +22,19 @@ export const datasetStats = atom({
   default: [],
 });
 
+export const datasetStatsLoading = atom({
+  key: "datasetStatsLoading",
+  default: true,
+});
+
 export const extendedDatasetStats = atom({
   key: "extendedDatasetStats",
   default: [],
+});
+
+export const extendedDatasetStatsLoading = atom({
+  key: "extendedDatasetStatsLoading",
+  default: true,
 });
 
 export const loading = atom({

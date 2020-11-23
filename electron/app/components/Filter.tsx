@@ -482,7 +482,6 @@ const Filter = React.memo(({ expanded, style, entry, modal, ...rest }) => {
     useEffect(() => {
       const newState = JSON.parse(JSON.stringify(stateDescription));
       if (!fieldIsFiltered && !(entry.name in newState.filters)) return;
-      setExtendedDatasetStats([]);
       const filter = makeFilter(
         entry.path,
         entry.type,

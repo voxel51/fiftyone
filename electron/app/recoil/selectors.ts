@@ -56,8 +56,8 @@ export const view = selector({
       ...state,
       view: stages,
     };
-    set(atoms.datasetStats, []);
-    set(atoms.extendedDatasetStats, []);
+    set(atoms.datasetStatsLoading, true);
+    set(atoms.extendedDatasetStatsLoading, true);
     set(atoms.stateDescription, newState);
     get(socket).send(packageMessage("update", { state: newState }));
   },

@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { animated, useSpring } from "react-spring";
 import { useRecoilState } from "recoil";
 import styled, { ThemeContext } from "styled-components";
@@ -20,21 +20,11 @@ export type Props = {
   entries: string[];
 };
 
-const Drag = styled(DragHandle)`
-  position: absolute;
-  bottom: -0.8rem;
-  height: 1rem;
-  width: 1rem;
-  left: 50%;
-  margin-left: -0.5rem;
-  z-index: 1000;
-  pointer-events: none;
-`;
-
-const Container = styled(Resizable)`
+const Container = styled(animated(Resizable))`
   padding: 1rem 0 0;
   background-color: ${({ theme }) => theme.backgroundDark};
-  border-bottom: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
 `;
 
 const Nav = styled.div`
@@ -127,6 +117,11 @@ const HorizontalNav = ({ entries }: Props) => {
   });
 
   const height = expanded ? openedHeight : closedHeight;
+  const resizable = expanded;
+
+  const props = useSpring({
+    borderBottomColor: resizable ? theme.brand : theme.backgroundDarkBorder,
+  });
 
   return (
     <Container
@@ -145,6 +140,7 @@ const HorizontalNav = ({ entries }: Props) => {
       onResizeStop={(e, direction, ref, d) => {
         setOpenedHeight(height + d.height);
       }}
+      style={props}
     >
       <Nav>
         <PlotsButtons>
@@ -185,7 +181,6 @@ const HorizontalNav = ({ entries }: Props) => {
         </NavButtons>
       </Nav>
       {expanded && <Distributions key={activePlot} group={activePlot} />}
-      {expanded && !maximized && <Drag />}
     </Container>
   );
 };
