@@ -129,6 +129,43 @@ source.
 Check out the :ref:`Brain documentation <fiftyone-brain>` for detailed
 instructions on using the various Brain methods.
 
+.. _faq-multiple-apps:
+
+Can I launch multiple App instances on a machine?
+-------------------------------------------------
+
+Yes! Simply specify a different `port` for each App instance that you create.
+
+.. tabs::
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        # Launch first App instance
+        fiftyone app launch <dataset1> --port XXXX
+
+    .. code-block:: shell
+
+        # Launch second App instance
+        fiftyone app launch <dataset2> --port YYYY
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        # Launch first App instance
+        dataset1 = fo.load_dataset(...)
+        session1 = fo.launch_app(dataset1, port=XXXX)
+
+        # Launch second App instance
+        # This can be done in either the same or another process
+        dataset2 = fo.load_dataset(...)
+        session2 = fo.launch_app(dataset2, port=YYYY)
+
 .. _faq-multiple-sessions-same-dataset:
 
 Can I connect multiple App instances to the same dataset?
@@ -137,7 +174,7 @@ Can I connect multiple App instances to the same dataset?
 Yes, multiple App instances can be connected to the same |Dataset| via remote
 sessions.
 
-.. note:
+.. note::
 
     Keep in mind that all users must have ssh access to the system from which
     the remote session(s) are launched in order to connect to them.
@@ -193,13 +230,12 @@ Then one or more users can use the CLI on their local machine to
     # If a custom port was used, append --port XXXX
     fiftyone app connect --destination <username>@<remote-ip-address>
 
-.. note:
+.. note::
 
     When multiple App instances are connected to the same |Session|, any
     actions taken that affect the session (e.g.,
     :ref:`loading a view <app-create-view>`) will be reflected in all connected
     App instances.
-
 
 .. _faq-connect-to-multiple-remote-sessions:
 
@@ -252,6 +288,11 @@ machine by specifying a different `--local-port` for each App instance to use:
     fiftyone app connect --destination <username2>@<remote-ip-address2> --local-port YYYY
 
 where `XXXX` and `YYYY` are any open ports on your machine.
+
+.. note::
+
+    You can also serve multiple remote sessions
+    :ref:`from the same machine <faq-serve-multiple-remote-sessions>`.
 
 .. _faq-serve-multiple-remote-sessions:
 
