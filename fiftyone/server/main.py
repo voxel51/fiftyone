@@ -405,9 +405,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         Args:
             dataset_name: the dataset name
         """
-        StateHandler.state["dataset"] = fod.load_dataset(
-            dataset_name
-        )._serialize()
+        dataset = fod.load_dataset(dataset_name)
+        StateHandler.state = fos.StateDescription(dataset=dataset).serialize()
         await self.on_update(StateHandler.state)
 
     async def on_get_video_data(self, _id, filepath):
