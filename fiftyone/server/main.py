@@ -503,7 +503,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         Args:
             ignore (None): a client to not send the update to
-            only (None): the onle client to send the update to
+            only (None): a client to restrict the updates to
         """
         response = {"type": "update", "state": StateHandler.state}
         if only:
