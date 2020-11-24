@@ -83,7 +83,7 @@ export const filterStages = selector({
 export const filterStage = selectorFamily({
   key: "filterStage",
   get: (path) => ({ get }) => {
-    return get(filterStages)[path];
+    return get(filterStages)?.[path] ?? {};
   },
   set: (path: string) => ({ get, set }, value) => {
     const filters = Object.assign({}, get(filterStages));
