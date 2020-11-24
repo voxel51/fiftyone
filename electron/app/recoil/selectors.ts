@@ -571,7 +571,19 @@ export const labelConfidenceBounds = selectorFamily({
     return get(atoms.datasetStats).reduce(
       (acc, cur) => {
         if (cur.name === label && cur._CLS === CONFIDENCE_BOUNDS_CLS) {
-          return cur.bounds;
+          let bounds = cur.bounds;
+          bounds = [
+            0 < bounds[0] ? 0 : bounds[0],
+            1 > bounds[1] ? 1 : bounds[1],
+          ];
+          return [
+            bounds[0] !== null && bounds[0] !== 0
+              ? Number((bounds[0] - 0.01).toFixed(2))
+              : bounds[0],
+            bounds[1] !== null && bounds[1] !== 1
+              ? Number((bounds[1] + 0.01).toFixed(2))
+              : bounds[1],
+          ];
         }
         return acc;
       },
@@ -586,7 +598,15 @@ export const numericFieldBounds = selectorFamily({
     return get(atoms.datasetStats).reduce(
       (acc, cur) => {
         if (cur.name === label && cur._CLS === BOUNDS_CLS) {
-          return cur.bounds;
+          const { bounds } = cur;
+          return [
+            bounds[0] !== null && bounds[0] !== 0
+              ? Number((bounds[0] - 0.01).toFixed(2))
+              : bounds[0],
+            bounds[1] !== null && bounds[1] !== 1
+              ? Number((bounds[1] + 0.01).toFixed(2))
+              : bounds[1],
+          ];
         }
         return acc;
       },
@@ -697,12 +717,7 @@ export const filterLabelConfidenceRange = selectorFamily({
   get: (path) => ({ get }) => {
     const filter = get(filterStage(path));
     if (filter?.range) return filter.range;
-    const bounds = get(labelConfidenceBounds(path));
-    const stretchedBounds = [
-      0 < bounds[0] ? 0 : bounds[0],
-      1 > bounds[1] ? 1 : bounds[1],
-    ];
-    return stretchedBounds;
+    return get(labelConfidenceBounds(path));
   },
   set: (path) => ({ get, set }, range) => {
     const bounds = get(labelConfidenceBounds(path));

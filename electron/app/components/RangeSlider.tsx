@@ -90,14 +90,12 @@ const RangeSlider = ({ rangeAtom, boundsAtom, maxMin, minMax }: Props) => {
   const hasValue = value.every((v) => v !== null);
   return hasBounds && hasValue ? (
     <SliderContainer>
-      {bounds[0].toFixed(2)}
+      {bounds[0]}
       <Slider
-        value={localValue.map((i) => (i ? Number(i.toFixed(2)) : i))}
-        onChange={(_, v: Range) =>
-          setLocalValue(v.map((i) => (i ? Number(i.toFixed(2)) : i)))
-        }
+        value={[...localValue]}
+        onChange={(_, v: Range) => setLocalValue(v)}
         onChangeCommitted={(_, v: Range) => {
-          setValue([...v]);
+          setValue(v);
         }}
         classes={{
           thumb: "thumb",
@@ -108,11 +106,11 @@ const RangeSlider = ({ rangeAtom, boundsAtom, maxMin, minMax }: Props) => {
         }}
         aria-labelledby="range-slider"
         valueLabelDisplay={"on"}
-        max={Number(bounds[1].toFixed(2))}
-        min={Number(bounds[0].toFixed(2))}
+        max={bounds[1]}
+        min={bounds[0]}
         step={(bounds[1] - bounds[0]) / 100}
       />
-      {bounds[1].toFixed(2)}
+      {bounds[1]}
     </SliderContainer>
   ) : null;
 };
