@@ -364,9 +364,9 @@ export const labelFilters = selector({
     };
     const filters = {};
     for (const label in labels) {
-      const range = get(atoms.filterLabelConfidenceRange(label));
-      const none = get(atoms.filterLabelIncludeNoConfidence(label));
-      const include = get(atoms.filterIncludeLabels(label));
+      const range = get(filterLabelConfidenceRange(label));
+      const none = get(filterLabelIncludeNoConfidence(label));
+      const include = get(filterIncludeLabels(label));
       filters[label] = (s) => {
         const inRange =
           range[0] - 0.005 <= s.confidence && s.confidence <= range[1] + 0.005;
@@ -390,13 +390,6 @@ export const modalLabelFilters = selector({
           ...acc,
           ["frames." + cur]: frameLabels[cur],
         };
-        const filter =
-          range.every((r, i) => r === bounds[i]) && none
-            ? null
-            : {
-                range,
-                none,
-              };
       }, {}),
     };
     const hiddenObjects = get(atoms.hiddenObjects);
@@ -427,17 +420,17 @@ export const modalLabelFilters = selector({
     for (const label of paths) {
       set(
         atoms.modalFilterLabelConfidenceRange(label),
-        get(atoms.filterLabelConfidenceRange(label))
+        get(filterLabelConfidenceRange(label))
       );
 
       set(
         atoms.modalFilterLabelIncludeNoConfidence(label),
-        get(atoms.filterLabelIncludeNoConfidence(label))
+        get(filterLabelIncludeNoConfidence(label))
       );
 
       set(
         atoms.modalFilterIncludeLabels(label),
-        get(atoms.filterIncludeLabels(label))
+        get(filterIncludeLabels(label))
       );
 
       set(atoms.modalColorByLabel, get(atoms.colorByLabel));
@@ -541,19 +534,17 @@ export const fieldIsFiltered = selectorFamily({
     const label = get(isLabel(field));
     const numeric = get(isNumericField(field));
     const range = get(
-      label
-        ? atoms.filterLabelConfidenceRange(field)
-        : atoms.filterNumericFieldRange(field)
+      label ? filterLabelConfidenceRange(field) : filterNumericFieldRange(field)
     );
     const bounds = get(
       label ? labelConfidenceBounds(field) : numericFieldBounds(field)
     );
     const none = get(
       label
-        ? atoms.filterLabelIncludeNoConfidence(field)
-        : atoms.filterNumericFieldIncludeNone(field)
+        ? filterLabelIncludeNoConfidence(field)
+        : filterNumericFieldIncludeNone(field)
     );
-    const include = get(atoms.filterIncludeLabels(field));
+    const include = get(filterIncludeLabels(field));
     const maxMin = label ? 0 : bounds[0];
     const minMax = label ? 1 : bounds[1];
     const stretchedBounds = [
@@ -679,17 +670,18 @@ const resolveFilter = (bounds, range, none, labels = null) => {
   if (defaultRange && !none) {
     filter.none = none;
   }
-  if (labels !== null) {
+  if (labels !== null && labels.length > 0) {
     filter.labels = labels;
   }
-  return filter;
+  if (Object.keys(filter).length > 0) return filter;
+  return null;
 };
 
 export const filterIncludeLabels = selectorFamily({
   key: "filterIncludeLabels",
   get: (path) => ({ get }) => {
-    const filter = get(filterStages);
-    return filter?.[path].labels ?? [];
+    const filter = get(filterStage(path));
+    return filter?.labels ?? [];
   },
   set: (path) => ({ get, set }, labels) => {
     const bounds = get(labelConfidenceBounds(path));
@@ -704,7 +696,13 @@ export const filterLabelConfidenceRange = selectorFamily({
   key: "filterLabelConfidenceRange",
   get: (path) => ({ get }) => {
     const filter = get(filterStage(path));
-    return filter?.range ?? get(labelConfidenceBounds(path));
+    if (filter?.range) return filter.range;
+    const bounds = get(labelConfidenceBounds(path));
+    const stretchedBounds = [
+      0 < bounds[0] ? 0 : bounds[0],
+      1 > bounds[1] ? 1 : bounds[1],
+    ];
+    return stretchedBounds;
   },
   set: (path) => ({ get, set }, range) => {
     const bounds = get(labelConfidenceBounds(path));
@@ -734,7 +732,7 @@ export const filterNumericFieldRange = selectorFamily({
   key: "filterNumericFieldRange",
   get: (path) => ({ get }) => {
     const filter = get(filterStage(path));
-    return filter?.range ?? get(labelConfidenceBounds(path));
+    return filter?.range ?? get(numericFieldBounds(path));
   },
   set: (path) => ({ get, set }, range) => {
     const bounds = get(numericFieldBounds(path));

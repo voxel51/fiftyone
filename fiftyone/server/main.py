@@ -152,13 +152,7 @@ def _catch_errors(func):
     return wrapper
 
 
-_WITHOUT_PAGINATION_EXTENDED_STAGES = {
-    fosg.FilterClassifications,
-    fosg.FilterDetections,
-    fosg.FilterPolylines,
-    fosg.FilterKeypoints,
-    fosg.FilterField,
-}
+_WITHOUT_PAGINATION_EXTENDED_STAGES = {fosg.FilterLabels, fosg.FilterField}
 
 
 def _get_label_object_ids(label):
@@ -317,11 +311,12 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             filters: a :class:`dict` mapping field path to a serialized
                 :class:fiftyone.core.stages.Stage`
         """
-        StateHandler.state["filters"] = filters
-        state = StateHandler.state
-        view = state["view"] or []
+        state = fos.StateDescription.from_dict(StateHandler.state)
+        state.filters = filters
+        view = state.view or []
+        StateHandler.state = state.serialize()
         await self.send_statistics(
-            view + _make_filter_stages(view, state["filters"]), extended=True
+            view + _make_filter_stages(state.dataset, filters), extended=True
         )
 
     async def on_page(self, **kwargs):
@@ -462,14 +457,14 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         """
         if StateHandler.state["dataset"] is None:
             return []
-        state = StateHandler.state
-        view = state["view"] or []
+        state = fos.StateDescription.from_dict(StateHandler.state)
+        view = state.view or []
         awaitables = [self.send_statistics(view, only=only)]
 
-        if len(state["filters"]):
+        if len(state.filters):
             awaitables.append(
                 self.send_statistics(
-                    view + _make_filter_stages(view, state["filters"]),
+                    view + _make_filter_stages(state.dataset, state.filters),
                     extended=True,
                     only=only,
                 )
@@ -506,8 +501,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             stages = []
 
         view = fov.DatasetView(state.dataset)
-        for stage_dict in stages:
-            stage = fosg.ViewStage._from_dict(stage_dict)
+        for stage in stages:
             view = view.add_stage(stage)
 
         aggs = fos.DatasetStatistics(view).aggregations
@@ -540,7 +534,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             )
             return
 
-        for stage in _make_filter_stages(view, state.filters):
+        for stage in _make_filter_stages(state.dataset, state.filters):
             if type(stage) in _WITHOUT_PAGINATION_EXTENDED_STAGES:
                 continue
 
@@ -675,20 +669,23 @@ def _make_range_expression(f, args):
         else:
             raise ValueError("invalid")
 
-    return f
+    return expr
 
 
-def _make_filter_stages(view, filters):
-    field_schema = view.get_field_schema()
-    frame_field_schema = view.get_frame_field_schema()
+def _make_filter_stages(dataset, filters):
+    field_schema = dataset.get_field_schema()
+    if dataset.media_type == fom.VIDEO:
+        frame_field_schema = dataset.get_frame_field_schema()
+    else:
+        frame_field_schema = None
     stages = []
-    for path, args in filters.values():
+    for path, args in filters.items():
         if path.startswith("frames."):
             schema = frame_field_schema
-            path = path[len("frames.") :]
+            field = schema[path[len("frames.") :]]
         else:
             schema = field_schema
-        field = schema[path]
+            field = schema[path]
 
         if isinstance(field, fof.EmbeddedDocumentField):
             stage_cls = fosg.FilterField
@@ -706,6 +703,8 @@ def _make_filter_stages(view, filters):
         else:
             expr = _make_range_expression(F(path), args)
             stages.append(fosg.Match(expr))
+
+    return stages
 
 
 async def _get_distributions(coll, view, group):

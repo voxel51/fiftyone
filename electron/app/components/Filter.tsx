@@ -250,7 +250,7 @@ const ClassFilterContainer = styled.div`
   margin: 0.25rem 0;
 `;
 
-const ClassFilter = ({ entry: { path, type, color }, atoms }) => {
+const ClassFilter = ({ entry: { path }, atoms }) => {
   const theme = useContext(ThemeContext);
   const classes = useRecoilValue(selectors.labelClasses(path));
   const [selectedClasses, setSelectedClasses] = useRecoilState(
@@ -261,8 +261,9 @@ const ClassFilter = ({ entry: { path, type, color }, atoms }) => {
 
   useEffect(() => {
     send({ type: "SET_CLASSES", classes });
-    setSelectedClasses(selectedClasses.filter((c) => classes.includes(c)));
-  }, [classes]);
+    selectedClasses.length &&
+      setSelectedClasses(selectedClasses.filter((c) => classes.includes(c)));
+  }, [classes, selectedClasses]);
 
   useOutsideClick(inputRef, () => send("BLUR"));
   const { inputValue, results, currentResult, selected } = state.context;
@@ -349,17 +350,6 @@ const ClassFilter = ({ entry: { path, type, color }, atoms }) => {
       </ClassFilterContainer>
     </>
   );
-};
-
-const CLS_TO_STAGE = {
-  Classification: "FilterField",
-  Classifications: "FilterClassifications",
-  Detection: "FilterField",
-  Detections: "FilterDetections",
-  Polyline: "FilterField",
-  Polylines: "FilterPolylines",
-  Keypoint: "FilterField",
-  Keypoints: "FilterKeypoints",
 };
 
 const HiddenObjectFilter = ({ entry }) => {
