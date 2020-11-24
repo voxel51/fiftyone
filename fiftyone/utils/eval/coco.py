@@ -30,7 +30,12 @@ logger = logging.getLogger(__name__)
 
 
 def evaluate_detections(
-    samples, pred_field, gt_field="ground_truth", iou=0.75,
+    samples,
+    pred_field,
+    gt_field="ground_truth",
+    iou=0.75,
+    classwise=True,
+    save_sample_fields=True,
 ):
     """Evaluates the predicted detections in the given samples with respect to
     the specified ground truth detections using the specified Intersection over
@@ -77,6 +82,10 @@ def evaluate_detections(
             truth :class:`fiftyone.core.labels.Detections`
         iou (0.75): an IoU value for which to compute
             per-detection and per-image TP/FP/FN
+        classwise (True): boolean that determines whether to match objects
+            within the same class (True) or between classes (False)
+        save_sample_fields (True): boolean indicating whether to save tp fp and
+            fn at a sample-level
     """
     gt_key = "%s_eval" % pred_field
     pred_key = "%s_eval" % gt_field
@@ -122,11 +131,16 @@ def evaluate_detections(
                         matches[iou_str] = {"gt_id": -1, "iou": -1}
                         det[pred_key]["matches"] = matches
 
-                    if det.label not in image_cats:
-                        image_cats[det.label] = {}
-                        image_cats[det.label]["preds"] = []
-                        image_cats[det.label]["gts"] = []
-                    image_cats[det.label]["preds"].append(det)
+                    if classwise:
+                        label = det.label
+                    else:
+                        label = "all"
+
+                    if label not in image_cats:
+                        image_cats[label] = {}
+                        image_cats[label]["preds"] = []
+                        image_cats[label]["gts"] = []
+                    image_cats[label]["preds"].append(det)
 
                 for det in gts.detections:
                     if gt_key not in det:
@@ -142,11 +156,16 @@ def evaluate_detections(
                         matches[iou_str] = {"pred_id": -1, "iou": -1}
                         det[gt_key]["matches"] = matches
 
-                    if det.label not in image_cats:
-                        image_cats[det.label] = {}
-                        image_cats[det.label]["preds"] = []
-                        image_cats[det.label]["gts"] = []
-                    image_cats[det.label]["gts"].append(det)
+                    if classwise:
+                        label = det.label
+                    else:
+                        label = "all"
+
+                    if label not in image_cats:
+                        image_cats[label] = {}
+                        image_cats[label]["preds"] = []
+                        image_cats[label]["gts"] = []
+                    image_cats[label]["gts"].append(det)
 
                 # Compute IoU for every detection and gt
                 pred_ious = {}
@@ -259,11 +278,12 @@ def evaluate_detections(
 
                 sample_result_dict["false_negatives"] += false_neg
 
-                image["tp_iou_%s" % iou_str] = true_pos
-                image["fp_iou_%s" % iou_str] = false_pos
-                image["fn_iou_%s" % iou_str] = false_neg
+                if save_sample_fields:
+                    image["tp_iou_%s" % iou_str] = true_pos
+                    image["fp_iou_%s" % iou_str] = false_pos
+                    image["fn_iou_%s" % iou_str] = false_neg
 
-            if has_frames:
+            if has_frames and save_sample_fields:
                 sample["tp_iou_%s" % iou_str] = sample_result_dict[
                     "true_positives"
                 ]
