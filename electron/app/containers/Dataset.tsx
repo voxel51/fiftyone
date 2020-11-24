@@ -78,6 +78,7 @@ function Dataset(props) {
   );
   const activeOther = useRecoilValue(atoms.activeOther("sample"));
   const activeFrameOther = useRecoilValue(atoms.activeOther("frame"));
+  const view = useRecoilValue(selectors.view);
 
   useMessageHandler("statistics", ({ stats, extended }) => {
     if (extended) {
@@ -86,6 +87,7 @@ function Dataset(props) {
     } else {
       setDatasetStatsLoading(false);
       setDatasetStats(stats);
+      view.length === 0 && setExtendedDatasetStatsLoading(false);
     }
   });
   useSendMessage("as_app", {});
@@ -111,7 +113,6 @@ function Dataset(props) {
   // are destroyed before they can handle it
   const resetSelectedObjects = useResetRecoilState(atoms.selectedObjects);
   const resetHiddenObjects = useResetRecoilState(atoms.hiddenObjects);
-  const socket = useRecoilValue(selectors.socket);
   const handleHideModal = () => {
     setModal({ visible: false, sample: null });
     resetSelectedObjects();

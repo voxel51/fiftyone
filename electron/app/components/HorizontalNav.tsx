@@ -20,11 +20,21 @@ export type Props = {
   entries: string[];
 };
 
-const Container = styled(animated(Resizable))`
+const Drag = styled(DragHandle)`
+  position: absolute;
+  bottom: -0.8rem;
+  height: 1rem;
+  width: 1rem;
+  left: 50%;
+  margin-left: -0.5rem;
+  z-index: 1000;
+  pointer-events: none;
+`;
+
+const Container = styled(Resizable)`
   padding: 1rem 0 0;
   background-color: ${({ theme }) => theme.backgroundDark};
-  border-bottom-width: 1px;
-  border-bottom-style: solid;
+  border-bottom: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
 `;
 
 const Nav = styled.div`
@@ -119,10 +129,6 @@ const HorizontalNav = ({ entries }: Props) => {
   const height = expanded ? openedHeight : closedHeight;
   const resizable = expanded;
 
-  const props = useSpring({
-    borderBottomColor: resizable ? theme.brand : theme.backgroundDarkBorder,
-  });
-
   return (
     <Container
       size={{ height: maximized ? windowHeight - 73 : height }}
@@ -140,7 +146,6 @@ const HorizontalNav = ({ entries }: Props) => {
       onResizeStop={(e, direction, ref, d) => {
         setOpenedHeight(height + d.height);
       }}
-      style={props}
     >
       <Nav>
         <PlotsButtons>
@@ -181,6 +186,7 @@ const HorizontalNav = ({ entries }: Props) => {
         </NavButtons>
       </Nav>
       {expanded && <Distributions key={activePlot} group={activePlot} />}
+      {expanded && !maximized && <Drag />}
     </Container>
   );
 };

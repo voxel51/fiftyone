@@ -196,7 +196,7 @@ const Entry = ({ entry, onCheck, modal }) => {
             <span className="name" title={entry.name}>
               {entry.name}
             </span>
-            {entry.data !== undefined ? (
+            {entry.data !== null ? (
               <>
                 <span className="count" title={entry.data}>
                   {entry.data}

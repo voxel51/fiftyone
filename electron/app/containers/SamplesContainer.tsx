@@ -72,10 +72,8 @@ const FieldsWrapper = () => {
     return [...values].sort().map(({ name, type }) => ({
       name,
       type,
-      totalCount: datasetStatsLoading ? undefined : totalCounts[name],
-      filteredCount: extendedDatasetStatsLoading
-        ? undefined
-        : filteredCounts[name],
+      totalCount: datasetStatsLoading ? null : totalCounts[name],
+      filteredCount: extendedDatasetStatsLoading ? null : filteredCounts[name],
       selected: Boolean(selected[name]),
     }));
   };
