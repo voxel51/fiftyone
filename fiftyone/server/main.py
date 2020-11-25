@@ -313,11 +313,13 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         """
         state = fos.StateDescription.from_dict(StateHandler.state)
         state.filters = filters
-        view = state.view or []
+        view = state.view or state.dataset
         StateHandler.state = state.serialize()
-        await self.send_statistics(
-            view + _make_filter_stages(state.dataset, filters), extended=True
-        )
+
+        for stage in _make_filter_stages(state.dataset, state.filters):
+            view = view.add_stage(stage)
+
+        await self.send_statistics(view, extended=True)
 
     async def on_page(self, **kwargs):
         """Event for pagination requests"""
@@ -458,16 +460,15 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         if StateHandler.state["dataset"] is None:
             return []
         state = fos.StateDescription.from_dict(StateHandler.state)
-        view = state.view or []
+        view = state.view or state.dataset
         awaitables = [self.send_statistics(view, only=only)]
+
+        for stage in _make_filter_stages(state.dataset, state.filters):
+            view = view.add_stage(stage)
 
         if len(state.filters):
             awaitables.append(
-                self.send_statistics(
-                    view + _make_filter_stages(state.dataset, state.filters),
-                    extended=True,
-                    only=only,
-                )
+                self.send_statistics(view, extended=True, only=only,)
             )
 
         return awaitables
@@ -486,24 +487,16 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                 continue
             client.write_message(response)
 
-    async def send_statistics(self, stages, extended=False, only=None):
-        """Sends a statistics event given using the provided stages to all App
+    async def send_statistics(self, view, extended=False, only=None):
+        """Sends a statistics event given using the provided view to all App
         clients, unless an only client is provided in which case it is only
         sent to the that client.
 
         Args:
-            stages: a list of serialized stages
+            view: a view
             extended (False): extended flag
             only (None): a client to restrict the message to
         """
-        state = fos.StateDescription.from_dict(StateHandler.state)
-        if stages is None:
-            stages = []
-
-        view = fov.DatasetView(state.dataset)
-        for stage in stages:
-            view = view.add_stage(stage)
-
         aggs = fos.DatasetStatistics(view).aggregations
         stats = await view._async_aggregate(self.sample_collection, aggs)
         stats = [r.serialize(reflective=True) for r in stats]
