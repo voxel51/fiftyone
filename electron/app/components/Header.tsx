@@ -60,12 +60,14 @@ const TitleDiv = styled.div`
   margin-right: 1rem;
   cursor: pointer;
   height: 40px;
+  display: flex;
 `;
 
 const LogoImg = animated(styled.img`
   height: 100%;
   width: auto;
   cursor: pointer;
+  margin-right: 1rem;
 `);
 
 const LeftDiv = styled.div`
@@ -76,6 +78,14 @@ const LeftDiv = styled.div`
 const RightDiv = styled.div`
   margin-left: auto;
   padding-right: 0.5rem;
+`;
+
+const FiftyOneDiv = styled.div`
+  color: ${(theme) => theme.font};
+  font-weight: bold;
+  font-size: 1.8rem;
+  align-items: center;
+  display: flex;
 `;
 
 const DatasetDiv = styled.div`
@@ -385,6 +395,7 @@ const Header = () => {
           }}
         >
           <LogoImg style={logoProps} src={logo} />
+          <FiftyOneDiv>FiftyOne</FiftyOneDiv>
         </TitleDiv>
         <DatasetSelector />
       </LeftDiv>
