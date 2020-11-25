@@ -62,9 +62,9 @@ def evaluate_detections(
         Ground truth:   detection.<pred_field>_eval
         Predictions:    detection.<gt_field>_eval
 
-    In addition, true positive (TP), false positive (FP), and false negative
-    (FN) counts at the specified IoU are saved in the following top-level
-    fields of each sample::
+    In addition, if ``save_sample_fields == True``, true positive (TP), false
+    positive (FP), and false negative (FN) counts at the specified IoU are
+    saved in the following top-level fields of each sample::
 
         TP: sample.tp_iou_<iou>
         FP: sample.fp_iou_<iou>
@@ -82,10 +82,10 @@ def evaluate_detections(
             truth :class:`fiftyone.core.labels.Detections`
         iou (0.75): an IoU value for which to compute
             per-detection and per-image TP/FP/FN
-        classwise (True): boolean that determines whether to match objects
-            within the same class (True) or between classes (False)
-        save_sample_fields (True): boolean indicating whether to save tp fp and
-            fn at a sample-level
+        classwise (True): whether to match objects within the same class (True)
+            or between classes (False)
+        save_sample_fields (True): whether to save TP, FP, and FN counts at the
+            sample-level
     """
     gt_key = "%s_eval" % pred_field
     pred_key = "%s_eval" % gt_field
@@ -140,6 +140,7 @@ def evaluate_detections(
                         image_cats[label] = {}
                         image_cats[label]["preds"] = []
                         image_cats[label]["gts"] = []
+
                     image_cats[label]["preds"].append(det)
 
                 for det in gts.detections:
@@ -165,6 +166,7 @@ def evaluate_detections(
                         image_cats[label] = {}
                         image_cats[label]["preds"] = []
                         image_cats[label]["gts"] = []
+
                     image_cats[label]["gts"].append(det)
 
                 # Compute IoU for every detection and gt
