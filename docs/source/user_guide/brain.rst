@@ -32,7 +32,8 @@ workflow:
   larger datasets.  The FiftyOne Brain provides a quantitative `mistakenness`
   measure to identify possible label mistakes.  Mistakenness operates on
   labeled images and requires the logit-output of your model predictions in
-  order to provide maximum efficacy.
+  order to provide maximum efficacy. It also works on detection datasets to
+  find missed objects, incorrect annotations, and localization issues.
 
 * **Hardness**: While a model is training, it will learn to understand
   attributes of certain samples faster than others. The FiftyOne Brain provides
@@ -95,37 +96,86 @@ most other samples are more unique.
 Label Mistakes
 ______________
 
-Correct annotations are crucial in developing high performing models. Using the
-FiftyOne Brain and the predictions of a pre-trained model, you can identify
-possible labels mistakes in your |Dataset|:
 
-.. code-block:: python
-    :linenos:
+Label mistakes can be calculated for both classification and detection datasets.
 
-    import fiftyone.brain as fob
+.. tabs::
 
-    fob.compute_mistakenness(
-        samples, pred_field="my_model", label_field="ground_truth"
-    )
+    .. tab:: Classification 
 
-**Input**: Label mistakes operate on samples for which there are both human
-annotations (`label_field` in the example block) and model predictions
-(`pred_field` above).
+        Correct annotations are crucial in developing high performing models. Using the
+        FiftyOne Brain and the predictions of a pre-trained model, you can identify
+        possible labels mistakes in your |Dataset|:
+        
+        .. code-block:: python
+            :linenos:
+        
+            import fiftyone.brain as fob
+        
+            fob.compute_mistakenness(
+                samples, pred_field="my_model", label_field="ground_truth"
+            )
+        
+        **Input**: Label mistakes operate on samples for which there are both human
+        annotations (`label_field` in the example block) and model predictions
+        (`pred_field` above).
+        
+        **Output**: A scalar-valued field per |Sample| that ranks the chance of a
+        mistaken annotation.  The default name of this field is `mistakenness`, but you
+        can customize its name by using the `mistakenness_field` named argument.
+        
+        **What to expect**: Finding mistakes in human annotations is non-trivial (if it
+        could be done perfectly then the approach would sufficiently replace your
+        prediction model).  The FiftyOne Brain uses a proprietary scoring model that
+        ranks samples for which your prediction model is highly confident but wrong
+        (according to the human annotation label) as a high chance of being a mistake.
+        
+        .. note::
+        
+            Check out the :doc:`label mistakes tutorial<../tutorials/label_mistakes>`
+            to see an example use case of the Brain's mistakenness method.
 
-**Output**: A scalar-valued field per |Sample| that ranks the chance of a
-mistaken annotation.  The default name of this field is `mistakenness`, but you
-can customize its name by using the `mistakenness_field` named argument.
+    .. tab:: Detection 
 
-**What to expect**: Finding mistakes in human annotations is non-trivial (if it
-could be done perfectly then the approach would sufficiently replace your
-prediction model).  The FiftyOne Brain uses a proprietary scoring model that
-ranks samples for which your prediction model is highly confident but wrong
-(according to the human annotation label) as a high chance of being a mistake.
+        Correct annotations are crucial in developing high performing models. Using the
+        FiftyOne Brain and the predictions of a pre-trained model, you can identify
+        possible labels mistakes in your |Dataset|:
+        
+        .. code-block:: python
+            :linenos:
+        
+            import fiftyone.brain as fob
+        
+            fob.compute_mistakenness(
+                samples, pred_field="my_model", label_field="ground_truth"
+            )
+        
+        **Input**: Label mistakes operate on samples for which there are both human
+        annotations (`label_field` in the example block) and model predictions
+        (`pred_field` above).
+        
+        **Output**: A scalar-valued fields per ground truth |Detection| that 
+        ranks the chance of a mistaken annotation and a localization mistake. 
+        Additionally, every |Sample| contains a field averaging the 
+        mistakenness of the |Detections| in the |Sample|. The default name of 
+        this field is `mistakenness` but you can customize its name by using 
+        the `mistakenness_field` named argument. Ground truth and predicted 
+        objects that were not matched are labeled as `possible_mistakes` and 
+        they are also counted in a `possible_mistakes` field at the |Sample| 
+        level. 
+        
+        **What to expect**: Finding mistakes in human annotations is non-trivial (if it
+        could be done perfectly then the approach would sufficiently replace your
+        prediction model).  The FiftyOne Brain uses a proprietary scoring model that
+        ranks detections for which your prediction model is highly confident but wrong
+        (according to the human annotation label) as a high chance of being a mistake.
+        
+        .. note::
+        
+            Check out the :doc:`detection mistakenness recipe<../recipes/detection_mistakenness>`
+            to see an example use case of the Brain's mistakenness method on a
+            detection Dataset.
 
-.. note::
-
-    Check out the :doc:`label mistakes tutorial<../tutorials/label_mistakes>`
-    to see an example use case of the Brain's mistakenness method.
 
 .. _brain-sample-hardness:
 
