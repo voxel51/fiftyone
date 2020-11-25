@@ -49,6 +49,7 @@ class StateDescription(etas.Serializable):
         close=False,
         connected=False,
         dataset=None,
+        datasets=None,
         selected=None,
         selected_objects=None,
         view=None,
@@ -61,6 +62,7 @@ class StateDescription(etas.Serializable):
         self.selected = selected or []
         self.selected_objects = selected_objects or []
         self.filters = filters
+        self.datasets = datasets or fod.list_datasets()
         super().__init__()
 
     def serialize(self, reflective=False):

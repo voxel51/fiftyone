@@ -7,9 +7,10 @@ Documents that track datasets and their sample schemas in the database.
 """
 from mongoengine import (
     BooleanField,
-    StringField,
-    EmbeddedDocumentListField,
     DictField,
+    EmbeddedDocumentListField,
+    ListField,
+    StringField,
 )
 
 import eta.core.utils as etau
