@@ -30,6 +30,13 @@ export const datasetName = selector({
   },
 });
 
+export const datasets = selector({
+  key: "datasets",
+  get: ({ get }) => {
+    return get(atoms.stateDescription).datasets ?? [];
+  },
+});
+
 export const hasDataset = selector({
   key: "hasDataset",
   get: ({ get }) => Boolean(get(datasetName)),
@@ -56,8 +63,10 @@ export const view = selector({
       ...state,
       view: stages,
     };
-    set(atoms.datasetStats, []);
-    set(atoms.extendedDatasetStats, []);
+    set(atoms.datasetStatsLoading, true);
+    if (Object.keys(state.filters).length) {
+      set(atoms.extendedDatasetStatsLoading, true);
+    }
     set(atoms.stateDescription, newState);
     get(socket).send(packageMessage("update", { state: newState }));
   },
@@ -67,6 +76,34 @@ export const filterStages = selector({
   key: "filterStages",
   get: ({ get }) => {
     return get(atoms.stateDescription).filters;
+  },
+  set: ({ get, set }, filters) => {
+    const state = {
+      ...get(atoms.stateDescription),
+      filters,
+    };
+    const sock = get(socket);
+    sock.send(packageMessage("filters_update", { filters }));
+    set(atoms.extendedDatasetStatsLoading, true);
+    set(atoms.stateDescription, state);
+  },
+});
+
+export const filterStage = selectorFamily({
+  key: "filterStage",
+  get: (path) => ({ get }) => {
+    return get(filterStages)?.[path] ?? {};
+  },
+  set: (path: string) => ({ get, set }, value) => {
+    const filters = Object.assign({}, get(filterStages));
+    if (!value && !filters[path]) return;
+    if (JSON.stringify(value) === JSON.stringify(filters[path])) return;
+    if (!value && path in filters) {
+      delete filters[path];
+    } else {
+      filters[path] = value;
+    }
+    set(filterStages, filters);
   },
 });
 
@@ -104,14 +141,6 @@ export const totalCount = selector({
       (acc, cur) => (cur.name === "count" ? cur.count : acc),
       null
     );
-  },
-});
-
-export const filterStage = selectorFamily({
-  key: "filterStage",
-  get: (fieldName: string) => ({ get }) => {
-    const state = get(atoms.stateDescription);
-    return state.filters ? state.filters[fieldName] : null;
   },
 });
 
@@ -344,9 +373,9 @@ export const labelFilters = selector({
     };
     const filters = {};
     for (const label in labels) {
-      const range = get(atoms.filterLabelConfidenceRange(label));
-      const none = get(atoms.filterLabelIncludeNoConfidence(label));
-      const include = get(atoms.filterIncludeLabels(label));
+      const range = get(filterLabelConfidenceRange(label));
+      const none = get(filterLabelIncludeNoConfidence(label));
+      const include = get(filterIncludeLabels(label));
       filters[label] = (s) => {
         const inRange =
           range[0] - 0.005 <= s.confidence && s.confidence <= range[1] + 0.005;
@@ -400,17 +429,17 @@ export const modalLabelFilters = selector({
     for (const label of paths) {
       set(
         atoms.modalFilterLabelConfidenceRange(label),
-        get(atoms.filterLabelConfidenceRange(label))
+        get(filterLabelConfidenceRange(label))
       );
 
       set(
         atoms.modalFilterLabelIncludeNoConfidence(label),
-        get(atoms.filterLabelIncludeNoConfidence(label))
+        get(filterLabelIncludeNoConfidence(label))
       );
 
       set(
         atoms.modalFilterIncludeLabels(label),
-        get(atoms.filterIncludeLabels(label))
+        get(filterIncludeLabels(label))
       );
 
       set(atoms.modalColorByLabel, get(atoms.colorByLabel));
@@ -514,19 +543,17 @@ export const fieldIsFiltered = selectorFamily({
     const label = get(isLabel(field));
     const numeric = get(isNumericField(field));
     const range = get(
-      label
-        ? atoms.filterLabelConfidenceRange(field)
-        : atoms.filterNumericFieldRange(field)
+      label ? filterLabelConfidenceRange(field) : filterNumericFieldRange(field)
     );
     const bounds = get(
       label ? labelConfidenceBounds(field) : numericFieldBounds(field)
     );
     const none = get(
       label
-        ? atoms.filterLabelIncludeNoConfidence(field)
-        : atoms.filterNumericFieldIncludeNone(field)
+        ? filterLabelIncludeNoConfidence(field)
+        : filterNumericFieldIncludeNone(field)
     );
-    const include = get(atoms.filterIncludeLabels(field));
+    const include = get(filterIncludeLabels(field));
     const maxMin = label ? 0 : bounds[0];
     const minMax = label ? 1 : bounds[1];
     const stretchedBounds = [
@@ -553,7 +580,19 @@ export const labelConfidenceBounds = selectorFamily({
     return get(atoms.datasetStats).reduce(
       (acc, cur) => {
         if (cur.name === label && cur._CLS === CONFIDENCE_BOUNDS_CLS) {
-          return cur.bounds;
+          let bounds = cur.bounds;
+          bounds = [
+            0 < bounds[0] ? 0 : bounds[0],
+            1 > bounds[1] ? 1 : bounds[1],
+          ];
+          return [
+            bounds[0] !== null && bounds[0] !== 0
+              ? Number((bounds[0] - 0.01).toFixed(2))
+              : bounds[0],
+            bounds[1] !== null && bounds[1] !== 1
+              ? Number((bounds[1] + 0.01).toFixed(2))
+              : bounds[1],
+          ];
         }
         return acc;
       },
@@ -568,7 +607,15 @@ export const numericFieldBounds = selectorFamily({
     return get(atoms.datasetStats).reduce(
       (acc, cur) => {
         if (cur.name === label && cur._CLS === BOUNDS_CLS) {
-          return cur.bounds;
+          const { bounds } = cur;
+          return [
+            bounds[0] !== null && bounds[0] !== 0
+              ? Number((bounds[0] - 0.01).toFixed(2))
+              : bounds[0],
+            bounds[1] !== null && bounds[1] !== 1
+              ? Number((bounds[1] + 0.01).toFixed(2))
+              : bounds[1],
+          ];
         }
         return acc;
       },
@@ -636,5 +683,99 @@ export const sampleModalFilter = selector({
         return acc;
       }, {});
     };
+  },
+});
+
+const resolveFilter = (bounds, range, none, labels = null) => {
+  const defaultRange = range.every((r, i) => r === bounds[i]);
+  if (defaultRange && none && (labels === null || labels.length === 0)) {
+    return null;
+  }
+  const filter = {};
+  if (!defaultRange) {
+    filter.range = range;
+    filter.none = none;
+  }
+  if (defaultRange && !none) {
+    filter.none = none;
+  }
+  if (labels !== null && labels.length > 0) {
+    filter.labels = labels;
+  }
+  if (Object.keys(filter).length > 0) return filter;
+  return null;
+};
+
+export const filterIncludeLabels = selectorFamily({
+  key: "filterIncludeLabels",
+  get: (path) => ({ get }) => {
+    const filter = get(filterStage(path));
+    return filter?.labels ?? [];
+  },
+  set: (path) => ({ get, set }, labels) => {
+    const bounds = get(labelConfidenceBounds(path));
+    const range = get(filterLabelConfidenceRange(path));
+    const none = get(filterLabelIncludeNoConfidence(path));
+    const filter = resolveFilter(bounds, range, none, labels);
+    set(filterStage(path), filter);
+  },
+});
+
+export const filterLabelConfidenceRange = selectorFamily({
+  key: "filterLabelConfidenceRange",
+  get: (path) => ({ get }) => {
+    const filter = get(filterStage(path));
+    if (filter?.range) return filter.range;
+    return get(labelConfidenceBounds(path));
+  },
+  set: (path) => ({ get, set }, range) => {
+    const bounds = get(labelConfidenceBounds(path));
+    const none = get(filterLabelIncludeNoConfidence(path));
+    const labels = get(filterIncludeLabels(path));
+    const filter = resolveFilter(bounds, range, none, labels);
+    set(filterStage(path), filter);
+  },
+});
+
+export const filterLabelIncludeNoConfidence = selectorFamily({
+  key: "filterLabelIncludeNoConfidence",
+  get: (path) => ({ get }) => {
+    const filter = get(filterStage(path));
+    return filter?.none ?? true;
+  },
+  set: (path) => ({ get, set }, none) => {
+    const range = get(filterLabelConfidenceRange(path));
+    const bounds = get(labelConfidenceBounds(path));
+    const labels = get(filterIncludeLabels(path));
+    const filter = resolveFilter(bounds, range, none, labels);
+    set(filterStage(path), filter);
+  },
+});
+
+export const filterNumericFieldRange = selectorFamily({
+  key: "filterNumericFieldRange",
+  get: (path) => ({ get }) => {
+    const filter = get(filterStage(path));
+    return filter?.range ?? get(numericFieldBounds(path));
+  },
+  set: (path) => ({ get, set }, range) => {
+    const bounds = get(numericFieldBounds(path));
+    const none = get(filterNumericFieldIncludeNone(path));
+    const filter = resolveFilter(bounds, range, none);
+    set(filterStage(path), filter);
+  },
+});
+
+export const filterNumericFieldIncludeNone = selectorFamily({
+  key: "filterNumericFieldIncludeNone",
+  get: (path) => ({ get }) => {
+    const filter = get(filterStage(path));
+    return filter?.none ?? true;
+  },
+  set: (path) => ({ get, set }, none) => {
+    const range = get(filterNumericFieldRange(path));
+    const bounds = get(numericFieldBounds(path));
+    const filter = resolveFilter(bounds, range, none);
+    set(filterStage(path), filter);
   },
 });

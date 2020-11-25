@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { animated, useSpring } from "react-spring";
 import { useRecoilState } from "recoil";
 import styled, { ThemeContext } from "styled-components";
@@ -127,6 +127,7 @@ const HorizontalNav = ({ entries }: Props) => {
   });
 
   const height = expanded ? openedHeight : closedHeight;
+  const resizable = expanded;
 
   return (
     <Container

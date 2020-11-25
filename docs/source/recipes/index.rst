@@ -64,6 +64,13 @@ workflows.
     :tags: Basics,I/O
 
 .. customcarditem::
+    :header: Compute detection mistakenness
+    :description: Use the FiftyOne Brain's mistakenness feature to find annotation errors in your object detections.
+    :link: detection_mistakenness.html
+    :image: ../_static/images/recipes/detection_mistakenness.png
+    :tags: Advanced,Dataset-Curation,Visualization,Brain
+
+.. customcarditem::
     :header: Merge datasets
     :description: Easily merge datasets on disk or in-memory using FiftyOne; e.g., to add a new set of model predictions to a dataset.
     :link: merge_datasets.html
@@ -113,6 +120,7 @@ workflows.
    Add model predictions<model_inference.ipynb>
    Draw labels on samples<draw_labels.ipynb>
    Convert dataset formats<convert_datasets.ipynb>
+   Detection mistakes<detection_mistakenness.ipynb>
    Merge datasets<merge_datasets.ipynb>
    Custom dataset importers<custom_importer.ipynb>
    Custom dataset exporters<custom_exporter.ipynb>

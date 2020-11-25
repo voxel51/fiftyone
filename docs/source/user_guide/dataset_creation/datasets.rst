@@ -1,3 +1,6 @@
+
+.. _loading-datasets-from-disk:
+
 Loading Datasets From Disk
 ==========================
 
