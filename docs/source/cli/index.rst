@@ -788,6 +788,7 @@ Connect to a remote FiftyOne App.
       -p PORT, --port PORT  the remote port to connect to
       -l PORT, --local-port PORT
                             the local port to use to serve the App
+      -i KEY, --ssh-key KEY an optional ssh key used to login 
 
 **Examples**
 
@@ -800,6 +801,11 @@ Connect to a remote FiftyOne App.
 
     # Connect to a remote App session
     fiftyone app connect --destination <destination> --port <port>
+
+.. code-block:: shell
+
+   # Connect to a remote App session using an ssh key
+   fiftyone app connect --destination <destination> --port <port> --ssh-key <path/to/key>
 
 .. code-block:: shell
 

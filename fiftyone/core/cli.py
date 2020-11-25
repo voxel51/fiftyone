@@ -1016,6 +1016,10 @@ class AppConnectCommand(Command):
         # Connect to a remote App session
         fiftyone app connect --destination <destination> --port <port>
 
+        # Connect to a remote App session using an ssh key
+        fiftyone app connect --destination <destination> --port <port> \\
+            --ssh-key <path/to/key>
+
         # Connect to a remote App using a custom local port
         fiftyone app connect --local-port <port>
     """
@@ -1045,6 +1049,14 @@ class AppConnectCommand(Command):
             type=int,
             help="the local port to use to serve the App",
         )
+        parser.add_argument(
+            "-i",
+            "--ssh-key",
+            metavar="KEY",
+            default=None,
+            type=str,
+            help="optional ssh key to use to login",
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -1059,20 +1071,24 @@ class AppConnectCommand(Command):
             )
             etau.ensure_basedir(control_path)
 
+            ssh_call = [
+                "ssh",
+                "-f",
+                "-N",
+                "-M",
+                "-S",
+                control_path,
+                "-L",
+                "%d:127.0.0.1:%d" % (args.local_port, args.port),
+            ]
+
+            if args.ssh_key:
+                ssh_call += ["-i", args.ssh_key]
+
+            ssh_call.append(args.destination)
+
             # Port forwarding
-            ret = subprocess.call(
-                [
-                    "ssh",
-                    "-f",
-                    "-N",
-                    "-M",
-                    "-S",
-                    control_path,
-                    "-L",
-                    "%d:127.0.0.1:%d" % (args.local_port, args.port),
-                    args.destination,
-                ]
-            )
+            ret = subprocess.call(ssh_call)
             if ret != 0:
                 print("ssh failed with exit code %r" % ret)
                 return
