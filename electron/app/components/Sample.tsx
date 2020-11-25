@@ -264,4 +264,4 @@ const Sample = ({ sample, metadata, setView }) => {
   );
 };
 
-export default Sample;
+export default React.memo(Sample);

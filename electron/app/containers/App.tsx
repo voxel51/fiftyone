@@ -98,6 +98,7 @@ function App(props: Props) {
 
   useEventHandler(socket, "close", () => {
     setConnected(false);
+    setStateDescription({});
   });
   useMessageHandler("update", ({ state }) => {
     setViewCounter(viewCounterValue + 1);

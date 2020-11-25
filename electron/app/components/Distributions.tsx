@@ -9,6 +9,7 @@ import { scrollbarStyles } from "./utils";
 import Loading from "./Loading";
 import { isFloat } from "../utils/generic";
 import { useMessageHandler, useSendMessage } from "../utils/hooks";
+import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 
 const Container = styled.div`
@@ -116,6 +117,7 @@ const Distributions = ({ group }) => {
   const view = useRecoilValue(selectors.view);
   const datasetName = useRecoilValue(selectors.datasetName);
   const [loading, setLoading] = useState(true);
+  const refresh = useRecoilValue(atoms.refresh);
   const [data, setData] = useState([]);
 
   useSendMessage("distributions", { group }, null, [view, datasetName]);
@@ -127,7 +129,8 @@ const Distributions = ({ group }) => {
 
   useEffect(() => {
     setData([]);
-  }, [JSON.stringify(view), datasetName]);
+    setLoading(true);
+  }, [JSON.stringify(view), datasetName, refresh]);
 
   if (loading) {
     return <Loading />;
