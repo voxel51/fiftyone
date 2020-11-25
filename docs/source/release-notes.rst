@@ -14,8 +14,8 @@ App
   header
 - Fixed a bug the caused numeric (scalar field) range sliders to disappear
   after changing the default value
-- Fixed a bug that prevented the App state (label graphs, sample grid, etc)
-  from updating appropriately after applying label filters
+- Fixed a bug that prevented the App state from updating appropriately after
+  applying label filters
 
 Core
 ^^^^
