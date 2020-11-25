@@ -96,117 +96,121 @@ most other samples are more unique.
 Label Mistakes
 ______________
 
-
-Label mistakes can be calculated for both classification and detection datasets.
+Label mistakes can be calculated for both classification and detection
+datasets.
 
 .. tabs::
 
-    .. tab:: Classification 
+    .. tab:: Classification
 
-        Correct annotations are crucial in developing high performing models. Using the
-        FiftyOne Brain and the predictions of a pre-trained model, you can identify
-        possible labels mistakes in your |Dataset|:
-        
+        Correct annotations are crucial in developing high performing models.
+        Using the FiftyOne Brain and the predictions of a pre-trained model,
+        you can identify possible labels mistakes in your |Dataset|:
+
         .. code-block:: python
             :linenos:
-        
+
             import fiftyone.brain as fob
-        
+
             fob.compute_mistakenness(
                 samples, pred_field="my_model", label_field="ground_truth"
             )
-        
-        **Input**: Label mistakes operate on samples for which there are both human
-        annotations (`label_field` in the example block) and model predictions
-        (`pred_field` above).
-        
-        **Output**: A scalar-valued field per |Sample| that ranks the chance of a
-        mistaken annotation.  The default name of this field is `mistakenness`, but you
-        can customize its name by using the `mistakenness_field` named argument.
-        
-        **What to expect**: Finding mistakes in human annotations is non-trivial (if it
-        could be done perfectly then the approach would sufficiently replace your
-        prediction model).  The FiftyOne Brain uses a proprietary scoring model that
-        ranks samples for which your prediction model is highly confident but wrong
-        (according to the human annotation label) as a high chance of being a mistake.
-        
+
+        **Input**: Label mistakes operate on samples for which there are both
+        human annotations (`label_field` in the example block) and model
+        predictions (`pred_field` above).
+
+        **Output**: A scalar-valued field per |Sample| that ranks the chance of
+        a mistaken annotation.  The default name of this field is
+        `mistakenness`, but you can customize its name by using the
+        `mistakenness_field` named argument.
+
+        **What to expect**: Finding mistakes in human annotations is
+        non-trivial (if it could be done perfectly then the approach would
+        sufficiently replace your prediction model!) The FiftyOne Brain uses a
+        proprietary scoring model that ranks samples for which your prediction
+        model is highly confident but wrong (according to the human annotation
+        label) as a high chance of being a mistake.
+
         .. note::
-        
-            Check out the :doc:`label mistakes tutorial<../tutorials/label_mistakes>`
-            to see an example use case of the Brain's mistakenness method.
 
-    .. tab:: Detection 
+            Check out the
+            :doc:`label mistakes tutorial<../tutorials/label_mistakes>`
+            to see an example use case of the Brain's mistakenness method on
+            a classification dataset.
 
-        Correct annotations are crucial in developing high performing models. Using the
-        FiftyOne Brain and the predictions of a pre-trained model, you can identify
-        possible labels mistakes in your |Dataset|:
-        
+    .. tab:: Detection
+
+        Correct annotations are crucial in developing high performing models.
+        Using the FiftyOne Brain and the predictions of a pre-trained model,
+        you can identify possible labels mistakes in your |Dataset|:
+
         .. code-block:: python
             :linenos:
-        
+
             import fiftyone.brain as fob
-        
+
             fob.compute_mistakenness(
                 samples, pred_field="my_model", label_field="ground_truth"
             )
-        
-        **Input**: Label mistakes operate on samples for which there are both human
-        annotations (`label_field` in the example block) and model predictions
-        (`pred_field` above). While it is recommended that you add logits to
-        every prediction, if that is not possible then you can specify the
-        kwarg `use_logits=False` when calling `compute_mistakenness` and it
-        will use the confidence of the predictions instead.
-        
-        **Output**: New fields in detections and samples will be populated. 
 
-        Ground truth |Detection| level fields:
+        **Input**: Label mistakes operate on samples for which there are both
+        human annotations (`label_field` in the example block) and model
+        predictions (`pred_field` above). While it is recommended that you add
+        logits to every prediction, if that is not possible then you can add
+        the `use_logits=False` keyword argument of
+        :meth:`compute_mistakenness() <fiftyone.brain.compute_mistakenness>`
+        and it will use the confidence of the predictions instead.
 
-        * `mistakenness` (float): Calculated for any ground truth objects that
-          matched with a prediction. It is a measure of the agreement between
-          the gt annotation and the prediction modulated by the confidence of
-          the prediction. 
+        **Output**: New fields on both the detections in `label_field` and the
+        samples will be populated:
 
-        * `mistakenness_loc` (float): Calculated for any ground truth objects
-          that matched with a prediction. A measure of the mistakenness in the
-          bounding box localization of the annotation computed using the
-          confidence and IoU of the prediction. 
+        Detection-level fields:
 
-        * `possible_spurious` (bool): Calculated for ground truth objects that
-          were not matched with a prediction. Since the model did not predict
-          this object, it is flagged as a possible spurious annotation.
+        * `mistakenness` (float): Populated for objects in `label_field` that
+          matched with a prediction in `pred_field`. It is a measure of the
+          likelihood that the ground truth annotation is a mistake.
 
+        * `mistakenness_loc` (float): Populated for objects in `label_field`
+          that matched with a prediction in `pred_field`. It is a measure of
+          the mistakenness in the localization (bounding box) of the ground
+          truth annotation.
 
-        Predictions that had a high confidence will be copied over to the
-        ground truth |Detections| of the |Sample| and tagged with the following
-        field:
+        * `possible_spurious` (bool): Populated for objects in `label_field`
+          that were not matched with a prediction and deemed to be likely
+          spurious annotations.
 
-        * `possible_missing` (bool): A highly confident prediction that was not
-          matched with a ground truth annotation and was possibly missed by
-          annotators.
+        * `possible_missing` (bool): If there are objects in `pred_field` with
+          no matches in `object_field` but which are deemed to be likely
+          correct annotations, new |Detections| with their `possible_missing`
+          field populated are added to `label_field` to indicate ground truth
+          annotations that were likely missed by annotators.
 
-        |Sample|-level fields:
+        Sample-level fields:
 
-        * `max_mistakenness` (float): The maximum `mistakenness` of all ground truth
-          detections in the |Sample|. 
+        * `mistakenness` (float): The maximum mistakenness of an object in the
+          `label_field` of the sample.
 
-        * `possible_missing` (int): The total number of `possible_missing`
-          detections in the |Sample|.
+        * `possible_spurious` (int): The number of objects in the `label_field`
+          of the sample that were deemed to be likely spurious annotations.
 
-        * `possible_spurious` (int): The total number of `possible_spurious`
-          detections in the |Sample|.
-        
-        **What to expect**: Finding mistakes in human annotations is non-trivial (if it
-        could be done perfectly then the approach would sufficiently replace your
-        prediction model).  The FiftyOne Brain uses a proprietary scoring model that
-        ranks detections for which your prediction model is highly confident but wrong
-        (according to the human annotation label) as a high chance of being a mistake.
-        
+        * `possible_missing` (int): The number of objects that were added to
+          the `label_field` of the sample and marked as likely missing
+          annotations.
+
+        **What to expect**: Finding mistakes in human annotations is
+        non-trivial (if it could be done perfectly then the approach would
+        sufficiently replace your prediction model!) The FiftyOne Brain uses a
+        proprietary scoring model that ranks detections for which your
+        prediction model is highly confident but wrong (according to the human
+        annotation label) as a high chance of being a mistake.
+
         .. note::
-        
-            Check out the :doc:`detection mistakenness recipe<../recipes/detection_mistakenness>`
+
+            Check out the
+            :doc:`detection mistakenness recipe<../recipes/detection_mistakenness>`
             to see an example use case of the Brain's mistakenness method on a
-            detection Dataset.
-
+            detection dataset.
 
 .. _brain-sample-hardness:
 
