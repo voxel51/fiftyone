@@ -152,7 +152,10 @@ Label mistakes can be calculated for both classification and detection datasets.
         
         **Input**: Label mistakes operate on samples for which there are both human
         annotations (`label_field` in the example block) and model predictions
-        (`pred_field` above).
+        (`pred_field` above). While it is recommended that you add logits to
+        every prediction, if that is not possible then you can specify the
+        kwarg `use_logits=False` when calling `compute_mistakenness` and it
+        will use the confidence of the predictions instead.
         
         **Output**: New fields in detections and samples will be populated. 
 
