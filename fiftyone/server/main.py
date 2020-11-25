@@ -483,13 +483,15 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         view = state.view or state.dataset
         awaitables = [self.send_statistics(view, only=only)]
 
-        for stage in _make_filter_stages(state.dataset, state.filters):
-            view = view.add_stage(stage)
+        if state.filters:
+            for stage in _make_filter_stages(state.dataset, state.filters):
+                view = view.add_stage(stage)
+        else:
+            view = None
 
-        if len(state.filters):
-            awaitables.append(
-                self.send_statistics(view, extended=True, only=only,)
-            )
+        awaitables.append(
+            self.send_statistics(view, extended=True, only=only,)
+        )
 
         return awaitables
 
@@ -522,9 +524,12 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             extended (False): extended flag
             only (None): a client to restrict the message to
         """
-        aggs = fos.DatasetStatistics(view).aggregations
-        stats = await view._async_aggregate(self.sample_collection, aggs)
-        stats = [r.serialize(reflective=True) for r in stats]
+        if view is not None:
+            aggs = fos.DatasetStatistics(view).aggregations
+            stats = await view._async_aggregate(self.sample_collection, aggs)
+            stats = [r.serialize(reflective=True) for r in stats]
+        else:
+            stats = []
 
         message = {"type": "statistics", "stats": stats, "extended": extended}
 
