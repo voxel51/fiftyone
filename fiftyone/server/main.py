@@ -614,8 +614,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             results = []
 
-        for stage_dict in state.filters.values():
-            stage = fosg.ViewStage._from_dict(stage_dict)
+        for stage in _make_filter_stages(state.dataset, state.filters):
             view = view.add_stage(stage)
 
         if group == LABELS and results is None:
