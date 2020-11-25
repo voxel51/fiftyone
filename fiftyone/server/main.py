@@ -548,6 +548,17 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         view = view.skip((page - 1) * page_length)
         pipeline = view._pipeline(hide_frames=True, squash_frames=True)
+        projections = {}
+        for exc in state.dataset._doc._exclude_from_app:
+            if (
+                exc.startswith("frames.")
+                and state.dataset.media_type == fom.VIDEO
+            ):
+                exc = "frames.first_frame." + exc[len("frames.") :]
+            projections[exc] = False
+
+        if projections:
+            pipeline.append({"$project": projections})
         samples = await self.sample_collection.aggregate(pipeline).to_list(
             page_length + 1
         )
