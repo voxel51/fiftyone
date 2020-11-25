@@ -785,10 +785,9 @@ async def _numeric_distribution_pipelines(coll, view, pipeline, buckets=50):
         # if min and max are equal, we artifically create a boundary
         # @todo alternative approach to scalar fields with only one value
         if mn == mx:
-            if mx > 0:
+            if mn is None:
                 mn = 0
-            else:
-                mx = 0
+            mx = mn + 1
 
         step = (mx - mn) / buckets
         boundaries = [mn + step * s for s in range(0, buckets)]
