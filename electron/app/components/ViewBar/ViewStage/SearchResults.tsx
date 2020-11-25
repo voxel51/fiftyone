@@ -1,4 +1,4 @@
-import React, { useContext, useLayoutEffect, useEffect, useRef } from "react";
+import React, { useContext, useEffect, useRef } from "react";
 import { animated, config, useSpring } from "react-spring";
 import styled, { ThemeContext } from "styled-components";
 
@@ -20,6 +20,7 @@ interface SearchResultProps {
 
 const SearchResult = React.memo(
   ({ result, isActive, send }: SearchResultProps) => {
+    const ref = useRef(null);
     const theme = useContext(ThemeContext);
     const [props, set] = useSpring(() => ({
       backgroundColor: isActive ? theme.backgroundLight : theme.backgroundDark,
@@ -33,12 +34,14 @@ const SearchResult = React.memo(
           : theme.backgroundDark,
         color: isActive ? theme.font : theme.fontDark,
       });
-    }, [isActive]);
+      isActive && ref.current && ref.current.scrollIntoView();
+    }, [isActive, ref.current]);
 
     const handleMouseEnter = () =>
       set({ backgroundColor: theme.backgroundLight, color: theme.font });
 
     const handleMouseLeave = () =>
+      !isActive &&
       set({ backgroundColor: theme.backgroundDark, color: theme.fontDark });
 
     const setResult = (e) =>
@@ -46,6 +49,7 @@ const SearchResult = React.memo(
 
     return (
       <SearchResultDiv
+        ref={ref}
         onClick={setResult}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}

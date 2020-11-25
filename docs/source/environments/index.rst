@@ -1,3 +1,6 @@
+
+.. _environments:
+
 FiftyOne Environments
 =====================
 
@@ -78,63 +81,23 @@ machine and launch a remote session:
 Leave this session running, and note that instructions for connecting to this
 remote session were printed to your terminal (these are described below).
 
-On your local machine, you need to set up `ssh` port forwarding so that you can
-connect to the App. This can be done either through the CLI or Python.
+On the local machine, you can :ref:`use the CLI <cli-fiftyone-app-connect>`
+to automatically configure port forwarding and open the App.
 
-.. tabs::
+In a local terminal, run the command:
 
-  .. group-tab:: CLI
+.. code-block:: shell
 
-    On the local machine, you can :ref:`use the CLI <cli-fiftyone-app-connect>`
-    to automatically configure port forwarding and open the App.
+    # On local machine
+    fiftyone app connect --destination <user>@<remote-ip-address> --port 5151 # (Optional) --ssh-key /path/to/key
 
-    In a local terminal, run the command:
+.. note::
 
-    .. code-block:: shell
-
-        # On local machine
-        fiftyone app connect --destination <user>@<remote-ip-address> --port 5151
-
-    Alternatively, you can manually configure port forwarding:
-
-    .. code-block:: shell
-
-        # On local machine
-        ssh -N -L 5151:127.0.0.1:5151 <user>@<remote-ip-address>
-
-    and then connect to the App via:
-
-    .. code-block:: shell
-
-        # On local machine
-        fiftyone app connect
-
-  .. group-tab:: Python
-
-    Open two terminal windows on the local machine.
-
-    In order to forward the port `5151` from the remote machine to the local
-    machine, run the following command in one terminal and leave the process
-    running:
-
-    .. code-block:: shell
-
-        # On local machine
-        ssh -N -L 5151:127.0.0.1:5151 <user>@<remote-ip-address>
-
-    Port `5151` is now being forwarded from the remote machine to port
-    `5151` of the local machine.
-
-    In the other terminal, launch the FiftyOne App locally by starting Python
-    and running the following commands:
-
-    .. code-block:: python
-        :linenos:
-
-        # On local machine
-        import fiftyone.core.session as fos
-
-        fos.launch_app()
+    If you are using :ref:`ssh keys instead of a password to login <cli-fiftyone-app-connect>` then you
+    can use the kwarg `--ssh-key`. Though if you are using this key
+    more often, `it is recommended to add it
+    <https://unix.stackexchange.com/a/494485>`_ to your `~/.ssh/config` as
+    the default `IdentityFile`.
 
 The above instructions assume that you used the default port `5151` when
 launching the remote session on the remote machine. If you used a custom port,
@@ -227,21 +190,23 @@ the mount point you specified above. Then launch the App as a
 Finally, on your local machine, connect to the remote session that you started
 on the cloud instance.
 
-To do so, first open an `ssh` connection connecting to port `5151` (or the
-custom port you chose in the previous step):
-
-.. code-block:: shell
+.. code-block:: bash
 
     # On local machine
-    ssh -N -L 5151:127.0.0.1:5151 -i <key>.pem <user>@<ec2-instance-ip-address>
+    fiftyone app connect --destination <user>@<remote-ip-address> --port 5151 # (Optional) --ssh-key /path/to/key
 
-Then launch an App instance connected to the remote session via the FiftyOne
-CLI:
+The above instructions assume that you used the default port `5151` when
+launching the remote session on the remote machine. If you used a custom port,
+then substitute the appropriate value in the local commands too.
 
-.. code-block:: shell
+.. note::
 
-    # On local machine
-    fiftyone app connect
+    If you are using :ref:`ssh keys instead of a password to login <cli-fiftyone-app-connect>` then you
+    can use the kwarg `--ssh-key`. Though if you are using this key
+    more often, `it is recommended to add it
+    <https://unix.stackexchange.com/a/494485>`_ to your `~/.ssh/config` as
+    the default `IdentityFile`.
+
 
 .. _google-cloud:
 
@@ -308,25 +273,22 @@ the mount point you specified above. Then launch the App as a
 Finally, on your local machine, connect to the remote session that you started
 on the cloud instance.
 
-To do so, first open an `ssh` connection connecting to port `5151` (or the
-custom port you chose in the previous step):
-
-.. code-block:: shell
+.. code-block:: bash
 
     # On local machine
-    ssh -N -L 5151:127.0.0.1:5151 -i <key> <user>@<gc-instance-ip-address>
+    fiftyone app connect --destination <user>@<remote-ip-address> --port 5151 # (Optional) --ssh-key /path/to/key
 
-You may need to
-`set up your ssh key <https://cloud.google.com/compute/docs/instances/adding-removing-ssh-keys#project-wide>`_
-in order to run the above command.
+The above instructions assume that you used the default port `5151` when
+launching the remote session on the remote machine. If you used a custom port,
+then substitute the appropriate value in the local commands too.
 
-Then launch an App instance connected to the remote session via the FiftyOne
-CLI:
+.. note::
 
-.. code-block:: shell
-
-    # On local machine
-    fiftyone app connect
+    If you are using :ref:`ssh keys instead of a password to login <cli-fiftyone-app-connect>` then you
+    can use the kwarg `--ssh-key`. Though if you are using this key
+    more often, `it is recommended to add it
+    <https://unix.stackexchange.com/a/494485>`_ to your `~/.ssh/config` as
+    the default `IdentityFile`.
 
 .. _azure:
 
@@ -389,21 +351,22 @@ the mount point you specified above. Then launch the App as a
 Finally, on your local machine, connect to the remote session that you started
 on the cloud instance.
 
-To do so, first open an `ssh` connection connecting to port `5151` (or the
-custom port you chose in the previous step):
-
-.. code-block:: shell
+.. code-block:: bash
 
     # On local machine
-    ssh -N -L 5151:127.0.0.1:5151 -i <key>.pem <user>@<azure-instance-ip-address>
+    fiftyone app connect --destination <user>@<remote-ip-address> --port 5151 # (Optional) --ssh-key /path/to/key
 
-Then launch an App instance connected to the remote session via the FiftyOne
-CLI:
+The above instructions assume that you used the default port `5151` when
+launching the remote session on the remote machine. If you used a custom port,
+then substitute the appropriate value in the local commands too.
 
-.. code-block:: shell
+.. note::
 
-    # On local machine
-    fiftyone app connect
+    If you are using :ref:`ssh keys instead of a password to login <cli-fiftyone-app-connect>` then you
+    can use the kwarg `--ssh-key`. Though if you are using this key
+    more often, `it is recommended to add it
+    <https://unix.stackexchange.com/a/494485>`_ to your `~/.ssh/config` as
+    the default `IdentityFile`.
 
 .. _compute-instance-setup:
 
@@ -450,3 +413,4 @@ successfully :ref:`install FiftyOne <installing-fiftyone>`.
     # Python packages
     pip install --upgrade pip setuptools wheel
     pip install ipython
+

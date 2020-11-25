@@ -580,7 +580,8 @@ const SampleModal = ({
               scalars={getDisplayOptions(
                 labelNameGroups.scalars,
                 scalarSampleValues,
-                activeLabels
+                activeLabels,
+                true
               )}
               onSelectScalar={handleSetDisplayOption(setActiveLabels)}
               unsupported={getDisplayOptions(
