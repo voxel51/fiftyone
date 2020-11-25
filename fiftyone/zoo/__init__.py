@@ -39,14 +39,14 @@ def list_downloaded_zoo_datasets(base_dir=None):
 
     Args:
         base_dir (None): the base directory to search for downloaded datasets.
-            By default, ``fo.config.default_dataset_dir`` is used
+            By default, ``fo.config.dataset_zoo_dir`` is used
 
     Returns:
         a dict mapping dataset names to (dataset dir, :class:`ZooDatasetInfo`)
         tuples
     """
     if base_dir is None:
-        base_dir = fo.config.default_dataset_dir
+        base_dir = fo.config.dataset_zoo_dir
 
     try:
         sub_dirs = etau.list_subdirs(base_dir)
