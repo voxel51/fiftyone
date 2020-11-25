@@ -74,13 +74,15 @@ function App(props: Props) {
   const [connected, setConnected] = useRecoilState(atoms.connected);
   const [loading, setLoading] = useRecoilState(atoms.loading);
   const socket = useRecoilValue(selectors.socket);
-  const setStateDescription = useSetRecoilState(atoms.stateDescription);
+  const [stateDescription, setStateDescription] = useRecoilState(
+    atoms.stateDescription
+  );
   const setSelectedSamples = useSetRecoilState(atoms.selectedSamples);
   const [viewCounterValue, setViewCounter] = useRecoilState(atoms.viewCounter);
   const [result, setResultFromForm] = useState({ port, connected });
   const setSelectedObjects = useSetRecoilState(atoms.selectedObjects);
   const setDatasetStatsLoading = useSetRecoilState(atoms.datasetStatsLoading);
-  const setDExtendedatasetStatsLoading = useSetRecoilState(
+  const setExtendedatasetStatsLoading = useSetRecoilState(
     atoms.extendedDatasetStatsLoading
   );
 
@@ -108,7 +110,8 @@ function App(props: Props) {
       remote.getCurrentWindow().close();
     }
     setDatasetStatsLoading(true);
-    setDExtendedatasetStatsLoading(true);
+    Object.keys(stateDescription.filters ?? []).length &&
+      setExtendedatasetStatsLoading(true);
     setLoading(false);
     handleStateUpdate(state);
   });

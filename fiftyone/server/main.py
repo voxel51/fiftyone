@@ -691,10 +691,8 @@ def _make_range_expression(f, args):
         if args.get("none", False):
             expr |= ~f
     elif "none" in args:
-        if args["none"]:
+        if not args["none"]:
             expr = f
-        else:
-            expr = ~f
 
     return expr
 
