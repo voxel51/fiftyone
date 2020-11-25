@@ -15,6 +15,7 @@ import {
   useHashChangeHandler,
   useMessageHandler,
 } from "../utils/hooks";
+import { attachDisposableHandler, packageMessage } from "../utils/socket";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { convertSelectedObjectsListToMap } from "../utils/selection";
@@ -37,27 +38,32 @@ const Body = styled.div`
 
 const useGA = () => {
   const [gaInitialized, setGAInitialized] = useState(false);
-  useMessageHandler("fiftyone", (info) => {
-    const dev = process.env.NODE_ENV == "development";
-    const buildType = dev ? "dev" : "prod";
+  const socket = useRecoilValue(selectors.socket);
 
-    ReactGA.initialize(gaConfig.app_ids[buildType], {
-      debug: dev,
-      gaOptions: {
-        storage: "none",
-        cookieDomain: "none",
-        clientId: info.user_id,
-      },
+  useEffect(() => {
+    attachDisposableHandler(socket, "fiftyone", ({ data: info }) => {
+      const dev = process.env.NODE_ENV == "development";
+      const buildType = dev ? "dev" : "prod";
+
+      ReactGA.initialize(gaConfig.app_ids[buildType], {
+        debug: dev,
+        gaOptions: {
+          storage: "none",
+          cookieDomain: "none",
+          clientId: info.user_id,
+        },
+      });
+      ReactGA.set({
+        userId: info.user_id,
+        checkProtocolTask: null, // disable check, allow file:// URLs
+        [gaConfig.dimensions.dev]: buildType,
+        [gaConfig.dimensions.version]: info.version,
+      });
+      setGAInitialized(true);
+      ReactGA.pageview(window.location.hash.replace(/^#/, ""));
     });
-    ReactGA.set({
-      userId: info.user_id,
-      checkProtocolTask: null, // disable check, allow file:// URLs
-      [gaConfig.dimensions.dev]: buildType,
-      [gaConfig.dimensions.version]: info.version,
-    });
-    setGAInitialized(true);
-    ReactGA.pageview(window.location.hash.replace(/^#/, ""));
-  });
+    socket.send(packageMessage("fiftyone", {}));
+  }, []);
   useHashChangeHandler(() => {
     if (gaInitialized) {
       ReactGA.pageview(window.location.hash.replace(/^#/, ""));
@@ -74,13 +80,17 @@ function App(props: Props) {
   const [connected, setConnected] = useRecoilState(atoms.connected);
   const [loading, setLoading] = useRecoilState(atoms.loading);
   const socket = useRecoilValue(selectors.socket);
-  const setStateDescription = useSetRecoilState(atoms.stateDescription);
+  const [stateDescription, setStateDescription] = useRecoilState(
+    atoms.stateDescription
+  );
   const setSelectedSamples = useSetRecoilState(atoms.selectedSamples);
   const [viewCounterValue, setViewCounter] = useRecoilState(atoms.viewCounter);
   const [result, setResultFromForm] = useState({ port, connected });
   const setSelectedObjects = useSetRecoilState(atoms.selectedObjects);
-  const setDatasetStats = useSetRecoilState(atoms.datasetStats);
-  const setDExtendedatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
+  const setDatasetStatsLoading = useSetRecoilState(atoms.datasetStatsLoading);
+  const setExtendedatasetStatsLoading = useSetRecoilState(
+    atoms.extendedDatasetStatsLoading
+  );
 
   useGA();
   const handleStateUpdate = (state) => {
@@ -105,8 +115,9 @@ function App(props: Props) {
     if (state.close) {
       remote.getCurrentWindow().close();
     }
-    setDatasetStats([]);
-    setDExtendedatasetStats([]);
+    setDatasetStatsLoading(true);
+    Object.keys(stateDescription.filters ?? []).length &&
+      setExtendedatasetStatsLoading(true);
     setLoading(false);
     handleStateUpdate(state);
   });
