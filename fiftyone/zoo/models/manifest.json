@@ -1,0 +1,729 @@
+{
+    "models": [
+        {
+            "base_name": "yolo-v2-coco",
+            "base_filename": "yolo-v2-coco.weights",
+            "version": null,
+            "description": "YOLOv2 model trained on COCO. Source: https://pjreddie.com/darknet/yolo",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1ajuPZws47SOw3xJc4Wvk1yuiB3qv8ycr"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.YOLODetector",
+                "config": {
+                    "model_name": "yolo-v2-coco",
+                    "config_dir": "{{eta}}/tensorflow/darkflow/cfg/",
+                    "config_path": "{{eta}}/tensorflow/darkflow/cfg/yolo.cfg"
+                }
+            },
+            "date_created": "2018-06-23T23:17:26"
+        },
+        {
+            "base_name": "efficientdet-d0",
+            "base_filename": "efficientdet-d0.tar",
+            "version": null,
+            "description": "EfficientDet-D0 model trained on COCO. Source: https://github.com/google/automl/tree/master/efficientdet",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1mDclIDAMmJzfh7UKe-oBN72XdtwnDC2N"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.EfficientDet",
+                "config": {
+                    "model_name": "efficientdet-d0",
+                    "architecture_name": "efficientdet-d0",
+                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                }
+            },
+            "date_created": "2020-03-22 21:44:00"
+        },
+        {
+            "base_name": "efficientdet-d1",
+            "base_filename": "efficientdet-d1.tar",
+            "version": null,
+            "description": "EfficientDet-D1 model trained on COCO. Source: https://github.com/google/automl/tree/master/efficientdet",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1_IkkEDwPe9SkYbeiuP-ZTOZB9P39Ihm5"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.EfficientDet",
+                "config": {
+                    "model_name": "efficientdet-d1",
+                    "architecture_name": "efficientdet-d1",
+                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                }
+            },
+            "date_created": "2020-03-22 21:44:00"
+        },
+        {
+            "base_name": "efficientdet-d2",
+            "base_filename": "efficientdet-d2.tar",
+            "version": null,
+            "description": "EfficientDet-D2 model trained on COCO. Source: https://github.com/google/automl/tree/master/efficientdet",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1hgEPV1nzwtOb-lfE3bODmvbG7wmWv_Ve"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.EfficientDet",
+                "config": {
+                    "model_name": "efficientdet-d2",
+                    "architecture_name": "efficientdet-d2",
+                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                }
+            },
+            "date_created": "2020-03-22 21:44:00"
+        },
+        {
+            "base_name": "efficientdet-d3",
+            "base_filename": "efficientdet-d3.tar",
+            "version": null,
+            "description": "EfficientDet-D3 model trained on COCO. Source: https://github.com/google/automl/tree/master/efficientdet",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1OKPbwZ2KMH33KRQhCERPkqT8gTVM2c4h"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.EfficientDet",
+                "config": {
+                    "model_name": "efficientdet-d3",
+                    "architecture_name": "efficientdet-d3",
+                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                }
+            },
+            "date_created": "2020-03-22 21:44:00"
+        },
+        {
+            "base_name": "efficientdet-d4",
+            "base_filename": "efficientdet-d4.tar",
+            "version": null,
+            "description": "EfficientDet-D4 model trained on COCO. Source: https://github.com/google/automl/tree/master/efficientdet",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1FO2WwtubQ0I6giHKHSutI-C628JpQM71"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.EfficientDet",
+                "config": {
+                    "model_name": "efficientdet-d4",
+                    "architecture_name": "efficientdet-d4",
+                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                }
+            },
+            "date_created": "2020-03-22 21:44:00"
+        },
+        {
+            "base_name": "efficientdet-d5",
+            "base_filename": "efficientdet-d5.tar",
+            "version": null,
+            "description": "EfficientDet-D5 model trained on COCO. Source: https://github.com/google/automl/tree/master/efficientdet",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1xErF-ZrQi_5Z51l2drXoYzR-JoFhkiB1"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.EfficientDet",
+                "config": {
+                    "model_name": "efficientdet-d5",
+                    "architecture_name": "efficientdet-d5",
+                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                }
+            },
+            "date_created": "2020-03-22 21:44:00"
+        },
+        {
+            "base_name": "efficientdet-d6",
+            "base_filename": "efficientdet-d6.tar",
+            "version": null,
+            "description": "EfficientDet-D6 model trained on COCO. Source: https://github.com/google/automl/tree/master/efficientdet",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1gaGhnZuPdWKsn8IH0dVUXiLYUsqRaZ1a"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.EfficientDet",
+                "config": {
+                    "model_name": "efficientdet-d6",
+                    "architecture_name": "efficientdet-d6",
+                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                }
+            },
+            "date_created": "2020-03-22 21:44:00"
+        },
+        {
+            "base_name": "faster-rcnn-inception-v2-coco",
+            "base_filename": "faster-rcnn-inception-v2-coco.pb",
+            "version": null,
+            "description": "A Faster-RCNN object detector with Inception-v2 backbone trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1l1pNy5eH0DzvlMST8mCFXTYODHZBsPls"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsDetector",
+                "config": {
+                    "model_name": "faster-rcnn-inception-v2-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                }
+            },
+            "date_created": "2019-12-17 08:25:51"
+        },
+        {
+            "base_name": "faster-rcnn-nas-coco",
+            "base_filename": "faster-rcnn-nas-coco.pb",
+            "version": null,
+            "description": "A Faster-RCNN object detector with NAS-net backbone trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1GSHaIQh_kJ0YU4qqulEY67mufwslk5u9"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsDetector",
+                "config": {
+                    "model_name": "faster-rcnn-nas-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                }
+            },
+            "date_created": "2019-12-18 12:07:00"
+        },
+        {
+            "base_name": "faster-rcnn-nas-lowproposals-coco",
+            "base_filename": "faster-rcnn-nas-lowproposals-coco.pb",
+            "version": null,
+            "description": "A Faster-RCNN low-proposal object detector with NAS-net backbone trained on COCO.",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1dpsLJRTcHyso78OmMSHQtz_2SUlHAt0l"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsDetector",
+                "config": {
+                    "model_name": "faster-rcnn-nas-lowproposals-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                }
+            },
+            "date_created": "2019-12-18 12:07:00"
+        },
+        {
+            "base_name": "faster-rcnn-resnet50-coco",
+            "base_filename": "faster-rcnn-resnet50-coco.pb",
+            "version": null,
+            "description": "A Faster-RCNN object detector with ResNet50 backbone trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1N7SZcZwedztcSxXKFQiXDIhjpibAtnJx"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsDetector",
+                "config": {
+                    "model_name": "faster-rcnn-resnet50-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                }
+            },
+            "date_created": "2019-12-17 08:25:51"
+        },
+        {
+            "base_name": "faster-rcnn-resnet50-lowproposals-coco",
+            "base_filename": "faster-rcnn-resnet50-lowproposals-coco.pb",
+            "version": null,
+            "description": "A Faster-RCNN low-proposal object detector with ResNet50 backbone trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1VJghRs4W7i_F6GAzoFwAzuMs_wm1g8vT"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsDetector",
+                "config": {
+                    "model_name": "faster-rcnn-resnet50-lowproposals-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                }
+            },
+            "date_created": "2019-12-17 08:25:51"
+        },
+        {
+            "base_name": "faster-rcnn-resnet101-coco",
+            "base_filename": "faster-rcnn-resnet101-coco.pb",
+            "version": null,
+            "description": "A Faster-RCNN object detector with ResNet101 backbone trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "18OOcBY45JYWwHdWyBRUaoe2H0DF4G8Gw"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsDetector",
+                "config": {
+                    "model_name": "faster-rcnn-resnet101-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                }
+            },
+            "date_created": "2019-12-17 08:25:51"
+        },
+        {
+            "base_name": "faster-rcnn-resnet101-lowproposals-coco",
+            "base_filename": "faster-rcnn-resnet101-lowproposals-coco.pb",
+            "version": null,
+            "description": "A Faster-RCNN low-proposal object detector with ResNet101 backbone trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1poAw-ZTwEXNfP3NTqlpBxGcQUR5Y7A7D"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsDetector",
+                "config": {
+                    "model_name": "faster-rcnn-resnet101-lowproposals-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                }
+            },
+            "date_created": "2019-12-17 08:25:51"
+        },
+        {
+            "base_name": "faster-rcnn-inception-resnet-atrous-v2-coco",
+            "base_filename": "faster-rcnn-inception-resnet-atrous-v2-coco.pb",
+            "version": null,
+            "description": "A Faster-RCNN Atrous Inception ResNet object detector trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1tbDgXKYWBKazY6U6whRHhR4OsxZS9LOP"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsDetector",
+                "config": {
+                    "model_name": "faster-rcnn-inception-resnet-atrous-v2-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                }
+            },
+            "date_created": "2019-12-17 08:25:51"
+        },
+        {
+            "base_name": "faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco",
+            "base_filename": "faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco.pb",
+            "version": null,
+            "description": "A Faster-RCNN low-proposal Atrous Inception ResNet object detector trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "17bR21aOsS8AoxMuGjTbHIUaXWYo7sz9X"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsDetector",
+                "config": {
+                    "model_name": "faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                }
+            },
+            "date_created": "2019-12-17 08:25:51"
+        },
+        {
+            "base_name": "inception-resnet-v2-imagenet",
+            "base_filename": "inception-resnet-v2-imagenet.pb",
+            "version": null,
+            "description": "An Inception ResNet v2 classifier trained on ImageNet",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1hCw4ocYcoxQ4psKEjvlPQd5-CCroHsZ6"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.classifiers.TFSlimClassifier",
+                "config": {
+                    "attr_name": "imagenet",
+                    "model_name": "inception-resnet-v2-imagenet",
+                    "network_name": "inception_resnet_v2",
+                    "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                }
+            },
+            "date_created": "2019-05-23 13:38:22"
+        },
+        {
+            "base_name": "inception-v4-imagenet",
+            "base_filename": "inception-v4-imagenet.pb",
+            "version": null,
+            "description": "An Inception v4 classifier trained on ImageNet",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1WaLe57G8wt0rty_GL0fnHwGZDqdJhKwT"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.classifiers.TFSlimClassifier",
+                "config": {
+                    "attr_name": "imagenet",
+                    "model_name": "inception-v4-imagenet",
+                    "network_name": "inception_v4",
+                    "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                }
+            },
+            "date_created": "2019-05-23 13:42:33"
+        },
+        {
+            "base_name": "mask-rcnn-inception-resnet-v2-atrous-coco",
+            "base_filename": "mask-rcnn-inception-resnet-v2-atrous-coco.pb",
+            "version": null,
+            "description": "A Mask R-CNN Atrous Inception ResNet object detector trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1-Q2LoPx3LIYSQo4_AXau9fd8zYyjSjmK"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsInstanceSegmenter",
+                "config": {
+                    "model_name": "mask-rcnn-inception-resnet-v2-atrous-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                    "mask_thresh": 0.5
+                }
+            },
+            "date_created": "2019-12-10 12:07:51"
+        },
+        {
+            "base_name": "mask-rcnn-inception-v2-coco",
+            "base_filename": "mask-rcnn-inception-v2-coco.pb",
+            "version": null,
+            "description": "A Mask R-CNN Inception object detector trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1Nj5WCeI6MeO4OyltOaZbvBoz_RmRE3pI"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsInstanceSegmenter",
+                "config": {
+                    "model_name": "mask-rcnn-inception-v2-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                    "mask_thresh": 0.5
+                }
+            },
+            "date_created": "2019-12-10 12:07:51"
+        },
+        {
+            "base_name": "mask-rcnn-resnet50-atrous-coco",
+            "base_filename": "mask-rcnn-resnet50-atrous-coco.pb",
+            "version": null,
+            "description": "A Mask R-CNN Atrous ResNet50 object detector trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1QGlpJw97j7XxPlHC5FtWjgil6ebPTgEG"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsInstanceSegmenter",
+                "config": {
+                    "model_name": "mask-rcnn-resnet50-atrous-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                    "mask_thresh": 0.5
+                }
+            },
+            "date_created": "2019-12-10 12:07:51"
+        },
+        {
+            "base_name": "mask-rcnn-resnet101-atrous-coco",
+            "base_filename": "mask-rcnn-resnet101-atrous-coco.pb",
+            "version": null,
+            "description": "A Mask R-CNN Atrous ResNet101 object detector trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1PvW3E6Ey3yC7E7mri_Bw6FyjyOOy4_aX"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsInstanceSegmenter",
+                "config": {
+                    "model_name": "mask-rcnn-resnet101-atrous-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                    "mask_thresh": 0.5
+                }
+            },
+            "date_created": "2019-12-10 12:07:51"
+        },
+        {
+            "base_name": "mobilenet-v2-imagenet",
+            "base_filename": "mobilenet-v2-imagenet.pb",
+            "version": null,
+            "description": "A MobileNet v2 classifier trained on ImageNet",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1cey7kmMTnDQG0zcdHauC291fann-Xthz"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.classifiers.TFSlimClassifier",
+                "config": {
+                    "attr_name": "imagenet",
+                    "model_name": "mobilenet-v2-imagenet",
+                    "network_name": "mobilenet_v2",
+                    "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                }
+            },
+            "date_created": "2019-05-23 11:43:51"
+        },
+        {
+            "base_name": "resnet-v1-50-imagenet",
+            "base_filename": "resnet-v1-50-imagenet.pb",
+            "version": null,
+            "description": "A ResNet50 v1 classifier trained on ImageNet",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1NCGP3KzdKII97mpYYtNHg2mcp7Ew_HRR"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.classifiers.TFSlimClassifier",
+                "config": {
+                    "attr_name": "imagenet",
+                    "model_name": "resnet-v1-50-imagenet",
+                    "network_name": "resnet_v1_50",
+                    "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                }
+            },
+            "date_created": "2019-05-23 13:49:04"
+        },
+        {
+            "base_name": "resnet-v2-50-imagenet",
+            "base_filename": "resnet-v2-50-imagenet.pb",
+            "version": null,
+            "description": "A ResNet50 v2 classifier trained on ImageNet",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1cWT55Pp9wl2zR0Om8y-g8QVskYEthQfi"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.classifiers.TFSlimClassifier",
+                "config": {
+                    "attr_name": "imagenet",
+                    "model_name": "resnet-v2-50-imagenet",
+                    "network_name": "resnet_v2_50",
+                    "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                }
+            },
+            "date_created": "2019-05-23 12:19:17"
+        },
+        {
+            "base_name": "rfcn-resnet101-coco",
+            "base_filename": "rfcn-resnet101-coco.pb",
+            "version": null,
+            "description": "An R-FCN object detector with ResNet101 backbone trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "15BMAAo0cGBINTsM-KL9ZrwSHnkZlFtNc"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsDetector",
+                "config": {
+                    "model_name": "rfcn-resnet101-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                }
+            },
+            "date_created": "2018-12-23 14:37:47"
+        },
+        {
+            "base_name": "ssd-inception-v2-coco",
+            "base_filename": "ssd-inception-v2-coco.pb",
+            "version": null,
+            "description": "An inception Single Shot Detector trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1Vt_fuMhEdWxI2XBWLEtNLTJhG00rid4R"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsDetector",
+                "config": {
+                    "model_name": "ssd-inception-v2-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                }
+            },
+            "date_created": "2018-12-23 14:34:09"
+        },
+        {
+            "base_name": "ssd-resnet50-fpn-coco",
+            "base_filename": "ssd-resnet50-fpn-coco.pb",
+            "version": null,
+            "description": "A FPN Single Shot Detector with ResNet50 backbone trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1pC9WX7Ol2cy4ERAcLQ-a2Dd04d91vJxj"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsDetector",
+                "config": {
+                    "model_name": "ssd-resnet50-fpn-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                }
+            },
+            "date_created": "2019-04-11 12:01:29"
+        },
+        {
+            "base_name": "ssd-mobilenet-v1-coco",
+            "base_filename": "ssd-mobilenet-v1-coco.pb",
+            "version": null,
+            "description": "A Single Shot Detector with MobileNet-v1 backbone trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1X6i1Q2hBfDZ6D4ROoJn1Xbwu0vMqvgQs"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsDetector",
+                "config": {
+                    "model_name": "ssd-mobilenet-v1-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                }
+            },
+            "date_created": "2018-12-23 14:34:05"
+        },
+        {
+            "base_name": "ssd-mobilenet-v1-fpn-coco",
+            "base_filename": "ssd-mobilenet-v1-fpn-coco.pb",
+            "version": null,
+            "description": "A FPN Single Shot Detector with MobileNet-v1 backbone trained on COCO",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1ZvVQTuDIexyfntq8ajBVp5aSndHW6wQk"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.detectors.TFModelsDetector",
+                "config": {
+                    "model_name": "ssd-mobilenet-v1-fpn-coco",
+                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                }
+            },
+            "date_created": "2019-04-11 12:25:44"
+        },
+        {
+            "base_name": "deeplabv3-cityscapes",
+            "base_filename": "deeplabv3-cityscapes.pb",
+            "version": null,
+            "description": "A DeepLabv3+ semantic segmentation model with Xception backbone trained on the Cityscapes dataset. Source: https://github.com/tensorflow/models/blob/master/research/deeplab/g3doc/model_zoo.md",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1GKJtItUirHZ2DY_mQu872QuoWZuAHNr8"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.segmenters.TFSemanticSegmenter",
+                "config": {
+                    "model_name": "deeplabv3-cityscapes",
+                    "labels_path": "{{eta-resources}}/tf-semantic-segmenters-cityscapes-train-labels.txt",
+                    "resize_to_max_dim": 513,
+                    "input_name": "ImageTensor",
+                    "output_name": "SemanticPredictions"
+                }
+            },
+            "date_created": "2020-12-10 12:07:51"
+        },
+        {
+            "base_name": "deeplabv3-mnv2-cityscapes",
+            "base_filename": "deeplabv3-mnv2-cityscapes.pb",
+            "version": null,
+            "description": "A DeepLabv3+ semantic segmentation model with MobileNetV2 backbone trained on the Cityscapes dataset. Source: https://github.com/tensorflow/models/blob/master/research/deeplab/g3doc/model_zoo.md",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "google_drive_id": "1JYx2Z6or9Jm24aWv79-5aQ8Gg9IF_m6Z"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.segmenters.TFSemanticSegmenter",
+                "config": {
+                    "model_name": "deeplabv3-mnv2-cityscapes",
+                    "labels_path": "{{eta-resources}}/tf-semantic-segmenters-cityscapes-train-labels.txt",
+                    "resize_to_max_dim": 513,
+                    "input_name": "ImageTensor",
+                    "output_name": "SemanticPredictions"
+                }
+            },
+            "date_created": "2020-12-10 12:07:51"
+        },
+        {
+            "base_name": "vgg16-imagenet",
+            "base_filename": "vgg16-imagenet.npz",
+            "version": null,
+            "description": "A VGG-16 model trained on ImageNet",
+            "manager": {
+                "config": {
+                    "google_drive_id": "0B_-5gc091ngGMzBFMVJ0RE9HNmc"
+                },
+                "type": "eta.core.models.ETAModelManager"
+            },
+            "default_deployment_config_dict": {
+                "type": "eta.classifiers.VGG16Classifier",
+                "config": {
+                    "attr_name": "imagenet",
+                    "config": {
+                        "model_name": "vgg16-imagenet",
+                        "labels_map": "{{eta-resources}}/vgg16-imagenet-labels.txt"
+                    }
+                }
+            },
+            "date_created": "2018-06-20 17:35:53"
+        },
+        {
+            "base_name": "c3d-ucf101",
+            "base_filename": "c3d-ucf101.model",
+            "version": null,
+            "description": "C3D model finely trained on UCF-101. Source: `C3D UCF101 split1` model from https://github.com/hx173149/C3D-tensorflow",
+            "manager": {
+                "config": {
+                    "google_drive_id": "1gN1dxE-M_SuVKkQ9ZeeJTU3JW52KE42q"
+                },
+                "type": "eta.core.models.ETAModelManager"
+            },
+            "default_deployment_config_dict": null,
+            "date_created": "2018-06-27 17:00:45"
+        }
+    ]
+}
