@@ -107,4 +107,3 @@ class DatasetDocument(Document):
     )
     frame_fields = EmbeddedDocumentListField(document_type=SampleFieldDocument)
     version = StringField(required=True, null=True)
-    _exclude_from_app = ListField(StringField())

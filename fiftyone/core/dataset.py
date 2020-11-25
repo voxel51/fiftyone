@@ -2189,18 +2189,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             field.validate(value)
 
-    def _add_exclusion_from_app(self, path):
-        exclusions = set(self._doc._exclude_from_app)
-        exclusions.add(path)
-        self._doc._exclude_from_app = list(exclusions)
-        self._doc.save()
-
-    def _remove_exclusion_from_app(self, path):
-        exclusions = set(self._doc._exclude_from_app)
-        exclusions.discard(path)
-        self._doc._exclude_from_app = list(exclusions)
-        self._doc.save()
-
 
 class DoesNotExistError(Exception):
     """Exception raised when a dataset that does not exist is encountered."""
