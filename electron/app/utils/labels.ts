@@ -324,10 +324,10 @@ const convertImageSampleToETA = (
   };
   const sampleFields = Object.keys(sample).sort();
   for (const sampleField of sampleFields) {
-    if (RESERVED_FIELDS.includes(sampleField)) {
+    const field = sample[sampleField];
+    if (RESERVED_FIELDS.includes(sampleField) || !field) {
       continue;
     }
-    const field = sample[sampleField];
     if (field === null || field === undefined) continue;
     if (FIFTYONE_TO_ETA_CONVERTERS.hasOwnProperty(field._cls)) {
       const { key, convert } = FIFTYONE_TO_ETA_CONVERTERS[field._cls];
@@ -337,7 +337,7 @@ const convertImageSampleToETA = (
         convert(prefix + sampleField, field, frame_number)
       );
     } else if (VALID_LIST_TYPES.includes(field._cls)) {
-      for (const object of field[field._cls.toLowerCase()]) {
+      for (const object of field[field._cls.toLowerCase()] ?? []) {
         const { key, convert } = FIFTYONE_TO_ETA_CONVERTERS[object._cls];
         _addToETAContainer(
           imgLabels,

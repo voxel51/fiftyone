@@ -2158,26 +2158,37 @@ def _get_rng(seed):
     return _random
 
 
-def _get_labels_list_field(field_name, sample_collection):
-    schema = sample_collection.get_field_schema()
+def _get_labels_list_field(field_path, sample_collection):
+    if field_path.startswith("frames."):
+        if sample_collection.media_type != fom.VIDEO:
+            raise ValueError(
+                "Field '%s' is a frames field but '%s' is not a video dataset"
+                % (field_path, sample_collection.name)
+            )
+
+        field_name = field_path[len("frames.") :]
+        schema = sample_collection.get_frame_field_schema()
+    else:
+        field_name = field_path
+        schema = sample_collection.get_field_schema()
     field = schema.get(field_name, None)
 
     if field is None:
-        raise ValueError("Field '%s' does not exist" % field_name)
+        raise ValueError("Field '%s' does not exist" % field_path)
 
     if isinstance(field, fof.EmbeddedDocumentField):
         document_type = field.document_type
         if document_type is fol.Classifications:
-            return field_name + ".classifications"
+            return field_path + ".classifications"
 
         if document_type is fol.Detections:
-            return field_name + ".detections"
+            return field_path + ".detections"
 
         if document_type is fol.Polylines:
-            return field_name + ".polylines"
+            return field_path + ".polylines"
 
         if document_type is fol.Keypoints:
-            return field_name + ".keypoints"
+            return field_path + ".keypoints"
 
     allowed_types = (
         fol.Classifications,
@@ -2188,7 +2199,7 @@ def _get_labels_list_field(field_name, sample_collection):
 
     raise ValueError(
         "Field '%s' must be a labels list type %s; found '%s'"
-        % (field_name, allowed_types, field)
+        % (field_path, allowed_types, field)
     )
 
 

@@ -106,10 +106,10 @@ Utils
 
 Docs
 ^^^^
-- Added an :doc:`Environments </environments>` page which outlines how
+- Added an :ref:`Environments page <environments>` that outlines how
   to work with local, remote, and cloud data. Includes instructions for AWS,
-  Azure, Google Cloud.
-- Add an :doc:`FAQ </faq>` page
+  Google Cloud, and Azure
+- Add an :ref:`FAQ page <faq>`
 
 FiftyOne 0.6.4
 --------------
