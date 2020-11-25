@@ -3,6 +3,35 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne 0.6.6
+--------------
+*Released November 25, 2020*
+
+App
+^^^
+- Added a dropdown in the header to change datasets from the App
+- Added the ability to refresh the App by clicking the FiftyOne logo in the
+  header
+- Fixed a bug the caused numeric (scalar field) range sliders to disappear
+  after changing the default value
+
+Core
+^^^^
+
+CLI
+^^^
+- Added support for customizing local port when connecting to App via CLI
+- Added an `--ssh-key` option to the `app connect` command
+
+Docs
+^^^^
+- Added frequently asked questions about remote sessions to the :ref:`FAQ <faq>`
+   - :ref:`Can I launch multiple App instances on a machine? <faq-multiple-apps>`
+   - :ref:`Can I connect multiple App instances to the same dataset? <faq-multiple-sessions-same-dataset>`
+   - :ref:`Can I connect to multiple remote sessions? <faq-connect-to-multiple-remote-sessions>`
+   - :ref:`Can I serve multiple remote sessions from a machine? <faq-serve-multiple-remote-sessions>`
+
+
 FiftyOne 0.6.5
 --------------
 *Released November 16, 2020*
