@@ -120,7 +120,7 @@ workflows.
    Add model predictions<model_inference.ipynb>
    Draw labels on samples<draw_labels.ipynb>
    Convert dataset formats<convert_datasets.ipynb>
-   Compute detection mistakenness<detection_mistakenness.ipynb>
+   Detection mistakes<detection_mistakenness.ipynb>
    Merge datasets<merge_datasets.ipynb>
    Custom dataset importers<custom_importer.ipynb>
    Custom dataset exporters<custom_exporter.ipynb>
