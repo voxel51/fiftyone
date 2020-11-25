@@ -156,13 +156,14 @@ Label mistakes can be calculated for both classification and detection datasets.
         
         **Output**: A scalar-valued fields per ground truth |Detection| that 
         ranks the chance of a mistaken annotation and a localization mistake. 
-        Additionally, every |Sample| contains a field averaging the 
+        Additionally, every |Sample| contains a field storing the maximum 
         mistakenness of the |Detections| in the |Sample|. The default name of 
         this field is `mistakenness` but you can customize its name by using 
-        the `mistakenness_field` named argument. Ground truth and predicted 
-        objects that were not matched are labeled as `possible_mistakes` and 
-        they are also counted in a `possible_mistakes` field at the |Sample| 
-        level. 
+        the `mistakenness_field` named argument. Ground truth 
+        objects that were not matched are labeled as `possible_spurious` and
+        high confidence predictions that were not matched are labeled as 
+        `possible_missing`. These fields are then counted and populated at the
+        |Sample| level. 
         
         **What to expect**: Finding mistakes in human annotations is non-trivial (if it
         could be done perfectly then the approach would sufficiently replace your
