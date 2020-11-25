@@ -15,6 +15,7 @@ import {
   useHashChangeHandler,
   useMessageHandler,
 } from "../utils/hooks";
+import { attachDisposableHandler, packageMessage } from "../utils/socket";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { convertSelectedObjectsListToMap } from "../utils/selection";
@@ -37,27 +38,32 @@ const Body = styled.div`
 
 const useGA = () => {
   const [gaInitialized, setGAInitialized] = useState(false);
-  useMessageHandler("fiftyone", (info) => {
-    const dev = process.env.NODE_ENV == "development";
-    const buildType = dev ? "dev" : "prod";
+  const socket = useRecoilValue(selectors.socket);
 
-    ReactGA.initialize(gaConfig.app_ids[buildType], {
-      debug: dev,
-      gaOptions: {
-        storage: "none",
-        cookieDomain: "none",
-        clientId: info.user_id,
-      },
+  useEffect(() => {
+    attachDisposableHandler(socket, "fiftyone", ({ data: info }) => {
+      const dev = process.env.NODE_ENV == "development";
+      const buildType = dev ? "dev" : "prod";
+
+      ReactGA.initialize(gaConfig.app_ids[buildType], {
+        debug: dev,
+        gaOptions: {
+          storage: "none",
+          cookieDomain: "none",
+          clientId: info.user_id,
+        },
+      });
+      ReactGA.set({
+        userId: info.user_id,
+        checkProtocolTask: null, // disable check, allow file:// URLs
+        [gaConfig.dimensions.dev]: buildType,
+        [gaConfig.dimensions.version]: info.version,
+      });
+      setGAInitialized(true);
+      ReactGA.pageview(window.location.hash.replace(/^#/, ""));
     });
-    ReactGA.set({
-      userId: info.user_id,
-      checkProtocolTask: null, // disable check, allow file:// URLs
-      [gaConfig.dimensions.dev]: buildType,
-      [gaConfig.dimensions.version]: info.version,
-    });
-    setGAInitialized(true);
-    ReactGA.pageview(window.location.hash.replace(/^#/, ""));
-  });
+    socket.send(packageMessage("fiftyone", {}));
+  }, []);
   useHashChangeHandler(() => {
     if (gaInitialized) {
       ReactGA.pageview(window.location.hash.replace(/^#/, ""));
