@@ -17,6 +17,8 @@ App
 
 Core
 ^^^^
+- Fixed a bug that prevented COCO datasets from being loaded from the
+  :ref:`Dataset Zoo <dataset-zoo>`
 
 CLI
 ^^^
