@@ -20,7 +20,7 @@ workflow:
 
 * **Uniqueness**: During the training loop for a model, the best results will
   be seen when training on unique data. The FiftyOne Brain provides a
-  `uniqueness` measure for images that compare the content of every image in a
+  *uniqueness measure* for images that compare the content of every image in a
   |WhatIsAFiftyOneDataset| with all other images. Uniqueness operates on raw
   images and does not require any prior annotation on the data. It is hence
   very useful in the early stages of the machine learning workflow when you are
@@ -29,15 +29,16 @@ workflow:
 * **Mistakenness**: Annotations mistakes create an artificial ceiling on the
   performance of your models. However, finding these mistakes by hand is at
   least as arduous as the original annotation was, especially in cases of
-  larger datasets. The FiftyOne Brain provides a quantitative `mistakenness`
-  measure to identify possible label mistakes. Mistakenness operates on
-  labeled images and requires the logit-output of your model predictions in
-  order to provide maximum efficacy. It also works on detection datasets to
-  find missed objects, incorrect annotations, and localization issues.
+  larger datasets. The FiftyOne Brain provides a quantitative
+  *mistakenness measure* to identify possible label mistakes. Mistakenness
+  operates on labeled images and requires the logit-output of your model
+  predictions in order to provide maximum efficacy. It also works on detection
+  datasets to find missed objects, incorrect annotations, and localization
+  issues.
 
 * **Hardness**: While a model is training, it will learn to understand
   attributes of certain samples faster than others. The FiftyOne Brain provides
-  a `hardness` measure that calculates how easy or difficult it is for your
+  a *hardness measure* that calculates how easy or difficult it is for your
   model to understand any given sample. Mining hard samples is a tried and
   true measure of mature machine learning processes. Use your current model
   instance to compute predictions on unlabeled samples to determine which are
@@ -52,14 +53,14 @@ demonstrating a workflow.
 Image Uniqueness
 ________________
 
-The FiftyOne Brain allows for the computation of the `uniqueness` of an image,
+The FiftyOne Brain allows for the computation of the uniqueness of an image,
 in comparison with other images in a dataset; it does so without requiring
 any model from you. One good use of uniqueness is in the early stages of the
 machine learning workflow when you are deciding what subset of data with which
 to bootstrap your models. Unique samples are vital in creating training
 batches that help your model learn as efficiently and effectively as possible.
 
-The `uniqueness` of a |Dataset| can be computed directly without need the
+The uniqueness of a |Dataset| can be computed directly without need the
 predictions of a pre-trained model via the
 :meth:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>` method:
 
@@ -246,8 +247,8 @@ have been computed and are stored in the `label_field`. Annotations and labels
 are not required for hardness.
 
 **Output**: A scalar-valued field on each sample that ranks the hardness of the
-sample. The default name of this field is `mistakenness`, but you can
-customize its name by using the `mistakenness_field` argument of
+sample. The default name of this field is `hardness`, but you can customize its
+name by using the `hardness_field` argument of
 :meth:`compute_hardness() <fiftyone.brain.compute_hardness>`.
 
 **What to expect**: Hardness is computed in the context of a prediction model.
