@@ -141,7 +141,7 @@ your local machine via `ssh` and connect to the App via Python.
     .. code-block:: shell
 
         # On local machine
-        fiftyone app connect --destination username@remote_machine_ip --port 5151
+        fiftyone app connect --destination username@remote_machine_ip --port 5151 # Optional --ssh-key /path/to/key
 
   .. group-tab:: Python
 
