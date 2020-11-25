@@ -186,7 +186,7 @@ Label mistakes can be calculated for both classification and detection datasets.
 
         |Sample|-level fields:
 
-        * `max_mistakenness` (float): The maximum `mistakenness` of all ground truth
+        * `mistakenness` (float): The maximum `mistakenness` of all ground truth
           detections in the |Sample|. 
 
         * `possible_missing` (int): The total number of `possible_missing`
