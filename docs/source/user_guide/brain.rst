@@ -1,3 +1,6 @@
+
+.. _fiftyone-brain:
+
 FiftyOne Brain
 ==============
 

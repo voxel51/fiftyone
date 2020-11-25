@@ -1,3 +1,6 @@
+
+.. _fiftyone-app:
+
 Using the FiftyOne App
 ======================
 
@@ -122,6 +125,8 @@ argument. This will open the session on port `5151` on your machine:
 You can manipulate the `session` object as usual to programmatically interact
 with the remote App instance that you'll connect to next.
 
+.. _remote-app-local-machine:
+
 Local machine
 -------------
 
@@ -189,6 +194,8 @@ the raw JSON description of the sample.
     :alt: CIFAR-10 Sidebar
     :align: center
 
+.. _app-create-view:
+
 Using the view bar
 __________________
 
@@ -217,6 +224,8 @@ show up under the `Tags` tab. Scalar fields, for example if you computed
 .. image:: ../images/cifar10_tabs.gif
    :alt: CIFAR-10 Scalars
    :align: center
+
+.. _app-select-samples:
 
 Selecting samples
 _________________
@@ -255,6 +264,8 @@ your session to retrieve the IDs of the currently selected samples in the App:
      '5ef0eef405059ebb0ddfa7c4',
      '5ef0eef405059ebb0ddfa86e',
      '5ef0eef405059ebb0ddfa93c']
+
+.. _app-select-objects:
 
 Selecting objects
 _________________
