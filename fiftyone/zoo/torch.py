@@ -5,6 +5,7 @@ FiftyOne Zoo Datasets provided by ``torchvision.datasets``.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
 import fiftyone.utils.coco as fouc
@@ -498,22 +499,20 @@ def _download_and_prepare(
     classes = get_class_labels_fcn(dataset)
     num_samples = len(dataset)
     sample_parser.classes = classes
+    label_cls = sample_parser.label_cls
 
-    if isinstance(sample_parser, foud.ImageClassificationSampleParser):
+    if label_cls is fol.Classification:
         dataset_type = fot.FiftyOneImageClassificationDataset()
         dataset_exporter = foud.FiftyOneImageClassificationDatasetExporter(
             dataset_dir, classes=classes
         )
-    elif isinstance(sample_parser, foud.ImageDetectionSampleParser):
+    elif label_cls is fol.Detections:
         dataset_type = fot.FiftyOneImageDetectionDataset()
         dataset_exporter = foud.FiftyOneImageDetectionDatasetExporter(
             dataset_dir, classes=classes
         )
-    elif isinstance(sample_parser, foud.ImageLabelsSampleParser):
-        dataset_type = fot.FiftyOneImageLabelsDataset()
-        dataset_exporter = foud.FiftyOneImageLabelsDatasetExporter(dataset_dir)
     else:
-        raise ValueError("Unsupported SampleParser %s" % type(sample_parser))
+        raise ValueError("Unsupported label class %s" % label_cls)
 
     # Write the formatted dataset to `dataset_dir`
     foud.write_dataset(

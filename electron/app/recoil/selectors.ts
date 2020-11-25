@@ -30,6 +30,13 @@ export const datasetName = selector({
   },
 });
 
+export const datasets = selector({
+  key: "datasets",
+  get: ({ get }) => {
+    return get(atoms.stateDescription).datasets ?? [];
+  },
+});
+
 export const hasDataset = selector({
   key: "hasDataset",
   get: ({ get }) => Boolean(get(datasetName)),

@@ -31,6 +31,7 @@ os.environ["FIFTYONE_SERVER"] = "1"
 import fiftyone.core.aggregations as foa
 import fiftyone.constants as foc
 from fiftyone.core.expressions import ViewField as F
+import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -294,6 +295,15 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         awaitables = self.get_statistics_awaitables(only=self)
         asyncio.gather(*awaitables)
 
+    async def on_refresh(self):
+        """Event for refreshing an App client."""
+        StateHandler.state = fos.StateDescription.from_dict(
+            StateHandler.state
+        ).serialize()
+        awaitables = [self.send_updates(only=self)]
+        awaitables += self.get_statistics_awaitables(only=self)
+        asyncio.gather(*awaitables)
+
     async def on_fiftyone(self):
         """Event for FiftyOne package version and user id requests."""
         self.write_message(
@@ -387,6 +397,16 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         StateHandler.state["selected_objects"] = selected_objects
         await self.send_updates(ignore=self)
 
+    async def on_set_dataset(self, dataset_name):
+        """Event for setting the current dataset by name.
+
+        Args:
+            dataset_name: the dataset name
+        """
+        dataset = fod.load_dataset(dataset_name)
+        StateHandler.state = fos.StateDescription(dataset=dataset).serialize()
+        await self.on_update(StateHandler.state)
+
     async def on_get_video_data(self, _id, filepath):
         """Gets the frame labels for video samples.
 
@@ -474,14 +494,19 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         return awaitables
 
     @classmethod
-    async def send_updates(cls, ignore=None):
+    async def send_updates(cls, ignore=None, only=None):
         """Sends an update event to the all clients, exluding the ignore
         client, if it is not None.
 
         Args:
             ignore (None): a client to not send the update to
+            only (None): a client to restrict the updates to
         """
         response = {"type": "update", "state": StateHandler.state}
+        if only:
+            only.write_message(response)
+            return
+
         for client in cls.clients:
             if client == ignore:
                 continue
@@ -583,6 +608,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = state.dataset.view()
         else:
             results = []
+
+        for stage_dict in state.filters.values():
+            stage = fosg.ViewStage._from_dict(stage_dict)
+            view = view.add_stage(stage)
 
         if group == LABELS and results is None:
             aggregations = []

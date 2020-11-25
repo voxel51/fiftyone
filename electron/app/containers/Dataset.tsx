@@ -227,7 +227,7 @@ function Dataset(props) {
             />
           </Body>
         ) : (
-          <Loading text={"No dataset loaded"} />
+          <Loading text={"No dataset selected"} />
         )}
       </Container>
     </>

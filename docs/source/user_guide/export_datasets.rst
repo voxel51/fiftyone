@@ -1,3 +1,6 @@
+
+.. _exporting-datasets:
+
 Exporting FiftyOne Datasets
 ===========================
 

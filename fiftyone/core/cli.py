@@ -116,7 +116,7 @@ class QuickstartCommand(Command):
             "-r",
             "--remote",
             action="store_true",
-            help="whether to launch a remote app session",
+            help="whether to launch a remote App session",
         )
 
     @staticmethod
@@ -770,10 +770,10 @@ class AppLaunchCommand(Command):
 
     Examples::
 
-        # Launch the app with the given dataset
+        # Launch the App with the given dataset
         fiftyone app launch <name>
 
-        # Launch a remote app session
+        # Launch a remote App session
         fiftyone app launch <name> --remote
     """
 
@@ -794,7 +794,7 @@ class AppLaunchCommand(Command):
             "-r",
             "--remote",
             action="store_true",
-            help="whether to launch a remote app session",
+            help="whether to launch a remote App session",
         )
 
     @staticmethod
@@ -812,7 +812,7 @@ def _watch_session(session, remote=False):
         if remote:
             print("\nTo exit, press ctrl + c\n")
         else:
-            print("\nTo exit, close the app or press ctrl + c\n")
+            print("\nTo exit, close the App or press ctrl + c\n")
         session.wait()
     except KeyboardInterrupt:
         pass
@@ -823,31 +823,31 @@ class AppViewCommand(Command):
 
     Examples::
 
-        # View a dataset stored on disk in the app
+        # View a dataset stored on disk in the App
         fiftyone app view --dataset-dir <dataset-dir> --type <type>
 
-        # View a zoo dataset in the app
+        # View a zoo dataset in the App
         fiftyone app view --zoo-dataset <name> --splits <split1> ...
 
-        # View a directory of images in the app
+        # View a directory of images in the App
         fiftyone app view --images-dir <images-dir>
 
-        # View a glob pattern of images in the app
+        # View a glob pattern of images in the App
         fiftyone app view --images-patt <images-patt>
 
-        # View a directory of videos in the app
+        # View a directory of videos in the App
         fiftyone app view --videos-dir <videos-dir>
 
-        # View a glob pattern of videos in the app
+        # View a glob pattern of videos in the App
         fiftyone app view --videos-patt <videos-patt>
 
-        # View a dataset stored in JSON format on disk in the app
+        # View a dataset stored in JSON format on disk in the App
         fiftyone app view --json-path <json-path>
 
-        # View a random subset of the data stored on disk in the app
+        # View a random subset of the data stored on disk in the App
         fiftyone app view ... --shuffle --max-samples <max-samples>
 
-        # View the dataset in a remote app session
+        # View the dataset in a remote App session
         fiftyone app view ... --remote
     """
 
@@ -942,7 +942,7 @@ class AppViewCommand(Command):
             "-r",
             "--remote",
             action="store_true",
-            help="whether to launch a remote app session",
+            help="whether to launch a remote App session",
         )
 
     @staticmethod
@@ -1010,11 +1010,18 @@ class AppConnectCommand(Command):
 
     Examples::
 
-        # Connect to a remote app with port forwarding already configured
+        # Connect to a remote App with port forwarding already configured
         fiftyone app connect
 
-        # Connect to a remote app session
+        # Connect to a remote App session
         fiftyone app connect --destination <destination> --port <port>
+
+        # Connect to a remote App session using an ssh key
+        fiftyone app connect --destination <destination> --port <port> \\
+            --ssh-key <path/to/key>
+
+        # Connect to a remote App using a custom local port
+        fiftyone app connect --local-port <port>
     """
 
     @staticmethod
@@ -1034,6 +1041,22 @@ class AppConnectCommand(Command):
             type=int,
             help="the remote port to connect to",
         )
+        parser.add_argument(
+            "-l",
+            "--local-port",
+            metavar="PORT",
+            default=5151,
+            type=int,
+            help="the local port to use to serve the App",
+        )
+        parser.add_argument(
+            "-i",
+            "--ssh-key",
+            metavar="KEY",
+            default=None,
+            type=str,
+            help="optional ssh key to use to login",
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -1048,20 +1071,24 @@ class AppConnectCommand(Command):
             )
             etau.ensure_basedir(control_path)
 
+            ssh_call = [
+                "ssh",
+                "-f",
+                "-N",
+                "-M",
+                "-S",
+                control_path,
+                "-L",
+                "%d:127.0.0.1:%d" % (args.local_port, args.port),
+            ]
+
+            if args.ssh_key:
+                ssh_call += ["-i", args.ssh_key]
+
+            ssh_call.append(args.destination)
+
             # Port forwarding
-            ret = subprocess.call(
-                [
-                    "ssh",
-                    "-f",
-                    "-N",
-                    "-M",
-                    "-S",
-                    control_path,
-                    "-L",
-                    "5151:127.0.0.1:%d" % args.port,
-                    args.destination,
-                ]
-            )
+            ret = subprocess.call(ssh_call)
             if ret != 0:
                 print("ssh failed with exit code %r" % ret)
                 return
@@ -1082,7 +1109,7 @@ class AppConnectCommand(Command):
 
             fou.call_on_exit(stop_port_forward)
 
-        session = fos.launch_app()
+        session = fos.launch_app(port=args.local_port)
 
         _watch_session(session)
 
