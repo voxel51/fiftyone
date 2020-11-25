@@ -154,16 +154,43 @@ Label mistakes can be calculated for both classification and detection datasets.
         annotations (`label_field` in the example block) and model predictions
         (`pred_field` above).
         
-        **Output**: A scalar-valued fields per ground truth |Detection| that 
-        ranks the chance of a mistaken annotation and a localization mistake. 
-        Additionally, every |Sample| contains a field storing the maximum 
-        mistakenness of the |Detections| in the |Sample|. The default name of 
-        this field is `mistakenness` but you can customize its name by using 
-        the `mistakenness_field` named argument. Ground truth 
-        objects that were not matched are labeled as `possible_spurious` and
-        high confidence predictions that were not matched are labeled as 
-        `possible_missing`. These fields are then counted and populated at the
-        |Sample| level. 
+        **Output**: New fields in detections and samples will be populated. 
+
+        Ground truth |Detection| level fields:
+
+        * `mistakenness` (float): Calculated for any ground truth objects that
+          matched with a prediction. It is a measure of the agreement between
+          the gt annotation and the prediction modulated by the confidence of
+          the prediction. 
+
+        * `mistakenness_loc` (float): Calculated for any ground truth objects
+          that matched with a prediction. A measure of the mistakenness in the
+          bounding box localization of the annotation computed using the
+          confidence and IoU of the prediction. 
+
+        * `possible_spurious` (bool): Calculated for ground truth objects that
+          were not matched with a prediction. Since the model did not predict
+          this object, it is flagged as a possible spurious annotation.
+
+
+        Predictions that had a high confidence will be copied over to the
+        ground truth |Detections| of the |Sample| and tagged with the following
+        field:
+
+        * `possible_missing` (bool): A highly confident prediction that was not
+          matched with a ground truth annotation and was possibly missed by
+          annotators.
+
+        |Sample|-level fields:
+
+        * `max_mistakenness` (float): The maximum `mistakenness` of all ground truth
+          detections in the |Sample|. 
+
+        * `possible_missing` (int): The total number of `possible_missing`
+          detections in the |Sample|.
+
+        * `possible_spurious` (int): The total number of `possible_spurious`
+          detections in the |Sample|.
         
         **What to expect**: Finding mistakes in human annotations is non-trivial (if it
         could be done perfectly then the approach would sufficiently replace your
