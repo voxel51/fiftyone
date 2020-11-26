@@ -3,6 +3,47 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne 0.6.6
+--------------
+*Released November 25, 2020*
+
+App
+^^^
+- Added a dropdown in the header to change datasets from the App
+- Added the ability to refresh the App by clicking the FiftyOne logo in the
+  header
+- Fixed a bug the caused numeric (scalar field) range sliders to disappear
+  after changing the default value
+- Fixed a bug that prevented the App state from updating appropriately after
+  applying label filters
+
+Core
+^^^^
+- Fixed a bug that prevented COCO datasets from being loaded from the
+  :ref:`Dataset Zoo <dataset-zoo>`
+
+Brain
+^^^^^
+- Added support for computing mistakenness for detections when using
+  :meth:`compute_mistakenness() <fiftyone.brain.compute_mistakenness>`
+
+CLI
+^^^
+- Added support for customizing the local port when connecting to the App via
+  the CLI
+- Added an `--ssh-key` option to the `app connect` command
+
+Docs
+^^^^
+- Added :doc:`a recipe </recipes/detection_mistakenness>` demonstrating how to
+  use :meth:`compute_mistakenness() <fiftyone.brain.compute_mistakenness>` to
+  detect label mistakes for detection datasets
+- Added questions to the :ref:`FAQ page <faq>`:
+   - :ref:`Can I launch multiple App instances on a machine? <faq-multiple-apps>`
+   - :ref:`Can I connect multiple App instances to the same dataset? <faq-multiple-sessions-same-dataset>`
+   - :ref:`Can I connect to multiple remote sessions? <faq-connect-to-multiple-remote-sessions>`
+   - :ref:`Can I serve multiple remote sessions from a machine? <faq-serve-multiple-remote-sessions>`
+
 FiftyOne 0.6.5
 --------------
 *Released November 16, 2020*
