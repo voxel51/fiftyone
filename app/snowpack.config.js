@@ -20,16 +20,15 @@ module.exports = {
       },
     ],
   ],
-  exclude: [
-    "**/node_modules/**/*",
-    "**/*.@(spec|test|stories).@(ts|tsx)",
-    "player51/",
-  ],
+  exclude: ["**/*.@(test|stories).@(ts|tsx)", "player51/"],
   install: [
     /* ... */
   ],
   installOptions: {
     polyfillNode: true,
+    rollup: {
+      plugins: [require("rollup-plugin-pnp-resolve")()],
+    },
   },
   devOptions: {
     hmrErrorOverlay: true,

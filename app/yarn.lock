@@ -13056,6 +13056,7 @@ __metadata:
     less-loader: ^6.1.0
     less-plugin-rewrite-import: ^0.1.1
     lint-staged: ^10.0.2
+    lodash: ^4.17.20
     mime-types: ^2.1.27
     mini-css-extract-plugin: ^0.9.0
     node-sass: ^4.13.1
@@ -13066,6 +13067,7 @@ __metadata:
     player51: "file:./player51"
     postinstall-postinstall: ^2.1.0
     prettier: ^2.1.0
+    prop-types: ^15.7.2
     randomcolor: ^0.5.4
     raw-loader: ^4.0.1
     re-resizable: ^6.8.0
@@ -13081,6 +13083,7 @@ __metadata:
     react-hotkeys: ^2.0.0
     react-infinite-scroller: ^1.2.4
     react-input-autosize: ^2.2.2
+    react-is: ^17.0.1
     react-router: ^5.1.2
     react-router-dom: ^5.1.2
     react-spring: 8.0.1
@@ -13097,6 +13100,7 @@ __metadata:
     rollup-plugin-commonjs: ^10.1.0
     rollup-plugin-eslint: ^7.0.0
     rollup-plugin-node-resolve: ^5.2.0
+    rollup-plugin-pnp-resolve: ^2.0.0
     rollup-plugin-replace: ^2.2.0
     rollup-plugin-terser: ^7.0.2
     sass-loader: ^8.0.2
@@ -17947,7 +17951,7 @@ fsevents@^1.2.7:
   languageName: node
   linkType: hard
 
-"lodash@npm:4.6.1 || ^4.16.1, lodash@npm:^4.0.0, lodash@npm:^4.0.1, lodash@npm:^4.14.0, lodash@npm:^4.15.0, lodash@npm:^4.17.10, lodash@npm:^4.17.11, lodash@npm:^4.17.12, lodash@npm:^4.17.13, lodash@npm:^4.17.14, lodash@npm:^4.17.15, lodash@npm:^4.17.19, lodash@npm:^4.17.4, lodash@npm:^4.17.5, lodash@npm:^4.3.0, lodash@npm:^4.8.0, lodash@npm:~4.17.10, lodash@npm:~4.17.4":
+"lodash@npm:4.6.1 || ^4.16.1, lodash@npm:^4.0.0, lodash@npm:^4.0.1, lodash@npm:^4.14.0, lodash@npm:^4.15.0, lodash@npm:^4.17.10, lodash@npm:^4.17.11, lodash@npm:^4.17.12, lodash@npm:^4.17.13, lodash@npm:^4.17.14, lodash@npm:^4.17.15, lodash@npm:^4.17.19, lodash@npm:^4.17.20, lodash@npm:^4.17.4, lodash@npm:^4.17.5, lodash@npm:^4.3.0, lodash@npm:^4.8.0, lodash@npm:~4.17.10, lodash@npm:~4.17.4":
   version: 4.17.20
   resolution: "lodash@npm:4.17.20"
   checksum: c62101d2500c383b5f174a7e9e6fe8098149ddd6e9ccfa85f36d4789446195f5c4afd3cfba433026bcaf3da271256566b04a2bf2618e5a39f6e67f8c12030cb6
@@ -22442,6 +22446,13 @@ fsevents@^1.2.7:
   languageName: node
   linkType: hard
 
+"react-is@npm:^17.0.1":
+  version: 17.0.1
+  resolution: "react-is@npm:17.0.1"
+  checksum: 5a83dfc78e7adcb93d632bf367b0733db650e3abd2e9c57c33b87e50d201212c1884b0d7bcf13e692f1556189fa1b87f9f3e0ba10fe858fd6aebe83ed4fcd1ea
+  languageName: node
+  linkType: hard
+
 "react-lifecycles-compat@npm:^3.0.4":
   version: 3.0.4
   resolution: "react-lifecycles-compat@npm:3.0.4"
@@ -23937,6 +23948,13 @@ resolve@^1.11.1:
   peerDependencies:
     rollup: ">=1.11.0"
   checksum: f20dd3e6669b2b888cd41c8e6072f09c95e14559fb7a4634b5756f7f99e0986e9dc36d3b3e651c0a38ca4c192b2b96c3898aec46a81842fd2f186f55701d9cf1
+  languageName: node
+  linkType: hard
+
+"rollup-plugin-pnp-resolve@npm:^2.0.0":
+  version: 2.0.0
+  resolution: "rollup-plugin-pnp-resolve@npm:2.0.0"
+  checksum: 6fd37cfa9f5191920defd57c778c7b3eab784eb2743669c89e0903b169e08edcb3f6485115c5e7a4be42d22172f97c86bc950129e2f6d8b155efb7a9d132bf0b
   languageName: node
   linkType: hard
 
