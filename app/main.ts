@@ -8,7 +8,7 @@
  * When running `yarn build` or `yarn build-main`, this file is compiled to
  * `./app/main.prod.js` using webpack. This gives us some performance wins.
  */
-import path from "path";
+import * as path from "path";
 import { app, BrowserWindow } from "electron";
 import { autoUpdater } from "electron-updater";
 import log from "electron-log";
@@ -62,6 +62,7 @@ const createWindow = async () => {
     webPreferences: {
       nodeIntegration: true,
     },
+    icon: "",
   };
 
   if (process.env.APPDIR) {

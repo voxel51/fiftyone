@@ -29,11 +29,10 @@ module.exports = {
     /* ... */
   ],
   installOptions: {
-    namedExports: ["recharts", "recharts-scale", "decimal.js-light"],
     polyfillNode: true,
   },
   devOptions: {
-    hmrErrorOverlay: false,
+    hmrErrorOverlay: true,
   },
   buildOptions: {
     /* ... */
