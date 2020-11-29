@@ -13091,7 +13091,7 @@ __metadata:
     react-use-measure: ^2.0.1
     react-uuid: ^1.0.2
     recharts: ^1.8.5
-    recharts-scale: ^0.4.3
+    recharts-scale: "patch:recharts-scale@^0.4.3#./recharts-scale-patch.diff"
     recoil: ^0.0.13
     reconnecting-websocket: ^4.4.0
     resize-observer-polyfill: ^1.5.1
@@ -22997,12 +22997,21 @@ fsevents@^1.2.7:
   languageName: node
   linkType: hard
 
-"recharts-scale@npm:^0.4.2, recharts-scale@npm:^0.4.3":
+recharts-scale@^0.4.3:
   version: 0.4.3
   resolution: "recharts-scale@npm:0.4.3"
   dependencies:
     decimal.js-light: ^2.4.1
   checksum: 37d1ec4b747a3d06d2f5c69556ee48bc032faf87736e27d64c5fb5d4c1543d9b076332a57108451b7ad125a53ffca28d84ca1c1c5dc5afd880ceeda39053486d
+  languageName: node
+  linkType: hard
+
+"recharts-scale@patch:recharts-scale@^0.4.3#./recharts-scale-patch.diff::locator=fiftyone%40workspace%3A.":
+  version: 0.4.3
+  resolution: "recharts-scale@patch:recharts-scale@npm%3A0.4.3#./recharts-scale-patch.diff::version=0.4.3&hash=e25f47&locator=fiftyone%40workspace%3A."
+  dependencies:
+    decimal.js-light: ^2.4.1
+  checksum: b9a268082e3a0758baa80a66d3c6de73dea03a15e2f131b243ccb57dfe217e4f66ba93fe1f948a02f0e9dd48e4eb7dc8ab05b9d3dd691601d0701fe4962c866a
   languageName: node
   linkType: hard
 
