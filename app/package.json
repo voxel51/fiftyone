@@ -4,7 +4,7 @@
     "version": "0.6.6",
     "license": "Apache-2.0",
     "description": "FiftyOne by Voxel51",
-    "main": "main.ts",
+    "main": "./dist/main.js",
     "scripts": {
         "build-app": "tsc",
         "build-web": "snowpack build",
@@ -14,9 +14,6 @@
         "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
         "lint": "prettier --check \"src/**/*.{js,jsx,ts,tsx}\"",
         "build": "concurrently \"yarn build-app\" \"yarn build-web\"",
-        "package": "yarn build && electron-builder build --publish never",
-        "package-all": "yarn build && electron-builder build -mwl",
-        "package-ci": "yarn postinstall && yarn build && electron-builder --publish always",
         "package-mac": "yarn build && electron-builder build --mac",
         "package-linux": "yarn build && electron-builder build --linux",
         "package-win": "yarn build && electron-builder build --win --x64",

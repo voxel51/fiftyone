@@ -17,10 +17,13 @@ class BdistWheelCustom(bdist_wheel):
         # for a development installation
         self.distribution.install_requires += [
             "fiftyone-brain>=0.1.11,<0.2",
-            "fiftyone-gui>=0.6.6,<0.7",
+            "fiftyone-app>=0.6.6,<0.7",
             "fiftyone-db>=0.1.1,<0.2",
         ]
 
+
+with open("README.md", "r") as fh:
+    long_description = fh.read()
 
 setup(
     name="fiftyone",
@@ -33,6 +36,8 @@ setup(
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/fiftyone",
     license="Apache",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     packages=find_packages() + ["fiftyone.recipes", "fiftyone.tutorials"],
     package_dir={
         "fiftyone.recipes": "docs/source/recipes",

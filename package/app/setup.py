@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Installs FiftyOne.
+Installs FiftyOne App.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -12,6 +12,59 @@ import shutil
 from setuptools import setup, find_packages
 from setuptools.command.install import install
 from wheel.bdist_wheel import bdist_wheel
+
+import os
+import shutil
+
+VERSION = "0.6.6"
+
+
+def get_version():
+    if "RELEASE_VERSION" in os.environ:
+        version = os.environ["RELEASE_VERSION"]
+        print("R VERSION", version)
+        if not version.startswith(VERSION):
+            raise ValueError(
+                "Release version does not match version: %s and %s"
+                % (version, VERSION)
+            )
+        return version
+
+    return VERSION
+
+
+def make_tar(dir_path, tar_path):
+    """Makes a tarfile containing the given directory.
+
+    Supported formats include `.tar`, `.tar.gz`, `.tgz`, `.tar.bz`, and `.tbz`.
+
+    Args:
+        dir_path: the directory to tar
+        tar_path: the path + filename of the .tar.gz file to create
+    """
+    outpath, format = _get_tar_format(tar_path)
+
+    rootdir, basedir = os.path.split(os.path.realpath(dir_path))
+    shutil.make_archive(outpath, format, rootdir, basedir)
+
+
+def _get_tar_format(archive_path):
+    basepath, ext = os.path.splitext(archive_path)
+    if basepath.endswith(".tar"):
+        # Handle .tar.gz and .tar.bz
+        basepath, ext2 = os.path.splitext(basepath)
+        ext = ext2 + ext
+
+    if ext == ".tar":
+        return basepath, "tar"
+
+    if ext in (".tar.gz", ".tgz"):
+        return basepath, "gztar"
+
+    if ext in (".tar.bz", ".tbz"):
+        return basepath, "bztar"
+
+    raise ValueError("Unsupported archive format '%s'" % archive_path)
 
 
 class CustomBdistWheel(bdist_wheel):
@@ -43,19 +96,22 @@ class CustomBdistWheel(bdist_wheel):
 
     def write_wheelfile(self, *args, **kwargs):
         bdist_wheel.write_wheelfile(self, *args, **kwargs)
-        release_dir = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "..",
-            "..",
-            "electron",
-            "release",
-        )
+        if os.environ.get("RELEASE_DIR"):
+            release_dir = os.environ["RELEASE_DIR"]
+        else:
+            release_dir = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "..",
+                "..",
+                "electron",
+                "release",
+            )
         bin_dir = os.path.join(
-            self.bdist_dir, self.data_dir, "purelib", "fiftyone", "gui", "bin"
+            self.bdist_dir, self.data_dir, "purelib", "fiftyone", "app", "bin"
         )
 
-        if os.environ.get("FIFTYONE_GUI_EXE_PATH"):
-            apps = [os.environ["FIFTYONE_GUI_EXE_PATH"]]
+        if os.environ.get("FIFTYONE_APP_EXE_PATH"):
+            apps = [os.environ["FIFTYONE_APP_EXE_PATH"]]
         elif self.plat_name.startswith("linux"):
             apps = glob.glob(os.path.join(release_dir, "FiftyOne*.AppImage"))
         elif self.plat_name.startswith("mac"):
@@ -83,28 +139,35 @@ class CustomBdistWheel(bdist_wheel):
         if os.path.isfile(app_path):
             # use copy2 to maintain executable permission
             ext = os.path.splitext(app_path)[-1]
-            shutil.copy2(app_path, os.path.join(bin_dir, "FiftyOne" + ext))
         elif os.path.isdir(app_path):
             # Mac app bundle
-            shutil.copytree(app_path, os.path.join(bin_dir, "FiftyOne.app"))
+            ext = ".app"
         else:
             raise RuntimeError("Unsupported file type: %r" % app_path)
+
+        ext += ".tar.gz"
+        make_tar(app_path, os.path.join(bin_dir, "FiftyOne" + ext))
 
 
 cmdclass = {
     "bdist_wheel": CustomBdistWheel,
 }
 
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
 setup(
-    name="fiftyone_gui",
-    version="0.6.6",
+    name="fiftyone_app",
+    version=get_version(),
     description="FiftyOne App",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/fiftyone",
     license="Apache",
-    packages=["fiftyone.gui"],
-    package_dir={"fiftyone.gui": "src"},
+    long_description=long_description,
+    long_description_content_type="text/markdown",
+    packages=["fiftyone.app"],
+    package_dir={"fiftyone.app": "src"},
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",

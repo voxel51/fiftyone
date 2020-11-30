@@ -41,7 +41,7 @@ const useGA = () => {
 
   useEffect(() => {
     attachDisposableHandler(socket, "fiftyone", ({ data: info }) => {
-      const dev = process.env.NODE_ENV == "development";
+      const dev = import.meta.env.MODE == "development";
       const buildType = dev ? "dev" : "prod";
 
       ReactGA.initialize(gaConfig.app_ids[buildType], {

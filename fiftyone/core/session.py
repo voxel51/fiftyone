@@ -169,7 +169,6 @@ class Session(foc.HasClient):
         elif self._app and self._context != _CONTEXT_NONE:
             raise ValueError("App cannot be used in notebooks")
 
-        display(port=port)
         self._start_time = self._get_time()
 
     def __repr__(self):

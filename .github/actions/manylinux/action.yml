@@ -1,0 +1,25 @@
+name: 'manylinux'
+description: 'builds manylinux wheels'
+inputs:
+  pkg:
+    description: 'package to build'
+    required: true
+  pkg_path:
+    description: 'path to the package to build'
+    required: true
+  linux_dist:
+    description: 'optional linux distribution to target'
+    required: false
+    default: null
+  github_ref:
+    description: 'github ref'
+    required: true
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.pkg }}
+    - ${{ inputs.pkg_path }}
+  env:
+    FIFTYONE_DB_BUILD_LINUX_DISTRO: ${{ inputs.linux_dist }}
+    GITHUB_REF: ${{ inputs.github_ref }}

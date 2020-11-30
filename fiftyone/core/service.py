@@ -411,6 +411,11 @@ class AppService(Service):
     service_name = "app"
     working_dir = foc.FIFTYONE_APP_DIR
 
+    LINUX = "./FiftyOne.AppImage"
+    MAC = "./FiftyOne.app"
+    WINDOWS = "./FiftyOne.exe"
+    TAR_EXT = ".tar.gz"
+
     def __init__(self, server_port=None):
         # initialize before start() is called
         self.server_port = server_port
@@ -419,23 +424,28 @@ class AppService(Service):
     @property
     def command(self):
         with etau.WorkingDir(foc.FIFTYONE_APP_DIR):
-            if os.path.isfile("FiftyOne.AppImage"):
-                # Linux
-                args = ["./FiftyOne.AppImage"]
-            elif os.path.isdir("FiftyOne.app"):
-                # macOS
-                args = ["./FiftyOne.app/Contents/MacOS/FiftyOne"]
-            elif os.path.isfile("FiftyOne.exe"):
-                # Windows
-                args = ["./FiftyOne.exe"]
-            elif os.path.isfile("package.json"):
-                # dev build
-                args = ["yarn", "dev"]
-            else:
-                raise RuntimeError(
-                    "Could not find FiftyOne app in %r" % foc.FIFTYONE_APP_DIR
-                )
-        return args
+            return self.find_app()
+
+    def find_app(self):
+        app_map = {
+            app: app + self.TAR_EXT
+            for app in [self.LINUX, self.MAC, self.WINDOWS]
+        }
+        for app, package in app_map.items():
+            if os.path.isfile(package):
+                logger.info("Installing FiftyOne App")
+                etau.extract_tar(package, "./", delete_tar=True)
+            if app == self.MAC and os.path.isdir(app):
+                return ["./FiftyOne.app/Contents/MacOS/FiftyOne"]
+            elif os.path.isfile(app):
+                return [app]
+
+        if os.path.isfile("package.json"):
+            return ["yarn", "dev"]
+
+        raise RuntimeError(
+            "Could not find FiftyOne app in %r" % foc.FIFTYONE_APP_DIR
+        )
 
     @property
     def env(self):

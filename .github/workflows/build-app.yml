@@ -1,4 +1,4 @@
-name: Build GUI
+name: Build App
 
 on:
   push:
@@ -6,14 +6,14 @@ on:
       # - develop
       - rel-*
       - release-*
-      - gui-*
+      - app-*
       - github-actions-*
     tags:
-      - gui-v*
+      - app-v*
     paths:
       - electron/**
-      - package/gui/**
-      - .github/workflows/build-gui.yml
+      - package/app/**
+      - .github/workflows/build-app.yml
   pull_request:
     branches:
       # - develop
@@ -21,8 +21,8 @@ on:
       - release-*
     paths:
       - electron/**
-      - package/gui/**
-      - .github/workflows/build-gui.yml
+      - package/app/**
+      - .github/workflows/build-app.yml
 
 jobs:
   build:
@@ -39,6 +39,17 @@ jobs:
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip setuptools wheel
+      - name: Install package
+        working-directory: package/app
+        run: |
+          pip install --no-deps -e .
+      - name: Validate version
+        run: |
+          SETUP_VERSION="$(pip list --format json | jq -r '.[] | select(.name=="fiftyone-app") | .version')"
+          TAG_VERSION="$(echo "${{ github.ref }}" | sed 's/^refs\/tags\/app-v//' | sed 's/-rc\..*//')"
+          echo "setup.py version: ${SETUP_VERSION}"
+          echo "tagged version: ${TAG_VERSION}"
+          test "${SETUP_VERSION}" = "${TAG_VERSION}"
       - name: Fetch dependency cache
         uses: actions/cache@v2
         with:
@@ -50,13 +61,13 @@ jobs:
       - name: Install dependencies
         working-directory: electron
         run: yarn
-      - name: Package GUI (Linux)
+      - name: Package App (Linux)
         working-directory: electron
         run: yarn package-linux --publish never
-      - name: Package GUI (macOS)
+      - name: Package App (macOS)
         working-directory: electron
         run: yarn package-mac --publish never
-      - name: Package GUI (Windows)
+      - name: Package App (Windows)
         working-directory: electron
         # from https://www.electron.build/multi-platform-build#docker
         # removed node_modules mount to use existing packages
@@ -70,46 +81,45 @@ jobs:
            -v ~/.cache/electron-builder:/root/.cache/electron-builder \
            electronuserland/builder:wine \
            yarn package-win --publish never
-      - name: Build wheel (Linux)
-        working-directory: package/gui
-        run: python setup.py bdist_wheel --plat-name linux
+      - name: Set environment
+        env:
+          RELEASE_TAG: ${{ github.ref }}
+        run: |
+          if [[ $RELEASE_TAG =~ ^refs\/tags\/app-v.*-rc\..*$ ]]; then
+             echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/app-v//")" >> $GITHUB_ENV
+          fi
       - name: Build wheel (macOS)
-        working-directory: package/gui
+        working-directory: package/app
         run: python setup.py bdist_wheel --plat-name mac
       - name: Build wheel (Windows)
-        working-directory: package/gui
+        working-directory: package/app
         run: python setup.py bdist_wheel --plat-name win
+      - name: Build wheel (Linux)
+        uses: ./.github/actions/manylinux
+        with:
+          pkg: app
+          pkg_path: package/app
+          github_ref: ${{ github.ref }}
       - name: Upload wheel (Linux)
         uses: actions/upload-artifact@v2
         with:
           name: wheel-linux
-          path: package/gui/dist/*linux*.whl
+          path: package/app/dist/*linux*.whl
       - name: Upload wheel (macOS)
         uses: actions/upload-artifact@v2
         with:
           name: wheel-macos
-          path: package/gui/dist/*macos*.whl
+          path: package/app/dist/*macos*.whl
       - name: Upload wheel (Windows)
         uses: actions/upload-artifact@v2
         with:
           name: wheel-windows
-          path: package/gui/dist/*win*.whl
-  check:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Clone fiftyone
-        uses: actions/checkout@v1
-        with:
-          fetch-depth: 1
-      - name: Check tag
-        if: startsWith(github.ref, 'refs/tags/gui-v')
-        run: |
-          python .github/tools/check-setup-version.py package/gui/setup.py $(echo ${{ github.ref }} | sed 's/refs\/tags\/gui-v//')
+          path: package/app/dist/*win*.whl
 
   publish:
     runs-on: ubuntu-18.04
     needs: [build]
-    if: startsWith(github.ref, 'refs/tags/gui-v')
+    if: startsWith(github.ref, 'refs/tags/app-v')
     steps:
       - name: Download wheels
         uses: actions/download-artifact@v2
@@ -118,10 +128,20 @@ jobs:
       - name: Install dependencies
         run: |
           pip3 install twine
-      - name: Upload to pypi.voxel51.com
+      - name: Set environment
         env:
-          TWINE_USERNAME: voxel51-ci
-          TWINE_PASSWORD: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.ref }}
+        run: |
+          if [[ $RELEASE_TAG =~ ^refs\/tags\/app-v.*-rc\..*$ ]]; then
+             echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_TEST_PYPI_TOKEN }}" >> $GITHUB_ENV
+             echo "TWINE_REPOSITORY=testpypi" >> $GITHUB_ENV
+          else
+             echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_PYPI_TOKEN }}" >> $GITHUB_ENV
+             echo "TWINE_REPOSITORY=pypi" >> $GITHUB_ENV
+          fi
+      - name: Upload to pypi
+        env:
+          TWINE_USERNAME: __token__
           TWINE_NON_INTERACTIVE: 1
         run: |
-          python3 -m twine upload --repository-url https://pypi.voxel51.com downloads/wheel-*/*.whl
+          python3 -m twine upload downloads/wheel-*/*.whl
