@@ -19,6 +19,16 @@
                     "config_path": "{{eta}}/tensorflow/darkflow/cfg/yolo.cfg"
                 }
             },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
             "date_created": "2018-06-23T23:17:26"
         },
         {
@@ -270,6 +280,16 @@
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
                 }
             },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
             "date_created": "2019-12-17 08:25:51"
         },
         {
@@ -288,6 +308,16 @@
                 "config": {
                     "model_name": "faster-rcnn-nas-coco",
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
                 }
             },
             "date_created": "2019-12-18 12:07:00"
@@ -310,6 +340,16 @@
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
                 }
             },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
             "date_created": "2019-12-18 12:07:00"
         },
         {
@@ -328,6 +368,16 @@
                 "config": {
                     "model_name": "faster-rcnn-resnet50-coco",
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
                 }
             },
             "date_created": "2019-12-17 08:25:51"
@@ -350,6 +400,16 @@
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
                 }
             },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
             "date_created": "2019-12-17 08:25:51"
         },
         {
@@ -368,6 +428,16 @@
                 "config": {
                     "model_name": "faster-rcnn-resnet101-coco",
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
                 }
             },
             "date_created": "2019-12-17 08:25:51"
@@ -390,6 +460,16 @@
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
                 }
             },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
             "date_created": "2019-12-17 08:25:51"
         },
         {
@@ -410,6 +490,16 @@
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
                 }
             },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
             "date_created": "2019-12-17 08:25:51"
         },
         {
@@ -428,6 +518,16 @@
                 "config": {
                     "model_name": "faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco",
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
                 }
             },
             "date_created": "2019-12-17 08:25:51"
@@ -452,6 +552,16 @@
                     "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
                 }
             },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
             "date_created": "2019-05-23 13:38:22"
         },
         {
@@ -472,6 +582,16 @@
                     "model_name": "inception-v4-imagenet",
                     "network_name": "inception_v4",
                     "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
                 }
             },
             "date_created": "2019-05-23 13:42:33"
@@ -580,6 +700,16 @@
                     "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
                 }
             },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
             "date_created": "2019-05-23 11:43:51"
         },
         {
@@ -600,6 +730,16 @@
                     "model_name": "resnet-v1-50-imagenet",
                     "network_name": "resnet_v1_50",
                     "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
                 }
             },
             "date_created": "2019-05-23 13:49:04"
@@ -624,6 +764,16 @@
                     "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
                 }
             },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
             "date_created": "2019-05-23 12:19:17"
         },
         {
@@ -642,6 +792,16 @@
                 "config": {
                     "model_name": "rfcn-resnet101-coco",
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
                 }
             },
             "date_created": "2018-12-23 14:37:47"
@@ -664,6 +824,16 @@
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
                 }
             },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
             "date_created": "2018-12-23 14:34:09"
         },
         {
@@ -682,6 +852,16 @@
                 "config": {
                     "model_name": "ssd-resnet50-fpn-coco",
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
                 }
             },
             "date_created": "2019-04-11 12:01:29"
@@ -704,6 +884,16 @@
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
                 }
             },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
             "date_created": "2018-12-23 14:34:05"
         },
         {
@@ -722,6 +912,16 @@
                 "config": {
                     "model_name": "ssd-mobilenet-v1-fpn-coco",
                     "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
                 }
             },
             "date_created": "2019-04-11 12:25:44"
@@ -794,20 +994,6 @@
                 }
             },
             "date_created": "2018-06-20 17:35:53"
-        },
-        {
-            "base_name": "c3d-ucf101",
-            "base_filename": "c3d-ucf101.model",
-            "version": null,
-            "description": "C3D model finely trained on UCF-101. Source: `C3D UCF101 split1` model from https://github.com/hx173149/C3D-tensorflow",
-            "manager": {
-                "config": {
-                    "google_drive_id": "1gN1dxE-M_SuVKkQ9ZeeJTU3JW52KE42q"
-                },
-                "type": "eta.core.models.ETAModelManager"
-            },
-            "default_deployment_config_dict": null,
-            "date_created": "2018-06-27 17:00:45"
         }
     ]
 }
