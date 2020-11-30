@@ -45,10 +45,10 @@ class MNISTDataset(TorchVisionDataset):
     The dataset consists of 70000 28 x 28 grayscale images in 10 classes.
     There are 60000 training images and 10000 test images.
 
-    Dataset size:
+    Dataset size
         21.00 MiB
 
-    Source:
+    Source
         http://yann.lecun.com/exdb/mnist
     """
 
@@ -85,10 +85,10 @@ class FashionMNISTDataset(TorchVisionDataset):
     The dataset consists of 70000 28 x 28 grayscale images in 10 classes.
     There are 60000 training images and 10000 test images.
 
-    Dataset size:
+    Dataset size
         36.42 MiB
 
-    Source:
+    Source
         https://github.com/zalandoresearch/fashion-mnist
     """
 
@@ -124,10 +124,10 @@ class CIFAR10Dataset(TorchVisionDataset):
     classes, with 6000 images per class. There are 50000 training images and
     10000 test images.
 
-    Dataset size:
+    Dataset size
         132.40 MiB
 
-    Source:
+    Source
         https://www.cs.toronto.edu/~kriz/cifar.html
     """
 
@@ -164,10 +164,10 @@ class CIFAR100Dataset(TorchVisionDataset):
     The dataset consists of 60000 32 x 32 color images in 100 classes, with 600
     images per class. There are 50000 training images and 10000 test images.
 
-    Dataset size:
+    Dataset size
         132.03 MiB
 
-    Source:
+    Source
         https://www.cs.toronto.edu/~kriz/cifar.html
     """
 
@@ -221,7 +221,7 @@ class ImageNet2012Dataset(TorchVisionDataset):
             train split: ILSVRC2012_img_train.tar
        validation split: ILSVRC2012_img_val.tar
 
-    You can register at `http://www.image-net.org/download-images`_ in order to
+    You can register at http://www.image-net.org/download-images in order to
     get links to download the data.
 
     Example usage::
@@ -236,10 +236,10 @@ class ImageNet2012Dataset(TorchVisionDataset):
         # Now load into FiftyOne
         dataset = foz.load_zoo_dataset("imagenet-2012", split="validation")
 
-    Dataset size:
+    Dataset size
         144.02 GiB
 
-    Source:
+    Source
         http://image-net.org
 
     Args:
@@ -289,16 +289,17 @@ class COCO2014Dataset(TorchVisionDataset):
     version of the dataset.
 
     Notes:
-        - COCO defines 91 classes but the data only uses 80 classes
-        - some images from the train and validation sets don't have annotations
-        - the test set does not have annotations
-        - COCO 2014 and 2017 uses the same images, but different train/val/test
-            splits
 
-    Dataset size:
+    -   COCO defines 91 classes but the data only uses 80 classes
+    -   Some images from the train and validation sets don't have annotations
+    -   The test set does not have annotations
+    -   COCO 2014 and 2017 uses the same images, but different train/val/test
+        splits
+
+    Dataset size
         37.57 GiB
 
-    Source:
+    Source
         http://cocodataset.org/#home
     """
 
@@ -337,16 +338,17 @@ class COCO2017Dataset(TorchVisionDataset):
     version of the dataset.
 
     Notes:
-        - COCO defines 91 classes but the data only uses 80 classes
-        - some images from the train and validation sets don't have annotations
-        - the test set does not have annotations
-        - COCO 2014 and 2017 uses the same images, but different train/val/test
-            splits
 
-    Dataset size:
+    -   COCO defines 91 classes but the data only uses 80 classes
+    -   Some images from the train and validation sets don't have annotations
+    -   The test set does not have annotations
+    -   COCO 2014 and 2017 uses the same images, but different train/val/test
+        splits
+
+    Dataset size
         25.20 GiB
 
-    Source:
+    Source
         http://cocodataset.org/#home
     """
 
@@ -388,10 +390,10 @@ class VOC2007Dataset(TorchVisionDataset):
     competition the goal is to predict the bounding box and label of each
     individual object.
 
-    Dataset size:
+    Dataset size
         868.85 MiB
 
-    Source:
+    Source
         http://host.robots.ox.ac.uk/pascal/VOC/voc2007
     """
 
@@ -436,10 +438,10 @@ class VOC2012Dataset(TorchVisionDataset):
     competition the goal is to predict the bounding box and label of each
     individual object.
 
-    Dataset size:
+    Dataset size
         3.59 GiB
 
-    Source:
+    Source
         http://host.robots.ox.ac.uk/pascal/VOC/voc2012
     """
 
