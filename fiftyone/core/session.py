@@ -172,9 +172,10 @@ class Session(foc.HasClient):
 
     def __repr__(self):
         if self._context == _CONTEXT_NONE:
-            print("Summary...todo")
+            return "Summary...todo"
         else:
             display(self._port)
+            return ""
 
     def __del__(self):
         """Deletes the Session by removing it from the `_subscribed_sessions`
