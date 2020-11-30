@@ -6,7 +6,10 @@ Session class for interacting with the FiftyOne App.
 |
 """
 from collections import defaultdict
+import html
+import json
 import logging
+import random
 import time
 
 import fiftyone.core.client as foc
@@ -14,6 +17,8 @@ import fiftyone.core.service as fos
 from fiftyone.core.state import StateDescription
 
 
+html_escape = html.escape
+del html
 logger = logging.getLogger(__name__)
 
 #
@@ -341,3 +346,168 @@ A session appears to have terminated shortly after it was started. If you
 intended to start an app instance or a remote session from a script, you
 should call `session.wait()` to keep the session (and the script) alive.
 """
+
+
+# Return values for `_get_context` (see that function's docs for
+# details).
+_CONTEXT_COLAB = "_CONTEXT_COLAB"
+_CONTEXT_IPYTHON = "_CONTEXT_IPYTHON"
+_CONTEXT_NONE = "_CONTEXT_NONE"
+
+
+def _get_context():
+    """Determine the most specific context that we're in.
+
+    Returns:
+      _CONTEXT_COLAB: If in Colab with an IPython notebook context.
+      _CONTEXT_IPYTHON: If not in Colab, but we are in an IPython notebook
+        context (e.g., from running `jupyter notebook` at the command
+        line).
+      _CONTEXT_NONE: Otherwise (e.g., by running a Python script at the
+        command-line or using the `ipython` interactive shell).
+    """
+    # In Colab, the `google.colab` module is available, but the shell
+    # returned by `IPython.get_ipython` does not have a `get_trait`
+    # method.
+    try:
+        import google.colab  # noqa: F401
+        import IPython
+    except ImportError:
+        pass
+    else:
+        if IPython.get_ipython() is not None:
+            # We'll assume that we're in a Colab notebook context.
+            return _CONTEXT_COLAB
+
+    # In an IPython command line shell or Jupyter notebook, we can
+    # directly query whether we're in a notebook context.
+    try:
+        import IPython
+    except ImportError:
+        pass
+    else:
+        ipython = IPython.get_ipython()
+        if ipython is not None and ipython.has_trait("kernel"):
+            return _CONTEXT_IPYTHON
+
+    # Otherwise, we're not in a known notebook context.
+    return _CONTEXT_NONE
+
+
+def display(port=None, height=None):
+    """Display a TensorBoard instance already running on this machine.
+
+    Args:
+      port: The port on which the TensorBoard server is listening, as an
+        `int`, or `None` to automatically select the most recently
+        launched FiftyOne.
+      height: The height of the frame into which to render the FiftyOne
+        UI, as an `int` number of pixels, or `None` to use a default value
+        (currently 800).
+    """
+    _display(port=port, height=height, print_message=True, display_handle=None)
+
+
+def _display(port=None, height=None, print_message=False, display_handle=None):
+    """Internal version of `display`.
+
+    Args:
+      port: As with `display`.
+      height: As with `display`.
+      display_handle: If not None, an IPython display handle into which to
+        render FiftyOne.
+    """
+    if height is None:
+        height = 800
+
+    fn = {
+        _CONTEXT_COLAB: _display_colab,
+        _CONTEXT_IPYTHON: _display_ipython,
+        _CONTEXT_NONE: _display_cli,
+    }[_get_context()]
+    return fn(port=port, height=height, display_handle=display_handle)
+
+
+def _display_colab(port, height, display_handle):
+    """Display a FiftyOne instance in a Colab output frame.
+
+    The Colab VM is not directly exposed to the network, so the Colab
+    runtime provides a service worker tunnel to proxy requests from the
+    end user's browser through to servers running on the Colab VM: the
+    output frame may issue requests to https://localhost:<port> (HTTPS
+    only), which will be forwarded to the specified port on the VM.
+
+    It does not suffice to create an `iframe` and let the service worker
+    redirect its traffic (`<iframe src="https://localhost:6006">`),
+    because for security reasons service workers cannot intercept iframe
+    traffic. Instead, we manually fetch the FiftyOne index page with an
+    XHR in the output frame, and inject the raw HTML into `document.body`.
+    """
+    import IPython.display
+
+    shell = """
+        (async () => {
+            const url = new URL(await google.colab.kernel.proxyPort(%PORT%, {'cache': true}));
+            const iframe = document.createElement('iframe');
+            iframe.src = url;
+            iframe.setAttribute('width', '100%');
+            iframe.setAttribute('height', '%HEIGHT%');
+            iframe.setAttribute('frameborder', 0);
+            document.body.appendChild(iframe);
+        })();
+    """
+    replacements = [
+        ("%PORT%", "%d" % port),
+        ("%HEIGHT%", "%d" % height),
+    ]
+    for (k, v) in replacements:
+        shell = shell.replace(k, v)
+    script = IPython.display.Javascript(shell)
+
+    if display_handle:
+        display_handle.update(script)
+    else:
+        IPython.display.display(script)
+
+
+def _display_ipython(port, height, display_handle):
+    import IPython.display
+
+    frame_id = "fiftyone-frame-{:08x}".format(random.getrandbits(64))
+    shell = """
+      <iframe id="%HTML_ID%" width="100%" height="%HEIGHT%" frameborder="0">
+      </iframe>
+      <script>
+        (function() {
+          const frame = document.getElementById(%JSON_ID%);
+          const url = new URL(%URL%, window.location);
+          const port = %PORT%;
+          if (port) {
+            url.port = port;
+          }
+          frame.src = url;
+        })();
+      </script>
+    """
+    replacements = [
+        ("%HTML_ID%", html_escape(frame_id, quote=True)),
+        ("%JSON_ID%", json.dumps(frame_id)),
+        ("%HEIGHT%", "%d" % height),
+        ("%PORT%", "%d" % port),
+        ("%URL%", json.dumps("/")),
+    ]
+
+    for (k, v) in replacements:
+        shell = shell.replace(k, v)
+    iframe = IPython.display.HTML(shell)
+    if display_handle:
+        display_handle.update(iframe)
+    else:
+        IPython.display.display(iframe)
+
+
+def _display_cli(port, height, display_handle):
+    del height  # unused
+    del display_handle  # unused
+    message = "Please visit http://localhost:%d in a web browser." % port
+    print(message)
