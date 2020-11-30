@@ -1490,6 +1490,9 @@ class ModelZooCommand(Command):
         _register_command(subparsers, "list", ModelZooListCommand)
         _register_command(subparsers, "find", ModelZooFindCommand)
         _register_command(subparsers, "info", ModelZooInfoCommand)
+        _register_command(
+            subparsers, "requirements", ModelZooRequirementsCommand
+        )
         _register_command(subparsers, "download", ModelZooDownloadCommand)
         _register_command(subparsers, "delete", ModelZooDeleteCommand)
 
@@ -1612,6 +1615,90 @@ class ModelZooInfoCommand(Command):
         else:
             model_path = fozm.find_zoo_model(name, models_dir=models_dir)
             print(model_path)
+
+
+class ModelZooRequirementsCommand(Command):
+    """Handles package requirements for zoo models.
+
+    Examples::
+
+        # Print requirements for a zoo model
+        fiftyone model-zoo requirements <name> --print
+
+        # Install any requirements for the zoo model
+        fiftyone model-zoo requirements <name> --install
+
+        # Ensures that the requirements for the zoo model are satisfied
+        fiftyone model-zoo requirements <name> --ensure
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the model"
+        )
+        parser.add_argument(
+            "-p",
+            "--print",
+            action="store_true",
+            help="print the requirements for the zoo model",
+        )
+        parser.add_argument(
+            "-i",
+            "--install",
+            action="store_true",
+            help="install any requirements for the zoo model",
+        )
+        parser.add_argument(
+            "-e",
+            "--ensure",
+            action="store_true",
+            help="ensure the requirements for the zoo model are satisfied",
+        )
+        parser.add_argument(
+            "--error-level",
+            metavar="LEVEL",
+            default=0,
+            type=int,
+            help=(
+                "the error level in {0, 1, 2} to use when installing or "
+                "ensuring model requirements"
+            ),
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        error_level = args.error_level
+
+        if args.print or (not args.install and not args.ensure):
+            zoo_model = fozm.get_zoo_model(name)
+            _print_model_requirements(zoo_model)
+
+        if args.install:
+            fozm.install_zoo_model_requirements(name, error_level=error_level)
+
+        if args.ensure:
+            fozm.ensure_zoo_model_requirements(name, error_level=error_level)
+
+
+def _print_model_requirements(zoo_model):
+    requirements = zoo_model.requirements
+    if requirements is None:
+        return
+
+    # Model requirements
+    print("***** Model requirements *****")
+    print(requirements)
+
+    # Current machine specs
+    print("\n***** Current machine *****")
+    if etau.has_gpu():
+        print("GPU: yes")
+        print("CUDA version: %s" % etau.get_cuda_version())
+        print("cuDNN version: %s" % etau.get_cudnn_version())
+    else:
+        print("GPU: no")
 
 
 class ModelZooDownloadCommand(Command):

@@ -108,6 +108,43 @@ def download_zoo_model(name, models_dir=None, overwrite=False):
     return model, model_path
 
 
+def install_zoo_model_requirements(name, error_level=0):
+    """Installs any package requirements for the zoo model with the given name.
+
+    Args:
+        name: the name of the zoo model to download, which can have ``@<ver>``
+            appended to refer to a specific version of the model. If no version
+            is specified, the latest version of the model is downloaded. Call
+            :func:`list_zoo_models` to see the available models
+        error_level: the error level to use, defined as:
+
+            0: raise error if a requirement install fails
+            1: log warning if a requirement install fails
+            2: ignore install fails
+    """
+    model = _get_model(name)
+    model.install_requirements(error_level=error_level)
+
+
+def ensure_zoo_model_requirements(name, error_level=0):
+    """Ensures that the package requirements for the zoo model with the given
+    name are satisfied.
+
+    Args:
+        name: the name of the zoo model to download, which can have ``@<ver>``
+            appended to refer to a specific version of the model. If no version
+            is specified, the latest version of the model is downloaded. Call
+            :func:`list_zoo_models` to see the available models
+        error_level: the error level to use, defined as:
+
+            0: raise error if a requirement is not satisfied
+            1: log warning if a requirement is not satisifed
+            2: ignore unsatisifed requirements
+    """
+    model = _get_model(name)
+    model.ensure_requirements(error_level=error_level)
+
+
 def load_zoo_model(
     name,
     models_dir=None,
