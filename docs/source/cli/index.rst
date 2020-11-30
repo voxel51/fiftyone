@@ -788,7 +788,7 @@ Connect to a remote FiftyOne App.
       -p PORT, --port PORT  the remote port to connect to
       -l PORT, --local-port PORT
                             the local port to use to serve the App
-      -i KEY, --ssh-key KEY an optional ssh key used to login 
+      -i KEY, --ssh-key KEY an optional ssh key used to login
 
 **Examples**
 
@@ -974,7 +974,7 @@ Download datasets from the FiftyOne Dataset Zoo.
 
 .. code-block:: shell
 
-    # Download to the zoo dataset to a custom directory
+    # Download the zoo dataset to a custom directory
     fiftyone zoo download <name> --dataset-dir <dataset-dir>
 
 .. _cli-fiftyone-zoo-load:
@@ -1040,8 +1040,8 @@ Load zoo datasets as persistent FiftyOne datasets.
 
 .. _cli-fiftyone-zoo-delete:
 
-Delete zoo datasets on disk
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Delete zoo datasets
+~~~~~~~~~~~~~~~~~~~
 
 Deletes the local copy of the zoo dataset on disk.
 
@@ -1072,3 +1072,227 @@ Deletes the local copy of the zoo dataset on disk.
 
     # Delete a specific split of a zoo dataset from disk
     fiftyone zoo delete <name> --split <split>
+
+.. _cli-fiftyone-model-zoo:
+
+FiftyOne Model Zoo
+------------------
+
+Tools for working with the FiftyOne Model Zoo.
+
+.. code-block:: text
+
+    fiftyone model-zoo [-h] [--all-help]
+                       {list,find,info,requirements,download,delete} ...
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --all-help            show help recurisvely and exit
+
+    available commands:
+      {list,find,info,requirements,download,delete}
+        list                List datasets in the FiftyOne Model Zoo.
+        find                Locate the downloaded zoo model on disk.
+        info                Print information about models in the FiftyOne Model Zoo.
+        requirements        Handles package requirements for zoo models.
+        download            Download zoo models.
+        delete              Deletes the local copy of the zoo model on disk.
+
+.. _cli-fiftyone-model-zoo-list:
+
+List models in zoo
+~~~~~~~~~~~~~~~~~~
+
+List datasets in the FiftyOne Model Zoo.
+
+.. code-block:: text
+
+    fiftyone model-zoo list [-h] [-d MODELS_DIR]
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -d MODELS_DIR, --models-dir MODELS_DIR
+                            a custom directory to which to search for downloaded models
+
+**Examples**
+
+.. code-block:: shell
+
+    # List available models
+    fiftyone model-zoo list
+
+.. _cli-fiftyone-model-zoo-find:
+
+Find zoo models on disk
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Locate the downloaded zoo model on disk.
+
+.. code-block:: text
+
+    fiftyone model-zoo find [-h] [-d MODELS_DIR] NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                  the name of the model
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -d MODELS_DIR, --models-dir MODELS_DIR
+                            a custom directory to which to search for downloaded models
+
+**Examples**
+
+.. code-block:: shell
+
+    # Print the location of the downloaded zoo model on disk
+    fiftyone model-zoo find <name>
+
+.. _cli-fiftyone-model-zoo-info:
+
+Show zoo model info
+~~~~~~~~~~~~~~~~~~~
+
+Print information about models in the FiftyOne Model Zoo.
+
+.. code-block:: text
+
+    fiftyone model-zoo info [-h] [-d MODELS_DIR] NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                  the name of the model
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -d MODELS_DIR, --models-dir MODELS_DIR
+                            a custom directory to which to search for downloaded models
+
+**Examples**
+
+.. code-block:: shell
+
+    # Print information about a zoo model
+    fiftyone model-zoo info <name>
+
+.. _cli-fiftyone-model-zoo-requirements:
+
+Zoo model requirements
+~~~~~~~~~~~~~~~~~~~~~~
+
+Handles package requirements for zoo models.
+
+.. code-block:: text
+
+    fiftyone model-zoo requirements [-h] [-p] [-i] [-e]
+                                    [--error-level LEVEL]
+                                    NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                 the name of the model
+
+    optional arguments:
+      -h, --help           show this help message and exit
+      -p, --print          print the requirements for the zoo model
+      -i, --install        install any requirements for the zoo model
+      -e, --ensure         ensure the requirements for the zoo model are satisfied
+      --error-level LEVEL  the error level in {0, 1, 2} to use when installing or ensuring model requirements
+
+**Examples**
+
+.. code-block:: shell
+
+    # Print requirements for a zoo model
+    fiftyone model-zoo requirements <name> --print
+
+.. code-block:: shell
+
+    # Install any requirements for the zoo model
+    fiftyone model-zoo requirements <name> --install
+
+.. code-block:: shell
+
+    # Ensures that the requirements for the zoo model are satisfied
+    fiftyone model-zoo requirements <name> --ensure
+
+.. _cli-fiftyone-model-zoo-download:
+
+Download zoo models
+~~~~~~~~~~~~~~~~~~~
+
+Download zoo models.
+
+.. code-block:: text
+
+    fiftyone model-zoo download [-h] [-f] [-d MODELS_DIR] NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                  the name of the zoo model
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -f, --force           whether to force download the model if it is already downloaded
+      -d MODELS_DIR, --models-dir MODELS_DIR
+                            a custom directory to which to download the model
+
+**Examples**
+
+.. code-block:: shell
+
+    # Download the zoo model
+    fiftyone model-zoo download <name>
+
+.. code-block:: shell
+
+    # Download the zoo model to a custom directory
+    fiftyone model-zoo download <name> --models-dir <models-dir>
+
+.. _cli-fiftyone-model-zoo-delete:
+
+Delete zoo models
+~~~~~~~~~~~~~~~~~
+
+Deletes the local copy of the zoo model on disk.
+
+.. code-block:: text
+
+    fiftyone model-zoo delete [-h] NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME        the name of the model
+
+    optional arguments:
+      -h, --help  show this help message and exit
+
+**Examples**
+
+.. code-block:: shell
+
+    # Delete the zoo model from disk
+    fiftyone model-zoo delete <name>
