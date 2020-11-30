@@ -16,10 +16,10 @@ FiftyOne supports the configuration options described below:
 | Config field           | Environment variable            | Default value           | Description                                                                            |
 +========================+=================================+=========================+========================================================================================+
 | `dataset_zoo_dir`      | `FIFTYONE_DATASET_ZOO_DIR`      | `~/fiftyone`            | The default directory in which to store datasets that are downloaded from the          |
-|                        |                                 |                         | :doc:`FiftyOne Dataset Zoo </user_guide/dataset_creation/zoo>`.                        |
+|                        |                                 |                         | :ref:`FiftyOne Dataset Zoo <dataset-zoo>`.                                             |
 +------------------------+---------------------------------+-------------------------+----------------------------------------------------------------------------------------+
 | `model_zoo_dir`        | `FIFTYONE_MODEL_ZOO_DIR`        | `~/fiftyone/__models__` | The default directory in which to store models that are downloaded from the            |
-|                        |                                 |                         | :doc:`FiftyOne Model Zoo </user_guide/XXXXXXX>`.                                       |
+|                        |                                 |                         | :ref:`FiftyOne Model Zoo <model-zoo>`.                                                 |
 +------------------------+---------------------------------+-------------------------+----------------------------------------------------------------------------------------+
 | `default_dataset_dir`  | `FIFTYONE_DEFAULT_DATASET_DIR`  | `~/fiftyone`            | The default directory to use when performing FiftyOne operations that                  |
 |                        |                                 |                         | require writing dataset contents to disk, such as ingesting datasets via               |

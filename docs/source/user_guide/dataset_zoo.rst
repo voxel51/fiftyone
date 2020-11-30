@@ -81,6 +81,7 @@ Listing zoo datasets
     .. code-block:: text
 
         {
+            ...
             'cifar10': (
                 '~/fiftyone/cifar10',
                 <fiftyone.zoo.ZooDatasetInfo object at 0x141a63048>,
@@ -485,6 +486,32 @@ of your :doc:`FiftyOne config </user_guide/config>`.
             import fiftyone.core.config as foc
 
             foc.set_config_settings(dataset_zoo_dir="/your/custom/directory")
+
+Deleting zoo datasets
+---------------------
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    You can delete the local copy of a zoo dataset (or individual split(s) of
+    them) via :meth:`delete_zoo_dataset() <fiftyone.zoo.delete_zoo_dataset>`:
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone.zoo as foz
+
+        foz.delete_zoo_dataset("cifar10", split="test")
+
+  .. group-tab:: CLI
+
+    You can delete the local copy of a zoo dataset (or individual split(s) of
+    them) via the :ref:`fiftyone zoo delete <cli-fiftyone-zoo-delete>` command:
+
+    .. code-block:: text
+
+        $ fiftyone zoo delete cifar10 --splits test
 
 .. _zoo-customizing-your-ml-backend:
 
