@@ -1,13 +1,9 @@
 {
     "compilerOptions": {
         "module": "commonjs",
-        "noImplicitAny": true,
+        "noImplicitAny": false,
         "sourceMap": true,
-        "outDir": "dist",
-        "baseUrl": ".",
-        "paths": {
-            "*": ["node_modules/*"]
-        }
+        "outDir": "dist"
     },
-    "include": ["*.ts"]
+    "exclude": ["src", "node_modules", "internals", "dist", "build", "player51"]
 }
