@@ -1,0 +1,13 @@
+diff --git a/package.json b/package.json
+index 4673bb311f1317d85dccfa1575d27c5316d948f3..d24eaf0724de38e5a34bb39f607a3e49f2584e8f 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,7 @@
+   "name": "recharts-scale",
+   "version": "0.4.3",
+   "description": "Scale of Cartesian Coordinates",
+-  "main": "lib/index",
++  "main": "src/index",
+   "jsnext:main": "es6/index",
+   "keywords": [
+     "Scale",

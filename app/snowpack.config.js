@@ -7,7 +7,6 @@ module.exports = {
   plugins: [
     "@snowpack/plugin-react-refresh",
     "@snowpack/plugin-dotenv",
-    "@snowpack/plugin-typescript",
     "snowpack-plugin-mdx",
     [
       "snowpack-plugin-replace",
@@ -21,20 +20,18 @@ module.exports = {
       },
     ],
   ],
-  exclude: [
-    "**/node_modules/**/*",
-    "**/*.@(spec|test|stories).@(ts|tsx)",
-    "player51/",
-  ],
+  exclude: ["**/*.@(test|stories).@(ts|tsx)", "player51/"],
   install: [
     /* ... */
   ],
   installOptions: {
-    namedExports: ["recharts", "recharts-scale", "decimal.js-light"],
     polyfillNode: true,
+    rollup: {
+      plugins: [require("rollup-plugin-pnp-resolve")()],
+    },
   },
   devOptions: {
-    hmrErrorOverlay: false,
+    hmrErrorOverlay: true,
   },
   buildOptions: {
     /* ... */
