@@ -21,6 +21,10 @@ html_escape = html.escape
 del html
 logger = logging.getLogger(__name__)
 
+_CONTEXT_COLAB = "_CONTEXT_COLAB"
+_CONTEXT_IPYTHON = "_CONTEXT_IPYTHON"
+_CONTEXT_NONE = "_CONTEXT_NONE"
+
 #
 # Session globals
 #
@@ -39,7 +43,7 @@ _server_services = {}
 _subscribed_sessions = defaultdict(set)
 
 
-def launch_app(dataset=None, view=None, port=5151, remote=False):
+def launch_app(dataset=None, view=None, port=5151):
     """Launches the FiftyOne App.
 
     Only one app instance can be opened at a time. If this method is
@@ -51,7 +55,6 @@ def launch_app(dataset=None, view=None, port=5151, remote=False):
         view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
         port (5151): the port number to use
-        remote (False): whether to launch a remote session
 
     Returns:
         a :class:`Session`
@@ -69,7 +72,7 @@ def launch_app(dataset=None, view=None, port=5151, remote=False):
     #
     close_app()
 
-    _session = Session(dataset=dataset, view=view, port=port, remote=remote)
+    _session = Session(dataset=dataset, view=view, port=port)
 
     return _session
 
@@ -130,17 +133,15 @@ class Session(foc.HasClient):
         view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
         port (5151): the port number to use
-        remote (False): whether this is a remote session. Remote sessions do
-            not launch the FiftyOne App
     """
 
     _HC_NAMESPACE = "state"
     _HC_ATTR_NAME = "state"
     _HC_ATTR_TYPE = StateDescription
 
-    def __init__(self, dataset=None, view=None, port=5151, remote=False):
+    def __init__(self, dataset=None, view=None, port=5151, app=False):
         self._port = port
-        self._remote = remote
+        self._context = _get_context()
         # maintain a reference to prevent garbage collection
         self._get_time = time.perf_counter
         self._WAIT_INSTRUCTIONS = _WAIT_INSTRUCTIONS
@@ -159,15 +160,21 @@ class Session(foc.HasClient):
         elif dataset is not None:
             self.dataset = dataset
 
-        if not self._remote:
+        if self._app and self._context == _CONTEXT_NONE:
             self._app_service = fos.AppService(server_port=port)
             logger.info("App launched")
-        else:
-            logger.info(
-                _REMOTE_INSTRUCTIONS.strip()
-                % (self.server_port, self.server_port, self.server_port)
-            )
+            return
+        elif self._app and self._context != _CONTEXT_NONE:
+            raise ValueError("App cannot be used in notebooks")
+
+        display(port=port)
         self._start_time = self._get_time()
+
+    def __repr__(self):
+        if self._context == _CONTEXT_NONE:
+            print("Summary...todo")
+        else:
+            display(self._port)
 
     def __del__(self):
         """Deletes the Session by removing it from the `_subscribed_sessions`
@@ -326,33 +333,11 @@ class Session(foc.HasClient):
         self.state = self.state
 
 
-_REMOTE_INSTRUCTIONS = """
-You have launched a remote app on port %d. To connect to this app
-from another machine, issue the following command:
-
-fiftyone app connect --destination [<username>@]<hostname> --port %d
-
-where `[<username>@]<hostname>` refers to your current machine. Alternatively,
-you can manually configure port forwarding on another machine as follows:
-
-ssh -N -L 5151:127.0.0.1:%d [<username>@]<hostname>
-
-and then connect to the app on that machine using either
-`fiftyone app connect` or from Python via `fiftyone.launch_app()`.
-"""
-
 _WAIT_INSTRUCTIONS = """
 A session appears to have terminated shortly after it was started. If you
 intended to start an app instance or a remote session from a script, you
 should call `session.wait()` to keep the session (and the script) alive.
 """
-
-
-# Return values for `_get_context` (see that function's docs for
-# details).
-_CONTEXT_COLAB = "_CONTEXT_COLAB"
-_CONTEXT_IPYTHON = "_CONTEXT_IPYTHON"
-_CONTEXT_NONE = "_CONTEXT_NONE"
 
 
 def _get_context():

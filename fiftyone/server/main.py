@@ -771,6 +771,10 @@ class Application(tornado.web.Application):
 
     def __init__(self, **settings):
         static_path = "C:/" if os.name == "nt" else "/"
+        web_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "../../app/build"
+        )
+
         handlers = [
             (r"/fiftyone", FiftyOneHandler),
             (
@@ -780,6 +784,11 @@ class Application(tornado.web.Application):
             ),
             (r"/stages", StagesHandler),
             (r"/state", StateHandler),
+            (
+                r"/(.*)",
+                tornado.web.StaticFileHandler,
+                {"path": web_path, "default_filename": "index.html"},
+            ),
         ]
         db = foo.get_async_db_conn()
         super().__init__(handlers, db=db, **settings)

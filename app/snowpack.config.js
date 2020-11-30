@@ -33,9 +33,7 @@ module.exports = {
   devOptions: {
     hmrErrorOverlay: true,
   },
-  buildOptions: {
-    /* ... */
-  },
+  buildOptions: {},
   proxy: {
     /* ... */
   },

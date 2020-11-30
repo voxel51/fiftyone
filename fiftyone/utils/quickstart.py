@@ -9,7 +9,7 @@ import fiftyone.core.session as fos
 import fiftyone.zoo as foz
 
 
-def quickstart(interactive=True, video=False, port=5151, remote=False):
+def quickstart(interactive=True, video=False, port=5151):
     """Runs the FiftyOne quickstart.
 
     This method loads an interesting dataset from the Dataset Zoo, launches the
@@ -20,7 +20,6 @@ def quickstart(interactive=True, video=False, port=5151, remote=False):
             return a session
         video (False): whether to launch a video dataset
         port (5151): the port number to serve the App
-        remote (False): whether to launch a remote session
 
     Returns:
         If ``interactive`` is ``True``, a tuple is returned containing:
@@ -32,14 +31,14 @@ def quickstart(interactive=True, video=False, port=5151, remote=False):
         If ``interactive`` is ``False``, ``None`` is returned
     """
     if video:
-        return _video_quickstart(interactive, port, remote)
+        return _video_quickstart(interactive, port)
     else:
-        return _quickstart(interactive, port, remote)
+        return _quickstart(interactive, port)
 
 
-def _quickstart(interactive, port, remote):
+def _quickstart(interactive, port):
     dataset = foz.load_zoo_dataset("quickstart")
-    session = fos.launch_app(dataset=dataset, port=port, remote=remote)
+    session = fos.launch_app(dataset=dataset, port=port)
 
     # @todo improve readability of stdout when launching remote sessions
 
@@ -52,9 +51,9 @@ def _quickstart(interactive, port, remote):
     return None
 
 
-def _video_quickstart(interactive, port, remote):
+def _video_quickstart(interactive, port):
     dataset = foz.load_zoo_dataset("quickstart-video")
-    session = fos.launch_app(dataset=dataset, port=port, remote=remote)
+    session = fos.launch_app(dataset=dataset, port=port)
 
     # @todo improve readability of stdout when launching remote sessions
 
