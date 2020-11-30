@@ -11,7 +11,6 @@ import os
 
 import eta.core.learning as etal
 import eta.core.models as etam
-import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.models as fom
@@ -100,7 +99,12 @@ def download_zoo_model(name, models_dir=None, overwrite=False):
         -   model_path: the path to the downloaded model on disk
     """
     model, model_path = _get_model_in_dir(name, models_dir)
-    model.manager.download_model(model_path, force=overwrite)
+
+    if not overwrite and is_zoo_model_downloaded(name, models_dir=models_dir):
+        logger.info("Model '%s' is already downloaded", name)
+    else:
+        model.manager.download_model(model_path, force=overwrite)
+
     return model, model_path
 
 
@@ -184,8 +188,8 @@ def find_zoo_model(name, models_dir=None):
     Raises:
         ValueError: if the model does not exist or has not been downloaded
     """
-    _, model_path = _get_model_in_dir(name, models_dir)
-    if not os.path.isfile(model_path):
+    model, model_path = _get_model_in_dir(name, models_dir)
+    if not model.is_model_downloaded(model_path):
         raise ValueError("Model '%s' is not downloaded" % name)
 
     return model_path
@@ -214,9 +218,8 @@ def delete_zoo_model(name, models_dir=None):
         models_dir (None): the directory in which the model is stored. By
             default, ``fiftyone.config.model_zoo_dir`` is used
     """
-    _, model_path = _get_model_in_dir(name, models_dir)
-    if os.path.isfile(model_path):
-        etau.delete_file(model_path)
+    model, model_path = _get_model_in_dir(name, models_dir)
+    model.flush_model(model_path)
 
 
 def delete_old_zoo_models(models_dir=None):
@@ -249,8 +252,8 @@ def delete_old_zoo_models(models_dir=None):
                 num_to_flush,
                 base_name,
             )
-            for _, model_path in reversed(models_list[1:]):
-                etau.delete_file(model_path)
+            for model, model_path in reversed(models_list[1:]):
+                model.flush_model(model_path)
 
 
 class HasZooModel(etal.HasPublishedModel):

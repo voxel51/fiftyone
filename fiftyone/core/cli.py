@@ -27,6 +27,7 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 import fiftyone.utils.quickstart as fouq
 import fiftyone.zoo as foz
+import fiftyone.zoo.models as fozm
 
 
 _TABLE_FORMAT = "simple"
@@ -75,6 +76,7 @@ class FiftyOneCommand(Command):
         _register_command(subparsers, "datasets", DatasetsCommand)
         _register_command(subparsers, "app", AppCommand)
         _register_command(subparsers, "zoo", ZooCommand)
+        _register_command(subparsers, "model-zoo", ModelZooCommand)
 
     @staticmethod
     def execute(parser, args):
@@ -1139,10 +1141,6 @@ class ZooListCommand(Command):
 
         # List available datasets
         fiftyone zoo list
-
-        # List available datasets, using the specified base directory to search
-        # for downloaded datasets
-        fiftyone zoo list --base-dir <base-dir>
     """
 
     @staticmethod
@@ -1335,7 +1333,7 @@ class ZooDownloadCommand(Command):
         # Download the specified split(s) of the zoo dataset
         fiftyone zoo download <name> --splits <split1> ...
 
-        # Download to the zoo dataset to a custom directory
+        # Download the zoo dataset to a custom directory
         fiftyone zoo download <name> --dataset-dir <dataset-dir>
     """
 
@@ -1481,6 +1479,201 @@ class ZooDeleteCommand(Command):
         name = args.name
         split = args.split
         foz.delete_zoo_dataset(name, split=split)
+
+
+class ModelZooCommand(Command):
+    """Tools for working with the FiftyOne Model Zoo."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "list", ModelZooListCommand)
+        _register_command(subparsers, "find", ModelZooFindCommand)
+        _register_command(subparsers, "info", ModelZooInfoCommand)
+        _register_command(subparsers, "download", ModelZooDownloadCommand)
+        _register_command(subparsers, "delete", ModelZooDeleteCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class ModelZooListCommand(Command):
+    """List datasets in the FiftyOne Model Zoo.
+
+    Examples::
+
+        # List available models
+        fiftyone model-zoo list
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-d",
+            "--models-dir",
+            metavar="MODELS_DIR",
+            help="a custom directory to which to search for downloaded models",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        models_dir = args.models_dir
+
+        all_models = fozm.list_zoo_models()
+        downloaded_models = fozm.list_downloaded_zoo_models(
+            models_dir=models_dir
+        )
+
+        _print_zoo_models_list(downloaded_models, all_models)
+
+
+def _print_zoo_models_list(downloaded_models, all_models):
+    records = []
+    for name in sorted(all_models):
+        if name in downloaded_models:
+            is_downloaded = "\u2713"
+            model_path = downloaded_models[name][0]
+        else:
+            is_downloaded = ""
+            model_path = ""
+
+        records.append((name, is_downloaded, model_path))
+
+    headers = ["name", "downloaded", "model_path"]
+    table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
+    print(table_str)
+
+
+class ModelZooFindCommand(Command):
+    """Locate the downloaded zoo model on disk.
+
+    Examples::
+
+        # Print the location of the downloaded zoo model on disk
+        fiftyone model-zoo find <name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the model"
+        )
+        parser.add_argument(
+            "-d",
+            "--models-dir",
+            metavar="MODELS_DIR",
+            help="a custom directory to which to search for downloaded models",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        models_dir = args.models_dir
+
+        model_path = fozm.find_zoo_model(name, models_dir=models_dir)
+        print(model_path)
+
+
+class ModelZooInfoCommand(Command):
+    """Print information about models in the FiftyOne Model Zoo.
+
+    Examples::
+
+        # Print information about a zoo model
+        fiftyone model-zoo info <name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the model"
+        )
+        parser.add_argument(
+            "-d",
+            "--models-dir",
+            metavar="MODELS_DIR",
+            help="a custom directory to which to search for downloaded models",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        models_dir = args.models_dir
+
+        # Print model info
+        zoo_model = fozm.get_zoo_model(name)
+        print("***** Model description *****\n%s\n" % str(zoo_model))
+
+        # Check if model is downloaded
+        print("***** Model location *****")
+        if not fozm.is_zoo_model_downloaded(name, models_dir=models_dir):
+            print("Model '%s' is not downloaded" % name)
+        else:
+            model_path = fozm.find_zoo_model(name, models_dir=models_dir)
+            print(model_path)
+
+
+class ModelZooDownloadCommand(Command):
+    """Download zoo models.
+
+    Examples::
+
+        # Download the zoo model
+        fiftyone model-zoo download <name>
+
+        # Download the zoo model to a custom directory
+        fiftyone model-zoo download <name> --models-dir <models-dir>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the zoo model"
+        )
+        parser.add_argument(
+            "-f",
+            "--force",
+            action="store_true",
+            help=(
+                "whether to force download the model if it is already "
+                "downloaded"
+            ),
+        )
+        parser.add_argument(
+            "-d",
+            "--models-dir",
+            metavar="MODELS_DIR",
+            help="a custom directory to which to download the model",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        force = args.force
+        models_dir = args.models_dir
+        fozm.download_zoo_model(name, models_dir=models_dir, overwrite=force)
+
+
+class ModelZooDeleteCommand(Command):
+    """Deletes the local copy of the zoo model on disk.
+
+    Examples::
+
+        # Delete the zoo model from disk
+        fiftyone model-zoo delete <name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the model"
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        fozm.delete_zoo_model(name)
 
 
 def _parse_dataset_import_kwargs(args):

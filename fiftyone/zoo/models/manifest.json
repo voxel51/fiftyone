@@ -22,20 +22,22 @@
             "date_created": "2018-06-23T23:17:26"
         },
         {
-            "base_name": "efficientdet-d0",
-            "base_filename": "efficientdet-d0.tar",
+            "base_name": "efficientdet-d0-coco",
+            "base_filename": "efficientdet-d0-coco.tar",
             "version": null,
-            "description": "EfficientDet-D0 model trained on COCO. Source: https://github.com/google/automl/tree/master/efficientdet",
+            "description": "EfficientDet-D0 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet",
             "manager": {
                 "type": "eta.core.models.ETAModelManager",
                 "config": {
-                    "google_drive_id": "1mDclIDAMmJzfh7UKe-oBN72XdtwnDC2N"
+                    "google_drive_id": "1mDclIDAMmJzfh7UKe-oBN72XdtwnDC2N",
+                    "extract_archive": true,
+                    "delete_archive": true
                 }
             },
             "default_deployment_config_dict": {
                 "type": "eta.detectors.EfficientDet",
                 "config": {
-                    "model_name": "efficientdet-d0",
+                    "model_name": "efficientdet-d0-coco",
                     "architecture_name": "efficientdet-d0",
                     "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
                 }
@@ -43,20 +45,22 @@
             "date_created": "2020-03-22 21:44:00"
         },
         {
-            "base_name": "efficientdet-d1",
-            "base_filename": "efficientdet-d1.tar",
+            "base_name": "efficientdet-d1-coco",
+            "base_filename": "efficientdet-d1-coco.tar",
             "version": null,
-            "description": "EfficientDet-D1 model trained on COCO. Source: https://github.com/google/automl/tree/master/efficientdet",
+            "description": "EfficientDet-D1 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet",
             "manager": {
                 "type": "eta.core.models.ETAModelManager",
                 "config": {
-                    "google_drive_id": "1_IkkEDwPe9SkYbeiuP-ZTOZB9P39Ihm5"
+                    "google_drive_id": "1_IkkEDwPe9SkYbeiuP-ZTOZB9P39Ihm5",
+                    "extract_archive": true,
+                    "delete_archive": true
                 }
             },
             "default_deployment_config_dict": {
                 "type": "eta.detectors.EfficientDet",
                 "config": {
-                    "model_name": "efficientdet-d1",
+                    "model_name": "efficientdet-d1-coco",
                     "architecture_name": "efficientdet-d1",
                     "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
                 }
@@ -64,20 +68,22 @@
             "date_created": "2020-03-22 21:44:00"
         },
         {
-            "base_name": "efficientdet-d2",
-            "base_filename": "efficientdet-d2.tar",
+            "base_name": "efficientdet-d2-coco",
+            "base_filename": "efficientdet-d2-coco.tar",
             "version": null,
-            "description": "EfficientDet-D2 model trained on COCO. Source: https://github.com/google/automl/tree/master/efficientdet",
+            "description": "EfficientDet-D2 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet",
             "manager": {
                 "type": "eta.core.models.ETAModelManager",
                 "config": {
-                    "google_drive_id": "1hgEPV1nzwtOb-lfE3bODmvbG7wmWv_Ve"
+                    "google_drive_id": "1hgEPV1nzwtOb-lfE3bODmvbG7wmWv_Ve",
+                    "extract_archive": true,
+                    "delete_archive": true
                 }
             },
             "default_deployment_config_dict": {
                 "type": "eta.detectors.EfficientDet",
                 "config": {
-                    "model_name": "efficientdet-d2",
+                    "model_name": "efficientdet-d2-coco",
                     "architecture_name": "efficientdet-d2",
                     "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
                 }
@@ -85,20 +91,22 @@
             "date_created": "2020-03-22 21:44:00"
         },
         {
-            "base_name": "efficientdet-d3",
-            "base_filename": "efficientdet-d3.tar",
+            "base_name": "efficientdet-d3-coco",
+            "base_filename": "efficientdet-d3-coco.tar",
             "version": null,
-            "description": "EfficientDet-D3 model trained on COCO. Source: https://github.com/google/automl/tree/master/efficientdet",
+            "description": "EfficientDet-D3 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet",
             "manager": {
                 "type": "eta.core.models.ETAModelManager",
                 "config": {
-                    "google_drive_id": "1OKPbwZ2KMH33KRQhCERPkqT8gTVM2c4h"
+                    "google_drive_id": "1OKPbwZ2KMH33KRQhCERPkqT8gTVM2c4h",
+                    "extract_archive": true,
+                    "delete_archive": true
                 }
             },
             "default_deployment_config_dict": {
                 "type": "eta.detectors.EfficientDet",
                 "config": {
-                    "model_name": "efficientdet-d3",
+                    "model_name": "efficientdet-d3-coco",
                     "architecture_name": "efficientdet-d3",
                     "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
                 }
@@ -106,20 +114,22 @@
             "date_created": "2020-03-22 21:44:00"
         },
         {
-            "base_name": "efficientdet-d4",
-            "base_filename": "efficientdet-d4.tar",
+            "base_name": "efficientdet-d4-coco",
+            "base_filename": "efficientdet-d4-coco.tar",
             "version": null,
-            "description": "EfficientDet-D4 model trained on COCO. Source: https://github.com/google/automl/tree/master/efficientdet",
+            "description": "EfficientDet-D4 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet",
             "manager": {
                 "type": "eta.core.models.ETAModelManager",
                 "config": {
-                    "google_drive_id": "1FO2WwtubQ0I6giHKHSutI-C628JpQM71"
+                    "google_drive_id": "1FO2WwtubQ0I6giHKHSutI-C628JpQM71",
+                    "extract_archive": true,
+                    "delete_archive": true
                 }
             },
             "default_deployment_config_dict": {
                 "type": "eta.detectors.EfficientDet",
                 "config": {
-                    "model_name": "efficientdet-d4",
+                    "model_name": "efficientdet-d4-coco",
                     "architecture_name": "efficientdet-d4",
                     "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
                 }
@@ -127,20 +137,22 @@
             "date_created": "2020-03-22 21:44:00"
         },
         {
-            "base_name": "efficientdet-d5",
-            "base_filename": "efficientdet-d5.tar",
+            "base_name": "efficientdet-d5-coco",
+            "base_filename": "efficientdet-d5-coco.tar",
             "version": null,
-            "description": "EfficientDet-D5 model trained on COCO. Source: https://github.com/google/automl/tree/master/efficientdet",
+            "description": "EfficientDet-D5 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet",
             "manager": {
                 "type": "eta.core.models.ETAModelManager",
                 "config": {
-                    "google_drive_id": "1xErF-ZrQi_5Z51l2drXoYzR-JoFhkiB1"
+                    "google_drive_id": "1xErF-ZrQi_5Z51l2drXoYzR-JoFhkiB1",
+                    "extract_archive": true,
+                    "delete_archive": true
                 }
             },
             "default_deployment_config_dict": {
                 "type": "eta.detectors.EfficientDet",
                 "config": {
-                    "model_name": "efficientdet-d5",
+                    "model_name": "efficientdet-d5-coco",
                     "architecture_name": "efficientdet-d5",
                     "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
                 }
@@ -148,20 +160,22 @@
             "date_created": "2020-03-22 21:44:00"
         },
         {
-            "base_name": "efficientdet-d6",
-            "base_filename": "efficientdet-d6.tar",
+            "base_name": "efficientdet-d6-coco",
+            "base_filename": "efficientdet-d6-coco.tar",
             "version": null,
-            "description": "EfficientDet-D6 model trained on COCO. Source: https://github.com/google/automl/tree/master/efficientdet",
+            "description": "EfficientDet-D6 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet",
             "manager": {
                 "type": "eta.core.models.ETAModelManager",
                 "config": {
-                    "google_drive_id": "1gaGhnZuPdWKsn8IH0dVUXiLYUsqRaZ1a"
+                    "google_drive_id": "1gaGhnZuPdWKsn8IH0dVUXiLYUsqRaZ1a",
+                    "extract_archive": true,
+                    "delete_archive": true
                 }
             },
             "default_deployment_config_dict": {
                 "type": "eta.detectors.EfficientDet",
                 "config": {
-                    "model_name": "efficientdet-d6",
+                    "model_name": "efficientdet-d6-coco",
                     "architecture_name": "efficientdet-d6",
                     "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
                 }
