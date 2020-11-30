@@ -65,7 +65,11 @@ function Dataset(props) {
   const frameLabelTuples = useRecoilValue(selectors.labelTuples("frame"));
   const tagNames = useRecoilValue(selectors.tagNames);
   const setExtendedDatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
+  const setExtendedDatasetStatsLoading = useSetRecoilState(
+    atoms.extendedDatasetStatsLoading
+  );
   const setDatasetStats = useSetRecoilState(atoms.datasetStats);
+  const setDatasetStatsLoading = useSetRecoilState(atoms.datasetStatsLoading);
   const [activeLabels, setActiveLabels] = useRecoilState(
     atoms.activeLabels("sample")
   );
@@ -74,10 +78,17 @@ function Dataset(props) {
   );
   const activeOther = useRecoilValue(atoms.activeOther("sample"));
   const activeFrameOther = useRecoilValue(atoms.activeOther("frame"));
+  const view = useRecoilValue(selectors.view);
 
   useMessageHandler("statistics", ({ stats, extended }) => {
-    extended && setExtendedDatasetStats(stats);
-    !extended && setDatasetStats(stats);
+    if (extended) {
+      setExtendedDatasetStatsLoading(false);
+      setExtendedDatasetStats(stats);
+    } else {
+      setDatasetStatsLoading(false);
+      setDatasetStats(stats);
+      view.length === 0 && setExtendedDatasetStatsLoading(false);
+    }
   });
   useSendMessage("as_app", {});
 
@@ -102,7 +113,6 @@ function Dataset(props) {
   // are destroyed before they can handle it
   const resetSelectedObjects = useResetRecoilState(atoms.selectedObjects);
   const resetHiddenObjects = useResetRecoilState(atoms.hiddenObjects);
-  const socket = useRecoilValue(selectors.socket);
   const handleHideModal = () => {
     setModal({ visible: false, sample: null });
     resetSelectedObjects();
@@ -217,7 +227,7 @@ function Dataset(props) {
             />
           </Body>
         ) : (
-          <Loading text={"No dataset loaded"} />
+          <Loading text={"No dataset selected"} />
         )}
       </Container>
     </>

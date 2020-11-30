@@ -5,6 +5,7 @@ import tile from "../utils/tile";
 import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
 
+import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { filter } from "lodash";
 
@@ -15,6 +16,7 @@ export default () => {
   const datasetName = useRecoilValue(selectors.datasetName);
   const view = useRecoilValue(selectors.view);
   const [prevView, setPrevView] = useState([]);
+  const refresh = useRecoilValue(atoms.refresh);
 
   const empty = {
     initialized: false,
@@ -45,7 +47,7 @@ export default () => {
 
   useEffect(() => {
     setState(empty);
-  }, [datasetName]);
+  }, [datasetName, refresh]);
 
   useEffect(() => {
     if (!state.loadMore || state.isLoading || !state.hasMore) return;

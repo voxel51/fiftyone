@@ -7,10 +7,8 @@ const Container = styled("div")`
   position: fixed;
   z-index: 10000;
   width: 0 auto;
-  top: ${(props) => (props.top ? "2em" : "unset")};
   bottom: ${(props) => (props.top ? "unset" : "2em")};
   margin: 0 auto;
-  left: 2em;
   right: 2em;
   font-weight: bold;
   display: flex;

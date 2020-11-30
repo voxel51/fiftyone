@@ -12,6 +12,7 @@ import logging
 import random
 import time
 
+import fiftyone.core.dataset as fod
 import fiftyone.core.client as foc
 import fiftyone.core.service as fos
 from fiftyone.core.state import StateDescription
@@ -90,6 +91,7 @@ def close_app():
 def _update_state(func):
     def wrapper(self, *args, **kwargs):
         result = func(self, *args, **kwargs)
+        self.state.datasets = fod.list_datasets()
         self._update_state()
         return result
 
