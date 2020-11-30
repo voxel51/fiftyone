@@ -35,61 +35,10 @@ const makeFilter = (fieldName, range, includeNone, isDefaultRange) => {
 };
 
 const NumericFieldFilter = ({ expanded, entry }) => {
-  const socket = useRecoilValue(selectors.socket);
   const boundsAtom = selectors.numericFieldBounds(entry.path);
-  const rangeAtom = atoms.filterNumericFieldRange(entry.path);
-  const includeNoneAtom = atoms.filterNumericFieldIncludeNone(entry.path);
-  const [includeNone, setIncludeNone] = useRecoilState(includeNoneAtom);
-  const [stateDescription, setStateDescription] = useRecoilState(
-    atoms.stateDescription
-  );
-  const bounds = useRecoilValue(boundsAtom);
-  const [range, setRange] = useRecoilState(rangeAtom);
-  const hasBounds = bounds.every((b) => b !== null);
+  const rangeAtom = selectors.filterNumericFieldRange(entry.path);
+  const includeNoneAtom = selectors.filterNumericFieldIncludeNone(entry.path);
   const [overflow, setOverflow] = useState("hidden");
-  const [localBounds, setLocalBounds] = useState([null, null]);
-  const isDefaultRange = range[0] === bounds[0] && range[1] === bounds[1];
-  const filterStage = useRecoilValue(selectors.filterStage(entry.path));
-
-  useEffect(() => {
-    if (filterStage) return;
-    setIncludeNone(true);
-    setRange(bounds);
-  }, [filterStage]);
-  useEffect(() => {
-    localBounds.some((b, i) => b !== bounds[i]) && setRange(bounds);
-  }, [bounds, localBounds]);
-  useEffect(() => {
-    if (!hasBounds) {
-      return;
-    }
-    setLocalBounds(bounds);
-    if (localBounds.some((b, i) => b !== bounds[i] && b !== null)) {
-      setRange([...bounds]);
-    }
-  }, [bounds]);
-
-  useEffect(() => {
-    const newState = JSON.parse(JSON.stringify(stateDescription));
-    if (range.every((e) => e === null)) return;
-    if (includeNone && isDefaultRange && !(entry.path in newState.filters))
-      return;
-    const filter = makeFilter(entry.name, range, includeNone, isDefaultRange);
-    if (JSON.stringify(filter) === JSON.stringify(newState.filters[entry.path]))
-      return;
-    if (isDefaultRange && includeNone && newState.filters[entry.path]) {
-      delete newState.filters[entry.path];
-    } else {
-      newState.filters[entry.path] = filter;
-    }
-    if (!hasBounds) return;
-    socket.send(
-      packageMessage("update", {
-        state: newState,
-      })
-    );
-    setStateDescription(newState);
-  }, [range, includeNone]);
 
   const [ref, { height }] = useMeasure();
   const props = useSpring({

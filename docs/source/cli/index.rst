@@ -97,7 +97,7 @@ Launch a FiftyOne quickstart.
       -h, --help            show this help message and exit
       -v, --video           launch the quickstart with a video dataset
       -p PORT, --port PORT  the port number to use
-      -r, --remote          whether to launch a remote app session
+      -r, --remote          whether to launch a remote App session
 
 **Examples**
 
@@ -717,7 +717,7 @@ View datasets in the FiftyOne App without persisting them to the database.
       --max-samples MAX_SAMPLES
                             a maximum number of samples to import. By default, all samples are imported
       -p PORT, --port PORT  the port number to use
-      -r, --remote          whether to launch a remote app session
+      -r, --remote          whether to launch a remote App session
 
 **Examples**
 
@@ -733,22 +733,22 @@ View datasets in the FiftyOne App without persisting them to the database.
 
 .. code-block:: shell
 
-    # View a directory of images in the app
+    # View a directory of images in the App
     fiftyone app view --images-dir <images-dir>
 
 .. code-block:: shell
 
-    # View a glob pattern of images in the app
+    # View a glob pattern of images in the App
     fiftyone app view --images-patt <images-patt>
 
 .. code-block:: shell
 
-    # View a directory of videos in the app
+    # View a directory of videos in the App
     fiftyone app view --videos-dir <videos-dir>
 
 .. code-block:: shell
 
-    # View a glob pattern of videos in the app
+    # View a glob pattern of videos in the App
     fiftyone app view --videos-patt <videos-patt>
 
 .. code-block:: shell
@@ -758,7 +758,7 @@ View datasets in the FiftyOne App without persisting them to the database.
 
 .. code-block:: shell
 
-    # View a random subset of the data stored on disk in the app
+    # View a random subset of the data stored on disk in the App
     fiftyone app view ... --shuffle --max-samples <max-samples>
 
 .. code-block:: shell
@@ -786,6 +786,9 @@ Connect to a remote FiftyOne App.
       -d DESTINATION, --destination DESTINATION
                             the destination to connect to, e.g., [username@]hostname
       -p PORT, --port PORT  the remote port to connect to
+      -l PORT, --local-port PORT
+                            the local port to use to serve the App
+      -i KEY, --ssh-key KEY an optional ssh key used to login 
 
 **Examples**
 
@@ -798,6 +801,16 @@ Connect to a remote FiftyOne App.
 
     # Connect to a remote App session
     fiftyone app connect --destination <destination> --port <port>
+
+.. code-block:: shell
+
+   # Connect to a remote App session using an ssh key
+   fiftyone app connect --destination <destination> --port <port> --ssh-key <path/to/key>
+
+.. code-block:: shell
+
+    # Connect to a remote App using a custom local port
+    fiftyone app connect --local-port <port>
 
 .. _cli-fiftyone-zoo:
 

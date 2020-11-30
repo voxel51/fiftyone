@@ -209,8 +209,9 @@ const makeData = (filteredCount, totalCount) => {
     typeof totalCount === "number"
   ) {
     return `${filteredCount.toLocaleString()} of ${totalCount.toLocaleString()}`;
-  }
-  if (typeof totalCount === "number") {
+  } else if (filteredCount === null) {
+    return null;
+  } else if (typeof totalCount === "number") {
     return totalCount.toLocaleString();
   }
   return totalCount;

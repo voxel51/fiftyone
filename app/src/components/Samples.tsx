@@ -90,4 +90,4 @@ function Samples({ setView }) {
   );
 }
 
-export default Samples;
+export default React.memo(Samples);
