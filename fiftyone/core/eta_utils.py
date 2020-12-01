@@ -13,14 +13,145 @@ import numpy as np
 
 import eta.core.data as etad
 import eta.core.frames as etaf
-import eta.core.keypoints as etak
 import eta.core.image as etai
+import eta.core.keypoints as etak
+import eta.core.learning as etal
 import eta.core.objects as etao
 import eta.core.polylines as etap
 import eta.core.utils as etau
 import eta.core.video as etav
 
 import fiftyone.core.labels as fol
+import fiftyone.core.models as fom
+
+
+class ETAModelConfig(fom.ModelConfig):
+    """Meta-config class that encapsulates the configuration of an
+    `eta.core.learning.Model` that is to be run via the :class:`ETAModel`
+    wrapper.
+
+    Example::
+
+        import fiftyone.core.models as fom
+
+        config = fom.ModelConfig({
+            "type": "fiftyone.core.eta_utils.ETAModel",
+            "config": {
+                "type": "eta.detectors.YOLODetector",
+                "config": {
+                    "model_name": "yolo-v2-coco"
+                }
+            }
+        })
+
+        model = config.build()
+
+    Args:
+        type: the fully-qualified class name of the
+            :class:`fiftyone.core.models.Model` subclass, which must be
+            :class:`ETAModel` or a subclass of it
+        config: a dict containing the ``eta.core.learning.ModelConfig`` for the
+            ETA model
+    """
+
+    pass
+
+
+class ETAModel(fom.Model):
+    """Wrapper for running an ``eta.core.learning.Model`` model.
+
+    Args:
+        config: an :class:`ETAModelConfig`
+    """
+
+    def __init__(self, config, _model=None):
+        if _model is None:
+            _model = config.build()  # build the ETA model
+
+        self.config = config
+        self._model = _model
+
+    def __enter__(self):
+        self._model.__enter__()
+        return self
+
+    def __exit__(self, *args):
+        self._model.__exit__(*args)
+
+    def predict(self, arg):
+        if isinstance(self._model, etal.ImageClassifier):
+            # args must be an image
+            eta_labels = self._model.predict(arg)
+        elif isinstance(self._model, etal.VideoFramesClassifier):
+            # args must be an image tensor
+            eta_labels = self._model.predict(arg)
+        elif isinstance(self._model, etal.VideoClassifier):
+            # arg must be an ``eta.core.video.VideoReader``
+            eta_labels = self._model.predict(arg)
+        elif isinstance(self._model, etal.Classifier):
+            # generic classifier
+            eta_labels = self._model.predict(arg)
+        elif isinstance(self._model, etal.ObjectDetector):
+            # args must be an image
+            eta_labels = self._model.detect(arg)
+        elif isinstance(self._model, etal.VideoFramesObjectDetector):
+            # args must be an image tensor
+            eta_labels = self._model.detect(arg)
+        elif isinstance(self._model, etal.VideoObjectDetector):
+            # arg must be an ``eta.core.video.VideoReader``
+            eta_labels = self._model.detect(arg)
+        elif isinstance(self._model, etal.Detector):
+            # generic detector
+            eta_labels = self._model.detect(arg)
+        elif isinstance(self._model, etal.ImageSemanticSegmenter):
+            # args must be an image
+            eta_labels = self._model.segment(arg)
+        elif isinstance(self._model, etal.VideoSemanticSegmenter):
+            # arg must be an ``eta.core.video.VideoReader``
+            eta_labels = self._model.segment(arg)
+        elif isinstance(self._model, etal.SemanticSegmenter):
+            # generic segmenter
+            eta_labels = self._model.segment(arg)
+        elif isinstance(self._model, etal.ImageModel):
+            # arg must be an image
+            eta_labels = self._model.process(arg)
+        elif isinstance(self._model, etal.VideoModel):
+            # arg must be an `eta.core.video.VideoReader``
+            eta_labels = self._model.process(arg)
+        else:
+            raise ValueError(
+                "Unsupported model type '%s'" % self._model.__class__
+            )
+
+        return parse_eta_labels(eta_labels)
+
+    def predict_all(self, args):
+        if isinstance(self._model, etal.ImageClassifier):
+            # args must be a tensor of images
+            eta_labels_batch = self._model.predict_all(args)
+        elif isinstance(self._model, etal.ObjectDetector):
+            # args must be a tensor of images
+            eta_labels_batch = self._model.detect_all(args)
+        elif isinstance(self._model, etal.ImageSemanticSegmenter):
+            # args must be a tensor of images
+            eta_labels_batch = self._model.segment_all(args)
+        else:
+            eta_labels_batch = super().predict_all(args)
+
+        return [parse_eta_labels(el) for el in eta_labels_batch]
+
+    @classmethod
+    def from_eta_model(cls, model):
+        """Builds an :class:`ETAModel` for running the provided
+        ``eta.core.learning.Model`` instance.
+
+        Args:
+            model: an ``eta.core.learning.Model`` instance
+
+        Returns:
+            an :class:`ETAModel`
+        """
+        return cls(model.config, _model=model)
 
 
 def parse_eta_labels(eta_labels):
@@ -90,8 +221,9 @@ def parse_eta_labels(eta_labels):
     elif eta_labels is None:
         label = None
     else:
-        msg = "Ignoring unsupported ETA label type '%s'" % eta_labels.__class__
-        warnings.warn(msg)
+        raise ValueError(
+            "Unsupported ETA label type '%s'" % eta_labels.__class__
+        )
 
     return label
 

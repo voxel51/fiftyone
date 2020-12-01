@@ -12,11 +12,13 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.YOLODetector",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "yolo-v2-coco",
-                    "config_dir": "{{eta}}/tensorflow/darkflow/cfg/",
-                    "config_path": "{{eta}}/tensorflow/darkflow/cfg/yolo.cfg"
+                    "type": "eta.detectors.YOLODetector",
+                    "config": {
+                        "config_dir": "{{eta}}/tensorflow/darkflow/cfg/",
+                        "config_path": "{{eta}}/tensorflow/darkflow/cfg/yolo.cfg"
+                    }
                 }
             },
             "requirements": {
@@ -45,11 +47,13 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.EfficientDet",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "efficientdet-d0-coco",
-                    "architecture_name": "efficientdet-d0",
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    "type": "eta.detectors.EfficientDet",
+                    "config": {
+                        "architecture_name": "efficientdet-d0",
+                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    }
                 }
             },
             "requirements": {
@@ -78,11 +82,13 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.EfficientDet",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "efficientdet-d1-coco",
-                    "architecture_name": "efficientdet-d1",
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    "type": "eta.detectors.EfficientDet",
+                    "config": {
+                        "architecture_name": "efficientdet-d1",
+                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    }
                 }
             },
             "requirements": {
@@ -111,11 +117,13 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.EfficientDet",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "efficientdet-d2-coco",
-                    "architecture_name": "efficientdet-d2",
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    "type": "eta.detectors.EfficientDet",
+                    "config": {
+                        "architecture_name": "efficientdet-d2",
+                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    }
                 }
             },
             "requirements": {
@@ -144,11 +152,13 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.EfficientDet",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "efficientdet-d3-coco",
-                    "architecture_name": "efficientdet-d3",
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    "type": "eta.detectors.EfficientDet",
+                    "config": {
+                        "architecture_name": "efficientdet-d3",
+                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    }
                 }
             },
             "requirements": {
@@ -177,11 +187,13 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.EfficientDet",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "efficientdet-d4-coco",
-                    "architecture_name": "efficientdet-d4",
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    "type": "eta.detectors.EfficientDet",
+                    "config": {
+                        "architecture_name": "efficientdet-d4",
+                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    }
                 }
             },
             "requirements": {
@@ -210,11 +222,13 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.EfficientDet",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "efficientdet-d5-coco",
-                    "architecture_name": "efficientdet-d5",
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    "type": "eta.detectors.EfficientDet",
+                    "config": {
+                        "architecture_name": "efficientdet-d5",
+                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    }
                 }
             },
             "requirements": {
@@ -243,11 +257,13 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.EfficientDet",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "efficientdet-d6-coco",
-                    "architecture_name": "efficientdet-d6",
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    "type": "eta.detectors.EfficientDet",
+                    "config": {
+                        "architecture_name": "efficientdet-d6",
+                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    }
                 }
             },
             "requirements": {
@@ -274,10 +290,12 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsDetector",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "faster-rcnn-inception-v2-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
                 }
             },
             "requirements": {
@@ -304,10 +322,12 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsDetector",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "faster-rcnn-nas-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
                 }
             },
             "requirements": {
@@ -334,10 +354,12 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsDetector",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "faster-rcnn-nas-lowproposals-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
                 }
             },
             "requirements": {
@@ -364,10 +386,12 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsDetector",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "faster-rcnn-resnet50-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
                 }
             },
             "requirements": {
@@ -394,10 +418,12 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsDetector",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "faster-rcnn-resnet50-lowproposals-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
                 }
             },
             "requirements": {
@@ -424,10 +450,12 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsDetector",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "faster-rcnn-resnet101-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
                 }
             },
             "requirements": {
@@ -454,10 +482,12 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsDetector",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "faster-rcnn-resnet101-lowproposals-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
                 }
             },
             "requirements": {
@@ -484,10 +514,12 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsDetector",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "faster-rcnn-inception-resnet-atrous-v2-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
                 }
             },
             "requirements": {
@@ -514,10 +546,12 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsDetector",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
                 }
             },
             "requirements": {
@@ -544,12 +578,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.classifiers.TFSlimClassifier",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "attr_name": "imagenet",
-                    "model_name": "inception-resnet-v2-imagenet",
-                    "network_name": "inception_resnet_v2",
-                    "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                    "type": "eta.classifiers.TFSlimClassifier",
+                    "config": {
+                        "attr_name": "imagenet",
+                        "network_name": "inception_resnet_v2",
+                        "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                    }
                 }
             },
             "requirements": {
@@ -576,12 +612,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.classifiers.TFSlimClassifier",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "attr_name": "imagenet",
-                    "model_name": "inception-v4-imagenet",
-                    "network_name": "inception_v4",
-                    "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                    "type": "eta.classifiers.TFSlimClassifier",
+                    "config": {
+                        "attr_name": "imagenet",
+                        "network_name": "inception_v4",
+                        "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                    }
                 }
             },
             "requirements": {
@@ -608,11 +646,13 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsInstanceSegmenter",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "mask-rcnn-inception-resnet-v2-atrous-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
-                    "mask_thresh": 0.5
+                    "type": "eta.detectors.TFModelsInstanceSegmenter",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "mask_thresh": 0.5
+                    }
                 }
             },
             "date_created": "2019-12-10 12:07:51"
@@ -629,11 +669,13 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsInstanceSegmenter",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "mask-rcnn-inception-v2-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
-                    "mask_thresh": 0.5
+                    "type": "eta.detectors.TFModelsInstanceSegmenter",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "mask_thresh": 0.5
+                    }
                 }
             },
             "date_created": "2019-12-10 12:07:51"
@@ -650,11 +692,13 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsInstanceSegmenter",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "mask-rcnn-resnet50-atrous-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
-                    "mask_thresh": 0.5
+                    "type": "eta.detectors.TFModelsInstanceSegmenter",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "mask_thresh": 0.5
+                    }
                 }
             },
             "date_created": "2019-12-10 12:07:51"
@@ -671,11 +715,13 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsInstanceSegmenter",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "mask-rcnn-resnet101-atrous-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
-                    "mask_thresh": 0.5
+                    "type": "eta.detectors.TFModelsInstanceSegmenter",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "mask_thresh": 0.5
+                    }
                 }
             },
             "date_created": "2019-12-10 12:07:51"
@@ -692,12 +738,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.classifiers.TFSlimClassifier",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "attr_name": "imagenet",
-                    "model_name": "mobilenet-v2-imagenet",
-                    "network_name": "mobilenet_v2",
-                    "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                    "type": "eta.classifiers.TFSlimClassifier",
+                    "config": {
+                        "attr_name": "imagenet",
+                        "network_name": "mobilenet_v2",
+                        "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                    }
                 }
             },
             "requirements": {
@@ -724,12 +772,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.classifiers.TFSlimClassifier",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "attr_name": "imagenet",
-                    "model_name": "resnet-v1-50-imagenet",
-                    "network_name": "resnet_v1_50",
-                    "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                    "type": "eta.classifiers.TFSlimClassifier",
+                    "config": {
+                        "attr_name": "imagenet",
+                        "network_name": "resnet_v1_50",
+                        "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                    }
                 }
             },
             "requirements": {
@@ -756,12 +806,14 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.classifiers.TFSlimClassifier",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "attr_name": "imagenet",
-                    "model_name": "resnet-v2-50-imagenet",
-                    "network_name": "resnet_v2_50",
-                    "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                    "type": "eta.classifiers.TFSlimClassifier",
+                    "config": {
+                        "attr_name": "imagenet",
+                        "network_name": "resnet_v2_50",
+                        "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                    }
                 }
             },
             "requirements": {
@@ -788,10 +840,12 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsDetector",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "rfcn-resnet101-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
                 }
             },
             "requirements": {
@@ -818,10 +872,12 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsDetector",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "ssd-inception-v2-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
                 }
             },
             "requirements": {
@@ -848,10 +904,12 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsDetector",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "ssd-resnet50-fpn-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
                 }
             },
             "requirements": {
@@ -878,10 +936,12 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsDetector",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "ssd-mobilenet-v1-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
                 }
             },
             "requirements": {
@@ -908,10 +968,12 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.TFModelsDetector",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "ssd-mobilenet-v1-fpn-coco",
-                    "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
                 }
             },
             "requirements": {
@@ -938,13 +1000,15 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.segmenters.TFSemanticSegmenter",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "deeplabv3-cityscapes",
-                    "labels_path": "{{eta-resources}}/tf-semantic-segmenters-cityscapes-train-labels.txt",
-                    "resize_to_max_dim": 513,
-                    "input_name": "ImageTensor",
-                    "output_name": "SemanticPredictions"
+                    "type": "eta.segmenters.TFSemanticSegmenter",
+                    "config": {
+                        "labels_path": "{{eta-resources}}/tf-semantic-segmenters-cityscapes-train-labels.txt",
+                        "resize_to_max_dim": 513,
+                        "input_name": "ImageTensor",
+                        "output_name": "SemanticPredictions"
+                    }
                 }
             },
             "date_created": "2020-12-10 12:07:51"
@@ -961,13 +1025,15 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.segmenters.TFSemanticSegmenter",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "deeplabv3-mnv2-cityscapes",
-                    "labels_path": "{{eta-resources}}/tf-semantic-segmenters-cityscapes-train-labels.txt",
-                    "resize_to_max_dim": 513,
-                    "input_name": "ImageTensor",
-                    "output_name": "SemanticPredictions"
+                    "type": "eta.segmenters.TFSemanticSegmenter",
+                    "config": {
+                        "labels_path": "{{eta-resources}}/tf-semantic-segmenters-cityscapes-train-labels.txt",
+                        "resize_to_max_dim": 513,
+                        "input_name": "ImageTensor",
+                        "output_name": "SemanticPredictions"
+                    }
                 }
             },
             "date_created": "2020-12-10 12:07:51"
@@ -984,12 +1050,14 @@
                 "type": "eta.core.models.ETAModelManager"
             },
             "default_deployment_config_dict": {
-                "type": "eta.classifiers.VGG16Classifier",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "attr_name": "imagenet",
+                    "type": "eta.classifiers.VGG16Classifier",
                     "config": {
-                        "model_name": "vgg16-imagenet",
-                        "labels_map": "{{eta-resources}}/vgg16-imagenet-labels.txt"
+                        "attr_name": "imagenet",
+                        "config": {
+                            "labels_map": "{{eta-resources}}/vgg16-imagenet-labels.txt"
+                        }
                     }
                 }
             },

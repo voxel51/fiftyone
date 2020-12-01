@@ -6,13 +6,17 @@ The FiftyOne Model Zoo.
 |
 """
 from collections import defaultdict
+from copy import deepcopy
 import logging
 import os
 
+from eta.core.config import ConfigError
 import eta.core.learning as etal
 import eta.core.models as etam
+import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.eta_utils as foe
 import fiftyone.core.models as fom
 
 
@@ -151,6 +155,7 @@ def load_zoo_model(
     download_if_necessary=True,
     install_requirements=False,
     error_level=0,
+    **kwargs,
 ):
     """Loads the model of the given name from the FiftyOne Model Zoo.
 
@@ -175,6 +180,9 @@ def load_zoo_model(
             1: log warning if a requirement is not satisifed
             2: ignore unsatisifed requirements
 
+        **kwargs: keyword arguments to inject into the model's ``Config``
+            instance prior to loading the model
+
     Returns:
         a :class:`fiftyone.core.models.Model`
     """
@@ -183,26 +191,57 @@ def load_zoo_model(
 
     model = _get_model(name)
 
+    # Download model, if necessary
     if not model.is_in_dir(models_dir):
         if not download_if_necessary:
             raise ValueError("Model '%s' is not downloaded" % name)
 
         download_zoo_model(name, models_dir=models_dir)
 
+    # Install/ensure model requirements
     if install_requirements:
         model.install_requirements(error_level=error_level)
     else:
         model.ensure_requirements(error_level=error_level)
 
-    config = fom.ModelConfig.from_dict(model.default_deployment_config_dict)
+    # Inject user parameters
+    d = deepcopy(model.default_deployment_config_dict)
+    if kwargs:
+        if d["type"] == etau.get_class_name(foe.ETAModel):
+            d["config"]["config"].update(**kwargs)
+        else:
+            d["config"].update(**kwargs)
 
-    if not isinstance(config, (HasZooModel, etal.HasPublishedModel)):
+    # Load model config
+    config = fom.ModelConfig.from_dict(d)
+
+    #
+    # Inject model path into config
+    #
+    # Zoo models must be implemented in one of the following ways in order for
+    # us to know how to inject `model_path`:
+    #
+    # (1)   Their `Config` implements the `HasZooModel` interface
+    #
+    # (2)   Their `Config` is an `fiftyone.core.eta_utils.ETAModelConfig` whose
+    #       embedded `Config` implements the
+    #       `eta.core.learning.HasPublishedModel` interface
+    #
+    model_path = model.get_path_in_dir(models_dir)
+    if isinstance(config.config, HasZooModel):
+        config.config.model_name = None  # model is already downloaded
+        config.config.model_path = model_path
+    elif isinstance(config.config, foe.ETAModelConfig) and isinstance(
+        config.config.config, etal.HasPublishedModel
+    ):
+        config.config.config.model_name = None  # model is already downloaded
+        config.config.config.model_path = model_path
+    else:
         raise ValueError(
             "Zoo model configs must implement the %s interface" % HasZooModel
         )
 
-    config.model_path = model.get_path_in_dir(models_dir)
-
+    # Build the actual model
     return config.build()
 
 
@@ -294,8 +333,8 @@ def delete_old_zoo_models(models_dir=None):
 
 
 class HasZooModel(etal.HasPublishedModel):
-    """Mixin class for :class:`fiftyone.core.models.ModelConfig` instances
-    whose models are stored in the FiftyOne Model Zoo.
+    """Mixin class for Config classes of :class:`fiftyone.core.models.Model`
+    instances whose models are stored in the FiftyOne Model Zoo.
 
     This class provides the following functionality:
 
@@ -320,6 +359,11 @@ class HasZooModel(etal.HasPublishedModel):
 
     def download_model_if_necessary(self):
         # pylint: disable=attribute-defined-outside-init
+        if not self.model_name and not self.model_path:
+            raise ConfigError(
+                "Either `model_name` or `model_path` must be provided"
+            )
+
         if self.model_path is None:
             self.model_path = download_zoo_model(self.model_name)
 
