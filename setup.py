@@ -6,6 +6,7 @@ Installs FiftyOne.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
 from setuptools import setup, find_packages
 from wheel.bdist_wheel import bdist_wheel
 
@@ -17,17 +18,36 @@ class BdistWheelCustom(bdist_wheel):
         # for a development installation
         self.distribution.install_requires += [
             "fiftyone-brain>=0.1.11,<0.2",
-            "fiftyone-app>=0.6.6,<0.7",
-            "fiftyone-db>=0.1.1,<0.2",
+            "fiftyone-db>=0.1.2",
         ]
+
+
+VERSION = "0.7.0"
+
+
+def get_version():
+    if "RELEASE_VERSION" in os.environ:
+        version = os.environ["RELEASE_VERSION"]
+        if not version.startswith(VERSION):
+            raise ValueError(
+                "Release version does not match version: %s and %s"
+                % (version, VERSION)
+            )
+        return version
+
+    return VERSION
+
+
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.7.0,<0.8"]}
 
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+
 setup(
     name="fiftyone",
-    version="0.6.6",
+    version=get_version(),
     description=(
         "FiftyOne: a powerful package for dataset curation, analysis, and "
         "visualization"
@@ -35,6 +55,7 @@ setup(
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/fiftyone",
+    extras_require=EXTRAS_REQUIREMENTS,
     license="Apache",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -65,7 +86,7 @@ setup(
         "tornado",
         "xmltodict",
         # internal packages
-        "voxel51-eta>=0.1.12,<0.2",
+        "voxel51-eta>=0.1.12",
         # ETA dependency - restricted to a maximum version known to provide
         # wheels here because it tends to publish sdists several hours before
         # wheels. When users install FiftyOne in this window, they will need to

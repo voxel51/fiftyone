@@ -35,13 +35,12 @@ MONGODB_BINARIES = ["mongod"]
 LINUX_DISTRO = os.environ.get("FIFTYONE_DB_BUILD_LINUX_DISTRO")
 
 
-VERSION = "0.1.2"
+VERSION = "0.1.3"
 
 
 def get_version():
     if "RELEASE_VERSION" in os.environ:
         version = os.environ["RELEASE_VERSION"]
-        print("R VERSION", version)
         if not version.startswith(VERSION):
             raise ValueError(
                 "Release version does not match version: %s and %s"
@@ -57,6 +56,7 @@ class CustomBdistWheel(bdist_wheel):
         bdist_wheel.finalize_options(self)
         # not pure Python
         self.root_is_pure = False
+        self._plat_name = self.plat_name
         # rewrite platform name to match what mongodb supports
         if self.plat_name.startswith("mac"):
             # mongodb 4.2.6 supports macOS 10.12 or later
@@ -65,7 +65,7 @@ class CustomBdistWheel(bdist_wheel):
             self.plat_name = "macosx_10_12_x86_64"
         elif self.plat_name.startswith("linux"):
             # we only distribute 64-bit binaries
-            self.plat_name = "linux_x86_64"
+            self.plat_name = "manylinux1_x86_64"
         elif self.plat_name.startswith("win"):
             # we only distribute 64-bit binaries
             self.plat_name = "win_amd64"
@@ -90,7 +90,7 @@ class CustomBdistWheel(bdist_wheel):
         mongo_zip_url = next(
             v
             for k, v in MONGODB_DOWNLOAD_URLS.items()
-            if self.plat_name.startswith(k)
+            if self._plat_name.startswith(k)
         )
         if LINUX_DISTRO:
             if not self.plat_name.startswith("linux"):

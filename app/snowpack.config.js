@@ -33,7 +33,9 @@ module.exports = {
   devOptions: {
     hmrErrorOverlay: true,
   },
-  buildOptions: {},
+  buildOptions: {
+    out: "../fiftyone/server/static",
+  },
   proxy: {
     /* ... */
   },

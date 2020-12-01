@@ -74,9 +74,7 @@ function App(props: Props) {
   const addNotification = useRef(null);
   const [reset, setReset] = useState(false);
   const { children } = props;
-  const portRef = useRef();
-  const [port, setPort] = useRecoilState(atoms.port);
-  const [connected, setConnected] = useRecoilState(atoms.connected);
+  const setConnected = useSetRecoilState(atoms.connected);
   const [loading, setLoading] = useRecoilState(atoms.loading);
   const socket = useRecoilValue(selectors.socket);
   const [stateDescription, setStateDescription] = useRecoilState(
@@ -84,13 +82,12 @@ function App(props: Props) {
   );
   const setSelectedSamples = useSetRecoilState(atoms.selectedSamples);
   const [viewCounterValue, setViewCounter] = useRecoilState(atoms.viewCounter);
-  const [result, setResultFromForm] = useState({ port, connected });
   const setSelectedObjects = useSetRecoilState(atoms.selectedObjects);
   const setDatasetStatsLoading = useSetRecoilState(atoms.datasetStatsLoading);
   const setExtendedatasetStatsLoading = useSetRecoilState(
     atoms.extendedDatasetStatsLoading
   );
-
+  console.log("GH");
   useGA();
   const handleStateUpdate = (state) => {
     setStateDescription(state);

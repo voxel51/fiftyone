@@ -3,6 +3,7 @@ import ReconnectingWebSocket from "reconnecting-websocket";
 
 import * as atoms from "./atoms";
 import { generateColorMap } from "../utils/colors";
+import { isElectron } from "../utils/generic";
 import {
   RESERVED_FIELDS,
   VALID_LABEL_TYPES,
@@ -17,7 +18,20 @@ import { packageMessage } from "../utils/socket";
 export const socket = selector({
   key: "socket",
   get: ({ get }): ReconnectingWebSocket => {
-    return new ReconnectingWebSocket(`ws://localhost:${get(atoms.port)}/state`);
+    let uri = null;
+    if (isElectron()) {
+      uri = `ws://localhost:${get(atoms.port)}/state`;
+    } else {
+      const loc = window.location;
+      if (loc.protocol === "https:") {
+        uri = "wss:";
+      } else {
+        uri = "ws:";
+      }
+      uri += "//" + loc.host;
+    }
+    console.log(uri);
+    return new ReconnectingWebSocket(`${uri}/state`);
   },
   dangerouslyAllowMutability: true,
 });

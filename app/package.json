@@ -117,6 +117,7 @@
         "@snowpack/plugin-babel": "^2.1.4",
         "@snowpack/plugin-dotenv": "^2.0.4",
         "@snowpack/plugin-react-refresh": "^2.3.7",
+        "@snowpack/plugin-webpack": "^2.1.1",
         "@storybook/addon-actions": "^5.3.19",
         "@storybook/addon-backgrounds": "^5.3.19",
         "@storybook/addon-console": "^1.2.1",
