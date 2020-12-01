@@ -12,7 +12,7 @@ class ModelConfig(etal.ModelConfig):
     """Base configuration class that encapsulates the name of a :class:`Model`
     and an instance of its associated Config class.
 
-    Attributes:
+    Args:
         type: the fully-qualified class name of the :class:`Model` subclass
         config: an instance of the Config class associated with the model
     """

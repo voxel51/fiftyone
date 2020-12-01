@@ -311,7 +311,7 @@ class HasZooModel(etal.HasPublishedModel):
         models with default deployments will have default values for any
         unspecified parameters loaded and applied at runtime
 
-    Attributes:
+    Args:
         model_name: the name of the zoo model to load. If this value is
             provided, `model_path` does not need to be
         model_path: the path to an already downloaded zoo model on disk to
@@ -329,13 +329,32 @@ class HasZooModel(etal.HasPublishedModel):
 
 
 class ZooModel(etam.Model):
-    """.. autoclass:: eta.core.models.Model"""
+    """Class describing a model in the FiftyOne Model Zoo.
+
+    Args:
+        base_name: the base name of the model (no version info)
+        base_filename: the base filename of the model (no version info)
+        manager: the ``eta.core.models.ModelManager`` instance that describes
+            the remote storage location of the model
+        version (None): the version of the model
+        description (None): a description of the model
+        default_deployment_config_dict (None): a
+            :class:`fiftyone.core.models.ModelConfig` dict describing the
+            recommended settings for deploying the model
+        requirements (None): the ``eta.core.models.ModelRequirements`` for the
+            model
+        date_created (None): the datetime that the model was created
+    """
 
     pass
 
 
 class ZooModelsManifest(etam.ModelsManifest):
-    """Class that describes the collection of models in the model zoo."""
+    """Class that describes the collection of models in the FiftyOne Model Zoo.
+
+    Args:
+        models: a list of :class:`ZooModel` instances
+    """
 
     _MODEL_CLS = ZooModel
 
