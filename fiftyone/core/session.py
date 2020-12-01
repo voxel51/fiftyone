@@ -22,9 +22,9 @@ html_escape = html.escape
 del html
 logger = logging.getLogger(__name__)
 
-_CONTEXT_COLAB = "_CONTEXT_COLAB"
-_CONTEXT_IPYTHON = "_CONTEXT_IPYTHON"
-_CONTEXT_NONE = "_CONTEXT_NONE"
+_CONTEXT_COLAB = "COLAB"
+_CONTEXT_IPYTHON = "IPYTHON"
+_CONTEXT_NONE = "NONE"
 
 #
 # Session globals

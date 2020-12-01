@@ -32,6 +32,7 @@ module.exports = {
   },
   devOptions: {
     hmrErrorOverlay: true,
+    open: "none",
   },
   buildOptions: {
     out: "../fiftyone/server/static",

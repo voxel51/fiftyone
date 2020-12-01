@@ -95,6 +95,7 @@ function App(props: Props) {
   };
 
   useEventHandler(socket, "open", () => {
+    alert("connected");
     setConnected(true);
     if (!loading) {
       setLoading(true);

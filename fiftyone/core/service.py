@@ -441,7 +441,7 @@ class AppService(Service):
                 return [app]
 
         if os.path.isfile("package.json"):
-            return ["yarn", "dev"]
+            return ["yarn", "start-web"]
 
         raise RuntimeError(
             "Could not find FiftyOne app in %r" % foc.FIFTYONE_APP_DIR

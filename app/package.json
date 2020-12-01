@@ -9,7 +9,7 @@
         "build-app": "tsc",
         "build-web": "snowpack build",
         "dev": "concurrently \"yarn start-web\" \"yarn start-app\"",
-        "start-app": "yarn run build-app && electron ./dist/main.js",
+        "start-app": "yarn build-app && cross-env NODE_ENV=development electron ./dist/main.js",
         "start-web": "snowpack dev",
         "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\"",
         "lint": "prettier --check \"src/**/*.{js,jsx,ts,tsx}\"",

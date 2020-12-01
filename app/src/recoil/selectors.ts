@@ -15,22 +15,91 @@ import {
 } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
 
-export const socket = selector({
-  key: "socket",
-  get: ({ get }): ReconnectingWebSocket => {
-    let uri = null;
+class HTTPSSocket {
+  location: string;
+  events: {
+    [name: string]: Set<any>;
+  } = {};
+
+  constructor(location: string) {
+    this.location = location;
+  }
+
+  addEventListener(eventType, handler) {
+    if (!this.events[eventType]) {
+      this.events[eventType] = new Set();
+    }
+    this.events[eventType].add(handler);
+    console.log("HELLO");
+    fetch(`${this.location}?event=${eventType}`).then((response) => {
+      console.log("RESPONSE", response);
+      this.events[eventType].has(handler) && handler(response);
+    });
+  }
+
+  removeEventListener(eventType, handler) {
+    this.events[eventType].delete(handler);
+  }
+
+  send(message) {
+    fetch(this.location, {
+      method: "post",
+      body: message,
+    });
+  }
+}
+
+export const http = selector({
+  key: "http",
+  get: ({ get }) => {
     if (isElectron()) {
-      uri = `ws://localhost:${get(atoms.port)}/state`;
+      return `http://localhost:${get(atoms.port)}`;
     } else {
       const loc = window.location;
-      if (loc.protocol === "https:") {
-        uri = "wss:";
-      } else {
-        uri = "ws:";
-      }
-      uri += "//" + loc.host;
+      //return loc.protocol + "//" + loc.host;
+      return loc.protocol + "//localhost:5151";
     }
-    return new ReconnectingWebSocket(`${uri}/state`);
+  },
+});
+
+export const ws = selector({
+  key: "ws",
+  get: ({ get }) => {
+    let url = null;
+    const loc = window.location;
+    if (loc.protocol === "https:") {
+      url = "wss:";
+    } else {
+      url = "ws:";
+    }
+    return url + "//" + loc.host + "/state";
+  },
+});
+
+export const fiftyone = selector({
+  key: "fiftyone",
+  get: async ({ get }) => {
+    const response = await fetch(`${get(http)}/fiftyone`);
+    const data = await response.json();
+    return data;
+  },
+});
+
+export const isColab = selector({
+  key: "isColab",
+  get: ({ get }) => {
+    return get(fiftyone).context === "COLAB";
+  },
+});
+
+export const socket = selector({
+  key: "socket",
+  get: ({ get }): ReconnectingWebSocket | HTTPSSocket => {
+    if (get(isColab)) {
+      return new HTTPSSocket(`${get(http)}/polling`);
+    } else {
+      return new ReconnectingWebSocket(`${get(ws)}/state`);
+    }
   },
   dangerouslyAllowMutability: true,
 });

@@ -37,6 +37,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 from fiftyone.core.service import DatabaseService
+from fiftyone.core.session import _get_context
 from fiftyone.core.stages import _STAGES
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
@@ -110,7 +111,25 @@ class FiftyOneHandler(RequestHandler):
         Returns:
             dict
         """
-        return {"version": foc.VERSION}
+        # return {"version": foc.VERSION, "user_id": get_user_id(), "context": _get_context()}
+        return {
+            "version": foc.VERSION,
+            "user_id": get_user_id(),
+            "context": "COLAB",
+        }
+
+
+class PollingHandler(tornado.web.RequestHandler):
+    def set_default_headers(self, *args, **kwargs):
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+        self.set_header("Access-Control-Allow-Methods", "GET, POST")
+
+    async def get(self):
+        self.write({"get": "response"})
+
+    async def post(self):
+        self.write({"post": "response"})
 
 
 class StagesHandler(RequestHandler):
@@ -308,15 +327,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         awaitables = [self.send_updates(only=self)]
         awaitables += self.get_statistics_awaitables(only=self)
         asyncio.gather(*awaitables)
-
-    async def on_fiftyone(self):
-        """Event for FiftyOne package version and user id requests."""
-        self.write_message(
-            {
-                "type": "fiftyone",
-                "data": {"version": foc.VERSION, "user_id": get_user_id(),},
-            }
-        )
 
     async def on_filters_update(self, filters):
         """Event for updating state filters. Sends an extended dataset statistics
@@ -846,9 +856,9 @@ class Application(tornado.web.Application):
         else:
             rel_web_path = "static"
         web_path = os.path.join(server_path, rel_web_path)
-        print(web_path)
         handlers = [
             (r"/fiftyone", FiftyOneHandler),
+            (r"/polling", FiftyOneHandler),
             (
                 r"/filepath/(.*)",
                 tornado.web.StaticFileHandler,
