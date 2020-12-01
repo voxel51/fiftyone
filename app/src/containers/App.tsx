@@ -37,31 +37,28 @@ const Body = styled.div`
 
 const useGA = () => {
   const [gaInitialized, setGAInitialized] = useState(false);
-  const socket = useRecoilValue(selectors.socket);
+  const info = useRecoilValue(selectors.fiftyone);
 
   useEffect(() => {
-    attachDisposableHandler(socket, "fiftyone", ({ data: info }) => {
-      const dev = import.meta.env.MODE == "development";
-      const buildType = dev ? "dev" : "prod";
+    const dev = import.meta.env.MODE == "development";
+    const buildType = dev ? "dev" : "prod";
 
-      ReactGA.initialize(gaConfig.app_ids[buildType], {
-        debug: dev,
-        gaOptions: {
-          storage: "none",
-          cookieDomain: "none",
-          clientId: info.user_id,
-        },
-      });
-      ReactGA.set({
-        userId: info.user_id,
-        checkProtocolTask: null, // disable check, allow file:// URLs
-        [gaConfig.dimensions.dev]: buildType,
-        [gaConfig.dimensions.version]: info.version,
-      });
-      setGAInitialized(true);
-      ReactGA.pageview(window.location.hash.replace(/^#/, ""));
+    ReactGA.initialize(gaConfig.app_ids[buildType], {
+      debug: dev,
+      gaOptions: {
+        storage: "none",
+        cookieDomain: "none",
+        clientId: info.user_id,
+      },
     });
-    socket.send(packageMessage("fiftyone", {}));
+    ReactGA.set({
+      userId: info.user_id,
+      checkProtocolTask: null, // disable check, allow file:// URLs
+      [gaConfig.dimensions.dev]: buildType,
+      [gaConfig.dimensions.version]: info.version,
+    });
+    setGAInitialized(true);
+    ReactGA.pageview(window.location.hash.replace(/^#/, ""));
   }, []);
   useHashChangeHandler(() => {
     if (gaInitialized) {
@@ -95,7 +92,6 @@ function App(props: Props) {
   };
 
   useEventHandler(socket, "open", () => {
-    alert("connected");
     setConnected(true);
     if (!loading) {
       setLoading(true);

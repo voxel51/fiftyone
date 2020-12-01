@@ -123,12 +123,12 @@ class PollingHandler(tornado.web.RequestHandler):
     def set_default_headers(self, *args, **kwargs):
         self.set_header("Access-Control-Allow-Origin", "*")
         self.set_header("Access-Control-Allow-Headers", "x-requested-with")
-        self.set_header("Access-Control-Allow-Methods", "GET, POST")
+        self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 
     async def get(self):
         self.write({"get": "response"})
 
-    async def post(self):
+    def post(self):
         self.write({"post": "response"})
 
 
@@ -858,7 +858,7 @@ class Application(tornado.web.Application):
         web_path = os.path.join(server_path, rel_web_path)
         handlers = [
             (r"/fiftyone", FiftyOneHandler),
-            (r"/polling", FiftyOneHandler),
+            (r"/polling", PollingHandler),
             (
                 r"/filepath/(.*)",
                 tornado.web.StaticFileHandler,

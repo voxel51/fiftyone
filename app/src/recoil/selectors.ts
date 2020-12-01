@@ -26,15 +26,17 @@ class HTTPSSocket {
   }
 
   addEventListener(eventType, handler) {
+    if (eventType === "close") return;
     if (!this.events[eventType]) {
       this.events[eventType] = new Set();
     }
     this.events[eventType].add(handler);
-    console.log("HELLO");
-    fetch(`${this.location}?event=${eventType}`).then((response) => {
-      console.log("RESPONSE", response);
-      this.events[eventType].has(handler) && handler(response);
-    });
+    fetch(`${this.location}?event=${eventType}`)
+      .then((response) => response.json())
+      .then((data) => {
+        this.events[eventType].has(handler) &&
+          handler({ data: JSON.stringify(data) });
+      });
   }
 
   removeEventListener(eventType, handler) {
@@ -45,7 +47,11 @@ class HTTPSSocket {
     fetch(this.location, {
       method: "post",
       body: message,
-    });
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log(data);
+      });
   }
 }
 
