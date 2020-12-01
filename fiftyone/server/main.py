@@ -841,12 +841,12 @@ class Application(tornado.web.Application):
     def __init__(self, **settings):
         static_path = "C:/" if os.name == "nt" else "/"
         server_path = os.path.dirname(os.path.abspath(__file__))
-        if foc.DEV_INSTALL or True:
+        if foc.DEV_INSTALL:
             rel_web_path = "../../app/build"
         else:
             rel_web_path = "static"
         web_path = os.path.join(server_path, rel_web_path)
-
+        print(web_path)
         handlers = [
             (r"/fiftyone", FiftyOneHandler),
             (

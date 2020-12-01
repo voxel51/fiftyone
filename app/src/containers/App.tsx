@@ -87,7 +87,6 @@ function App(props: Props) {
   const setExtendedatasetStatsLoading = useSetRecoilState(
     atoms.extendedDatasetStatsLoading
   );
-  console.log("GH");
   useGA();
   const handleStateUpdate = (state) => {
     setStateDescription(state);

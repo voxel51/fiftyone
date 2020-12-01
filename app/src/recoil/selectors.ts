@@ -30,7 +30,6 @@ export const socket = selector({
       }
       uri += "//" + loc.host;
     }
-    console.log(uri);
     return new ReconnectingWebSocket(`${uri}/state`);
   },
   dangerouslyAllowMutability: true,
