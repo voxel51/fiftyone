@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Redirect } from "react-router-dom";
 import {
   useRecoilState,
   useRecoilValue,
@@ -12,7 +11,6 @@ import SamplesContainer from "./SamplesContainer";
 import HorizontalNav from "../components/HorizontalNav";
 import SampleModal from "../components/SampleModal";
 import { ModalWrapper, Overlay } from "../components/utils";
-import routes from "../constants/routes.json";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { VALID_LABEL_TYPES } from "../utils/labels";
@@ -168,13 +166,6 @@ function Dataset(props) {
     const host = `http://127.0.0.1:${port}/filepath`;
     src = `${host}${path}?id=${id}`;
     s = modal.sample;
-  }
-  if (loading) {
-    return <Redirect to={routes.LOADING} />;
-  }
-
-  if (!connected) {
-    return <Redirect to={routes.SETUP} />;
   }
 
   let modalProps = {};

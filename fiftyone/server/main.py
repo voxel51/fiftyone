@@ -116,83 +116,8 @@ class FiftyOneHandler(RequestHandler):
         return {
             "version": foc.VERSION,
             "user_id": get_user_id(),
-            "context": "COLAB",
+            "context": _get_context(),
         }
-
-
-class PollingHandler(tornado.web.RequestHandler):
-
-    clients = defaultdict(set)
-
-    def set_default_headers(self, *args, **kwargs):
-        self.set_header("Access-Control-Allow-Origin", "*")
-        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
-        self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-
-    @staticmethod
-    def gather_messages(client):
-        messages = [
-            {"type": message} for message in PollingHandler.clients[client]
-        ]
-        PollingHandler.clients[client].clear()
-        return messages
-
-    async def get(self):
-        client = self.get_argument("sessionId")
-        if client not in PollingHandler.clients:
-            PollingHandler.clients[client].add("update")
-            PollingHandler.clients[client].add("statistics")
-            PollingHandler.clients[client].add("extended_statistics")
-
-        messages = self.gather_messages(client)
-        self.write_message({"messages": messages})
-
-    async def post(self):
-        client = self.get_argument("sessionId")
-        mode = self.get_argument("mode")
-        message = StateHandler.loads(self.request.body)
-        event = message.pop("type")
-        if mode == "push":
-            if event == "as_app":
-                self.write_message({})
-                return
-
-            if event == "page":
-                await StateHandler.send_page(self, **message)
-                return
-
-            handle = getattr(StateHandler, "on_%s" % event)
-
-            await handle(StateHandler, **message)
-
-            if caller == StateHandler:
-                messages = self.gather_messages(client)
-                self.write_message({"messages": messages})
-            return
-
-        messages = PollingHandler.clients[self]
-        if event == "update":
-            self.write_message({"type": "update", "state": StateHandler.state})
-
-        elif event == "statistics":
-            state = fos.StateDescription.from_dict(StateHandler.state)
-            view = state.view or state.dataset
-            await StateHandler.send_statistics(view, only=self)
-
-        elif event == "extended_statistics":
-            state = fos.StateDescription.from_dict(StateHandler.state)
-            view = state.view or state.dataset
-            if view:
-                for stage in _make_filter_stages(state.dataset, state.filters):
-                    view = view.add_stage(stage)
-            await StateHandler.send_statistics(view, extended=True, only=self)
-
-        else:
-            print(event)
-
-    def write_message(self, message):
-        message = StateHandler.dumps(message)
-        self.write(message)
 
 
 class StagesHandler(RequestHandler):
@@ -238,6 +163,82 @@ def _catch_errors(func):
                 )
 
     return wrapper
+
+
+class PollingHandler(tornado.web.RequestHandler):
+
+    clients = defaultdict(set)
+
+    def set_default_headers(self, *args, **kwargs):
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+        self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+
+    @staticmethod
+    def gather_messages(client):
+        messages = [
+            {"type": message} for message in PollingHandler.clients[client]
+        ]
+        PollingHandler.clients[client].clear()
+        return messages
+
+    @_catch_errors
+    async def get(self):
+        client = self.get_argument("sessionId")
+        if client not in PollingHandler.clients:
+            PollingHandler.clients[client].add("update")
+            PollingHandler.clients[client].add("statistics")
+            PollingHandler.clients[client].add("extended_statistics")
+
+        messages = self.gather_messages(client)
+        self.write_message({"messages": messages})
+
+    @_catch_errors
+    async def post(self):
+        client = self.get_argument("sessionId")
+        mode = self.get_argument("mode")
+        message = StateHandler.loads(self.request.body)
+        event = message.pop("type")
+        if mode == "push":
+            if event == "as_app":
+                self.write_message({})
+                return
+
+            if event in {"distributions", "page", "get_video_data"}:
+                caller = self
+            else:
+                caller = StateHandler
+
+            handle = getattr(StateHandler, "on_%s" % event)
+            await handle(caller, **message)
+
+            if caller == self:
+                return
+
+            messages = self.gather_messages(client)
+            self.write_message({"messages": messages})
+            return
+
+        messages = PollingHandler.clients[self]
+        if event == "update":
+            self.write_message({"type": "update", "state": StateHandler.state})
+
+        elif event == "statistics":
+            state = fos.StateDescription.from_dict(StateHandler.state)
+            view = state.view or state.dataset
+            await StateHandler.send_statistics(view, only=self)
+
+        elif event == "extended_statistics":
+            state = fos.StateDescription.from_dict(StateHandler.state)
+            view = state.view or state.dataset
+            if view:
+                for stage in _make_filter_stages(state.dataset, state.filters):
+                    view = view.add_stage(stage)
+            await StateHandler.send_statistics(view, extended=True, only=self)
+
+    def write_message(self, message):
+        message = StateHandler.dumps(message)
+        self.write(message)
 
 
 _WITHOUT_PAGINATION_EXTENDED_STAGES = {fosg.FilterLabels, fosg.FilterField}
@@ -414,10 +415,66 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         await self.send_statistics(view, extended=True)
 
-    @staticmethod
-    async def on_page(self, **kwargs):
-        """Event for pagination requests"""
-        await self.send_page(self, **kwargs)
+    @classmethod
+    async def on_page(cls, self, page, page_length=20):
+        """Sends a pagination response to the current client
+
+        Args:
+            page: the page number
+            page_length (20): the number of items to return
+        """
+        state = fos.StateDescription.from_dict(StateHandler.state)
+        if state.view is not None:
+            view = state.view
+        elif state.dataset is not None:
+            view = state.dataset.view()
+        else:
+            self.write_message(
+                {"type": "page", "page": page, "results": [], "more": False}
+            )
+            return
+
+        for stage in _make_filter_stages(state.dataset, state.filters):
+            if type(stage) in _WITHOUT_PAGINATION_EXTENDED_STAGES:
+                continue
+
+            view = view.add_stage(stage)
+
+        view = view.skip((page - 1) * page_length)
+        pipeline = view._pipeline(hide_frames=True, squash_frames=True)
+        samples = (
+            await cls.sample_collection()
+            .aggregate(pipeline)
+            .to_list(page_length + 1)
+        )
+        convert(samples)
+
+        more = False
+        if len(samples) > page_length:
+            samples = samples[:page_length]
+            more = page + 1
+
+        results = [{"sample": s} for s in samples]
+        for r in results:
+            w, h = get_file_dimensions(r["sample"]["filepath"])
+            r["width"] = w
+            r["height"] = h
+            # default to image
+
+        for r in results:
+            s = r["sample"]
+            s["filepath"] = (
+                s["filepath"].replace(os.sep, posixpath.sep).split(":")[-1]
+            )
+
+        message = {
+            "type": "page",
+            "page": page,
+            "results": results,
+            "more": more,
+        }
+
+        self.write_message(message)
 
     @staticmethod
     async def on_update(self, state):
@@ -632,67 +689,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             for client in StateHandler.app_clients:
                 client.write_message(message)
-
-    @classmethod
-    async def send_page(cls, self, page, page_length=20):
-        """Sends a pagination response to the current client
-
-        Args:
-            page: the page number
-            page_length (20): the number of items to return
-        """
-        state = fos.StateDescription.from_dict(StateHandler.state)
-        if state.view is not None:
-            view = state.view
-        elif state.dataset is not None:
-            view = state.dataset.view()
-        else:
-            self.write_message(
-                {"type": "page", "page": page, "results": [], "more": False}
-            )
-            return
-
-        for stage in _make_filter_stages(state.dataset, state.filters):
-            if type(stage) in _WITHOUT_PAGINATION_EXTENDED_STAGES:
-                continue
-
-            view = view.add_stage(stage)
-
-        view = view.skip((page - 1) * page_length)
-        pipeline = view._pipeline(hide_frames=True, squash_frames=True)
-        samples = (
-            await cls.sample_collection()
-            .aggregate(pipeline)
-            .to_list(page_length + 1)
-        )
-        convert(samples)
-
-        more = False
-        if len(samples) > page_length:
-            samples = samples[:page_length]
-            more = page + 1
-
-        results = [{"sample": s} for s in samples]
-        for r in results:
-            w, h = get_file_dimensions(r["sample"]["filepath"])
-            r["width"] = w
-            r["height"] = h
-            # default to image
-
-        for r in results:
-            s = r["sample"]
-            s["filepath"] = (
-                s["filepath"].replace(os.sep, posixpath.sep).split(":")[-1]
-            )
-
-        message = {
-            "type": "page",
-            "page": page,
-            "results": results,
-            "more": more,
-        }
-
-        self.write_message(message)
 
     @classmethod
     async def on_distributions(cls, self, group):

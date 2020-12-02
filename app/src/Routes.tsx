@@ -1,22 +1,16 @@
 import React, { Suspense } from "react";
-import { HashRouter, Switch, Route } from "react-router-dom";
+import { useRecoilValue } from "recoil";
 
-import routes from "./constants/routes.json";
 import App from "./containers/App";
-import Dataset from "./containers/Dataset";
 import Setup from "./containers/Setup";
 
+import * as atoms from "./recoil/atoms";
+
 function Routes() {
+  const connected = useRecoilValue(atoms.connected);
   return (
     <Suspense fallback={<Setup />}>
-      <App>
-        <HashRouter>
-          <Switch>
-            <Route path={routes.SETUP} exact component={Setup} />
-            <Route path={routes.DATASET} component={Dataset} />
-          </Switch>
-        </HashRouter>
-      </App>
+      <App />
     </Suspense>
   );
 }

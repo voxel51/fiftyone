@@ -15,7 +15,6 @@ import {
   labelTypeHasColor,
 } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
-import { AxisInterval } from "recharts";
 
 class HTTPSSocket {
   location: string;
@@ -94,7 +93,8 @@ class HTTPSSocket {
         messages && this.execute(messages);
         type &&
           this.events.message.forEach((h) => h({ data: JSON.stringify(data) }));
-      });
+      })
+      .catch((error) => consol);
   }
 }
 
@@ -126,6 +126,7 @@ export const ws = selector({
     } else {
       url = "ws:";
     }
+    return url + "//localhost:5151/state";
     return url + "//" + loc.host + "/state";
   },
 });
@@ -161,7 +162,7 @@ export const socket = selector({
         `${get(http)}/polling?sessionId=${get(sessionId)}`
       );
     } else {
-      return new ReconnectingWebSocket(`${get(ws)}/state`);
+      return new ReconnectingWebSocket(get(ws));
     }
   },
   dangerouslyAllowMutability: true,

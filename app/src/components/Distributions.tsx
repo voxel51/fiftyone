@@ -120,7 +120,11 @@ const Distributions = ({ group }) => {
   const refresh = useRecoilValue(atoms.refresh);
   const [data, setData] = useState([]);
 
-  useSendMessage("distributions", { group }, null, [view, datasetName]);
+  useSendMessage("distributions", { group }, null, [
+    view,
+    datasetName,
+    refresh,
+  ]);
 
   useMessageHandler("distributions", ({ results }) => {
     setLoading(false);

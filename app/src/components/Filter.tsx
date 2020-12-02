@@ -13,9 +13,8 @@ import { SampleContext } from "../utils/context";
 import { useOutsideClick } from "../utils/hooks";
 import SearchResults from "./ViewBar/ViewStage/SearchResults";
 import { NamedRangeSlider } from "./RangeSlider";
-import { CONFIDENCE_LABELS, VALID_LIST_TYPES } from "../utils/labels";
+import { CONFIDENCE_LABELS } from "../utils/labels";
 import { removeObjectIDsFromSelection } from "../utils/selection";
-import { packageMessage } from "../utils/socket";
 
 const classFilterMachine = Machine({
   id: "classFilter",
@@ -260,24 +259,31 @@ const ClassFilter = ({ entry: { path }, atoms }) => {
   const inputRef = useRef();
 
   useEffect(() => {
-    send({ type: "SET_CLASSES", classes });
-    selectedClasses.length &&
-      setSelectedClasses(selectedClasses.filter((c) => classes.includes(c)));
+    const filtered = selectedClasses.filter((c) => classes.includes(c));
+    filtered.length !== selectedClasses.length && setSelectedClasses(filtered);
   }, [classes, selectedClasses]);
+
+  useEffect(() => {
+    send({ type: "SET_CLASSES", classes });
+  }, [classes]);
 
   useOutsideClick(inputRef, () => send("BLUR"));
   const { inputValue, results, currentResult, selected } = state.context;
 
   useEffect(() => {
-    JSON.stringify(selected) !== JSON.stringify(selectedClasses) &&
+    if (JSON.stringify(selected) !== JSON.stringify(selectedClasses)) {
       send({ type: "SET_SELECTED", selected: selectedClasses });
+    }
   }, [selectedClasses]);
 
   useEffect(() => {
-    ((state.event.type === "COMMIT" && state.context.valid) ||
+    if (
+      (state.event.type === "COMMIT" && state.context.valid) ||
       state.event.type === "REMOVE" ||
-      state.event.type === "CLEAR") &&
+      state.event.type === "CLEAR"
+    ) {
       setSelectedClasses(state.context.selected);
+    }
   }, [state.event]);
 
   return (
@@ -294,9 +300,10 @@ const ClassFilter = ({ entry: { path }, atoms }) => {
             value={inputValue}
             placeholder={"+ add label"}
             onFocus={() => state.matches("reading") && send("EDIT")}
-            onBlur={() =>
-              state.matches("editing.searchResults.notHovering") && send("BLUR")
-            }
+            onBlur={() => {
+              state.matches("editing.searchResults.notHovering") &&
+                send("BLUR");
+            }}
             onChange={(e) => send({ type: "CHANGE", value: e.target.value })}
             onKeyPress={(e) => {
               if (e.key === "Enter") {

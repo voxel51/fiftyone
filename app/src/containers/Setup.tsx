@@ -1,11 +1,6 @@
-import React, { useContext, useEffect, useState } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
-import { Redirect } from "react-router-dom";
+import React, { useContext, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
 import { animated, useSpring } from "react-spring";
-
-import routes from "../constants/routes.json";
-import * as atoms from "../recoil/atoms";
 
 const SectionTitle = styled.div`
   font-size: 2rem;
@@ -142,7 +137,6 @@ const Tab = animated(styled.div`
 `);
 
 function Setup() {
-  const connected = useRecoilValue(atoms.connected);
   const theme = useContext(ThemeContext);
   const [activeTab, setActiveTab] = useState<string>("local");
   const localProps = useSpring({
@@ -153,10 +147,6 @@ function Setup() {
     borderBottomColor: activeTab === "remote" ? theme.brand : theme.background,
     color: activeTab === "remote" ? theme.font : theme.fontDark,
   });
-
-  if (connected) {
-    return <Redirect to={routes.DATASET} />;
-  }
 
   return (
     <SetupContainer>

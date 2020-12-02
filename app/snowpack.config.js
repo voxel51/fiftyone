@@ -31,7 +31,7 @@ module.exports = {
     },
   },
   devOptions: {
-    hmrErrorOverlay: true,
+    hmrErrorOverlay: false,
     open: "none",
   },
   buildOptions: {

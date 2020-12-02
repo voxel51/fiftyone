@@ -7,6 +7,7 @@ import styled from "styled-components";
 
 import "player51/src/css/player51.css";
 import Header from "../components/Header";
+import Dataset from "./Dataset";
 
 import {
   useEventHandler,
@@ -65,10 +66,9 @@ const useGA = () => {
   }, [window.location.hash]);
 };
 
-function App(props: Props) {
+function App() {
   const addNotification = useRef(null);
   const [reset, setReset] = useState(false);
-  const { children } = props;
   const setConnected = useSetRecoilState(atoms.connected);
   const [loading, setLoading] = useRecoilState(atoms.loading);
   const socket = useRecoilValue(selectors.socket);
@@ -118,7 +118,9 @@ function App(props: Props) {
       resetKeys={[reset]}
     >
       <Header />
-      <Body>{children}</Body>
+      <Body>
+        <Dataset />
+      </Body>
       <NotificationHub children={(add) => (addNotification.current = add)} />
     </ErrorBoundary>
   );
