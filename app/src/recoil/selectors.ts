@@ -37,30 +37,30 @@ class HTTPSSocket {
     this.interval = setInterval(() => this.gather(), this.timeout);
   }
 
+  execute(messages) {
+    if (this.readyState === WebSocket.CONNECTING) {
+      this.events.open.forEach((h) => h(null));
+      this.timeout = this.openTimeout;
+      clearInterval(this.interval);
+      this.interval = setInterval(() => this.gather(), this.timeout);
+    }
+    this.readyState = WebSocket.OPEN;
+    messages.forEach((m) => {
+      fetch(this.location + "&mode=pull", {
+        method: "post",
+        body: JSON.stringify(m),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          this.events.message.forEach((h) => h({ data: JSON.stringify(data) }));
+        });
+    });
+  }
+
   gather() {
     fetch(this.location)
       .then((response) => response.json())
-      .then(({ messages }) => {
-        if (this.readyState === WebSocket.CONNECTING) {
-          this.events.open.forEach((h) => h(null));
-          this.timeout = this.openTimeout;
-          clearInterval(this.interval);
-          this.interval = setInterval(() => this.gather(), this.timeout);
-        }
-        this.readyState = WebSocket.OPEN;
-        messages.forEach((m) => {
-          fetch(this.location + "&mode=pull", {
-            method: "post",
-            body: JSON.stringify(m),
-          })
-            .then((response) => response.json())
-            .then((data) => {
-              this.events.message.forEach((h) =>
-                h({ data: JSON.stringify(data) })
-              );
-            });
-        });
-      })
+      .then(({ messages }) => this.execute(messages))
       .catch(() => {
         if (this.readyState === WebSocket.OPEN && this.events.close) {
           this.events.close.forEach((h) => h(null));
@@ -89,8 +89,11 @@ class HTTPSSocket {
       body: message,
     })
       .then((response) => response.json())
-      .then((events) => {
-        console.log(events);
+      .then((data) => {
+        const { messages, type } = data;
+        messages && this.execute(messages);
+        type &&
+          this.events.message.forEach((h) => h({ data: JSON.stringify(data) }));
       });
   }
 }
@@ -130,7 +133,14 @@ export const ws = selector({
 export const fiftyone = selector({
   key: "fiftyone",
   get: async ({ get }) => {
-    const response = await fetch(`${get(http)}/fiftyone`);
+    let response = null;
+    do {
+      try {
+        response = await fetch(`${get(http)}/fiftyone`);
+      } catch {}
+      if (response) break;
+      await new Promise((r) => setTimeout(r, 2000));
+    } while (response === null);
     const data = await response.json();
     return data;
   },

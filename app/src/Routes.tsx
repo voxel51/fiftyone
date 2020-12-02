@@ -5,11 +5,10 @@ import routes from "./constants/routes.json";
 import App from "./containers/App";
 import Dataset from "./containers/Dataset";
 import Setup from "./containers/Setup";
-import Loading from "./components/Loading";
 
 function Routes() {
   return (
-    <Suspense fallback={<Loading />}>
+    <Suspense fallback={<Setup />}>
       <App>
         <HashRouter>
           <Switch>
