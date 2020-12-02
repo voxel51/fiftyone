@@ -404,7 +404,12 @@ class ZooModelsManifest(etam.ModelsManifest):
 
 
 def _load_models_manifest():
-    return ZooModelsManifest.from_json(_MODELS_MANIFEST_PATH)
+    manifest = ZooModelsManifest.from_json(_MODELS_MANIFEST_PATH)
+    if fo.config.model_zoo_manifest_paths:
+        for manifest_path in fo.config.model_zoo_manifest_paths:
+            manifest.merge(ZooModelsManifest.from_json(manifest_path))
+
+    return manifest
 
 
 def _get_model_in_dir(name, models_dir):

@@ -8,6 +8,7 @@ download via FiftyOne.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import OrderedDict
 import logging
 import os
 
@@ -377,11 +378,30 @@ def _get_zoo_datasets():
     from fiftyone.zoo.torch import AVAILABLE_DATASETS as TORCH_DATASETS
     from fiftyone.zoo.tf import AVAILABLE_DATASETS as TF_DATASETS
 
-    return {
-        "base": BASE_DATASETS,
-        "torch": TORCH_DATASETS,
-        "tensorflow": TF_DATASETS,
-    }
+    zoo_datasets = OrderedDict()
+    zoo_datasets["base"] = BASE_DATASETS
+    zoo_datasets["torch"] = TORCH_DATASETS
+    zoo_datasets["tensorflow"] = TF_DATASETS
+
+    if fo.config.dataset_zoo_manifest_paths:
+        for manifest_path in fo.config.dataset_zoo_manifest_paths:
+            manifest = _load_zoo_dataset_manifest(manifest_path)
+            zoo_datasets.update(manifest)
+
+    return zoo_datasets
+
+
+def _load_zoo_dataset_manifest(manifest_path):
+    _manifest = etas.read_json(manifest_path)
+
+    manifest = OrderedDict()
+    for source, datasets in _manifest.items():
+        manifest[source] = {
+            name: etau.get_class(zoo_dataset_cls)
+            for name, zoo_dataset_cls in datasets.items()
+        }
+
+    return manifest
 
 
 def _get_zoo_dataset_sources():
@@ -392,17 +412,20 @@ def _get_zoo_dataset_sources():
     sources = []
 
     try:
+        # base first
         all_sources.remove("base")
         sources.append("base")
     except:
         pass
 
     try:
+        # then default source
         all_sources.remove(default_source)
         sources.append(default_source)
     except ValueError:
         default_source = None
 
+    # then remaining sources
     sources.extend(all_sources)
 
     return sources, default_source
