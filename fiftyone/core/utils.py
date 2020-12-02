@@ -9,6 +9,7 @@ import atexit
 from base64 import b64encode, b64decode
 from collections import defaultdict
 from contextlib import contextmanager
+from copy import deepcopy
 import importlib
 import io
 import itertools
@@ -31,6 +32,7 @@ import numpy as np
 import packaging.version
 import xmltodict
 
+import eta
 import eta.core.utils as etau
 
 import fiftyone as fo
@@ -104,6 +106,31 @@ def indent_lines(s, indent=4, skip=0):
         return indented
 
     return s
+
+
+def available_patterns():
+    """Returns the available patterns that can be used by
+    :meth:`fill_patterns`.
+
+    Returns:
+        a dict mapping patterns to their replacements
+    """
+    return deepcopy(eta.config.patterns)
+
+
+def fill_patterns(string):
+    """Fills the patterns in in the given string.
+
+    Use :meth:`available_patterns` to see the available patterns that can be
+    used.
+
+    Args:
+        string: a string
+
+    Returns:
+        a copy of string with any patterns replaced
+    """
+    return etau.fill_patterns(string, available_patterns())
 
 
 def ensure_tf(error_msg=None):
