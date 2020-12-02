@@ -129,19 +129,30 @@ class PollingHandler(tornado.web.RequestHandler):
         self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 
     async def get(self):
-        mode = self.get_argument("mode")
         client = self.get_argument("sessionId")
-        if mode == "gather":
-            messages = list(PollingHandler.clients[client])
-            PollingHandler.clients[client] = {}
-            self.write({"events": events})
+        if client not in PollingHandler.clients:
+            PollingHandler.clients[client]["update"] = {}
+
+        messages = [
+            {"type": message} for message in PollingHandler.clients[client]
+        ]
+        PollingHandler.clients[client] = {}
+        self.write({"messages": messages})
+
+    async def post(self):
+        uuid = self.get_argument("sessionId")
+        mode = self.get_argument("mode")
+        message = StateHandler.loads(self.request.body)
+
+        if mode == "push":
+            event = getattr(StateHandler, "on_%s" % message.pop("type"))
             return
 
-        event = self.get_argument("type")
-
-    def post(self):
-        uuid = self.get_argument("sessionId")
-        self.write({"post": "response"})
+        messages = PollingHandler.clients[self]
+        event = message.pop("type")
+        if event == "update":
+            self.write({"type": "update", "state": StateHandler.state})
+            return
 
     def write_message(self, message):
         self.write(message)
@@ -326,7 +337,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         """
         message = self.loads(message)
         event = getattr(self, "on_%s" % message.pop("type"))
-        await event(**message)
+        await event(self, **message)
 
     @staticmethod
     async def on_as_app(self):
@@ -364,6 +375,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         await self.send_statistics(view, extended=True)
 
+    @staticmethod
     async def on_page(self, **kwargs):
         """Event for pagination requests"""
         await self.send_page(**kwargs)
@@ -555,8 +567,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                 continue
             client.write_message(response)
 
-        return response
-
     @classmethod
     async def send_statistics(cls, view, extended=False, only=None):
         """Sends a statistics event given using the provided view to all App
@@ -584,7 +594,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                 client.write_message(message)
 
     @classmethod
-    async def send_page(cls, page, page_length=20):
+    async def send_page(cls, self, page, page_length=20):
         """Sends a pagination response to the current client
 
         Args:

@@ -22,9 +22,9 @@ class HTTPSSocket {
   events: {
     [name: string]: Set<(data: object) => void>;
   } = {};
-  readyState: number = WebSocket.CLOSED;
-  openTimeout: number = 200;
-  timeout: number = 200;
+  readyState: number = WebSocket.CONNECTING;
+  openTimeout: number = 2000;
+  timeout: number = 2000;
   interval: number;
 
   constructor(location: string) {
@@ -38,7 +38,7 @@ class HTTPSSocket {
   }
 
   gather() {
-    fetch(this.location + "&mode=gather")
+    fetch(this.location)
       .then((response) => response.json())
       .then(({ messages }) => {
         if (this.readyState === WebSocket.CONNECTING) {
@@ -48,11 +48,16 @@ class HTTPSSocket {
           this.interval = setInterval(() => this.gather(), this.timeout);
         }
         this.readyState = WebSocket.OPEN;
-        this.events.message.forEach((m) => {
-          fetch(this.location + `&mode=message&e`)
+        messages.forEach((m) => {
+          fetch(this.location + "&mode=pull", {
+            method: "post",
+            body: JSON.stringify(m),
+          })
             .then((response) => response.json())
             .then((data) => {
-              this.events.message.forEach((h) => h(JSON.stringify(data)));
+              this.events.message.forEach((h) =>
+                h({ data: JSON.stringify(data) })
+              );
             });
         });
       })
@@ -79,7 +84,7 @@ class HTTPSSocket {
   }
 
   send(message) {
-    fetch(this.location, {
+    fetch(this.location + "&mode=push", {
       method: "post",
       body: message,
     })
