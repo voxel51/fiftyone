@@ -120,16 +120,31 @@ class FiftyOneHandler(RequestHandler):
 
 
 class PollingHandler(tornado.web.RequestHandler):
+
+    clients = defaultdict(dict)
+
     def set_default_headers(self, *args, **kwargs):
         self.set_header("Access-Control-Allow-Origin", "*")
         self.set_header("Access-Control-Allow-Headers", "x-requested-with")
         self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 
     async def get(self):
-        self.write({"get": "response"})
+        mode = self.get_argument("mode")
+        client = self.get_argument("sessionId")
+        if mode == "gather":
+            messages = list(PollingHandler.clients[client])
+            PollingHandler.clients[client] = {}
+            self.write({"events": events})
+            return
+
+        event = self.get_argument("type")
 
     def post(self):
+        uuid = self.get_argument("sessionId")
         self.write({"post": "response"})
+
+    def write_message(self, message):
+        self.write(message)
 
 
 class StagesHandler(RequestHandler):
@@ -261,8 +276,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         """
         return FiftyOneJSONEncoder.loads(data)
 
-    @property
-    def sample_collection(self):
+    @staticmethod
+    def sample_collection():
         """Getter for the current sample collection."""
         db = self.settings["db"]
         state = fos.StateDescription.from_dict(StateHandler.state)
@@ -307,18 +322,20 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         the provided message type.
 
         Args:
-            message: a serialzed message
+            message: a serialized message
         """
         message = self.loads(message)
         event = getattr(self, "on_%s" % message.pop("type"))
         await event(**message)
 
+    @staticmethod
     async def on_as_app(self):
         """Event for registering a client as an App."""
         StateHandler.app_clients.add(self)
         awaitables = self.get_statistics_awaitables(only=self)
         asyncio.gather(*awaitables)
 
+    @staticmethod
     async def on_refresh(self):
         """Event for refreshing an App client."""
         StateHandler.state = fos.StateDescription.from_dict(
@@ -328,6 +345,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         awaitables += self.get_statistics_awaitables(only=self)
         asyncio.gather(*awaitables)
 
+    @staticmethod
     async def on_filters_update(self, filters):
         """Event for updating state filters. Sends an extended dataset statistics
         message to active App clients.
@@ -350,6 +368,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         """Event for pagination requests"""
         await self.send_page(**kwargs)
 
+    @staticmethod
     async def on_update(self, state):
         """Event for state updates. Sends an update message to all active
         clients, and statistics messages to active App clients.
@@ -364,6 +383,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         awaitables += self.get_statistics_awaitables()
         asyncio.gather(*awaitables)
 
+    @staticmethod
     async def on_add_selection(self, _id):
         """Event for adding a :class:`fiftyone.core.samples.Sample` _id to the
         currently selected sample _ids.
@@ -378,6 +398,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         StateHandler.state["selected"] = selected
         await self.send_updates(ignore=self)
 
+    @staticmethod
     async def on_remove_selection(self, _id):
         """Event for removing a :class:`fiftyone.core.samples.Sample` _id from the
         currently selected sample _ids
@@ -392,6 +413,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         StateHandler.state["selected"] = selected
         await self.send_updates(ignore=self)
 
+    @staticmethod
     async def on_clear_selection(self):
         """Event for clearing the currently selected sample _ids.
 
@@ -400,6 +422,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         StateHandler.state["selected"] = []
         await self.send_updates(ignore=self)
 
+    @staticmethod
     async def on_set_selected_objects(self, selected_objects):
         """Event for setting the entire selected objects list.
 
@@ -412,6 +435,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         StateHandler.state["selected_objects"] = selected_objects
         await self.send_updates(ignore=self)
 
+    @staticmethod
     async def on_set_dataset(self, dataset_name):
         """Event for setting the current dataset by name.
 
@@ -422,6 +446,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         StateHandler.state = fos.StateDescription(dataset=dataset).serialize()
         await self.on_update(StateHandler.state)
 
+    @staticmethod
     async def on_get_video_data(self, _id, filepath):
         """Gets the frame labels for video samples.
 
@@ -482,7 +507,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             }
         )
 
-    def get_statistics_awaitables(self, only=None):
+    @classmethod
+    def get_statistics_awaitables(cls, only=None):
         """Gets statistic awaitables that will send statistics to the relevant
         client(s) when executed
     
@@ -529,7 +555,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                 continue
             client.write_message(response)
 
-    async def send_statistics(self, view, extended=False, only=None):
+        return response
+
+    @classmethod
+    async def send_statistics(cls, view, extended=False, only=None):
         """Sends a statistics event given using the provided view to all App
         clients, unless an only client is provided in which case it is only
         sent to the that client.
@@ -541,7 +570,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         """
         if view is not None:
             aggs = fos.DatasetStatistics(view).aggregations
-            stats = await view._async_aggregate(self.sample_collection, aggs)
+            stats = await view._async_aggregate(self.sample_collection(), aggs)
             stats = [r.serialize(reflective=True) for r in stats]
         else:
             stats = []
@@ -554,7 +583,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             for client in StateHandler.app_clients:
                 client.write_message(message)
 
-    async def send_page(self, page, page_length=20):
+    @classmethod
+    async def send_page(cls, page, page_length=20):
         """Sends a pagination response to the current client
 
         Args:
@@ -580,8 +610,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         view = view.skip((page - 1) * page_length)
         pipeline = view._pipeline(hide_frames=True, squash_frames=True)
-        samples = await self.sample_collection.aggregate(pipeline).to_list(
-            page_length + 1
+        samples = (
+            await self.sample_collection()
+            .aggregate(pipeline)
+            .to_list(page_length + 1)
         )
         convert(samples)
 
@@ -612,7 +644,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         self.write_message(message)
 
-    async def on_distributions(self, group):
+    @classmethod
+    async def on_distributions(cls, group):
         """Sends distribution data with respect to a group to the requesting
         client.
 
@@ -652,7 +685,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
             results = []
             response = await view._async_aggregate(
-                self.sample_collection, aggregations
+                self.sample_collection(), aggregations
             )
             for idx, result in enumerate(response):
                 results.append(
@@ -672,7 +705,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         elif group == TAGS and results is None:
             result = await view._async_aggregate(
-                self.sample_collection, foa.CountValues("tags")
+                self.sample_collection(), foa.CountValues("tags")
             )
             results = [
                 {
@@ -690,7 +723,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             ]
         elif results is None:
             results = await _get_distributions(
-                self.sample_collection, view, group
+                self.sample_collection(), view, group
             )
 
         self.write_message({"type": "distributions", "results": results})

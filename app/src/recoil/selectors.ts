@@ -1,5 +1,6 @@
 import { selector, selectorFamily } from "recoil";
 import ReconnectingWebSocket from "reconnecting-websocket";
+import uuid from "uuid-v4";
 
 import * as atoms from "./atoms";
 import { generateColorMap } from "../utils/colors";
@@ -14,29 +15,63 @@ import {
   labelTypeHasColor,
 } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
+import { AxisInterval } from "recharts";
 
 class HTTPSSocket {
   location: string;
   events: {
-    [name: string]: Set<any>;
+    [name: string]: Set<(data: object) => void>;
   } = {};
+  readyState: number = WebSocket.CLOSED;
+  openTimeout: number = 200;
+  timeout: number = 200;
+  interval: number;
 
   constructor(location: string) {
     this.location = location;
+    this.connect();
+  }
+
+  connect() {
+    this.gather();
+    this.interval = setInterval(() => this.gather(), this.timeout);
+  }
+
+  gather() {
+    fetch(this.location + "&mode=gather")
+      .then((response) => response.json())
+      .then(({ messages }) => {
+        if (this.readyState === WebSocket.CONNECTING) {
+          this.events.open.forEach((h) => h(null));
+          this.timeout = this.openTimeout;
+          clearInterval(this.interval);
+          this.interval = setInterval(() => this.gather(), this.timeout);
+        }
+        this.readyState = WebSocket.OPEN;
+        this.events.message.forEach((m) => {
+          fetch(this.location + `&mode=message&e`)
+            .then((response) => response.json())
+            .then((data) => {
+              this.events.message.forEach((h) => h(JSON.stringify(data)));
+            });
+        });
+      })
+      .catch(() => {
+        if (this.readyState === WebSocket.OPEN && this.events.close) {
+          this.events.close.forEach((h) => h(null));
+        }
+        this.readyState = WebSocket.CONNECTING;
+        clearInterval(this.interval);
+        this.timeout = Math.min(this.timeout * 2, 5000);
+        this.interval = setInterval(() => this.gather(), this.timeout);
+      });
   }
 
   addEventListener(eventType, handler) {
-    if (eventType === "close") return;
     if (!this.events[eventType]) {
       this.events[eventType] = new Set();
     }
     this.events[eventType].add(handler);
-    fetch(`${this.location}?event=${eventType}`)
-      .then((response) => response.json())
-      .then((data) => {
-        this.events[eventType].has(handler) &&
-          handler({ data: JSON.stringify(data) });
-      });
   }
 
   removeEventListener(eventType, handler) {
@@ -49,11 +84,16 @@ class HTTPSSocket {
       body: message,
     })
       .then((response) => response.json())
-      .then((data) => {
-        console.log(data);
+      .then((events) => {
+        console.log(events);
       });
   }
 }
+
+export const sessionId = selector({
+  key: "sessionId",
+  get: () => uuid(),
+});
 
 export const http = selector({
   key: "http",
@@ -102,7 +142,9 @@ export const socket = selector({
   key: "socket",
   get: ({ get }): ReconnectingWebSocket | HTTPSSocket => {
     if (get(isColab)) {
-      return new HTTPSSocket(`${get(http)}/polling`);
+      return new HTTPSSocket(
+        `${get(http)}/polling?sessionId=${get(sessionId)}`
+      );
     } else {
       return new ReconnectingWebSocket(`${get(ws)}/state`);
     }

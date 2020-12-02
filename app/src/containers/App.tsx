@@ -7,14 +7,12 @@ import styled from "styled-components";
 
 import "player51/src/css/player51.css";
 import Header from "../components/Header";
-import PortForm from "../components/PortForm";
 
 import {
   useEventHandler,
   useHashChangeHandler,
   useMessageHandler,
 } from "../utils/hooks";
-import { attachDisposableHandler, packageMessage } from "../utils/socket";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { convertSelectedObjectsListToMap } from "../utils/selection";
