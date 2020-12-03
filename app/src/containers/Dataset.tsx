@@ -51,9 +51,7 @@ function Dataset(props) {
     metadata: null,
     activeLabels: {},
   });
-  const port = useRecoilValue(atoms.port);
-  const connected = useRecoilValue(atoms.connected);
-  const loading = useRecoilValue(atoms.loading);
+  const http = useRecoilValue(selectors.http);
   const hasDataset = useRecoilValue(selectors.hasDataset);
   const colorMap = useRecoilValue(atoms.colorMap);
   const refreshColorMap = useSetRecoilState(selectors.refreshColorMap);
@@ -163,8 +161,7 @@ function Dataset(props) {
   if (modal.sample) {
     const path = modal.sample.filepath;
     const id = modal.sample._id;
-    const host = `http://127.0.0.1:${port}/filepath`;
-    src = `${host}${path}?id=${id}`;
+    src = `${http}/filepath${path}?id=${id}`;
     s = modal.sample;
   }
 
