@@ -97,10 +97,7 @@ class HTTPSSocket {
   }
 }
 
-export const sessionId = selector({
-  key: "sessionId",
-  get: () => uuid(),
-});
+export const sessionId = uuid();
 
 const host =
   import.meta.env.MODE === "development"
@@ -162,9 +159,7 @@ export const socket = selector({
   key: "socket",
   get: ({ get }): ReconnectingWebSocket | HTTPSSocket => {
     if (get(isColab)) {
-      return new HTTPSSocket(
-        `${get(http)}/polling?sessionId=${get(sessionId)}`
-      );
+      return new HTTPSSocket(`${get(http)}/polling?sessionId=${sessionId}`);
     } else {
       return new ReconnectingWebSocket(get(ws));
     }
