@@ -1,17 +1,20 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { RecoilRoot } from "recoil";
 import { ThemeProvider } from "styled-components";
 
+import App from "./App";
+import Setup from "./Setup";
 import { GlobalStyle } from "../shared/global";
 import { darkTheme } from "../shared/colors";
-import Routes from "../Routes";
 
 const Root = () => {
   return (
     <ThemeProvider theme={darkTheme}>
       <GlobalStyle />
       <RecoilRoot>
-        <Routes />
+        <Suspense fallback={<Setup />}>
+          <App />
+        </Suspense>
       </RecoilRoot>
     </ThemeProvider>
   );

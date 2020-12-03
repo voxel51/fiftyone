@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRecoilState, useSetRecoilState, useRecoilValue } from "recoil";
 import ResizeObserver from "resize-observer-polyfill";
+import ReactGA from "react-ga";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { attachDisposableHandler, packageMessage } from "./socket";
+import gaConfig from "../constants/ga.json";
 
 export const useEventHandler = (target, eventType, handler) => {
   // Adapted from https://reactjs.org/docs/hooks-faq.html#what-can-i-do-if-my-effect-dependencies-change-too-often
@@ -176,4 +178,36 @@ export const useWindowSize = () => {
   }, []);
 
   return windowSize;
+};
+
+export const useGA = () => {
+  const [gaInitialized, setGAInitialized] = useState(false);
+  const info = useRecoilValue(selectors.fiftyone);
+
+  useEffect(() => {
+    const dev = import.meta.env.MODE == "development";
+    const buildType = dev ? "dev" : "prod";
+
+    ReactGA.initialize(gaConfig.app_ids[buildType], {
+      debug: dev,
+      gaOptions: {
+        storage: "none",
+        cookieDomain: "none",
+        clientId: info.user_id,
+      },
+    });
+    ReactGA.set({
+      userId: info.user_id,
+      checkProtocolTask: null, // disable check, allow file:// URLs
+      [gaConfig.dimensions.dev]: buildType,
+      [gaConfig.dimensions.version]: info.version,
+    });
+    setGAInitialized(true);
+    ReactGA.pageview(window.location.hash.replace(/^#/, ""));
+  }, []);
+  useHashChangeHandler(() => {
+    if (gaInitialized) {
+      ReactGA.pageview(window.location.hash.replace(/^#/, ""));
+    }
+  }, [window.location.hash]);
 };

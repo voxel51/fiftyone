@@ -14,7 +14,7 @@ import { ModalWrapper, Overlay } from "../components/utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { VALID_LABEL_TYPES } from "../utils/labels";
-import { useMessageHandler, useSendMessage } from "../utils/hooks";
+import { useMessageHandler, useSendMessage, useGA } from "../utils/hooks";
 import Loading from "../components/Loading";
 
 const PLOTS = ["labels", "scalars", "tags"];
@@ -45,6 +45,7 @@ const applyActiveLabels = (tuples, current, setter) => {
 };
 
 function Dataset(props) {
+  useGA();
   const [modal, setModal] = useState({
     visible: false,
     sample: null,

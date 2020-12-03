@@ -37,7 +37,7 @@ class HTTPSSocket {
   }
 
   execute(messages) {
-    if (this.readyState === WebSocket.CONNECTING) {
+    if ([WebSocket.CLOSED, WebSocket.CONNECTING].includes(this.readyState)) {
       this.events.open.forEach((h) => h(null));
       this.timeout = this.openTimeout;
       clearInterval(this.interval);
@@ -64,7 +64,7 @@ class HTTPSSocket {
         if (this.readyState === WebSocket.OPEN && this.events.close) {
           this.events.close.forEach((h) => h(null));
         }
-        this.readyState = WebSocket.CONNECTING;
+        this.readyState = WebSocket.CLOSED;
         clearInterval(this.interval);
         this.timeout = Math.min(this.timeout * 2, 5000);
         this.interval = setInterval(() => this.gather(), this.timeout);

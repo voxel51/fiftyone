@@ -286,6 +286,7 @@ const DatasetSelector = React.memo(() => {
   const socket = useRecoilValue(selectors.socket);
   const datasets = useRecoilValue(selectors.datasets);
   const [state, send] = useMachine(selectorMachine);
+  const connected = useRecoilValue(atoms.connected);
 
   const inputRef = useRef();
   const { results, currentResult, value, bestMatch, values } = state.context;
@@ -312,7 +313,11 @@ const DatasetSelector = React.memo(() => {
       <DatasetContainerInput>
         <DatasetInput
           placeholder={
-            datasets.length > 0 ? "Select a dataset" : "No datasets available"
+            connected
+              ? datasets.length > 0
+                ? "Select a dataset"
+                : "No datasets available"
+              : "Not connected"
           }
           disabled={!datasets.length}
           value={value}

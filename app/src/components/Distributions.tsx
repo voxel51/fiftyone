@@ -121,7 +121,7 @@ const Distributions = ({ group }) => {
   const [data, setData] = useState([]);
 
   useSendMessage("distributions", { group }, null, [
-    view,
+    JSON.stringify(view),
     datasetName,
     refresh,
   ]);

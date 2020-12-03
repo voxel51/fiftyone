@@ -144,7 +144,10 @@ def _catch_errors(func):
             return result
         except Exception as error:
             StateHandler.state = StateHandler.prev_state
-            for client in StateHandler.clients:
+            clients = list(StateHandler.clients)
+            if isinstance(self, PollingHandler):
+                clients.append(self)
+            for client in clients:
                 client.write_message(
                     {
                         "type": "notification",
@@ -407,7 +410,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         state.filters = filters
         view = state.view or state.dataset
         StateHandler.state = state.serialize()
-
         for clients in PollingHandler.clients.values():
             clients.update({"extended_statistics"})
 
@@ -488,7 +490,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         StateHandler.state = state
         for clients in PollingHandler.clients.values():
             clients.update({"update", "statistics", "extended_statistics"})
-
         awaitables = [
             self.send_updates(),
         ]
@@ -642,8 +643,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             view = None
 
-        awaitables.append(cls.send_statistics(view, extended=True, only=only,))
-
+        awaitables.append(cls.send_statistics(view, extended=True, only=only))
         return awaitables
 
     @classmethod

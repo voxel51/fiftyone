@@ -1,70 +1,30 @@
-import React, { ReactNode, useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import { useRecoilState, useSetRecoilState, useRecoilValue } from "recoil";
 import { ErrorBoundary } from "react-error-boundary";
 import NotificationHub from "../components/NotificationHub";
-import ReactGA from "react-ga";
+
 import styled from "styled-components";
 
 import "player51/src/css/player51.css";
 import Header from "../components/Header";
 import Dataset from "./Dataset";
 
-import {
-  useEventHandler,
-  useHashChangeHandler,
-  useMessageHandler,
-} from "../utils/hooks";
+import { useEventHandler, useMessageHandler } from "../utils/hooks";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { convertSelectedObjectsListToMap } from "../utils/selection";
-import gaConfig from "../constants/ga.json";
+
 import Error from "./Error";
 import { scrollbarStyles } from "../components/utils";
-
-type Props = {
-  children: ReactNode;
-};
+import Setup from "./Setup";
 
 const Body = styled.div`
   ${scrollbarStyles}
   padding: 0;
-  overflow-y: hidden;
   flex-grow: 1;
   display: flex:
   flex-direction: column;
 `;
-
-const useGA = () => {
-  const [gaInitialized, setGAInitialized] = useState(false);
-  const info = useRecoilValue(selectors.fiftyone);
-
-  useEffect(() => {
-    const dev = import.meta.env.MODE == "development";
-    const buildType = dev ? "dev" : "prod";
-
-    ReactGA.initialize(gaConfig.app_ids[buildType], {
-      debug: dev,
-      gaOptions: {
-        storage: "none",
-        cookieDomain: "none",
-        clientId: info.user_id,
-      },
-    });
-    ReactGA.set({
-      userId: info.user_id,
-      checkProtocolTask: null, // disable check, allow file:// URLs
-      [gaConfig.dimensions.dev]: buildType,
-      [gaConfig.dimensions.version]: info.version,
-    });
-    setGAInitialized(true);
-    ReactGA.pageview(window.location.hash.replace(/^#/, ""));
-  }, []);
-  useHashChangeHandler(() => {
-    if (gaInitialized) {
-      ReactGA.pageview(window.location.hash.replace(/^#/, ""));
-    }
-  }, [window.location.hash]);
-};
 
 function App() {
   const addNotification = useRef(null);
@@ -82,7 +42,6 @@ function App() {
   const setExtendedatasetStatsLoading = useSetRecoilState(
     atoms.extendedDatasetStatsLoading
   );
-  useGA();
   const handleStateUpdate = (state) => {
     setStateDescription(state);
     setSelectedSamples(new Set(state.selected));
@@ -110,6 +69,7 @@ function App() {
   });
 
   useMessageHandler("notification", (data) => addNotification.current(data));
+  const connected = useRecoilValue(atoms.connected);
 
   return (
     <ErrorBoundary
@@ -118,8 +78,9 @@ function App() {
       resetKeys={[reset]}
     >
       <Header />
-      <Body>
-        <Dataset />
+      <Body style={{ overflowY: connected ? "hidden" : "scroll" }}>
+        {connected && <Dataset />}
+        {!connected && <Setup />}
       </Body>
       <NotificationHub children={(add) => (addNotification.current = add)} />
     </ErrorBoundary>
