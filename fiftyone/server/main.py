@@ -213,6 +213,9 @@ class PollingHandler(tornado.web.RequestHandler):
             else:
                 caller = StateHandler
 
+            if event == "update":
+                message["ignore_polling_client"] = client
+
             handle = getattr(StateHandler, "on_%s" % event)
             await handle(caller, **message)
 
@@ -480,7 +483,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         self.write_message(message)
 
     @staticmethod
-    async def on_update(self, state):
+    async def on_update(self, state, ignore_polling_client=None):
         """Event for state updates. Sends an update message to all active
         clients, and statistics messages to active App clients.
 
@@ -488,8 +491,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             state: a serialized :class:`fiftyone.core.state.StateDescription`
         """
         StateHandler.state = state
-        for clients in PollingHandler.clients.values():
-            clients.update({"update", "statistics", "extended_statistics"})
+        for client, events in PollingHandler.clients.items():
+            if client == ignore_polling_client:
+                continue
+            events.update({"update", "statistics", "extended_statistics"})
         awaitables = [
             self.send_updates(),
         ]
