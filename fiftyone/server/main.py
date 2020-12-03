@@ -112,11 +112,9 @@ class FiftyOneHandler(RequestHandler):
         Returns:
             dict
         """
-        # return {"version": foc.VERSION, "user_id": get_user_id(), "context": _get_context()}
         return {
             "version": foc.VERSION,
             "user_id": get_user_id(),
-            "context": _get_context(),
         }
 
 
@@ -184,6 +182,7 @@ class PollingHandler(tornado.web.RequestHandler):
 
     @_catch_errors
     async def get(self):
+        # pylint: disable=no-value-for-parameter
         client = self.get_argument("sessionId")
         if client not in PollingHandler.clients:
             PollingHandler.clients[client].add("update")
@@ -195,7 +194,9 @@ class PollingHandler(tornado.web.RequestHandler):
 
     @_catch_errors
     async def post(self):
+        # pylint: disable=no-value-for-parameter
         client = self.get_argument("sessionId")
+        # pylint: disable=no-value-for-parameter
         mode = self.get_argument("mode")
         message = StateHandler.loads(self.request.body)
         event = message.pop("type")
@@ -930,10 +931,7 @@ class Application(tornado.web.Application):
     def __init__(self, **settings):
         static_path = "C:/" if os.name == "nt" else "/"
         server_path = os.path.dirname(os.path.abspath(__file__))
-        if foc.DEV_INSTALL:
-            rel_web_path = "../../app/build"
-        else:
-            rel_web_path = "static"
+        rel_web_path = "static"
         web_path = os.path.join(server_path, rel_web_path)
         handlers = [
             (r"/fiftyone", FiftyOneHandler),

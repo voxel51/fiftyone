@@ -435,6 +435,7 @@ def _display_colab(port, height, display_handle):
     shell = """
         (async () => {
             const url = new URL(await google.colab.kernel.proxyPort(%PORT%, {'cache': true}));
+            url.searchParams.set('fiftyoneColab', 'true');
             const iframe = document.createElement('iframe');
             iframe.src = url;
             iframe.setAttribute('width', '100%');

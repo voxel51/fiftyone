@@ -93,8 +93,7 @@ class HTTPSSocket {
         messages && this.execute(messages);
         type &&
           this.events.message.forEach((h) => h({ data: JSON.stringify(data) }));
-      })
-      .catch((error) => consol);
+      });
   }
 }
 
@@ -103,6 +102,11 @@ export const sessionId = selector({
   get: () => uuid(),
 });
 
+const host =
+  import.meta.env.MODE === "development"
+    ? "localhost:5151"
+    : window.location.host;
+
 export const http = selector({
   key: "http",
   get: ({ get }) => {
@@ -110,15 +114,14 @@ export const http = selector({
       return `http://localhost:${get(atoms.port)}`;
     } else {
       const loc = window.location;
-      //return loc.protocol + "//" + loc.host;
-      return loc.protocol + "//localhost:5151";
+      return loc.protocol + "//" + host;
     }
   },
 });
 
 export const ws = selector({
   key: "ws",
-  get: ({ get }) => {
+  get: () => {
     let url = null;
     const loc = window.location;
     if (loc.protocol === "https:") {
@@ -126,8 +129,7 @@ export const ws = selector({
     } else {
       url = "ws:";
     }
-    return url + "//localhost:5151/state";
-    return url + "//" + loc.host + "/state";
+    return url + "//" + host + "/state";
   },
 });
 
@@ -149,8 +151,10 @@ export const fiftyone = selector({
 
 export const isColab = selector({
   key: "isColab",
-  get: ({ get }) => {
-    return get(fiftyone).context === "COLAB";
+  get: () => {
+    const search = window.location.search;
+    const params = new URLSearchParams(search);
+    return params.get("fiftyoneColab");
   },
 });
 
