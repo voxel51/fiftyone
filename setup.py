@@ -18,7 +18,7 @@ class BdistWheelCustom(bdist_wheel):
         # for a development installation
         self.distribution.install_requires += [
             "fiftyone-brain>=0.1.11,<0.2",
-            "fiftyone-db>=0.1.2",
+            "fiftyone-db>=0.1.2,<0.2",
         ]
 
 
@@ -86,7 +86,7 @@ setup(
         "tornado",
         "xmltodict",
         # internal packages
-        "voxel51-eta>=0.1.12",
+        "voxel51-eta>=0.1.12,<0.2",
         # ETA dependency - restricted to a maximum version known to provide
         # wheels here because it tends to publish sdists several hours before
         # wheels. When users install FiftyOne in this window, they will need to
