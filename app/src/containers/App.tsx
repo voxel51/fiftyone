@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, Suspense } from "react";
 import { useRecoilState, useSetRecoilState, useRecoilValue } from "recoil";
 import { ErrorBoundary } from "react-error-boundary";
 import NotificationHub from "../components/NotificationHub";
@@ -79,7 +79,11 @@ function App() {
     >
       <Header />
       <Body style={{ overflowY: connected ? "hidden" : "scroll" }}>
-        {connected && <Dataset />}
+        {connected && (
+          <Suspense fallback={Setup}>
+            <Dataset />
+          </Suspense>
+        )}
         {!connected && <Setup />}
       </Body>
       <NotificationHub children={(add) => (addNotification.current = add)} />

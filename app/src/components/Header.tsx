@@ -281,7 +281,7 @@ const selectorMachine = Machine({
   },
 });
 
-const DatasetSelector = React.memo(() => {
+const DatasetSelector = () => {
   const datasetName = useRecoilValue(selectors.datasetName);
   const socket = useRecoilValue(selectors.socket);
   const datasets = useRecoilValue(selectors.datasets);
@@ -313,14 +313,10 @@ const DatasetSelector = React.memo(() => {
       <DatasetContainerInput>
         <DatasetInput
           placeholder={
-            connected
-              ? datasets.length > 0
-                ? "Select a dataset"
-                : "No datasets available"
-              : "Not connected"
+            datasets.length > 0 ? "Select a dataset" : "No datasets available"
           }
           disabled={!datasets.length}
-          value={value}
+          value={connected ? value : "Not connected"}
           onFocus={() => state.matches("reading") && send("EDIT")}
           onBlur={(e) => {
             state.matches("editing.searchResults.notHovering") && send("BLUR");
@@ -382,7 +378,7 @@ const DatasetSelector = React.memo(() => {
       <ErrorMessage machine={[state, send]} style={{ marginTop: 8 }} />
     </DatasetDiv>
   );
-});
+};
 
 const Header = () => {
   const socket = useRecoilValue(selectors.socket);
