@@ -1,6 +1,71 @@
 {
     "models": [
         {
+            "base_name": "inception-v3-imagenet",
+            "base_filename": "inception_v3_google-1a9a5a14.pth",
+            "version": null,
+            "description": "Inception v3 model trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "url": "https://download.pytorch.org/models/inception_v3_google-1a9a5a14.pth"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "config": {
+                    "entrypoint_fcn": "torchvision.models.inception.inception_v3",
+                    "entrypoint_args": { "pretrained": true },
+                    "postprocessor_cls": "fiftyone.utils.torch.ClassifierPostProcessor",
+                    "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
+                    "image_min_dim": 224,
+                    "image_mean": [0.485, 0.456, 0.406],
+                    "image_std": [0.229, 0.224, 0.225]
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "date_created": "2018-06-23T23:17:26"
+        },
+        {
+            "base_name": "faster-rcnn-resnet50-fpn-coco",
+            "base_filename": "fasterrcnn_resnet50_fpn_coco-258fb6c6.pth",
+            "version": null,
+            "description": "Faster R-CNN model with ResNet-50-FPN backbone trained on COCO. Source: https://pytorch.org/docs/stable/torchvision/models.html",
+            "manager": {
+                "type": "eta.core.models.ETAModelManager",
+                "config": {
+                    "url": "https://download.pytorch.org/models/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "config": {
+                    "entrypoint_fcn": "torchvision.models.detection.faster_rcnn.fasterrcnn_resnet50_fpn",
+                    "entrypoint_args": { "pretrained": true },
+                    "postprocessor_cls": "fiftyone.utils.torch.DetectorPostProcessor",
+                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "date_created": "2018-06-23T23:17:26"
+        },
+        {
             "base_name": "yolo-v2-coco",
             "base_filename": "yolo-v2-coco.weights",
             "version": null,
