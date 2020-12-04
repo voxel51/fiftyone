@@ -208,9 +208,9 @@ def load_zoo_model(
     d = deepcopy(model.default_deployment_config_dict)
     if kwargs:
         if d["type"] == etau.get_class_name(foe.ETAModel):
-            d["config"]["config"].update(**kwargs)
+            _merge_config(d["config"]["config"], kwargs)
         else:
-            d["config"].update(**kwargs)
+            _merge_config(d["config"], kwargs)
 
     # Load model config
     config = fom.ModelConfig.from_dict(d)
@@ -442,3 +442,11 @@ def _get_latest_model(base_name):
         return manifest.get_latest_model_with_base_name(base_name)
     except etam.ModelError:
         raise ValueError("No models found with base name '%s'" % base_name)
+
+
+def _merge_config(d, kwargs):
+    for k, v in kwargs.items():
+        if k in d and isinstance(d[k], dict):
+            d[k].update(v)
+        else:
+            d[k] = v
