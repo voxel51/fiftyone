@@ -2376,9 +2376,7 @@
                     "type": "eta.classifiers.VGG16Classifier",
                     "config": {
                         "attr_name": "imagenet",
-                        "config": {
-                            "labels_map": "{{eta-resources}}/vgg16-imagenet-labels.txt"
-                        }
+                        "labels_path": "{{eta-resources}}/vgg16-imagenet-labels.txt"
                     }
                 }
             },
