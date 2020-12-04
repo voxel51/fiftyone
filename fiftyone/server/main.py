@@ -488,7 +488,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         StateHandler.state = state
         for client, events in PollingHandler.clients.items():
             if client == ignore_polling_client:
-                continue
+                events.update({"statistics", "extended_statistics"})
             events.update({"update", "statistics", "extended_statistics"})
         awaitables = [
             self.send_updates(),
