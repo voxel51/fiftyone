@@ -267,10 +267,13 @@ export const datasetStats = selector({
   get: ({ get }) => {
     const raw = get(atoms.datasetStatsRaw);
     const currentView = get(view);
+    if (!raw.view) {
+      return null;
+    }
     if (viewsAreEqual(raw.view, currentView)) {
       return raw.stats;
     }
-    return [];
+    return null;
   },
 });
 
@@ -289,12 +292,15 @@ export const extendedDatasetStats = selector({
   get: ({ get }) => {
     const raw = get(atoms.extendedDatasetStatsRaw);
     const currentView = get(view);
+    if (!raw.view) {
+      return null;
+    }
     if (!viewsAreEqual(raw.view, currentView)) {
-      return [];
+      return null;
     }
     const currentFilters = get(filterStages);
     if (!filtersAreEqual(raw.filters, currentFilters)) {
-      return [];
+      return null;
     }
 
     return raw.stats;
@@ -326,7 +332,7 @@ export const filteredCount = selector({
 export const tagNames = selector({
   key: "tagNames",
   get: ({ get }) => {
-    return get(datasetStats).reduce((acc, cur) => {
+    return (get(datasetStats) ?? []).reduce((acc, cur) => {
       if (cur.name === "tags") {
         return Object.keys(cur.values).sort();
       }
@@ -338,7 +344,7 @@ export const tagNames = selector({
 export const tagSampleCounts = selector({
   key: "tagSampleCounts",
   get: ({ get }) => {
-    return get(datasetStats).reduce((acc, cur) => {
+    return (get(datasetStats) ?? []).reduce((acc, cur) => {
       if (cur.name === "tags") {
         return cur.values;
       }
@@ -350,7 +356,7 @@ export const tagSampleCounts = selector({
 export const filteredTagSampleCounts = selector({
   key: "filteredTagSampleCounts",
   get: ({ get }) => {
-    return get(extendedDatasetStats).reduce((acc, cur) => {
+    return (get(datasetStats) ?? []).reduce((acc, cur) => {
       if (cur.name === "tags") {
         return cur.values;
       }
@@ -479,7 +485,7 @@ const CONFIDENCE_BOUNDS_CLS =
 export const labelClasses = selectorFamily({
   key: "labelClasses",
   get: (label) => ({ get }) => {
-    return get(datasetStats).reduce((acc, cur) => {
+    return (get(datasetStats) ?? []).reduce((acc, cur) => {
       if (cur.name === label && cur._CLS === LABELS_CLS) {
         return cur.labels;
       }
@@ -495,7 +501,11 @@ export const labelSampleCounts = selectorFamily({
       get(scalarNames(dimension))
     );
     const prefix = dimension === "sample" ? "" : "frames.";
-    return get(datasetStats).reduce((acc, cur) => {
+    const stats = get(datasetStats);
+    if (stats === null) {
+      return null;
+    }
+    return stats.reduce((acc, cur) => {
       if (
         names.includes(cur.name.slice(prefix.length)) &&
         cur._CLS === COUNT_CLS
@@ -514,7 +524,11 @@ export const filteredLabelSampleCounts = selectorFamily({
       get(scalarNames(dimension))
     );
     const prefix = dimension === "sample" ? "" : "frames.";
-    return get(extendedDatasetStats).reduce((acc, cur) => {
+    const stats = get(extendedDatasetStats);
+    if (stats === null) {
+      return null;
+    }
+    return stats.reduce((acc, cur) => {
       if (
         names.includes(cur.name.slice(prefix.length)) &&
         cur._CLS === COUNT_CLS
@@ -745,7 +759,7 @@ export const fieldIsFiltered = selectorFamily({
 export const labelConfidenceBounds = selectorFamily({
   key: "labelConfidenceBounds",
   get: (label) => ({ get }) => {
-    return get(datasetStats).reduce(
+    return (get(datasetStats) ?? []).reduce(
       (acc, cur) => {
         if (cur.name === label && cur._CLS === CONFIDENCE_BOUNDS_CLS) {
           let bounds = cur.bounds;
@@ -772,7 +786,7 @@ export const labelConfidenceBounds = selectorFamily({
 export const numericFieldBounds = selectorFamily({
   key: "numericFieldBounds",
   get: (label) => ({ get }) => {
-    return get(datasetStats).reduce(
+    return (get(datasetStats) ?? []).reduce(
       (acc, cur) => {
         if (cur.name === label && cur._CLS === BOUNDS_CLS) {
           const { bounds } = cur;

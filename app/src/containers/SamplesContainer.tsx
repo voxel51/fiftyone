@@ -68,8 +68,8 @@ const FieldsWrapper = () => {
     return [...values].sort().map(({ name, type }) => ({
       name,
       type,
-      totalCount: totalCounts[name],
-      filteredCount: filteredCounts[name],
+      totalCount: totalCounts ? totalCounts[name] : null,
+      filteredCount: filteredCounts ? filteredCounts[name] : null,
       selected: Boolean(selected[name]),
     }));
   };

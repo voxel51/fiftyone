@@ -25,22 +25,17 @@ export const activePlot = atom({
 export const datasetStatsRaw = atom({
   key: "datasetStatsRaw",
   default: {
-    view: [],
+    view: null,
     stats: [],
   },
-});
-
-export const statsView = atom({
-  key: "statsView",
-  default: [],
 });
 
 export const extendedDatasetStatsRaw = atom({
   key: "extendedDatasetStatsRaw",
   default: {
-    view: [],
+    view: null,
     stats: [],
-    filters: {},
+    filters: null,
   },
 });
 
