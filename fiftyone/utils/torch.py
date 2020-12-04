@@ -59,11 +59,11 @@ class TorchModelConfig(Config, HasZooModel):
         entrypoint_fcn: a string like ``"torchvision.models.inception_v3"``
             specifying the entrypoint function that loads the model
         entrypoint_args: a dictionary of arguments for ``entrypoint_fcn``
-        postprocessor_cls: a string like
-            ``"fifytone.utils.torch.ClassifierPostProcessor"`` specifying the
-            :class:`fifytone.utils.torch.PostProcessor` to use
-        postprocessor_args: a dictionary of arguments for
-            ``postprocessor_cls(class_labels, **kwargs)``
+        output_processor_cls: a string like
+            ``"fifytone.utils.torch.ClassifierOutputProcessor"`` specifying the
+            :class:`fifytone.utils.torch.OutputProcessor` to use
+        output_processor_args: a dictionary of arguments for
+            ``output_processor_cls(class_labels, **kwargs)``
         labels_string (None): a comma-separated list of the class-names in the
             classifier, ordered in accordance with the trained model
         labels_path (None): the path to the labels map for the model
@@ -89,9 +89,11 @@ class TorchModelConfig(Config, HasZooModel):
         self.entrypoint_args = self.parse_dict(
             d, "entrypoint_args", default=None
         )
-        self.postprocessor_cls = self.parse_string(d, "postprocessor_cls")
-        self.postprocessor_args = self.parse_dict(
-            d, "postprocessor_args", default=None
+        self.output_processor_cls = self.parse_string(
+            d, "output_processor_cls"
+        )
+        self.output_processor_args = self.parse_dict(
+            d, "output_processor_args", default=None
         )
         self.labels_string = self.parse_string(
             d, "labels_string", default=None
@@ -135,8 +137,8 @@ class TorchModel(fom.Model):
         self._use_half_precision = self.config.use_half_precision is True
         self._model = self._load_model(config)
 
-        # Build post-processor
-        self._postprocessor = self._build_postprocessor(config)
+        # Build output processor
+        self._output_processor = self._build_output_processor(config)
 
     @property
     def use_gpu(self):
@@ -212,7 +214,7 @@ class TorchModel(fom.Model):
 
         output = self._model(imgs)
 
-        return self._postprocessor(output, frame_size)
+        return self._output_processor(output, frame_size)
 
     def _preprocess_batch(self, imgs):
         if not isinstance(imgs, torch.Tensor):
@@ -288,10 +290,10 @@ class TorchModel(fom.Model):
 
         return model
 
-    def _build_postprocessor(self, config):
-        postprocessor_cls = etau.get_class(config.postprocessor_cls)
-        kwargs = config.postprocessor_args or {}
-        return postprocessor_cls(self._class_labels, **kwargs)
+    def _build_output_processor(self, config):
+        output_processor_cls = etau.get_class(config.output_processor_cls)
+        kwargs = config.output_processor_args or {}
+        return output_processor_cls(self._class_labels, **kwargs)
 
 
 class MinResize(object):
@@ -332,8 +334,8 @@ class MinResize(object):
         return F.resize(pil_image_or_tensor, size, **self._kwargs)
 
 
-class PostProcessor(object):
-    """Interface for post-processing the outputs of Torch models."""
+class OutputProcessor(object):
+    """Interface for processing the outputs of Torch models."""
 
     def __call__(self, output, frame_size):
         """Parses the model output.
@@ -348,8 +350,8 @@ class PostProcessor(object):
         raise NotImplementedError("subclass must implement __call__")
 
 
-class ClassifierPostProcessor(PostProcessor):
-    """Post-processor for single label classifiers.
+class ClassifierOutputProcessor(OutputProcessor):
+    """Output processor for single label classifiers.
 
     Args:
         class_labels: the list of class labels for the model
@@ -396,8 +398,8 @@ class ClassifierPostProcessor(PostProcessor):
         return preds
 
 
-class DetectorPostProcessor(PostProcessor):
-    """Post-processor for object detectors.
+class DetectorOutputProcessor(OutputProcessor):
+    """Output processor for object detectors.
 
     Args:
         class_labels: the list of class labels for the model
@@ -462,8 +464,8 @@ class DetectorPostProcessor(PostProcessor):
         return fol.Detections(detections=detections)
 
 
-class InstanceSegmenterPostProcessor(PostProcessor):
-    """Post-processor for instance segementers.
+class InstanceSegmenterOutputProcessor(OutputProcessor):
+    """Output processor for instance segementers.
 
     Args:
         class_labels: the list of class labels for the model
@@ -541,8 +543,8 @@ class InstanceSegmenterPostProcessor(PostProcessor):
         return fol.Detections(detections=detections)
 
 
-class KeypointDetectorPostProcessor(PostProcessor):
-    """Post-processor for keypoint detection models.
+class KeypointDetectorOutputProcessor(OutputProcessor):
+    """Output processor for keypoint detection models.
 
     Args:
         class_labels: the list of class labels for the model
@@ -643,8 +645,8 @@ class KeypointDetectorPostProcessor(PostProcessor):
         return label
 
 
-class SegmenterPostProcessor(PostProcessor):
-    """Post-processor for semantic segementers.
+class SegmenterOutputProcessor(OutputProcessor):
+    """Output processor for semantic segementers.
 
     Args:
         class_labels: the list of class labels for the model
