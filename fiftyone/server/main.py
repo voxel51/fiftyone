@@ -935,6 +935,16 @@ async def _numeric_distribution_pipelines(coll, view, pipeline, buckets=50):
         ]
 
 
+class FileHandler(tornado.web.StaticFileHandler):
+    def set_headers(self):
+        super().set_headers()
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+        self.set_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+        self.set_header("x-colab-notebook-cache-control", "no-cache")
+        self.set_header("content-length", self.get_content_size())
+
+
 class Application(tornado.web.Application):
     """FiftyOne Tornado Application"""
 
@@ -946,11 +956,7 @@ class Application(tornado.web.Application):
         handlers = [
             (r"/fiftyone", FiftyOneHandler),
             (r"/polling", PollingHandler),
-            (
-                r"/filepath/(.*)",
-                tornado.web.StaticFileHandler,
-                {"path": static_path},
-            ),
+            (r"/filepath/(.*)", FileHandler, {"path": static_path},),
             (r"/stages", StagesHandler),
             (r"/state", StateHandler),
             (
