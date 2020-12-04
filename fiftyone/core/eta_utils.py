@@ -123,6 +123,8 @@ class ETAModel(fom.Model):
                 "Unsupported model type '%s'" % self._model.__class__
             )
 
+        eta_labels = self._parse_predictions(eta_labels)
+
         return parse_eta_labels(eta_labels)
 
     def predict_all(self, args):
@@ -138,7 +140,26 @@ class ETAModel(fom.Model):
         else:
             eta_labels_batch = super().predict_all(args)
 
+        eta_labels_batch = self._parse_predictions(eta_labels_batch)
+
         return [parse_eta_labels(el) for el in eta_labels_batch]
+
+    def _parse_predictions(self, eta_labels_or_batch):
+        if (
+            not isinstance(self._model, etal.Classifier)
+            or self._model.is_multilabel
+        ):
+            return eta_labels_or_batch
+
+        if isinstance(eta_labels_or_batch, list):
+            return [
+                attrs[0] if attrs else None for attrs in eta_labels_or_batch
+            ]
+
+        if not eta_labels_or_batch:
+            return None
+
+        return eta_labels_or_batch[0]
 
     @classmethod
     def from_eta_model(cls, model):
