@@ -37,7 +37,6 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 from fiftyone.core.service import DatabaseService
-from fiftyone.core.session import _get_context
 from fiftyone.core.stages import _STAGES
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos

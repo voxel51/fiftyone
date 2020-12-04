@@ -14,6 +14,7 @@ import time
 
 import fiftyone.core.dataset as fod
 import fiftyone.core.client as foc
+import fiftyone.core.context as focx
 import fiftyone.core.service as fos
 from fiftyone.core.state import StateDescription
 
@@ -22,9 +23,6 @@ html_escape = html.escape
 del html
 logger = logging.getLogger(__name__)
 
-_CONTEXT_COLAB = "COLAB"
-_CONTEXT_IPYTHON = "IPYTHON"
-_CONTEXT_NONE = "NONE"
 
 #
 # Session globals
@@ -143,7 +141,7 @@ class Session(foc.HasClient):
 
     def __init__(self, dataset=None, view=None, port=5151, app=False):
         self._port = port
-        self._context = _get_context()
+        self._context = focx._get_context()
         # maintain a reference to prevent garbage collection
         self._get_time = time.perf_counter
         self._WAIT_INSTRUCTIONS = _WAIT_INSTRUCTIONS
@@ -162,17 +160,17 @@ class Session(foc.HasClient):
         elif dataset is not None:
             self.dataset = dataset
 
-        if self._app and self._context == _CONTEXT_NONE:
+        if self._app and self._context == focx._NONE:
             self._app_service = fos.AppService(server_port=port)
             logger.info("App launched")
             return
-        elif self._app and self._context != _CONTEXT_NONE:
+        elif self._app and self._context != focx._NONE:
             raise ValueError("App cannot be used in notebooks")
 
         self._start_time = self._get_time()
 
     def __repr__(self):
-        if self._context == _CONTEXT_NONE:
+        if self._context == focx._NONE:
             return "Summary...todo"
         else:
             display(self._port)
@@ -342,45 +340,6 @@ should call `session.wait()` to keep the session (and the script) alive.
 """
 
 
-def _get_context():
-    """Determine the most specific context that we're in.
-
-    Returns:
-      _CONTEXT_COLAB: If in Colab with an IPython notebook context.
-      _CONTEXT_IPYTHON: If not in Colab, but we are in an IPython notebook
-        context (e.g., from running `jupyter notebook` at the command
-        line).
-      _CONTEXT_NONE: Otherwise (e.g., by running a Python script at the
-        command-line or using the `ipython` interactive shell).
-    """
-    # In Colab, the `google.colab` module is available, but the shell
-    # returned by `IPython.get_ipython` does not have a `get_trait`
-    # method.
-    try:
-        import google.colab  # noqa: F401
-        import IPython
-    except ImportError:
-        pass
-    else:
-        if IPython.get_ipython() is not None:
-            # We'll assume that we're in a Colab notebook context.
-            return _CONTEXT_COLAB
-
-    # In an IPython command line shell or Jupyter notebook, we can
-    # directly query whether we're in a notebook context.
-    try:
-        import IPython
-    except ImportError:
-        pass
-    else:
-        ipython = IPython.get_ipython()
-        if ipython is not None and ipython.has_trait("kernel"):
-            return _CONTEXT_IPYTHON
-
-    # Otherwise, we're not in a known notebook context.
-    return _CONTEXT_NONE
-
-
 def display(port=None, height=None):
     """Display a TensorBoard instance already running on this machine.
 
@@ -408,10 +367,10 @@ def _display(port=None, height=None, print_message=False, display_handle=None):
         height = 800
 
     fn = {
-        _CONTEXT_COLAB: _display_colab,
-        _CONTEXT_IPYTHON: _display_ipython,
-        _CONTEXT_NONE: _display_cli,
-    }[_get_context()]
+        focx._COLAB: _display_colab,
+        focx._IPYTHON: _display_ipython,
+        focx._NONE: _display_cli,
+    }[focx._get_context()]
     return fn(port=port, height=height, display_handle=display_handle)
 
 

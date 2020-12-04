@@ -20,6 +20,7 @@ from retrying import retry
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
+import fiftyone.core.context as focx
 import fiftyone.service.util as fosu
 
 
@@ -260,6 +261,8 @@ class DatabaseService(MultiClientService):
         ]
         if not sys.platform.startswith("win"):
             args.append("--nounixsocket")
+        if focx._get_context() == focx._COLAB:
+            args = ["sudo"] + args
         return args
 
     @property
@@ -317,11 +320,12 @@ class DatabaseService(MultiClientService):
             searched.add(folder)
             mongod_path = os.path.join(folder, DatabaseService.MONGOD_EXE_NAME)
             if os.path.isfile(mongod_path):
+                cmd = [mongod_path, "--version"]
+                if focx._get_context() == focx._COLAB:
+                    cmd = ["sudo"] + cmd
                 logger.debug("Trying %s", mongod_path)
                 p = psutil.Popen(
-                    [mongod_path, "--version"],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
+                    cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 )
                 out, err = p.communicate()
                 out = out.decode(errors="ignore").strip()
