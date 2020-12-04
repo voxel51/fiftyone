@@ -373,7 +373,6 @@ class ClassifierPostProcessor(PostProcessor):
             a list of :class:`fiftyone.core.labels.Classification` instances
         """
         logits = output.detach().cpu().numpy()
-        # logits = np.float32(logits)
 
         predictions = np.argmax(logits, axis=1)
         odds = np.exp(logits)
@@ -490,7 +489,7 @@ class InstanceSegmenterPostProcessor(PostProcessor):
                     ``[x1, y1, x2, y2]`` format (absolute coordinates)
                 -   labels (``Int64Tensor[N]``): the predicted labels
                 -   scores (``Tensor[N]``): the scores for each prediction
-                -   masks (``UInt8Tensor[N, 1, H, W]``): the predicted masks
+                -   masks (``FloatTensor[N, 1, H, W]``): the predicted masks
                     for each instance, in ``[0, 1]``
 
             frame_size: the ``(width, height)`` of the frames in the batch
@@ -524,7 +523,11 @@ class InstanceSegmenterPostProcessor(PostProcessor):
                 (y2 - y1) / height,
             ]
 
-            mask = np.squeeze(soft_mask, axis=0) > self.mask_thresh
+            soft_mask = np.squeeze(soft_mask, axis=0)[
+                int(round(y1)) : int(round(y2)),
+                int(round(x1)) : int(round(x2)),
+            ]
+            mask = soft_mask > self.mask_thresh
 
             detections.append(
                 fol.Detection(
@@ -536,6 +539,138 @@ class InstanceSegmenterPostProcessor(PostProcessor):
             )
 
         return fol.Detections(detections=detections)
+
+
+class KeypointDetectorPostProcessor(PostProcessor):
+    """Post-processor for keypoint detection models.
+
+    Args:
+        class_labels: the list of class labels for the model
+        edges (None): an optional list of list of vertices specifying polyline
+            connections between keypoints to draw
+        confidence_thresh (None): an optional confidence threshold to apply
+            when deciding whether to keep predictions
+    """
+
+    def __init__(self, class_labels, edges=None, confidence_thresh=None):
+        self.class_labels = class_labels
+        self.edges = edges
+        self.confidence_thresh = confidence_thresh
+
+    def __call__(self, output, frame_size):
+        """Parses the model output.
+
+        Args:
+            output: a batch of predictions ``output = List[Dict[Tensor]]``,
+                where each dict has the following keys:
+
+                -   boxes (``FloatTensor[N, 4]``): the predicted boxes in
+                    ``[x1, y1, x2, y2]`` format (absolute coordinates)
+                -   labels (``Int64Tensor[N]``): the predicted labels
+                -   scores (``Tensor[N]``): the scores for each prediction
+                -   keypoints (``FloatTensor[N, K, ...]``): the predicted
+                    keypoints for each instance in ``[x, y, ...]`` format
+
+            frame_size: the ``(width, height)`` of the frames in the batch
+
+        Returns:
+            a list of :class:`fiftyone.core.labels.Label` dicts
+        """
+        return [self._parse_detections(o, frame_size) for o in output]
+
+    def _parse_detections(self, output, frame_size):
+        width, height = frame_size
+
+        boxes = output["boxes"].detach().cpu().numpy()
+        labels = output["labels"].detach().cpu().numpy()
+        scores = output["scores"].detach().cpu().numpy()
+        keypoints = output["keypoints"].detach().cpu().numpy()
+
+        _detections = []
+        _keypoints = []
+        _polylines = []
+        for box, label, score, kpts in zip(boxes, labels, scores, keypoints):
+            if (
+                self.confidence_thresh is not None
+                and score < self.confidence_thresh
+            ):
+                continue
+
+            x1, y1, x2, y2 = box
+            bounding_box = [
+                x1 / width,
+                y1 / height,
+                (x2 - x1) / width,
+                (y2 - y1) / height,
+            ]
+
+            points = [(p[0] / width, p[1] / height) for p in kpts]
+
+            _detections.append(
+                fol.Detection(
+                    label=self.class_labels[label],
+                    bounding_box=bounding_box,
+                    confidence=score,
+                )
+            )
+
+            _keypoints.append(
+                fol.Keypoint(
+                    label=self.class_labels[label],
+                    points=points,
+                    confidence=score,
+                )
+            )
+
+            if self.edges is not None:
+                _polylines.append(
+                    fol.Polyline(
+                        points=[[points[v] for v in e] for e in self.edges],
+                        confidence=score,
+                        closed=False,
+                        filled=False,
+                    )
+                )
+
+        label = {
+            "detections": fol.Detections(detections=_detections),
+            "keypoints": fol.Keypoints(keypoints=_keypoints),
+        }
+
+        if self.edges is not None:
+            label["polylines"] = fol.Polylines(polylines=_polylines)
+
+        return label
+
+
+class SegmenterPostProcessor(PostProcessor):
+    """Post-processor for semantic segementers.
+
+    Args:
+        class_labels: the list of class labels for the model
+    """
+
+    def __init__(self, class_labels):
+        self.class_labels = class_labels
+
+    def __call__(self, output, frame_size):
+        """Parses the model output.
+
+        Args:
+            output: a batch of predictions ``output = Dict[Tensor]``,
+                where the dict has the following keys:
+
+                -   out (``FloatTensor[N, M, H, W]``): the segmentation map
+                    probabilities for the ``N`` images across the ``M`` classes
+
+            frame_size: the ``(width, height)`` of the frames in the batch
+
+        Returns:
+            a list of :class:`fiftyone.core.labels.Segmentation` instances
+        """
+        probs = output["out"].detach().cpu().numpy()
+        masks = probs.argmax(axis=1)
+        return [fol.Segmentation(mask=mask) for mask in masks]
 
 
 class TorchImageDataset(Dataset):
