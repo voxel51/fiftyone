@@ -63,18 +63,17 @@ const ViewBar = React.memo(() => {
   const [state, send] = useMachine(viewBarMachine);
   const [view, setView] = useRecoilState(selectors.view);
   const fieldPaths = useRecoilValue(selectors.fieldPaths);
-
-  const port = useRecoilValue<number>(atoms.port);
+  const http = useRecoilValue(selectors.http);
 
   useEffect(() => {
     send({
       type: "UPDATE",
-      port,
+      http,
       view,
       setView,
       fieldNames: fieldPaths,
     });
-  }, [port, view]);
+  }, [http, view]);
 
   const { stages, activeStage } = state.context;
   const barRef = useRef(null);

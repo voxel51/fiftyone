@@ -15,6 +15,7 @@ import {
   labelTypeHasColor,
 } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
+import { viewsAreEqual } from "../utils/view";
 
 class HTTPSSocket {
   location: string;
@@ -208,10 +209,6 @@ export const view = selector({
       ...state,
       view: stages,
     };
-    set(atoms.datasetStatsLoading, true);
-    if (Object.keys(state.filters).length) {
-      set(atoms.extendedDatasetStatsLoading, true);
-    }
     set(atoms.stateDescription, newState);
     get(socket).send(packageMessage("update", { state: newState }));
   },
@@ -229,7 +226,6 @@ export const filterStages = selector({
     };
     const sock = get(socket);
     sock.send(packageMessage("filters_update", { filters }));
-    set(atoms.extendedDatasetStatsLoading, true);
     set(atoms.stateDescription, state);
   },
 });
@@ -266,22 +262,49 @@ export const paginatedFilterStages = selector({
   },
 });
 
-export const extendedView = selector({
-  key: "extendedView",
+export const datasetStats = selector({
+  key: "datasetStats",
   get: ({ get }) => {
-    const viewValue = get(view);
-    const stages = [];
-    for (const filter in get(filterStages)) {
-      stages.push(filter);
+    const raw = get(atoms.datasetStatsRaw);
+    const currentView = get(view);
+    if (viewsAreEqual(raw.view, currentView)) {
+      return raw.stats;
     }
-    return [...viewValue, ...stages];
+    return [];
+  },
+});
+
+const normalizeFilters = (filters) => {
+  const names = Object.keys(filters).sort();
+  const list = names.map((n) => filters[n]);
+  return JSON.stringify([names, list]);
+};
+
+const filtersAreEqual = (filtersOne, filtersTwo) => {
+  return normalizeFilters(filtersOne) === normalizeFilters(filtersTwo);
+};
+
+export const extendedDatasetStats = selector({
+  key: "extendedDatasetStats",
+  get: ({ get }) => {
+    const raw = get(atoms.extendedDatasetStatsRaw);
+    const currentView = get(view);
+    if (!viewsAreEqual(raw.view, currentView)) {
+      return [];
+    }
+    const currentFilters = get(filterStages);
+    if (!filtersAreEqual(raw.filters, currentFilters)) {
+      return [];
+    }
+
+    return raw.stats;
   },
 });
 
 export const totalCount = selector({
   key: "totalCount",
   get: ({ get }): number => {
-    const stats = get(atoms.datasetStats) || [];
+    const stats = get(datasetStats) || [];
     return stats.reduce(
       (acc, cur) => (cur.name === "count" ? cur.count : acc),
       null
@@ -292,7 +315,7 @@ export const totalCount = selector({
 export const filteredCount = selector({
   key: "filteredCount",
   get: ({ get }): number => {
-    const stats = get(atoms.extendedDatasetStats) || [];
+    const stats = get(extendedDatasetStats) || [];
     return stats.reduce(
       (acc, cur) => (cur.name === "count" ? cur.count : acc),
       null
@@ -303,7 +326,7 @@ export const filteredCount = selector({
 export const tagNames = selector({
   key: "tagNames",
   get: ({ get }) => {
-    return get(atoms.datasetStats).reduce((acc, cur) => {
+    return get(datasetStats).reduce((acc, cur) => {
       if (cur.name === "tags") {
         return Object.keys(cur.values).sort();
       }
@@ -315,7 +338,7 @@ export const tagNames = selector({
 export const tagSampleCounts = selector({
   key: "tagSampleCounts",
   get: ({ get }) => {
-    return get(atoms.datasetStats).reduce((acc, cur) => {
+    return get(datasetStats).reduce((acc, cur) => {
       if (cur.name === "tags") {
         return cur.values;
       }
@@ -327,7 +350,7 @@ export const tagSampleCounts = selector({
 export const filteredTagSampleCounts = selector({
   key: "filteredTagSampleCounts",
   get: ({ get }) => {
-    return get(atoms.extendedDatasetStats).reduce((acc, cur) => {
+    return get(extendedDatasetStats).reduce((acc, cur) => {
       if (cur.name === "tags") {
         return cur.values;
       }
@@ -456,7 +479,7 @@ const CONFIDENCE_BOUNDS_CLS =
 export const labelClasses = selectorFamily({
   key: "labelClasses",
   get: (label) => ({ get }) => {
-    return get(atoms.datasetStats).reduce((acc, cur) => {
+    return get(datasetStats).reduce((acc, cur) => {
       if (cur.name === label && cur._CLS === LABELS_CLS) {
         return cur.labels;
       }
@@ -472,7 +495,7 @@ export const labelSampleCounts = selectorFamily({
       get(scalarNames(dimension))
     );
     const prefix = dimension === "sample" ? "" : "frames.";
-    return get(atoms.datasetStats).reduce((acc, cur) => {
+    return get(datasetStats).reduce((acc, cur) => {
       if (
         names.includes(cur.name.slice(prefix.length)) &&
         cur._CLS === COUNT_CLS
@@ -491,7 +514,7 @@ export const filteredLabelSampleCounts = selectorFamily({
       get(scalarNames(dimension))
     );
     const prefix = dimension === "sample" ? "" : "frames.";
-    return get(atoms.extendedDatasetStats).reduce((acc, cur) => {
+    return get(extendedDatasetStats).reduce((acc, cur) => {
       if (
         names.includes(cur.name.slice(prefix.length)) &&
         cur._CLS === COUNT_CLS
@@ -722,7 +745,7 @@ export const fieldIsFiltered = selectorFamily({
 export const labelConfidenceBounds = selectorFamily({
   key: "labelConfidenceBounds",
   get: (label) => ({ get }) => {
-    return get(atoms.datasetStats).reduce(
+    return get(datasetStats).reduce(
       (acc, cur) => {
         if (cur.name === label && cur._CLS === CONFIDENCE_BOUNDS_CLS) {
           let bounds = cur.bounds;
@@ -749,7 +772,7 @@ export const labelConfidenceBounds = selectorFamily({
 export const numericFieldBounds = selectorFamily({
   key: "numericFieldBounds",
   get: (label) => ({ get }) => {
-    return get(atoms.datasetStats).reduce(
+    return get(datasetStats).reduce(
       (acc, cur) => {
         if (cur.name === label && cur._CLS === BOUNDS_CLS) {
           const { bounds } = cur;

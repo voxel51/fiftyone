@@ -59,10 +59,6 @@ const FieldsWrapper = () => {
   const frameLabelNameGroups = useRecoilValue(
     selectors.labelNameGroups("frame")
   );
-  const datasetStatsLoading = useRecoilValue(atoms.datasetStatsLoading);
-  const extendedDatasetStatsLoading = useRecoilValue(
-    atoms.extendedDatasetStatsLoading
-  );
 
   useEffect(() => {
     setModalFilters(filters);
@@ -72,8 +68,8 @@ const FieldsWrapper = () => {
     return [...values].sort().map(({ name, type }) => ({
       name,
       type,
-      totalCount: datasetStatsLoading ? null : totalCounts[name],
-      filteredCount: extendedDatasetStatsLoading ? null : filteredCounts[name],
+      totalCount: totalCounts[name],
+      filteredCount: filteredCounts[name],
       selected: Boolean(selected[name]),
     }));
   };

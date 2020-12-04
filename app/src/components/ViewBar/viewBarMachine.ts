@@ -37,9 +37,7 @@ export const createStage = (
 });
 
 function getStageInfo(context) {
-  return fetch(`http://127.0.0.1:${context.port}/stages`).then((response) =>
-    response.json()
-  );
+  return fetch(`${context.http}/stages`).then((response) => response.json());
 }
 
 function serializeStage(stage, stageMap, fieldNames) {
@@ -167,7 +165,7 @@ const viewBarMachine = Machine(
       activeStage: 0,
       view: undefined,
       setView: undefined,
-      port: undefined,
+      http: undefined,
       fieldNames: [],
     },
     initial: "initializing",
@@ -488,7 +486,7 @@ const viewBarMachine = Machine(
         target: "decide",
         actions: [
           assign({
-            port: (_, { port }) => port,
+            http: (_, { http }) => http,
             view: (_, { view }) => view,
             setView: (_, { setView }) => setView,
             fieldNames: (_, { fieldNames }) => fieldNames,

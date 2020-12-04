@@ -237,10 +237,9 @@ class PollingHandler(tornado.web.RequestHandler):
         elif event == "extended_statistics":
             state = fos.StateDescription.from_dict(StateHandler.state)
             view = state.view or state.dataset
-            if view:
-                for stage in _make_filter_stages(state.dataset, state.filters):
-                    view = view.add_stage(stage)
-            await StateHandler.send_statistics(view, extended=True, only=self)
+            await StateHandler.send_statistics(
+                view, only=self, filters=state.filters
+            )
 
     def write_message(self, message):
         message = StateHandler.dumps(message)
@@ -415,10 +414,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         for clients in PollingHandler.clients.values():
             clients.update({"extended_statistics"})
 
-        for stage in _make_filter_stages(state.dataset, state.filters):
-            view = view.add_stage(stage)
-
-        await self.send_statistics(view, extended=True)
+        await self.send_statistics(view, filters=filters)
 
     @classmethod
     async def on_page(cls, self, page, page_length=20):
@@ -641,13 +637,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         view = state.view or state.dataset
         awaitables = [cls.send_statistics(view, only=only)]
 
-        if state.filters:
-            for stage in _make_filter_stages(state.dataset, state.filters):
-                view = view.add_stage(stage)
-        else:
-            view = None
-
-        awaitables.append(cls.send_statistics(view, extended=True, only=only))
+        awaitables.append(
+            cls.send_statistics(view, filters=state.filters, only=only)
+        )
         return awaitables
 
     @classmethod
@@ -670,24 +662,38 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             client.write_message(response)
 
     @classmethod
-    async def send_statistics(cls, view, extended=False, only=None):
+    async def send_statistics(cls, view, filters=None, only=None):
         """Sends a statistics event given using the provided view to all App
         clients, unless an only client is provided in which case it is only
         sent to the that client.
 
         Args:
             view: a view
-            extended (False): extended flag
+            filters (None): filter stages to append to the view
             only (None): a client to restrict the message to
         """
-        if view is not None:
+        base_view = view
+        if view is not None and (filters is None or len(filters)):
+            if filters is not None and len(filters):
+                for stage in _make_filter_stages(view._dataset, filters):
+                    view = view.add_stage(stage)
             aggs = fos.DatasetStatistics(view).aggregations
             stats = await view._async_aggregate(cls.sample_collection(), aggs)
             stats = [r.serialize(reflective=True) for r in stats]
         else:
             stats = []
 
-        message = {"type": "statistics", "stats": stats, "extended": extended}
+        view = (
+            base_view._serialize()
+            if isinstance(base_view, fov.DatasetView)
+            else []
+        )
+        message = {
+            "type": "statistics",
+            "stats": stats,
+            "view": view,
+            "filters": filters,
+        }
 
         if only:
             only.write_message(message)

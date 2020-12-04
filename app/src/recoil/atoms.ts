@@ -22,24 +22,26 @@ export const activePlot = atom({
   default: "labels",
 });
 
-export const datasetStats = atom({
-  key: "datasetStats",
+export const datasetStatsRaw = atom({
+  key: "datasetStatsRaw",
+  default: {
+    view: [],
+    stats: [],
+  },
+});
+
+export const statsView = atom({
+  key: "statsView",
   default: [],
 });
 
-export const datasetStatsLoading = atom({
-  key: "datasetStatsLoading",
-  default: true,
-});
-
-export const extendedDatasetStats = atom({
-  key: "extendedDatasetStats",
-  default: [],
-});
-
-export const extendedDatasetStatsLoading = atom({
-  key: "extendedDatasetStatsLoading",
-  default: true,
+export const extendedDatasetStatsRaw = atom({
+  key: "extendedDatasetStatsRaw",
+  default: {
+    view: [],
+    stats: [],
+    filters: {},
+  },
 });
 
 export const loading = atom({

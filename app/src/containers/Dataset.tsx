@@ -45,7 +45,7 @@ const applyActiveLabels = (tuples, current, setter) => {
 };
 
 function Dataset(props) {
-  useGA();
+  // useGA();
   const [modal, setModal] = useState({
     visible: false,
     sample: null,
@@ -61,12 +61,10 @@ function Dataset(props) {
   const labelTuples = useRecoilValue(selectors.labelTuples("sample"));
   const frameLabelTuples = useRecoilValue(selectors.labelTuples("frame"));
   const tagNames = useRecoilValue(selectors.tagNames);
-  const setExtendedDatasetStats = useSetRecoilState(atoms.extendedDatasetStats);
-  const setExtendedDatasetStatsLoading = useSetRecoilState(
-    atoms.extendedDatasetStatsLoading
+  const setExtendedDatasetStats = useSetRecoilState(
+    atoms.extendedDatasetStatsRaw
   );
-  const setDatasetStats = useSetRecoilState(atoms.datasetStats);
-  const setDatasetStatsLoading = useSetRecoilState(atoms.datasetStatsLoading);
+  const setDatasetStats = useSetRecoilState(atoms.datasetStatsRaw);
   const [activeLabels, setActiveLabels] = useRecoilState(
     atoms.activeLabels("sample")
   );
@@ -77,15 +75,9 @@ function Dataset(props) {
   const activeFrameOther = useRecoilValue(atoms.activeOther("frame"));
   const view = useRecoilValue(selectors.view);
 
-  useMessageHandler("statistics", ({ stats, extended }) => {
-    if (extended) {
-      setExtendedDatasetStatsLoading(false);
-      setExtendedDatasetStats(stats);
-    } else {
-      setDatasetStatsLoading(false);
-      setDatasetStats(stats);
-      view.length === 0 && setExtendedDatasetStatsLoading(false);
-    }
+  useMessageHandler("statistics", ({ stats, view, filters }) => {
+    filters && setExtendedDatasetStats({ stats, view, filters });
+    !filters && setDatasetStats({ stats, view });
   });
   useSendMessage("as_app", {});
 
