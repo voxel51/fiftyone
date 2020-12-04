@@ -1,5 +1,12 @@
 /** @type {import("snowpack").SnowpackUserConfig } */
 module.exports = {
+  experiments: {
+    optimize: {
+      bundle: true,
+      minify: true,
+      target: "es2018",
+    },
+  },
   mount: {
     public: "/",
     src: "/_dist_",
@@ -35,6 +42,7 @@ module.exports = {
     open: "none",
   },
   buildOptions: {
+    baseUrl: "/",
     out: "../fiftyone/server/static",
   },
   proxy: {

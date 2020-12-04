@@ -10,7 +10,9 @@ const Link = styled.a`
 const ExternalLink = ({ href, ...props }) => {
   let openExternal;
   if (isElectron()) {
-    openExternal = require("electron").shell.openExternal;
+    try {
+      openExternal = require("electron").shell.openExternal;
+    } catch {}
   }
   return (
     <Link
