@@ -31,8 +31,9 @@ import torchvision.models.utils as tmu
 
 
 class TorchvisionModelConfig(fout.TorchModelConfig):
+    """.. autoclass:: fiftyone.utils.torch.TorchModelConfig"""
 
-    pass
+    __doc__ = fout.TorchModelConfig.__doc__
 
 
 class TorchvisionModel(fout.TorchModel):
