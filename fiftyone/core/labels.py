@@ -194,7 +194,7 @@ class Classification(ImageLabel, _HasID):
 
     Args:
         label (None): the label string
-        confidence (None): a confidence in ``[0, 1]`` for the label
+        confidence (None): a confidence in ``[0, 1]`` for the classification
         logits (None): logits associated with the labels
     """
 
@@ -319,7 +319,7 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
         mask (None): an instance segmentation mask for the detection within
             its bounding box, which should be a 2D binary or 0/1 integer NumPy
             array
-        confidence (None): a confidence in ``[0, 1]`` for the label
+        confidence (None): a confidence in ``[0, 1]`` for the detection
         index (None): an index for the object
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
@@ -507,6 +507,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
         points (None): a list of lists of ``(x, y)`` points in
             ``[0, 1] x [0, 1]`` describing the vertices of each shape in the
             polyline
+        confidence (None): a confidence in ``[0, 1]`` for the polyline
         index (None): an index for the polyline
         closed (False): whether the shapes are closed, i.e., and edge should
             be drawn from the last vertex to the first vertex of each shape
@@ -520,6 +521,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
 
     label = fof.StringField()
     points = fof.PolylinePointsField()
+    confidence = fof.FloatField()
     index = fof.IntField()
     closed = fof.BooleanField(default=False)
     filled = fof.BooleanField(default=False)
@@ -551,6 +553,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
         return Detection(
             label=self.label,
             bounding_box=bounding_box,
+            confidence=self.confidence,
             mask=mask,
             index=self.index,
             attributes=self.attributes,
@@ -571,6 +574,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
 
         return etap.Polyline(
             label=self.label,
+            confidence=self.confidence,
             index=self.index,
             name=name,
             points=self.points,
@@ -609,6 +613,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
         return cls(
             label=polyline.label,
             points=polyline.points,
+            confidence=polyline.confidence,
             index=polyline.index,
             closed=polyline.closed,
             filled=polyline.filled,
@@ -688,6 +693,7 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
     Args:
         label (None): a label for the points
         points (None): a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
+        confidence (None): a confidence in ``[0, 1]`` for the points
         index (None): an index for the keypoints
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
@@ -697,6 +703,7 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
 
     label = fof.StringField()
     points = fof.KeypointsField()
+    confidence = fof.FloatField()
     index = fof.IntField()
 
     def to_eta_keypoints(self, name=None):
@@ -715,6 +722,7 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
         return etak.Keypoints(
             name=name,
             label=self.label,
+            confidence=self.confidence,
             index=self.index,
             points=self.points,
             attrs=attrs,
@@ -750,6 +758,7 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
         return cls(
             label=keypoints.label,
             points=keypoints.points,
+            confidence=keypoints.confidence,
             index=keypoints.index,
             attributes=attributes,
         )
