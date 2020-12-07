@@ -101,6 +101,61 @@ def _make_data_loader(
     return DataLoader(dataset, batch_size=batch_size, num_workers=num_workers)
 
 
+class TorchEmbeddingMixin(fom.EmbeddingMixin):
+    """Mixin for Torch models that can generate embeddings.
+
+    Args:
+        model: the Torch model, a ``torch.nn.Module``
+        layer_name (None): the name of the embeddings layer to save, or
+            ``None`` if this model instance should not expose embeddings
+    """
+
+    def __init__(self, model, layer_name=None):
+        if layer_name is not None:
+            embeddings_layer = SaveLayerOutput(model, layer_name=layer_name)
+        else:
+            embeddings_layer = None
+
+        self._embeddings_layer = embeddings_layer
+
+    @property
+    def has_embeddings(self):
+        return self._embeddings_layer is not None
+
+    def embed(self, arg):
+        if isinstance(arg, torch.Tensor):
+            args = arg.unsqueeze(0)
+        else:
+            args = [arg]
+
+        self._predict_all(args)
+        return self.get_embeddings()[0]
+
+    def embed_all(self, args):
+        self._predict_all(args)
+        return self.get_embeddings()
+
+    def get_embeddings(self):
+        if not self.has_embeddings:
+            raise ValueError("This model instance does not expose embeddings")
+
+        layer_output = self._embeddings_layer.output
+        embeddings = layer_output.detach().cpu().numpy()
+        return embeddings.astype(np.float32, copy=False)
+
+    def _predict_all(self, args):
+        """Applies a forward pass to the given iterable of data and returns
+        the raw model output with no processing applied.
+
+        Args:
+            args: an iterable of data. See :meth:`predict_all` for details
+
+        Returns:
+            the raw output of the model
+        """
+        raise NotImplementedError("subclasses must implement _predict_all()")
+
+
 class TorchImageModelConfig(Config, HasZooModel):
     """Configuration for running a :class:`TorchImageModel`.
 
@@ -121,8 +176,8 @@ class TorchImageModelConfig(Config, HasZooModel):
             :class:`fifytone.utils.torch.OutputProcessor` to use
         output_processor_args (None): a dictionary of arguments for
             ``output_processor_cls(class_labels, **kwargs)``
-        labels_string (None): a comma-separated list of the class-names in the
-            classifier, ordered in accordance with the trained model
+        labels_string (None): a comma-separated list of the class names for the
+            model
         labels_path (None): the path to the labels map for the model
         use_half_precision (None): whether to use half precision
         image_min_size (None): a minimum ``(width, height)`` to which to resize
@@ -138,6 +193,8 @@ class TorchImageModelConfig(Config, HasZooModel):
         image_std (None): a 3-array of std values in ``[0, 1]`` for
             preprocessing the input images
         batch_size (None): the recommended batch size to use during inference
+        embeddings_layer (None): the name of a layer whose output to expose as
+            embeddings
     """
 
     def __init__(self, d):
@@ -171,10 +228,19 @@ class TorchImageModelConfig(Config, HasZooModel):
         self.image_mean = self.parse_array(d, "image_mean", default=None)
         self.image_std = self.parse_array(d, "image_std", default=None)
         self.batch_size = self.parse_number(d, "batch_size", default=None)
+        self.embeddings_layer = self.parse_string(
+            d, "embeddings_layer", default=None
+        )
 
 
-class TorchImageModel(fom.ImageModel, fom.TorchModelMixin):
+class TorchImageModel(
+    fom.ImageModel, fom.TorchModelMixin, TorchEmbeddingMixin
+):
     """Wrapper for evaluating a Torch model on images.
+
+    This wrapper assumes that ``config.entrypoint_fcn`` returns a
+    ``torch.nn.Module`` whose ``__call__()`` method directly accepts Torch
+    tensors (NCHW) as input.
 
     Args:
         config: an :class:`TorchImageModelConfig`
@@ -197,6 +263,11 @@ class TorchImageModel(fom.ImageModel, fom.TorchModelMixin):
         self._model = self._load_model(config)
         self._no_grad = torch.no_grad()
 
+        # Initialize embeddings saver (if necessary)
+        TorchEmbeddingMixin.__init__(
+            self, self._model, layer_name=self.config.embeddings_layer
+        )
+
         # Build output processor
         self._output_processor = self._build_output_processor(config)
 
@@ -206,6 +277,14 @@ class TorchImageModel(fom.ImageModel, fom.TorchModelMixin):
 
     def __exit__(self, *args):
         self._no_grad.__exit__(*args)
+
+    @property
+    def batch_size(self):
+        return self.config.batch_size
+
+    @property
+    def transforms(self):
+        return self._transforms
 
     @property
     def using_gpu(self):
@@ -221,20 +300,6 @@ class TorchImageModel(fom.ImageModel, fom.TorchModelMixin):
     def using_half_precision(self):
         """Whether the model is using half precision."""
         return self._using_half_precision
-
-    @property
-    def batch_size(self):
-        """The recommended batch size to use when feeding data to the model,
-        or ``None`` if batching is not supported.
-        """
-        return self.config.batch_size
-
-    @property
-    def transforms(self):
-        """The ``torchvision.transforms`` that will/must be applied to each
-        input before prediction.
-        """
-        return self._transforms
 
     @property
     def num_classes(self):
@@ -259,9 +324,9 @@ class TorchImageModel(fom.ImageModel, fom.TorchModelMixin):
             the prediction
         """
         if isinstance(img, torch.Tensor):
-            imgs = img.unsqueeze(0)  # NCHW
+            imgs = img.unsqueeze(0)
         else:
-            imgs = [img]  # NHWC
+            imgs = [img]
 
         return self.predict_all(imgs)[0]
 
@@ -278,6 +343,10 @@ class TorchImageModel(fom.ImageModel, fom.TorchModelMixin):
         Returns:
             a list of predictions
         """
+        output, frame_size = self._predict_all(imgs)
+        return self._output_processor(output, frame_size)
+
+    def _predict_all(self, imgs):
         imgs, frame_size = self._preprocess_batch(imgs)
 
         if self._using_gpu:
@@ -288,7 +357,7 @@ class TorchImageModel(fom.ImageModel, fom.TorchModelMixin):
 
         output = self._model(imgs)
 
-        return self._output_processor(output, frame_size)
+        return output, frame_size
 
     def _preprocess_batch(self, imgs):
         if not isinstance(imgs, torch.Tensor):
@@ -408,6 +477,58 @@ class MinResize(object):
         return F.resize(pil_image_or_tensor, size, **self._kwargs)
 
 
+class SaveLayerOutput(object):
+    """Callback that saves the output of the specified layer of the Torch model
+    during each ``forward()`` call.
+
+    Provide either ``layer_name`` or ``layer_type`` to use this function.
+
+    Args:
+        model: the Torch model, a ``torch.nn.Module``
+        layer_name (None): the name of the layer whose output to save
+        layer_type (None): the type of the layer whose output to save. The last
+            instance of this layer type will be saved
+    """
+
+    def __init__(self, model, layer_name=None, layer_type=None):
+        self._output = None
+        self._setup(model, layer_name, layer_type)
+
+    def __call__(self, module, module_in, module_out):
+        self._output = module_out
+
+    @property
+    def output(self):
+        """The layer output generated by the last ``forward()`` call."""
+        return self._output
+
+    def _setup(self, model, layer_name, layer_type):
+        if layer_name is None and layer_type is None:
+            raise ValueError(
+                "Either `layer_name` or `layer_type` must be provided"
+            )
+
+        _layer = None
+
+        if layer_name is not None:
+            for name, layer in model.named_modules():
+                if name == layer_name:
+                    _layer = layer
+
+            if _layer is None:
+                raise ValueError("No layer found with name %s" % layer_name)
+
+        if layer_type is not None:
+            for layer in model.modules():
+                if isinstance(layer, layer_type):
+                    _layer = layer
+
+            if _layer is None:
+                raise ValueError("No layer found of type %s" % layer_type)
+
+        _layer.register_forward_hook(self)
+
+
 class OutputProcessor(object):
     """Interface for processing the outputs of Torch models."""
 
@@ -441,13 +562,17 @@ class ClassifierOutputProcessor(OutputProcessor):
         """Parses the model output.
 
         Args:
-            output: a ``FloatTensor[N, M]`` containing the logits for ``N``
-                images and ``M`` classes
+            output: either a ``FloatTensor[N, M]`` containing the logits for
+                ``N`` images and ``M`` classes, or a dict with a ``"logits"``
+                key containing the logits
             frame_size: the ``(width, height)`` of the frames in the batch
 
         Returns:
             a list of :class:`fiftyone.core.labels.Classification` instances
         """
+        if isinstance(output, dict):
+            output = output["logits"]
+
         logits = output.detach().cpu().numpy()
 
         predictions = np.argmax(logits, axis=1)
