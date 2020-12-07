@@ -5,7 +5,6 @@ import NotificationHub from "../components/NotificationHub";
 
 import styled from "styled-components";
 
-import "player51/src/css/player51.css";
 import Header from "../components/Header";
 import Dataset from "./Dataset";
 

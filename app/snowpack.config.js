@@ -8,8 +8,8 @@ module.exports = {
     },
   },
   mount: {
-    public: "/",
     src: "/_dist_",
+    public: "/",
   },
   plugins: [
     "@snowpack/plugin-react-refresh",
@@ -28,14 +28,8 @@ module.exports = {
     ],
   ],
   exclude: ["**/*.@(test|stories).@(ts|tsx)", "player51/"],
-  install: [
-    /* ... */
-  ],
   installOptions: {
     polyfillNode: true,
-    rollup: {
-      plugins: [require("rollup-plugin-pnp-resolve")()],
-    },
   },
   devOptions: {
     hmrErrorOverlay: false,

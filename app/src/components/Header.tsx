@@ -14,7 +14,6 @@ import { animated, useSpring } from "react-spring";
 import ExternalLink from "./ExternalLink";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import logo from "../logo.png";
 import { GitHub, MenuBook } from "@material-ui/icons";
 import { Slack } from "../icons";
 import SearchResults from "./ViewBar/ViewStage/SearchResults";
@@ -395,7 +394,7 @@ const Header = () => {
             setRefresh(!refresh);
           }}
         >
-          <LogoImg style={logoProps} src={logo} />
+          <LogoImg style={logoProps} src={"./logo.png"} />
           <FiftyOneDiv>FiftyOne</FiftyOneDiv>
         </TitleDiv>
         <DatasetSelector />
