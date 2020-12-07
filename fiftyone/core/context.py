@@ -11,6 +11,8 @@ _COLAB = "COLAB"
 _IPYTHON = "IPYTHON"
 _NONE = "NONE"
 
+_context = None
+
 
 def _get_context():
     """Determine the most specific context that we're in.
@@ -23,6 +25,9 @@ def _get_context():
       _NONE: Otherwise (e.g., by running a Python script at the
         command-line or using the `ipython` interactive shell).
     """
+    global _context
+    if _context is not None:
+        return _context
     # In Colab, the `google.colab` module is available, but the shell
     # returned by `IPython.get_ipython` does not have a `get_trait`
     # method.
@@ -34,7 +39,8 @@ def _get_context():
     else:
         if IPython.get_ipython() is not None:
             # We'll assume that we're in a Colab notebook context.
-            return _COLAB
+            _context = _COLAB
+            return _context
 
     # In an IPython command line shell or Jupyter notebook, we can
     # directly query whether we're in a notebook context.
@@ -45,7 +51,9 @@ def _get_context():
     else:
         ipython = IPython.get_ipython()
         if ipython is not None and ipython.has_trait("kernel"):
-            return _IPYTHON
+            _context = _IPYTHON
+            return _context
 
     # Otherwise, we're not in a known notebook context.
-    return _NONE
+    _context = _NONE
+    return _context
