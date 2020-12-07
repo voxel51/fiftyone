@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Installs FiftyOne App.
+Installs FiftyOne Desktop.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -16,7 +16,7 @@ from wheel.bdist_wheel import bdist_wheel
 import os
 import shutil
 
-VERSION = "0.6.6"
+VERSION = "0.7.0"
 
 
 def get_version():
@@ -78,7 +78,7 @@ class CustomBdistWheel(bdist_wheel):
         elif self.plat_name.startswith("linux"):
             # we only distribute 64-bit Linux binaries, even though Electron
             # also provides 32-bit binaries
-            self.plat_name = "linux_x86_64"
+            self.plat_name = "manylinux1_x86_64"
         elif self.plat_name.startswith("win"):
             # we only distribute 64-bit Windows binaries
             self.plat_name = "win_amd64"
@@ -102,16 +102,21 @@ class CustomBdistWheel(bdist_wheel):
                 os.path.dirname(os.path.abspath(__file__)),
                 "..",
                 "..",
-                "electron",
+                "app",
                 "release",
             )
         bin_dir = os.path.join(
-            self.bdist_dir, self.data_dir, "purelib", "fiftyone", "app", "bin"
+            self.bdist_dir,
+            self.data_dir,
+            "purelib",
+            "fiftyone",
+            "desktop",
+            "bin",
         )
 
         if os.environ.get("FIFTYONE_APP_EXE_PATH"):
             apps = [os.environ["FIFTYONE_APP_EXE_PATH"]]
-        elif self.plat_name.startswith("linux"):
+        elif self.plat_name.startswith("manylinux"):
             apps = glob.glob(os.path.join(release_dir, "FiftyOne*.AppImage"))
         elif self.plat_name.startswith("mac"):
             apps = glob.glob(os.path.join(release_dir, "mac", "FiftyOne*.app"))
@@ -156,17 +161,17 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
-    name="fiftyone_app",
+    name="fiftyone_desktop",
     version=get_version(),
-    description="FiftyOne App",
+    description="FiftyOne Desktop",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/fiftyone",
     license="Apache",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    packages=["fiftyone.app"],
-    package_dir={"fiftyone.app": "src"},
+    packages=["fiftyone.desktop"],
+    package_dir={"fiftyone.desktop": "src"},
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",

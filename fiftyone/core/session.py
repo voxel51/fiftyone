@@ -139,7 +139,7 @@ class Session(foc.HasClient):
     _HC_ATTR_NAME = "state"
     _HC_ATTR_TYPE = StateDescription
 
-    def __init__(self, dataset=None, view=None, port=5151, app=False):
+    def __init__(self, dataset=None, view=None, port=5151):
         self._port = port
         self._context = focx._get_context()
         # maintain a reference to prevent garbage collection
@@ -160,21 +160,19 @@ class Session(foc.HasClient):
         elif dataset is not None:
             self.dataset = dataset
 
-        if self._app and self._context == focx._NONE:
-            self._app_service = fos.AppService(server_port=port)
-            logger.info("App launched")
-            return
-        elif self._app and self._context != focx._NONE:
-            raise ValueError("App cannot be used in notebooks")
+        if self._context == focx._NONE:
+            try:
+                import fiftyone.desktop
+
+                self._app_service = fos.AppService(server_port=port)
+                logger.info("App launched")
+            except:
+                logger.info(
+                    "Please visit http://localhost:%d from a web browser"
+                    % port
+                )
 
         self._start_time = self._get_time()
-
-    def __repr__(self):
-        if self._context == focx._NONE:
-            return "Summary...todo"
-        else:
-            display(self._port)
-            return ""
 
     def __del__(self):
         """Deletes the Session by removing it from the `_subscribed_sessions`
@@ -202,6 +200,12 @@ class Session(foc.HasClient):
             # e.g. globals were already garbage-collected
             pass
         super().__del__()
+
+    def show(self):
+        """Show the App in an IPython notebook"""
+        if self._context == focx._NONE:
+            raise RuntimeError("Cannot show App; not an IPython notebook")
+        display(self._port)
 
     @property
     def dataset(self):
@@ -341,12 +345,11 @@ should call `session.wait()` to keep the session (and the script) alive.
 
 
 def display(port=None, height=None):
-    """Display a TensorBoard instance already running on this machine.
+    """Display a running FiftyOne instance.
 
     Args:
-      port: The port on which the TensorBoard server is listening, as an
-        `int`, or `None` to automatically select the most recently
-        launched FiftyOne.
+      port: The port on which the FiftyOne server is listening, as an
+        `int`.
       height: The height of the frame into which to render the FiftyOne
         UI, as an `int` number of pixels, or `None` to use a default value
         (currently 800).
@@ -366,11 +369,9 @@ def _display(port=None, height=None, print_message=False, display_handle=None):
     if height is None:
         height = 800
 
-    fn = {
-        focx._COLAB: _display_colab,
-        focx._IPYTHON: _display_ipython,
-        focx._NONE: _display_cli,
-    }[focx._get_context()]
+    fn = {focx._COLAB: _display_colab, focx._IPYTHON: _display_ipython}[
+        focx._get_context()
+    ]
     return fn(port=port, height=height, display_handle=display_handle)
 
 
@@ -451,10 +452,3 @@ def _display_ipython(port, height, display_handle):
         display_handle.update(iframe)
     else:
         IPython.display.display(iframe)
-
-
-def _display_cli(port, height, display_handle):
-    del height  # unused
-    del display_handle  # unused
-    message = "Please visit http://localhost:%d in a web browser." % port
-    print(message)

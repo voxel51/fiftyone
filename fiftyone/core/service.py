@@ -435,6 +435,9 @@ class AppService(Service):
             app: app + self.TAR_EXT
             for app in [self.LINUX, self.MAC, self.WINDOWS]
         }
+        if foc.DEV_INSTALL:
+            return ["yarn", "start-app"]
+
         for app, package in app_map.items():
             if os.path.isfile(package):
                 logger.info("Installing FiftyOne App")
@@ -443,9 +446,6 @@ class AppService(Service):
                 return ["./FiftyOne.app/Contents/MacOS/FiftyOne"]
             elif os.path.isfile(app):
                 return [app]
-
-        if os.path.isfile("package.json"):
-            return ["yarn", "start-web"]
 
         raise RuntimeError(
             "Could not find FiftyOne app in %r" % foc.FIFTYONE_APP_DIR

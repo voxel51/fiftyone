@@ -119,7 +119,10 @@ export const http = selector({
 
 export const ws = selector({
   key: "ws",
-  get: () => {
+  get: ({ get }) => {
+    if (isElectron()) {
+      return `ws://localhost:${get(atoms.port)}/state`;
+    }
     let url = null;
     const loc = window.location;
     if (loc.protocol === "https:") {
