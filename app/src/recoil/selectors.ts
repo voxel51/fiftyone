@@ -101,7 +101,7 @@ class HTTPSSocket {
 export const sessionId = uuid();
 
 const host =
-  import.meta.env.MODE === "development"
+  process.env.NODE_ENV === "development"
     ? "localhost:5151"
     : window.location.host;
 

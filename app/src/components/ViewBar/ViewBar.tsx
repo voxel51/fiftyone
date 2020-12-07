@@ -1,12 +1,11 @@
 import React, { useEffect, useCallback, useRef } from "react";
 import styled from "styled-components";
 import { useMachine } from "@xstate/react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import HotKeys from "react-hotkeys";
 import { Close, Help } from "@material-ui/icons";
 
 import { useOutsideClick } from "../../utils/hooks";
-import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import ExternalLink from "../ExternalLink";
 import ViewStage, { AddViewStage } from "./ViewStage/ViewStage";

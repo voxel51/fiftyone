@@ -81,7 +81,8 @@ const sample = {
   },
 };
 
-export const standard = () => (
+// fix me
+const standard = () => (
   <SampleModal
     sample={sample}
     colorMap={{}}

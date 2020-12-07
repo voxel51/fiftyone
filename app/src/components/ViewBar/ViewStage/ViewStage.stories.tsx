@@ -31,7 +31,8 @@ const dumbyViewBarMachine = Machine({
   },
 });
 
-export const standard = () => (
+// fix me
+const standard = () => (
   <ViewBar>
     <ViewStage />
   </ViewBar>

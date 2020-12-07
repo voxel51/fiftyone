@@ -15,7 +15,8 @@ const Container = styled.div`
   position: relative;
 `;
 
-export const standard = () => {
+// fix me
+const standard = () => {
   return (
     <div style={{ width: "100%", height: "100%" }}>
       <Container>

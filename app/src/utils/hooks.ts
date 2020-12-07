@@ -185,7 +185,7 @@ export const useGA = () => {
   const info = useRecoilValue(selectors.fiftyone);
 
   useEffect(() => {
-    const dev = import.meta.env.MODE == "development";
+    const dev = process.env.NODE_ENV == "development";
     const buildType = dev ? "dev" : "prod";
 
     ReactGA.initialize(gaConfig.app_ids[buildType], {
