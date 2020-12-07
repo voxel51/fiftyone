@@ -20,10 +20,7 @@ export default class MenuBuilder {
   }
 
   buildMenu() {
-    if (
-      process.env.NODE_ENV === "development" ||
-      process.env.DEBUG_PROD === "true"
-    ) {
+    if (process.env.DEBUG_APP === "true") {
       this.setupDevelopmentEnvironment();
     }
 
@@ -196,10 +193,7 @@ export default class MenuBuilder {
     };
 
     const subMenuView =
-      process.env.NODE_ENV === "development" ||
-      process.env.DEBUG_PROD === "true"
-        ? subMenuViewDev
-        : subMenuViewProd;
+      process.env.DEBUG_APP === "true" ? subMenuViewDev : subMenuViewProd;
 
     return [
       subMenuAbout,
@@ -228,8 +222,7 @@ export default class MenuBuilder {
       {
         label: "&View",
         submenu:
-          process.env.NODE_ENV === "development" ||
-          process.env.DEBUG_PROD === "true"
+          process.env.DEBUG_APP === "true"
             ? [
                 {
                   label: "&Reload",

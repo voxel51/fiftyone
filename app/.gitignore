@@ -6,6 +6,7 @@ node_modules
 # App dist and web build
 release
 dist
+!dist/app.html
 build
 
 .idea

@@ -24,23 +24,13 @@ export default class AppUpdater {
 
 let mainWindow: BrowserWindow | null = null;
 
-if (process.env.NODE_ENV === "production") {
-  const sourceMapSupport = require("source-map-support");
-  sourceMapSupport.install();
-}
-
-if (
-  process.env.NODE_ENV === "development" ||
-  process.env.DEBUG_PROD === "true"
-) {
-  // The following opens dev tools on start up
-  // require('electron-debug')();
-}
+const sourceMapSupport = require("source-map-support");
+sourceMapSupport.install();
 
 const installExtensions = async () => {
   const installer = require("electron-devtools-installer");
   const forceDownload = !!process.env.UPGRADE_EXTENSIONS;
-  const extensions = ["REACT_DEVELOPER_TOOLS", "REDUX_DEVTOOLS"];
+  const extensions = ["REACT_DEVELOPER_TOOLS"];
 
   return Promise.all(
     extensions.map((name) => installer.default(installer[name], forceDownload))
@@ -48,10 +38,7 @@ const installExtensions = async () => {
 };
 
 const createWindow = async () => {
-  if (
-    process.env.NODE_ENV === "development" ||
-    process.env.DEBUG_PROD === "true"
-  ) {
+  if (process.env.DEBUG_APP === "true") {
     await installExtensions();
   }
 
@@ -74,7 +61,7 @@ const createWindow = async () => {
 
   mainWindow = new BrowserWindow(windowOpts);
 
-  mainWindow.loadURL(`file://${__dirname}/../public/index.html`);
+  mainWindow.loadURL(`file://${__dirname}/index.html`);
 
   // @TODO: Use 'ready-to-show' event
   //        https://github.com/electron/electron/blob/master/docs/api/browser-window.md#using-ready-to-show-event

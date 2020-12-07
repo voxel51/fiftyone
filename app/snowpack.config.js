@@ -42,7 +42,8 @@ module.exports = {
     open: "none",
   },
   buildOptions: {
-    baseUrl: "/",
+    baseUrl: "",
+    clean: true,
     out: "../fiftyone/server/static",
   },
   proxy: {
