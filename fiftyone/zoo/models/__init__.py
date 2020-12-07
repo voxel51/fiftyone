@@ -34,7 +34,7 @@ def list_zoo_models():
     Returns:
         a list of model names
     """
-    manifest = _load_models_manifest()
+    manifest = _load_zoo_models_manifest()
     return sorted([model.name for model in manifest])
 
 
@@ -51,7 +51,7 @@ def list_downloaded_zoo_models(models_dir=None):
     if models_dir is None:
         models_dir = fo.config.model_zoo_dir
 
-    manifest = _load_models_manifest()
+    manifest = _load_zoo_models_manifest()
     models = {}
     for model in manifest:
         if model.is_in_dir(models_dir):
@@ -299,8 +299,8 @@ def delete_zoo_model(name, models_dir=None):
 
 
 def delete_old_zoo_models(models_dir=None):
-    """Deletes local copies of any old models on disk, i.e., models for which
-    a newer version of the model is also downloaded.
+    """Deletes local copies of any old zoo models on disk, i.e., models for
+    which a newer version of the model is also downloaded.
 
     models_dir (None): the models directory. By default,
         ``fiftyone.config.model_zoo_dir`` is used
@@ -403,7 +403,7 @@ class ZooModelsManifest(etam.ModelsManifest):
     _MODEL_CLS = ZooModel
 
 
-def _load_models_manifest():
+def _load_zoo_models_manifest():
     manifest = ZooModelsManifest.from_json(_MODELS_MANIFEST_PATH)
     if fo.config.model_zoo_manifest_paths:
         for manifest_path in fo.config.model_zoo_manifest_paths:
@@ -429,7 +429,7 @@ def _get_model(name):
 
 
 def _get_exact_model(name):
-    manifest = _load_models_manifest()
+    manifest = _load_zoo_models_manifest()
     try:
         return manifest.get_model_with_name(name)
     except etam.ModelError:
@@ -437,7 +437,7 @@ def _get_exact_model(name):
 
 
 def _get_latest_model(base_name):
-    manifest = _load_models_manifest()
+    manifest = _load_zoo_models_manifest()
     try:
         return manifest.get_latest_model_with_base_name(base_name)
     except etam.ModelError:
