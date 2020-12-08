@@ -156,9 +156,9 @@ To cut down on resource usage in the notebook, only one App cell can be active
 at any given time. To activate a different cell, simply click `Activate` in
 the deactivated window, or run the cell again.
 
-If you would like to open the App in a dedicated browser tab, you can get the
-URL of the session view the :attr:`url <fiftyone.core.session.Session.url>`
-property.
+If you would like to open the App in a dedicated browser window or tab, you can
+get the URL of the session view the
+:attr:`url <fiftyone.core.session.Session.url>` property.
 
 .. note::
 
