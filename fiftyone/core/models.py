@@ -40,12 +40,6 @@ def apply_model(samples, model, label_field, confidence_thresh=None):
 
 
 def _apply_image_model(samples, model, label_field, confidence_thresh):
-    if not isinstance(model, ImageModel):
-        raise ValueError(
-            "Model must be a subclass of %s in order to process images"
-            % ImageModel
-        )
-
     # Use data loaders for Torch models, if possible
     if isinstance(model, TorchModelMixin):
         # Local import to avoid unnecessary Torch dependency
@@ -54,6 +48,7 @@ def _apply_image_model(samples, model, label_field, confidence_thresh):
         fout.apply_torch_image_model(
             samples, model, label_field, confidence_thresh=confidence_thresh
         )
+        return
 
     with model:
         with fou.ProgressBar() as pb:
@@ -69,12 +64,6 @@ def _apply_image_model(samples, model, label_field, confidence_thresh):
 
 
 def _apply_video_model(samples, model, label_field, confidence_thresh):
-    if not isinstance(model, VideoModel):
-        raise ValueError(
-            "Model must be a subclass of %s in order to process videos"
-            % VideoModel
-        )
-
     with model:
         with fou.ProgressBar() as pb:
             for sample in pb(samples):
@@ -167,7 +156,7 @@ class ModelConfig(etal.ModelConfig):
 
 
 class Model(etal.Model):
-    """Abstract base class for all models.
+    """Abstract base class for models.
 
     This class declares the following conventions:
 
@@ -183,17 +172,30 @@ class Model(etal.Model):
     def predict(self, arg):
         """Peforms prediction on the given data.
 
+        Image models should support, at minimum, processing ``arg`` values that
+        are uint8 numpy arrays (HWC).
+
+        Video models should support, at minimum, processing ``arg`` values that
+        are ``eta.core.video.VideoReader`` instances.
+
         Args:
             arg: the data
 
         Returns:
-            a :class:`fiftyone.core.labels.Label` instance containing the
+            a :class:`fiftyone.core.labels.Label` instance or dict of
+            :class:`fiftyone.core.labels.Label` instances containing the
             predictions
         """
         raise NotImplementedError("subclasses must implement predict()")
 
     def predict_all(self, args):
         """Performs prediction on the given iterable of data.
+
+        Image models should support, at minimum, processing ``args`` values
+        that are uint8 numpy arrays (NHWC).
+
+        Video models should support, at minimum, processing ``args`` values
+        that are lists of ``eta.core.video.VideoReader`` instances.
 
         Subclasses can override this method to increase efficiency, but, by
         default, this method simply iterates over the data and applies
@@ -203,74 +205,11 @@ class Model(etal.Model):
             args: an iterable of data
 
         Returns:
-            a list of :class:`fiftyone.core.labels.Label` instances containing
-            the predictions
+            a list of :class:`fiftyone.core.labels.Label` instances or a list
+            of dicts of :class:`fiftyone.core.labels.Label` instances
+            containing the predictions
         """
         return [self.predict(arg) for arg in args]
-
-
-class ImageModel(Model):
-    """Abstract base class for models that process images."""
-
-    def predict(self, img):
-        """Peforms prediction on the given image.
-
-        Args:
-            img: an image stored as a uint8 numpy array (HWC)
-
-        Returns:
-            a :class:`fiftyone.core.labels.Label` instance containing the
-            predictions
-        """
-        raise NotImplementedError("subclasses must implement predict()")
-
-    def predict_all(self, imgs):
-        """Performs prediction on the given tensor of images.
-
-        Subclasses can override this method to increase efficiency, but, by
-        default, this method simply iterates over the images and applies
-        :meth:`predict` to each.
-
-        Args:
-            imgs: a tensor of images stored as a uint8 numpy array (NHWC)
-
-        Returns:
-            a list of :class:`fiftyone.core.labels.Label` instances containing
-            the predictions for each image
-        """
-        return [self.predict(img) for img in imgs]
-
-
-class VideoModel(Model):
-    """Abstract base class for models that process videos."""
-
-    def predict(self, video_reader):
-        """Peforms prediction on the given video.
-
-        Args:
-            video_reader: an ``eta.core.video.VideoReader``
-
-        Returns:
-            a :class:`fiftyone.core.labels.Label` instance containing the
-            predictions
-        """
-        raise NotImplementedError("subclasses must implement predict()")
-
-    def predict_all(self, video_readers):
-        """Performs prediction on the given videos.
-
-        Subclasses can override this method to increase efficiency, but, by
-        default, this method simply iterates over the videos and applies
-        :meth:`predict` to each.
-
-        Args:
-            video_readers: a list of ``eta.core.video.VideoReader`` instances
-
-        Returns:
-            a list of :class:`fiftyone.core.labels.Label` instances containing
-            the predictions for each image
-        """
-        return [self.predict(video_reader) for video_reader in video_readers]
 
 
 class EmbeddingsMixin(object):
