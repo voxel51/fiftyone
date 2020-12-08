@@ -62,11 +62,11 @@ def launch_app(dataset=None, view=None, port=5151, remote=False, window=None):
             should not be attempted
         window (None): 'browser' or 'desktop'. If 'desktop', the desktop App
             package must be installed (fiftyone-desktop). Defaults to the
-            FIFTYONE_WINDOW environment variable if not provided, or 'browser'
-            if the environment variable is not set. DOES NOT apply to notebook
-            contexts (e.g. Jupyter), use :meth:`Session.show` instead.
+            FIFTYONE_DEFAULT_WINDOW environment variable if not provided, or
+            'browser' if the environment variable is not set. DOES NOT apply to
+            notebook contexts (e.g. Jupyter), use :meth:`Session.show` instead.
 
-    Raises:
+    Raises
         VaueError: if `window` is not `None` and `remote` is `True` or if
             `window` is 'desktop' and the desktop App package
             (fiftyone-desktop) has not been installed.
@@ -153,9 +153,10 @@ class Session(foc.HasClient):
             should not be attempted
         window (None): 'browser' or 'desktop'. If 'desktop', the desktop App
             package must be installed (fiftyone-desktop). Defaults to the
-            FIFTYONE_WINDOW environment variable if not provided, or 'browser'
-            if the environment variable is not set. DOES NOT apply to notebook
-            contexts (e.g. Jupyter), use :meth:`Session.show` instead.
+            FIFTYONE_DEFAULT_WINDOW environment variable if not provided, or
+            'browser' if the environment variable is not set. DOES NOT apply
+            to notebook contexts (e.g. Jupyter), use :meth:`Session.show`
+            instead.
     """
 
     _HC_NAMESPACE = "state"
@@ -186,7 +187,9 @@ class Session(foc.HasClient):
             self.dataset = dataset
 
         if window is None and self._context == focx._NONE:
-            window = fo.config.FIFTYONE_WINDOW
+            self._window = fo.config.default_window
+        else:
+            self._window = window
 
         if self._context == focx._NONE and window == DESKTOP:
             try:
@@ -196,14 +199,12 @@ class Session(foc.HasClient):
                 logger.info("App launched")
             except:
                 raise ValueError("fiftyone-desktop is not installed")
-        elif self._context == focx._NONE and window == BROWSER:
+        elif self._context == focx._NONE and self._window == BROWSER:
             webbrowser.open("http://localhost:%d" % port, new=2)
         elif self._context != focx._NONE and window is not None:
             raise ValueError(
-                """
-                `window` is not a valid argument in notebooks, use the `show()`
-                after instantiation instead
-            """
+                "`window` is not a valid argument in notebooks, use the "
+                "`show()` after instantiation instead "
             )
 
         self._start_time = self._get_time()
@@ -356,7 +357,7 @@ class Session(foc.HasClient):
         typically requires interrupting the calling process with Ctrl-C.
         """
         try:
-            if self._remote:
+            if self._remote or self._window == BROWSER:
                 _server_services[self._port].wait()
             else:
                 self._app_service.wait()

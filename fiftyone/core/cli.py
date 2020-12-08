@@ -126,12 +126,13 @@ class QuickstartCommand(Command):
             "--window",
             action="store_true",
             default=None,
-            help="""
-                'browser' or 'desktop'. If 'desktop', the desktop App package
-                must be installed (fiftyone-desktop). Defaults to the
-                FIFTYONE_WINDOW environment variable if not provided,
-                or 'browser' if the environment variable is not set.
-            """,
+            help=(
+                "'browser' or 'desktop'. If 'desktop', the desktop App\n"
+                "package must be installed (fiftyone-desktop). Defaults to\n"
+                "the FIFTYONE_DEFAULT_WINDOW environment variable if not\n"
+                "provided, or 'browser' if the environment variable is not\n"
+                "set."
+            ),
         )
 
     @staticmethod
@@ -820,12 +821,13 @@ class AppLaunchCommand(Command):
             "--window",
             action="store_true",
             default=None,
-            help="""
-                'browser' or 'desktop'. If 'desktop', the desktop App package
-                must be installed (fiftyone-desktop). Defaults to the
-                FIFTYONE_WINDOW environment variable if not provided,
-                or 'browser' if the environment variable is not set.
-            """,
+            help=(
+                "'browser' or 'desktop'. If 'desktop', the desktop App\n"
+                "package must be installed (fiftyone-desktop). Defaults to\n"
+                "the FIFTYONE_DEFAULT_WINDOW environment variable if not\n"
+                "provided, or 'browser' if the environment variable is not\n"
+                "set."
+            ),
         )
 
     @staticmethod
@@ -986,12 +988,13 @@ class AppViewCommand(Command):
             "--window",
             action="store_true",
             default=None,
-            help="""
-                'browser' or 'desktop'. If 'desktop', the desktop App package
-                must be installed (fiftyone-desktop). Defaults to the
-                FIFTYONE_WINDOW environment variable if not provided,
-                or 'browser' if the environment variable is not set.
-            """,
+            help=(
+                "'browser' or 'desktop'. If 'desktop', the desktop App\n"
+                "package must be installed (fiftyone-desktop). Defaults to\n"
+                "the FIFTYONE_DEFAULT_WINDOW environment variable if not\n"
+                "provided, or 'browser' if the environment variable is not\n"
+                "set."
+            ),
         )
 
     @staticmethod
@@ -1117,12 +1120,13 @@ class AppConnectCommand(Command):
             "--window",
             action="store_true",
             default=None,
-            help="""
-                'browser' or 'desktop'. If 'desktop', the desktop App package
-                must be installed (fiftyone-desktop). Defaults to the
-                FIFTYONE_WINDOW environment variable if not provided,
-                or 'browser' if the environment variable is not set.
-            """,
+            help=(
+                "'browser' or 'desktop'. If 'desktop', the desktop App\n"
+                "package must be installed (fiftyone-desktop). Defaults to\n"
+                "the FIFTYONE_DEFAULT_WINDOW environment variable if not\n"
+                "provided, or 'browser' if the environment variable is not\n"
+                "set."
+            ),
         )
 
     @staticmethod

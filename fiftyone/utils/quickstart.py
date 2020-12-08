@@ -111,16 +111,12 @@ The session object is your connection to the App, which can be displayed
 """
 
 _QUICKSTART_WEB_INTERACTIVE = """
-The session object is your connection to the App, which can be opened via a web browser
-using the url:
-
-http://localhost:%d
+The session object is your connection to the App, which has just been opened in
+your web browser at http://localhost:%d
 """
 
 _QUICKSTART_WEB = """
-The App can be opened via a web browser using the url:
-
-http://localhost:%d
+The App has just been opened in your web browser at http://localhost:%d
 """
 
 
