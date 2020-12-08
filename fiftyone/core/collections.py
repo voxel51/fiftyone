@@ -509,6 +509,29 @@ class SampleCollection(object):
             confidence_thresh=confidence_thresh,
         )
 
+    def compute_embeddings(self, model, embeddings_field=None):
+        """Computes embeddings using the given
+        :class:`fiftyone.core.models.Model` for the samples in the collection.
+
+        If an ``embeddings_field`` is provided, the embeddings are saved to the
+        samples; otherwise, the embeddings are returned as an in-memory array.
+
+        The :class:`fiftyone.core.models.Model` must implement the
+        :class:`fiftyone.core.models.EmbeddingsMixin` mixin.
+
+        Args:
+            model: a :class:`fiftyone.core.models.Model` that implements the
+                :class:`fiftyone.core.models.EmbeddingsMixin` mixin
+            embeddings_field (None): the name of a field in which to store the
+                embeddings
+
+        Returns:
+            ``None``, if an ``embeddings_field`` is provided; otherwise, a
+            numpy array whose first dimension is ``len(samples)`` containing
+            the embeddings
+        """
+        fomo.compute_embeddings(self, model, embeddings_field=embeddings_field)
+
     @classmethod
     def list_view_stages(cls):
         """Returns a list of all available methods on this collection that
