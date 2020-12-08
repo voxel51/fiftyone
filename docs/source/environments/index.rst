@@ -138,7 +138,6 @@ and create a session:
     :linenos:
 
     !pip install fiftyone
-    # On local machine
     import fiftyone as fo
 
     dataset = fo.Dataset(name="my_dataset")
@@ -153,14 +152,18 @@ Anytime you would like visualize your data in the App, simply call the
 
    session.show()
 
-To cut down on resource usage in the notebook, only one App cell can be activ
+To cut down on resource usage in the notebook, only one App cell can be active
 at any given time. To activate a different cell, simply click `Activate` in
 the deactivated window, or run the cell again.
+
+If you would like to open the App in a dedicated browser tab, you can get the
+URL of the session view the :attr:`url <fiftyone.core.session.Session.url>`
+property.
 
 .. note::
 
    Currently, each session maintains a single state. Therefore displaying the
-   App once the notebook is often sufficient. The window will continue to
+   App once in the notebook is often sufficient. The window will continue to
    update as you work in the notebook.
 
 .. _cloud-storage:

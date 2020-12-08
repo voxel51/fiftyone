@@ -107,7 +107,7 @@ The desktop version of the App that has just been launched for you.
 
 _QUICKSTART_NOTEBOOK = """
 The session object is your connection to the App, which can be displayed
-`session.show()`.
+with `session.show()`.
 """
 
 _QUICKSTART_WEB_INTERACTIVE = """

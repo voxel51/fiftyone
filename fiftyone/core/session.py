@@ -211,10 +211,13 @@ class Session(foc.HasClient):
         elif self._context != focx._NONE and window is not None:
             raise ValueError(
                 "`window` is not a valid argument in notebooks, use the "
-                "`show()` after instantiation instead "
+                "`show()` method after instantiation instead "
             )
 
         self._start_time = self._get_time()
+
+    def __repr__(self):
+        return self.summary()
 
     def __del__(self):
         """Deletes the Session by removing it from the `_subscribed_sessions`
@@ -329,6 +332,20 @@ class Session(foc.HasClient):
         """
         return list(self.state.selected_objects)
 
+    @property
+    def url(self):
+        """The URL of the session."""
+        if self._context == focx._COLAB:
+            # pylint: disable=no-name-in-module,import-error
+            from google.colab.output import eval_js
+
+            url = eval_js(
+                "google.colab.kernel.proxyPort(%d)" % self.server_port
+            )
+            return "%s?fiftyoneColab=true"
+
+        return "http://localhost:%d" % self.server_port
+
     @_update_state
     def refresh(self):
         """Refreshes the FiftyOne App, reloading the current dataset/view."""
@@ -355,6 +372,49 @@ class Session(foc.HasClient):
 
         self.state.close = True
         self._update_state()
+
+    def summary(self):
+        """Returns a string summary of the session.
+
+        Returns:
+            a string summary
+        """
+        if self.dataset:
+            dataset_name = self.dataset.name
+            media_type = self.dataset.media_type
+        else:
+            dataset_name = None
+            media_type = "N/A"
+
+        elements = [
+            "Dataset:          %s" % dataset_name,
+        ]
+
+        if self.dataset:
+            elements.extend(
+                [
+                    "Media type:       %s" % media_type,
+                    "Selected samples: %d" % len(self.selected),
+                    "Selected objects: %d" % len(self.selected_objects),
+                ]
+            )
+
+        if self.view:
+            if self.view._stages:
+                pipeline_str = "    " + "\n    ".join(
+                    [
+                        "%d. %s" % (idx, str(d))
+                        for idx, d in enumerate(self.view._stages, 1)
+                    ]
+                )
+            else:
+                pipeline_str = "    ---"
+
+            elements.extend(["View stages:", pipeline_str])
+
+        elements.extend(["URL:              %s" % self.url])
+
+        return "\n".join(elements)
 
     def wait(self):
         """Waits for the session to be closed by the user.
