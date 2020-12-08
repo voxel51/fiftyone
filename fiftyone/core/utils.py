@@ -11,6 +11,7 @@ from collections import defaultdict
 from contextlib import contextmanager
 from copy import deepcopy
 import importlib
+import inspect
 import io
 import itertools
 import logging
@@ -616,3 +617,62 @@ def call_on_exit(callback):
     """
     atexit.register(callback)
     signal.signal(signal.SIGTERM, lambda *args: callback())
+
+
+class MonkeyPatchFunction(object):
+    """Context manager that temporarily monkey patches the given function.
+
+    If a ``namespace`` is provided, all functions with same name as the
+    function you are monkey patching that are imported (recursively) by the
+    ``module_or_fcn`` module are also monkey patched.
+
+    Args:
+        module_or_fcn: a module or function
+        monkey_fcn: the function to monkey patch in
+        fcn_name (None): the name of the funciton to monkey patch. Required iff
+            ``module_or_fcn`` is a module
+        namespace (None): an optional package namespace
+    """
+
+    def __init__(
+        self, module_or_fcn, monkey_fcn, fcn_name=None, namespace=None
+    ):
+        if inspect.isfunction(module_or_fcn):
+            module = inspect.getmodule(module_or_fcn)
+            fcn_name = module_or_fcn.__name__
+        else:
+            module = module_or_fcn
+
+        self.module = module
+        self.fcn_name = fcn_name
+        self.monkey_fcn = monkey_fcn
+        self.namespace = namespace
+        self._orig = None
+        self._replace_modules = None
+
+    def __enter__(self):
+        self._orig = getattr(self.module, self.fcn_name)
+        self._replace_modules = []
+        self._find(self.module)
+        self._set(self.monkey_fcn)
+        return self
+
+    def __exit__(self, *args):
+        self._set(self._orig)
+
+    def _set(self, fcn):
+        for mod in self._replace_modules:
+            setattr(mod, self.fcn_name, fcn)
+
+    def _find(self, module):
+        dir_module = dir(module)
+        if self.fcn_name in dir_module:
+            self._replace_modules.append(module)
+
+        if self.namespace is not None:
+            for attr in dir_module:
+                mod = getattr(module, attr)
+                if inspect.ismodule(mod) and mod.__package__.startswith(
+                    self.namespace.__package__
+                ):
+                    self._find(mod)

@@ -15,8 +15,7 @@ import fiftyone.utils.torch as fout
 from fiftyone.zoo.models import HasZooModel
 
 fou.ensure_torch()
-import torch
-import torchvision.models.utils as tmu
+import torchvision
 
 
 class TorchvisionImageModelConfig(fout.TorchImageModelConfig, HasZooModel):
@@ -75,51 +74,36 @@ class TorchvisionImageModel(fout.TorchImageModel):
         entrypoint = etau.get_function(config.entrypoint_fcn)
         kwargs = config.entrypoint_args or {}
         model_dir = fo.config.model_zoo_dir
-        with OverrideLoadStateDict(
-            entrypoint, model_dir, map_location=self.device
-        ):
+
+        monkey_patcher = _make_load_state_dict_from_url_monkey_patcher(
+            entrypoint, model_dir, self.device
+        )
+        with monkey_patcher:
             # Builds net and loads state dict from `model_dir`
             model = entrypoint(**kwargs)
 
         return model
 
-    def _load_state_dict(self, model, config):
-        state_dict = torch.load(config.model_path, map_location=self.device)
-        model.load_state_dict(state_dict)
 
-
-class OverrideLoadStateDict(object):
-    """Context manager that temporarily monkey patches the
-    ``torchvision.models.utils.load_state_dict_from_url`` function so that the
-    model will be loaded from ``model_dir`` when ``entrypoint`` is called.
-
-    Args:
-        entrypoint: the ``torchvision.models`` function that will be called to
-            load the model
-        model_dir: the models directory
-        map_location (None): an optional device to load the model onto
+def _make_load_state_dict_from_url_monkey_patcher(
+    entrypoint, model_dir, device
+):
+    """Monkey patches all instances of ``load_state_dict_from_url()`` that are
+    reachable from the given ``entrypoint`` function in the
+    ``torchvision.models`` namespace so that models will be loaded from
+    ``model_dir`` and not from the Torch Hub cache directory.
     """
+    entrypoint_module = inspect.getmodule(entrypoint)
+    load_state_dict_from_url = entrypoint_module.load_state_dict_from_url
 
-    def __init__(self, entrypoint, model_dir, map_location=None):
-        self.module = inspect.getmodule(entrypoint)
-        self.model_dir = model_dir
-        self.map_location = map_location
-        self._orig = None
+    def custom_load_state_dict_from_url(url, **kwargs):
+        return load_state_dict_from_url(
+            url, model_dir=model_dir, map_location=device, **kwargs,
+        )
 
-    def __enter__(self):
-        self._orig = tmu.load_state_dict_from_url
-
-        def custom_load_state_dict_from_url(url, **kwargs):
-            return self._orig(
-                url,
-                model_dir=self.model_dir,
-                map_location=self.map_location,
-                **kwargs,
-            )
-
-        tmu.load_state_dict_from_url = custom_load_state_dict_from_url
-        self.module.load_state_dict_from_url = custom_load_state_dict_from_url
-
-    def __exit__(self, *args):
-        tmu.load_state_dict_from_url = self._orig
-        self.module.load_state_dict_from_url = self._orig
+    return fou.MonkeyPatchFunction(
+        entrypoint_module,
+        custom_load_state_dict_from_url,
+        fcn_name=load_state_dict_from_url.__name__,
+        namespace=torchvision.models,
+    )
