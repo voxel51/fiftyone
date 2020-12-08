@@ -5,15 +5,21 @@ FiftyOne models.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
 import numpy as np
 
 import eta.core.image as etai
 import eta.core.learning as etal
+import eta.core.models as etam
 import eta.core.utils as etau
 import eta.core.video as etav
+import eta.core.web as etaw
 
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
+
+
+logger = logging.getLogger(__name__)
 
 
 def apply_model(samples, model, label_field, confidence_thresh=None):
@@ -345,3 +351,49 @@ class TorchModelMixin(object):
         input before prediction.
         """
         raise NotImplementedError("subclasses must implement transforms")
+
+
+class ModelManagerConfig(etam.ModelManagerConfig):
+    """Config settings for a :class:`ModelManager`.
+
+    Args:
+        url (None): the URL of the file
+        google_drive_id (None): the ID of the file in Google Drive
+        extract_archive (None): whether to extract the downloaded model, which
+            is assumed to be an archive
+        delete_archive (None): whether to delete the archive after extracting
+            it, if applicable
+    """
+
+    def __init__(self, d):
+        super().__init__(d)
+
+        self.url = self.parse_string(d, "url", default=None)
+        self.google_drive_id = self.parse_string(
+            d, "google_drive_id", default=None
+        )
+
+
+class ModelManager(etam.ModelManager):
+    """Class for downloading public FiftyOne models."""
+
+    @staticmethod
+    def upload_model(model_path, *args, **kwargs):
+        raise NotImplementedError("Uploading models via API is not supported")
+
+    def _download_model(self, model_path):
+        if self.config.google_drive_id:
+            gid = self.config.google_drive_id
+            logger.info("Downloading model from Google Drive ID '%s'...", gid)
+            etaw.download_google_drive_file(gid, path=model_path)
+        elif self.config.url:
+            url = self.config.url
+            logger.info("Downloading model from '%s'...", url)
+            etaw.download_file(url, path=model_path)
+        else:
+            raise ValueError(
+                "Invalid ModelManagerConfig '%s'" % str(self.config)
+            )
+
+    def delete_model(self):
+        raise NotImplementedError("Deleting models via API is not supported")

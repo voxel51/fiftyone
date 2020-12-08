@@ -6,7 +6,7 @@
             "version": null,
             "description": "AlexNet model trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/alexnet-owt-4df8aa71.pth"
                 }
@@ -40,7 +40,7 @@
             "version": null,
             "description": "Densenet-121 model trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/densenet121-a639ec97.pth"
                 }
@@ -74,7 +74,7 @@
             "version": null,
             "description": "Densenet-161 model trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/densenet161-8d451a50.pth"
                 }
@@ -108,7 +108,7 @@
             "version": null,
             "description": "Densenet-169 model trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/densenet169-b2777c0a.pth"
                 }
@@ -142,7 +142,7 @@
             "version": null,
             "description": "Densenet-201 model trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/densenet201-c1103571.pth"
                 }
@@ -176,7 +176,7 @@
             "version": null,
             "description": "GoogLeNet (Inception v1) model trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/googlenet-1378be20.pth"
                 }
@@ -210,7 +210,7 @@
             "version": null,
             "description": "Inception v3 model trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/inception_v3_google-1a9a5a14.pth"
                 }
@@ -244,7 +244,7 @@
             "version": null,
             "description": "MNASNet with depth multiplier of 0.5 trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/mnasnet0.5_top1_67.823-3ffadce67e.pth"
                 }
@@ -278,7 +278,7 @@
             "version": null,
             "description": "MNASNet with depth multiplier of 1.0 trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/mnasnet1.0_top1_73.512-f206786ef8.pth"
                 }
@@ -312,7 +312,7 @@
             "version": null,
             "description": "MobileNetV2 model trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/mobilenet_v2-b0353104.pth"
                 }
@@ -346,7 +346,7 @@
             "version": null,
             "description": "ResNet-18 model trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/resnet18-5c106cde.pth"
                 }
@@ -380,7 +380,7 @@
             "version": null,
             "description": "ResNet-34 model trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/resnet34-333f7ec4.pth"
                 }
@@ -414,7 +414,7 @@
             "version": null,
             "description": "ResNet-50 model trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/resnet50-19c8e357.pth"
                 }
@@ -448,7 +448,7 @@
             "version": null,
             "description": "ResNet-101 model trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/resnet101-5d3b4d8f.pth"
                 }
@@ -482,7 +482,7 @@
             "version": null,
             "description": "ResNet-152 model trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/resnet152-b121ed2d.pth"
                 }
@@ -516,7 +516,7 @@
             "version": null,
             "description": "ResNeXt-50 32x4d model trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/resnext50_32x4d-7cdf4587.pth"
                 }
@@ -550,7 +550,7 @@
             "version": null,
             "description": "ResNeXt-101 32x8d model trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/resnext101_32x8d-8ba56ff5.pth"
                 }
@@ -584,7 +584,7 @@
             "version": null,
             "description": "Wide ResNet-50-2 model trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/wide_resnet50_2-95faca4d.pth"
                 }
@@ -618,7 +618,7 @@
             "version": null,
             "description": "Wide ResNet-101-2 model trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/wide_resnet101_2-32ee1156.pth"
                 }
@@ -652,7 +652,7 @@
             "version": null,
             "description": "ShuffleNetV2 model with 0.5x output channels trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/shufflenetv2_x0.5-f707e7126e.pth"
                 }
@@ -686,7 +686,7 @@
             "version": null,
             "description": "ShuffleNetV2 model with 1.0x output channels trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/shufflenetv2_x1-5666bf0f80.pth"
                 }
@@ -720,7 +720,7 @@
             "version": null,
             "description": "SqueezeNet model trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/squeezenet1_0-a815701f.pth"
                 }
@@ -754,7 +754,7 @@
             "version": null,
             "description": "SqueezeNet 1.1 model trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/squeezenet1_1-f364aa15.pth"
                 }
@@ -788,7 +788,7 @@
             "version": null,
             "description": "VGG-11 model trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/vgg11-bbd30ac9.pth"
                 }
@@ -822,7 +822,7 @@
             "version": null,
             "description": "VGG-13 model trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/vgg13-c768596a.pth"
                 }
@@ -856,7 +856,7 @@
             "version": null,
             "description": "VGG-16 model trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/vgg16-397923af.pth"
                 }
@@ -890,7 +890,7 @@
             "version": null,
             "description": "VGG-19 model trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/vgg19-dcbb9e9d.pth"
                 }
@@ -924,7 +924,7 @@
             "version": null,
             "description": "VGG-11 model with batch normalization trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/vgg11_bn-6002323d.pth"
                 }
@@ -958,7 +958,7 @@
             "version": null,
             "description": "VGG-13 model with batch normalization trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/vgg13_bn-abd245e5.pth"
                 }
@@ -992,7 +992,7 @@
             "version": null,
             "description": "VGG-16 model with batch normalization trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/vgg16_bn-6c64b313.pth"
                 }
@@ -1026,7 +1026,7 @@
             "version": null,
             "description": "VGG-19 model with batch normalization trained on ImageNet. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/vgg19_bn-c79401a0.pth"
                 }
@@ -1060,7 +1060,7 @@
             "version": null,
             "description": "Faster R-CNN model with ResNet-50 FPN backbone trained on COCO. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth"
                 }
@@ -1091,7 +1091,7 @@
             "version": null,
             "description": "RetinaNet model with ResNet-50 FPN backbone trained on COCO. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/retinanet_resnet50_fpn_coco-eeacb38b.pth"
                 }
@@ -1122,7 +1122,7 @@
             "version": null,
             "description": "Mask R-CNN model with ResNet-50 FPN backbone trained on COCO. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/maskrcnn_resnet50_fpn_coco-bf2d0c1e.pth"
                 }
@@ -1153,7 +1153,7 @@
             "version": null,
             "description": "Keypoint R-CNN model with ResNet-50 FPN backbone trained on COCO. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/keypointrcnn_resnet50_fpn_coco-fc266e95.pth"
                 }
@@ -1191,7 +1191,7 @@
             "version": null,
             "description": "FCN model with ResNet-50 backbone trained on COCO. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/fcn_resnet50_coco-1167a1af.pth"
                 }
@@ -1225,7 +1225,7 @@
             "version": null,
             "description": "FCN model with ResNet-101 backbone trained on COCO. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/fcn_resnet101_coco-7ecb50ca.pth"
                 }
@@ -1259,7 +1259,7 @@
             "version": null,
             "description": "DeepLabV3 model with ResNet-50 backbone trained on COCO. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/deeplabv3_resnet50_coco-cd0a2569.pth"
                 }
@@ -1293,7 +1293,7 @@
             "version": null,
             "description": "DeepLabV3 model with ResNet-101 backbone trained on COCO. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "url": "https://download.pytorch.org/models/deeplabv3_resnet101_coco-586e9e4e.pth"
                 }
@@ -1327,7 +1327,7 @@
             "version": null,
             "description": "YOLOv2 model trained on COCO. Source: https://pjreddie.com/darknet/yolo",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1ajuPZws47SOw3xJc4Wvk1yuiB3qv8ycr"
                 }
@@ -1360,7 +1360,7 @@
             "version": null,
             "description": "EfficientDet-D0 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1mDclIDAMmJzfh7UKe-oBN72XdtwnDC2N",
                     "extract_archive": true,
@@ -1395,7 +1395,7 @@
             "version": null,
             "description": "EfficientDet-D1 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1_IkkEDwPe9SkYbeiuP-ZTOZB9P39Ihm5",
                     "extract_archive": true,
@@ -1430,7 +1430,7 @@
             "version": null,
             "description": "EfficientDet-D2 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1hgEPV1nzwtOb-lfE3bODmvbG7wmWv_Ve",
                     "extract_archive": true,
@@ -1465,7 +1465,7 @@
             "version": null,
             "description": "EfficientDet-D3 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1OKPbwZ2KMH33KRQhCERPkqT8gTVM2c4h",
                     "extract_archive": true,
@@ -1500,7 +1500,7 @@
             "version": null,
             "description": "EfficientDet-D4 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1FO2WwtubQ0I6giHKHSutI-C628JpQM71",
                     "extract_archive": true,
@@ -1535,7 +1535,7 @@
             "version": null,
             "description": "EfficientDet-D5 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1xErF-ZrQi_5Z51l2drXoYzR-JoFhkiB1",
                     "extract_archive": true,
@@ -1570,7 +1570,7 @@
             "version": null,
             "description": "EfficientDet-D6 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1gaGhnZuPdWKsn8IH0dVUXiLYUsqRaZ1a",
                     "extract_archive": true,
@@ -1605,7 +1605,7 @@
             "version": null,
             "description": "Faster-RCNN object detector with Inception-v2 backbone trained on COCO",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1l1pNy5eH0DzvlMST8mCFXTYODHZBsPls"
                 }
@@ -1637,7 +1637,7 @@
             "version": null,
             "description": "Faster-RCNN object detector with NAS-net backbone trained on COCO",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1GSHaIQh_kJ0YU4qqulEY67mufwslk5u9"
                 }
@@ -1669,7 +1669,7 @@
             "version": null,
             "description": "Faster-RCNN low-proposal object detector with NAS-net backbone trained on COCO.",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1dpsLJRTcHyso78OmMSHQtz_2SUlHAt0l"
                 }
@@ -1701,7 +1701,7 @@
             "version": null,
             "description": "Faster-RCNN object detector with ResNet-50 backbone trained on COCO",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1N7SZcZwedztcSxXKFQiXDIhjpibAtnJx"
                 }
@@ -1733,7 +1733,7 @@
             "version": null,
             "description": "Faster-RCNN low-proposal object detector with ResNet-50 backbone trained on COCO",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1VJghRs4W7i_F6GAzoFwAzuMs_wm1g8vT"
                 }
@@ -1765,7 +1765,7 @@
             "version": null,
             "description": "Faster-RCNN object detector with ResNet-101 backbone trained on COCO",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "18OOcBY45JYWwHdWyBRUaoe2H0DF4G8Gw"
                 }
@@ -1797,7 +1797,7 @@
             "version": null,
             "description": "Faster-RCNN low-proposal object detector with ResNet-101 backbone trained on COCO",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1poAw-ZTwEXNfP3NTqlpBxGcQUR5Y7A7D"
                 }
@@ -1829,7 +1829,7 @@
             "version": null,
             "description": "Faster-RCNN Atrous Inception ResNet object detector trained on COCO",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1tbDgXKYWBKazY6U6whRHhR4OsxZS9LOP"
                 }
@@ -1861,7 +1861,7 @@
             "version": null,
             "description": "Faster-RCNN low-proposal Atrous Inception ResNet object detector trained on COCO",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "17bR21aOsS8AoxMuGjTbHIUaXWYo7sz9X"
                 }
@@ -1893,7 +1893,7 @@
             "version": null,
             "description": "Inception ResNet v2 classifier trained on ImageNet",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1hCw4ocYcoxQ4psKEjvlPQd5-CCroHsZ6"
                 }
@@ -1927,7 +1927,7 @@
             "version": null,
             "description": "Inception v4 classifier trained on ImageNet",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1WaLe57G8wt0rty_GL0fnHwGZDqdJhKwT"
                 }
@@ -1961,7 +1961,7 @@
             "version": null,
             "description": "Mask R-CNN Atrous Inception ResNet object detector trained on COCO",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1-Q2LoPx3LIYSQo4_AXau9fd8zYyjSjmK"
                 }
@@ -1984,7 +1984,7 @@
             "version": null,
             "description": "Mask R-CNN Inception object detector trained on COCO",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1Nj5WCeI6MeO4OyltOaZbvBoz_RmRE3pI"
                 }
@@ -2007,7 +2007,7 @@
             "version": null,
             "description": "Mask R-CNN Atrous ResNet-50 object detector trained on COCO",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1QGlpJw97j7XxPlHC5FtWjgil6ebPTgEG"
                 }
@@ -2030,7 +2030,7 @@
             "version": null,
             "description": "Mask R-CNN Atrous ResNet-101 object detector trained on COCO",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1PvW3E6Ey3yC7E7mri_Bw6FyjyOOy4_aX"
                 }
@@ -2053,7 +2053,7 @@
             "version": null,
             "description": "MobileNet v2 classifier trained on ImageNet",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1cey7kmMTnDQG0zcdHauC291fann-Xthz"
                 }
@@ -2087,7 +2087,7 @@
             "version": null,
             "description": "ResNet-50 v1 classifier trained on ImageNet",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1NCGP3KzdKII97mpYYtNHg2mcp7Ew_HRR"
                 }
@@ -2121,7 +2121,7 @@
             "version": null,
             "description": "ResNet-50 v2 classifier trained on ImageNet",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1cWT55Pp9wl2zR0Om8y-g8QVskYEthQfi"
                 }
@@ -2155,7 +2155,7 @@
             "version": null,
             "description": "R-FCN object detector with ResNet-101 backbone trained on COCO",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "15BMAAo0cGBINTsM-KL9ZrwSHnkZlFtNc"
                 }
@@ -2187,7 +2187,7 @@
             "version": null,
             "description": "Inception Single Shot Detector trained on COCO",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1Vt_fuMhEdWxI2XBWLEtNLTJhG00rid4R"
                 }
@@ -2219,7 +2219,7 @@
             "version": null,
             "description": "FPN Single Shot Detector with ResNet-50 backbone trained on COCO",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1pC9WX7Ol2cy4ERAcLQ-a2Dd04d91vJxj"
                 }
@@ -2251,7 +2251,7 @@
             "version": null,
             "description": "Single Shot Detector with MobileNet-v1 backbone trained on COCO",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1X6i1Q2hBfDZ6D4ROoJn1Xbwu0vMqvgQs"
                 }
@@ -2283,7 +2283,7 @@
             "version": null,
             "description": "FPN Single Shot Detector with MobileNet-v1 backbone trained on COCO",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1ZvVQTuDIexyfntq8ajBVp5aSndHW6wQk"
                 }
@@ -2315,7 +2315,7 @@
             "version": null,
             "description": "DeepLabv3+ semantic segmentation model with Xception backbone trained on the Cityscapes dataset. Source: https://github.com/tensorflow/models/blob/master/research/deeplab/g3doc/model_zoo.md",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1GKJtItUirHZ2DY_mQu872QuoWZuAHNr8"
                 }
@@ -2340,7 +2340,7 @@
             "version": null,
             "description": "DeepLabv3+ semantic segmentation model with MobileNetV2 backbone trained on the Cityscapes dataset. Source: https://github.com/tensorflow/models/blob/master/research/deeplab/g3doc/model_zoo.md",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "google_drive_id": "1JYx2Z6or9Jm24aWv79-5aQ8Gg9IF_m6Z"
                 }
@@ -2368,7 +2368,7 @@
                 "config": {
                     "google_drive_id": "0B_-5gc091ngGMzBFMVJ0RE9HNmc"
                 },
-                "type": "eta.core.models.ETAModelManager"
+                "type": "fiftyone.core.models.ModelManager"
             },
             "default_deployment_config_dict": {
                 "type": "fiftyone.core.eta_utils.ETAModel",
