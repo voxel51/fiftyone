@@ -191,6 +191,13 @@ class Session(foc.HasClient):
         else:
             self._window = window
 
+        if self._remote:
+            logger.info(
+                _REMOTE_INSTRUCTIONS.strip()
+                % (self.server_port, self.server_port, self.server_port)
+            )
+            return
+
         if self._context == focx._NONE and window == DESKTOP:
             try:
                 import fiftyone.desktop
@@ -370,6 +377,25 @@ class Session(foc.HasClient):
     def _update_state(self):
         # see fiftyone.core.client if you would like to understand this
         self.state = self.state
+
+
+_REMOTE_INSTRUCTIONS = """
+You have launched a remote app on port %d. To connect to this app
+from another machine, issue the following command:
+
+fiftyone app connect --destination [<username>@]<hostname> --port %d
+
+where `[<username>@]<hostname>` refers to your current machine. Alternatively,
+you can manually configure port forwarding on another machine as follows:
+
+ssh -N -L 5151:127.0.0.1:%d [<username>@]<hostname>
+
+Event without fiftyone installed, the App can now be viewed in your browser at
+http://localhost:5151.
+
+You can also connect to the forwarded session using either
+`fiftyone app connect` or from Python via `fiftyone.launch_app()`.
+"""
 
 
 _WAIT_INSTRUCTIONS = """
