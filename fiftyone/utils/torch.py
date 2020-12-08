@@ -159,8 +159,9 @@ class TorchImageModelConfig(Config):
     """Configuration for running a :class:`TorchImageModel`.
 
     Args:
-        entrypoint_fcn: a string like ``"torchvision.models.inception_v3"``
-            specifying the entrypoint function that loads the model
+        entrypoint_fcn: a fully-qualified function string like
+            ``"torchvision.models.inception_v3"`` specifying the entrypoint
+            function that loads the model
         entrypoint_args (None): a dictionary of arguments for
             ``entrypoint_fcn``
         output_processor_cls: a string like
@@ -171,7 +172,6 @@ class TorchImageModelConfig(Config):
         labels_string (None): a comma-separated list of the class names for the
             model
         labels_path (None): the path to the labels map for the model
-        use_half_precision (None): whether to use half precision
         image_min_size (None): a minimum ``(width, height)`` to which to resize
             the input images during preprocessing
         image_min_dim (None): a minimum image dimension to which to resize the
@@ -187,6 +187,9 @@ class TorchImageModelConfig(Config):
         batch_size (None): the recommended batch size to use during inference
         embeddings_layer (None): the name of a layer whose output to expose as
             embeddings
+        use_half_precision (None): whether to use half precision (only
+            supported when using GPU)
+        cudnn_benchmark (None): a value for ``torch.backends.cudnn.benchmark``
     """
 
     def __init__(self, d):
@@ -204,9 +207,6 @@ class TorchImageModelConfig(Config):
             d, "labels_string", default=None
         )
         self.labels_path = self.parse_string(d, "labels_path", default=None)
-        self.use_half_precision = self.parse_bool(
-            d, "use_half_precision", default=None
-        )
         self.image_min_size = self.parse_array(
             d, "image_min_size", default=None
         )
@@ -220,6 +220,12 @@ class TorchImageModelConfig(Config):
         self.batch_size = self.parse_number(d, "batch_size", default=None)
         self.embeddings_layer = self.parse_string(
             d, "embeddings_layer", default=None
+        )
+        self.use_half_precision = self.parse_bool(
+            d, "use_half_precision", default=None
+        )
+        self.cudnn_benchmark = self.parse_bool(
+            d, "cudnn_benchmark", default=None
         )
 
 
@@ -249,9 +255,12 @@ class TorchImageModel(
         # Load model
         self._using_gpu = torch.cuda.is_available()
         self._device = torch.device("cuda:0" if self._using_gpu else "cpu")
-        self._using_half_precision = self.config.use_half_precision is True
+        self._using_half_precision = (
+            self.config.use_half_precision is True
+        ) and self._using_gpu
         self._model = self._load_model(config)
-        self._no_grad = torch.no_grad()
+        self._no_grad = None
+        self._benchmark_orig = None
 
         # Initialize embeddings saver (if necessary)
         TorchEmbeddingsMixin.__init__(
@@ -262,11 +271,22 @@ class TorchImageModel(
         self._output_processor = self._build_output_processor(config)
 
     def __enter__(self):
+        if self.config.cudnn_benchmark is not None:
+            self._benchmark_orig = torch.backends.cudnn.benchmark
+
+        torch.backends.cudnn.benchmark = self.config.cudnn_benchmark
+
+        self._no_grad = torch.no_grad()
         self._no_grad.__enter__()
         return self
 
     def __exit__(self, *args):
+        if self.config.cudnn_benchmark is not None:
+            torch.backends.cudnn.benchmark = self._benchmark_orig
+            self._benchmark_orig = None
+
         self._no_grad.__exit__(*args)
+        self._no_grad = None
 
     @property
     def batch_size(self):
@@ -404,12 +424,12 @@ class TorchImageModel(
         self._download_model(config)
 
         model = self._load_network(config)
-        model.to(self._device)
 
-        self._load_state_dict(model, config)
-
+        model = model.to(self._device)
         if self._using_half_precision:
             model = model.half()
+
+        self._load_state_dict(model, config)
 
         model.train(False)
 
