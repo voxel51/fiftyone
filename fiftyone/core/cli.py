@@ -94,6 +94,9 @@ class QuickstartCommand(Command):
 
         # Launch the quickstart as a remote session
         fiftyone quickstart --remote
+
+        # Launch the quickstart in the desktop App session
+        fiftyone quickstart --window desktop
     """
 
     @staticmethod
@@ -118,6 +121,18 @@ class QuickstartCommand(Command):
             action="store_true",
             help="whether to launch a remote App session",
         )
+        parser.add_argument(
+            "-w",
+            "--window",
+            action="store_true",
+            default=None,
+            help="""
+                'browser' or 'desktop'. If 'desktop', the desktop App package
+                must be installed (fiftyone-desktop). Defaults to the
+                FIFTYONE_WINDOW environment variable if not provided,
+                or 'browser' if the environment variable is not set.
+            """,
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -126,6 +141,7 @@ class QuickstartCommand(Command):
             video=args.video,
             port=args.port,
             remote=args.remote,
+            window=args.window,
         )
 
 
@@ -775,6 +791,9 @@ class AppLaunchCommand(Command):
 
         # Launch a remote App session
         fiftyone app launch <name> --remote
+
+        # Launch a desktop App session
+        fiftyone app launch <name> --remote --window desktop
     """
 
     @staticmethod
@@ -796,12 +815,27 @@ class AppLaunchCommand(Command):
             action="store_true",
             help="whether to launch a remote App session",
         )
+        parser.add_argument(
+            "-w",
+            "--window",
+            action="store_true",
+            default=None,
+            help="""
+                'browser' or 'desktop'. If 'desktop', the desktop App package
+                must be installed (fiftyone-desktop). Defaults to the
+                FIFTYONE_WINDOW environment variable if not provided,
+                or 'browser' if the environment variable is not set.
+            """,
+        )
 
     @staticmethod
     def execute(parser, args):
         dataset = fod.load_dataset(args.name)
         session = fos.launch_app(
-            dataset=dataset, port=args.port, remote=args.remote
+            dataset=dataset,
+            port=args.port,
+            remote=args.remote,
+            window=args.window,
         )
 
         _watch_session(session, remote=args.remote)
@@ -849,6 +883,9 @@ class AppViewCommand(Command):
 
         # View the dataset in a remote App session
         fiftyone app view ... --remote
+
+        # View the dataset in a desktop App session
+        fiftyone app view ... --window desktop
     """
 
     @staticmethod
@@ -944,6 +981,18 @@ class AppViewCommand(Command):
             action="store_true",
             help="whether to launch a remote App session",
         )
+        parser.add_argument(
+            "-w",
+            "--window",
+            action="store_true",
+            default=None,
+            help="""
+                'browser' or 'desktop'. If 'desktop', the desktop App package
+                must be installed (fiftyone-desktop). Defaults to the
+                FIFTYONE_WINDOW environment variable if not provided,
+                or 'browser' if the environment variable is not set.
+            """,
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -999,7 +1048,10 @@ class AppViewCommand(Command):
             )
 
         session = fos.launch_app(
-            dataset=dataset, port=args.port, remote=args.remote
+            dataset=dataset,
+            port=args.port,
+            remote=args.remote,
+            window=args.window,
         )
 
         _watch_session(session, remote=args.remote)
@@ -1022,6 +1074,9 @@ class AppConnectCommand(Command):
 
         # Connect to a remote App using a custom local port
         fiftyone app connect --local-port <port>
+
+        # Connect to a remote App with a desktop window
+        fiftyone app connect --local-port <port> --window desktop
     """
 
     @staticmethod
@@ -1056,6 +1111,18 @@ class AppConnectCommand(Command):
             default=None,
             type=str,
             help="optional ssh key to use to login",
+        )
+        parser.add_argument(
+            "-w",
+            "--window",
+            action="store_true",
+            default=None,
+            help="""
+                'browser' or 'desktop'. If 'desktop', the desktop App package
+                must be installed (fiftyone-desktop). Defaults to the
+                FIFTYONE_WINDOW environment variable if not provided,
+                or 'browser' if the environment variable is not set.
+            """,
         )
 
     @staticmethod
@@ -1109,7 +1176,7 @@ class AppConnectCommand(Command):
 
             fou.call_on_exit(stop_port_forward)
 
-        session = fos.launch_app(port=args.local_port)
+        session = fos.launch_app(port=args.local_port, window=args.window)
 
         _watch_session(session)
 

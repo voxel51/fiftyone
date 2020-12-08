@@ -10,7 +10,9 @@ import fiftyone.core.session as fos
 import fiftyone.zoo as foz
 
 
-def quickstart(interactive=True, video=False, port=5151):
+def quickstart(
+    interactive=True, video=False, port=5151, remote=False, window=None
+):
     """Runs the FiftyOne quickstart.
 
     This method loads an interesting dataset from the Dataset Zoo, launches the
@@ -21,6 +23,13 @@ def quickstart(interactive=True, video=False, port=5151):
             return a session
         video (False): whether to launch a video dataset
         port (5151): the port number to serve the App
+        remote (False): whether this is a remote session, and opening a window
+            should not be attempted
+        window (None): 'browser' or 'desktop'. If 'desktop', the desktop App
+            package must be installed (fiftyone-desktop). Defaults to the
+            FIFTYONE_WINDOW environment variable if not provided, or 'browser'
+            if the environment variable is not set. DOES NOT apply to notebook
+            contexts (e.g. Jupyter), use :meth:`Session.show` instead.
 
     Returns:
         If ``interactive`` is ``True``, a tuple is returned containing:
