@@ -23,6 +23,13 @@ ___________
 * :ref:`Cloud storage <cloud-storage>`: Data is stored in a cloud bucket
   (e.g., :ref:`S3 <AWS>`, :ref:`GCS <google-cloud>`, or :ref:`Azure <azure>`)
 
+* :ref:`Window`: The display mode to use for the App, "browser" or "desktop",
+  which can be passed to any method or CLI command that creates a session via
+  the `window` argument. The `FIFTYONE_DEFAULT_WINDOW` environment variable can
+  also be used for a persistent setting. If "browser", the desktop App must be
+  installed. See :ref:`Installing FiftyOne <installing-fiftyone>` for more
+  details.
+
 .. _local-data:
 
 Local data
@@ -81,8 +88,18 @@ machine and launch a remote session:
 Leave this session running, and note that instructions for connecting to this
 remote session were printed to your terminal (these are described below).
 
-On the local machine, you can :ref:`use the CLI <cli-fiftyone-app-connect>`
-to automatically configure port forwarding and open the App.
+If you do not have `fiftyone` installed on your local machine, and do not want
+to install it, you can set up port forwarding manually, and view the App in
+your browser.
+
+.. code-block:: shell
+    # `[<username>@]<hostname>` refers to your remote machine
+    ssh -N -L 5151:127.0.0.1:%d [<username>@]<hostname>
+
+
+If you have `fiftyone` installed on the local machine, you can
+:ref:`use the CLI <cli-fiftyone-app-connect>` to automatically configure port
+forwarding and open the App in either `window` mode.
 
 In a local terminal, run the command:
 

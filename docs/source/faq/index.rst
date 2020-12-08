@@ -11,12 +11,19 @@ Frequently Asked Questions
 Can I run this in a browser?
 ----------------------------
 
-Browsers are not yet supported; you must
-:ref:`install FiftyOne <installing-fiftyone>` on each machine from which you
-want to use the library or the App.
+Yes, FiftyOne now defaults to "browser" mode. The desktop App can also be
+used, if the extra `fiftyone-desktop` dependency is installed. See
+:ref:`Installing FiftyOne <installing-fiftyone>` for more details.
 
-However, check out the :doc:`environments guide </environments/index>` for
-best practices on using FiftyOne in common local, remote, and cloud
+The :doc:`environments guide </environments/index>` offers further instruction
+on how to use FiftyOne in common local, remote, and cloud environments.
+
+.. _faq-notebook-support:
+
+Can I run this in a browser?
+----------------------------
+
+Yes! FiftyOne is supported in Jupyter and Google Colaboratory notebook
 environments.
 
 .. _faq-remote-server-data:
