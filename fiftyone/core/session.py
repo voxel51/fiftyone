@@ -342,7 +342,7 @@ class Session(foc.HasClient):
             url = eval_js(
                 "google.colab.kernel.proxyPort(%d)" % self.server_port
             )
-            return "%s?fiftyoneColab=true"
+            return "%s?fiftyoneColab=true" % url
 
         return "http://localhost:%d" % self.server_port
 
