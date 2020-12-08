@@ -44,7 +44,15 @@ are using, then run:
 .. code-block:: shell
 
    pip install --upgrade pip setuptools wheel
-   pip install --index https://pypi.voxel51.com fiftyone
+   pip install fiftyone
+
+If you would like to use the desktop version of the FiftyOne App, you can do so
+with the extra dependency `desktop`, which installs the optional
+`fiftyone-desktop` package alongside `fiftyone`.
+
+.. code-block:: shell
+  
+  pip install fiftyone[desktop] 
 
 This will install FiftyOne and all of its dependencies, which may take some
 time. Once this has completed, you can verify that FiftyOne is installed in
@@ -152,7 +160,7 @@ upgrade an existing FiftyOne installation:
 
 .. code-block:: shell
 
-   pip install --index https://pypi.voxel51.com --upgrade fiftyone
+   pip install --upgrade fiftyone
 
 .. _uninstalling-fiftyone:
 
@@ -163,4 +171,12 @@ FiftyOne and all of its subpackages can be uninstalled with:
 
 .. code-block:: shell
 
-   pip uninstall fiftyone fiftyone-brain fiftyone-db fiftyone-gui
+   pip uninstall fiftyone fiftyone-brain fiftyone-db fiftyone-
+
+If you installed the optional desktop app via `pip install fiftyone[desktop]`
+or seperatey with `pip install fiftyone-desktop`, you can uninstall that, as
+well.
+
+.. code-block:: shell
+
+   pip uninstall fiftyone-desktop
