@@ -5,6 +5,8 @@ PyTorch utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import itertools
+
 import numpy as np
 from PIL import Image
 
@@ -39,7 +41,8 @@ def apply_torch_image_model(
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model`
+        model: a :class:`fiftyone.core.models.Model` that implements the
+            :class:`fiftyone.core.models.TorchModelMixin` mixin
         label_field: the name (or prefix) of the field in which to store the
             model predictions
         confidence_thresh (None): an optional confidence threshold to apply to
@@ -55,7 +58,6 @@ def apply_torch_image_model(
             "Model must implement the %s mixin" % fom.TorchModelMixin
         )
 
-    # Make data loader
     batch_size = model.batch_size or 1
     samples_loader = fou.iter_batches(samples, batch_size)
     data_loader = _make_data_loader(
@@ -65,16 +67,97 @@ def apply_torch_image_model(
     with fou.ProgressBar(samples) as pb:
         with model:
             for sample_batch, imgs in zip(samples_loader, data_loader):
-                # Perform prediction
                 labels = model.predict_all(imgs)
 
-                # Save labels
                 for sample, label in zip(sample_batch, labels):
                     sample.add_labels(
                         label, label_field, confidence_thresh=confidence_thresh
                     )
 
                 pb.set_iteration(pb.iteration + len(imgs))
+
+
+def compute_torch_image_embeddings(
+    samples, model, embeddings_field=None, num_workers=None
+):
+    """Computes embeddings using the given :class:`fiftyone.core.models.Model`
+    for the samples in the collection.
+
+    The model must implement the :class:`fiftyone.core.models.TorchModelMixin`
+    and :class:`fiftyone.core.models.EmbeddingsMixin` mixins.
+
+    This method performs the same operation as
+    :func:`fiftyone.core.models.compute_embeddings` except that the images are
+    loaded using a ``torch.utils.data.DataLoader``.
+
+    If an ``embeddings_field`` is provided, the embeddings are saved to the
+    samples; otherwise, the embeddings are returned as an in-memory array.
+
+    Args:
+        samples: a :class:`fiftyone.core.collections.SampleCollection`
+        model: a :class:`fiftyone.core.models.Model` that implements the
+            :class:`fiftyone.core.models.TorchModelMixin` and
+            :class:`fiftyone.core.models.EmbeddingsMixin` mixins
+        embeddings_field (None): the name of a field in which to store the
+            embeddings
+        num_workers (None): the number of workers for the
+            ``torch.utils.data.DataLoader`` to use
+
+    Returns:
+        ``None``, if an ``embeddings_field`` is provided; otherwise, a numpy
+        array whose first dimension is ``len(samples)`` containing the
+        embeddings
+    """
+    if samples.media_type != fomm.IMAGE:
+        raise ValueError("This method only supports image samples")
+
+    if not isinstance(model, fom.TorchModelMixin):
+        raise ValueError(
+            "Model must implement the %s mixin" % fom.TorchModelMixin
+        )
+
+    if not isinstance(model, fom.EmbeddingsMixin):
+        raise ValueError(
+            "Model must implement the %s mixin" % fom.EmbeddingsMixin
+        )
+
+    if not model.has_embeddings:
+        raise ValueError(
+            "Model does not expose embeddings (model.has_embeddings = %s)"
+            % model.has_embeddings
+        )
+
+    batch_size = model.batch_size or 1
+    data_loader = _make_data_loader(
+        samples, model.transforms, batch_size, num_workers
+    )
+
+    if embeddings_field:
+        samples_loader = fou.iter_batches(samples, batch_size)
+    else:
+        samples_loader = itertools.repeat(None)
+
+    embeddings = None
+
+    with fou.ProgressBar(samples) as pb:
+        with model:
+            for sample_batch, imgs in zip(samples_loader, data_loader):
+                embeddings_batch = model.embed_all(imgs)
+
+                if embeddings_field:
+                    for sample, embedding in zip(
+                        sample_batch, embeddings_batch
+                    ):
+                        sample[embeddings_field] = embedding
+                        sample.save()
+                elif embeddings is None:
+                    embeddings = embeddings_batch
+                else:
+                    embeddings = np.concatenate((embeddings, embeddings_batch))
+
+                pb.set_iteration(pb.iteration + len(imgs))
+
+    return embeddings
 
 
 def _make_data_loader(samples, transforms, batch_size, num_workers):
