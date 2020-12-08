@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-_MODELS_MANIFEST_PATH = os.path.join(_THIS_DIR, etam.MODELS_MANIFEST_JSON)
+_MODELS_MANIFEST_PATH = os.path.join(_THIS_DIR, "manifest.json")
 
 
 def list_zoo_models():
