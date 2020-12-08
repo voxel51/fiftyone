@@ -83,10 +83,7 @@ function Dataset(props) {
     notebook: isNotebook,
   });
 
-  useMessageHandler("deactivated", () => {
-    alert("E");
-    setDeactivated(true);
-  });
+  useMessageHandler("deactivate", () => setDeactivated(true));
 
   // update color map
   useEffect(() => {
