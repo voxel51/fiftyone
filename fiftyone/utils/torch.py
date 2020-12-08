@@ -16,7 +16,6 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fomm
 import fiftyone.core.models as fom
 import fiftyone.core.utils as fou
-from fiftyone.zoo.models import HasZooModel
 
 fou.ensure_torch()
 import torch
