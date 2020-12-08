@@ -187,7 +187,8 @@ class TorchImageModelConfig(Config):
             embeddings
         use_half_precision (None): whether to use half precision (only
             supported when using GPU)
-        cudnn_benchmark (None): a value for ``torch.backends.cudnn.benchmark``
+        cudnn_benchmark (None): a value to use for
+            ``torch.backends.cudnn.benchmark`` while the model is running
     """
 
     def __init__(self, d):
@@ -271,8 +272,7 @@ class TorchImageModel(
     def __enter__(self):
         if self.config.cudnn_benchmark is not None:
             self._benchmark_orig = torch.backends.cudnn.benchmark
-
-        torch.backends.cudnn.benchmark = self.config.cudnn_benchmark
+            torch.backends.cudnn.benchmark = self.config.cudnn_benchmark
 
         self._no_grad = torch.no_grad()
         self._no_grad.__enter__()
@@ -320,17 +320,6 @@ class TorchImageModel(
         return self._class_labels
 
     def predict(self, img):
-        """Computes the prediction on a single image.
-
-        If a Torch Tensor is provided, it is assumed that preprocessing has
-        already been applied.
-
-        Args:
-            img: a PIL image (HWC), a numpy array (HWC) or Torch tensor (CHW)
-
-        Returns:
-            the prediction
-        """
         if isinstance(img, torch.Tensor):
             imgs = img.unsqueeze(0)
         else:
@@ -339,18 +328,6 @@ class TorchImageModel(
         return self.predict_all(imgs)[0]
 
     def predict_all(self, imgs):
-        """Computes predictions for the tensor of images.
-
-        If a Torch Tensor is provided, it is assumed that preprocessing has
-        already been applied.
-
-        Args:
-            imgs: a list of PIL or numpy images (HWC), a numpy array of images
-                (NHWC), or a Torch tensor (NCHW)
-
-        Returns:
-            a list of predictions
-        """
         output, frame_size = self._predict_all(imgs)
         return self._output_processor(output, frame_size)
 
