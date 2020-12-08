@@ -173,8 +173,8 @@ your local machine via `ssh` and connect to the App via Python.
 
         fos.launch_app()
 
-Display options
-_______________
+Fields
+______
 
 Any labels, tags, and scalar fields can be overlaid on the samples in the App
 by toggling the corresponding display options on the lefthand side of the App.
@@ -287,8 +287,8 @@ shows selecting an object detection, but polygons, polylines, segmentations,
 and keypoints can be selected as well.
 
 When you have selected objects in the App, you can use the selected objects
-dropdown menu under ``Display Options`` to take actions such as hiding the
-selected samples from view.
+dropdown menu under ``Fields`` to take actions such as hiding the selected
+samples from view.
 
 You can also access the
 :meth:`Session.selected_objects <fiftyone.core.session.Session.selected_objects>`

@@ -23,7 +23,7 @@ ___________
 * :ref:`Cloud storage <cloud-storage>`: Data is stored in a cloud bucket
   (e.g., :ref:`S3 <AWS>`, :ref:`GCS <google-cloud>`, or :ref:`Azure <azure>`)
 
-* :ref:`Window`: The display mode to use for the App, "browser" or "desktop",
+* `Window`: The display mode to use for the App, "browser" or "desktop",
   which can be passed to any method or CLI command that creates a session via
   the `window` argument. The `FIFTYONE_DEFAULT_WINDOW` environment variable can
   also be used for a persistent setting. If "browser", the desktop App must be
@@ -93,9 +93,9 @@ to install it, you can set up port forwarding manually, and view the App in
 your browser.
 
 .. code-block:: shell
+
     # `[<username>@]<hostname>` refers to your remote machine
     ssh -N -L 5151:127.0.0.1:%d [<username>@]<hostname>
-
 
 If you have `fiftyone` installed on the local machine, you can
 :ref:`use the CLI <cli-fiftyone-app-connect>` to automatically configure port
@@ -124,6 +124,44 @@ then substitute the appropriate value in the local commands too.
 
     You can use custom ports when launching remote sessions in order to serve
     multiple remote sessions simultaneously.
+
+.. _notebooks:
+
+Notebooks
+_________
+
+FiftyOne officialy supports Jupyter and Google Colaboratory notebook
+environments. To use FiftyOne in a notebook, install `fiftyone` via `pip`,
+and create a session:
+
+.. code-block:: python
+    :linenos:
+
+    !pip install fiftyone
+    # On local machine
+    import fiftyone as fo
+
+    dataset = fo.Dataset(name="my_dataset")
+
+    session = fo.Session(dataset)
+
+Anytime you would like visualize your data in the App, simply call the
+:meth:`show() <fiftyone.core.session.Session.show>` method:
+
+.. code-block:: python
+   :linenos:
+
+   session.show()
+
+To cut down on resource usage in the notebook, only one App cell can be activ
+at any given time. To activate a different cell, simply click `Activate` in
+the deactivated window, or run the cell again.
+
+.. note::
+
+   Currently, each session maintains a single state. Therefore displaying the
+   App once the notebook is often sufficient. The window will continue to
+   update as you work in the notebook.
 
 .. _cloud-storage:
 

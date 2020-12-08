@@ -16,12 +16,13 @@ used, if the extra `fiftyone-desktop` dependency is installed. See
 :ref:`Installing FiftyOne <installing-fiftyone>` for more details.
 
 The :doc:`environments guide </environments/index>` offers further instruction
-on how to use FiftyOne in common local, remote, and cloud environments.
+on how to use FiftyOne in common local, remote, cloud, and notebook
+environments.
 
 .. _faq-notebook-support:
 
-Can I run this in a browser?
-----------------------------
+Can I run this in a notebook?
+-----------------------------
 
 Yes! FiftyOne is supported in Jupyter and Google Colaboratory notebook
 environments.
@@ -186,10 +187,6 @@ sessions.
     Keep in mind that all users must have ssh access to the system from which
     the remote session(s) are launched in order to connect to them.
 
-    In addition, and all users must have
-    :ref:`FiftyOne installed <installing-fiftyone>` on their local machines in
-    order to launch an App instance.
-
 You can achieve multiple connections in two ways:
 
 **Option 1: Same dataset, multiple sessions**
@@ -229,13 +226,28 @@ houses the |Dataset| using either the CLI or Python:
         session = fo.launch_app(dataset, remote=True)  # (optional) port=XXXX
 
 Then one or more users can use the CLI on their local machine to
-:ref:`connect to the remote session: <remote-app-local-machine>`:
+:ref:`connect to the remote session: <remote-app-local-machine>`, or manually
+configure a connection to the session. The latter approach does not require
+`fiftyone` to be installed, only a web browser.
+
+The CLI only requires the following command. The App will open in your
+configured window setting.
 
 .. code-block:: shell
 
     # On local machine(s)
     # If a custom port was used, append --port XXXX
     fiftyone app connect --destination <username>@<remote-ip-address>
+
+Manually configuring a connection requires setting up port forwarding:
+
+.. code-block:: shell
+
+    # `[<username>@]<hostname>` refers to your remote machine
+    ssh -N -L 5151:localhost:XXXX [<username>@]<hostname>
+    # where XXXX is the remote port number (5151 if you did not provide one)
+
+And then opening `http://localhost:5151` in your web browser.
 
 .. note::
 
@@ -282,7 +294,14 @@ that you own), using commands similar to:
 
 On your local machine, you can launch App instances to
 :ref:`connect to the remote sessions <remote-app-local-machine>` on each
-machine by specifying a different `--local-port` for each App instance to use:
+machine by specifying a different `--local-port` for each App instance to use,
+or by manually configuring each connection. The latter approach does not
+require `fiftyone` to be installed on you local machine:
+
+`XXXX` and `YYYY` used below are any open ports on your machine.
+
+The CLI only requires one command. The App will open in your configured window
+setting.
 
 .. code-block:: shell
 
@@ -294,12 +313,26 @@ machine by specifying a different `--local-port` for each App instance to use:
     # Connect to second remote session
     fiftyone app connect --destination <username2>@<remote-ip-address2> --local-port YYYY
 
-where `XXXX` and `YYYY` are any open ports on your machine.
+Manually configuring a connection requires setting up port forwarding. `RRRR`
+is the remote port number of the session you wish to connect to.
+
+.. code-block:: shell
+
+    # `[<username>@]<hostname>` refers to your remote machine
+    ssh -N -L XXXX:localhost:RRRR [<username>@]<hostname>
+    # then open `http://localhost:XXXX` in your web browser.
+
+.. code-block:: shell
+
+    ssh -N -L YYYY:localhost:RRRR [<username>@]<hostname>
+
 
 .. note::
 
     You can also serve multiple remote sessions
     :ref:`from the same machine <faq-serve-multiple-remote-sessions>`.
+
+
 
 .. _faq-serve-multiple-remote-sessions:
 
@@ -346,7 +379,12 @@ specifying different ports for each |Session| that you create:
 
 On your local machine(s), you can launch App instances to
 :ref:`connect to the remote sessions <remote-app-local-machine>` that you
-created by specifying the corresponding remote ports that you used:
+created by specifying the corresponding remote ports that you used, or by
+manually configuring each connection. The latter approach does not require
+`fiftyone` to be installed on you local machine:
+
+The CLI only requires one command. The App will open in your configured window
+setting.
 
 .. code-block:: shell
 
@@ -366,4 +404,16 @@ created by specifying the corresponding remote ports that you used:
         --destination <username>@<remote-ip-address> \
         --port YYYY --local-port ZZZZ
 
-where `WWWW` and `ZZZZ` are any 4 digit ports on your local machine(s).
+Manually configuring a connection requires setting up port forwarding.
+
+.. code-block:: shell
+
+    # `[<username>@]<hostname>` refers to your remote machine
+    ssh -N -L WWWW:localhost:XXXX [<username>@]<hostname>
+    # then open `http://localhost:WWWW` in your web browser.
+
+.. code-block:: shell
+
+    ssh -N -L ZZZZ:localhost:YYYY [<username>@]<hostname>
+
+`WWWW` and `ZZZZ` are any 4 digit ports on your local machine(s).
