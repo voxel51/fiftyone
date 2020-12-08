@@ -53,10 +53,12 @@ class HasClient(object):
             while True:
                 message = await self._client.read_message()
 
-                if message is None:
-                    print(
-                        "\r\n%s disconnected, trying to reconnect\r\n" % self
-                    )
+                global _printer
+                if _printer[self._url] is None:
+                    _printer[self._url] = self
+
+                if message is None and _printer[self._url] == self:
+                    print("\r\nSession disconnected, trying to reconnect\r\n")
                     fiftyone_url = "http://%s:%d/fiftyone" % (
                         SERVER_NAME,
                         port,
@@ -94,6 +96,7 @@ class HasClient(object):
         self._thread.start()
 
     def on_notification(self, data):
+        global _printer
         if _printer[self._url] is None:
             _printer[self._url] = self
 

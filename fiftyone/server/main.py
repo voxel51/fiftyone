@@ -165,6 +165,9 @@ def _catch_errors(func):
     return wrapper
 
 
+_notebook_clients = set()
+
+
 class PollingHandler(tornado.web.RequestHandler):
 
     clients = defaultdict(set)
@@ -204,8 +207,10 @@ class PollingHandler(tornado.web.RequestHandler):
         event = message.pop("type")
         if mode == "push":
             if event == "as_app":
-                self.write_message({})
-                return
+                if message["notebook"]:
+                    message["ignore"] = client
+                    global _notebook_clients
+                    _notebook_clients.add(client)
 
             if event in {"distributions", "page", "get_video_data"}:
                 caller = self
@@ -368,6 +373,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         """
         StateHandler.clients.remove(self)
         StateHandler.app_clients.discard(self)
+        global _notebook_clients
+        _notebook_clients.discard(self)
 
     @_catch_errors
     async def on_message(self, message):
@@ -382,9 +389,22 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         await event(self, **message)
 
     @staticmethod
-    async def on_as_app(self):
+    async def on_as_app(self, notebook, ignore=None):
         """Event for registering a client as an App."""
         StateHandler.app_clients.add(self)
+        global _notebook_clients
+        if isinstance(self, StateHandler):
+            _notebook_clients.add(self)
+            ignore = self
+
+        for client in _notebook_clients:
+            if client == ignore:
+                continue
+            if isinstance(client, StateHandler):
+                client.write_message({"type": "deactivate"})
+            else:
+                PollingHandler.clients[client].add("deactivate")
+
         awaitables = self.get_statistics_awaitables(only=self)
         asyncio.gather(*awaitables)
 

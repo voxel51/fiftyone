@@ -425,7 +425,10 @@ class Session(foc.HasClient):
         """
         try:
             if self._remote or self._window == BROWSER:
-                _server_services[self._port].wait()
+                try:
+                    _server_services[self._port].wait()
+                except:
+                    pass
             else:
                 self._app_service.wait()
         except KeyboardInterrupt:
@@ -517,6 +520,7 @@ def _display_colab(port, height, display_handle):
         (async () => {
             const url = new URL(await google.colab.kernel.proxyPort(%PORT%, {'cache': true}));
             url.searchParams.set('fiftyoneColab', 'true');
+            url.searchParams.set('notebook', 'true');
             const iframe = document.createElement('iframe');
             iframe.src = url;
             iframe.setAttribute('width', '100%');
@@ -550,6 +554,7 @@ def _display_ipython(port, height, display_handle):
         (function() {
           const frame = document.getElementById(%JSON_ID%);
           const url = new URL(%URL%, window.location);
+          url.searchParams.set('notebook', 'true');
           const port = %PORT%;
           if (port) {
             url.port = port;

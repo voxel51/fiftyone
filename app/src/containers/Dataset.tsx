@@ -14,7 +14,7 @@ import { ModalWrapper, Overlay } from "../components/utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { VALID_LABEL_TYPES } from "../utils/labels";
-import { useMessageHandler, useSendMessage, useGA } from "../utils/hooks";
+import { useMessageHandler, useSendMessage } from "../utils/hooks";
 import Loading from "../components/Loading";
 
 const PLOTS = ["labels", "scalars", "tags"];
@@ -45,7 +45,6 @@ const applyActiveLabels = (tuples, current, setter) => {
 };
 
 function Dataset(props) {
-  // useGA();
   const [modal, setModal] = useState({
     visible: false,
     sample: null,
@@ -73,13 +72,21 @@ function Dataset(props) {
   );
   const activeOther = useRecoilValue(atoms.activeOther("sample"));
   const activeFrameOther = useRecoilValue(atoms.activeOther("frame"));
-  const view = useRecoilValue(selectors.view);
+  const isNotebook = useRecoilValue(selectors.isNotebook);
+  const setDeactivated = useSetRecoilState(atoms.deactivated);
 
   useMessageHandler("statistics", ({ stats, view, filters }) => {
     filters && setExtendedDatasetStats({ stats, view, filters });
     !filters && setDatasetStats({ stats, view });
   });
-  useSendMessage("as_app", {});
+  useSendMessage("as_app", {
+    notebook: isNotebook,
+  });
+
+  useMessageHandler("deactivated", () => {
+    alert("E");
+    setDeactivated(true);
+  });
 
   // update color map
   useEffect(() => {

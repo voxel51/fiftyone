@@ -23,7 +23,7 @@ const Text = styled.div`
   text-align: center;
 `;
 
-const Loading = React.memo(({ text = null }) => {
+const Loading = React.memo(({ text = null, onClick = null }) => {
   const [resetOrbit, setResetOrbit] = useState(false);
   const props = useSpring({
     from: { transform: "rotate(0deg)" },
@@ -34,9 +34,21 @@ const Loading = React.memo(({ text = null }) => {
       duration: 3000,
     },
   });
+  const rest = onClick
+    ? {
+        onClick,
+      }
+    : {};
   return (
     <Container>
-      <div style={{ margin: "auto", width: "100%" }}>
+      <div
+        style={{
+          margin: "auto",
+          width: "100%",
+          cursor: onClick ? "pointer" : "default",
+        }}
+        {...rest}
+      >
         <LogoImg style={props} src={"./logo.png"} />
         {text && <Text>{text}</Text>}
       </div>

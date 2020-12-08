@@ -159,6 +159,15 @@ export const isColab = selector({
   },
 });
 
+export const isNotebook = selector({
+  key: "isNotebook",
+  get: () => {
+    const search = window.location.search;
+    const params = new URLSearchParams(search);
+    return params.get("notebook");
+  },
+});
+
 export const socket = selector({
   key: "socket",
   get: ({ get }): ReconnectingWebSocket | HTTPSSocket => {

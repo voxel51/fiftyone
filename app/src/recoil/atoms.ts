@@ -2,6 +2,11 @@ import { atom, atomFamily } from "recoil";
 
 import { SelectedObjectMap } from "../utils/selection";
 
+export const deactivated = atom({
+  key: "deactivated",
+  default: false,
+});
+
 export const port = atom({
   key: "port",
   default: parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151,

@@ -8,7 +8,7 @@ import styled from "styled-components";
 import Header from "../components/Header";
 import Dataset from "./Dataset";
 
-import { useEventHandler, useMessageHandler } from "../utils/hooks";
+import { useEventHandler, useMessageHandler, useGA } from "../utils/hooks";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { convertSelectedObjectsListToMap } from "../utils/selection";
@@ -18,6 +18,7 @@ import { scrollbarStyles } from "../components/utils";
 import Setup from "./Setup";
 import "player51/build/css/player51.min.css";
 import "../app.global.css";
+import Deactivated from "./Deactivated";
 
 const Body = styled.div`
   ${scrollbarStyles}
@@ -26,6 +27,11 @@ const Body = styled.div`
   display: flex:
   flex-direction: column;
 `;
+
+const GA = () => {
+  useGA();
+  return null;
+};
 
 function App() {
   const addNotification = useRef(null);
@@ -37,6 +43,7 @@ function App() {
   const setSelectedSamples = useSetRecoilState(atoms.selectedSamples);
   const [viewCounterValue, setViewCounter] = useRecoilState(atoms.viewCounter);
   const setSelectedObjects = useSetRecoilState(atoms.selectedObjects);
+  const deactivated = useRecoilValue(atoms.deactivated);
   const handleStateUpdate = (state) => {
     setStateDescription(state);
     setSelectedSamples(new Set(state.selected));
@@ -73,7 +80,8 @@ function App() {
       <Body style={{ overflowY: connected ? "hidden" : "scroll" }}>
         {connected && (
           <Suspense fallback={Setup}>
-            <Dataset />
+            <GA />
+            {deactivated ? <Deactivated /> : <Dataset />}
           </Suspense>
         )}
         {!connected && <Setup />}
