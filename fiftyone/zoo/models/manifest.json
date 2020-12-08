@@ -12,7 +12,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.alexnet.alexnet",
                     "entrypoint_args": { "pretrained": true },
@@ -46,7 +46,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.densenet.densenet121",
                     "entrypoint_args": { "pretrained": true },
@@ -80,7 +80,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.densenet.densenet161",
                     "entrypoint_args": { "pretrained": true },
@@ -114,7 +114,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.densenet.densenet169",
                     "entrypoint_args": { "pretrained": true },
@@ -148,7 +148,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.densenet.densenet201",
                     "entrypoint_args": { "pretrained": true },
@@ -182,7 +182,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.googlenet.googlenet",
                     "entrypoint_args": { "pretrained": true },
@@ -216,7 +216,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.inception.inception_v3",
                     "entrypoint_args": { "pretrained": true },
@@ -250,7 +250,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.mnasnet.mnasnet0_5",
                     "entrypoint_args": { "pretrained": true },
@@ -284,7 +284,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.mnasnet.mnasnet1_0",
                     "entrypoint_args": { "pretrained": true },
@@ -318,7 +318,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.mobilenet.mobilenet_v2",
                     "entrypoint_args": { "pretrained": true },
@@ -352,7 +352,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.resnet.resnet18",
                     "entrypoint_args": { "pretrained": true },
@@ -386,7 +386,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.resnet.resnet34",
                     "entrypoint_args": { "pretrained": true },
@@ -420,7 +420,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.resnet.resnet50",
                     "entrypoint_args": { "pretrained": true },
@@ -454,7 +454,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.resnet.resnet101",
                     "entrypoint_args": { "pretrained": true },
@@ -488,7 +488,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.resnet.resnet152",
                     "entrypoint_args": { "pretrained": true },
@@ -522,7 +522,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.resnet.resnext50_32x4d",
                     "entrypoint_args": { "pretrained": true },
@@ -556,7 +556,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.resnet.resnext101_32x8d",
                     "entrypoint_args": { "pretrained": true },
@@ -590,7 +590,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.resnet.wide_resnet50_2",
                     "entrypoint_args": { "pretrained": true },
@@ -624,7 +624,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.resnet.wide_resnet101_2",
                     "entrypoint_args": { "pretrained": true },
@@ -658,7 +658,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.shufflenetv2.shufflenet_v2_x0_5",
                     "entrypoint_args": { "pretrained": true },
@@ -692,7 +692,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.shufflenetv2.shufflenet_v2_x1_0",
                     "entrypoint_args": { "pretrained": true },
@@ -726,7 +726,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.squeezenet.squeezenet1_0",
                     "entrypoint_args": { "pretrained": true },
@@ -760,7 +760,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.squeezenet.squeezenet1_1",
                     "entrypoint_args": { "pretrained": true },
@@ -794,7 +794,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.vgg.vgg11",
                     "entrypoint_args": { "pretrained": true },
@@ -828,7 +828,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.vgg.vgg13",
                     "entrypoint_args": { "pretrained": true },
@@ -862,7 +862,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.vgg.vgg16",
                     "entrypoint_args": { "pretrained": true },
@@ -896,7 +896,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.vgg.vgg19",
                     "entrypoint_args": { "pretrained": true },
@@ -930,7 +930,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.vgg.vgg11_bn",
                     "entrypoint_args": { "pretrained": true },
@@ -964,7 +964,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.vgg.vgg13_bn",
                     "entrypoint_args": { "pretrained": true },
@@ -998,7 +998,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.vgg.vgg16_bn",
                     "entrypoint_args": { "pretrained": true },
@@ -1032,7 +1032,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.vgg.vgg19_bn",
                     "entrypoint_args": { "pretrained": true },
@@ -1066,7 +1066,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.detection.faster_rcnn.fasterrcnn_resnet50_fpn",
                     "entrypoint_args": { "pretrained": true },
@@ -1097,7 +1097,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.detection.retinanet.retinanet_resnet50_fpn",
                     "entrypoint_args": { "pretrained": true },
@@ -1128,7 +1128,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.detection.mask_rcnn.maskrcnn_resnet50_fpn",
                     "entrypoint_args": { "pretrained": true },
@@ -1159,7 +1159,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.detection.keypoint_rcnn.keypointrcnn_resnet50_fpn",
                     "entrypoint_args": { "pretrained": true },
@@ -1197,7 +1197,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.segmentation.segmentation.fcn_resnet50",
                     "entrypoint_args": { "pretrained": true },
@@ -1231,7 +1231,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.segmentation.segmentation.fcn_resnet101",
                     "entrypoint_args": { "pretrained": true },
@@ -1265,7 +1265,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.segmentation.segmentation.deeplabv3_resnet50",
                     "entrypoint_args": { "pretrained": true },
@@ -1299,7 +1299,7 @@
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.zoo.models.torch.TorchvisionModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.segmentation.segmentation.deeplabv3_resnet101",
                     "entrypoint_args": { "pretrained": true },

@@ -9,6 +9,7 @@ import numpy as np
 
 import eta.core.image as etai
 import eta.core.learning as etal
+import eta.core.utils as etau
 import eta.core.video as etav
 
 import fiftyone.core.media as fom
@@ -81,6 +82,72 @@ def _apply_video_model(samples, model, label_field, confidence_thresh):
                 )
 
 
+def build_model(model_config_dict, model_path=None, **kwargs):
+    """Builds the model specified by the given :class:`ModelConfig` dict.
+
+    Args:
+        model_config_dict: a :class:`ModelConfig` dict
+        model_path (None): an optional model path to inject into the
+            ``model_path`` field of the model's ``Config`` instance, which must
+            implement the ``eta.core.learning.HasPublishedModel`` interface.
+            This is useful when working with a model whose weights are stored
+            locally and do not need to be downloaded
+        **kwargs: optional keyword arguments to inject into the model's
+            ``Config`` instance
+
+    Returns:
+        a :class:`Model` instance
+    """
+    import fiftyone.core.eta_utils as foe
+
+    # Inject config args
+    if kwargs:
+        if model_config_dict["type"] == etau.get_class_name(foe.ETAModel):
+            _merge_config(model_config_dict["config"]["config"], kwargs)
+        else:
+            _merge_config(model_config_dict["config"], kwargs)
+
+    # Load model config
+    config = ModelConfig.from_dict(model_config_dict)
+
+    #
+    # Inject model path
+    #
+    # Models must be implemented in one of the following ways in order for
+    # us to know how to inject ``model_path``:
+    #
+    # (1) Their config implements ``eta.core.learning.HasPublishedModel``
+    #
+    # (2) Their config is an ``fiftyone.core.eta_utils.ETAModelConfig`` whose
+    #     embedded config implements ``eta.core.learning.HasPublishedModel``
+    #
+    if model_path:
+        if isinstance(config.config, etal.HasPublishedModel):
+            config.config.model_name = None
+            config.config.model_path = model_path
+        elif isinstance(config.config, foe.ETAModelConfig) and isinstance(
+            config.config.config, etal.HasPublishedModel
+        ):
+            config.config.config.model_name = None
+            config.config.config.model_path = model_path
+        else:
+            raise ValueError(
+                "Model config must implement the %s interface"
+                % etal.HasPublishedModel
+            )
+
+    # Build model
+    return config.build()
+
+
+def _merge_config(d, kwargs):
+    for k, v in kwargs.items():
+        if k in d and isinstance(d[k], dict):
+            d[k].update(v)
+        else:
+            d[k] = v
+
+
 class ModelConfig(etal.ModelConfig):
     """Base configuration class that encapsulates the name of a :class:`Model`
     and an instance of its associated Config class.
@@ -98,8 +165,8 @@ class Model(etal.Model):
 
     This class declares the following conventions:
 
-    (a)     :meth:`Model.__init__` should take a single `config` argument that
-            is an instance of `<ModelClass>Config`
+    (a)     :meth:`Model.__init__` should take a single ``config`` argument
+            that is an instance of ``<Model>Config``
 
     (b)     Models implement the context manager interface. This means that
             models can optionally use context to perform any necessary setup
@@ -200,7 +267,7 @@ class VideoModel(Model):
         return [self.predict(video_reader) for video_reader in video_readers]
 
 
-class EmbeddingMixin(object):
+class EmbeddingsMixin(object):
     """Mixin for :class:`Model` classes that can generate embeddings for
     their predictions.
 

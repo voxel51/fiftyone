@@ -101,7 +101,7 @@ def _make_data_loader(
     return DataLoader(dataset, batch_size=batch_size, num_workers=num_workers)
 
 
-class TorchEmbeddingMixin(fom.EmbeddingMixin):
+class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
     """Mixin for Torch models that can generate embeddings.
 
     Args:
@@ -156,17 +156,10 @@ class TorchEmbeddingMixin(fom.EmbeddingMixin):
         raise NotImplementedError("subclasses must implement _predict_all()")
 
 
-class TorchImageModelConfig(Config, HasZooModel):
+class TorchImageModelConfig(Config):
     """Configuration for running a :class:`TorchImageModel`.
 
-    The model's state dict can be specified via ``model_name`` and/or
-    ``model_path``, or it can be indirectly loaded when ``entrypoint_fcn`` is
-    called.
-
     Args:
-        model_name (None): the name of a zoo model containing a state dict to
-            load
-        model_path (None): the path to a state dict on disk to load
         entrypoint_fcn: a string like ``"torchvision.models.inception_v3"``
             specifying the entrypoint function that loads the model
         entrypoint_args (None): a dictionary of arguments for
@@ -198,8 +191,6 @@ class TorchImageModelConfig(Config, HasZooModel):
     """
 
     def __init__(self, d):
-        d = self.init(d)
-
         self.entrypoint_fcn = self.parse_string(d, "entrypoint_fcn")
         self.entrypoint_args = self.parse_dict(
             d, "entrypoint_args", default=None
@@ -234,7 +225,7 @@ class TorchImageModelConfig(Config, HasZooModel):
 
 
 class TorchImageModel(
-    fom.ImageModel, fom.TorchModelMixin, TorchEmbeddingMixin
+    fom.ImageModel, fom.TorchModelMixin, TorchEmbeddingsMixin
 ):
     """Wrapper for evaluating a Torch model on images.
 
@@ -264,7 +255,7 @@ class TorchImageModel(
         self._no_grad = torch.no_grad()
 
         # Initialize embeddings saver (if necessary)
-        TorchEmbeddingMixin.__init__(
+        TorchEmbeddingsMixin.__init__(
             self, self._model, layer_name=self.config.embeddings_layer
         )
 
@@ -411,20 +402,12 @@ class TorchImageModel(
         return torchvision.transforms.Compose(transforms)
 
     def _load_model(self, config):
-        # Load model
-        entrypoint = etau.get_function(config.entrypoint_fcn)
-        kwargs = config.entrypoint_args or {}
-        model = entrypoint(**kwargs)
+        self._download_model(config)
+
+        model = self._load_network(config)
         model.to(self._device)
 
-        # Load state dict, if necessary
-        # This may not be necessary if the entrypoint loads the model
-        if config.model_name or config.model_path:
-            config.download_model_if_necessary()
-            state_dict = torch.load(
-                config.model_path, map_location=self._device
-            )
-            model.load_state_dict(state_dict)
+        self._load_state_dict(model, config)
 
         if self._using_half_precision:
             model = model.half()
@@ -432,6 +415,17 @@ class TorchImageModel(
         model.train(False)
 
         return model
+
+    def _download_model(self, config):
+        pass
+
+    def _load_network(self, config):
+        entrypoint = etau.get_function(config.entrypoint_fcn)
+        kwargs = config.entrypoint_args or {}
+        return entrypoint(**kwargs)
+
+    def _load_state_dict(self, model, config):
+        pass
 
     def _build_output_processor(self, config):
         output_processor_cls = etau.get_class(config.output_processor_cls)

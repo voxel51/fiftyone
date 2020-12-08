@@ -13,19 +13,16 @@ import os
 from eta.core.config import ConfigError
 import eta.core.learning as etal
 import eta.core.models as etam
-import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.eta_utils as foe
 import fiftyone.core.models as fom
 
 
 logger = logging.getLogger(__name__)
 
 
-_MODELS_MANIFEST_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), etam.MODELS_MANIFEST_JSON
-)
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+_MODELS_MANIFEST_PATH = os.path.join(_THIS_DIR, etam.MODELS_MANIFEST_JSON)
 
 
 def list_zoo_models():
@@ -67,7 +64,7 @@ def is_zoo_model_downloaded(name, models_dir=None):
     Args:
         name: the name of the zoo model, which can have ``@<ver>`` appended to
             refer to a specific version of the model. If no version is
-            specified, the latest version of the model is assumed
+            specified, the latest version of the model is used
         models_dir (None): the models directory. By default,
             ``fiftyone.config.model_zoo_dir`` is used
 
@@ -88,9 +85,9 @@ def download_zoo_model(name, models_dir=None, overwrite=False):
     ``overwrite == True`` is specified.
 
     Args:
-        name: the name of the zoo model to download, which can have ``@<ver>``
-            appended to refer to a specific version of the model. If no version
-            is specified, the latest version of the model is downloaded. Call
+        name: the name of the zoo model, which can have ``@<ver>`` appended to
+            refer to a specific version of the model. If no version is
+            specified, the latest version of the model is used. Call
             :func:`list_zoo_models` to see the available models
         models_dir (None): the directory into which to download the model. By
             default, it is downloaded to ``fiftyone.config.model_zoo_dir``
@@ -116,9 +113,9 @@ def install_zoo_model_requirements(name, error_level=0):
     """Installs any package requirements for the zoo model with the given name.
 
     Args:
-        name: the name of the zoo model to download, which can have ``@<ver>``
-            appended to refer to a specific version of the model. If no version
-            is specified, the latest version of the model is downloaded. Call
+        name: the name of the zoo model, which can have ``@<ver>`` appended to
+            refer to a specific version of the model. If no version is
+            specified, the latest version of the model is used. Call
             :func:`list_zoo_models` to see the available models
         error_level: the error level to use, defined as:
 
@@ -135,9 +132,9 @@ def ensure_zoo_model_requirements(name, error_level=0):
     name are satisfied.
 
     Args:
-        name: the name of the zoo model to download, which can have ``@<ver>``
-            appended to refer to a specific version of the model. If no version
-            is specified, the latest version of the model is downloaded. Call
+        name: the name of the zoo model, which can have ``@<ver>`` appended to
+            refer to a specific version of the model. If no version is
+            specified, the latest version of the model is used. Call
             :func:`list_zoo_models` to see the available models
         error_level: the error level to use, defined as:
 
@@ -163,9 +160,9 @@ def load_zoo_model(
     exist in the specified ``models_dir``.
 
     Args:
-        name: the name of the zoo model to download, which can have ``@<ver>``
-            appended to refer to a specific version of the model. If no version
-            is specified, the latest version of the model is downloaded. Call
+        name: the name of the zoo model, which can have ``@<ver>`` appended to
+            refer to a specific version of the model. If no version is
+            specified, the latest version of the model is downloaded. Call
             :func:`list_zoo_models` to see the available models
         models_dir (None): the directory in which the model is stored or should
             be downloaded. By default, ``fiftyone.config.model_zoo_dir`` is
@@ -181,7 +178,7 @@ def load_zoo_model(
             2: ignore unsatisifed requirements
 
         **kwargs: keyword arguments to inject into the model's ``Config``
-            instance prior to loading the model
+            instance
 
     Returns:
         a :class:`fiftyone.core.models.Model`
@@ -191,58 +188,21 @@ def load_zoo_model(
 
     model = _get_model(name)
 
-    # Download model, if necessary
     if not model.is_in_dir(models_dir):
         if not download_if_necessary:
             raise ValueError("Model '%s' is not downloaded" % name)
 
         download_zoo_model(name, models_dir=models_dir)
 
-    # Install/ensure model requirements
     if install_requirements:
         model.install_requirements(error_level=error_level)
     else:
         model.ensure_requirements(error_level=error_level)
 
-    # Inject user parameters
-    d = deepcopy(model.default_deployment_config_dict)
-    if kwargs:
-        if d["type"] == etau.get_class_name(foe.ETAModel):
-            _merge_config(d["config"]["config"], kwargs)
-        else:
-            _merge_config(d["config"], kwargs)
-
-    # Load model config
-    config = fom.ModelConfig.from_dict(d)
-
-    #
-    # Inject model path into config
-    #
-    # Zoo models must be implemented in one of the following ways in order for
-    # us to know how to inject `model_path`:
-    #
-    # (1)   Their `Config` implements the `HasZooModel` interface
-    #
-    # (2)   Their `Config` is an `fiftyone.core.eta_utils.ETAModelConfig` whose
-    #       embedded `Config` implements the
-    #       `eta.core.learning.HasPublishedModel` interface
-    #
+    config_dict = deepcopy(model.default_deployment_config_dict)
     model_path = model.get_path_in_dir(models_dir)
-    if isinstance(config.config, HasZooModel):
-        config.config.model_name = None  # model is already downloaded
-        config.config.model_path = model_path
-    elif isinstance(config.config, foe.ETAModelConfig) and isinstance(
-        config.config.config, etal.HasPublishedModel
-    ):
-        config.config.config.model_name = None  # model is already downloaded
-        config.config.config.model_path = model_path
-    else:
-        raise ValueError(
-            "Zoo model configs must implement the %s interface" % HasZooModel
-        )
 
-    # Build the actual model
-    return config.build()
+    return fom.build_model(config_dict, model_path=model_path, **kwargs)
 
 
 def find_zoo_model(name, models_dir=None):
@@ -254,7 +214,7 @@ def find_zoo_model(name, models_dir=None):
     Args:
         name: the name of the zoo model, which can have ``@<ver>`` appended to
             refer to a specific version of the model. If no version is
-            specified, the latest version of the model is assumed
+            specified, the latest version of the model is used
         models_dir (None): the directory in which the model is stored. By
             default, ``fiftyone.config.model_zoo_dir`` is used
 
@@ -290,46 +250,12 @@ def delete_zoo_model(name, models_dir=None):
     Args:
         name: the name of the zoo model, which can have ``@<ver>`` appended to
             refer to a specific version of the model. If no version is
-            specified, the latest version of the model is assumed
+            specified, the latest version of the model is used
         models_dir (None): the directory in which the model is stored. By
             default, ``fiftyone.config.model_zoo_dir`` is used
     """
     model, model_path = _get_model_in_dir(name, models_dir)
     model.flush_model(model_path)
-
-
-def delete_old_zoo_models(models_dir=None):
-    """Deletes local copies of any old zoo models on disk, i.e., models for
-    which a newer version of the model is also downloaded.
-
-    models_dir (None): the models directory. By default,
-        ``fiftyone.config.model_zoo_dir`` is used
-    """
-    # List downloaded models
-    models = list_downloaded_zoo_models(models_dir=models_dir)
-
-    # Group by base name
-    bmodels = defaultdict(list)
-    for model_path, model in models.values():
-        bmodels[model.base_name].append((model, model_path))
-
-    # Sort by version (newest first)
-    bmodels = {
-        k: sorted(v, reverse=True, key=lambda vi: vi[0].comp_version)
-        for k, v in bmodels.items()
-    }
-
-    # Flush old models
-    for base_name, models_list in bmodels.items():
-        num_to_flush = len(models_list) - 1
-        if num_to_flush > 0:
-            logger.info(
-                "*** Flushing %d old version(s) of model '%s'",
-                num_to_flush,
-                base_name,
-            )
-            for model, model_path in reversed(models_list[1:]):
-                model.flush_model(model_path)
 
 
 class HasZooModel(etal.HasPublishedModel):
@@ -387,7 +313,7 @@ class ZooModel(etam.Model):
             recommended settings for deploying the model
         requirements (None): the ``eta.core.models.ModelRequirements`` for the
             model
-        date_created (None): the datetime that the model was created
+        date_created (None): the datetime that the model was added to the zoo
     """
 
     pass
@@ -442,11 +368,3 @@ def _get_latest_model(base_name):
         return manifest.get_latest_model_with_base_name(base_name)
     except etam.ModelError:
         raise ValueError("No models found with base name '%s'" % base_name)
-
-
-def _merge_config(d, kwargs):
-    for k, v in kwargs.items():
-        if k in d and isinstance(d[k], dict):
-            d[k].update(v)
-        else:
-            d[k] = v
