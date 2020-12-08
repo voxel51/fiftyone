@@ -12351,7 +12351,7 @@ __metadata:
     rollup-plugin-replace: ^2.2.0
     rollup-plugin-terser: ^7.0.2
     sinon: ^8.1.1
-    snowpack: next
+    snowpack: 2.18.2
     snowpack-plugin-mdx: ^0.3.1
     snowpack-plugin-replace: ^1.0.4
     source-map-support: ^0.5.16
@@ -23202,19 +23202,22 @@ resolve@^1.11.1:
   languageName: node
   linkType: hard
 
-"skypack@npm:^0.1.0":
-  version: 0.1.0
-  resolution: "skypack@npm:0.1.0"
+"skypack@npm:^0.1.2":
+  version: 0.1.2
+  resolution: "skypack@npm:0.1.2"
   dependencies:
     cacache: ^15.0.0
     cachedir: ^2.3.0
+    etag: ^1.8.1
+    find-up: ^5.0.0
     got: ^11.1.4
     kleur: ^4.1.0
+    mkdirp: ^1.0.3
     p-queue: ^6.2.1
     rimraf: ^3.0.0
     rollup: ^2.23.0
     validate-npm-package-name: ^3.0.0
-  checksum: 9732585b22456b6e5aae6f3ca1d90dd4ad5d847293a3de2967fb94916efd4f663cea31edee54bc10314cce2ae999f71b10104a17865e88da7cff0a101e892812
+  checksum: 1a78970f4df8016dc2d2d79eb740aa50db1ac6b4bc00e67f6373863a66658a486cc4bf87908c50dc0e6513d0d593bba79317cd66aac0aa2b5ac3de09577cdbae
   languageName: node
   linkType: hard
 
@@ -23335,9 +23338,9 @@ resolve@^1.11.1:
   languageName: node
   linkType: hard
 
-"snowpack@npm:next":
-  version: 3.0.0-rc.1
-  resolution: "snowpack@npm:3.0.0-rc.1"
+"snowpack@npm:2.18.2":
+  version: 2.18.2
+  resolution: "snowpack@npm:2.18.2"
   dependencies:
     "@snowpack/plugin-build-script": ^2.0.12
     "@snowpack/plugin-run-script": ^2.2.1
@@ -23374,7 +23377,7 @@ resolve@^1.11.1:
     resolve-from: ^5.0.0
     rimraf: ^3.0.0
     signal-exit: ^3.0.3
-    skypack: ^0.1.0
+    skypack: ^0.1.2
     source-map: ^0.7.3
     strip-ansi: ^6.0.0
     strip-comments: ^2.0.1
@@ -23384,7 +23387,7 @@ resolve@^1.11.1:
   bin:
     snowpack: index.bin.js
     sp: index.bin.js
-  checksum: 735b53fcef354c5437614f8098729b5ea7fe74824af73e68c999477d7730efa957f0dbb15321e9e45c5f3e82a1aedb8b44d98e188175197392339b5558e6d8c2
+  checksum: 0838bef34cfea020aad33e8503bd803f63f06420fcf568e510ee2374b58ee31302bbd454483521c0eb7537ffeaf6817f2833462bebe013ef1ab1b36645083c81
   languageName: node
   linkType: hard
 

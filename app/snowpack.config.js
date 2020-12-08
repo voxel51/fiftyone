@@ -14,7 +14,6 @@ module.exports = {
   plugins: [
     "@snowpack/plugin-react-refresh",
     "@snowpack/plugin-dotenv",
-    "snowpack-plugin-mdx",
     [
       "snowpack-plugin-replace",
       {
@@ -27,7 +26,7 @@ module.exports = {
       },
     ],
   ],
-  exclude: ["**/*.@(test|stories).@(ts|tsx)", "player51/"],
+  exclude: ["**/*.@(test|stories).@(ts|tsx)", "src/player51/**/*"],
   installOptions: {
     polyfillNode: true,
   },
