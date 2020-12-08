@@ -372,7 +372,7 @@ class TorchImageModel(
         return etal.get_class_labels(labels_map)
 
     def _build_transforms(self, config):
-        transforms = [torchvision.transforms.ToPILImage()]
+        transforms = [ToPILImage()]
 
         if config.image_min_size:
             transforms.append(MinResize(config.image_min_size))
@@ -430,6 +430,18 @@ class TorchImageModel(
         output_processor_cls = etau.get_class(config.output_processor_cls)
         kwargs = config.output_processor_args or {}
         return output_processor_cls(self._class_labels, **kwargs)
+
+
+class ToPILImage(object):
+    """Transform that converts a tensor or ndarray to a PIL image, while also
+    allowing PIL images to passthrough.
+    """
+
+    def __call__(self, img):
+        if isinstance(img, Image.Image):
+            return img
+
+        return F.to_pil_image(img)
 
 
 class MinResize(object):
