@@ -1905,6 +1905,7 @@
                     "config": {
                         "attr_name": "imagenet",
                         "network_name": "inception_resnet_v2",
+                        "generate_features": true,
                         "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
                     }
                 }
@@ -1939,6 +1940,7 @@
                     "config": {
                         "attr_name": "imagenet",
                         "network_name": "inception_v4",
+                        "generate_features": true,
                         "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
                     }
                 }
@@ -2065,6 +2067,7 @@
                     "config": {
                         "attr_name": "imagenet",
                         "network_name": "mobilenet_v2",
+                        "generate_features": true,
                         "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
                     }
                 }
@@ -2099,6 +2102,7 @@
                     "config": {
                         "attr_name": "imagenet",
                         "network_name": "resnet_v1_50",
+                        "generate_features": true,
                         "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
                     }
                 }
@@ -2133,6 +2137,7 @@
                     "config": {
                         "attr_name": "imagenet",
                         "network_name": "resnet_v2_50",
+                        "generate_features": true,
                         "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
                     }
                 }
@@ -2376,6 +2381,7 @@
                     "type": "eta.classifiers.VGG16Classifier",
                     "config": {
                         "attr_name": "imagenet",
+                        "generate_features": true,
                         "labels_path": "{{eta-resources}}/vgg16-imagenet-labels.txt"
                     }
                 }
