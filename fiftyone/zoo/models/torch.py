@@ -50,7 +50,6 @@ class TorchvisionImageModelConfig(fout.TorchImageModelConfig, HasZooModel):
             preprocessing the input images
         image_std (None): a 3-array of std values in ``[0, 1]`` for
             preprocessing the input images
-        batch_size (None): the recommended batch size to use during inference
         embeddings_layer (None): the name of a layer whose output to expose as
             embeddings
     """

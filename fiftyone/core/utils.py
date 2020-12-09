@@ -589,7 +589,7 @@ def iter_batches(iterable, batch_size):
 
     Returns:
         a generator that emits tuples of elements of the requested batch size
-        from the input iterable
+        from the input
     """
     it = iter(iterable)
     while True:
@@ -597,6 +597,32 @@ def iter_batches(iterable, batch_size):
         if not chunk:
             return
 
+        yield chunk
+
+
+def iter_slices(sliceable, batch_size):
+    """Iterates over batches of the given object via slicing.
+
+    Args:
+        sliceable: an object that supports slicing
+        batch_size: the desired batch size, or None to return the contents in
+            a single batch
+
+    Returns:
+        a generator that emits batches of elements of the requested batch size
+        from the input
+    """
+    if batch_size is None:
+        yield sliceable
+        return
+
+    start = 0
+    while True:
+        chunk = sliceable[start : (start + batch_size)]
+        if len(chunk) == 0:  # works for numpy arrays, Torch tensors, etc
+            return
+
+        start += batch_size
         yield chunk
 
 

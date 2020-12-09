@@ -9,10 +9,12 @@ import os
 
 import eta.core.utils as etau
 
-import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.utils as fou
+
+foc = fou.lazy_import("fiftyone.core.collections")
 
 
 def validate_image(sample):
