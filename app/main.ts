@@ -14,9 +14,6 @@ import MenuBuilder from "./menu";
 
 let mainWindow: BrowserWindow | null = null;
 
-const sourceMapSupport = require("source-map-support");
-sourceMapSupport.install();
-
 const installExtensions = async () => {
   const installer = require("electron-devtools-installer");
   const forceDownload = !!process.env.UPGRADE_EXTENSIONS;
