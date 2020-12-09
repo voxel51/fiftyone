@@ -57,7 +57,7 @@ class ETAModelConfig(fom.ModelConfig):
     pass
 
 
-class ETAModel(fom.Model):
+class ETAModel(fom.Model, fom.EmbeddingsMixin):
     """Wrapper for running an ``eta.core.learning.Model`` model.
 
     Args:
@@ -77,6 +77,28 @@ class ETAModel(fom.Model):
 
     def __exit__(self, *args):
         self._model.__exit__(*args)
+
+    @property
+    def has_embeddings(self):
+        return (
+            isinstance(self._model, etal.ExposesFeatures)
+            and isinstance(self._model, etal.Classifier)
+            and self._model.exposes_features
+        )
+
+    def get_embeddings(self):
+        if not self.has_embeddings:
+            raise ValueError("This model instance does not expose embeddings")
+
+        return self._model.get_features()
+
+    def embed(self, arg):
+        self.predict(arg)
+        return self.get_embeddings()
+
+    def embed_all(self, args):
+        self.predict_all(args)
+        return self.get_embeddings()
 
     def predict(self, arg):
         if isinstance(self._model, etal.ImageClassifier):
