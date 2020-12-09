@@ -173,7 +173,7 @@ def compute_embeddings(samples, model, embeddings_field=None, batch_size=None):
 
 
 def _compute_image_embeddings_single(samples, model, embeddings_field):
-    embeddings = None
+    embeddings = []
 
     with model:
         with fou.ProgressBar() as pb:
@@ -181,11 +181,16 @@ def _compute_image_embeddings_single(samples, model, embeddings_field):
                 img = etai.read(sample.filepath)
                 embedding = model.embed(img)
 
-                embeddings = _save_embedding(
-                    embedding, sample, embeddings_field, embeddings
-                )
+                if embeddings_field:
+                    sample[embeddings_field] = embedding[0]
+                    sample.save()
+                else:
+                    embeddings.append(embedding)
 
-    return embeddings
+    if embeddings_field:
+        return None
+
+    return np.concatenate(embeddings)
 
 
 def _compute_image_embeddings_batch(
@@ -193,7 +198,7 @@ def _compute_image_embeddings_batch(
 ):
     samples_loader = fou.iter_batches(samples, batch_size)
 
-    embeddings = None
+    embeddings = []
 
     with model:
         with fou.ProgressBar(samples) as pb:
@@ -201,18 +206,25 @@ def _compute_image_embeddings_batch(
                 imgs = [etai.read(sample.filepath) for sample in sample_batch]
                 embeddings_batch = model.embed_all(imgs)
 
-                embeddings = _save_embeddings_batch(
-                    embeddings_batch,
-                    sample_batch,
-                    embeddings_field,
-                    embeddings,
-                )
+                if embeddings_field:
+                    for sample, embedding in zip(
+                        sample_batch, embeddings_batch
+                    ):
+                        sample[embeddings_field] = embedding
+                        sample.save()
+                else:
+                    embeddings.append(embeddings_batch)
 
                 pb.set_iteration(pb.iteration + len(imgs))
 
+    if embeddings_field:
+        return None
+
+    return np.concatenate(embeddings)
+
 
 def _compute_video_embeddings(samples, model, embeddings_field):
-    embeddings = None
+    embeddings = []
 
     with model:
         with fou.ProgressBar() as pb:
@@ -220,40 +232,16 @@ def _compute_video_embeddings(samples, model, embeddings_field):
                 with etav.FFmpegVideoReader(sample.filepath) as video_reader:
                     embedding = model.embed(video_reader)
 
-                embeddings = _save_embedding(
-                    embedding, sample, embeddings_field, embeddings
-                )
+                if embeddings_field:
+                    sample[embeddings_field] = embedding[0]
+                    sample.save()
+                else:
+                    embeddings.append(embedding)
 
-    return embeddings
-
-
-def _save_embedding(embedding, sample, embeddings_field, embeddings):
     if embeddings_field:
-        sample[embeddings_field] = embedding
-        sample.save()
-        return
+        return None
 
-    embedding = np.expand_dims(embedding, axis=0)
-    if embeddings is None:
-        return embedding
-
-    return np.concatenate((embeddings, embedding))
-
-
-def _save_embeddings_batch(
-    embeddings_batch, sample_batch, embeddings_field, embeddings
-):
-    if embeddings_field:
-        for sample, embedding in zip(sample_batch, embeddings_batch):
-            sample[embeddings_field] = embedding
-            sample.save()
-
-        return
-
-    if embeddings is None:
-        return embeddings_batch
-
-    return np.concatenate((embeddings, embeddings_batch))
+    return np.concatenate(embeddings)
 
 
 def compute_patch_embeddings(

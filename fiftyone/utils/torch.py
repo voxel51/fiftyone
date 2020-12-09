@@ -150,7 +150,7 @@ def compute_torch_image_embeddings(
     else:
         samples_loader = itertools.repeat(None)
 
-    embeddings = None
+    embeddings = []
 
     with fou.ProgressBar(samples) as pb:
         with model:
@@ -163,14 +163,15 @@ def compute_torch_image_embeddings(
                     ):
                         sample[embeddings_field] = embedding
                         sample.save()
-                elif embeddings is None:
-                    embeddings = embeddings_batch
                 else:
-                    embeddings = np.concatenate((embeddings, embeddings_batch))
+                    embeddings.append(embeddings_batch)
 
                 pb.set_iteration(pb.iteration + len(imgs))
 
-    return embeddings
+    if embeddings_field:
+        return None
+
+    return np.concatenate(embeddings)
 
 
 def compute_torch_image_patch_embeddings(
