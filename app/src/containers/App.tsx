@@ -16,7 +16,7 @@ import { convertSelectedObjectsListToMap } from "../utils/selection";
 import Error from "./Error";
 import { scrollbarStyles } from "../components/utils";
 import Setup from "./Setup";
-import "player51/build/css/player51.min.css";
+import "player51/src/css/player51.css";
 import "../app.global.css";
 import Deactivated from "./Deactivated";
 
