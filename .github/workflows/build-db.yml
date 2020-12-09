@@ -125,7 +125,7 @@ jobs:
           path: downloads
       - name: Install dependencies
         run: |
-          pip3 install twine
+          pip3 install twine pyOpenSSL==19.0.0
       - name: Set environment
         env:
           RELEASE_TAG: ${{ github.ref }}
