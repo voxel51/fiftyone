@@ -413,11 +413,11 @@ class AppService(Service):
     """Service that controls the FiftyOne app."""
 
     service_name = "app"
-    working_dir = foc.FIFTYONE_APP_DIR
+    working_dir = foc.FIFTYONE_DESKTOP_APP_DIR
 
-    LINUX = "./FiftyOne.AppImage"
+    LINUX = "./FiftyOne-%s.AppImage" % foc.VERSION
     MAC = "./FiftyOne.app"
-    WINDOWS = "./FiftyOne.exe"
+    WINDOWS = "./FiftyOne %s.exe" % foc.VERSION
     TAR_EXT = ".tar.gz"
 
     def __init__(self, server_port=None):
@@ -427,7 +427,7 @@ class AppService(Service):
 
     @property
     def command(self):
-        with etau.WorkingDir(foc.FIFTYONE_APP_DIR):
+        with etau.WorkingDir(foc.FIFTYONE_DESKTOP_APP_DIR):
             return self.find_app()
 
     def find_app(self):
@@ -435,7 +435,7 @@ class AppService(Service):
             app: app + self.TAR_EXT
             for app in [self.LINUX, self.MAC, self.WINDOWS]
         }
-        if foc.DEV_INSTALL:
+        if foc.DEV_INSTALL and False:
             return ["yarn", "start-app"]
 
         for app, package in app_map.items():
@@ -448,7 +448,7 @@ class AppService(Service):
                 return [app]
 
         raise RuntimeError(
-            "Could not find FiftyOne app in %r" % foc.FIFTYONE_APP_DIR
+            "Could not find FiftyOne app in %r" % foc.FIFTYONE_DESKTOP_APP_DIR
         )
 
     @property

@@ -56,6 +56,8 @@ SERVER_NAME = "localhost"
 
 # App setup
 try:
-    from fiftyone.gui import FIFTYONE_APP_DIR
+    from fiftyone.desktop import FIFTYONE_DESKTOP_APP_DIR
 except ImportError:
-    FIFTYONE_APP_DIR = os.path.normpath(os.path.join(FIFTYONE_DIR, "../app"))
+    FIFTYONE_DESKTOP_APP_DIR = os.path.normpath(
+        os.path.join(FIFTYONE_DIR, "../app")
+    )

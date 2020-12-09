@@ -78,7 +78,8 @@ class HasClient(object):
                             )
                             time.sleep(10)
 
-                    print("\r\nSession %s reconnected\r\n" % self)
+                    if message is None and _printer[self._url] == self:
+                        print("\r\nSession reconnected\r\n")
                     continue
 
                 message = json_util.loads(message)

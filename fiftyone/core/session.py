@@ -165,8 +165,9 @@ class Session(foc.HasClient):
     def __init__(
         self, dataset=None, view=None, port=5151, remote=False, window=None
     ):
-        self._port = port
         self._context = focx._get_context()
+        self._port = port
+        self._remote = remote
         # maintain a reference to prevent garbage collection
         self._get_time = time.perf_counter
         self._WAIT_INSTRUCTIONS = _WAIT_INSTRUCTIONS
@@ -190,8 +191,10 @@ class Session(foc.HasClient):
         else:
             self._window = window
 
-        if self._remote and window != focx._NONE:
-            raise ValueError("`remote` is not an option when in a notebook")
+        if self._remote and self._context != focx._NONE:
+            raise ValueError(
+                "`remote` is not valid argument when in a notebook"
+            )
         elif self._remote:
             logger.info(
                 _REMOTE_INSTRUCTIONS.strip()
@@ -465,11 +468,7 @@ you can manually configure port forwarding on another machine as follows:
 
 ssh -N -L 5151:127.0.0.1:%d [<username>@]<hostname>
 
-Event without fiftyone installed, the App can now be viewed in your browser at
-http://localhost:5151.
-
-You can also connect to the forwarded session using either
-`fiftyone app connect` or from Python via `fiftyone.launch_app()`.
+The App can then be viewed in your browser at http://localhost:5151.
 """
 
 
