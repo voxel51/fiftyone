@@ -266,7 +266,7 @@ def compute_torch_image_patch_embeddings(
 
     with fou.ProgressBar(samples) as pb:
         with model:
-            for sample, patches in zip(samples, data_loader):
+            for sample, patches in pb(zip(samples, data_loader)):
                 if patches is None:
                     continue
 
@@ -1276,7 +1276,7 @@ class TorchImagePatchesDataset(Dataset):
     def __getitem__(self, idx):
         detections = self.detections[idx]
         if detections is None or not detections.detections:
-            image_patches = None
+            img_patches = None
         else:
             image_path = self.image_paths[idx]
             img_patches = self._extract_patches(image_path, detections)
