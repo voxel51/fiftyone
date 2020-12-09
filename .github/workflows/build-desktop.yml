@@ -53,22 +53,22 @@ jobs:
       - name: Fetch dependency cache
         uses: actions/cache@v2
         with:
-          path: electron/node_modules
-          key: npm-${{ hashFiles('electron/package.json') }}
+          path: app/node_modules
+          key: npm-${{ hashFiles('app/package.json') }}
           restore-keys: |
-            npm-${{ hashFiles('electron/package.json') }}
+            npm-${{ hashFiles('app/package.json') }}
             npm-
       - name: Install dependencies
-        working-directory: electron
+        working-directory: app
         run: yarn
       - name: Package App (Linux)
-        working-directory: electron
+        working-directory: app
         run: yarn package-linux --publish never
       - name: Package App (macOS)
-        working-directory: electron
+        working-directory: app
         run: yarn package-mac --publish never
       - name: Package App (Windows)
-        working-directory: electron
+        working-directory: app
         # from https://www.electron.build/multi-platform-build#docker
         # removed node_modules mount to use existing packages
         run: |
