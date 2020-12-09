@@ -541,7 +541,7 @@ class SampleCollection(object):
             numpy array whose first dimension is ``len(samples)`` containing
             the embeddings
         """
-        fomo.compute_embeddings(
+        return fomo.compute_embeddings(
             self,
             model,
             embeddings_field=embeddings_field,
@@ -591,7 +591,7 @@ class SampleCollection(object):
             ``None``, if an ``embeddings_field`` is provided; otherwise, a dict
             mapping sample IDs to arrays of patch embeddings
         """
-        fomo.compute_patch_embeddings(
+        return fomo.compute_patch_embeddings(
             self,
             model,
             patches_field,
