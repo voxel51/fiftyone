@@ -39,7 +39,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/code-frame@npm:^7.0.0, @babel/code-frame@npm:^7.10.4, @babel/code-frame@npm:^7.5.5":
+"@babel/code-frame@npm:^7.0.0, @babel/code-frame@npm:^7.10.4":
   version: 7.10.4
   resolution: "@babel/code-frame@npm:7.10.4"
   dependencies:
@@ -169,7 +169,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/core@npm:^7.12.3, @babel/core@npm:^7.8.4, @babel/core@npm:^7.9.0":
+"@babel/core@npm:^7.12.3, @babel/core@npm:^7.9.0":
   version: 7.12.9
   resolution: "@babel/core@npm:7.12.9"
   dependencies:
@@ -2358,7 +2358,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/preset-env@npm:^7.12.1, @babel/preset-env@npm:^7.8.4, @babel/preset-env@npm:^7.9.0":
+"@babel/preset-env@npm:^7.12.1, @babel/preset-env@npm:^7.9.0":
   version: 7.12.7
   resolution: "@babel/preset-env@npm:7.12.7"
   dependencies:
@@ -6816,15 +6816,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"babel-plugin-external-helpers@npm:^6.22.0":
-  version: 6.22.0
-  resolution: "babel-plugin-external-helpers@npm:6.22.0"
-  dependencies:
-    babel-runtime: ^6.22.0
-  checksum: 0955b38fbcbd1717c082679367f17fe5f8bd70122e9647dcdf64f41f0e91688a29bd4e0992507e3b5c4ee345deb308cf27d0492e5e8562de8a481904b9dbae3d
-  languageName: node
-  linkType: hard
-
 "babel-plugin-extract-import-names@npm:1.6.16":
   version: 1.6.16
   resolution: "babel-plugin-extract-import-names@npm:1.6.16"
@@ -7026,7 +7017,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"babel-plugin-styled-components@npm:>= 1, babel-plugin-styled-components@npm:^1.10.7":
+"babel-plugin-styled-components@npm:>= 1":
   version: 1.11.1
   resolution: "babel-plugin-styled-components@npm:1.11.1"
   dependencies:
@@ -7243,7 +7234,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"babel-runtime@npm:^6.22.0, babel-runtime@npm:^6.26.0":
+"babel-runtime@npm:^6.26.0":
   version: 6.26.0
   resolution: "babel-runtime@npm:6.26.0"
   dependencies:
@@ -8248,7 +8239,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"chokidar@npm:^3.3.0, chokidar@npm:^3.4.0, chokidar@npm:^3.4.1":
+"chokidar@npm:^3.4.0, chokidar@npm:^3.4.1":
   version: 3.4.2
   resolution: "chokidar@npm:3.4.2"
   dependencies:
@@ -9494,7 +9485,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"cssnano@npm:^4.1.10, cssnano@npm:^4.1.7":
+"cssnano@npm:^4.1.10":
   version: 4.1.10
   resolution: "cssnano@npm:4.1.10"
   dependencies:
@@ -9954,13 +9945,6 @@ __metadata:
   version: 1.1.2
   resolution: "depd@npm:1.1.2"
   checksum: f45566ff7019a346852f095768a380778ed544de24e103b479fd5d3e61982d670efbb5234c09d0588d7fdb09c26c48283d7150e4be5e6ce5d3d37cd268d75c4d
-  languageName: node
-  linkType: hard
-
-"dependency-graph@npm:^0.9.0":
-  version: 0.9.0
-  resolution: "dependency-graph@npm:0.9.0"
-  checksum: bd4be777ce16fd5412db9cf7df3c7a5e76bd2029a79b624db716e130ed7efaf606f3086234fc26fa9f317db4a2760006cb6397d165b14a314f1bb50a1c632e2c
   languageName: node
   linkType: hard
 
@@ -11091,15 +11075,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-config-google@npm:^0.14.0":
-  version: 0.14.0
-  resolution: "eslint-config-google@npm:0.14.0"
-  peerDependencies:
-    eslint: ">=5.16.0"
-  checksum: b1cb79fc4ac675b18dfc65e8772a3349c380c65ea99eb45b32ebb9f0885526605f5bce624e1fffcfbb8c0edf12c007c355b57191790f4eac3f5833350c207558
-  languageName: node
-  linkType: hard
-
 "eslint-config-prettier@npm:^6.9.0":
   version: 6.11.0
   resolution: "eslint-config-prettier@npm:6.11.0"
@@ -12014,7 +11989,6 @@ __metadata:
     babel-loader: ^8.1.0
     babel-plugin-dev-expression: ^0.2.2
     babel-plugin-recharts: ^1.2.1
-    babel-plugin-styled-components: ^1.10.7
     babel-plugin-transform-react-remove-prop-types: ^0.4.24
     browserslist-config-erb: ^0.0.1
     chalk: ^3.0.0
@@ -12065,7 +12039,7 @@ __metadata:
     optimize-css-assets-webpack-plugin: ^5.0.3
     patch-package: ^6.2.2
     path: ^0.12.7
-    player51: "file:./player51"
+    player51: ./player51
     postinstall-postinstall: ^2.1.0
     prettier: ^2.1.0
     prop-types: ^15.7.2
@@ -18945,7 +18919,7 @@ fsevents@^1.2.7:
   languageName: node
   linkType: hard
 
-"pify@npm:^2.0.0, pify@npm:^2.3.0":
+"pify@npm:^2.0.0":
   version: 2.3.0
   resolution: "pify@npm:2.3.0"
   checksum: d5758aa570bbd5969c62b5f745065006827ef4859b32af302e3df2bb5978e6c1e50c2360d7ffefa102e451084f4530115c84570c185ba5153ee9871c977fe278
@@ -19038,23 +19012,8 @@ fsevents@^1.2.7:
 
 "player51@file:./player51::locator=fiftyone%40workspace%3A.":
   version: 1.0.0
-  resolution: "player51@file:./player51#./player51::hash=82434a&locator=fiftyone%40workspace%3A."
-  dependencies:
-    "@babel/core": ^7.8.4
-    "@babel/preset-env": ^7.8.4
-    babel-plugin-external-helpers: ^6.22.0
-    cssnano: ^4.1.7
-    eslint: ^6.8.0
-    eslint-config-google: ^0.14.0
-    postcss-cli: ^7.1.0
-    rollup: ^1.31.0
-    rollup-plugin-babel: ^4.0.3
-    rollup-plugin-commonjs: ^10.1.0
-    rollup-plugin-eslint: ^7.0.0
-    rollup-plugin-node-resolve: ^5.2.0
-    rollup-plugin-replace: ^2.1.0
-    rollup-plugin-terser: ^5.2.0
-  checksum: 397d0f0c2329fe04c305bfdef726a1eb12c32dda26fe0cf4a29096ea201cb146af6929086f0ce93358174ac35426743ce99808a4460a440cd7e4678917e5ef26
+  resolution: "player51@file:./player51#./player51::hash=3882ec&locator=fiftyone%40workspace%3A."
+  checksum: efc715e73982193aa53beac82cd376eadffc5c5a69dff752dd91a0fd4bde8058fdd09f1ac4ede44fc4ba87e5dadf60cfed7e14cc31a4ca6602576c2e355c392c
   languageName: node
   linkType: hard
 
@@ -19148,28 +19107,6 @@ fsevents@^1.2.7:
     postcss-selector-parser: ^6.0.2
     postcss-value-parser: ^4.0.2
   checksum: c2e2f4473c8da6800fb8680893468154973c8f8f6cbc6da837baf4c80ec978ca9c42a8035ebb4a2094bf9e543c9c7a9139bd31c743d9145ca7300334fac60004
-  languageName: node
-  linkType: hard
-
-"postcss-cli@npm:^7.1.0":
-  version: 7.1.2
-  resolution: "postcss-cli@npm:7.1.2"
-  dependencies:
-    chalk: ^4.0.0
-    chokidar: ^3.3.0
-    dependency-graph: ^0.9.0
-    fs-extra: ^9.0.0
-    get-stdin: ^8.0.0
-    globby: ^11.0.0
-    postcss: ^7.0.0
-    postcss-load-config: ^2.0.0
-    postcss-reporter: ^6.0.0
-    pretty-hrtime: ^1.0.3
-    read-cache: ^1.0.0
-    yargs: ^15.0.2
-  bin:
-    postcss: bin/postcss
-  checksum: 4bd58862c4026ae8d7ec26739d21202737ff3ec23ae34a99663fa4169449448ea51e3c8428a9d70f412a74181d347d83ab5b548a9baf2460a743246d1193dde0
   languageName: node
   linkType: hard
 
@@ -19574,7 +19511,7 @@ fsevents@^1.2.7:
   languageName: node
   linkType: hard
 
-"postcss-reporter@npm:^6.0.0, postcss-reporter@npm:^6.0.1":
+"postcss-reporter@npm:^6.0.1":
   version: 6.0.1
   resolution: "postcss-reporter@npm:6.0.1"
   dependencies:
@@ -21017,15 +20954,6 @@ fsevents@^1.2.7:
   languageName: node
   linkType: hard
 
-"read-cache@npm:^1.0.0":
-  version: 1.0.0
-  resolution: "read-cache@npm:1.0.0"
-  dependencies:
-    pify: ^2.3.0
-  checksum: 17a1996977e6b7f6d7086ccd3a918b1d353ec012888a2a074d0a9ed846a386241e461007466adc34c9d463c8e2797a42edc717fe01e5c03592710513f23657f5
-  languageName: node
-  linkType: hard
-
 "read-config-file@npm:6.0.0":
   version: 6.0.0
   resolution: "read-config-file@npm:6.0.0"
@@ -22064,7 +21992,7 @@ resolve@^1.11.1:
   languageName: node
   linkType: hard
 
-"rollup-plugin-babel@npm:^4.0.3, rollup-plugin-babel@npm:^4.4.0":
+"rollup-plugin-babel@npm:^4.4.0":
   version: 4.4.0
   resolution: "rollup-plugin-babel@npm:4.4.0"
   dependencies:
@@ -22137,28 +22065,13 @@ resolve@^1.11.1:
   languageName: node
   linkType: hard
 
-"rollup-plugin-replace@npm:^2.1.0, rollup-plugin-replace@npm:^2.2.0":
+"rollup-plugin-replace@npm:^2.2.0":
   version: 2.2.0
   resolution: "rollup-plugin-replace@npm:2.2.0"
   dependencies:
     magic-string: ^0.25.2
     rollup-pluginutils: ^2.6.0
   checksum: f40e4b9ea2af618d7768cd20604d36f49d37c4060a2ed5cf9fb29be5a92c5188f19be03ba16df302389ef1b72593b93d89782c5bf47cfd4db8c45a236f522854
-  languageName: node
-  linkType: hard
-
-"rollup-plugin-terser@npm:^5.2.0":
-  version: 5.3.1
-  resolution: "rollup-plugin-terser@npm:5.3.1"
-  dependencies:
-    "@babel/code-frame": ^7.5.5
-    jest-worker: ^24.9.0
-    rollup-pluginutils: ^2.8.2
-    serialize-javascript: ^4.0.0
-    terser: ^4.6.2
-  peerDependencies:
-    rollup: ">=0.66.0 <3"
-  checksum: 18ebbdc41ae13b89f033314942b104320507133ade4f865d36fc17263662686f459aea2ba7ade6eb069e8630e27fb8183f03e752d9b62f0f6a3cf8a635e71c5f
   languageName: node
   linkType: hard
 
@@ -22176,25 +22089,12 @@ resolve@^1.11.1:
   languageName: node
   linkType: hard
 
-"rollup-pluginutils@npm:^2.6.0, rollup-pluginutils@npm:^2.7.1, rollup-pluginutils@npm:^2.8.1, rollup-pluginutils@npm:^2.8.2":
+"rollup-pluginutils@npm:^2.6.0, rollup-pluginutils@npm:^2.7.1, rollup-pluginutils@npm:^2.8.1":
   version: 2.8.2
   resolution: "rollup-pluginutils@npm:2.8.2"
   dependencies:
     estree-walker: ^0.6.1
   checksum: 6922c1a26df033cc3da4650106244fb2211b5ddf72a93be5010cbe51a0817c9abcab08f61cbc3f5fc906b2701df123d8c9b0dae0a34e69dd07218e34e5d357b8
-  languageName: node
-  linkType: hard
-
-"rollup@npm:^1.31.0":
-  version: 1.32.1
-  resolution: "rollup@npm:1.32.1"
-  dependencies:
-    "@types/estree": "*"
-    "@types/node": "*"
-    acorn: ^7.1.0
-  bin:
-    rollup: dist/bin/rollup
-  checksum: fc59b8af482e0729fd720a6be1221f477ae1848fd88b0474d10f805567aa4ad5f16afa9a976c8fd30fd196fcb689b252826cdd138e7a4ad88462547adb5dbf40
   languageName: node
   linkType: hard
 
@@ -24192,7 +24092,7 @@ resolve@^1.11.1:
   languageName: node
   linkType: hard
 
-"terser@npm:^4.1.2, terser@npm:^4.6.12, terser@npm:^4.6.2, terser@npm:^4.6.3":
+"terser@npm:^4.1.2, terser@npm:^4.6.12, terser@npm:^4.6.3":
   version: 4.8.0
   resolution: "terser@npm:4.8.0"
   dependencies:
@@ -26146,7 +26046,7 @@ typescript@^3.7.5:
   languageName: node
   linkType: hard
 
-"yargs@npm:^15.0.2, yargs@npm:^15.3.1":
+"yargs@npm:^15.3.1":
   version: 15.4.1
   resolution: "yargs@npm:15.4.1"
   dependencies:
