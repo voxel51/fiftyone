@@ -93,7 +93,7 @@ class CustomBdistWheel(bdist_wheel):
             if self._plat_name.startswith(k)
         )
         if LINUX_DISTRO:
-            if not self.plat_name.startswith("linux"):
+            if not self.plat_name.startswith("manylinux"):
                 raise ValueError(
                     "Cannot build for distro %r on platform %r"
                     % (LINUX_DISTRO, self.plat_name)
