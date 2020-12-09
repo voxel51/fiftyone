@@ -18,6 +18,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fomm
 import fiftyone.core.models as fom
 import fiftyone.core.utils as fou
+import fiftyone.core.validation as fov
 
 fou.ensure_torch()
 import torch
@@ -80,8 +81,8 @@ def apply_torch_image_model(
 def compute_torch_image_embeddings(
     samples, model, embeddings_field=None, num_workers=None
 ):
-    """Computes embeddings using the given :class:`fiftyone.core.models.Model`
-    for the samples in the collection.
+    """Computes embeddings for the samples in the collection using the given
+    :class:`fiftyone.core.models.Model`.
 
     The model must implement the :class:`fiftyone.core.models.TorchModelMixin`
     and :class:`fiftyone.core.models.EmbeddingsMixin` mixins.
@@ -91,7 +92,7 @@ def compute_torch_image_embeddings(
     loaded using a ``torch.utils.data.DataLoader``.
 
     If an ``embeddings_field`` is provided, the embeddings are saved to the
-    samples; otherwise, the embeddings are returned as an in-memory array.
+    samples; otherwise, the embeddings are returned in-memory.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
@@ -160,6 +161,110 @@ def compute_torch_image_embeddings(
     return embeddings
 
 
+def compute_torch_image_patch_embeddings(
+    samples,
+    model,
+    patches_field,
+    embeddings_field=None,
+    force_square=False,
+    alpha=None,
+    num_workers=None,
+):
+    """Computes embeddings for the image patches defined by ``patches_field``
+    of the samples in the collection using the given :class:`Model`.
+
+    The model must implement the :class:`fiftyone.core.models.TorchModelMixin`
+    and :class:`fiftyone.core.models.EmbeddingsMixin` mixins.
+
+    This method performs the same operation as
+    :func:`fiftyone.core.models.compute_patch_embeddings` except that the
+    patches are loaded using a ``torch.utils.data.DataLoader``.
+
+    If an ``embeddings_field`` is provided, the embeddings are saved to the
+    samples; otherwise, the embeddings are returned in-memory.
+
+    Args:
+        samples: a :class:`fiftyone.core.collections.SampleCollection`
+        model: a :class:`Model` that implements the :class:`EmbeddingsMixin`
+            mixin
+        patches_field: a :class:`fiftyone.core.labels.Detection`,
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polyline`, or
+            :class:`fiftyone.core.labels.Polylines` field defining the image
+            patches in each sample to embed
+        embeddings_field (None): the name of a field in which to store the
+            embeddings
+        force_square (False): whether to minimally manipulate the patch
+            bounding boxes into squares prior to extraction
+        alpha (None): an optional expansion/contraction to apply to the patches
+            before extracting them, in ``[-1, \infty)``. If provided, the
+            length and width of the box are expanded (or contracted, when
+            ``alpha < 0``) by ``(100 * alpha)%``. For example, set
+            ``alpha = 1.1`` to expand the boxes by 10%, and set ``alpha = 0.9``
+            to contract the boxes by 10%
+        num_workers (None): the number of workers for the
+            ``torch.utils.data.DataLoader`` to use
+
+    Returns:
+        ``None``, if an ``embeddings_field`` is provided; otherwise, a dict
+        mapping sample IDs to patch embeddings
+    """
+    if samples.media_type != fomm.IMAGE:
+        raise ValueError("This method only supports image samples")
+
+    if not isinstance(model, fom.TorchModelMixin):
+        raise ValueError(
+            "Model must implement the %s mixin" % fom.TorchModelMixin
+        )
+
+    if not isinstance(model, fom.EmbeddingsMixin):
+        raise ValueError(
+            "Model must implement the %s mixin" % fom.EmbeddingsMixin
+        )
+
+    if not model.has_embeddings:
+        raise ValueError(
+            "Model does not expose embeddings (model.has_embeddings = %s)"
+            % model.has_embeddings
+        )
+
+    allowed_types = (
+        fol.Detection,
+        fol.Detections,
+        fol.Polyline,
+        fol.Polylines,
+    )
+    fov.validate_collection_label_fields(samples, patches_field, allowed_types)
+
+    data_loader = _make_patch_data_loader(
+        samples,
+        model.transforms,
+        patches_field,
+        force_square,
+        alpha,
+        num_workers,
+    )
+
+    embeddings_dict = {}
+
+    with fou.ProgressBar(samples) as pb:
+        with model:
+            for sample, patches in zip(samples, data_loader):
+                if patches is None:
+                    continue
+
+                patches = torch.squeeze(patches, dim=0)
+                embeddings = model.embed_all(patches)
+
+                if embeddings_field:
+                    sample[embeddings_field] = embeddings
+                    sample.save()
+                else:
+                    embeddings_dict[sample.id] = embeddings
+
+    return embeddings_dict if not embeddings_field else None
+
+
 def _make_data_loader(samples, transforms, batch_size, num_workers):
     if num_workers is None:
         # There is a parallelism bug in torch==1.7 on CPU that prevents us from
@@ -176,6 +281,52 @@ def _make_data_loader(samples, transforms, batch_size, num_workers):
     )
 
     return DataLoader(dataset, batch_size=batch_size, num_workers=num_workers)
+
+
+def _make_patch_data_loader(
+    samples, transforms, patches_field, force_square, alpha, num_workers
+):
+    if num_workers is None:
+        # There is a parallelism bug in torch==1.7 on CPU that prevents us from
+        # using `num_workers > 0`
+        # https://stackoverflow.com/q/64772335
+        num_workers = 4 if torch.cuda.is_available() else 0
+
+    image_paths = []
+    detections = []
+    for sample in samples.select_fields(patches_field):
+        patches = _parse_patches(sample, patches_field)
+        image_paths.append(sample.filepath)
+        detections.append(patches)
+
+    dataset = TorchImagePatchesDataset(
+        image_paths,
+        detections,
+        transforms,
+        force_rgb=True,
+        force_square=force_square,
+        alpha=alpha,
+    )
+
+    return DataLoader(dataset, batch_size=1, num_workers=num_workers)
+
+
+def _parse_patches(sample, patches_field):
+    label = sample[patches_field]
+
+    if isinstance(label, fol.Detections):
+        return label
+
+    if isinstance(label, fol.Detection):
+        return fol.Detections(detections=[label])
+
+    if isinstance(label, fol.Polyline):
+        return fol.Detections(detections=[label.to_detection()])
+
+    if isinstance(label, fol.Polylines):
+        return label.to_detections()
+
+    return None
 
 
 class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
@@ -1076,6 +1227,12 @@ class TorchImagePatchesDataset(Dataset):
         force_rgb (False): whether to force convert the images to RGB
         force_square (False): whether to minimally manipulate the patch
             bounding boxes into squares prior to extraction
+        alpha (None): an optional expansion/contraction to apply to the patches
+            before extracting them, in ``[-1, \infty)``. If provided, the
+            length and width of the box are expanded (or contracted, when
+            ``alpha < 0``) by ``(100 * alpha)%``. For example, set
+            ``alpha = 1.1`` to expand the boxes by 10%, and set ``alpha = 0.9``
+            to contract the boxes by 10%
     """
 
     def __init__(
@@ -1086,6 +1243,7 @@ class TorchImagePatchesDataset(Dataset):
         sample_ids=None,
         force_rgb=False,
         force_square=False,
+        alpha=None,
     ):
         self.image_paths = list(image_paths)
         self.detections = list(detections)
@@ -1093,39 +1251,18 @@ class TorchImagePatchesDataset(Dataset):
         self.sample_ids = list(sample_ids) if sample_ids else None
         self.force_rgb = force_rgb
         self.force_square = force_square
+        self.alpha = alpha
 
     def __len__(self):
         return len(self.image_paths)
 
     def __getitem__(self, idx):
-        image_path = self.image_paths[idx]
-        img = Image.open(image_path)
-
-        if self.force_rgb:
-            img = img.convert("RGB")
-
-        detections = self.detections[idx].detections
-
-        if not detections:
-            raise ValueError(
-                "No patches to extract from image '%s'" % image_path
-            )
-
-        img_patches = []
-        for detection in detections:
-            dobj = detection.to_detected_object()
-
-            # @todo avoid PIL <-> numpy casts
-            img_patch = dobj.bounding_box.extract_from(
-                np.array(img), force_square=self.force_square
-            )
-            img_patch = Image.fromarray(img_patch)
-
-            img_patch = self.transform(img_patch)
-
-            img_patches.append(img_patch)
-
-        img_patches = torch.stack(img_patches, dim=0)
+        detections = self.detections[idx]
+        if detections is None or not detections.detections:
+            image_patches = None
+        else:
+            image_path = self.image_paths[idx]
+            img_patches = self._extract_patches(image_path, detections)
 
         if self.has_sample_ids:
             # pylint: disable=unsubscriptable-object
@@ -1137,6 +1274,30 @@ class TorchImagePatchesDataset(Dataset):
     def has_sample_ids(self):
         """Whether this dataset has sample IDs."""
         return self.sample_ids is not None
+
+    def _extract_patches(self, image_path, detections):
+        img = Image.open(image_path)
+
+        if self.force_rgb:
+            img = img.convert("RGB")
+
+        # @todo avoid PIL <-> numpy casts
+        img = np.array(img)
+
+        img_patches = []
+        for detection in detections.detections:
+            dobj = detection.to_detected_object()
+
+            bbox = dobj.bounding_box
+            if self.alpha is not None:
+                bbox = bbox.pad_relative(self.alpha)
+
+            img_patch = bbox.extract_from(img, force_square=self.force_square)
+            img_patch = Image.fromarray(img_patch)
+            img_patch = self.transform(img_patch)
+            img_patches.append(img_patch)
+
+        return torch.stack(img_patches, dim=0)
 
 
 def from_image_classification_dir_tree(dataset_dir):

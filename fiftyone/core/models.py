@@ -15,8 +15,10 @@ import eta.core.utils as etau
 import eta.core.video as etav
 import eta.core.web as etaw
 
+import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
+import fiftyone.core.validation as fov
 
 
 logger = logging.getLogger(__name__)
@@ -77,11 +79,11 @@ def _apply_video_model(samples, model, label_field, confidence_thresh):
 
 
 def compute_embeddings(samples, model, embeddings_field=None):
-    """Computes embeddings using the given :class:`Model` for the samples in
-    the collection.
+    """Computes embeddings for the samples in the collection using the given
+    :class:`Model`.
 
     If an ``embeddings_field`` is provided, the embeddings are saved to the
-    samples; otherwise, the embeddings are returned as an in-memory array.
+    samples; otherwise, the embeddings are returned in-memory.
 
     The :class:`Model` must implement the :class:`EmbeddingsMixin` mixin.
 
@@ -164,6 +166,131 @@ def _save_embedding(embedding, sample, embeddings_field, embeddings):
         return embedding
 
     return np.concatenate((embeddings, embedding))
+
+
+def compute_patch_embeddings(
+    samples,
+    model,
+    patches_field,
+    embeddings_field=None,
+    force_square=False,
+    alpha=None,
+):
+    """Computes embeddings for the image patches defined by ``patches_field``
+    of the samples in the collection using the given :class:`Model`.
+
+    If an ``embeddings_field`` is provided, the embeddings are saved to the
+    samples; otherwise, the embeddings are returned in-memory.
+
+    The :class:`Model` must implement the :class:`EmbeddingsMixin` mixin.
+
+    Args:
+        samples: a :class:`fiftyone.core.collections.SampleCollection`
+        model: a :class:`Model` that implements the :class:`EmbeddingsMixin`
+            mixin
+        patches_field: a :class:`fiftyone.core.labels.Detection`,
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polyline`, or
+            :class:`fiftyone.core.labels.Polylines` field defining the image
+            patches in each sample to embed
+        embeddings_field (None): the name of a field in which to store the
+            embeddings
+        force_square (False): whether to minimally manipulate the patch
+            bounding boxes into squares prior to extraction
+        alpha (None): an optional expansion/contraction to apply to the patches
+            before extracting them, in ``[-1, \infty)``. If provided, the
+            length and width of the box are expanded (or contracted, when
+            ``alpha < 0``) by ``(100 * alpha)%``. For example, set
+            ``alpha = 1.1`` to expand the boxes by 10%, and set ``alpha = 0.9``
+            to contract the boxes by 10%
+
+    Returns:
+        ``None``, if an ``embeddings_field`` is provided; otherwise, a dict
+        mapping sample IDs to arrays of patch embeddings
+    """
+    # Use data loaders for Torch models, if possible
+    if isinstance(model, TorchModelMixin):
+        # Local import to avoid unnecessary Torch dependency
+        import fiftyone.utils.torch as fout
+
+        return fout.compute_torch_image_patch_embeddings(
+            samples, model, patches_field, embeddings_field=embeddings_field
+        )
+
+    if samples.media_type != fom.IMAGE:
+        raise ValueError("This method only supports image samples")
+
+    if not isinstance(model, EmbeddingsMixin):
+        raise ValueError("Model must implement the %s mixin" % EmbeddingsMixin)
+
+    if not model.has_embeddings:
+        raise ValueError(
+            "Model does not expose embeddings (model.has_embeddings = %s)"
+            % model.has_embeddings
+        )
+
+    allowed_types = (
+        fol.Detection,
+        fol.Detections,
+        fol.Polyline,
+        fol.Polylines,
+    )
+    fov.validate_collection_label_fields(samples, patches_field, allowed_types)
+
+    embeddings_dict = {}
+
+    with model:
+        with fou.ProgressBar() as pb:
+            for sample in pb(samples):
+                detections = _parse_patches(sample, patches_field)
+                if detections is None or not detections.detections:
+                    continue
+
+                img = etai.read(sample.filepath)
+
+                # @todo support batching here?
+                embeddings = []
+                for detection in detections.detections:
+                    patch = _extract_patch(img, detection, force_square, alpha)
+                    embeddings.append(model.embed(patch))
+
+                embeddings = np.stack(embeddings, axis=0)
+
+                if embeddings_field:
+                    sample[embeddings_field] = embeddings
+                    sample.save()
+                else:
+                    embeddings_dict[sample.id] = embeddings
+
+    return embeddings_dict if not embeddings_field else None
+
+
+def _parse_patches(sample, patches_field):
+    label = sample[patches_field]
+
+    if isinstance(label, fol.Detections):
+        return label
+
+    if isinstance(label, fol.Detection):
+        return fol.Detections(detections=[label])
+
+    if isinstance(label, fol.Polyline):
+        return fol.Detections(detections=[label.to_detection()])
+
+    if isinstance(label, fol.Polylines):
+        return label.to_detections()
+
+    return None
+
+
+def _extract_patch(img, detection, force_square, alpha):
+    dobj = detection.to_detected_object()
+
+    bbox = dobj.bounding_box
+    if alpha is not None:
+        bbox = bbox.pad_relative(alpha)
+
+    return bbox.extract_from(img, force_square=force_square)
 
 
 def build_model(model_config_dict, model_path=None, **kwargs):

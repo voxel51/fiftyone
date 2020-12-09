@@ -510,11 +510,11 @@ class SampleCollection(object):
         )
 
     def compute_embeddings(self, model, embeddings_field=None):
-        """Computes embeddings using the given
-        :class:`fiftyone.core.models.Model` for the samples in the collection.
+        """Computes embeddings for the samples in the collection using the
+        given :class:`fiftyone.core.models.Model`.
 
         If an ``embeddings_field`` is provided, the embeddings are saved to the
-        samples; otherwise, the embeddings are returned as an in-memory array.
+        samples; otherwise, the embeddings are returned in-memory.
 
         The :class:`fiftyone.core.models.Model` must implement the
         :class:`fiftyone.core.models.EmbeddingsMixin` mixin.
@@ -531,6 +531,56 @@ class SampleCollection(object):
             the embeddings
         """
         fomo.compute_embeddings(self, model, embeddings_field=embeddings_field)
+
+    def compute_patch_embeddings(
+        self,
+        model,
+        patches_field,
+        embeddings_field=None,
+        force_square=False,
+        alpha=None,
+    ):
+        """Computes embeddings for the image patches defined by
+        ``patches_field`` of the samples in the collection using the given
+        :class:`fiftyone.core.models.Model`.
+
+        If an ``embeddings_field`` is provided, the embeddings are saved to the
+        samples; otherwise, the embeddings are returned in-memory.
+
+        The :class:`fiftyone.core.models.Model` must implement the
+        :class:`fiftyone.core.models.EmbeddingsMixin` mixin.
+
+        Args:
+            model: a :class:`fiftyone.core.models.Model` that implements the
+                :class:`fiftyone.core.models.EmbeddingsMixin` mixin
+            patches_field: a :class:`fiftyone.core.labels.Detection`,
+                :class:`fiftyone.core.labels.Detections`,
+                :class:`fiftyone.core.labels.Polyline`, or
+                :class:`fiftyone.core.labels.Polylines` field defining the
+                image patches in each sample to embed
+            embeddings_field (None): the name of a field in which to store the
+                embeddings
+            force_square (False): whether to minimally manipulate the patch
+                bounding boxes into squares prior to extraction
+            alpha (None): an optional expansion/contraction to apply to the
+                patches before extracting them, in ``[-1, \infty)``. If
+                provided, the length and width of the box are expanded (or
+                contracted, when ``alpha < 0``) by ``(100 * alpha)%``. For
+                example, set ``alpha = 1.1`` to expand the boxes by 10%, and
+                set ``alpha = 0.9`` to contract the boxes by 10%
+
+        Returns:
+            ``None``, if an ``embeddings_field`` is provided; otherwise, a dict
+            mapping sample IDs to arrays of patch embeddings
+        """
+        fomo.compute_patch_embeddings(
+            self,
+            model,
+            patches_field,
+            embeddings_field=embeddings_field,
+            force_square=force_square,
+            alpha=alpha,
+        )
 
     @classmethod
     def list_view_stages(cls):
