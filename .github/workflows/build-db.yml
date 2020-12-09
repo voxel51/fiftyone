@@ -51,22 +51,21 @@ jobs:
           cd package/db
           python setup.py bdist_wheel --plat-name win
       - name: Build wheel (Linux)
-        uses: ./.github/actions/manylinux
-        with:
-          pkg: db
-          pkg_path: package/db
+        run: |
+          cd package/db
+          python setup.py bdist_wheel --plat-name linux
       - name: Build wheel (Ubuntu 16.04)
-        uses: ./.github/actions/manylinux
-        with:
-          pkg: db
-          pkg_path: package/db
-          linux_dist: ubuntu1604
+        env:
+          FIFTYONE_DB_BUILD_LINUX_DISTRO: ubuntu1604
+        run: |
+          cd package/db
+          python setup.py bdist_wheel --plat-name linux
       - name: Build wheel (Debian 9)
-        uses: ./.github/actions/manylinux
-        with:
-          pkg: db
-          pkg_path: package/db
-          linux_dist: debian9
+        env:
+          FIFTYONE_DB_BUILD_LINUX_DISTRO: debian9
+        run: |
+          cd package/db
+          python setup.py bdist_wheel --plat-name linux
       - name: Upload wheel (Linux)
         uses: actions/upload-artifact@v2
         with:
