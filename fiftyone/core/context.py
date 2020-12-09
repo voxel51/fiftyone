@@ -6,6 +6,8 @@ Context utilities.
 |
 """
 
+_BROWSER = "browser"
+_DESKTOP = "desktop"
 
 _COLAB = "COLAB"
 _IPYTHON = "IPYTHON"

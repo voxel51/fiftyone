@@ -25,9 +25,6 @@ html_escape = html.escape
 del html
 logger = logging.getLogger(__name__)
 
-BROWSER = "browser"
-DESKTOP = "desktop"
-
 #
 # Session globals
 #
@@ -87,7 +84,9 @@ def launch_app(dataset=None, view=None, port=5151, remote=False, window=None):
     #
     close_app()
 
-    _session = Session(dataset=dataset, view=view, port=port)
+    _session = Session(
+        dataset=dataset, view=view, port=port, remote=remote, window=window
+    )
 
     return _session
 
@@ -191,14 +190,16 @@ class Session(foc.HasClient):
         else:
             self._window = window
 
-        if self._remote:
+        if self._remote and window != focx._NONE:
+            raise ValueError("`remote` is not an option when in a notebook")
+        elif self._remote:
             logger.info(
                 _REMOTE_INSTRUCTIONS.strip()
                 % (self.server_port, self.server_port, self.server_port)
             )
             return
 
-        if self._context == focx._NONE and window == DESKTOP:
+        if self._context == focx._NONE and self._window == focx._DESKTOP:
             try:
                 import fiftyone.desktop
 
@@ -206,8 +207,8 @@ class Session(foc.HasClient):
                 logger.info("App launched")
             except:
                 raise ValueError("fiftyone-desktop is not installed")
-        elif self._context == focx._NONE and self._window == BROWSER:
-            webbrowser.open("http://localhost:%d" % port, new=2)
+        elif self._context == focx._NONE and self._window == focx._BROWSER:
+            self.open()
         elif self._context != focx._NONE and window is not None:
             raise ValueError(
                 "`window` is not a valid argument in notebooks, use the "
@@ -360,12 +361,22 @@ class Session(foc.HasClient):
         if self._remote:
             raise ValueError("Remote sessions cannot launch the FiftyOne App")
 
+        if self._context != focx._NONE:
+            raise ValueError(
+                "Notebook sessions cannot launch the FiftyOne App, use "
+                "`show()` instead"
+            )
+
+        if self._window == focx._BROWSER:
+            webbrowser.open(self.url, new=2)
+            return
+
         self._app_service.start()
 
     def close(self):
         """Closes the session.
 
-        This terminates the FiftyOne App, if necessary.
+        This terminates the FiftyOne Desktop App, if necessary.
         """
         if self._remote:
             return
@@ -424,11 +435,12 @@ class Session(foc.HasClient):
         typically requires interrupting the calling process with Ctrl-C.
         """
         try:
-            if self._remote or self._window == BROWSER:
+            if self._remote or self._window == focx._BROWSER:
                 try:
                     _server_services[self._port].wait()
                 except:
-                    pass
+                    while True:
+                        time.sleep(1)
             else:
                 self._app_service.wait()
         except KeyboardInterrupt:

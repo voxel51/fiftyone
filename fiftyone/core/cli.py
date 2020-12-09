@@ -7,6 +7,7 @@ Definition of the `fiftyone` command-line interface (CLI).
 """
 import argparse
 from collections import defaultdict
+from enum import Enum
 import io
 import json
 import os
@@ -31,6 +32,14 @@ import fiftyone.zoo as foz
 
 _TABLE_FORMAT = "simple"
 _MAX_CONSTANT_VALUE_COL_WIDTH = 79
+
+
+class Window(Enum):
+    browser = "browser"
+    desktop = "desktop"
+
+    def __str__(self):
+        return self.value
 
 
 class Command(object):
@@ -124,8 +133,9 @@ class QuickstartCommand(Command):
         parser.add_argument(
             "-w",
             "--window",
-            action="store_true",
             default=None,
+            choices=list(Window),
+            type=Window,
             help=(
                 "'browser' or 'desktop'. If 'desktop', the desktop App\n"
                 "package must be installed (fiftyone-desktop). Defaults to\n"
@@ -137,12 +147,13 @@ class QuickstartCommand(Command):
 
     @staticmethod
     def execute(parser, args):
+        window = args.window if args.window is None else args.window.value
         fouq.quickstart(
             interactive=False,
             video=args.video,
             port=args.port,
             remote=args.remote,
-            window=args.window,
+            window=window,
         )
 
 
@@ -819,8 +830,9 @@ class AppLaunchCommand(Command):
         parser.add_argument(
             "-w",
             "--window",
-            action="store_true",
             default=None,
+            choices=list(Window),
+            type=Window,
             help=(
                 "'browser' or 'desktop'. If 'desktop', the desktop App\n"
                 "package must be installed (fiftyone-desktop). Defaults to\n"
@@ -833,11 +845,9 @@ class AppLaunchCommand(Command):
     @staticmethod
     def execute(parser, args):
         dataset = fod.load_dataset(args.name)
+        window = args.window if args.window is None else args.window.value
         session = fos.launch_app(
-            dataset=dataset,
-            port=args.port,
-            remote=args.remote,
-            window=args.window,
+            dataset=dataset, port=args.port, remote=args.remote, window=window,
         )
 
         _watch_session(session, remote=args.remote)
@@ -986,8 +996,9 @@ class AppViewCommand(Command):
         parser.add_argument(
             "-w",
             "--window",
-            action="store_true",
             default=None,
+            choices=list(Window),
+            type=Window,
             help=(
                 "'browser' or 'desktop'. If 'desktop', the desktop App\n"
                 "package must be installed (fiftyone-desktop). Defaults to\n"
@@ -1050,11 +1061,9 @@ class AppViewCommand(Command):
                 "provided"
             )
 
+        window = args.window if args.window is None else args.window.value
         session = fos.launch_app(
-            dataset=dataset,
-            port=args.port,
-            remote=args.remote,
-            window=args.window,
+            dataset=dataset, port=args.port, remote=args.remote, window=window,
         )
 
         _watch_session(session, remote=args.remote)
@@ -1118,8 +1127,9 @@ class AppConnectCommand(Command):
         parser.add_argument(
             "-w",
             "--window",
-            action="store_true",
             default=None,
+            choices=list(Window),
+            type=Window,
             help=(
                 "'browser' or 'desktop'. If 'desktop', the desktop App\n"
                 "package must be installed (fiftyone-desktop). Defaults to\n"
@@ -1180,7 +1190,8 @@ class AppConnectCommand(Command):
 
             fou.call_on_exit(stop_port_forward)
 
-        session = fos.launch_app(port=args.local_port, window=args.window)
+        window = args.window if args.window is None else args.window.value
+        session = fos.launch_app(port=args.local_port, window=window)
 
         _watch_session(session)
 
