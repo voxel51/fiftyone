@@ -391,9 +391,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     @staticmethod
     async def on_as_app(self, notebook, ignore=None):
         """Event for registering a client as an App."""
-        StateHandler.app_clients.add(self)
-        global _notebook_clients
         if isinstance(self, StateHandler):
+            StateHandler.app_clients.add(self)
+        global _notebook_clients
+        if isinstance(self, StateHandler) and notebook:
             _notebook_clients.add(self)
             ignore = self
 
@@ -960,7 +961,7 @@ class FileHandler(tornado.web.StaticFileHandler):
         super().set_headers()
         self.set_header("Access-Control-Allow-Origin", "*")
         self.set_header("Access-Control-Allow-Headers", "x-requested-with")
-        self.set_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+        self.set_header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
         self.set_header("x-colab-notebook-cache-control", "no-cache")
         self.set_header("content-length", self.get_content_size())
 
