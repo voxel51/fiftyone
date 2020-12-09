@@ -9,6 +9,7 @@ import os
 
 import eta.core.utils as etau
 
+import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -55,6 +56,24 @@ def validate_video(sample):
         raise ValueError(
             "Sample '%s' source media '%s' is not a recognized video format"
             % (sample.id, sample.filepath)
+        )
+
+
+def validate_collection(sample_collection):
+    """Validates that the provided samples are a
+    :class:`fiftyone.core.collections.SampleCollection`.
+
+    Args:
+        sample_collection: a sample collection
+
+    Raises:
+        ValueError: if ``samples`` is not a
+        :class:`fiftyone.core.collections.SampleCollection`
+    """
+    if not isinstance(sample_collection, foc.SampleCollection):
+        raise ValueError(
+            "Expected samples to be a %s; found %s"
+            % (foc.SampleCollection, sample_collection.__class__)
         )
 
 
