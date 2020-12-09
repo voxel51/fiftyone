@@ -70,9 +70,7 @@ def apply_torch_image_model(
         batch_size = fo.config.default_batch_size or 1
 
     samples_loader = fou.iter_batches(samples, batch_size)
-    data_loader = _make_data_loader(
-        samples, model.transforms, batch_size, num_workers
-    )
+    data_loader = _make_data_loader(samples, model, batch_size, num_workers)
 
     with fou.ProgressBar(samples) as pb:
         with model:
@@ -141,9 +139,7 @@ def compute_torch_image_embeddings(
     if batch_size is None:
         batch_size = fo.config.default_batch_size or 1
 
-    data_loader = _make_data_loader(
-        samples, model.transforms, batch_size, num_workers
-    )
+    data_loader = _make_data_loader(samples, model, batch_size, num_workers)
 
     if embeddings_field:
         samples_loader = fou.iter_batches(samples, batch_size)
@@ -252,12 +248,7 @@ def compute_torch_image_patch_embeddings(
     fov.validate_collection_label_fields(samples, patches_field, allowed_types)
 
     data_loader = _make_patch_data_loader(
-        samples,
-        model.transforms,
-        patches_field,
-        force_square,
-        alpha,
-        num_workers,
+        samples, model, patches_field, force_square, alpha, num_workers,
     )
 
     if batch_size is None:
@@ -270,8 +261,6 @@ def compute_torch_image_patch_embeddings(
             for sample, patches in pb(zip(samples, data_loader)):
                 if patches is None:
                     continue
-
-                patches = torch.squeeze(patches, dim=0)
 
                 embeddings = []
                 for patches_batch in fou.iter_slices(patches, batch_size):
@@ -289,7 +278,7 @@ def compute_torch_image_patch_embeddings(
     return embeddings_dict if not embeddings_field else None
 
 
-def _make_data_loader(samples, transforms, batch_size, num_workers):
+def _make_data_loader(samples, model, batch_size, num_workers):
     if num_workers is None:
         # There is a parallelism bug in torch==1.7 on CPU that prevents us from
         # using `num_workers > 0`
@@ -301,14 +290,21 @@ def _make_data_loader(samples, transforms, batch_size, num_workers):
         image_paths.append(sample.filepath)
 
     dataset = TorchImageDataset(
-        image_paths, transform=transforms, force_rgb=True
+        image_paths, transform=model.transforms, force_rgb=True
     )
 
-    return DataLoader(dataset, batch_size=batch_size, num_workers=num_workers)
+    if model.ragged_batches:
+        kwargs = dict(collate_fn=lambda batch: batch)  # return list
+    else:
+        kwargs = {}
+
+    return DataLoader(
+        dataset, batch_size=batch_size, num_workers=num_workers, **kwargs
+    )
 
 
 def _make_patch_data_loader(
-    samples, transforms, patches_field, force_square, alpha, num_workers
+    samples, model, patches_field, force_square, alpha, num_workers
 ):
     if num_workers is None:
         # There is a parallelism bug in torch==1.7 on CPU that prevents us from
@@ -326,13 +322,19 @@ def _make_patch_data_loader(
     dataset = TorchImagePatchesDataset(
         image_paths,
         detections,
-        transforms,
+        model.transforms,
+        ragged_batches=model.ragged_batches,
         force_rgb=True,
         force_square=force_square,
         alpha=alpha,
     )
 
-    return DataLoader(dataset, batch_size=1, num_workers=num_workers)
+    return DataLoader(
+        dataset,
+        batch_size=1,
+        num_workers=num_workers,
+        collate_fn=lambda batch: batch[0],  # return patches directly
+    )
 
 
 def _parse_patches(sample, patches_field):
@@ -500,7 +502,9 @@ class TorchImageModel(fom.Model, fom.TorchModelMixin, TorchEmbeddingsMixin):
         self._num_classes = len(self._class_labels)
 
         # Build transforms
-        self._transforms = self._build_transforms(config)
+        ragged_batches, transforms = self._build_transforms(config)
+        self._ragged_batches = ragged_batches
+        self._transforms = transforms
 
         # Load model
         self._using_gpu = torch.cuda.is_available()
@@ -536,6 +540,10 @@ class TorchImageModel(fom.Model, fom.TorchModelMixin, TorchEmbeddingsMixin):
 
         self._no_grad.__exit__(*args)
         self._no_grad = None
+
+    @property
+    def ragged_batches(self):
+        return self._ragged_batches
 
     @property
     def transforms(self):
@@ -614,6 +622,7 @@ class TorchImageModel(fom.Model, fom.TorchModelMixin, TorchEmbeddingsMixin):
         return etal.get_class_labels(labels_map)
 
     def _build_transforms(self, config):
+        ragged_batches = True
         transforms = [ToPILImage()]
 
         if config.image_min_size:
@@ -621,6 +630,7 @@ class TorchImageModel(fom.Model, fom.TorchModelMixin, TorchEmbeddingsMixin):
         elif config.image_min_dim:
             transforms.append(MinResize(config.image_min_dim))
         elif config.image_size:
+            ragged_batches = False
             transforms.append(torchvision.transforms.Resize(config.image_size))
         elif config.image_dim:
             transforms.append(torchvision.transforms.Resize(config.image_dim))
@@ -640,7 +650,8 @@ class TorchImageModel(fom.Model, fom.TorchModelMixin, TorchEmbeddingsMixin):
                 )
             )
 
-        return torchvision.transforms.Compose(transforms)
+        transforms = torchvision.transforms.Compose(transforms)
+        return ragged_batches, transforms
 
     def _load_model(self, config):
         self._download_model(config)
@@ -1242,6 +1253,8 @@ class TorchImagePatchesDataset(Dataset):
         transform: a torchvision transform to apply to each image patch
         sample_ids (None): an iterable of :class:`fiftyone.core.sample.Sample`
             IDs corresponding to each image
+        ragged_batches (False): whether the provided ``transform`` may return
+            tensors of different dimensions
         force_rgb (False): whether to force convert the images to RGB
         force_square (False): whether to minimally manipulate the patch
             bounding boxes into squares prior to extraction
@@ -1259,6 +1272,7 @@ class TorchImagePatchesDataset(Dataset):
         detections,
         transform,
         sample_ids=None,
+        ragged_batches=False,
         force_rgb=False,
         force_square=False,
         alpha=None,
@@ -1267,6 +1281,7 @@ class TorchImagePatchesDataset(Dataset):
         self.detections = list(detections)
         self.transform = transform
         self.sample_ids = list(sample_ids) if sample_ids else None
+        self.ragged_batches = ragged_batches
         self.force_rgb = force_rgb
         self.force_square = force_square
         self.alpha = alpha
@@ -1314,6 +1329,9 @@ class TorchImagePatchesDataset(Dataset):
             img_patch = Image.fromarray(img_patch)
             img_patch = self.transform(img_patch)
             img_patches.append(img_patch)
+
+        if self.ragged_batches:
+            return img_patches
 
         return torch.stack(img_patches, dim=0)
 

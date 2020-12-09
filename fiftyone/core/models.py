@@ -601,6 +601,12 @@ class TorchModelMixin(object):
     """
 
     @property
+    def ragged_batches(self):
+        """True/False :meth:`transforms` may return tensors of different sizes.
+        """
+        raise NotImplementedError("subclasses must implement ragged_batches")
+
+    @property
     def transforms(self):
         """The ``torchvision.transforms`` funcion that will/must be applied to
         each input before prediction.
