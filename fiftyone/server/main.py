@@ -217,6 +217,9 @@ class PollingHandler(tornado.web.RequestHandler):
             else:
                 caller = StateHandler
 
+            if event == "refresh":
+                message["polling_client"] = client
+
             if event == "update":
                 message["ignore_polling_client"] = client
 
@@ -230,9 +233,11 @@ class PollingHandler(tornado.web.RequestHandler):
             self.write_message({"messages": messages})
             return
 
-        messages = PollingHandler.clients[self]
         if event == "update":
             self.write_message({"type": "update", "state": StateHandler.state})
+
+        elif event == "deactivate":
+            self.write_message({"type": "deactivate"})
 
         elif event == "statistics":
             state = fos.StateDescription.from_dict(StateHandler.state)
@@ -406,18 +411,26 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             else:
                 PollingHandler.clients[client].add("deactivate")
 
+        if not isinstance(self, StateHandler):
+            return
+
         awaitables = self.get_statistics_awaitables(only=self)
         asyncio.gather(*awaitables)
 
     @staticmethod
-    async def on_refresh(self):
+    async def on_refresh(self, polling_client=None):
         """Event for refreshing an App client."""
         StateHandler.state = fos.StateDescription.from_dict(
             StateHandler.state
         ).serialize()
-        awaitables = [self.send_updates(only=self)]
-        awaitables += self.get_statistics_awaitables(only=self)
-        asyncio.gather(*awaitables)
+        if polling_client:
+            PollingHandler.clients[polling_client].update(
+                {"update", "statistics", "extended_statistics"}
+            )
+        else:
+            awaitables = [self.send_updates(only=self)]
+            awaitables += self.get_statistics_awaitables(only=self)
+            asyncio.gather(*awaitables)
 
     @staticmethod
     async def on_filters_update(self, filters):
