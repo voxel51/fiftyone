@@ -47,8 +47,11 @@ class HasClient(object):
         self._url = "ws://%s:%d/%s" % (SERVER_NAME, port, self._HC_NAMESPACE)
 
         async def connect():
-            self._client = await websocket_connect(url=self._url)
-            self._initial_connection = False
+            try:
+                self._client = await websocket_connect(url=self._url)
+                self._initial_connection = False
+            except:
+                return
 
             while True:
                 message = await self._client.read_message()
