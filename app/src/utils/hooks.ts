@@ -187,6 +187,7 @@ export const useGA = () => {
   useEffect(() => {
     const dev = process.env.NODE_ENV == "development";
     const buildType = dev ? "dev" : "prod";
+    const appContext = useRecoilValue(selectors.appContext);
 
     ReactGA.initialize(gaConfig.app_ids[buildType], {
       debug: dev,
@@ -201,6 +202,7 @@ export const useGA = () => {
       checkProtocolTask: null, // disable check, allow file:// URLs
       [gaConfig.dimensions.dev]: buildType,
       [gaConfig.dimensions.version]: info.version,
+      [gaConfig.dimensions.context]: appContext,
     });
     setGAInitialized(true);
     ReactGA.pageview(window.location.hash.replace(/^#/, ""));

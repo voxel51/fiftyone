@@ -168,6 +168,25 @@ export const isNotebook = selector({
   },
 });
 
+export const appContext = selector({
+  key: "appContext",
+  get: ({ get }) => {
+    const electron = isElectron();
+    const notebook = get(isNotebook);
+    const colab = get(isNotebook);
+    if (electron) {
+      return "desktop";
+    }
+    if (colab) {
+      return "colab";
+    }
+    if (notebook) {
+      return "notebook";
+    }
+    return "browser";
+  },
+});
+
 export const socket = selector({
   key: "socket",
   get: ({ get }): ReconnectingWebSocket | HTTPSSocket => {
