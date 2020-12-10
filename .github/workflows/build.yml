@@ -90,16 +90,14 @@ jobs:
         with:
           key: db-${{ runner.os }}-${{ hashFiles('package/db/setup.py') }}
           path: package/db/cache/
-      # install prod versions of fiftyone-db and fiftyone-gui from source - this
-      # allows the build to succeed if requirements for those packages have been
-      # bumped but they have not been published yet
+      # install test versions of fiftyone-db and fiftyone-desktop from source
       - name: Install fiftyone-db
         working-directory: package/db
         run: |
           python setup.py bdist_wheel
           pip install dist/*.whl
-      - name: Install fiftyone-gui stub
-        working-directory: package/gui
+      - name: Install fiftyone-desktop stub
+        working-directory: package/desktop
         run: |
           if [[ ${{ matrix.os }} = windows-* ]]; then
             ext=exe
@@ -107,22 +105,22 @@ jobs:
             ext=AppImage
           fi
           cp -v "$(which true)" ./FiftyOne-stub.${ext}
-          export FIFTYONE_GUI_EXE_PATH=./FiftyOne-stub.${ext}
+          export FIFTYONE_DESKTOP_EXE_PATH=./FiftyOne-stub.${ext}
           python setup.py bdist_wheel
           pip install dist/*.whl
       - name: Install fiftyone
         env:
-          PIP_INDEX_URL: https://voxel51-ci@pypi.voxel51.com
+          PIP_INDEX_URL: https://test.pypi.org/simple
         run: |
           pip install -e . fiftyone-brain
       # upgrade voxel51-eta to the latest pre-release (can't use the same
-      # strategy as fiftyone-db/gui above because it's in a different repo).
+      # strategy as fiftyone-db/desktop above because it's in a different repo).
       # Release branches and tags are excluded to force a proper compatible ETA
       # release to be published first.
       - name: Upgrade ETA to pre-release
         if: ${{ !startsWith(github.ref, 'refs/heads/rel') && !startsWith(github.ref, 'refs/tags/') }}
         env:
-          PIP_INDEX_URL: https://voxel51-ci@pypi.voxel51.com
+          PIP_INDEX_URL: https://test.pypi.org/simple
         run: |
           echo "Upgrading ETA because github.ref = ${{ github.ref }} (not a release)"
           pip install -U "voxel51-eta>=0.dev0"
