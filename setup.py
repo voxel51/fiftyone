@@ -70,6 +70,7 @@ setup(
         "argcomplete",
         "eventlet",
         "future",
+        "httpx==0.7.7",
         "Jinja2",
         "mongoengine",
         "motor<3,>=2.3",

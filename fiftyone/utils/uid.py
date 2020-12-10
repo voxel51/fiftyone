@@ -30,7 +30,7 @@ def _get_user_id():
     def read():
         try:
             with open(uid_path) as f:
-                return next(f).strip(), False
+                return next(f).strip()
         except (IOError, StopIteration):
             return None
 
@@ -40,4 +40,5 @@ def _get_user_id():
             f.write(str(uuid.uuid4()))
 
         print(_TRACKING_NOTE)
-    return read(), True
+        return read(), True
+    return read(), False

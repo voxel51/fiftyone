@@ -7,9 +7,9 @@ See https://voxel51.com/fiftyone for more information.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import asyncio as _asyncio
 from pkgutil import extend_path
 import os as _os
+import threading as _threading
 
 import universal_analytics as _ua
 
@@ -37,13 +37,15 @@ def _log_import_if_allowed():
 
     kind = "new" if first_import else "returning"
 
-    async def send_import_event():
-        async with _ua.AsyncHTTPRequest() as http:
-            tracker = _ua.Tracker(_foc.UA_ID, http, client_id=uid)
-            await tracker.send("event", "import", kind)
-
-    loop = _asyncio.get_event_loop()
-    loop.run_until_complete(send_import_event())
+    def send_import_event():
+        try:
+            with _ua.HTTPRequest() as http:
+                tracker = _ua.Tracker(_foc.UA_ID, http, client_id=uid)
+                tracker.send("event", "import", kind)
+        except:
+            pass
+    th = _threading.Thread(target=send_import_event)
+    th.start()
 
 
 _log_import_if_allowed()
