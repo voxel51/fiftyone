@@ -97,21 +97,18 @@ jobs:
           python setup.py bdist_wheel
           pip install dist/*.whl
       - name: Install fiftyone
-        env:
-          PIP_INDEX_URL: https://test.pypi.org/simple
         run: |
-          pip install -e . fiftyone-brain
+          pip install --pre --extra-index-url https://test.pypi.org/simple/ fiftyone-brain
+          pip install -e .
       # upgrade voxel51-eta to the latest pre-release (can't use the same
       # strategy as fiftyone-db/desktop above because it's in a different repo).
       # Release branches and tags are excluded to force a proper compatible ETA
       # release to be published first.
       - name: Upgrade ETA to pre-release
         if: ${{ !startsWith(github.ref, 'refs/heads/rel') && !startsWith(github.ref, 'refs/tags/') }}
-        env:
-          PIP_INDEX_URL: https://test.pypi.org/simple
         run: |
           echo "Upgrading ETA because github.ref = ${{ github.ref }} (not a release)"
-          pip install -U "voxel51-eta>=0.dev0"
+          pip install --pre --extra-index-url https://test.pypi.org/simple/ -U "voxel51-eta>=0.dev0"
       - name: Install test dependencies (non-Windows)
         if: ${{ !startsWith(matrix.os, 'windows') }}
         run: |
