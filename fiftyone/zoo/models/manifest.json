@@ -1100,8 +1100,7 @@
                     "entrypoint_fcn": "torchvision.models.detection.faster_rcnn.fasterrcnn_resnet50_fpn",
                     "entrypoint_args": { "pretrained": true },
                     "output_processor_cls": "fiftyone.utils.torch.DetectorOutputProcessor",
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
-                    "supports_tensor_lists": true
+                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
                 }
             },
             "requirements": {
@@ -1132,8 +1131,7 @@
                     "entrypoint_fcn": "torchvision.models.detection.retinanet.retinanet_resnet50_fpn",
                     "entrypoint_args": { "pretrained": true },
                     "output_processor_cls": "fiftyone.utils.torch.DetectorOutputProcessor",
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
-                    "supports_tensor_lists": true
+                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
                 }
             },
             "requirements": {
@@ -1164,8 +1162,7 @@
                     "entrypoint_fcn": "torchvision.models.detection.mask_rcnn.maskrcnn_resnet50_fpn",
                     "entrypoint_args": { "pretrained": true },
                     "output_processor_cls": "fiftyone.utils.torch.InstanceSegmenterOutputProcessor",
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
-                    "supports_tensor_lists": true
+                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
                 }
             },
             "requirements": {
@@ -1203,8 +1200,7 @@
                             [15, 13, 11, 12, 14, 16]
                         ]
                     },
-                    "labels_string": "other,person",
-                    "supports_tensor_lists": true
+                    "labels_string": "other,person"
                 }
             },
             "requirements": {
