@@ -360,13 +360,14 @@ class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
 
     Args:
         model: the Torch model, a ``torch.nn.Module``
-        layer_name (None): the name of the embeddings layer to save, or
-            ``None`` if this model instance should not expose embeddings
+        layer_name (None): the name of the embeddings layer whose output to
+            save, or ``None`` if this model instance should not expose
+            embeddings. Prepend ``"<"`` to save the input tensor instead
     """
 
     def __init__(self, model, layer_name=None):
         if layer_name is not None:
-            embeddings_layer = SaveLayerOutput(model, layer_name=layer_name)
+            embeddings_layer = SaveLayerTensor(model, layer_name)
         else:
             embeddings_layer = None
 
@@ -393,8 +394,7 @@ class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
         if not self.has_embeddings:
             raise ValueError("This model instance does not expose embeddings")
 
-        layer_output = self._embeddings_layer.output
-        embeddings = layer_output.detach().cpu().numpy()
+        embeddings = self._embeddings_layer.tensor.detach().cpu().numpy()
         return embeddings.astype(float, copy=False)
 
     def _predict_all(self, args):
@@ -439,8 +439,10 @@ class TorchImageModelConfig(Config):
             preprocessing the input images
         image_std (None): a 3-array of std values in ``[0, 1]`` for
             preprocessing the input images
+        supports_tensor_lists (False): whether the Torch network supports
+            inputs that are lists of Tensors
         embeddings_layer (None): the name of a layer whose output to expose as
-            embeddings
+            embeddings. Prepend ``"<"`` to save the input tensor instead
         use_half_precision (None): whether to use half precision (only
             supported when using GPU)
         cudnn_benchmark (None): a value to use for
@@ -472,6 +474,9 @@ class TorchImageModelConfig(Config):
         self.image_dim = self.parse_number(d, "image_dim", default=None)
         self.image_mean = self.parse_array(d, "image_mean", default=None)
         self.image_std = self.parse_array(d, "image_std", default=None)
+        self.supports_tensor_lists = self.parse_bool(
+            d, "supports_tensor_lists", default=False
+        )
         self.embeddings_layer = self.parse_string(
             d, "embeddings_layer", default=None
         )
@@ -603,7 +608,7 @@ class TorchImageModel(fom.Model, fom.TorchModelMixin, TorchEmbeddingsMixin):
         else:
             imgs = [img]
 
-        return self.predict_all(imgs)[0]
+        return self._predict_all(imgs)[0]
 
     def predict_all(self, imgs):
         """Peforms prediction on the given batch of images.
@@ -626,8 +631,7 @@ class TorchImageModel(fom.Model, fom.TorchModelMixin, TorchEmbeddingsMixin):
             of dicts of :class:`fiftyone.core.labels.Label` instances
             containing the predictions
         """
-        output, frame_size = self._predict_all(imgs)
-        return self._output_processor(output, frame_size)
+        return self._predict_all(imgs)
 
     def _predict_all(self, imgs):
         imgs = self._preprocess_batch(imgs)
@@ -635,21 +639,27 @@ class TorchImageModel(fom.Model, fom.TorchModelMixin, TorchEmbeddingsMixin):
         if self.ragged_batches:
             frame_size = [self._get_frame_size(img) for img in imgs]
         else:
-            frame_size = self._get_frame_size(imgs)
-            if isinstance(imgs, (list, tuple)):
+            if isinstance(imgs, list):
                 imgs = torch.stack(imgs)
 
-        if isinstance(imgs, (list, tuple)):
-            imgs = [self._prepare_eval(img) for img in imgs]
-        else:
-            imgs = self._prepare_eval(imgs)
+            frame_size = self._get_frame_size(imgs)
 
-        output = self._model(imgs)
+        if isinstance(imgs, list) and not self.config.supports_tensor_lists:
+            labels = []
+            for img, _frame_size in zip(imgs, frame_size):
+                _imgs = img.unsqueeze(0)
+                _labels = self._do_inference(_imgs, _frame_size)
+                labels.append(_labels[0])
 
-        return output, frame_size
+            return labels
+
+        return self._do_inference(imgs, frame_size)
 
     def _preprocess_batch(self, imgs):
-        if isinstance(imgs, (list, tuple)):
+        if isinstance(imgs, tuple):
+            imgs = list(imgs)
+
+        if isinstance(imgs, list):
             if not isinstance(imgs[0], torch.Tensor):
                 imgs = self._do_preprocessing(imgs)
         elif not isinstance(imgs, torch.Tensor):
@@ -662,6 +672,15 @@ class TorchImageModel(fom.Model, fom.TorchModelMixin, TorchEmbeddingsMixin):
 
     def _get_frame_size(self, tensor):
         return tuple(tensor.size())[-2:]
+
+    def _do_inference(self, imgs, frame_size):
+        if isinstance(imgs, list):
+            imgs = [self._prepare_eval(img) for img in imgs]
+        else:
+            imgs = self._prepare_eval(imgs)
+
+        output = self._model(imgs)
+        return self._output_processor(output, frame_size)
 
     def _prepare_eval(self, arg):
         if self._using_gpu:
@@ -799,54 +818,43 @@ class MinResize(object):
         return F.resize(pil_image_or_tensor, size, **self._kwargs)
 
 
-class SaveLayerOutput(object):
-    """Callback that saves the output of the specified layer of the Torch model
-    during each ``forward()`` call.
-
-    Provide either ``layer_name`` or ``layer_type`` to use this function.
+class SaveLayerTensor(object):
+    """Callback that saves the input/output tensor of the specified layer of a
+    Torch model during each ``forward()`` call.
 
     Args:
         model: the Torch model, a ``torch.nn.Module``
-        layer_name (None): the name of the layer whose output to save
-        layer_type (None): the type of the layer whose output to save. The last
-            instance of this layer type will be saved
+        layer_name: the name of the layer whose output to save. Prepend ``"<"``
+            to save the input tensor instead
     """
 
-    def __init__(self, model, layer_name=None, layer_type=None):
-        self._output = None
-        self._setup(model, layer_name, layer_type)
+    def __init__(self, model, layer_name):
+        self._tensor = None
+        self._save_input = None
+        self._setup(model, layer_name)
 
     def __call__(self, module, module_in, module_out):
-        self._output = module_out
+        self._tensor = module_in[0] if self._save_input else module_out
 
     @property
-    def output(self):
-        """The layer output generated by the last ``forward()`` call."""
-        return self._output
+    def tensor(self):
+        """The tensor saved from the last ``forward()`` call."""
+        return self._tensor
 
-    def _setup(self, model, layer_name, layer_type):
-        if layer_name is None and layer_type is None:
-            raise ValueError(
-                "Either `layer_name` or `layer_type` must be provided"
-            )
+    def _setup(self, model, layer_name):
+        if layer_name.startswith("<"):
+            self._save_input = True
+            layer_name = layer_name[1:]
+        else:
+            self._save_input = False
 
         _layer = None
+        for name, layer in model.named_modules():
+            if name == layer_name:
+                _layer = layer
 
-        if layer_name is not None:
-            for name, layer in model.named_modules():
-                if name == layer_name:
-                    _layer = layer
-
-            if _layer is None:
-                raise ValueError("No layer found with name %s" % layer_name)
-
-        if layer_type is not None:
-            for layer in model.modules():
-                if isinstance(layer, layer_type):
-                    _layer = layer
-
-            if _layer is None:
-                raise ValueError("No layer found of type %s" % layer_type)
+        if _layer is None:
+            raise ValueError("No layer found with name %s" % layer_name)
 
         _layer.register_forward_hook(self)
 
