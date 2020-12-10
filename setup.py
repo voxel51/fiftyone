@@ -83,8 +83,9 @@ setup(
         "scikit-image",
         "setuptools",
         "tabulate",
-        "tornado",
+        "tornado>=6.0.4,<7",
         "xmltodict",
+        "universal-analytics-python3>=1.0.1,<2",
         # internal packages
         "voxel51-eta>=0.1.12,<0.2",
         # ETA dependency - restricted to a maximum version known to provide
