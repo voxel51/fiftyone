@@ -1,7 +1,7 @@
 argcomplete==1.11.0
 eventlet==0.25.2
 Flask==1.1.2
-httpx=0.7.7
+httpx==0.7.7
 Jinja2==2.10.1
 mongoengine==0.20.0
 motor==2.3.0
