@@ -415,11 +415,6 @@ class AppService(Service):
     service_name = "app"
     working_dir = foc.FIFTYONE_DESKTOP_APP_DIR
 
-    LINUX = "./FiftyOne-%s.AppImage" % foc.VERSION
-    MAC = "./FiftyOne.app"
-    WINDOWS = "./FiftyOne %s.exe" % foc.VERSION
-    TAR_EXT = ".tar.gz"
-
     def __init__(self, server_port=None):
         # initialize before start() is called
         self.server_port = server_port
@@ -431,11 +426,6 @@ class AppService(Service):
             return self.find_app()
 
     def find_app(self):
-        print(foc.FIFTYONE_DESKTOP_APP_DIR)
-        app_map = {
-            app: app + self.TAR_EXT
-            for app in [self.LINUX, self.MAC, self.WINDOWS]
-        }
         if foc.DEV_INSTALL and False:
             return ["yarn", "start-app"]
 
@@ -444,15 +434,16 @@ class AppService(Service):
                 logger.info("Installing FiftyOne App")
                 etau.extract_tar(path, "./", delete_tar=True)
 
+        pre = foc.FIFTYONE_DESKTOP_APP_DIR
         for path in etau.list_files("./"):
             if path.endswith(".exe"):
-                return [path]
+                return [os.path.join(pre + path)]
 
             if path.endswith(".AppImage"):
-                return [path]
+                return [os.path.join(pre, path)]
 
-        if os.path.isdir(self.MAC):
-            return ["./FiftyOne.app/Contents/MacOS/FiftyOne"]
+        if os.path.isdir("./FiftyOne.app"):
+            return [os.path.join(pre, "FiftyOne.app/Contents/MacOS/FiftyOne")]
 
         raise RuntimeError(
             "Could not find FiftyOne app in %r" % foc.FIFTYONE_DESKTOP_APP_DIR
