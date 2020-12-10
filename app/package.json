@@ -6,7 +6,7 @@
     "description": "FiftyOne by Voxel51",
     "main": "./dist/main.js",
     "scripts": {
-        "build-app": "tsc",
+        "build-app": "tsc-silent --suppress 2717,2300@node_modules/ -p tsconfig.json",
         "build-web": "snowpack build && cp -r ../fiftyone/server/static/* ./dist/",
         "start-app": "yarn build-app && cross-env DEBUG_APP=true electron ./dist/main.js",
         "start-web": "snowpack dev",
@@ -124,7 +124,6 @@
         "@storybook/addon-viewport": "^5.3.19",
         "@storybook/addons": "^5.3.19",
         "@storybook/react": "^5.3.19",
-        "@types/enzyme": "^3.10.5",
         "@types/enzyme-adapter-react-16": "^1.0.6",
         "@types/history": "^4.7.5",
         "@types/jest": "^24.9.1",
@@ -161,7 +160,6 @@
         "electron": "11.0.1",
         "electron-builder": "^22.3.6",
         "electron-devtools-installer": "^2.2.4",
-        "enzyme": "^3.11.0",
         "enzyme-adapter-react-16": "^1.15.2",
         "enzyme-to-json": "^3.4.4",
         "eslint": "^6.8.0",
@@ -250,6 +248,7 @@
         "reconnecting-websocket": "^4.4.0",
         "resize-observer-polyfill": "^1.5.1",
         "styled-components": "^5.1.1",
+        "tsc-silent": "^1.2.1",
         "uuid-v4": "^0.1.0",
         "xstate": "^4.14.0"
     },

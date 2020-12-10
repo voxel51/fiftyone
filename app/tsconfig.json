@@ -5,5 +5,5 @@
         "sourceMap": true,
         "outDir": "dist"
     },
-    "exclude": ["src", "node_modules", "internals", "dist", "build", "player51"]
+    "exclude": ["src", "node_modules/**/*", "dist", "player51"]
 }
