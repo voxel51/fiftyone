@@ -20,7 +20,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<classifier.6"
                 }
             },
             "requirements": {
@@ -54,7 +55,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<classifier"
                 }
             },
             "requirements": {
@@ -88,7 +90,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<classifier"
                 }
             },
             "requirements": {
@@ -122,7 +125,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<classifier"
                 }
             },
             "requirements": {
@@ -156,7 +160,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<classifier"
                 }
             },
             "requirements": {
@@ -190,7 +195,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
@@ -224,7 +230,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_size": [299, 299],
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
@@ -258,7 +265,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<classifier.1"
                 }
             },
             "requirements": {
@@ -292,7 +300,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<classifier.1"
                 }
             },
             "requirements": {
@@ -326,7 +335,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<classifier.1"
                 }
             },
             "requirements": {
@@ -360,7 +370,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
@@ -394,7 +405,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
@@ -428,7 +440,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
@@ -462,7 +475,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
@@ -496,7 +510,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
@@ -530,7 +545,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
@@ -564,7 +580,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
@@ -598,7 +615,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
@@ -632,7 +650,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
@@ -666,7 +685,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
@@ -700,7 +720,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<fc"
                 }
             },
             "requirements": {
@@ -802,7 +823,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<classifier.6"
                 }
             },
             "requirements": {
@@ -836,7 +858,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<classifier.6"
                 }
             },
             "requirements": {
@@ -870,7 +893,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<classifier.6"
                 }
             },
             "requirements": {
@@ -904,7 +928,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<classifier.6"
                 }
             },
             "requirements": {
@@ -938,7 +963,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<classifier.6"
                 }
             },
             "requirements": {
@@ -972,7 +998,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<classifier.6"
                 }
             },
             "requirements": {
@@ -1006,7 +1033,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<classifier.6"
                 }
             },
             "requirements": {
@@ -1040,7 +1068,8 @@
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
                     "image_mean": [0.485, 0.456, 0.406],
-                    "image_std": [0.229, 0.224, 0.225]
+                    "image_std": [0.229, 0.224, 0.225],
+                    "embeddings_layer": "<classifier.6"
                 }
             },
             "requirements": {
@@ -1071,7 +1100,8 @@
                     "entrypoint_fcn": "torchvision.models.detection.faster_rcnn.fasterrcnn_resnet50_fpn",
                     "entrypoint_args": { "pretrained": true },
                     "output_processor_cls": "fiftyone.utils.torch.DetectorOutputProcessor",
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
+                    "supports_tensor_lists": true
                 }
             },
             "requirements": {
@@ -1102,7 +1132,8 @@
                     "entrypoint_fcn": "torchvision.models.detection.retinanet.retinanet_resnet50_fpn",
                     "entrypoint_args": { "pretrained": true },
                     "output_processor_cls": "fiftyone.utils.torch.DetectorOutputProcessor",
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
+                    "supports_tensor_lists": true
                 }
             },
             "requirements": {
@@ -1133,7 +1164,8 @@
                     "entrypoint_fcn": "torchvision.models.detection.mask_rcnn.maskrcnn_resnet50_fpn",
                     "entrypoint_args": { "pretrained": true },
                     "output_processor_cls": "fiftyone.utils.torch.InstanceSegmenterOutputProcessor",
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
+                    "supports_tensor_lists": true
                 }
             },
             "requirements": {
@@ -1171,7 +1203,8 @@
                             [15, 13, 11, 12, 14, 16]
                         ]
                     },
-                    "labels_string": "other,person"
+                    "labels_string": "other,person",
+                    "supports_tensor_lists": true
                 }
             },
             "requirements": {
