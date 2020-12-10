@@ -250,6 +250,7 @@ class Session(foc.HasClient):
             pass
         super().__del__()
 
+    @_update_state
     def show(self):
         """Show the App in an IPython notebook"""
         if self._context == focx._NONE:
