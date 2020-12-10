@@ -5,10 +5,15 @@ FiftyOne quickstart.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
+
 import fiftyone as fo
 import fiftyone.core.context as focx
 import fiftyone.core.session as fos
 import fiftyone.zoo as foz
+
+
+_EXIT = os.environ.get("FIFTYONE_EXIT", False)
 
 
 def quickstart(
@@ -80,7 +85,9 @@ def _quickstart(interactive, port, remote, window):
         return dataset, session
 
     print(_QUICKSTART_GUIDE % (ctx_instr, ""))
-    session.wait()
+    if not _EXIT:
+        session.wait()
+
     return None
 
 
@@ -98,7 +105,9 @@ def _video_quickstart(interactive, port, remote, window):
         return dataset, session
 
     print(instructions)
-    session.wait()
+    if not _EXIT:
+        session.wait()
+
     return None
 
 

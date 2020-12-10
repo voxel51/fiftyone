@@ -141,10 +141,10 @@ jobs:
       - name: Test quickstarts
         if: ${{ steps.test_config.outputs.run_integration == 'true' }}
         env:
-          PYTHONUNBUFFERED: 1
+          FIFTYONE_EXIT: 1
         run: |
-          python tests/utils/command_wrapper.py fiftyone quickstart
-          python tests/utils/command_wrapper.py fiftyone quickstart --video
+          fiftyone quickstart --remote
+          fiftyone quickstart --remote --video
 
   all-tests:
     needs: test
