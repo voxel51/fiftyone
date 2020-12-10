@@ -191,6 +191,7 @@ class Session(foc.HasClient):
         else:
             self._window = window
 
+        self._start_time = self._get_time()
         if self._remote and self._context != focx._NONE:
             raise ValueError(
                 "`remote` is not valid argument when in a notebook"
@@ -217,8 +218,6 @@ class Session(foc.HasClient):
                 "`window` is not a valid argument in notebooks, use the "
                 "`show()` method after instantiation instead "
             )
-
-        self._start_time = self._get_time()
 
     def __repr__(self):
         return self.summary()
