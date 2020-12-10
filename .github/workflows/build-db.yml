@@ -125,7 +125,7 @@ jobs:
           path: downloads
       - name: Install dependencies
         run: |
-          pip3 install twine pyOpenSSL==19.0.0
+          pip install twine
       - name: Set environment
         env:
           RELEASE_TAG: ${{ github.ref }}
@@ -142,4 +142,4 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_NON_INTERACTIVE: 1
         run: |
-          python3 -m twine upload downloads/wheel-*/*.whl
+          python -m twine upload downloads/wheel-*/*.whl
