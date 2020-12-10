@@ -431,6 +431,7 @@ class AppService(Service):
             return self.find_app()
 
     def find_app(self):
+        print(foc.FIFTYONE_DESKTOP_APP_DIR)
         app_map = {
             app: app + self.TAR_EXT
             for app in [self.LINUX, self.MAC, self.WINDOWS]
@@ -438,14 +439,20 @@ class AppService(Service):
         if foc.DEV_INSTALL and False:
             return ["yarn", "start-app"]
 
-        for app, package in app_map.items():
-            if os.path.isfile(package):
+        for path in etau.list_files("./"):
+            if path.endswith(".tar.gz"):
                 logger.info("Installing FiftyOne App")
-                etau.extract_tar(package, "./", delete_tar=True)
-            if app == self.MAC and os.path.isdir(app):
-                return ["./FiftyOne.app/Contents/MacOS/FiftyOne"]
-            elif os.path.isfile(app):
-                return [app]
+                etau.extract_tar(path, "./", delete_tar=True)
+
+        for path in etau.list_files("./"):
+            if path.endswith(".exe"):
+                return [path]
+
+            if path.endswith(".AppImage"):
+                return [path]
+
+        if os.path.isdir(self.MAC):
+            return ["./FiftyOne.app/Contents/MacOS/FiftyOne"]
 
         raise RuntimeError(
             "Could not find FiftyOne app in %r" % foc.FIFTYONE_DESKTOP_APP_DIR
