@@ -13,7 +13,6 @@ import json
 import os
 import posixpath
 import traceback
-import uuid
 
 from bson import ObjectId
 import tornado.escape
@@ -41,6 +40,7 @@ from fiftyone.core.stages import _STAGES
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
 import fiftyone.core.view as fov
+from fiftyone.utils.uid import _get_user_id
 
 from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
 from fiftyone.server.util import get_file_dimensions
@@ -56,28 +56,6 @@ from fiftyone.server.pipelines import (
 dbs = DatabaseService()
 dbs.start()
 db = foo.get_async_db_conn()
-
-
-def get_user_id():
-    """Gets the UUID of the current user
-
-    Returns:
-     a UUID string
-    """
-    uid_path = os.path.join(foc.FIFTYONE_CONFIG_DIR, "var", "uid")
-
-    def read():
-        try:
-            with open(uid_path) as f:
-                return next(f).strip()
-        except (IOError, StopIteration):
-            return None
-
-    if not read():
-        os.makedirs(os.path.dirname(uid_path), exist_ok=True)
-        with open(uid_path, "w") as f:
-            f.write(str(uuid.uuid4()))
-    return read()
 
 
 class RequestHandler(tornado.web.RequestHandler):
@@ -111,9 +89,10 @@ class FiftyOneHandler(RequestHandler):
         Returns:
             dict
         """
+        uid, first_import = _get_user_id()
         return {
             "version": foc.VERSION,
-            "user_id": get_user_id(),
+            "user_id": uid,
         }
 
 

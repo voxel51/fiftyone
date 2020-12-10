@@ -70,6 +70,9 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_SHOW_PROGRESS_BARS",
             default=True,
         )
+        self.do_not_track = self.parse_bool(
+            d, "do_not_track", env_var="FIFTYONE_DO_NOT_TRACK", default=False,
+        )
 
         self._set_defaults()
         self._validate()
