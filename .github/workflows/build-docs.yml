@@ -72,21 +72,9 @@ jobs:
           name: docs
           path: docs/build/html/
 
-  check:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Clone fiftyone
-        uses: actions/checkout@v1
-        with:
-          fetch-depth: 1
-      - name: Check tag
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          python .github/tools/check-setup-version.py setup.py $(echo ${{ github.ref }} | sed 's/refs\/tags\/v//')
-
   publish:
-    needs: [build, check]
-    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/tags/docs-publish'
+    needs: [build]
+    if: (startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, 'rc')) || github.ref == 'refs/tags/docs-publish'
     runs-on: ubuntu-18.04
     steps:
       - name: Clone website
