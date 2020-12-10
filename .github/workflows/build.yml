@@ -182,4 +182,4 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_NON_INTERACTIVE: 1
         run: |
-          python3 -m twine upload downloads/wheel-*/*.whl
+          python3 -m twine upload downloads/*.whl
