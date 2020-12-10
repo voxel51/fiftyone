@@ -95,11 +95,8 @@ jobs:
         working-directory: package/desktop
         run: python setup.py bdist_wheel --plat-name win
       - name: Build wheel (Linux)
-        uses: ./.github/actions/manylinux
-        with:
-          pkg: desktop
-          pkg_path: package/desktop
-          github_ref: ${{ github.ref }}
+        working-directory: package/desktop
+        run: python setup.py bdist_wheel --plat-name linux
       - name: Upload wheel (Linux)
         uses: actions/upload-artifact@v2
         with:
