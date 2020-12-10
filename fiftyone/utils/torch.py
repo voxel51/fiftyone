@@ -5,7 +5,9 @@ PyTorch utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
 import itertools
+import multiprocessing
 
 import numpy as np
 from PIL import Image
@@ -26,6 +28,9 @@ import torch
 import torchvision
 from torchvision.transforms import functional as F
 from torch.utils.data import Dataset, DataLoader
+
+
+logger = logging.getLogger(__name__)
 
 
 def apply_torch_image_model(
@@ -66,9 +71,7 @@ def apply_torch_image_model(
             "Model must implement the %s mixin" % fom.TorchModelMixin
         )
 
-    if batch_size is None:
-        batch_size = fo.config.default_batch_size or 1
-
+    batch_size = _parse_batch_size(batch_size, model)
     samples_loader = fou.iter_batches(samples, batch_size)
     data_loader = _make_data_loader(samples, model, batch_size, num_workers)
 
@@ -136,9 +139,7 @@ def compute_torch_image_embeddings(
             % model.has_embeddings
         )
 
-    if batch_size is None:
-        batch_size = fo.config.default_batch_size or 1
-
+    batch_size = _parse_batch_size(batch_size, model)
     data_loader = _make_data_loader(samples, model, batch_size, num_workers)
 
     if embeddings_field:
@@ -247,12 +248,10 @@ def compute_torch_image_patch_embeddings(
     )
     fov.validate_collection_label_fields(samples, patches_field, allowed_types)
 
+    batch_size = _parse_batch_size(batch_size, model)
     data_loader = _make_patch_data_loader(
         samples, model, patches_field, force_square, alpha, num_workers,
     )
-
-    if batch_size is None:
-        batch_size = fo.config.default_batch_size or 1
 
     embeddings_dict = {}
 
@@ -278,12 +277,20 @@ def compute_torch_image_patch_embeddings(
     return embeddings_dict if not embeddings_field else None
 
 
+def _parse_batch_size(batch_size, model):
+    if batch_size is None:
+        batch_size = fo.config.default_batch_size or 1
+
+    if batch_size > 1 and model.ragged_batches:
+        logger.warning("Model does not support batching")
+        batch_size = 1
+
+    return batch_size
+
+
 def _make_data_loader(samples, model, batch_size, num_workers):
     if num_workers is None:
-        # There is a parallelism bug in torch==1.7 on CPU that prevents us from
-        # using `num_workers > 0`
-        # https://stackoverflow.com/q/64772335
-        num_workers = 4 if torch.cuda.is_available() else 0
+        num_workers = recommend_num_workers()
 
     image_paths = []
     for sample in samples.select_fields():
@@ -307,10 +314,7 @@ def _make_patch_data_loader(
     samples, model, patches_field, force_square, alpha, num_workers
 ):
     if num_workers is None:
-        # There is a parallelism bug in torch==1.7 on CPU that prevents us from
-        # using `num_workers > 0`
-        # https://stackoverflow.com/q/64772335
-        num_workers = 4 if torch.cuda.is_available() else 0
+        num_workers = recommend_num_workers()
 
     image_paths = []
     detections = []
@@ -549,7 +553,8 @@ class TorchImageModel(fom.Model, fom.TorchModelMixin, TorchEmbeddingsMixin):
     @property
     def ragged_batches(self):
         """True/False whether :meth:`transforms` may return tensors of
-        different sizes.
+        different sizes and therefore passing ragged lists of images to
+        :meth:`predict_all` is not allowed.
         """
         return self._ragged_batches
 
@@ -1211,6 +1216,25 @@ class SegmenterOutputProcessor(OutputProcessor):
         probs = output["out"].detach().cpu().numpy()
         masks = probs.argmax(axis=1)
         return [fol.Segmentation(mask=mask) for mask in masks]
+
+
+def recommend_num_workers():
+    """Recommend a number of workers for running a
+    ``torch.utils.data.DataLoader``.
+
+    Returns:
+        the recommended ``num_workers``
+    """
+    if not torch.cuda.is_available() and torch.__version__.startswith("1.7"):
+        # There is a parallelism bug in torch==1.7 on CPU that prevents us from
+        # using `num_workers > 0`
+        # https://stackoverflow.com/q/64772335
+        return 0
+
+    try:
+        return multiprocessing.cpu_count() // 2
+    except:
+        return 4
 
 
 class TorchImageDataset(Dataset):

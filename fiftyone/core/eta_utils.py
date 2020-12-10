@@ -34,7 +34,7 @@ class ETAModelConfig(fom.ModelConfig):
 
         import fiftyone.core.models as fom
 
-        config = fom.ModelConfig({
+        model = fom.load_model({
             "type": "fiftyone.core.eta_utils.ETAModel",
             "config": {
                 "type": "eta.detectors.YOLODetector",
@@ -43,8 +43,6 @@ class ETAModelConfig(fom.ModelConfig):
                 }
             }
         })
-
-        model = config.build()
 
     Args:
         type: the fully-qualified class name of the
@@ -79,6 +77,20 @@ class ETAModel(fom.Model, fom.EmbeddingsMixin):
         self._model.__exit__(*args)
 
     @property
+    def ragged_batches(self):
+        try:
+            return self._model.ragged_batches
+        except AttributeError:
+            return True
+
+    @property
+    def transforms(self):
+        try:
+            return self._model.transforms
+        except AttributeError:
+            return None
+
+    @property
     def has_embeddings(self):
         return (
             isinstance(self._model, etal.ExposesFeatures)
@@ -86,60 +98,63 @@ class ETAModel(fom.Model, fom.EmbeddingsMixin):
             and self._model.exposes_features
         )
 
-    def get_embeddings(self):
+    def _ensure_embeddings(self):
         if not self.has_embeddings:
             raise ValueError("This model instance does not expose embeddings")
 
+    def get_embeddings(self):
+        self._ensure_embeddings()
         embeddings = self._model.get_features()
         return embeddings.astype(float, copy=False)
 
     def embed(self, arg):
+        self._ensure_embeddings()
         self.predict(arg)
         return self.get_embeddings()
 
     def embed_all(self, args):
-        self.predict_all(args)
-        return self.get_embeddings()
+        self._ensure_embeddings()
+
+        if isinstance(self._model, etal.ImageClassifier):
+            self._model.predict_all(args)
+            return self.get_embeddings()
+
+        if isinstance(self._model, etal.ObjectDetector):
+            self._model.detect_all(args)
+            return self.get_embeddings()
+
+        if isinstance(self._model, etal.ImageSemanticSegmenter):
+            self._model.segment_all(args)
+            return self.get_embeddings()
+
+        return np.concatenate(tuple(self.embed(arg) for arg in args))
 
     def predict(self, arg):
         if isinstance(self._model, etal.ImageClassifier):
-            # args must be an image
             eta_labels = self._model.predict(arg)
         elif isinstance(self._model, etal.VideoFramesClassifier):
-            # args must be an image tensor
             eta_labels = self._model.predict(arg)
         elif isinstance(self._model, etal.VideoClassifier):
-            # arg must be an ``eta.core.video.VideoReader``
             eta_labels = self._model.predict(arg)
         elif isinstance(self._model, etal.Classifier):
-            # generic classifier
             eta_labels = self._model.predict(arg)
         elif isinstance(self._model, etal.ObjectDetector):
-            # args must be an image
             eta_labels = self._model.detect(arg)
         elif isinstance(self._model, etal.VideoFramesObjectDetector):
-            # args must be an image tensor
             eta_labels = self._model.detect(arg)
         elif isinstance(self._model, etal.VideoObjectDetector):
-            # arg must be an ``eta.core.video.VideoReader``
             eta_labels = self._model.detect(arg)
         elif isinstance(self._model, etal.Detector):
-            # generic detector
             eta_labels = self._model.detect(arg)
         elif isinstance(self._model, etal.ImageSemanticSegmenter):
-            # args must be an image
             eta_labels = self._model.segment(arg)
         elif isinstance(self._model, etal.VideoSemanticSegmenter):
-            # arg must be an ``eta.core.video.VideoReader``
             eta_labels = self._model.segment(arg)
         elif isinstance(self._model, etal.SemanticSegmenter):
-            # generic segmenter
             eta_labels = self._model.segment(arg)
         elif isinstance(self._model, etal.ImageModel):
-            # arg must be an image
             eta_labels = self._model.process(arg)
         elif isinstance(self._model, etal.VideoModel):
-            # arg must be an `eta.core.video.VideoReader``
             eta_labels = self._model.process(arg)
         else:
             raise ValueError(
@@ -152,13 +167,10 @@ class ETAModel(fom.Model, fom.EmbeddingsMixin):
 
     def predict_all(self, args):
         if isinstance(self._model, etal.ImageClassifier):
-            # args must be a tensor of images
             eta_labels_batch = self._model.predict_all(args)
         elif isinstance(self._model, etal.ObjectDetector):
-            # args must be a tensor of images
             eta_labels_batch = self._model.detect_all(args)
         elif isinstance(self._model, etal.ImageSemanticSegmenter):
-            # args must be a tensor of images
             eta_labels_batch = self._model.segment_all(args)
         else:
             eta_labels_batch = super().predict_all(args)

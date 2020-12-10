@@ -58,8 +58,7 @@ def apply_model(
             batch_size=batch_size,
         )
 
-    if batch_size is None:
-        batch_size = fo.config.default_batch_size
+    batch_size = _parse_batch_size(batch_size, model)
 
     if batch_size is not None:
         return _apply_image_model_batch(
@@ -161,8 +160,7 @@ def compute_embeddings(samples, model, embeddings_field=None, batch_size=None):
             batch_size=batch_size,
         )
 
-    if batch_size is None:
-        batch_size = fo.config.default_batch_size
+    batch_size = _parse_batch_size(batch_size, model)
 
     if batch_size is not None:
         return _compute_image_embeddings_batch(
@@ -316,8 +314,7 @@ def compute_patch_embeddings(
     )
     fov.validate_collection_label_fields(samples, patches_field, allowed_types)
 
-    if batch_size is None:
-        batch_size = fo.config.default_batch_size
+    batch_size = _parse_batch_size(batch_size, model)
 
     embeddings_dict = {}
 
@@ -399,6 +396,17 @@ def _extract_patch(img, detection, force_square, alpha):
         bbox = bbox.pad_relative(alpha)
 
     return bbox.extract_from(img, force_square=force_square)
+
+
+def _parse_batch_size(batch_size, model):
+    if batch_size is None:
+        batch_size = fo.config.default_batch_size
+
+    if batch_size is not None and batch_size > 1 and model.ragged_batches:
+        logger.warning("Model does not support batching")
+        batch_size = None
+
+    return batch_size
 
 
 def load_model(model_config_dict, model_path=None, **kwargs):
@@ -490,6 +498,21 @@ class Model(etal.Model):
             and teardown, and so any code that builds a model should use the
             ``with`` syntax
     """
+
+    @property
+    def ragged_batches(self):
+        """True/False whether :meth:`transforms` may return tensors of
+        different sizes and therefore passing ragged lists of data to
+        :meth:`predict_all` is not allowed.
+        """
+        raise NotImplementedError("subclasses must implement ragged_batches")
+
+    @property
+    def transforms(self):
+        """The preprocessing function that will/must be applied to each input
+        before prediction, or ``None`` if no preprocessing is performed.
+        """
+        raise NotImplementedError("subclasses must implement transforms")
 
     def predict(self, arg):
         """Peforms prediction on the given data.
@@ -600,19 +623,7 @@ class TorchModelMixin(object):
     via a ``torch.utils.data.DataLoader``.
     """
 
-    @property
-    def ragged_batches(self):
-        """True/False whether :meth:`transforms` may return tensors of
-        different sizes.
-        """
-        raise NotImplementedError("subclasses must implement ragged_batches")
-
-    @property
-    def transforms(self):
-        """The ``torchvision.transforms`` function that will/must be applied to
-        each input before prediction.
-        """
-        raise NotImplementedError("subclasses must implement transforms")
+    pass
 
 
 class ModelManagerConfig(etam.ModelManagerConfig):
