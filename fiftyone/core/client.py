@@ -73,8 +73,7 @@ class HasClient(object):
                             )
                         except:
                             print(
-                                "\r\nCould not connect %s, trying again in 10 seconds\r\n"
-                                % self
+                                "\r\nCould not connect session, trying again in 10 seconds\r\n"
                             )
                             time.sleep(10)
 
@@ -118,7 +117,7 @@ class HasClient(object):
         """Gets the data via the attribute defined by ``_HC_ATTR_NAME``."""
         if name == self._HC_ATTR_NAME:
             if self._client is None and not self._initial_connection:
-                raise RuntimeError("Session %s is not connected" % self)
+                raise RuntimeError("Session is not connected")
             while self._data is None:
                 time.sleep(0.2)
             return self._data
@@ -136,7 +135,7 @@ class HasClient(object):
                     % (self._HC_ATTR_TYPE, type(value))
                 )
             if self._client is None and not self._initial_connection:
-                raise RuntimeError("Session %s is not connected" % self)
+                raise RuntimeError("Session is not connected")
             while self._data is None:
                 time.sleep(0.2)
             self._data = value
