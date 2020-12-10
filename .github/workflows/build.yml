@@ -96,18 +96,6 @@ jobs:
         run: |
           python setup.py bdist_wheel
           pip install dist/*.whl
-      - name: Install fiftyone-desktop stub
-        working-directory: package/desktop
-        run: |
-          if [[ ${{ matrix.os }} = windows-* ]]; then
-            ext=exe
-          else
-            ext=AppImage
-          fi
-          cp -v "$(which true)" ./FiftyOne-stub.${ext}
-          export FIFTYONE_DESKTOP_EXE_PATH=./FiftyOne-stub.${ext}
-          python setup.py bdist_wheel
-          pip install dist/*.whl
       - name: Install fiftyone
         env:
           PIP_INDEX_URL: https://test.pypi.org/simple
