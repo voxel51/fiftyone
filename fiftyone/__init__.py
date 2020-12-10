@@ -41,7 +41,7 @@ def _log_import_if_allowed():
         try:
             with _ua.HTTPRequest() as http:
                 tracker = _ua.Tracker(_foc.UA_ID, http, client_id=uid)
-                tracker.send("event", "import", kind)
+                tracker.send("event", "import", kind, label=_foc.VERSION)
         except:
             pass
     th = _threading.Thread(target=send_import_event)
