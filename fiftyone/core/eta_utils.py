@@ -90,7 +90,8 @@ class ETAModel(fom.Model, fom.EmbeddingsMixin):
         if not self.has_embeddings:
             raise ValueError("This model instance does not expose embeddings")
 
-        return self._model.get_features()
+        embeddings = self._model.get_features()
+        return embeddings.astype(float, copy=False)
 
     def embed(self, arg):
         self.predict(arg)

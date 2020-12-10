@@ -395,7 +395,7 @@ class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
 
         layer_output = self._embeddings_layer.output
         embeddings = layer_output.detach().cpu().numpy()
-        return embeddings.astype(np.float32, copy=False)
+        return embeddings.astype(float, copy=False)
 
     def _predict_all(self, args):
         """Applies a forward pass to the given iterable of data and returns
@@ -543,10 +543,16 @@ class TorchImageModel(fom.Model, fom.TorchModelMixin, TorchEmbeddingsMixin):
 
     @property
     def ragged_batches(self):
+        """True/False whether :meth:`transforms` may return tensors of
+        different sizes.
+        """
         return self._ragged_batches
 
     @property
     def transforms(self):
+        """The ``torchvision.transforms`` function that will/must be applied to
+        each input before prediction.
+        """
         return self._transforms
 
     @property
@@ -575,6 +581,23 @@ class TorchImageModel(fom.Model, fom.TorchModelMixin, TorchEmbeddingsMixin):
         return self._class_labels
 
     def predict(self, img):
+        """Peforms prediction on the given image.
+
+        If a Torch tensor is provided, it is assumed that the preprocessing
+        transforms have already been applied.
+
+        Args:
+            img: the image to process, which can be any of the following:
+
+                - A PIL image
+                - A uint8 numpy array (HWC)
+                - A Torch tensor (CWH)
+
+        Returns:
+            a :class:`fiftyone.core.labels.Label` instance or dict of
+            :class:`fiftyone.core.labels.Label` instances containing the
+            predictions
+        """
         if isinstance(img, torch.Tensor):
             imgs = img.unsqueeze(0)
         else:
@@ -583,30 +606,71 @@ class TorchImageModel(fom.Model, fom.TorchModelMixin, TorchEmbeddingsMixin):
         return self.predict_all(imgs)[0]
 
     def predict_all(self, imgs):
+        """Peforms prediction on the given batch of images.
+
+        If a Torch tensor or list of Torch tensors is provided, it is assumed
+        that the preprocessing transforms have already been applied.
+
+        Args:
+            imgs: the batch of images to process, which can be any of the
+                following:
+
+                - A list of PIL images
+                - A list of uint8 numpy arrays (HWC)
+                - A list of Torch tensors (CHW)
+                - A uint8 numpy tensor (NHWC)
+                - A Torch tensor (NCHW)
+
+        Returns:
+            a list of :class:`fiftyone.core.labels.Label` instances or a list
+            of dicts of :class:`fiftyone.core.labels.Label` instances
+            containing the predictions
+        """
         output, frame_size = self._predict_all(imgs)
         return self._output_processor(output, frame_size)
 
     def _predict_all(self, imgs):
-        imgs, frame_size = self._preprocess_batch(imgs)
+        imgs = self._preprocess_batch(imgs)
 
-        if self._using_gpu:
-            imgs = imgs.cuda()
+        if self.ragged_batches:
+            frame_size = [self._get_frame_size(img) for img in imgs]
+        else:
+            frame_size = self._get_frame_size(imgs)
+            if isinstance(imgs, (list, tuple)):
+                imgs = torch.stack(imgs)
 
-        if self._using_half_precision:
-            imgs = imgs.half()
+        if isinstance(imgs, (list, tuple)):
+            imgs = [self._prepare_eval(img) for img in imgs]
+        else:
+            imgs = self._prepare_eval(imgs)
 
         output = self._model(imgs)
 
         return output, frame_size
 
     def _preprocess_batch(self, imgs):
-        if not isinstance(imgs, torch.Tensor):
-            imgs = torch.stack([self._transforms(img) for img in imgs])
+        if isinstance(imgs, (list, tuple)):
+            if not isinstance(imgs[0], torch.Tensor):
+                imgs = self._do_preprocessing(imgs)
+        elif not isinstance(imgs, torch.Tensor):
+            imgs = self._do_preprocessing(imgs)
 
-        height, width = list(imgs.size())[-2:]
-        frame_size = (width, height)
+        return imgs
 
-        return imgs, frame_size
+    def _do_preprocessing(self, imgs):
+        return [self._transforms(img) for img in imgs]
+
+    def _get_frame_size(self, tensor):
+        return tuple(tensor.size())[-2:]
+
+    def _prepare_eval(self, arg):
+        if self._using_gpu:
+            arg = arg.cuda()
+
+        if self._using_half_precision:
+            arg = arg.half()
+
+        return arg
 
     def _get_class_labels(self, config):
         if config.labels_string:
@@ -802,6 +866,12 @@ class OutputProcessor(object):
         """
         raise NotImplementedError("subclass must implement __call__")
 
+    def _parse_frame_size(self, frame_size):
+        if etau.is_numeric(frame_size[0]):
+            return itertools.repeat(frame_size)
+
+        return frame_size
+
 
 class ClassifierOutputProcessor(OutputProcessor):
     """Output processor for single label classifiers.
@@ -816,14 +886,13 @@ class ClassifierOutputProcessor(OutputProcessor):
         self.class_labels = class_labels
         self.confidence_thresh = confidence_thresh
 
-    def __call__(self, output, frame_size):
+    def __call__(self, output, _):
         """Parses the model output.
 
         Args:
             output: either a ``FloatTensor[N, M]`` containing the logits for
                 ``N`` images and ``M`` classes, or a dict with a ``"logits"``
                 key containing the logits
-            frame_size: the ``(width, height)`` of the frames in the batch
 
         Returns:
             a list of :class:`fiftyone.core.labels.Classification` instances
@@ -880,14 +949,16 @@ class DetectorOutputProcessor(OutputProcessor):
                 -   labels (``Int64Tensor[N]``): the predicted labels
                 -   scores (``Tensor[N]``): the scores for each prediction
 
-            frame_size: the ``(width, height)`` of the frames in the batch
+            frame_size: the ``(width, height)`` of the frames in the batch, or
+                a list of frame sizes for ragged batches
 
         Returns:
             a list of :class:`fiftyone.core.labels.Detections` instances
         """
-        return [self._parse_detections(o, frame_size) for o in output]
+        frame_sizes = self._parse_frame_size(frame_size)
+        return [self._parse_output(o, f) for o, f in zip(output, frame_sizes)]
 
-    def _parse_detections(self, output, frame_size):
+    def _parse_output(self, output, frame_size):
         width, height = frame_size
 
         boxes = output["boxes"].detach().cpu().numpy()
@@ -951,14 +1022,16 @@ class InstanceSegmenterOutputProcessor(OutputProcessor):
                 -   masks (``FloatTensor[N, 1, H, W]``): the predicted masks
                     for each instance, in ``[0, 1]``
 
-            frame_size: the ``(width, height)`` of the frames in the batch
+            frame_size: the ``(width, height)`` of the frames in the batch, or
+                a list of frame sizes for ragged batches
 
         Returns:
             a list of :class:`fiftyone.core.labels.Detections` instances
         """
-        return [self._parse_detections(o, frame_size) for o in output]
+        frame_sizes = self._parse_frame_size(frame_size)
+        return [self._parse_output(o, f) for o, f in zip(output, frame_sizes)]
 
-    def _parse_detections(self, output, frame_size):
+    def _parse_output(self, output, frame_size):
         width, height = frame_size
 
         boxes = output["boxes"].detach().cpu().numpy()
@@ -1030,14 +1103,16 @@ class KeypointDetectorOutputProcessor(OutputProcessor):
                 -   keypoints (``FloatTensor[N, K, ...]``): the predicted
                     keypoints for each instance in ``[x, y, ...]`` format
 
-            frame_size: the ``(width, height)`` of the frames in the batch
+            frame_size: the ``(width, height)`` of the frames in the batch, or
+                a list of frame sizes for ragged batches
 
         Returns:
             a list of :class:`fiftyone.core.labels.Label` dicts
         """
-        return [self._parse_detections(o, frame_size) for o in output]
+        frame_sizes = self._parse_frame_size(frame_size)
+        return [self._parse_output(o, f) for o, f in zip(output, frame_sizes)]
 
-    def _parse_detections(self, output, frame_size):
+    def _parse_output(self, output, frame_size):
         width, height = frame_size
 
         boxes = output["boxes"].detach().cpu().numpy()
@@ -1112,7 +1187,7 @@ class SegmenterOutputProcessor(OutputProcessor):
     def __init__(self, class_labels):
         self.class_labels = class_labels
 
-    def __call__(self, output, frame_size):
+    def __call__(self, output, _):
         """Parses the model output.
 
         Args:
@@ -1121,8 +1196,6 @@ class SegmenterOutputProcessor(OutputProcessor):
 
                 -   out (``FloatTensor[N, M, H, W]``): the segmentation map
                     probabilities for the ``N`` images across the ``M`` classes
-
-            frame_size: the ``(width, height)`` of the frames in the batch
 
         Returns:
             a list of :class:`fiftyone.core.labels.Segmentation` instances
