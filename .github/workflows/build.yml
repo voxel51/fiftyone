@@ -49,11 +49,11 @@ jobs:
           - ubuntu-18.04
           - windows-latest
         python-version:
-          - 3.5
+          - 3.6
           - 3.8
         exclude:
           - os: windows-latest
-            python-version: 3.5
+            python-version: 3.6
     defaults:
       run:
         shell: bash
@@ -96,10 +96,6 @@ jobs:
         run: |
           python setup.py bdist_wheel
           pip install dist/*.whl
-      - name: Install fiftyone
-        run: |
-          pip install --pre --extra-index-url https://test.pypi.org/simple/ fiftyone-brain
-          pip install -e .
       # upgrade voxel51-eta to the latest pre-release (can't use the same
       # strategy as fiftyone-db/desktop above because it's in a different repo).
       # Release branches and tags are excluded to force a proper compatible ETA
@@ -109,6 +105,10 @@ jobs:
         run: |
           echo "Upgrading ETA because github.ref = ${{ github.ref }} (not a release)"
           pip install --pre --extra-index-url https://test.pypi.org/simple/ -U "voxel51-eta>=0.dev0"
+      - name: Install fiftyone
+        run: |
+          pip install --pre --extra-index-url https://test.pypi.org/simple/ fiftyone-brain
+          pip install -e .
       - name: Install test dependencies (non-Windows)
         if: ${{ !startsWith(matrix.os, 'windows') }}
         run: |
