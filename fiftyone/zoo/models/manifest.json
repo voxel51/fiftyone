@@ -2007,6 +2007,16 @@
                     }
                 }
             },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
             "date_created": "2019-12-10 12:07:51"
         },
         {
@@ -2028,6 +2038,16 @@
                         "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
                         "mask_thresh": 0.5
                     }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
                 }
             },
             "date_created": "2019-12-10 12:07:51"
@@ -2053,6 +2073,16 @@
                     }
                 }
             },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
             "date_created": "2019-12-10 12:07:51"
         },
         {
@@ -2074,6 +2104,16 @@
                         "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
                         "mask_thresh": 0.5
                     }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
                 }
             },
             "date_created": "2019-12-10 12:07:51"
@@ -2366,6 +2406,16 @@
                     }
                 }
             },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu"]
+                }
+            },
             "date_created": "2020-12-10 12:07:51"
         },
         {
@@ -2391,6 +2441,16 @@
                     }
                 }
             },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu"]
+                }
+            },
             "date_created": "2020-12-10 12:07:51"
         },
         {
@@ -2413,6 +2473,16 @@
                         "generate_features": true,
                         "labels_path": "{{eta-resources}}/vgg16-imagenet-labels.txt"
                     }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu"]
                 }
             },
             "date_created": "2018-06-20 17:35:53"
