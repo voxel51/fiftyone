@@ -75,7 +75,7 @@ class TorchvisionImageModel(fout.TorchImageModel):
         model_dir = fo.config.model_zoo_dir
 
         monkey_patcher = _make_load_state_dict_from_url_monkey_patcher(
-            entrypoint, model_dir, self.device
+            entrypoint, model_dir
         )
         with monkey_patcher:
             # Builds net and loads state dict from `model_dir`
@@ -84,9 +84,7 @@ class TorchvisionImageModel(fout.TorchImageModel):
         return model
 
 
-def _make_load_state_dict_from_url_monkey_patcher(
-    entrypoint, model_dir, device
-):
+def _make_load_state_dict_from_url_monkey_patcher(entrypoint, model_dir):
     """Monkey patches all instances of ``load_state_dict_from_url()`` that are
     reachable from the given ``entrypoint`` function in the
     ``torchvision.models`` namespace so that models will be loaded from
@@ -96,9 +94,7 @@ def _make_load_state_dict_from_url_monkey_patcher(
     load_state_dict_from_url = entrypoint_module.load_state_dict_from_url
 
     def custom_load_state_dict_from_url(url, **kwargs):
-        return load_state_dict_from_url(
-            url, model_dir=model_dir, map_location=device, **kwargs,
-        )
+        return load_state_dict_from_url(url, model_dir=model_dir, **kwargs)
 
     return fou.MonkeyPatchFunction(
         entrypoint_module,
