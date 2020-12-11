@@ -1351,7 +1351,7 @@
             "date_created": "2018-06-23T23:17:26"
         },
         {
-            "base_name": "yolo-v2-coco-tf",
+            "base_name": "yolo-v2-coco-tf1",
             "base_filename": "yolo-v2-coco.weights",
             "version": null,
             "description": "YOLOv2 model trained on COCO. Source: https://pjreddie.com/darknet/yolo",
@@ -1384,7 +1384,7 @@
             "date_created": "2018-06-23T23:17:26"
         },
         {
-            "base_name": "efficientdet-d0-coco-tf",
+            "base_name": "efficientdet-d0-coco-tf1",
             "base_filename": "efficientdet-d0-coco.tar",
             "version": null,
             "description": "EfficientDet-D0 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet",
@@ -1419,7 +1419,7 @@
             "date_created": "2020-03-22 21:44:00"
         },
         {
-            "base_name": "efficientdet-d1-coco-tf",
+            "base_name": "efficientdet-d1-coco-tf1",
             "base_filename": "efficientdet-d1-coco.tar",
             "version": null,
             "description": "EfficientDet-D1 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet",
@@ -1454,7 +1454,7 @@
             "date_created": "2020-03-22 21:44:00"
         },
         {
-            "base_name": "efficientdet-d2-coco-tf",
+            "base_name": "efficientdet-d2-coco-tf1",
             "base_filename": "efficientdet-d2-coco.tar",
             "version": null,
             "description": "EfficientDet-D2 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet",
@@ -1489,7 +1489,7 @@
             "date_created": "2020-03-22 21:44:00"
         },
         {
-            "base_name": "efficientdet-d3-coco-tf",
+            "base_name": "efficientdet-d3-coco-tf1",
             "base_filename": "efficientdet-d3-coco.tar",
             "version": null,
             "description": "EfficientDet-D3 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet",
@@ -1524,7 +1524,7 @@
             "date_created": "2020-03-22 21:44:00"
         },
         {
-            "base_name": "efficientdet-d4-coco-tf",
+            "base_name": "efficientdet-d4-coco-tf1",
             "base_filename": "efficientdet-d4-coco.tar",
             "version": null,
             "description": "EfficientDet-D4 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet",
@@ -1559,7 +1559,7 @@
             "date_created": "2020-03-22 21:44:00"
         },
         {
-            "base_name": "efficientdet-d5-coco-tf",
+            "base_name": "efficientdet-d5-coco-tf1",
             "base_filename": "efficientdet-d5-coco.tar",
             "version": null,
             "description": "EfficientDet-D5 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet",
@@ -1594,7 +1594,7 @@
             "date_created": "2020-03-22 21:44:00"
         },
         {
-            "base_name": "efficientdet-d6-coco-tf",
+            "base_name": "efficientdet-d6-coco-tf1",
             "base_filename": "efficientdet-d6-coco.tar",
             "version": null,
             "description": "EfficientDet-D6 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet",
@@ -1629,7 +1629,7 @@
             "date_created": "2020-03-22 21:44:00"
         },
         {
-            "base_name": "faster-rcnn-inception-v2-coco-tf",
+            "base_name": "faster-rcnn-inception-v2-coco-tf1",
             "base_filename": "faster-rcnn-inception-v2-coco.pb",
             "version": null,
             "description": "Faster-RCNN object detector with Inception-v2 backbone trained on COCO",
@@ -1661,7 +1661,7 @@
             "date_created": "2019-12-17 08:25:51"
         },
         {
-            "base_name": "faster-rcnn-nas-coco-tf",
+            "base_name": "faster-rcnn-nas-coco-tf1",
             "base_filename": "faster-rcnn-nas-coco.pb",
             "version": null,
             "description": "Faster-RCNN object detector with NAS-net backbone trained on COCO",
@@ -1693,7 +1693,7 @@
             "date_created": "2019-12-18 12:07:00"
         },
         {
-            "base_name": "faster-rcnn-nas-lowproposals-coco-tf",
+            "base_name": "faster-rcnn-nas-lowproposals-coco-tf1",
             "base_filename": "faster-rcnn-nas-lowproposals-coco.pb",
             "version": null,
             "description": "Faster-RCNN low-proposal object detector with NAS-net backbone trained on COCO.",
@@ -1725,7 +1725,7 @@
             "date_created": "2019-12-18 12:07:00"
         },
         {
-            "base_name": "faster-rcnn-resnet50-coco-tf",
+            "base_name": "faster-rcnn-resnet50-coco-tf1",
             "base_filename": "faster-rcnn-resnet50-coco.pb",
             "version": null,
             "description": "Faster-RCNN object detector with ResNet-50 backbone trained on COCO",
@@ -1757,7 +1757,7 @@
             "date_created": "2019-12-17 08:25:51"
         },
         {
-            "base_name": "faster-rcnn-resnet50-lowproposals-coco-tf",
+            "base_name": "faster-rcnn-resnet50-lowproposals-coco-tf1",
             "base_filename": "faster-rcnn-resnet50-lowproposals-coco.pb",
             "version": null,
             "description": "Faster-RCNN low-proposal object detector with ResNet-50 backbone trained on COCO",
@@ -1789,7 +1789,7 @@
             "date_created": "2019-12-17 08:25:51"
         },
         {
-            "base_name": "faster-rcnn-resnet101-coco-tf",
+            "base_name": "faster-rcnn-resnet101-coco-tf1",
             "base_filename": "faster-rcnn-resnet101-coco.pb",
             "version": null,
             "description": "Faster-RCNN object detector with ResNet-101 backbone trained on COCO",
@@ -1821,7 +1821,7 @@
             "date_created": "2019-12-17 08:25:51"
         },
         {
-            "base_name": "faster-rcnn-resnet101-lowproposals-coco-tf",
+            "base_name": "faster-rcnn-resnet101-lowproposals-coco-tf1",
             "base_filename": "faster-rcnn-resnet101-lowproposals-coco.pb",
             "version": null,
             "description": "Faster-RCNN low-proposal object detector with ResNet-101 backbone trained on COCO",
@@ -1853,7 +1853,7 @@
             "date_created": "2019-12-17 08:25:51"
         },
         {
-            "base_name": "faster-rcnn-inception-resnet-atrous-v2-coco-tf",
+            "base_name": "faster-rcnn-inception-resnet-atrous-v2-coco-tf1",
             "base_filename": "faster-rcnn-inception-resnet-atrous-v2-coco.pb",
             "version": null,
             "description": "Faster-RCNN Atrous Inception ResNet object detector trained on COCO",
@@ -1885,7 +1885,7 @@
             "date_created": "2019-12-17 08:25:51"
         },
         {
-            "base_name": "faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco-tf",
+            "base_name": "faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco-tf1",
             "base_filename": "faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco.pb",
             "version": null,
             "description": "Faster-RCNN low-proposal Atrous Inception ResNet object detector trained on COCO",
@@ -1917,7 +1917,7 @@
             "date_created": "2019-12-17 08:25:51"
         },
         {
-            "base_name": "inception-resnet-v2-imagenet-tf",
+            "base_name": "inception-resnet-v2-imagenet-tf1",
             "base_filename": "inception-resnet-v2-imagenet.pb",
             "version": null,
             "description": "Inception ResNet v2 classifier trained on ImageNet",
@@ -1952,7 +1952,7 @@
             "date_created": "2019-05-23 13:38:22"
         },
         {
-            "base_name": "inception-v4-imagenet-tf",
+            "base_name": "inception-v4-imagenet-tf1",
             "base_filename": "inception-v4-imagenet.pb",
             "version": null,
             "description": "Inception v4 classifier trained on ImageNet",
@@ -1987,7 +1987,7 @@
             "date_created": "2019-05-23 13:42:33"
         },
         {
-            "base_name": "mask-rcnn-inception-resnet-v2-atrous-coco-tf",
+            "base_name": "mask-rcnn-inception-resnet-v2-atrous-coco-tf1",
             "base_filename": "mask-rcnn-inception-resnet-v2-atrous-coco.pb",
             "version": null,
             "description": "Mask R-CNN Atrous Inception ResNet object detector trained on COCO",
@@ -2020,7 +2020,7 @@
             "date_created": "2019-12-10 12:07:51"
         },
         {
-            "base_name": "mask-rcnn-inception-v2-coco-tf",
+            "base_name": "mask-rcnn-inception-v2-coco-tf1",
             "base_filename": "mask-rcnn-inception-v2-coco.pb",
             "version": null,
             "description": "Mask R-CNN Inception object detector trained on COCO",
@@ -2053,7 +2053,7 @@
             "date_created": "2019-12-10 12:07:51"
         },
         {
-            "base_name": "mask-rcnn-resnet50-atrous-coco-tf",
+            "base_name": "mask-rcnn-resnet50-atrous-coco-tf1",
             "base_filename": "mask-rcnn-resnet50-atrous-coco.pb",
             "version": null,
             "description": "Mask R-CNN Atrous ResNet-50 object detector trained on COCO",
@@ -2086,7 +2086,7 @@
             "date_created": "2019-12-10 12:07:51"
         },
         {
-            "base_name": "mask-rcnn-resnet101-atrous-coco-tf",
+            "base_name": "mask-rcnn-resnet101-atrous-coco-tf1",
             "base_filename": "mask-rcnn-resnet101-atrous-coco.pb",
             "version": null,
             "description": "Mask R-CNN Atrous ResNet-101 object detector trained on COCO",
@@ -2119,7 +2119,7 @@
             "date_created": "2019-12-10 12:07:51"
         },
         {
-            "base_name": "mobilenet-v2-imagenet-tf",
+            "base_name": "mobilenet-v2-imagenet-tf1",
             "base_filename": "mobilenet-v2-imagenet.pb",
             "version": null,
             "description": "MobileNet v2 classifier trained on ImageNet",
@@ -2154,7 +2154,7 @@
             "date_created": "2019-05-23 11:43:51"
         },
         {
-            "base_name": "resnet-v1-50-imagenet-tf",
+            "base_name": "resnet-v1-50-imagenet-tf1",
             "base_filename": "resnet-v1-50-imagenet.pb",
             "version": null,
             "description": "ResNet-50 v1 classifier trained on ImageNet",
@@ -2189,7 +2189,7 @@
             "date_created": "2019-05-23 13:49:04"
         },
         {
-            "base_name": "resnet-v2-50-imagenet-tf",
+            "base_name": "resnet-v2-50-imagenet-tf1",
             "base_filename": "resnet-v2-50-imagenet.pb",
             "version": null,
             "description": "ResNet-50 v2 classifier trained on ImageNet",
@@ -2224,7 +2224,7 @@
             "date_created": "2019-05-23 12:19:17"
         },
         {
-            "base_name": "rfcn-resnet101-coco-tf",
+            "base_name": "rfcn-resnet101-coco-tf1",
             "base_filename": "rfcn-resnet101-coco.pb",
             "version": null,
             "description": "R-FCN object detector with ResNet-101 backbone trained on COCO",
@@ -2256,7 +2256,7 @@
             "date_created": "2018-12-23 14:37:47"
         },
         {
-            "base_name": "ssd-inception-v2-coco-tf",
+            "base_name": "ssd-inception-v2-coco-tf1",
             "base_filename": "ssd-inception-v2-coco.pb",
             "version": null,
             "description": "Inception Single Shot Detector trained on COCO",
@@ -2288,7 +2288,7 @@
             "date_created": "2018-12-23 14:34:09"
         },
         {
-            "base_name": "ssd-resnet50-fpn-coco-tf",
+            "base_name": "ssd-resnet50-fpn-coco-tf1",
             "base_filename": "ssd-resnet50-fpn-coco.pb",
             "version": null,
             "description": "FPN Single Shot Detector with ResNet-50 backbone trained on COCO",
@@ -2320,7 +2320,7 @@
             "date_created": "2019-04-11 12:01:29"
         },
         {
-            "base_name": "ssd-mobilenet-v1-coco-tf",
+            "base_name": "ssd-mobilenet-v1-coco-tf1",
             "base_filename": "ssd-mobilenet-v1-coco.pb",
             "version": null,
             "description": "Single Shot Detector with MobileNet-v1 backbone trained on COCO",
@@ -2352,7 +2352,7 @@
             "date_created": "2018-12-23 14:34:05"
         },
         {
-            "base_name": "ssd-mobilenet-v1-fpn-coco-tf",
+            "base_name": "ssd-mobilenet-v1-fpn-coco-tf1",
             "base_filename": "ssd-mobilenet-v1-fpn-coco.pb",
             "version": null,
             "description": "FPN Single Shot Detector with MobileNet-v1 backbone trained on COCO",
