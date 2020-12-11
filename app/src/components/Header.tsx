@@ -336,7 +336,6 @@ const TshirtForm = () => {
     setSubmitText("Submitting...");
     const headers = new Headers();
     headers.append("Content-Type", "application/json");
-    console.log(formState.email);
     fetch(postUrl, {
       method: "post",
       headers,
@@ -344,6 +343,10 @@ const TshirtForm = () => {
       body: JSON.stringify({
         submittedAt: Date.now(),
         fields: [
+          {
+            name: "email",
+            value: formState.email,
+          },
           {
             name: "are_you_enjoying_fiftyone_",
             value: formState.helping,
@@ -360,9 +363,13 @@ const TshirtForm = () => {
         context: { pageUri: "www.example.com/page", pageName: "Example page" },
       }),
     })
-      .then((r) => r.json())
-      .then((r) => {
-        console.log(r);
+      .then((response) => {
+        if (response.status !== 200) {
+          throw new Error("Failed submission");
+        }
+        return response.json();
+      })
+      .then(() => {
         setSubmitText("Submitted. Thank you!");
       })
       .catch(() => setSubmitText("Something went wrong"));
@@ -528,7 +535,7 @@ const Header = ({ addNotification }) => {
                   kind: "Feedback is awesome!",
                   message:
                     "We are super focused on making FiftyOne as valuable as possible to our users. If you provide your email in this form, we'll get in touch with you about mailing a free T-shirt to you. While supplies last!",
-                  children: [<TshirtForm />],
+                  children: [<TshirtForm key="t-shirt" />],
                 });
             }}
             style={{ marginRight: "0.5rem" }}
