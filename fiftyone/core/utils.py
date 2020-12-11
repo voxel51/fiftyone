@@ -135,7 +135,7 @@ def fill_patterns(string):
 
 
 def ensure_tf(error_msg=None):
-    """Verifies that TensorFlow is installed on the host machine.
+    """Verifies that TensorFlow is installed and importable.
 
     Args:
         error_msg (None): an optional custom error message to print
@@ -143,12 +143,12 @@ def ensure_tf(error_msg=None):
     Raises:
         ImportError: if ``tensorflow`` could not be imported
     """
-    _ensure_package("tensorflow", error_msg=error_msg)
+    _ensure_import("tensorflow", error_msg=error_msg)
 
 
 def ensure_tfds(error_msg=None):
-    """Verifies that the ``tensorflow_datasets`` package is installed on the
-    host machine.
+    """Verifies that the ``tensorflow_datasets`` package is installed and
+    importable.
 
     Args:
         error_msg (None): an optional custom error message to print
@@ -156,12 +156,12 @@ def ensure_tfds(error_msg=None):
     Raises:
         ImportError: if ``tensorflow_datasets`` could not be imported
     """
-    _ensure_package("tensorflow", min_version="1.15", error_msg=error_msg)
-    _ensure_package("tensorflow_datasets", error_msg=error_msg)
+    _ensure_import("tensorflow", min_version="1.15", error_msg=error_msg)
+    _ensure_import("tensorflow_datasets", error_msg=error_msg)
 
 
 def ensure_torch(error_msg=None):
-    """Verifies that PyTorch is installed on the host machine.
+    """Verifies that PyTorch is installed and importable.
 
     Args:
         error_msg (None): an optional custom error message to print
@@ -169,12 +169,12 @@ def ensure_torch(error_msg=None):
     Raises:
         ImportError: if ``torch`` or ``torchvision`` could not be imported
     """
-    _ensure_package("torch", error_msg=error_msg)
-    _ensure_package("torchvision", error_msg=error_msg)
+    _ensure_import("torch", error_msg=error_msg)
+    _ensure_import("torchvision", error_msg=error_msg)
 
 
 def ensure_pycocotools(error_msg=None):
-    """Verifies that pycocotools is installed on the host machine.
+    """Verifies that pycocotools is installed and importable.
 
     Args:
         error_msg (None): an optional custom error message to print
@@ -182,40 +182,41 @@ def ensure_pycocotools(error_msg=None):
     Raises:
         ImportError: if ``pycocotools`` could not be imported
     """
-    _ensure_package("pycocotools", error_msg=error_msg)
+    _ensure_import("pycocotools", error_msg=error_msg)
 
 
-def _ensure_package(package_name, min_version=None, error_msg=None):
+def _ensure_import(module_name, min_version=None, error_msg=None):
     has_min_ver = min_version is not None
 
     if has_min_ver:
         min_version = packaging.version.parse(min_version)
 
     try:
-        pkg = importlib.import_module(package_name)
+        mod = importlib.import_module(module_name)
     except ImportError as e:
         if has_min_ver:
-            pkg_str = "%s>=%s" % (package_name, min_version)
+            module_str = "%s>=%s" % (module_name, min_version)
         else:
-            pkg_str = package_name
+            module_str = module_name
 
         if error_msg is not None:
             raise ImportError(error_msg) from e
 
         raise ImportError(
             "The requested operation requires that '%s' is installed on your "
-            "machine" % pkg_str,
-            name=package_name,
+            "machine" % module_str,
+            name=module_name,
         ) from e
 
     if has_min_ver:
-        pkg_version = packaging.version.parse(pkg.__version__)
-        if pkg_version < min_version:
+        # @todo not all modules have `__version__`
+        mod_version = packaging.version.parse(mod.__version__)
+        if mod_version < min_version:
             raise ImportError(
                 "The requested operation requires that '%s>=%s' is installed "
                 "on your machine; found '%s==%s'"
-                % (package_name, min_version, package_name, pkg_version),
-                name=package_name,
+                % (module_name, min_version, module_name, mod_version),
+                name=module_name,
             )
 
 
