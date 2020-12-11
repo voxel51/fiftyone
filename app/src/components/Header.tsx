@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { useRecoilState, useRecoilValue } from "recoil";
 import AuosizeInput from "react-input-autosize";
@@ -77,6 +77,7 @@ const LeftDiv = styled.div`
 const RightDiv = styled.div`
   margin-left: auto;
   padding-right: 0.5rem;
+  display: flex;
 `;
 
 const FiftyOneDiv = styled.div`
@@ -112,6 +113,16 @@ const IconWrapper = styled.div`
   svg:focus {
     outline: none;
   }
+`;
+
+const Tshirt = styled.div`
+  margin-right: 0.5rem;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 1rem;
+  border-radius: 3px;
+  padding: 0 0.5rem;
+  border: 1px solid ${({ theme }) => theme.brand};
 `;
 
 const selectorMachine = Machine({
@@ -280,6 +291,48 @@ const selectorMachine = Machine({
   },
 });
 
+const Input = styled.input`
+  width: 100%;
+  background-color: transparent;
+  border: none;
+  padding: 0.5rem 0;
+  margin-bottom: 1rem;
+  border
+  color: ${({ theme }) => theme.font};
+  line-height: 1rem;
+  border: none;
+  border-bottom: 1px solid ${({ theme }) => theme.brand};
+  font-weight: bold;
+
+  &:focus {
+    border-bottom: 1px solid ${({ theme }) => theme.brand};
+    outline: none;
+    font-weight: bold;
+  }
+
+  &::placeholder {
+    color: ${({ theme }) => theme.font};
+    font-weight: bold;
+  }
+`;
+
+const TshirtForm = () => {
+  const [formState, setFormState] = useState({});
+  return (
+    <>
+      <Input placeholder={"Email (optional)"} value={formState.email ?? ""} />
+      <Input
+        placeholder={"First name (optional)"}
+        value={formState.firstName ?? ""}
+      />
+      <Input
+        placeholder={"Last name (optional)"}
+        value={formState.lastName ?? ""}
+      />
+    </>
+  );
+};
+
 const DatasetSelector = () => {
   const datasetName = useRecoilValue(selectors.datasetName);
   const socket = useRecoilValue(selectors.socket);
@@ -289,7 +342,10 @@ const DatasetSelector = () => {
 
   const inputRef = useRef();
   const { results, currentResult, value, bestMatch, values } = state.context;
-
+  <Input
+    placeholder={"Last name (optional)"}
+    value={formState.lastName ?? ""}
+  />;
   useEffect(() => {
     send({
       type: "SET_VALUES",
@@ -379,7 +435,7 @@ const DatasetSelector = () => {
   );
 };
 
-const Header = () => {
+const Header = ({ addNotification }) => {
   const socket = useRecoilValue(selectors.socket);
   const [refresh, setRefresh] = useRecoilState(atoms.refresh);
   const logoProps = useSpring({
@@ -401,6 +457,17 @@ const Header = () => {
       </LeftDiv>
       <RightDiv>
         <IconWrapper>
+          <Tshirt
+            onClick={() =>
+              addNotification.current({
+                message: "We want to help...",
+                kind: "Feedback is awesome!",
+                children: [<TshirtForm />],
+              })
+            }
+          >
+            Want a free T-shirt?
+          </Tshirt>
           <ExternalLink
             title="Slack"
             href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg"

@@ -170,9 +170,11 @@ const NotificationHub = ({
               </Button>
             </Header>
             <MessageText>{item.message}</MessageText>
-            {item.app_items.map((i, key) => (
-              <MessageText key={key}>{i}</MessageText>
-            ))}
+            {item.app_items &&
+              item.app_items.map((i, key) => (
+                <MessageText key={key}>{i}</MessageText>
+              ))}
+            {item.children && item.children}
           </Content>
         </Message>
       ))}
