@@ -293,7 +293,7 @@ class ZooModel(etam.Model):
         requirements (None): the ``eta.core.models.ModelRequirements`` for the
             model
         tags (None): a list of tags for the model
-        date_created (None): the datetime that the model was added to the zoo
+        date_added (None): the datetime that the model was added to the zoo
     """
 
     pass

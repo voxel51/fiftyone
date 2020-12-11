@@ -33,7 +33,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "densenet121-imagenet-torch",
@@ -68,7 +69,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "densenet161-imagenet-torch",
@@ -103,7 +105,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "densenet169-imagenet-torch",
@@ -138,7 +141,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "densenet201-imagenet-torch",
@@ -173,7 +177,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "googlenet-imagenet-torch",
@@ -208,7 +213,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "inception-v3-imagenet-torch",
@@ -243,7 +249,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "mnasnet0.5-imagenet-torch",
@@ -278,7 +285,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "mnasnet1.0-imagenet-torch",
@@ -313,7 +321,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "mobilenet-v2-imagenet-torch",
@@ -348,7 +357,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "resnet18-imagenet-torch",
@@ -383,7 +393,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "resnet34-imagenet-torch",
@@ -418,7 +429,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "resnet50-imagenet-torch",
@@ -453,7 +465,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "resnet101-imagenet-torch",
@@ -488,7 +501,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "resnet152-imagenet-torch",
@@ -523,7 +537,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "resnext50-32x4d-imagenet-torch",
@@ -558,7 +573,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "resnext101-32x8d-imagenet-torch",
@@ -593,7 +609,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "wide-resnet50-2-imagenet-torch",
@@ -628,7 +645,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "wide-resnet101-2-imagenet-torch",
@@ -663,7 +681,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "shufflenetv2-0.5x-imagenet-torch",
@@ -698,7 +717,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "shufflenetv2-1.0x-imagenet-torch",
@@ -733,7 +753,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "squeezenet-imagenet-torch",
@@ -767,7 +788,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "squeezenet-1.1-imagenet-torch",
@@ -801,7 +823,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "vgg11-imagenet-torch",
@@ -836,7 +859,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "vgg13-imagenet-torch",
@@ -871,7 +895,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "vgg16-imagenet-torch",
@@ -906,7 +931,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "vgg19-imagenet-torch",
@@ -941,7 +967,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "vgg11-bn-imagenet-torch",
@@ -976,7 +1003,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "vgg13-bn-imagenet-torch",
@@ -1011,7 +1039,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "vgg16-bn-imagenet-torch",
@@ -1046,7 +1075,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "vgg19-bn-imagenet-torch",
@@ -1081,7 +1111,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["classification", "torch", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "faster-rcnn-resnet50-fpn-coco-torch",
@@ -1112,7 +1143,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["detection", "torch", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "retinanet-resnet50-fpn-coco-torch",
@@ -1143,7 +1175,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["detection", "torch", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "mask-rcnn-resnet50-fpn-coco-torch",
@@ -1174,7 +1207,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["instances", "torch", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "keypoint-rcnn-resnet50-fpn-coco-torch",
@@ -1212,7 +1246,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["keypoints", "torch", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "fcn-resnet50-coco-torch",
@@ -1246,7 +1281,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["segmentation", "torch", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "fcn-resnet101-coco-torch",
@@ -1280,7 +1316,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["segmentation", "torch", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "deeplabv3-resnet50-coco-torch",
@@ -1314,7 +1351,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["segmentation", "torch", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "deeplabv3-resnet101-coco-torch",
@@ -1348,7 +1386,8 @@
                     "support": true
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["segmentation", "torch", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "yolo-v2-coco-tf1",
@@ -1381,7 +1420,8 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2018-06-23T23:17:26"
+            "tags": ["detection", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "efficientdet-d0-coco-tf1",
@@ -1416,7 +1456,8 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "date_created": "2020-03-22 21:44:00"
+            "tags": ["detection", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "efficientdet-d1-coco-tf1",
@@ -1451,7 +1492,8 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "date_created": "2020-03-22 21:44:00"
+            "tags": ["detection", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "efficientdet-d2-coco-tf1",
@@ -1486,7 +1528,8 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "date_created": "2020-03-22 21:44:00"
+            "tags": ["detection", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "efficientdet-d3-coco-tf1",
@@ -1521,7 +1564,8 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "date_created": "2020-03-22 21:44:00"
+            "tags": ["detection", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "efficientdet-d4-coco-tf1",
@@ -1556,7 +1600,8 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "date_created": "2020-03-22 21:44:00"
+            "tags": ["detection", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "efficientdet-d5-coco-tf1",
@@ -1591,7 +1636,8 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "date_created": "2020-03-22 21:44:00"
+            "tags": ["detection", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "efficientdet-d6-coco-tf1",
@@ -1626,7 +1672,8 @@
                     "packages": ["tensorflow-gpu>=1.14,<2"]
                 }
             },
-            "date_created": "2020-03-22 21:44:00"
+            "tags": ["detection", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "faster-rcnn-inception-v2-coco-tf1",
@@ -1658,7 +1705,8 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-12-17 08:25:51"
+            "tags": ["detection", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "faster-rcnn-nas-coco-tf1",
@@ -1690,7 +1738,8 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-12-18 12:07:00"
+            "tags": ["detection", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "faster-rcnn-nas-lowproposals-coco-tf1",
@@ -1722,7 +1771,8 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-12-18 12:07:00"
+            "tags": ["detection", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "faster-rcnn-resnet50-coco-tf1",
@@ -1754,7 +1804,8 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-12-17 08:25:51"
+            "tags": ["detection", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "faster-rcnn-resnet50-lowproposals-coco-tf1",
@@ -1786,7 +1837,8 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-12-17 08:25:51"
+            "tags": ["detection", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "faster-rcnn-resnet101-coco-tf1",
@@ -1818,7 +1870,8 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-12-17 08:25:51"
+            "tags": ["detection", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "faster-rcnn-resnet101-lowproposals-coco-tf1",
@@ -1850,7 +1903,8 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-12-17 08:25:51"
+            "tags": ["detection", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "faster-rcnn-inception-resnet-atrous-v2-coco-tf1",
@@ -1882,7 +1936,8 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-12-17 08:25:51"
+            "tags": ["detection", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco-tf1",
@@ -1914,7 +1969,8 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-12-17 08:25:51"
+            "tags": ["detection", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "inception-resnet-v2-imagenet-tf1",
@@ -1949,7 +2005,8 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-05-23 13:38:22"
+            "tags": ["classification", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "inception-v4-imagenet-tf1",
@@ -1984,7 +2041,8 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-05-23 13:42:33"
+            "tags": ["classification", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "mask-rcnn-inception-resnet-v2-atrous-coco-tf1",
@@ -2017,7 +2075,8 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-12-10 12:07:51"
+            "tags": ["instances", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "mask-rcnn-inception-v2-coco-tf1",
@@ -2050,7 +2109,8 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-12-10 12:07:51"
+            "tags": ["instances", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "mask-rcnn-resnet50-atrous-coco-tf1",
@@ -2083,7 +2143,8 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-12-10 12:07:51"
+            "tags": ["instances", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "mask-rcnn-resnet101-atrous-coco-tf1",
@@ -2116,7 +2177,8 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-12-10 12:07:51"
+            "tags": ["instances", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "mobilenet-v2-imagenet-tf1",
@@ -2151,7 +2213,8 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-05-23 11:43:51"
+            "tags": ["classification", "tf", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "resnet-v1-50-imagenet-tf1",
@@ -2186,7 +2249,8 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-05-23 13:49:04"
+            "tags": ["classification", "tf", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "resnet-v2-50-imagenet-tf1",
@@ -2221,7 +2285,8 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-05-23 12:19:17"
+            "tags": ["classification", "tf", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "rfcn-resnet101-coco-tf1",
@@ -2253,7 +2318,8 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2018-12-23 14:37:47"
+            "tags": ["detection", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "ssd-inception-v2-coco-tf1",
@@ -2285,7 +2351,8 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2018-12-23 14:34:09"
+            "tags": ["detection", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "ssd-resnet50-fpn-coco-tf1",
@@ -2317,7 +2384,8 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-04-11 12:01:29"
+            "tags": ["detection", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "ssd-mobilenet-v1-coco-tf1",
@@ -2349,7 +2417,8 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2018-12-23 14:34:05"
+            "tags": ["detection", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "ssd-mobilenet-v1-fpn-coco-tf1",
@@ -2381,7 +2450,8 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "date_created": "2019-04-11 12:25:44"
+            "tags": ["detection", "tf", "coco"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "deeplabv3-cityscapes-tf",
@@ -2416,7 +2486,8 @@
                     "packages": ["tensorflow-gpu"]
                 }
             },
-            "date_created": "2020-12-10 12:07:51"
+            "tags": ["segmentation", "tf", "cityscapes"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "deeplabv3-mnv2-cityscapes-tf",
@@ -2451,7 +2522,8 @@
                     "packages": ["tensorflow-gpu"]
                 }
             },
-            "date_created": "2020-12-10 12:07:51"
+            "tags": ["segmentation", "tf", "cityscapes"],
+            "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "vgg16-imagenet-tf",
@@ -2485,7 +2557,8 @@
                     "packages": ["tensorflow-gpu"]
                 }
             },
-            "date_created": "2018-06-20 17:35:53"
+            "tags": ["classification", "tf", "imagenet"],
+            "date_added": "2020-12-11 13:45:51"
         }
     ]
 }
