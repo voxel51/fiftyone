@@ -29,10 +29,16 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip setuptools wheel
+      - name: Set environment
+        env:
+          RELEASE_TAG: ${{ github.ref }}
+        run: |
+          if [[ $RELEASE_TAG =~ ^refs\/tags\/v.*-rc\..*$ ]]; then
+             echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/db-v//")" >> $GITHUB_ENV
+          fi
       - name: Build dist
         run: |
           python setup.py bdist_wheel
-          python setup.py sdist
       - name: Upload dist
         uses: actions/upload-artifact@v2
         with:
