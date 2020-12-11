@@ -2005,7 +2005,7 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "tags": ["classification", "tf", "coco"],
+            "tags": ["classification", "tf", "imagenet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2041,7 +2041,7 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "tags": ["classification", "tf", "coco"],
+            "tags": ["classification", "tf", "imagenet"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
