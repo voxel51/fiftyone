@@ -14,7 +14,7 @@ import { animated, useSpring } from "react-spring";
 import ExternalLink from "./ExternalLink";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { GitHub, MenuBook } from "@material-ui/icons";
+import { Email, GitHub, MenuBook } from "@material-ui/icons";
 import { Slack } from "../icons";
 import SearchResults from "./ViewBar/ViewStage/SearchResults";
 
@@ -318,25 +318,80 @@ const Input = styled.input`
 
 const TshirtForm = () => {
   const [formState, setFormState] = useState({});
+  const [submitText, setSubmitText] = useState("Submit");
+  const portalId = 8996037;
+  const formId = "03559cd9-fa81-4f48-9a67-c5959731de08";
+  const postUrl = `https://api.hsforms.com/submissions/v3/integration/submit/${portalId}/${formId}`;
+  const appContext = useRecoilValue(selectors.appContext);
 
+  const setFormValue = (name) => (e) =>
+    setFormState({
+      ...formState,
+      [name]: e.target.value,
+    });
   const submit = () => {
-    console.log(formState);
+    if (!(formState.helping?.length && formState.improve?.length)) {
+      return;
+    }
+    setSubmitText("Submitting...");
+    const headers = new Headers();
+    headers.append("Content-Type", "application/json");
+    console.log(formState.email);
+    fetch(postUrl, {
+      method: "post",
+      headers,
+      mode: "cors",
+      body: JSON.stringify({
+        submittedAt: Date.now(),
+        fields: [
+          {
+            name: "are_you_enjoying_fiftyone_",
+            value: formState.helping,
+          },
+          {
+            name: "how_could_we_improve_fiftyone",
+            value: formState.improve,
+          },
+          {
+            name: "app_context",
+            value: appContext,
+          },
+        ],
+        context: { pageUri: "www.example.com/page", pageName: "Example page" },
+      }),
+    })
+      .then((r) => r.json())
+      .then((r) => {
+        console.log(r);
+        setSubmitText("Submitted. Thank you!");
+      })
+      .catch(() => setSubmitText("Something went wrong"));
   };
   return (
     <>
-      <Input placeholder={"Email (optional)"} value={formState.email ?? ""} />
       <Input
+        key="email"
+        placeholder={"Email (optional)"}
+        type="email"
+        value={formState.email ?? ""}
+        onChange={setFormValue("email")}
+      />
+      <Input
+        key="helping"
         placeholder={"Is FiftyOne helping your work?"}
         value={formState.helping ?? ""}
+        onChange={setFormValue("helping")}
         maxlength={40}
       />
       <Input
+        key="improve"
         placeholder={"How could we improve FiftyOne?"}
         value={formState.improve ?? ""}
         maxlength={40}
+        onChange={setFormValue("improve")}
       />
-      <Button onClick={submit} style={{ marginBottom: "1rem" }}>
-        Submit
+      <Button key="submit" onClick={submit} style={{ marginBottom: "1rem" }}>
+        {submitText}
       </Button>
     </>
   );
