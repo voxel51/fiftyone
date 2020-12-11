@@ -322,12 +322,14 @@ const TshirtForm = () => {
     <>
       <Input placeholder={"Email (optional)"} value={formState.email ?? ""} />
       <Input
-        placeholder={"First name (optional)"}
-        value={formState.firstName ?? ""}
+        placeholder={"Is FiftyOne helping your work?"}
+        value={formState.helping ?? ""}
+        maxlength={40}
       />
       <Input
-        placeholder={"Last name (optional)"}
-        value={formState.lastName ?? ""}
+        placeholder={"How could we improve FiftyOne?"}
+        value={formState.improve ?? ""}
+        maxlength={40}
       />
     </>
   );
@@ -342,10 +344,6 @@ const DatasetSelector = () => {
 
   const inputRef = useRef();
   const { results, currentResult, value, bestMatch, values } = state.context;
-  <Input
-    placeholder={"Last name (optional)"}
-    value={formState.lastName ?? ""}
-  />;
   useEffect(() => {
     send({
       type: "SET_VALUES",
@@ -460,8 +458,9 @@ const Header = ({ addNotification }) => {
           <Tshirt
             onClick={() =>
               addNotification.current({
-                message: "We want to help...",
                 kind: "Feedback is awesome!",
+                message:
+                  "We super focused on making FiftyOne as valuable as possible to our users. If you provide your email in this form, we'll get in touch with you about mailing a free T-shirt to you. While supplies last!",
                 children: [<TshirtForm />],
               })
             }
