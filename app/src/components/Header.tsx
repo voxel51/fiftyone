@@ -115,12 +115,12 @@ const IconWrapper = styled.div`
   }
 `;
 
-const Tshirt = styled.div`
-  margin-right: 0.5rem;
+const Button = styled.div`
   font-weight: bold;
   cursor: pointer;
   font-size: 1rem;
   border-radius: 3px;
+  text-align: center;
   padding: 0 0.5rem;
   border: 1px solid ${({ theme }) => theme.brand};
 `;
@@ -318,6 +318,10 @@ const Input = styled.input`
 
 const TshirtForm = () => {
   const [formState, setFormState] = useState({});
+
+  const submit = () => {
+    console.log(formState);
+  };
   return (
     <>
       <Input placeholder={"Email (optional)"} value={formState.email ?? ""} />
@@ -331,6 +335,9 @@ const TshirtForm = () => {
         value={formState.improve ?? ""}
         maxlength={40}
       />
+      <Button onClick={submit} style={{ marginBottom: "1rem" }}>
+        Submit
+      </Button>
     </>
   );
 };
@@ -439,6 +446,9 @@ const Header = ({ addNotification }) => {
   const logoProps = useSpring({
     transform: refresh ? `rotate(0turn)` : `rotate(1turn)`,
   });
+  const [appFeedbackIsOpen, setAppFeedbackIsOpen] = useRecoilState(
+    atoms.appFeedbackIsOpen
+  );
   return (
     <HeaderDiv>
       <LeftDiv>
@@ -455,18 +465,21 @@ const Header = ({ addNotification }) => {
       </LeftDiv>
       <RightDiv>
         <IconWrapper>
-          <Tshirt
-            onClick={() =>
-              addNotification.current({
-                kind: "Feedback is awesome!",
-                message:
-                  "We super focused on making FiftyOne as valuable as possible to our users. If you provide your email in this form, we'll get in touch with you about mailing a free T-shirt to you. While supplies last!",
-                children: [<TshirtForm />],
-              })
-            }
+          <Button
+            onClick={() => {
+              !appFeedbackIsOpen && setAppFeedbackIsOpen(true);
+              !appFeedbackIsOpen &&
+                addNotification.current({
+                  kind: "Feedback is awesome!",
+                  message:
+                    "We are super focused on making FiftyOne as valuable as possible to our users. If you provide your email in this form, we'll get in touch with you about mailing a free T-shirt to you. While supplies last!",
+                  children: [<TshirtForm />],
+                });
+            }}
+            style={{ marginRight: "0.5rem" }}
           >
             Want a free T-shirt?
-          </Tshirt>
+          </Button>
           <ExternalLink
             title="Slack"
             href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg"

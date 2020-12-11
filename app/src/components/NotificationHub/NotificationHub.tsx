@@ -3,6 +3,10 @@ import { animated, useTransition } from "react-spring";
 import styled, { ThemeContext } from "styled-components";
 import { Close } from "@material-ui/icons";
 
+import { useSetRecoilState } from "recoil";
+
+import * as atoms from "../../recoil/atoms";
+
 const Container = styled("div")`
   position: fixed;
   z-index: 10000;
@@ -118,6 +122,7 @@ const NotificationHub = ({
   const [refMap] = useState(() => new WeakMap());
   const [cancelMap] = useState(() => new WeakMap());
   const [items, setItems] = useState([]);
+  const setAppFeedbackIsOpen = useSetRecoilState(atoms.appFeedbackIsOpen);
   const transitions = useTransition(items, (item) => item.key, {
     from: { opacity: 0, height: 0, life: "100%" },
     enter: (item) => async (next) => {
@@ -128,6 +133,7 @@ const NotificationHub = ({
       await next({ life: "0%" });
       await next({ opacity: 0 });
       await next({ height: 0 });
+      setAppFeedbackIsOpen(false);
     },
     onRest: (item) =>
       setItems((state) => state.filter((i) => i.key !== item.key)),

@@ -168,3 +168,8 @@ export const modalColorByLabel = atom({
   key: "modalColorByLabel",
   default: false,
 });
+
+export const appFeedbackIsOpen = atom({
+  key: "appFeedbackIsOpen",
+  default: false,
+});
