@@ -426,7 +426,7 @@ class AppService(Service):
             return self.find_app()
 
     def find_app(self):
-        if foc.DEV_INSTALL and False:
+        if foc.DEV_INSTALL:
             return ["yarn", "start-app"]
 
         for path in etau.list_files("./"):
