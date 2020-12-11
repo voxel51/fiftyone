@@ -1508,30 +1508,77 @@ class ModelZooListCommand(Command):
 
         # List available models
         fiftyone model-zoo list
+
+        # List downloaded models
+        fiftyone model-zoo list --downloaded-only
+
+        # List available models matching the given tag
+        fiftyone model-zoo list --tag <tag>
     """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
             "-d",
-            "--models-dir",
-            metavar="MODELS_DIR",
-            help="a custom directory to which to search for downloaded models",
+            "--downloaded-only",
+            action="store_true",
+            help="only show models that have been downloaded",
+        )
+        parser.add_argument(
+            "-t",
+            "--tag",
+            metavar="TAG",
+            help="only show models matchiing the specified tag",
         )
 
     @staticmethod
     def execute(parser, args):
-        models_dir = args.models_dir
+        downloaded_only = args.downloaded_only
+        match_tag = args.tag
 
-        all_models = fozm.list_zoo_models()
-        downloaded_models = fozm.list_downloaded_zoo_models(
-            models_dir=models_dir
+        models_manifest = fozm._load_zoo_models_manifest()
+        downloaded_models = fozm.list_downloaded_zoo_models()
+
+        _print_zoo_models_list(
+            models_manifest,
+            downloaded_models,
+            downloaded_only=downloaded_only,
+            match_tag=match_tag,
         )
 
-        _print_zoo_models_list(downloaded_models, all_models)
+
+def _print_zoo_models_list(
+    models_manifest, downloaded_models, downloaded_only=False, match_tag=None
+):
+    records = []
+    for model in sorted(models_manifest.models, key=lambda model: model.name):
+        name = model.name
+
+        if match_tag is not None and not model.has_tag(match_tag):
+            continue
+
+        if downloaded_only and name not in downloaded_models:
+            continue
+
+        if name in downloaded_models:
+            is_downloaded = "\u2713"
+            model_path = downloaded_models[name][0]
+        else:
+            is_downloaded = ""
+            model_path = ""
+
+        tags = ",".join(model.tags or [])
+
+        records.append((name, tags, is_downloaded, model_path))
+
+    headers = ["name", "tags", "downloaded", "model_path"]
+    table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
+    print(table_str)
 
 
-def _print_zoo_models_list(downloaded_models, all_models):
+def _print_zoo_models_list_sample(models_manifest, downloaded_models):
+    all_models = [model.name for model in models_manifest]
+
     records = []
     for name in sorted(all_models):
         if name in downloaded_models:
@@ -1562,19 +1609,12 @@ class ModelZooFindCommand(Command):
         parser.add_argument(
             "name", metavar="NAME", help="the name of the model"
         )
-        parser.add_argument(
-            "-d",
-            "--models-dir",
-            metavar="MODELS_DIR",
-            help="a custom directory to which to search for downloaded models",
-        )
 
     @staticmethod
     def execute(parser, args):
         name = args.name
-        models_dir = args.models_dir
 
-        model_path = fozm.find_zoo_model(name, models_dir=models_dir)
+        model_path = fozm.find_zoo_model(name)
         print(model_path)
 
 
@@ -1592,17 +1632,10 @@ class ModelZooInfoCommand(Command):
         parser.add_argument(
             "name", metavar="NAME", help="the name of the model"
         )
-        parser.add_argument(
-            "-d",
-            "--models-dir",
-            metavar="MODELS_DIR",
-            help="a custom directory to which to search for downloaded models",
-        )
 
     @staticmethod
     def execute(parser, args):
         name = args.name
-        models_dir = args.models_dir
 
         # Print model info
         zoo_model = fozm.get_zoo_model(name)
@@ -1610,10 +1643,10 @@ class ModelZooInfoCommand(Command):
 
         # Check if model is downloaded
         print("***** Model location *****")
-        if not fozm.is_zoo_model_downloaded(name, models_dir=models_dir):
+        if not fozm.is_zoo_model_downloaded(name):
             print("Model '%s' is not downloaded" % name)
         else:
-            model_path = fozm.find_zoo_model(name, models_dir=models_dir)
+            model_path = fozm.find_zoo_model(name)
             print(model_path)
 
 
@@ -1708,9 +1741,6 @@ class ModelZooDownloadCommand(Command):
 
         # Download the zoo model
         fiftyone model-zoo download <name>
-
-        # Download the zoo model to a custom directory
-        fiftyone model-zoo download <name> --models-dir <models-dir>
     """
 
     @staticmethod
@@ -1727,19 +1757,12 @@ class ModelZooDownloadCommand(Command):
                 "downloaded"
             ),
         )
-        parser.add_argument(
-            "-d",
-            "--models-dir",
-            metavar="MODELS_DIR",
-            help="a custom directory to which to download the model",
-        )
 
     @staticmethod
     def execute(parser, args):
         name = args.name
         force = args.force
-        models_dir = args.models_dir
-        fozm.download_zoo_model(name, models_dir=models_dir, overwrite=force)
+        fozm.download_zoo_model(name, overwrite=force)
 
 
 class ModelZooDeleteCommand(Command):

@@ -35,20 +35,15 @@ def list_zoo_models():
     return sorted([model.name for model in manifest])
 
 
-def list_downloaded_zoo_models(models_dir=None):
+def list_downloaded_zoo_models():
     """Returns information about the zoo models that have been downloaded.
-
-    Args:
-        models_dir (None): the directory to search for downloaded models. By
-            default, ``fo.config.model_zoo_dir`` is used
 
     Returns:
         a dict mapping model names to (model path, :class:`ZooModel`) tuples
     """
-    if models_dir is None:
-        models_dir = fo.config.model_zoo_dir
-
     manifest = _load_zoo_models_manifest()
+    models_dir = fo.config.model_zoo_dir
+
     models = {}
     for model in manifest:
         if model.is_in_dir(models_dir):
@@ -58,27 +53,23 @@ def list_downloaded_zoo_models(models_dir=None):
     return models
 
 
-def is_zoo_model_downloaded(name, models_dir=None):
+def is_zoo_model_downloaded(name):
     """Determines whether the zoo model of the given name is downloaded.
 
     Args:
         name: the name of the zoo model, which can have ``@<ver>`` appended to
             refer to a specific version of the model. If no version is
             specified, the latest version of the model is used
-        models_dir (None): the models directory. By default,
-            ``fiftyone.config.model_zoo_dir`` is used
 
     Returns:
         True/False
     """
-    if models_dir is None:
-        models_dir = fo.config.model_zoo_dir
-
     model = _get_model(name)
+    models_dir = fo.config.model_zoo_dir
     return model.is_in_dir(models_dir)
 
 
-def download_zoo_model(name, models_dir=None, overwrite=False):
+def download_zoo_model(name, overwrite=False):
     """Downloads the model of the given name from the FiftyOne Dataset Zoo.
 
     If the model is already downloaded, it is not re-downloaded unless
@@ -89,8 +80,6 @@ def download_zoo_model(name, models_dir=None, overwrite=False):
             refer to a specific version of the model. If no version is
             specified, the latest version of the model is used. Call
             :func:`list_zoo_models` to see the available models
-        models_dir (None): the directory into which to download the model. By
-            default, it is downloaded to ``fiftyone.config.model_zoo_dir``
         overwrite (False): whether to overwrite any existing files
 
     Returns:
@@ -99,9 +88,9 @@ def download_zoo_model(name, models_dir=None, overwrite=False):
         -   model: the :class:`ZooModel` for the model
         -   model_path: the path to the downloaded model on disk
     """
-    model, model_path = _get_model_in_dir(name, models_dir)
+    model, model_path = _get_model_in_dir(name)
 
-    if not overwrite and is_zoo_model_downloaded(name, models_dir=models_dir):
+    if not overwrite and is_zoo_model_downloaded(name):
         logger.info("Model '%s' is already downloaded", name)
     else:
         model.manager.download_model(model_path, force=overwrite)
@@ -148,7 +137,6 @@ def ensure_zoo_model_requirements(name, error_level=0):
 
 def load_zoo_model(
     name,
-    models_dir=None,
     download_if_necessary=True,
     install_requirements=False,
     error_level=0,
@@ -157,16 +145,13 @@ def load_zoo_model(
     """Loads the model of the given name from the FiftyOne Model Zoo.
 
     By default, the model will be downloaded if necessary if it does not
-    exist in the specified ``models_dir``.
+    exist in ``fiftyone.config.model_zoo_dir``.
 
     Args:
         name: the name of the zoo model, which can have ``@<ver>`` appended to
             refer to a specific version of the model. If no version is
             specified, the latest version of the model is downloaded. Call
             :func:`list_zoo_models` to see the available models
-        models_dir (None): the directory in which the model is stored or should
-            be downloaded. By default, ``fiftyone.config.model_zoo_dir`` is
-            used
         download_if_necessary (True): whether to download the model if it is
             not found in the specified directory
         install_requirements: whether to install any requirements before
@@ -183,16 +168,14 @@ def load_zoo_model(
     Returns:
         a :class:`fiftyone.core.models.Model`
     """
-    if models_dir is None:
-        models_dir = fo.config.model_zoo_dir
-
     model = _get_model(name)
+    models_dir = fo.config.model_zoo_dir
 
     if not model.is_in_dir(models_dir):
         if not download_if_necessary:
             raise ValueError("Model '%s' is not downloaded" % name)
 
-        download_zoo_model(name, models_dir=models_dir)
+        download_zoo_model(name)
 
     if install_requirements:
         model.install_requirements(error_level=error_level)
@@ -205,7 +188,7 @@ def load_zoo_model(
     return fom.load_model(config_dict, model_path=model_path, **kwargs)
 
 
-def find_zoo_model(name, models_dir=None):
+def find_zoo_model(name):
     """Returns the path to the zoo model on disk.
 
     The model must be downloaded. Use :func:`download_zoo_model` to download
@@ -215,8 +198,6 @@ def find_zoo_model(name, models_dir=None):
         name: the name of the zoo model, which can have ``@<ver>`` appended to
             refer to a specific version of the model. If no version is
             specified, the latest version of the model is used
-        models_dir (None): the directory in which the model is stored. By
-            default, ``fiftyone.config.model_zoo_dir`` is used
 
     Returns:
         the path to the model on disk
@@ -224,7 +205,7 @@ def find_zoo_model(name, models_dir=None):
     Raises:
         ValueError: if the model does not exist or has not been downloaded
     """
-    model, model_path = _get_model_in_dir(name, models_dir)
+    model, model_path = _get_model_in_dir(name)
     if not model.is_model_downloaded(model_path):
         raise ValueError("Model '%s' is not downloaded" % name)
 
@@ -244,17 +225,15 @@ def get_zoo_model(name):
     return _get_model(name)
 
 
-def delete_zoo_model(name, models_dir=None):
+def delete_zoo_model(name):
     """Deletes the zoo model from local disk, if necessary.
 
     Args:
         name: the name of the zoo model, which can have ``@<ver>`` appended to
             refer to a specific version of the model. If no version is
             specified, the latest version of the model is used
-        models_dir (None): the directory in which the model is stored. By
-            default, ``fiftyone.config.model_zoo_dir`` is used
     """
-    model, model_path = _get_model_in_dir(name, models_dir)
+    model, model_path = _get_model_in_dir(name)
     model.flush_model(model_path)
 
 
@@ -313,6 +292,7 @@ class ZooModel(etam.Model):
             recommended settings for deploying the model
         requirements (None): the ``eta.core.models.ModelRequirements`` for the
             model
+        tags (None): a list of tags for the model
         date_created (None): the datetime that the model was added to the zoo
     """
 
@@ -338,11 +318,9 @@ def _load_zoo_models_manifest():
     return manifest
 
 
-def _get_model_in_dir(name, models_dir):
-    if models_dir is None:
-        models_dir = fo.config.model_zoo_dir
-
+def _get_model_in_dir(name):
     model = _get_model(name)
+    models_dir = fo.config.model_zoo_dir
     model_path = model.get_path_in_dir(models_dir)
     return model, model_path
 
