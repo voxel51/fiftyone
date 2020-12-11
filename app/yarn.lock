@@ -10992,7 +10992,7 @@ __metadata:
     react-use-measure: ^2.0.1
     react-uuid: ^1.0.2
     recharts: ^1.8.5
-    recharts-scale: "patch:recharts-scale@^0.4.3#./recharts-scale-patch.diff"
+    recharts-scale: ^0.4.3
     recoil: ^0.0.13
     reconnecting-websocket: ^4.4.0
     resize-observer-polyfill: ^1.5.1
@@ -20068,7 +20068,7 @@ modclean-patterns-default@latest:
   languageName: node
   linkType: hard
 
-"recharts-scale@patch:recharts-scale@^0.4.3#./recharts-scale-patch.diff":
+"recharts-scale@npm:^0.4.2, recharts-scale@npm:^0.4.3":
   version: 0.4.3
   resolution: "recharts-scale@npm:0.4.3"
   dependencies:
@@ -21621,7 +21621,7 @@ resolve@1.1.7:
   languageName: node
   linkType: hard
 
-snowpack@next:
+"snowpack@npm:next":
   version: 3.0.0-rc.1
   resolution: "snowpack@npm:3.0.0-rc.1"
   dependencies:
