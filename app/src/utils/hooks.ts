@@ -183,11 +183,11 @@ export const useWindowSize = () => {
 export const useGA = () => {
   const [gaInitialized, setGAInitialized] = useState(false);
   const info = useRecoilValue(selectors.fiftyone);
+  const appContext = useRecoilValue(selectors.appContext);
 
   useEffect(() => {
     const dev = process.env.NODE_ENV == "development";
     const buildType = dev ? "dev" : "prod";
-    const appContext = useRecoilValue(selectors.appContext);
 
     ReactGA.initialize(gaConfig.app_ids[buildType], {
       debug: dev,
