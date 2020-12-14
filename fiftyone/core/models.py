@@ -120,15 +120,15 @@ def compute_embeddings(samples, model, embeddings_field=None, batch_size=None):
     """Computes embeddings for the samples in the collection using the given
     :class:`Model`.
 
+    The ``model`` must expose embeddings, i.e., :meth:`Model.has_embeddings`
+    must return ``True``.
+
     If an ``embeddings_field`` is provided, the embeddings are saved to the
     samples; otherwise, the embeddings are returned in-memory.
 
-    The :class:`Model` must implement the :class:`EmbeddingsMixin` mixin.
-
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model` that implements the :class:`EmbeddingsMixin`
-            mixin
+        model: a :class:`Model`
         embeddings_field (None): the name of a field in which to store the
             embeddings
         batch_size (None): an optional batch size to use. Only applicable for
@@ -139,9 +139,6 @@ def compute_embeddings(samples, model, embeddings_field=None, batch_size=None):
         array whose first dimension is ``len(samples)`` containing the
         embeddings
     """
-    if not isinstance(model, EmbeddingsMixin):
-        raise ValueError("Model must implement the %s mixin" % EmbeddingsMixin)
-
     if not model.has_embeddings:
         raise ValueError(
             "Model does not expose embeddings (model.has_embeddings = %s)"
@@ -254,15 +251,15 @@ def compute_patch_embeddings(
     """Computes embeddings for the image patches defined by ``patches_field``
     of the samples in the collection using the given :class:`Model`.
 
+    The ``model`` must expose embeddings, i.e., :meth:`Model.has_embeddings`
+    must return ``True``.
+
     If an ``embeddings_field`` is provided, the embeddings are saved to the
     samples; otherwise, the embeddings are returned in-memory.
 
-    The :class:`Model` must implement the :class:`EmbeddingsMixin` mixin.
-
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model` that implements the :class:`EmbeddingsMixin`
-            mixin
+        model: a :class:`Model`
         patches_field: a :class:`fiftyone.core.labels.Detection`,
             :class:`fiftyone.core.labels.Detections`,
             :class:`fiftyone.core.labels.Polyline`, or
@@ -286,9 +283,6 @@ def compute_patch_embeddings(
     """
     if samples.media_type != fom.IMAGE:
         raise ValueError("This method only supports image samples")
-
-    if not isinstance(model, EmbeddingsMixin):
-        raise ValueError("Model must implement the %s mixin" % EmbeddingsMixin)
 
     if not model.has_embeddings:
         raise ValueError(
@@ -500,6 +494,16 @@ class Model(etal.Model):
     """
 
     @property
+    def has_embeddings(self):
+        """Whether this instance can generate embeddings.
+
+        This method returns ``False`` by default. Methods that can generate
+        embeddings will override this via implementing the
+        :class:`EmbeddingsMixin` interface.
+        """
+        return False
+
+    @property
     def ragged_batches(self):
         """True/False whether :meth:`transforms` may return tensors of
         different sizes and therefore passing ragged lists of data to
@@ -621,9 +625,20 @@ class EmbeddingsMixin(object):
 class TorchModelMixin(object):
     """Mixin for :class:`Model` classes that support feeding data for inference
     via a ``torch.utils.data.DataLoader``.
+
+    Models implementing this mixin must expose via their
+    :meth:`Model.transforms` property the ``torchvision.transforms`` function
+    that will/must be applied to each input before prediction.
     """
 
-    pass
+    @property
+    def preprocess(self):
+        """Whether to apply preprocessing transforms during inference."""
+        raise NotImplementedError("subclasses must implement preprocess")
+
+    @preprocess.setter
+    def preprocess(self, value):
+        raise NotImplementedError("subclasses must implement preprocess")
 
 
 class ModelManagerConfig(etam.ModelManagerConfig):

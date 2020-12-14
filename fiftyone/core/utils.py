@@ -703,3 +703,26 @@ class MonkeyPatchFunction(object):
                     self.namespace.__package__
                 ):
                     self._find(mod)
+
+
+class SetAttributes(object):
+    """Context manager that temporarily sets the attributes of a class to new
+    values.
+    """
+
+    def __init__(self, obj, **kwargs):
+        self._obj = obj
+        self._kwargs = kwargs
+        self._orig_kwargs = None
+
+    def __enter__(self):
+        self._orig_kwargs = {}
+        for k, v in self._kwargs.items():
+            self._orig_kwargs[k] = getattr(self._obj, k)
+            setattr(self._obj, k, v)
+
+        return self
+
+    def __exit__(self, *args):
+        for k, v in self._orig_kwargs.items():
+            setattr(self._obj, k, v)

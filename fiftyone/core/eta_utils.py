@@ -103,6 +103,9 @@ class ETAModel(fom.Model, fom.EmbeddingsMixin):
             raise ValueError("This model instance does not expose embeddings")
 
     def get_embeddings(self):
+        # mobilenet-v2-imagenet-tf1: (#, 1, 1, 1280)
+        # resnet-v1-50-imagenet-tf1: (#, 1, 1, 2048)
+        # resnet-v2-50-imagenet-tf1: (#, 1, 1, 2048)
         self._ensure_embeddings()
         embeddings = self._model.get_features()
         return embeddings.astype(float, copy=False)

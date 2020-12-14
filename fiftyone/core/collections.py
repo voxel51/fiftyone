@@ -522,15 +522,14 @@ class SampleCollection(object):
         """Computes embeddings for the samples in the collection using the
         given :class:`fiftyone.core.models.Model`.
 
+        The ``model`` must expose embeddings, i.e.,
+        :meth:`fiftyone.core.models.Model.has_embeddings` must return ``True``.
+
         If an ``embeddings_field`` is provided, the embeddings are saved to the
         samples; otherwise, the embeddings are returned in-memory.
 
-        The :class:`fiftyone.core.models.Model` must implement the
-        :class:`fiftyone.core.models.EmbeddingsMixin` mixin.
-
         Args:
-            model: a :class:`fiftyone.core.models.Model` that implements the
-                :class:`fiftyone.core.models.EmbeddingsMixin` mixin
+            model: a :class:`fiftyone.core.models.Model`
             embeddings_field (None): the name of a field in which to store the
                 embeddings
             batch_size (None): an optional batch size to use. Only applicable
@@ -561,15 +560,14 @@ class SampleCollection(object):
         ``patches_field`` of the samples in the collection using the given
         :class:`fiftyone.core.models.Model`.
 
+        The ``model`` must expose embeddings, i.e.,
+        :meth:`fiftyone.core.models.Model.has_embeddings` must return ``True``.
+
         If an ``embeddings_field`` is provided, the embeddings are saved to the
         samples; otherwise, the embeddings are returned in-memory.
 
-        The :class:`fiftyone.core.models.Model` must implement the
-        :class:`fiftyone.core.models.EmbeddingsMixin` mixin.
-
         Args:
-            model: a :class:`fiftyone.core.models.Model` that implements the
-                :class:`fiftyone.core.models.EmbeddingsMixin` mixin
+            model: a :class:`fiftyone.core.models.Model`
             patches_field: a :class:`fiftyone.core.labels.Detection`,
                 :class:`fiftyone.core.labels.Detections`,
                 :class:`fiftyone.core.labels.Polyline`, or

@@ -44,17 +44,16 @@ def apply_torch_image_model(
     """Applies the :class:`fiftyone.core.models.Model` to the image samples in
     the collection.
 
-    The model must implement the :class:`fiftyone.core.models.TorchModelMixin`
-    mixin.
-
     This method performs the same operation as
     :func:`fiftyone.core.models.apply_model` except that the images are loaded
     using a ``torch.utils.data.DataLoader``.
 
+    The ``model`` must implement the
+    :class:`fiftyone.core.models.TorchModelMixin` mixin.
+
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`fiftyone.core.models.Model` that implements the
-            :class:`fiftyone.core.models.TorchModelMixin` mixin
+        model: a :class:`fiftyone.core.models.Model`
         label_field: the name (or prefix) of the field in which to store the
             model predictions
         confidence_thresh (None): an optional confidence threshold to apply to
@@ -76,16 +75,19 @@ def apply_torch_image_model(
     data_loader = _make_data_loader(samples, model, batch_size, num_workers)
 
     with fou.ProgressBar(samples) as pb:
-        with model:
-            for sample_batch, imgs in zip(samples_loader, data_loader):
-                labels = model.predict_all(imgs)
+        with fou.SetAttributes(model, preprocess=False):
+            with model:
+                for sample_batch, imgs in zip(samples_loader, data_loader):
+                    labels = model.predict_all(imgs)
 
-                for sample, label in zip(sample_batch, labels):
-                    sample.add_labels(
-                        label, label_field, confidence_thresh=confidence_thresh
-                    )
+                    for sample, label in zip(sample_batch, labels):
+                        sample.add_labels(
+                            label,
+                            label_field,
+                            confidence_thresh=confidence_thresh,
+                        )
 
-                pb.set_iteration(pb.iteration + len(imgs))
+                    pb.set_iteration(pb.iteration + len(imgs))
 
 
 def compute_torch_image_embeddings(
@@ -94,21 +96,21 @@ def compute_torch_image_embeddings(
     """Computes embeddings for the samples in the collection using the given
     :class:`fiftyone.core.models.Model`.
 
-    The model must implement the :class:`fiftyone.core.models.TorchModelMixin`
-    and :class:`fiftyone.core.models.EmbeddingsMixin` mixins.
-
     This method performs the same operation as
     :func:`fiftyone.core.models.compute_embeddings` except that the images are
     loaded using a ``torch.utils.data.DataLoader``.
+
+    The ``model`` must implement the
+    :class:`fiftyone.core.models.TorchModelMixin` mixin, and it must expose
+    embeddings, i.e., :meth:`fiftyone.core.models.Model.has_embeddings` must
+    return ``True``.
 
     If an ``embeddings_field`` is provided, the embeddings are saved to the
     samples; otherwise, the embeddings are returned in-memory.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`fiftyone.core.models.Model` that implements the
-            :class:`fiftyone.core.models.TorchModelMixin` and
-            :class:`fiftyone.core.models.EmbeddingsMixin` mixins
+        model: a :class:`fiftyone.core.models.Model`
         embeddings_field (None): the name of a field in which to store the
             embeddings
         num_workers (None): the number of workers for the
@@ -128,11 +130,6 @@ def compute_torch_image_embeddings(
             "Model must implement the %s mixin" % fom.TorchModelMixin
         )
 
-    if not isinstance(model, fom.EmbeddingsMixin):
-        raise ValueError(
-            "Model must implement the %s mixin" % fom.EmbeddingsMixin
-        )
-
     if not model.has_embeddings:
         raise ValueError(
             "Model does not expose embeddings (model.has_embeddings = %s)"
@@ -150,20 +147,21 @@ def compute_torch_image_embeddings(
     embeddings = []
 
     with fou.ProgressBar(samples) as pb:
-        with model:
-            for sample_batch, imgs in zip(samples_loader, data_loader):
-                embeddings_batch = model.embed_all(imgs)
+        with fou.SetAttributes(model, preprocess=False):
+            with model:
+                for sample_batch, imgs in zip(samples_loader, data_loader):
+                    embeddings_batch = model.embed_all(imgs)
 
-                if embeddings_field:
-                    for sample, embedding in zip(
-                        sample_batch, embeddings_batch
-                    ):
-                        sample[embeddings_field] = embedding
-                        sample.save()
-                else:
-                    embeddings.append(embeddings_batch)
+                    if embeddings_field:
+                        for sample, embedding in zip(
+                            sample_batch, embeddings_batch
+                        ):
+                            sample[embeddings_field] = embedding
+                            sample.save()
+                    else:
+                        embeddings.append(embeddings_batch)
 
-                pb.set_iteration(pb.iteration + len(imgs))
+                    pb.set_iteration(pb.iteration + len(imgs))
 
     if embeddings_field:
         return None
@@ -184,20 +182,21 @@ def compute_torch_image_patch_embeddings(
     """Computes embeddings for the image patches defined by ``patches_field``
     of the samples in the collection using the given :class:`Model`.
 
-    The model must implement the :class:`fiftyone.core.models.TorchModelMixin`
-    and :class:`fiftyone.core.models.EmbeddingsMixin` mixins.
-
     This method performs the same operation as
     :func:`fiftyone.core.models.compute_patch_embeddings` except that the
     patches are loaded using a ``torch.utils.data.DataLoader``.
+
+    The ``model`` must implement the
+    :class:`fiftyone.core.models.TorchModelMixin` mixin, and it must expose
+    embeddings, i.e., :meth:`fiftyone.core.models.Model.has_embeddings` must
+    return ``True``.
 
     If an ``embeddings_field`` is provided, the embeddings are saved to the
     samples; otherwise, the embeddings are returned in-memory.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model` that implements the :class:`EmbeddingsMixin`
-            mixin
+        model: a :class:`Model`
         patches_field: a :class:`fiftyone.core.labels.Detection`,
             :class:`fiftyone.core.labels.Detections`,
             :class:`fiftyone.core.labels.Polyline`, or
@@ -229,11 +228,6 @@ def compute_torch_image_patch_embeddings(
             "Model must implement the %s mixin" % fom.TorchModelMixin
         )
 
-    if not isinstance(model, fom.EmbeddingsMixin):
-        raise ValueError(
-            "Model must implement the %s mixin" % fom.EmbeddingsMixin
-        )
-
     if not model.has_embeddings:
         raise ValueError(
             "Model does not expose embeddings (model.has_embeddings = %s)"
@@ -256,23 +250,24 @@ def compute_torch_image_patch_embeddings(
     embeddings_dict = {}
 
     with fou.ProgressBar(samples) as pb:
-        with model:
-            for sample, patches in pb(zip(samples, data_loader)):
-                if patches is None:
-                    continue
+        with fou.SetAttributes(model, preprocess=False):
+            with model:
+                for sample, patches in pb(zip(samples, data_loader)):
+                    if patches is None:
+                        continue
 
-                embeddings = []
-                for patches_batch in fou.iter_slices(patches, batch_size):
-                    embeddings_batch = model.embed_all(patches_batch)
-                    embeddings.append(embeddings_batch)
+                    embeddings = []
+                    for patches_batch in fou.iter_slices(patches, batch_size):
+                        embeddings_batch = model.embed_all(patches_batch)
+                        embeddings.append(embeddings_batch)
 
-                embeddings = np.concatenate(embeddings)
+                    embeddings = np.concatenate(embeddings)
 
-                if embeddings_field:
-                    sample[embeddings_field] = embeddings
-                    sample.save()
-                else:
-                    embeddings_dict[sample.id] = embeddings
+                    if embeddings_field:
+                        sample[embeddings_field] = embeddings
+                        sample.save()
+                    else:
+                        embeddings_dict[sample.id] = embeddings
 
     return embeddings_dict if not embeddings_field else None
 
@@ -510,6 +505,7 @@ class TorchImageModel(fom.Model, fom.TorchModelMixin, TorchEmbeddingsMixin):
         ragged_batches, transforms = self._build_transforms(config)
         self._ragged_batches = ragged_batches
         self._transforms = transforms
+        self._preprocess = True
 
         # Load model
         self._using_gpu = torch.cuda.is_available()
@@ -562,6 +558,15 @@ class TorchImageModel(fom.Model, fom.TorchModelMixin, TorchEmbeddingsMixin):
         return self._transforms
 
     @property
+    def preprocess(self):
+        """Whether to apply preprocessing transforms during inference."""
+        return self._preprocess
+
+    @preprocess.setter
+    def preprocess(self, value):
+        self._preprocess = value
+
+    @property
     def using_gpu(self):
         """Whether the model is using GPU."""
         return self._using_gpu
@@ -589,9 +594,6 @@ class TorchImageModel(fom.Model, fom.TorchModelMixin, TorchEmbeddingsMixin):
     def predict(self, img):
         """Peforms prediction on the given image.
 
-        If a Torch tensor is provided, it is assumed that the preprocessing
-        transforms have already been applied.
-
         Args:
             img: the image to process, which can be any of the following:
 
@@ -614,9 +616,6 @@ class TorchImageModel(fom.Model, fom.TorchModelMixin, TorchEmbeddingsMixin):
     def predict_all(self, imgs):
         """Peforms prediction on the given batch of images.
 
-        If a Torch tensor or list of Torch tensors is provided, it is assumed
-        that the preprocessing transforms have already been applied.
-
         Args:
             imgs: the batch of images to process, which can be any of the
                 following:
@@ -635,9 +634,10 @@ class TorchImageModel(fom.Model, fom.TorchModelMixin, TorchEmbeddingsMixin):
         return self._predict_all(imgs)
 
     def _predict_all(self, imgs):
-        imgs = self._preprocess_batch(imgs)
+        if self._preprocess:
+            imgs = [self._transforms(img) for img in imgs]
 
-        if isinstance(imgs, list):
+        if isinstance(imgs, (list, tuple)):
             imgs = torch.stack(imgs)
 
         frame_size = tuple(imgs.size())[-2:]
@@ -650,21 +650,6 @@ class TorchImageModel(fom.Model, fom.TorchModelMixin, TorchEmbeddingsMixin):
 
         output = self._model(imgs)
         return self._output_processor(output, frame_size)
-
-    def _preprocess_batch(self, imgs):
-        if isinstance(imgs, tuple):
-            imgs = list(imgs)
-
-        if isinstance(imgs, list):
-            if not isinstance(imgs[0], torch.Tensor):
-                imgs = self._do_preprocessing(imgs)
-        elif not isinstance(imgs, torch.Tensor):
-            imgs = self._do_preprocessing(imgs)
-
-        return imgs
-
-    def _do_preprocessing(self, imgs):
-        return [self._transforms(img) for img in imgs]
 
     def _get_class_labels(self, config):
         if config.labels_string:
