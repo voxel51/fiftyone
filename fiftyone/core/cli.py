@@ -1691,7 +1691,6 @@ class ModelZooRequirementsCommand(Command):
         parser.add_argument(
             "--error-level",
             metavar="LEVEL",
-            default=0,
             type=int,
             help=(
                 "the error level in {0, 1, 2} to use when installing or "

@@ -91,6 +91,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_SHOW_PROGRESS_BARS",
             default=True,
         )
+        self.requirement_error_level = self.parse_int(
+            d,
+            "requirement_error_level",
+            env_var="FIFTYONE_REQUIREMENT_ERROR_LEVEL",
+            default=0,
+        )
 
         self._set_defaults()
         self._validate()

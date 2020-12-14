@@ -98,7 +98,7 @@ def download_zoo_model(name, overwrite=False):
     return model, model_path
 
 
-def install_zoo_model_requirements(name, error_level=0):
+def install_zoo_model_requirements(name, error_level=None):
     """Installs any package requirements for the zoo model with the given name.
 
     Args:
@@ -106,17 +106,21 @@ def install_zoo_model_requirements(name, error_level=0):
             refer to a specific version of the model. If no version is
             specified, the latest version of the model is used. Call
             :func:`list_zoo_models` to see the available models
-        error_level: the error level to use, defined as:
+        error_level (None): the error level to use. By default,
+            ``fo.config.requirement_error_level`` is used. Valid values are:
 
             0: raise error if a requirement install fails
             1: log warning if a requirement install fails
             2: ignore install fails
     """
+    if error_level is None:
+        error_level = fo.config.requirement_error_level
+
     model = _get_model(name)
     model.install_requirements(error_level=error_level)
 
 
-def ensure_zoo_model_requirements(name, error_level=0):
+def ensure_zoo_model_requirements(name, error_level=None):
     """Ensures that the package requirements for the zoo model with the given
     name are satisfied.
 
@@ -125,12 +129,16 @@ def ensure_zoo_model_requirements(name, error_level=0):
             refer to a specific version of the model. If no version is
             specified, the latest version of the model is used. Call
             :func:`list_zoo_models` to see the available models
-        error_level: the error level to use, defined as:
+        error_level (None): the error level to use. By default,
+            ``fo.config.requirement_error_level`` is used. Valid values are:
 
             0: raise error if a requirement is not satisfied
             1: log warning if a requirement is not satisifed
             2: ignore unsatisifed requirements
     """
+    if error_level is None:
+        error_level = fo.config.requirement_error_level
+
     model = _get_model(name)
     model.ensure_requirements(error_level=error_level)
 
@@ -139,7 +147,7 @@ def load_zoo_model(
     name,
     download_if_necessary=True,
     install_requirements=False,
-    error_level=0,
+    error_level=None,
     **kwargs,
 ):
     """Loads the model of the given name from the FiftyOne Model Zoo.
@@ -156,7 +164,9 @@ def load_zoo_model(
             not found in the specified directory
         install_requirements: whether to install any requirements before
             loading the model. By default, this is False
-        error_level: the error level to use, defined as:
+        error_level (None): the error level to use when installing/ensuring
+            requirements. By default, ``fo.config.requirement_error_level`` is
+            used. Valid values are:
 
             0: raise error if a requirement is not satisfied
             1: log warning if a requirement is not satisifed
@@ -168,6 +178,9 @@ def load_zoo_model(
     Returns:
         a :class:`fiftyone.core.models.Model`
     """
+    if error_level is None:
+        error_level = fo.config.requirement_error_level
+
     model = _get_model(name)
     models_dir = fo.config.model_zoo_dir
 
