@@ -483,7 +483,7 @@ class TorchImageModelConfig(Config):
         )
 
 
-class TorchImageModel(fom.Model, fom.TorchModelMixin, TorchEmbeddingsMixin):
+class TorchImageModel(TorchEmbeddingsMixin, fom.TorchModelMixin, fom.Model):
     """Wrapper for evaluating a Torch model on images.
 
     This wrapper assumes that ``config.entrypoint_fcn`` returns a
