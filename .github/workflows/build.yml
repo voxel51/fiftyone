@@ -58,7 +58,7 @@ jobs:
           - windows-latest
         python-version:
           - 3.6
-          - 3.8
+          - 3.9
         exclude:
           - os: windows-latest
             python-version: 3.6
