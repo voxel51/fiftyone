@@ -1,20 +1,21 @@
 import _ from "lodash";
 import randomColor from "randomcolor";
 
-const FIXED_COLORS = [
-  "#ee0000",
-  "#ee6600",
-  "#993300",
-  "#996633",
-  "#999900",
-  "#009900",
-  "#003300",
-  "#009999",
-  "#000099",
-  "#0066ff",
-  "#6600ff",
-  "#cc33cc",
-  "#777799",
+// From https://en.wikipedia.org/wiki/Help:Distinguishable_colors
+export const FIXED_COLORS = [
+  "#0075DC", // blue
+  "#993F00", // caramel
+  "#4C005C", // damson
+  "#005C31", // forest
+  "#2BAE28", // green (dimmed)
+  "#8F7C00", // khaki
+  "#C20088", // mallow
+  "#003380", // navy
+  "#EE8005", // orpiment (dimmed)
+  "#FF0010", // red
+  "#00998F", // turquoise
+  "#740AFF", // violet
+  "#990000", // wine
 ];
 
 type Color = string;
