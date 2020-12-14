@@ -103,11 +103,9 @@ class ETAModel(fom.Model, fom.EmbeddingsMixin):
             raise ValueError("This model instance does not expose embeddings")
 
     def get_embeddings(self):
-        # mobilenet-v2-imagenet-tf1: (#, 1, 1, 1280)
-        # resnet-v1-50-imagenet-tf1: (#, 1, 1, 2048)
-        # resnet-v2-50-imagenet-tf1: (#, 1, 1, 2048)
         self._ensure_embeddings()
         embeddings = self._model.get_features()
+        embeddings = _squeeze_extra_unit_dims(embeddings)
         return embeddings.astype(float, copy=False)
 
     def embed(self, arg):
@@ -645,3 +643,16 @@ def _expand_with_labels_dict(
         labels["mask"] = fol.Segmentation.from_mask(frame_labels.mask)
 
     return labels
+
+
+def _squeeze_extra_unit_dims(embeddings):
+    dims = embeddings.shape[1:]
+    extra_axes = tuple(ax for ax, dim in enumerate(dims, 1) if dim == 1)
+
+    if len(extra_axes) == len(dims):
+        extra_axes = extra_axes[1:]
+
+    if extra_axes:
+        return np.squeeze(embeddings, axis=extra_axes)
+
+    return embeddings
