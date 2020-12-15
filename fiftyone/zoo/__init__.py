@@ -670,6 +670,16 @@ class ZooDataset(object):
         raise NotImplementedError("subclasses must implement name")
 
     @property
+    def tags(self):
+        """A tuple of tags for the dataset."""
+        return None
+
+    @property
+    def has_tags(self):
+        """Whether the dataset has tags."""
+        return self.tags is not None
+
+    @property
     def parameters(self):
         """An optional dict of parameters describing the configuration of the
         zoo dataset when it was downloaded.
@@ -687,6 +697,17 @@ class ZooDataset(object):
     def has_splits(self):
         """Whether the dataset has splits."""
         return self.supported_splits is not None
+
+    def has_tag(self, tag):
+        """Whether the dataset has the given tag.
+
+        Args:
+            tag: the tag
+
+        Returns:
+            True/False
+        """
+        return self.has_tags and (tag in self.tags)
 
     def has_split(self, split):
         """Whether the dataset has the given split.

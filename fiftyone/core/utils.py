@@ -708,6 +708,10 @@ class MonkeyPatchFunction(object):
 class SetAttributes(object):
     """Context manager that temporarily sets the attributes of a class to new
     values.
+
+    Args:
+        obj: the object
+        **kwargs: the attribute key-values to set while the context is active
     """
 
     def __init__(self, obj, **kwargs):

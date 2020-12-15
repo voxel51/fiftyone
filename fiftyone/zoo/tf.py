@@ -55,6 +55,10 @@ class MNISTDataset(TFDSDataset):
         return "mnist"
 
     @property
+    def tags(self):
+        return ("image", "classification")
+
+    @property
     def supported_splits(self):
         return ("test", "train")
 
@@ -97,6 +101,10 @@ class FashionMNISTDataset(TFDSDataset):
     @property
     def name(self):
         return "fashion-mnist"
+
+    @property
+    def tags(self):
+        return ("image", "classification")
 
     @property
     def supported_splits(self):
@@ -143,6 +151,10 @@ class CIFAR10Dataset(TFDSDataset):
         return "cifar10"
 
     @property
+    def tags(self):
+        return ("image", "classification")
+
+    @property
     def supported_splits(self):
         return ("test", "train")
 
@@ -185,6 +197,10 @@ class CIFAR100Dataset(TFDSDataset):
     @property
     def name(self):
         return "cifar100"
+
+    @property
+    def tags(self):
+        return ("image", "classification")
 
     @property
     def supported_splits(self):
@@ -232,6 +248,10 @@ class Caltech101Dataset(TFDSDataset):
     @property
     def name(self):
         return "caltech101"
+
+    @property
+    def tags(self):
+        return ("image", "classification")
 
     @property
     def supported_splits(self):
@@ -317,6 +337,10 @@ class ImageNet2012Dataset(TFDSDataset):
         return "imagenet-2012"
 
     @property
+    def tags(self):
+        return ("image", "classification", "manual")
+
+    @property
     def supported_splits(self):
         return ("train", "validation")
 
@@ -378,6 +402,10 @@ class COCO2014Dataset(TFDSDataset):
         return "coco-2014"
 
     @property
+    def tags(self):
+        return ("image", "detection")
+
+    @property
     def supported_splits(self):
         return ("test", "train", "validation")
 
@@ -435,6 +463,10 @@ class COCO2017Dataset(TFDSDataset):
         return "coco-2017"
 
     @property
+    def tags(self):
+        return ("image", "detection")
+
+    @property
     def supported_splits(self):
         return ("test", "train", "validation")
 
@@ -486,6 +518,10 @@ class KITTIDataset(TFDSDataset):
     @property
     def name(self):
         return "kitti"
+
+    @property
+    def tags(self):
+        return ("image", "detection")
 
     @property
     def supported_splits(self):
@@ -541,6 +577,10 @@ class VOC2007Dataset(TFDSDataset):
         return "voc-2007"
 
     @property
+    def tags(self):
+        return ("image", "detection")
+
+    @property
     def supported_splits(self):
         return ("train", "validation", "test")
 
@@ -592,6 +632,10 @@ class VOC2012Dataset(TFDSDataset):
     @property
     def name(self):
         return "voc-2012"
+
+    @property
+    def tags(self):
+        return ("image", "detection")
 
     @property
     def supported_splits(self):

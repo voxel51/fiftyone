@@ -57,6 +57,10 @@ class MNISTDataset(TorchVisionDataset):
         return "mnist"
 
     @property
+    def tags(self):
+        return ("image", "classification")
+
+    @property
     def supported_splits(self):
         return ("test", "train")
 
@@ -95,6 +99,10 @@ class FashionMNISTDataset(TorchVisionDataset):
     @property
     def name(self):
         return "fashion-mnist"
+
+    @property
+    def tags(self):
+        return ("image", "classification")
 
     @property
     def supported_splits(self):
@@ -136,6 +144,10 @@ class CIFAR10Dataset(TorchVisionDataset):
         return "cifar10"
 
     @property
+    def tags(self):
+        return ("image", "classification")
+
+    @property
     def supported_splits(self):
         return ("test", "train")
 
@@ -174,6 +186,10 @@ class CIFAR100Dataset(TorchVisionDataset):
     @property
     def name(self):
         return "cifar100"
+
+    @property
+    def tags(self):
+        return ("image", "classification")
 
     @property
     def supported_splits(self):
@@ -255,6 +271,10 @@ class ImageNet2012Dataset(TorchVisionDataset):
         return "imagenet-2012"
 
     @property
+    def tags(self):
+        return ("image", "classification", "manual")
+
+    @property
     def supported_splits(self):
         return ("train", "validation")
 
@@ -308,6 +328,10 @@ class COCO2014Dataset(TorchVisionDataset):
         return "coco-2014"
 
     @property
+    def tags(self):
+        return ("image", "detection")
+
+    @property
     def supported_splits(self):
         return ("test", "train", "validation")
 
@@ -357,6 +381,10 @@ class COCO2017Dataset(TorchVisionDataset):
         return "coco-2017"
 
     @property
+    def tags(self):
+        return ("image", "detection")
+
+    @property
     def supported_splits(self):
         return ("test", "train", "validation")
 
@@ -400,6 +428,10 @@ class VOC2007Dataset(TorchVisionDataset):
     @property
     def name(self):
         return "voc-2007"
+
+    @property
+    def tags(self):
+        return ("image", "detection")
 
     @property
     def supported_splits(self):
@@ -448,6 +480,10 @@ class VOC2012Dataset(TorchVisionDataset):
     @property
     def name(self):
         return "voc-2012"
+
+    @property
+    def tags(self):
+        return ("image", "detection")
 
     @property
     def supported_splits(self):

@@ -1141,10 +1141,28 @@ class ZooListCommand(Command):
 
         # List available datasets
         fiftyone zoo list
+
+        # List downloaded datasets
+        fiftyone zoo list --downloaded-only
+
+        # List available datasets with the given tag
+        fiftyone zoo list --tag <tag>
     """
 
     @staticmethod
     def setup(parser):
+        parser.add_argument(
+            "-d",
+            "--downloaded-only",
+            action="store_true",
+            help="only show datasets that have been downloaded",
+        )
+        parser.add_argument(
+            "-t",
+            "--tag",
+            metavar="TAG",
+            help="only show datasets matching the specified tag",
+        )
         parser.add_argument(
             "-b",
             "--base-dir",
@@ -1157,6 +1175,9 @@ class ZooListCommand(Command):
 
     @staticmethod
     def execute(parser, args):
+        downloaded_only = args.downloaded_only
+        match_tag = args.tag
+
         all_datasets = foz._get_zoo_datasets()
         all_sources, default_source = foz._get_zoo_dataset_sources()
 
@@ -1166,12 +1187,22 @@ class ZooListCommand(Command):
         )
 
         _print_zoo_dataset_list(
-            downloaded_datasets, all_datasets, all_sources, default_source
+            downloaded_datasets,
+            all_datasets,
+            all_sources,
+            default_source,
+            downloaded_only=downloaded_only,
+            match_tag=match_tag,
         )
 
 
 def _print_zoo_dataset_list(
-    downloaded_datasets, all_datasets, all_sources, default_source
+    downloaded_datasets,
+    all_datasets,
+    all_sources,
+    default_source,
+    downloaded_only=False,
+    match_tag=None,
 ):
     available_datasets = defaultdict(dict)
     for source, datasets in all_datasets.items():
@@ -1182,7 +1213,18 @@ def _print_zoo_dataset_list(
 
     # Iterate over available datasets
     for name in sorted(available_datasets):
+        if downloaded_only and name not in downloaded_datasets:
+            continue
+
         dataset_sources = available_datasets[name]
+
+        tags = None
+        for source, zoo_model in dataset_sources.items():
+            if tags is None or source == default_source:
+                tags = zoo_model.tags
+
+        if (match_tag is not None) and (tags is None or match_tag not in tags):
+            continue
 
         # Check for downloaded splits
         if name in downloaded_datasets:
@@ -1223,13 +1265,17 @@ def _print_zoo_dataset_list(
             else:
                 split_dir = ""
 
+            if downloaded_only and not split_dir:
+                continue
+
+            tags_str = ",".join(tags) if tags else ""
             is_downloaded = "\u2713" if split_dir else ""
 
             records.append(
-                (name, split, is_downloaded, split_dir) + tuple(srcs)
+                (name, tags_str, split, is_downloaded, split_dir) + tuple(srcs)
             )
 
-    headers = ["name", "split", "downloaded", "dataset_dir"]
+    headers = ["name", "tags", "split", "downloaded", "dataset_dir"]
     for source in all_sources:
         if source == default_source:
             source += " (*)"
@@ -1512,7 +1558,7 @@ class ModelZooListCommand(Command):
         # List downloaded models
         fiftyone model-zoo list --downloaded-only
 
-        # List available models matching the given tag
+        # List available models with the given tag
         fiftyone model-zoo list --tag <tag>
     """
 
@@ -1528,7 +1574,7 @@ class ModelZooListCommand(Command):
             "-t",
             "--tag",
             metavar="TAG",
-            help="only show models matchiing the specified tag",
+            help="only show models matching the specified tag",
         )
 
     @staticmethod
@@ -1554,10 +1600,10 @@ def _print_zoo_models_list(
     for model in sorted(models_manifest.models, key=lambda model: model.name):
         name = model.name
 
-        if match_tag is not None and not model.has_tag(match_tag):
+        if downloaded_only and name not in downloaded_models:
             continue
 
-        if downloaded_only and name not in downloaded_models:
+        if match_tag is not None and not model.has_tag(match_tag):
             continue
 
         if name in downloaded_models:

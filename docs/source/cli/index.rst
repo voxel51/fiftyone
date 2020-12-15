@@ -866,11 +866,6 @@ List datasets in the FiftyOne Dataset Zoo.
     # List available datasets
     fiftyone zoo list
 
-.. code-block:: shell
-
-    # List available datasets, using the specified base directory to search for downloaded datasets
-    fiftyone zoo list --base-dir <base-dir>
-
 .. _cli-fiftyone-zoo-find:
 
 Find zoo datasets on disk
@@ -1111,7 +1106,7 @@ List datasets in the FiftyOne Model Zoo.
 
 .. code-block:: text
 
-    fiftyone model-zoo list [-h] [-d MODELS_DIR]
+    fiftyone model-zoo list [-h]
 
 **Arguments**
 
@@ -1119,8 +1114,6 @@ List datasets in the FiftyOne Model Zoo.
 
     optional arguments:
       -h, --help            show this help message and exit
-      -d MODELS_DIR, --models-dir MODELS_DIR
-                            a custom directory to which to search for downloaded models
 
 **Examples**
 
@@ -1138,7 +1131,7 @@ Locate the downloaded zoo model on disk.
 
 .. code-block:: text
 
-    fiftyone model-zoo find [-h] [-d MODELS_DIR] NAME
+    fiftyone model-zoo find [-h] NAME
 
 **Arguments**
 
@@ -1149,8 +1142,6 @@ Locate the downloaded zoo model on disk.
 
     optional arguments:
       -h, --help            show this help message and exit
-      -d MODELS_DIR, --models-dir MODELS_DIR
-                            a custom directory to which to search for downloaded models
 
 **Examples**
 
@@ -1168,7 +1159,7 @@ Print information about models in the FiftyOne Model Zoo.
 
 .. code-block:: text
 
-    fiftyone model-zoo info [-h] [-d MODELS_DIR] NAME
+    fiftyone model-zoo info [-h] NAME
 
 **Arguments**
 
@@ -1179,8 +1170,6 @@ Print information about models in the FiftyOne Model Zoo.
 
     optional arguments:
       -h, --help            show this help message and exit
-      -d MODELS_DIR, --models-dir MODELS_DIR
-                            a custom directory to which to search for downloaded models
 
 **Examples**
 
@@ -1242,7 +1231,7 @@ Download zoo models.
 
 .. code-block:: text
 
-    fiftyone model-zoo download [-h] [-f] [-d MODELS_DIR] NAME
+    fiftyone model-zoo download [-h] [-f] NAME
 
 **Arguments**
 
@@ -1254,8 +1243,6 @@ Download zoo models.
     optional arguments:
       -h, --help            show this help message and exit
       -f, --force           whether to force download the model if it is already downloaded
-      -d MODELS_DIR, --models-dir MODELS_DIR
-                            a custom directory to which to download the model
 
 **Examples**
 
@@ -1263,11 +1250,6 @@ Download zoo models.
 
     # Download the zoo model
     fiftyone model-zoo download <name>
-
-.. code-block:: shell
-
-    # Download the zoo model to a custom directory
-    fiftyone model-zoo download <name> --models-dir <models-dir>
 
 .. _cli-fiftyone-model-zoo-delete:
 

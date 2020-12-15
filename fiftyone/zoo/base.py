@@ -51,6 +51,10 @@ class QuickstartDataset(FiftyOneDataset):
         return "quickstart"
 
     @property
+    def tags(self):
+        return ("image", "quickstart")
+
+    @property
     def supported_splits(self):
         return None
 
@@ -91,6 +95,10 @@ class VideoQuickstartDataset(FiftyOneDataset):
     @property
     def name(self):
         return "quickstart-video"
+
+    @property
+    def tags(self):
+        return ("video", "quickstart")
 
     @property
     def supported_splits(self):
@@ -142,6 +150,10 @@ class COCO2014Dataset(FiftyOneDataset):
     @property
     def name(self):
         return "coco-2014-segmentation"
+
+    @property
+    def tags(self):
+        return ("image", "detection", "segmentation")
 
     @property
     def supported_splits(self):
@@ -198,6 +210,10 @@ class COCO2017Dataset(FiftyOneDataset):
         return "coco-2017-segmentation"
 
     @property
+    def tags(self):
+        return ("image", "detection", "segmentation")
+
+    @property
     def supported_splits(self):
         return ("test", "train", "validation")
 
@@ -245,6 +261,10 @@ class LabeledFacesInTheWildDataset(FiftyOneDataset):
     @property
     def name(self):
         return "lfw"
+
+    @property
+    def tags(self):
+        return ("image", "classification", "facial-recognition")
 
     @property
     def supported_splits(self):
@@ -349,6 +369,10 @@ class CityscapesDataset(FiftyOneDataset):
         return "cityscapes"
 
     @property
+    def tags(self):
+        return ("image", "multilabel", "automotive", "manual")
+
+    @property
     def supported_splits(self):
         return ("train", "test", "validation")
 
@@ -449,6 +473,10 @@ class BDD100KDataset(FiftyOneDataset):
         return "bdd100k"
 
     @property
+    def tags(self):
+        return ("image", "multilabel", "automotive", "manual")
+
+    @property
     def supported_splits(self):
         return ("train", "validation", "test")
 
@@ -496,6 +524,10 @@ class HMDB51Dataset(FiftyOneDataset):
     @property
     def name(self):
         return "hmdb51"
+
+    @property
+    def tags(self):
+        return ("video", "action-recognition")
 
     @property
     def parameters(self):
@@ -568,6 +600,10 @@ class UCF101Dataset(FiftyOneDataset):
     @property
     def name(self):
         return "ucf101"
+
+    @property
+    def tags(self):
+        return ("video", "action-recognition")
 
     @property
     def parameters(self):
