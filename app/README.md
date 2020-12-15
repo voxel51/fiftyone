@@ -6,7 +6,8 @@ Project FiftyOne React/Electron App
 
 ## Installation
 
-Install [`nvm`](https://github.com/nvm-sh/nvm) and set your node version to `v12.16.2`:
+Install [`nvm`](https://github.com/nvm-sh/nvm) and set your node version to
+`v12.16.2`:
 
 ```sh
 nvm use v12.16.2
@@ -18,15 +19,25 @@ Install the app with `yarn` in this directory (`./fiftyone/app`):
 yarn install
 ```
 
-Start the app:
+Start the web app:
 
 ```sh
-yarn dev
+yarn start-web
+```
+
+This start the App client development server with hot reloading.
+
+You will need to create a `fiftyone.core.session.Session` to start the backend
+server. Or you can start the backend server directly in your python virtual
+environment:
+
+```sh
+# in ./fiftyone/server/
+python main.py
 ```
 
 That's it!
 
 ## Copyright
 
-Copyright 2017-2020, Voxel51, Inc.<br>
-voxel51.com
+Copyright 2017-2020, Voxel51, Inc.<br> voxel51.com

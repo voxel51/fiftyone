@@ -35,7 +35,7 @@ You can also follow us on social media (
 You can install the latest stable version of FiftyOne via `pip`:
 
 ```shell
-pip install --index https://pypi.voxel51.com fiftyone
+pip install fiftyone
 ```
 
 FiftyOne requires at least Python 3.5 and pip 19.3. Consult the
@@ -116,7 +116,8 @@ sudo dnf install libcurl openssl
 
 We strongly recommend that you install FiftyOne in a
 [virtual environment](https://voxel51.com/docs/fiftyone/getting_started/virtualenv.html)
-to maintain a clean workspace.
+to maintain a clean workspace. The install script is only supported in
+POSIX-based systems (e.g. Mac and Linux).
 
 1. Clone the repository:
 
@@ -135,7 +136,7 @@ bash install.bash
    separately after installing FiftyOne:
 
 ```shell
-pip install --index https://pypi.voxel51.com fiftyone-brain
+pip install fiftyone-brain
 ```
 
 ### Customizing your ETA installation
@@ -176,5 +177,5 @@ contributing to the documentation.
 You can uninstall FiftyOne as follows:
 
 ```shell
-pip uninstall fiftyone fiftyone-brain fiftyone-db fiftyone-gui
+pip uninstall fiftyone fiftyone-brain fiftyone-db fiftyone-desktop
 ```
