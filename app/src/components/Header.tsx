@@ -319,8 +319,8 @@ const Input = styled.input`
 const TshirtForm = () => {
   const [formState, setFormState] = useState({});
   const [submitText, setSubmitText] = useState("Submit");
-  const portalId = 8996037;
-  const formId = "03559cd9-fa81-4f48-9a67-c5959731de08";
+  const portalId = 4972700;
+  const formId = "b56682f6-c297-4cea-95c4-9e05a00528af";
   const postUrl = `https://api.hsforms.com/submissions/v3/integration/submit/${portalId}/${formId}`;
   const appContext = useRecoilValue(selectors.appContext);
 
@@ -348,11 +348,11 @@ const TshirtForm = () => {
             value: formState.email,
           },
           {
-            name: "are_you_enjoying_fiftyone_",
+            name: "is_fiftyone_helping_your_work_how_so_",
             value: formState.helping,
           },
           {
-            name: "how_could_we_improve_fiftyone",
+            name: "how_could_we_improve_fiftyone_",
             value: formState.improve,
           },
           {
@@ -532,7 +532,7 @@ const Header = ({ addNotification }) => {
               !appFeedbackIsOpen && setAppFeedbackIsOpen(true);
               !appFeedbackIsOpen &&
                 addNotification.current({
-                  kind: "Feedback is awesome!",
+                  kind: "We'd love your feedback",
                   message:
                     "We are super focused on making FiftyOne as valuable as possible to our users. If you provide your email in this form, we'll get in touch with you about mailing a free T-shirt to you. While supplies last!",
                   children: [<TshirtForm key="t-shirt" />],
