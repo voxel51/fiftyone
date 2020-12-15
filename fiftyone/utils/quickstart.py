@@ -17,7 +17,7 @@ _EXIT = os.environ.get("FIFTYONE_EXIT", False)
 
 
 def quickstart(
-    interactive=True, video=False, port=5151, remote=False, window=None
+    interactive=True, video=False, port=5151, remote=False, desktop=False
 ):
     """Runs the FiftyOne quickstart.
 
@@ -29,12 +29,12 @@ def quickstart(
             return a session
         video (False): whether to launch a video dataset
         port (5151): the port number to serve the App
-        remote (False): whether this is a remote session, and opening a window
+        remote (False): whether this is a remote session, and opening the App
             should not be attempted
-        window (None): 'browser' or 'desktop'. If 'desktop', the desktop App
-            package must be installed (fiftyone-desktop). Defaults to the
-            FIFTYONE_WINDOW environment variable if not provided, or 'browser'
-            if the environment variable is not set. DOES NOT apply to notebook
+        desktop (False): If `True`, the session will launch the desktop App.
+            The desktop App package must be installed (fiftyone-desktop),
+            if so. The `FIFTYONE_DESKTOP_WINDOW=true` environment variable can
+            be used as a persistent desktop setting. DOES NOT apply to notebook
             contexts (e.g. Jupyter), use :meth:`Session.show` instead.
 
     Returns:
@@ -47,36 +47,37 @@ def quickstart(
         If ``interactive`` is ``False``, ``None`` is returned
     """
     if video:
-        return _video_quickstart(interactive, port, remote, window)
+        return _video_quickstart(interactive, port, remote, desktop)
     else:
-        return _quickstart(interactive, port, remote, window)
+        return _quickstart(interactive, port, remote, desktop)
 
 
-def _context_instructions(interactive, port, window):
+def _context_instructions(interactive, port, desktop):
     context = focx._get_context()
     if context != focx._NONE:
         return _QUICKSTART_NOTEBOOK
 
-    if window is None:
-        window = fo.config.default_window
+    if not desktop:
+        desktop = fo.config.desktop
 
-    if interactive and window == focx._BROWSER:
+    if interactive and not desktop:
         return _QUICKSTART_WEB_INTERACTIVE % port
-    elif window == focx._BROWSER:
+    elif not desktop:
         return _QUICKSTART_WEB % port
 
     # desktop
     if interactive:
         return _QUICKSTART_DESKTOP_INTERACTIVE
+
     return _QUICKSTART_DESKTOP
 
 
-def _quickstart(interactive, port, remote, window):
+def _quickstart(interactive, port, remote, desktop):
     dataset = foz.load_zoo_dataset("quickstart")
     session = fos.launch_app(
-        dataset=dataset, port=port, remote=remote, window=window
+        dataset=dataset, port=port, remote=remote, desktop=desktop
     )
-    ctx_instr = _context_instructions(interactive, port, window)
+    ctx_instr = _context_instructions(interactive, port, desktop)
 
     # @todo improve readability of stdout when launching remote sessions
 
@@ -91,12 +92,12 @@ def _quickstart(interactive, port, remote, window):
     return None
 
 
-def _video_quickstart(interactive, port, remote, window):
+def _video_quickstart(interactive, port, remote, desktop):
     dataset = foz.load_zoo_dataset("quickstart-video")
     session = fos.launch_app(
-        dataset=dataset, port=port, remote=remote, window=window
+        dataset=dataset, port=port, remote=remote, desktop=desktop
     )
-    ctx_instr = _context_instructions(interactive, port, window)
+    ctx_instr = _context_instructions(interactive, port, desktop)
     instructions = _VIDEO_QUICKSTART_GUIDE % ctx_instr
 
     # @todo improve readability of stdout when launching remote sessions

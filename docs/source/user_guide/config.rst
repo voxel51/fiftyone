@@ -38,6 +38,9 @@ FiftyOne supports the configuration options described below:
 +------------------------+---------------------------------+------------------------+----------------------------------------------------------------------------------------+
 | `default_video_ext`    | `FIFTYONE_DEFAULT_VIDEO_EXT`    | `.mp4`                 | The default video format to use when writing videos to disk.                           |
 +------------------------+---------------------------------+------------------------+----------------------------------------------------------------------------------------+
+| `desktop`              | `FIFTYONE_DESKTOP_APP`          | `False`                | Launch session's in the desktop App instead of the browser. The `fiftyone-desktop`     |
+|                        |                                 |                        | package is required if `True`.                                                         |
++------------------------+---------------------------------+------------------------+----------------------------------------------------------------------------------------+
 | `show_progress_bars`   | `FIFTYONE_SHOW_PROGRESS_BARS`   | `True`                 | Controls whether progress bars are printed to the terminal when performing             |
 |                        |                                 |                        | operations such reading/writing large datasets or activiating FiftyOne                 |
 |                        |                                 |                        | Brain methods on datasets.                                                             |
