@@ -1162,7 +1162,7 @@ class ZooListCommand(Command):
             "-t",
             "--tag",
             metavar="TAG",
-            help="only show datasets matching the specified tag",
+            help="only show datasets with the specified tag or list,of,tags",
         )
         parser.add_argument(
             "-b",
@@ -1177,7 +1177,7 @@ class ZooListCommand(Command):
     @staticmethod
     def execute(parser, args):
         downloaded_only = args.downloaded_only
-        match_tag = args.tag
+        match_tags = args.tag
 
         all_datasets = foz._get_zoo_datasets()
         all_sources, default_source = foz._get_zoo_dataset_sources()
@@ -1193,7 +1193,7 @@ class ZooListCommand(Command):
             all_sources,
             default_source,
             downloaded_only=downloaded_only,
-            match_tag=match_tag,
+            match_tags=match_tags,
         )
 
 
@@ -1203,8 +1203,11 @@ def _print_zoo_dataset_list(
     all_sources,
     default_source,
     downloaded_only=False,
-    match_tag=None,
+    match_tags=None,
 ):
+    if match_tags is not None:
+        match_tags = match_tags.split(",")
+
     available_datasets = defaultdict(dict)
     for source, datasets in all_datasets.items():
         for name, zoo_dataset_cls in datasets.items():
@@ -1224,7 +1227,9 @@ def _print_zoo_dataset_list(
             if tags is None or source == default_source:
                 tags = zoo_model.tags
 
-        if (match_tag is not None) and (tags is None or match_tag not in tags):
+        if (match_tags is not None) and (
+            tags is None or not all(tag in tags for tag in match_tags)
+        ):
             continue
 
         # Check for downloaded splits
@@ -1584,13 +1589,13 @@ class ModelZooListCommand(Command):
             "-t",
             "--tag",
             metavar="TAG",
-            help="only show models matching the specified tag",
+            help="only show models with the specified tag or list,of,tags",
         )
 
     @staticmethod
     def execute(parser, args):
         downloaded_only = args.downloaded_only
-        match_tag = args.tag
+        match_tags = args.tag
 
         models_manifest = fozm._load_zoo_models_manifest()
         downloaded_models = fozm.list_downloaded_zoo_models()
@@ -1599,13 +1604,16 @@ class ModelZooListCommand(Command):
             models_manifest,
             downloaded_models,
             downloaded_only=downloaded_only,
-            match_tag=match_tag,
+            match_tags=match_tags,
         )
 
 
 def _print_zoo_models_list(
-    models_manifest, downloaded_models, downloaded_only=False, match_tag=None
+    models_manifest, downloaded_models, downloaded_only=False, match_tags=None
 ):
+    if match_tags is not None:
+        match_tags = match_tags.split(",")
+
     records = []
     for model in sorted(models_manifest.models, key=lambda model: model.name):
         name = model.name
@@ -1613,7 +1621,9 @@ def _print_zoo_models_list(
         if downloaded_only and name not in downloaded_models:
             continue
 
-        if match_tag is not None and not model.has_tag(match_tag):
+        if (match_tags is not None) and not all(
+            model.has_tag(tag) for tag in match_tags
+        ):
             continue
 
         if name in downloaded_models:
