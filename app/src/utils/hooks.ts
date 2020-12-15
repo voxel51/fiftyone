@@ -189,7 +189,7 @@ export const useGA = () => {
     if (info.do_not_track) {
       return;
     }
-    const dev = process.env.NODE_ENV == "development";
+    const dev = info.dev_install;
     const buildType = dev ? "dev" : "prod";
 
     ReactGA.initialize(gaConfig.app_ids[buildType], {
