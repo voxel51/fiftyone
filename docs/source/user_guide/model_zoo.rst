@@ -115,18 +115,24 @@ Getting information about zoo models
 
         import fiftyone.zoo.models as fozm
 
-        zoo_model = fozm.get_zoo_model("efficientdet-d4-coco")
+        zoo_model = fozm.get_zoo_model("efficientdet-d4-coco-tf1")
 
-        print("***** Dataset description *****")
+        print("***** Model description *****")
         print(zoo_model.description)
+
+        print("***** Tags *****")
+        print(zoo_model.tags)
 
         print("\n***** Requirements *****")
         print(zoo_model.requirements)
 
     .. code-block:: text
 
-        ***** Dataset description *****
+        ***** Model description *****
         EfficientDet-D4 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet
+
+        ***** Tags *****
+        ['detection', 'coco', 'tf1']
 
         ***** Requirements *****
         {
@@ -148,7 +154,7 @@ Getting information about zoo models
     :meth:`find_zoo_model() <fiftyone.zoo.models.find_zoo_model>` to locate the
     downloaded model on disk:
 
-    For example, let's print some information about the EfficientDet-D4 model
+    For example, let's get the path on disk to the EfficientDet-D4 model
     (assuming it is downloaded):
 
     .. code-block:: python
@@ -156,7 +162,7 @@ Getting information about zoo models
 
         import fiftyone.zoo.models as fozm
 
-        model_path = fozm.find_zoo_model("efficientdet-d4-coco")
+        model_path = fozm.find_zoo_model("efficientdet-d4-coco-tf1")
 
   .. group-tab:: CLI
 
@@ -168,16 +174,16 @@ Getting information about zoo models
 
     .. code-block:: text
 
-        $ fiftyone model-zoo info efficientdet-d4-coco
+        $ fiftyone model-zoo info efficientdet-d4-coco-tf1
 
         ***** Model description *****
         {
-            "base_name": "efficientdet-d4-coco",
+            "base_name": "efficientdet-d4-coco-tf1",
             "base_filename": "efficientdet-d4-coco.tar",
             "version": null,
             "description": "EfficientDet-D4 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet",
             "manager": {
-                "type": "eta.core.models.ETAModelManager",
+                "type": "fiftyone.core.models.ModelManager",
                 "config": {
                     "extract_archive": true,
                     "delete_archive": true,
@@ -185,11 +191,13 @@ Getting information about zoo models
                 }
             },
             "default_deployment_config_dict": {
-                "type": "eta.detectors.EfficientDet",
+                "type": "fiftyone.core.eta_utils.ETAModel",
                 "config": {
-                    "model_name": "efficientdet-d4-coco",
-                    "architecture_name": "efficientdet-d4",
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    "type": "eta.detectors.EfficientDet",
+                    "config": {
+                        "architecture_name": "efficientdet-d4",
+                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    }
                 }
             },
             "requirements": {
@@ -206,7 +214,12 @@ Getting information about zoo models
                     ]
                 }
             },
-            "date_created": "2020-03-22T21:44:00"
+            "tags": [
+                "detection",
+                "coco",
+                "tf1"
+            ],
+            "date_added": "2020-12-11T13:45:51"
         }
 
         ***** Model location *****

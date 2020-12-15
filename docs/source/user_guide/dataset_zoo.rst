@@ -135,12 +135,16 @@ Getting information about zoo datasets
     .. code-block:: python
         :linenos:
 
+        import textwrap
         import fiftyone.zoo as foz
 
         zoo_dataset = foz.get_zoo_dataset("cifar10")
 
         print("***** Dataset description *****")
-        print("    " + zoo_dataset.__doc__)
+        print(textwrap.dedent("    " + zoo_dataset.__doc__))
+
+        print("***** Tags *****")
+        print("%s\n" % ", ".join(zoo_dataset.tags))
 
         print("***** Supported splits *****")
         print("%s\n" % ", ".join(zoo_dataset.supported_splits))
@@ -148,15 +152,18 @@ Getting information about zoo datasets
     .. code-block:: text
 
         ***** Dataset description *****
-            The CIFAR-10 dataset consists of 60000 32 x 32 color images in 10
-            classes, with 6000 images per class. There are 50000 training images and
-            10000 test images.
+        The CIFAR-10 dataset consists of 60000 32 x 32 color images in 10
+        classes, with 6000 images per class. There are 50000 training images and
+        10000 test images.
 
-            Dataset size:
-                132.40 MiB
+        Dataset size:
+            132.40 MiB
 
-            Source:
-                https://www.cs.toronto.edu/~kriz/cifar.html
+        Source:
+            https://www.cs.toronto.edu/~kriz/cifar.html
+
+        ***** Tags *****
+        image, classification
 
         ***** Supported splits *****
         test, train
@@ -230,15 +237,18 @@ Getting information about zoo datasets
         $ fiftyone zoo info cifar10
 
         ***** Dataset description *****
-            The CIFAR-10 dataset consists of 60000 32 x 32 color images in 10
-            classes, with 6000 images per class. There are 50000 training images and
-            10000 test images.
+        The CIFAR-10 dataset consists of 60000 32 x 32 color images in 10
+        classes, with 6000 images per class. There are 50000 training images and
+        10000 test images.
 
-            Dataset size:
-                132.40 MiB
+        Dataset size:
+            132.40 MiB
 
-            Source:
-                https://www.cs.toronto.edu/~kriz/cifar.html
+        Source:
+            https://www.cs.toronto.edu/~kriz/cifar.html
+
+        ***** Tags *****
+        image, classification
 
         ***** Supported splits *****
         test, train

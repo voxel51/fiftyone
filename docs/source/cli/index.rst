@@ -848,7 +848,7 @@ List datasets in the FiftyOne Dataset Zoo.
 
 .. code-block:: text
 
-    fiftyone zoo list [-h] [-b BASE_DIR]
+    fiftyone zoo list [-h] [-d] [-t TAG] [-b BASE_DIR]
 
 **Arguments**
 
@@ -856,6 +856,9 @@ List datasets in the FiftyOne Dataset Zoo.
 
     optional arguments:
       -h, --help            show this help message and exit
+      -d, --downloaded-only
+                            only show datasets that have been downloaded
+      -t TAG, --tag TAG     only show datasets matching the specified tag
       -b BASE_DIR, --base-dir BASE_DIR
                             a custom base directory in which to search for downloaded datasets
 
@@ -865,6 +868,16 @@ List datasets in the FiftyOne Dataset Zoo.
 
     # List available datasets
     fiftyone zoo list
+
+.. code-block:: shell
+
+    # List downloaded datasets
+    fiftyone zoo list --downloaded-only
+
+.. code-block:: shell
+
+    # List available datasets with the given tag
+    fiftyone zoo list --tag <tag>
 
 .. _cli-fiftyone-zoo-find:
 
@@ -1106,7 +1119,7 @@ List datasets in the FiftyOne Model Zoo.
 
 .. code-block:: text
 
-    fiftyone model-zoo list [-h]
+    fiftyone model-zoo list [-h] [-d] [-t TAG]
 
 **Arguments**
 
@@ -1114,6 +1127,9 @@ List datasets in the FiftyOne Model Zoo.
 
     optional arguments:
       -h, --help            show this help message and exit
+      -d, --downloaded-only
+                            only show models that have been downloaded
+      -t TAG, --tag TAG     only show models matching the specified tag
 
 **Examples**
 
@@ -1121,6 +1137,16 @@ List datasets in the FiftyOne Model Zoo.
 
     # List available models
     fiftyone model-zoo list
+
+.. code-block:: shell
+
+    # List downloaded models
+    fiftyone model-zoo list --downloaded-only
+
+.. code-block:: shell
+
+    # List available models with the given tag
+    fiftyone model-zoo list --tag <tag>
 
 .. _cli-fiftyone-model-zoo-find:
 

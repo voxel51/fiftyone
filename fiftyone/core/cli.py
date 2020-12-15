@@ -12,6 +12,7 @@ import json
 import os
 import subprocess
 import sys
+import textwrap
 
 import argcomplete
 from tabulate import tabulate
@@ -1346,13 +1347,20 @@ class ZooInfoCommand(Command):
 
         # Print dataset info
         zoo_dataset = foz.get_zoo_dataset(name)
-        print("***** Dataset description *****\n    %s" % zoo_dataset.__doc__)
+        print(
+            "***** Dataset description *****\n%s"
+            % textwrap.dedent("    " + zoo_dataset.__doc__)
+        )
 
         # Check if dataset is downloaded
         base_dir = args.base_dir
         downloaded_datasets = foz.list_downloaded_zoo_datasets(
             base_dir=base_dir
         )
+
+        if zoo_dataset.has_tags:
+            print("***** Tags *****")
+            print("%s\n" % ", ".join(zoo_dataset.tags))
 
         if zoo_dataset.has_splits:
             print("***** Supported splits *****")
