@@ -127,10 +127,8 @@ class QuickstartCommand(Command):
             "--desktop",
             action="store_true",
             help=(
-                "whether to launch the desktop App. If `True`, the desktop\n"
-                "App package must be installed (fiftyone-desktop). Use the\n"
-                "`FIFTYONE_DESKTOP_APP=true` environment variable for a\n"
-                "persistent setting"
+                "whether to launch the desktop App. If provided, the desktop "
+                "App package must be installed (fiftyone-desktop)"
             ),
         )
 
@@ -820,10 +818,8 @@ class AppLaunchCommand(Command):
             "--desktop",
             action="store_true",
             help=(
-                "whether to launch the desktop App. If `True`, the desktop\n"
-                "App package must be installed (fiftyone-desktop). Use the\n"
-                "`FIFTYONE_DESKTOP_APP=true` environment variable for a\n"
-                "persistent setting"
+                "whether to launch the desktop App. If provided, the desktop "
+                "App package must be installed (fiftyone-desktop)"
             ),
         )
 
@@ -985,10 +981,8 @@ class AppViewCommand(Command):
             "--desktop",
             action="store_true",
             help=(
-                "whether to launch the desktop App. If `True`, the desktop\n"
-                "App package must be installed (fiftyone-desktop). Use the\n"
-                "`FIFTYONE_DESKTOP_APP=true` environment variable for a\n"
-                "persistent setting"
+                "whether to launch the desktop App. If provided, the desktop "
+                "App package must be installed (fiftyone-desktop)"
             ),
         )
 
@@ -1115,10 +1109,8 @@ class AppConnectCommand(Command):
             "--desktop",
             action="store_true",
             help=(
-                "whether to launch the desktop App. If `True`, the desktop\n"
-                "App package must be installed (fiftyone-desktop). Use the\n"
-                "`FIFTYONE_DESKTOP_APP=true` environment variable for a\n"
-                "persistent setting"
+                "whether to launch the desktop App. If provided, the desktop "
+                "App package must be installed (fiftyone-desktop)"
             ),
         )
 
