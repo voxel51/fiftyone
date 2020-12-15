@@ -79,12 +79,18 @@ else
 fi
 cd -
 
-
-echo "***** INSTALLING ELECTRON APP *****"
-cd electron
-yarn install
+echo "***** INSTALLING APP *****"
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.2/install.sh | bash
+export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
+nvm install v12.16.2
+nvm use v12.16.2
+npm -g install yarn
+source ~/.bashrc
+cd app
+yarn
+yarn build-web
 cd ..
-
 
 echo "***** INSTALLING FIFTYONE *****"
 if [ ${DEV_INSTALL} = true ]; then

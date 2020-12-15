@@ -70,13 +70,12 @@ setup(
         "argcomplete",
         "eventlet",
         "future",
-        "httpx==0.7.7",
         "Jinja2",
         "mongoengine",
         "motor<3,>=2.3",
         "numpy",
         "packaging",
-        "Pillow<7,>=6.2",
+        "Pillow>=6.2",
         "pprintpp",
         "psutil",
         "pymongo<4,>=3.11",
@@ -94,7 +93,7 @@ setup(
         # wheels. When users install FiftyOne in this window, they will need to
         # compile OpenCV from source, leading to either errors or a
         # time-consuming installation.
-        "opencv-python-headless<=4.4.0.44",
+        "opencv-python-headless<=4.4.0.46",
     ],
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
@@ -104,6 +103,6 @@ setup(
         "License :: OSI Approved :: Apache Software License",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
-    python_requires=">=3.5,<3.9",
+    python_requires=">=3.5",
     cmdclass={"bdist_wheel": BdistWheelCustom},
 )

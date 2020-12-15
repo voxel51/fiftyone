@@ -23,13 +23,6 @@ ___________
 * :ref:`Cloud storage <cloud-storage>`: Data is stored in a cloud bucket
   (e.g., :ref:`S3 <AWS>`, :ref:`GCS <google-cloud>`, or :ref:`Azure <azure>`)
 
-* `Window`: The display mode to use for the App, "browser" or "desktop",
-  which can be passed to any method or CLI command that creates a session via
-  the `window` argument. The `FIFTYONE_DEFAULT_WINDOW` environment variable can
-  also be used for a persistent setting. If "browser", the desktop App must be
-  installed. See :ref:`Installing FiftyOne <installing-fiftyone>` for more
-  details.
-
 .. _local-data:
 
 Local data
@@ -99,7 +92,7 @@ your browser.
 
 If you have `fiftyone` installed on the local machine, you can
 :ref:`use the CLI <cli-fiftyone-app-connect>` to automatically configure port
-forwarding and open the App in either `window` mode.
+forwarding and open the App in either the desktop App or your web browser.
 
 In a local terminal, run the command:
 

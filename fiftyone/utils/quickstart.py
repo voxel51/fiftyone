@@ -17,7 +17,7 @@ _EXIT = os.environ.get("FIFTYONE_EXIT", False)
 
 
 def quickstart(
-    interactive=True, video=False, port=5151, remote=False, window=None
+    interactive=True, video=False, port=5151, remote=False, desktop=False
 ):
     """Runs the FiftyOne quickstart.
 
@@ -29,12 +29,12 @@ def quickstart(
             return a session
         video (False): whether to launch a video dataset
         port (5151): the port number to serve the App
-        remote (False): whether this is a remote session, and opening a window
+        remote (False): whether this is a remote session, and opening the App
             should not be attempted
-        window (None): 'browser' or 'desktop'. If 'desktop', the desktop App
-            package must be installed (fiftyone-desktop). Defaults to the
-            FIFTYONE_WINDOW environment variable if not provided, or 'browser'
-            if the environment variable is not set. DOES NOT apply to notebook
+        desktop (False): If `True`, the session will launch the desktop App.
+            The desktop App package must be installed (fiftyone-desktop),
+            if so. The `FIFTYONE_DESKTOP_WINDOW=true` environment variable can
+            be used as a persistent desktop setting. DOES NOT apply to notebook
             contexts (e.g. Jupyter), use :meth:`Session.show` instead.
 
     Returns:
@@ -47,57 +47,36 @@ def quickstart(
         If ``interactive`` is ``False``, ``None`` is returned
     """
     if video:
-        return _video_quickstart(interactive, port, remote, window)
+        return _video_quickstart(interactive, port, remote, desktop)
     else:
-        return _quickstart(interactive, port, remote, window)
+        return _quickstart(interactive, port, remote, desktop)
 
 
-def _context_instructions(interactive, port, window):
-    context = focx._get_context()
-    if context != focx._NONE:
-        return _QUICKSTART_NOTEBOOK
-
-    if window is None:
-        window = fo.config.default_window
-
-    if interactive and window == focx._BROWSER:
-        return _QUICKSTART_WEB_INTERACTIVE % port
-    elif window == focx._BROWSER:
-        return _QUICKSTART_WEB % port
-
-    # desktop
-    if interactive:
-        return _QUICKSTART_DESKTOP_INTERACTIVE
-    return _QUICKSTART_DESKTOP
-
-
-def _quickstart(interactive, port, remote, window):
+def _quickstart(interactive, port, remote, desktop):
     dataset = foz.load_zoo_dataset("quickstart")
     session = fos.launch_app(
-        dataset=dataset, port=port, remote=remote, window=window
+        dataset=dataset, port=port, remote=remote, desktop=desktop
     )
-    ctx_instr = _context_instructions(interactive, port, window)
 
     # @todo improve readability of stdout when launching remote sessions
 
     if interactive:
-        print(_QUICKSTART_GUIDE % (ctx_instr, _FILTER_DETECTIONS_IN_PYTHON))
+        print(_QUICKSTART_GUIDE % (_FILTER_DETECTIONS_IN_PYTHON))
         return dataset, session
 
-    print(_QUICKSTART_GUIDE % (ctx_instr, ""))
+    print(_QUICKSTART_GUIDE % (""))
     if not _EXIT:
         session.wait()
 
     return None
 
 
-def _video_quickstart(interactive, port, remote, window):
+def _video_quickstart(interactive, port, remote, desktop):
     dataset = foz.load_zoo_dataset("quickstart-video")
     session = fos.launch_app(
-        dataset=dataset, port=port, remote=remote, window=window
+        dataset=dataset, port=port, remote=remote, desktop=desktop
     )
-    ctx_instr = _context_instructions(interactive, port, window)
-    instructions = _VIDEO_QUICKSTART_GUIDE % ctx_instr
+    instructions = _VIDEO_QUICKSTART_GUIDE
 
     # @todo improve readability of stdout when launching remote sessions
     if interactive:
@@ -111,36 +90,12 @@ def _video_quickstart(interactive, port, remote, window):
     return None
 
 
-_QUICKSTART_DESKTOP_INTERACTIVE = """
-The session object is your connection to the desktop version of the App that
-has just been launched for you.
-"""
-
-_QUICKSTART_DESKTOP = """
-The desktop version of the App that has just been launched for you.
-"""
-
-_QUICKSTART_NOTEBOOK = """
-The session object is your connection to the App, which can be displayed
-with `session.show()`.
-"""
-
-_QUICKSTART_WEB_INTERACTIVE = """
-The session object is your connection to the App, which has just been opened in
-your web browser at http://localhost:%d
-"""
-
-_QUICKSTART_WEB = """
-The App has just been opened in your web browser at http://localhost:%d
-"""
-
-
 _QUICKSTART_GUIDE = """
 Welcome to FiftyOne!
 
 This quickstart downloaded a dataset from the Dataset Zoo and created a
 session, which is a connection to an instance of the App.
-%s
+
 The dataset contains ground truth labels in a `ground_truth` field and
 predictions from an off-the-shelf detector in a `predictions` field. It also
 has a `uniqueness` field that indexes the dataset by visual uniqueness.
@@ -205,7 +160,7 @@ Welcome to FiftyOne!
 
 This quickstart downloaded a dataset from the Dataset Zoo and created a
 session, which is a connection to an instance of the App.
-%s
+
 The dataset contains small video segments with dense object detections
 generated by human annotators.
 

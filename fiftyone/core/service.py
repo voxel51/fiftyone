@@ -361,8 +361,9 @@ class ServerService(Service):
     working_dir = foc.SERVER_DIR
     allow_headless = True
 
-    def __init__(self, port):
+    def __init__(self, port, do_not_track=False):
         self._port = port
+        self._do_not_track = do_not_track
         super().__init__()
 
     def start(self):
@@ -407,6 +408,11 @@ class ServerService(Service):
     def port(self):
         """Getter for the current port"""
         return self._port
+
+    @property
+    def env(self):
+        dnt = "1" if self._do_not_track else "0"
+        return {"FIFTYONE_DO_NOT_TRACK": dnt}
 
 
 class AppService(Service):

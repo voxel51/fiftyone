@@ -186,7 +186,10 @@ export const useGA = () => {
   const appContext = useRecoilValue(selectors.appContext);
 
   useEffect(() => {
-    const dev = process.env.NODE_ENV == "development";
+    if (info.do_not_track) {
+      return;
+    }
+    const dev = info.dev_install;
     const buildType = dev ? "dev" : "prod";
 
     ReactGA.initialize(gaConfig.app_ids[buildType], {
@@ -208,6 +211,9 @@ export const useGA = () => {
     ReactGA.pageview(window.location.hash.replace(/^#/, ""));
   }, []);
   useHashChangeHandler(() => {
+    if (info.do_not_track) {
+      return;
+    }
     if (gaInitialized) {
       ReactGA.pageview(window.location.hash.replace(/^#/, ""));
     }
