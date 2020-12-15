@@ -41,6 +41,8 @@ FiftyOne supports the configuration options described below:
 | `desktop`              | `FIFTYONE_DESKTOP_APP`          | `False`                | Launch session's in the desktop App instead of the browser. The `fiftyone-desktop`     |
 |                        |                                 |                        | package is required if `True`.                                                         |
 +------------------------+---------------------------------+------------------------+----------------------------------------------------------------------------------------+
+| `do_not_track`         | `FIFTYONE_DO_NOT_TRACK`         | `False`                | Controls whether anonymous import events are tracked.                                  |
++------------------------+---------------------------------+------------------------+----------------------------------------------------------------------------------------+
 | `show_progress_bars`   | `FIFTYONE_SHOW_PROGRESS_BARS`   | `True`                 | Controls whether progress bars are printed to the terminal when performing             |
 |                        |                                 |                        | operations such reading/writing large datasets or activiating FiftyOne                 |
 |                        |                                 |                        | Brain methods on datasets.                                                             |
