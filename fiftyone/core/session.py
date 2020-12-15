@@ -14,6 +14,7 @@ import time
 import webbrowser
 
 import fiftyone as fo
+import fiftyone.constants as focn
 import fiftyone.core.dataset as fod
 import fiftyone.core.client as foc
 import fiftyone.core.context as focx
@@ -206,11 +207,12 @@ class Session(foc.HasClient):
         if self._context == focx._NONE and self._desktop:
             try:
                 import fiftyone.desktop
-
-                self._app_service = fos.AppService(server_port=port)
-                logger.info("App launched")
             except:
-                raise ValueError("fiftyone-desktop is not installed")
+                if not focn.DEV_INSTALL:
+                    raise ValueError("fiftyone-desktop is not installed")
+
+            self._app_service = fos.AppService(server_port=port)
+            logger.info("App launched")
         elif self._context == focx._NONE and not self._desktop:
             self.open()
         elif self._context != focx._NONE and self._desktop:
