@@ -11,8 +11,8 @@ import fiftyone.constants as foc
 
 
 _TRACKING_NOTE = """
-FiftyOne tracks UUID based import usage by default. We are a small team looking
-to grow, and usage data is critical to that end.
+FiftyOne tracks UUID based import and App usage by default. We are a small team
+looking to grow, and usage data is critical to that end.
 
 To disable tracking, use the `FIFTYONE_DO_NOT_TRACK=true` environment
 variable.

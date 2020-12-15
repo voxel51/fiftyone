@@ -6,7 +6,7 @@ Frequently Asked Questions
 
 .. default-role:: code
 
-.. _faq-browser-support:
+.. _faq-desktop-app-support:
 
 Can I run this in as a desktop application?
 -------------------------------------------
@@ -16,6 +16,8 @@ desktop version of the App. The `desktop=True` keyword argument can be used in
 any methods that launch the App, and the desktop App will be used. The
 `FIFTYONE_DESKTOP_APP=true` environment variable can also be used for a
 persistent setting.
+
+.. _faq-browser-support:
 
 Can I run this in a browser?
 ----------------------------
@@ -426,3 +428,15 @@ Manually configuring a connection requires setting up port forwarding.
     ssh -N -L ZZZZ:localhost:YYYY [<username>@]<hostname>
 
 `WWWW` and `ZZZZ` are any 4 digit ports on your local machine(s).
+
+
+.. _faq-do-we-track:
+
+Does FiftyOne track me?
+-----------------------
+
+Yes, FiftyOne tracks UUID based import and App usage by default. We are a small
+team looking to grow, and usage data is critical to that end.
+ 
+To disable tracking, use the `FIFTYONE_DO_NOT_TRACK=true` environment
+variable.

@@ -44,6 +44,24 @@ _server_services = {}
 _subscribed_sessions = defaultdict(set)
 
 
+_APP_DESKTOP = """
+The desktop version of the App that has just been launched for you.
+"""
+
+_APP_NOTEBOOK = """
+The session object is your connection to the App, which can be displayed
+with `session.show()`.
+"""
+
+_APP_WEB = """
+The App has just been opened in your web browser at http://localhost:%d
+"""
+
+_APP_REMOTE = """
+The App is now serving from http://localhost:%d
+"""
+
+
 def launch_app(
     dataset=None, view=None, port=5151, remote=False, desktop=False
 ):
@@ -89,6 +107,15 @@ def launch_app(
     _session = Session(
         dataset=dataset, view=view, port=port, remote=remote, desktop=desktop
     )
+
+    if remote:
+        print(_APP_REMOTE)
+    if desktop:
+        print(_APP_DESKTOP)
+    elif focx._get_context() != focx._NONE:
+        print(_APP_NOTEBOOK)
+    else:
+        print(_APP_WEB % port)
 
     return _session
 
@@ -176,7 +203,9 @@ class Session(foc.HasClient):
 
         global _server_services  # pylint: disable=global-statement
         if port not in _server_services:
-            _server_services[port] = fos.ServerService(port)
+            _server_services[port] = fos.ServerService(
+                port, do_not_track=fo.config.do_not_track
+            )
 
         global _subscribed_sessions  # pylint: disable=global-statement
         _subscribed_sessions[port].add(self)

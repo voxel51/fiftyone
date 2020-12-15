@@ -27,6 +27,7 @@ import eta.core.utils as etau
 import eta.core.video as etav
 
 os.environ["FIFTYONE_SERVER"] = "1"
+from fiftyone import config
 import fiftyone.core.aggregations as foa
 import fiftyone.constants as foc
 from fiftyone.core.expressions import ViewField as F
@@ -93,6 +94,7 @@ class FiftyOneHandler(RequestHandler):
         return {
             "version": foc.VERSION,
             "user_id": uid,
+            "do_not_track": config.do_not_track,
         }
 
 
