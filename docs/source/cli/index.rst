@@ -858,7 +858,7 @@ List datasets in the FiftyOne Dataset Zoo.
       -h, --help            show this help message and exit
       -d, --downloaded-only
                             only show datasets that have been downloaded
-      -t TAG, --tag TAG     only show datasets matching the specified tag
+      -t TAG, --tag TAG     only show datasets with the specified tag or list,of,tags
       -b BASE_DIR, --base-dir BASE_DIR
                             a custom base directory in which to search for downloaded datasets
 
@@ -1132,7 +1132,7 @@ List datasets in the FiftyOne Model Zoo.
       -h, --help            show this help message and exit
       -d, --downloaded-only
                             only show models that have been downloaded
-      -t TAG, --tag TAG     only show models matching the specified tag
+      -t TAG, --tag TAG     only show models with the specified tag or list,of,tags
 
 **Examples**
 
@@ -1346,7 +1346,7 @@ Generate embeddings for datasets with zoo models.
 .. code-block:: shell
 
     # Generate embeddings for the dataset with the zoo model
-    fiftyone model-zoo embed <model-name> <dataset-name> <label-field>
+    fiftyone model-zoo embed <model-name> <dataset-name> <embeddings-field>
 
 .. _cli-fiftyone-model-zoo-delete:
 

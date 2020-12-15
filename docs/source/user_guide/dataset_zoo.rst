@@ -460,7 +460,7 @@ By default, zoo datasets are downloaded into subdirectories of
 ``fiftyone.config.dataset_zoo_dir`` corresponding to their names.
 
 You can customize this backend by modifying the `dataset_zoo_dir` setting
-of your :doc:`FiftyOne config </user_guide/config>`.
+of your :ref:`FiftyOne config <configuring-fiftyone>`.
 
 .. tabs::
 
@@ -523,6 +523,66 @@ Deleting zoo datasets
 
         $ fiftyone zoo delete cifar10 --splits test
 
+.. _zoo-adding-datasets:
+
+Adding datasets to the zoo
+--------------------------
+
+We frequently add new datasets to the Dataset Zoo, which will automatically
+become accessible to you when you update your FiftyOne package.
+
+.. note::
+
+    FiftyOne is open source! You are welcome to contribute datasets to the
+    public dataset zoo by submitting a pull request to
+    `the GitHub repository <https://github.com/voxel51/fiftyone>`.
+
+You can also add your own datasets to your local dataset zoo, enabling you to
+work with these datasets via the ``fiftyone.zoo`` package and the CLI using the
+same syntax that you would with publicly available datasets.
+
+To add dataset(s) to your local zoo, you simply write a JSON manifest file in
+the format below to tell FiftyOne about the dataset. For example, the manifest
+below adds a second copy of the ``quickstart`` dataset to the zoo under the
+alias ``quickstart-copy``:
+
+.. code-block:: json
+
+    {
+        "custom": {
+            "quickstart-copy": "fiftyone.zoo.base.QuickstartDataset"
+        }
+    }
+
+In the above, ``custom`` specifies the source of the dataset, which can be an
+arbitrary string and simply controls the column of the ``fiftyone zoo list``
+listing in which the dataset is annotated; ``quickstart-copy`` is the name of
+the new dataset; and ``fiftyone.zoo.base.QuickstartDataset`` is the
+fully-qualified class name of the
+:class:`ZooDataset class <fiftyone.zoo.ZooDataset>` for the dataset, which
+specifies how to download and load the dataset into FiftyOne. This class can be
+defined anywhere that is importable at runtime in your environment.
+
+Finally, expose your new dataset(s) to FiftyOne by adding your manifest to the
+``dataset_zoo_manifest_paths`` parameter of your
+:ref:`FiftyOne config <configuring-fiftyone>`. One way to do this is to set the
+``FIFTYONE_DATASET_ZOO_MANIFEST_PATHS`` environment variable:
+
+.. code-block:: shell
+
+    export FIFTYONE_DATASET_ZOO_MANIFEST_PATHS=/path/to/custom/manifest.json
+
+Now you can access the ``quickstart-copy`` dataset as you would any other zoo
+dataset:
+
+.. code-block:: shell
+
+    # Will contain `quickstart-copy`
+    fiftyone zoo list
+
+    # Load custom dataset into FiftyOne
+    fiftyone zoo load quickstart-copy
+
 .. _zoo-customizing-your-ml-backend:
 
 Customizing your ML backend
@@ -546,7 +606,7 @@ through both backends, it will use the backend specified by the
 `fo.config.default_ml_backend` setting in your FiftyOne config.
 
 You can customize this backend by modifying the `default_ml_backend` setting
-of your :doc:`FiftyOne config </user_guide/config>`.
+of your :ref:`FiftyOne config <configuring-fiftyone>`.
 
 .. tabs::
 

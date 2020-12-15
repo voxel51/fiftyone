@@ -7,6 +7,8 @@ FiftyOne can be configured in various ways. This guide covers the various
 options that exist, how to view your current config, and how to customize your
 config as desired.
 
+.. _configuring-fiftyone:
+
 Configuration options
 ---------------------
 

@@ -44,13 +44,13 @@ Listing zoo models
 
     .. code-block:: text
 
-        ['deeplabv3-cityscapes',
-        'deeplabv3-mnv2-cityscapes',
-        'efficientdet-d0-coco',
-        'efficientdet-d1-coco,
+        ['alexnet-imagenet-torch',
+        'deeplabv3-cityscapes-tf',
+        'deeplabv3-mnv2-cityscapes-tf',
         ...
-        'vgg16-imagenet',
-        'yolo-v2-coco']
+        'wide-resnet50-2-imagenet-torch',
+        'yolo-v2-coco-tf1'
+        ]
 
     To view the zoo models that you have downloaded, you can use
     :meth:`list_downloaded_zoo_models() <fiftyone.zoo.models.list_downloaded_zoo_models>`:
@@ -67,14 +67,13 @@ Listing zoo models
     .. code-block:: text
 
         {
-            ...
-            'efficientdet-d0-coco': (
-                '~/fiftyone/__models__/efficientdet-d0-coco.tar',
-                <fiftyone.zoo.models.ZooModel object at 0x12e31dcc0>,
+            'alexnet-imagenet-torch': (
+                '/Users/Brian/fiftyone/__models__/alexnet-owt-4df8aa71.pth',
+                <fiftyone.zoo.models.ZooModel object at 0x122d2fa58>,
             ),
-            'yolo-v2-coco': (
-                '~/fiftyone/__models__/yolo-v2-coco.weights',
-                <fiftyone.zoo.models.ZooModel object at 0x12e31dbe0>,
+            'densenet121-imagenet-torch': (
+                '/Users/Brian/fiftyone/__models__/densenet121-a639ec97.pth',
+                <fiftyone.zoo.models.ZooModel object at 0x122d608d0>,
             ),
             ...
         }
@@ -108,19 +107,20 @@ Getting information about zoo models
     and more. You can access this object for a given model via the
     :meth:`get_zoo_model() <fiftyone.zoo.models.get_zoo_model>` method.
 
-    For example, let's print some information about an EfficientDet-D4 model:
+    For example, let's print some information about a Faster R-CNN PyTorch
+    model:
 
     .. code-block:: python
         :linenos:
 
         import fiftyone.zoo.models as fozm
 
-        zoo_model = fozm.get_zoo_model("efficientdet-d4-coco-tf1")
+        zoo_model = fozm.get_zoo_model("faster-rcnn-resnet50-fpn-coco-torch")
 
         print("***** Model description *****")
         print(zoo_model.description)
 
-        print("***** Tags *****")
+        print("\n***** Tags *****")
         print(zoo_model.tags)
 
         print("\n***** Requirements *****")
@@ -129,24 +129,22 @@ Getting information about zoo models
     .. code-block:: text
 
         ***** Model description *****
-        EfficientDet-D4 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet
+        Faster R-CNN model with ResNet-50 FPN backbone trained on COCO. Source: https://pytorch.org/docs/stable/torchvision/models.html
 
         ***** Tags *****
-        ['detection', 'coco', 'tf1']
+        ['detection', 'coco', 'torch']
 
         ***** Requirements *****
         {
+            "packages": [
+                "torch",
+                "torchvision"
+            ],
             "cpu": {
-                "support": true,
-                "packages": [
-                    "tensorflow>=1.14,<2"
-                ]
+                "support": true
             },
             "gpu": {
-                "support": true,
-                "packages": [
-                    "tensorflow-gpu>=1.14,<2"
-                ]
+                "support": true
             }
         }
 
@@ -154,15 +152,15 @@ Getting information about zoo models
     :meth:`find_zoo_model() <fiftyone.zoo.models.find_zoo_model>` to locate the
     downloaded model on disk:
 
-    For example, let's get the path on disk to the EfficientDet-D4 model
-    (assuming it is downloaded):
+    For example, let's get the path on disk to the Faster R-CNN model
+    referenced above (assuming it is downloaded):
 
     .. code-block:: python
         :linenos:
 
         import fiftyone.zoo.models as fozm
 
-        model_path = fozm.find_zoo_model("efficientdet-d4-coco-tf1")
+        model_path = fozm.find_zoo_model("faster-rcnn-resnet50-fpn-coco-torch")
 
   .. group-tab:: CLI
 
@@ -170,60 +168,57 @@ Getting information about zoo models
     not) via the :ref:`fiftyone model-zoo info <cli-fiftyone-model-zoo-info>`
     command.
 
-    For example, you can view information about the EfficientDet-D4 model:
+    For example, you can view information about a Faster R-CNN PyTorch model:
 
     .. code-block:: text
 
-        $ fiftyone model-zoo info efficientdet-d4-coco-tf1
+        $ fiftyone model-zoo info faster-rcnn-resnet50-fpn-coco-torch
 
         ***** Model description *****
         {
-            "base_name": "efficientdet-d4-coco-tf1",
-            "base_filename": "efficientdet-d4-coco.tar",
+            "base_name": "faster-rcnn-resnet50-fpn-coco-torch",
+            "base_filename": "fasterrcnn_resnet50_fpn_coco-258fb6c6.pth",
             "version": null,
-            "description": "EfficientDet-D4 model trained on COCO. Source: https://github.com/voxel51/automl/tree/master/efficientdet",
+            "description": "Faster R-CNN model with ResNet-50 FPN backbone trained on COCO. Source: https://pytorch.org/docs/stable/torchvision/models.html",
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
-                    "extract_archive": true,
-                    "delete_archive": true,
-                    "google_drive_id": "1FO2WwtubQ0I6giHKHSutI-C628JpQM71"
+                    "url": "https://download.pytorch.org/models/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth"
                 }
             },
             "default_deployment_config_dict": {
-                "type": "fiftyone.core.eta_utils.ETAModel",
+                "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
-                    "type": "eta.detectors.EfficientDet",
-                    "config": {
-                        "architecture_name": "efficientdet-d4",
-                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
-                    }
+                    "entrypoint_fcn": "torchvision.models.detection.faster_rcnn.fasterrcnn_resnet50_fpn",
+                    "entrypoint_args": {
+                        "pretrained": true
+                    },
+                    "output_processor_cls": "fiftyone.utils.torch.DetectorOutputProcessor",
+                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
                 }
             },
             "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision"
+                ],
                 "cpu": {
-                    "support": true,
-                    "packages": [
-                        "tensorflow>=1.14,<2"
-                    ]
+                    "support": true
                 },
                 "gpu": {
-                    "support": true,
-                    "packages": [
-                        "tensorflow-gpu>=1.14,<2"
-                    ]
+                    "support": true
                 }
             },
             "tags": [
                 "detection",
                 "coco",
-                "tf1"
+                "torch"
             ],
             "date_added": "2020-12-11T13:45:51"
         }
 
         ***** Model location *****
-        ~/fiftyone/__models__/efficientdet-d4-coco.tar
+        /Users/Brian/fiftyone/__models__/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth
 
 Downloading zoo models
 ----------------------
@@ -235,19 +230,19 @@ Downloading zoo models
     You can download zoo models from the web via
     :meth:`download_zoo_model() <fiftyone.zoo.models.download_zoo_model>`.
 
-    For example, let's download the EfficientDet-D4 model:
+    For example, let's download a Faster R-CNN PyTorch model:
 
     .. code-block:: python
         :linenos:
 
         import fiftyone.zoo.models as fozm
 
-        model_path = fozm.download_zoo_model("efficientdet-d4-coco")
+        model_path = fozm.download_zoo_model("faster-rcnn-resnet50-fpn-coco-torch")
 
     .. code-block:: text
 
-        Downloading model from Google Drive ID '1FO2WwtubQ0I6giHKHSutI-C628JpQM71' to '~/fiftyone/__models__/efficientdet-d4-coco.tar'
-        100% |██████████████████████████████████|    1.4Gb/1.4Gb [5.2s elapsed, 0s remaining, 261.4Mb/s]
+        Downloading model from 'https://download.pytorch.org/models/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth'...
+         100% |██████████████████████████████████|    1.2Gb/1.2Gb [4.7s elapsed, 0s remaining, 294.7Mb/s]
 
   .. group-tab:: CLI
 
@@ -255,14 +250,14 @@ Downloading zoo models
     :ref:`fiftyone model-zoo download <cli-fiftyone-model-zoo-download>`
     command.
 
-    For example, you can download the EfficientDet-D4 model as follows:
+    For example, you can download a Faster R-CNN PyTorch model as follows:
 
     .. code-block:: text
 
-        $ fiftyone zoo download efficientdet-d4-coco
+        $ fiftyone model-zoo download faster-rcnn-resnet50-fpn-coco-torch
 
-        Downloading model from Google Drive ID '1FO2WwtubQ0I6giHKHSutI-C628JpQM71' to '~/fiftyone/__models__/efficientdet-d4-coco.tar'
-        100% |██████████████████████████████████|    1.4Gb/1.4Gb [5.2s elapsed, 0s remaining, 261.4Mb/s]
+        Downloading model from 'https://download.pytorch.org/models/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth'...
+         100% |██████████████████████████████████|    1.2Gb/1.2Gb [4.7s elapsed, 0s remaining, 294.7Mb/s]
 
 Installing model requirements
 -----------------------------
@@ -284,7 +279,7 @@ Installing model requirements
         import fiftyone.zoo.models as fozm
 
         # Raises an error if the requirements are not satisfied
-        fozm.ensure_zoo_model_requirements("efficientdet-d4-coco")
+        fozm.ensure_zoo_model_requirements("faster-rcnn-resnet50-fpn-coco-torch")
 
     You can also use
     :meth:`install_zoo_model_requirements() <fiftyone.zoo.models.install_zoo_model_requirements>`
@@ -295,7 +290,7 @@ Installing model requirements
 
         import fiftyone.zoo.models as fozm
 
-        fozm.install_zoo_model_requirements("efficientdet-d4-coco")
+        fozm.install_zoo_model_requirements("faster-rcnn-resnet50-fpn-coco-torch")
 
   .. group-tab:: CLI
 
@@ -308,23 +303,21 @@ Installing model requirements
 
     .. code-block:: text
 
-        $ fiftyone model-zoo requirements efficientdet-d4-coco
+        $ fiftyone model-zoo requirements faster-rcnn-resnet50-fpn-coco-torch
 
     .. code-block:: text
 
         ***** Model requirements *****
         {
+            "packages": [
+                "torch",
+                "torchvision"
+            ],
             "cpu": {
-                "support": true,
-                "packages": [
-                    "tensorflow>=1.14,<2"
-                ]
+                "support": true
             },
             "gpu": {
-                "support": true,
-                "packages": [
-                    "tensorflow-gpu>=1.14,<2"
-                ]
+                "support": true
             }
         }
 
@@ -337,50 +330,175 @@ Installing model requirements
     .. code-block:: text
 
         # Raises an error if the requirements are not satisfied
-        $ fiftyone model-zoo requirements --ensure efficientdet-d4-coco
+        $ fiftyone model-zoo requirements --ensure faster-rcnn-resnet50-fpn-coco-torch
 
     You can also use the `--install` flag to install any necessary packages for
     a particular zoo model:
 
     .. code-block:: text
 
-        $ fiftyone model-zoo requirements --install efficientdet-d4-coco
+        $ fiftyone model-zoo requirements --install faster-rcnn-resnet50-fpn-coco-torch
 
 Loading zoo models
 ------------------
+
+You can load a zoo model via
+:meth:`load_zoo_model() <fiftyone.zoo.models.load_zoo_model>`.
+
+By default, the model will be automatically downloaded from the web the first
+time you access it if it is not already downloaded:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.zoo.models as fozm
+
+    # The model will be downloaded from the web the first time you access it
+    model = fozm.load_zoo_model("faster-rcnn-resnet50-fpn-coco-torch")
+
+You can also provide additional arguments to
+:meth:`load_zoo_model() <fiftyone.zoo.models.load_zoo_model>` to customize
+the import behavior:
+
+.. code-block:: python
+    :linenos:
+
+    # Load the zoo model and install any necessary requirements in order to
+    # use it (logging warnings if any issues arise)
+    model = fozm.load_zoo_model(
+        "faster-rcnn-resnet50-fpn-coco-torch",
+        install_requirements=True,
+        error_level=1,
+    )
+
+.. note::
+
+    By default, FiftyOne will attempt to ensure that any requirements such as
+    Python packages or CUDA versions are satisfied before loading the model,
+    and an error will be raised if a requirement is not satisfied.
+
+    You can customize this behavior via the ``error_level`` argument to
+    :meth:`load_zoo_model() <fiftyone.zoo.models.load_zoo_model>`, or you can
+    permanently adjust this behavior by setting the ``requirement_error_level``
+    parameter of your :ref:`FiftyOne config <configuring-fiftyone>`.
+
+Applying zoo models
+-------------------
 
 .. tabs::
 
   .. group-tab:: Python
 
-    You can load a zoo model via
-    :meth:`load_zoo_model() <fiftyone.zoo.models.load_zoo_model>`.
+    You can run inference on a dataset (or a subset of it specified by a
+    |DatasetView|) with a zoo model by loading it and then calling
+    :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`:
 
-    By default, the model will be automatically downloaded from the web the
-    first time you access it if it is not already downloaded:
+    For example, the snippet below loads the
+    ``faster-rcnn-resnet50-fpn-coco-torch`` model from the Model Zoo and
+    applies it to 10 random images from the ``quickstart`` dataset from the
+    Dataset Zoo:
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone.zoo as foz
+        import fiftyone.zoo.models as fozm
+
+        # Load zoo model
+        model = fozm.load_zoo_model("faster-rcnn-resnet50-fpn-coco-torch")
+
+        # Load zoo dataset
+        dataset = foz.load_zoo_dataset("quickstart")
+        samples = dataset.take(10)
+
+        # Run inference
+        samples.apply_model(model, label_field="faster-rcnn")
+
+  .. group-tab:: CLI
+
+    You can run inference on a dataset with a zoo model via the
+    :ref:`fiftyone model-zoo apply <cli-fiftyone-model-zoo-apply>` command.
+
+    For example, the snippet below loads the ``quickstart`` dataset from the
+    Dataset Zoo and applies the ``faster-rcnn-resnet50-fpn-coco-torch`` model
+    from the Model Zoo to it:
+
+    .. code-block:: shell
+
+        fiftyone zoo load quickstart
+
+        fiftyone model-zoo apply \
+            quickstart \                            # dataset
+            faster-rcnn-resnet50-fpn-coco-torch \   # model
+            faster-rcnn                             # label field
+
+Generating embeddings with zoo models
+-------------------------------------
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    Many models in the Model Zoo expose embeddings for their predictions. You can
+    determine if a model supports embeddings by loading it and checking the
+    :meth:`Model.has_embeddings <fiftyone.core.models.Model.has_embeddings>`
+    attribute:
 
     .. code-block:: python
         :linenos:
 
         import fiftyone.zoo.models as fozm
 
-        # The model will be downloaded from the web the first time you access it
-        model = fozm.load_zoo_model("efficientdet-d4-coco")
+        # Load zoo model
+        model = fozm.load_zoo_model("inception-v3-imagenet-torch")
 
-    You can also provide additional arguments to
-    :meth:`load_zoo_model() <fiftyone.zoo.models.load_zoo_model>` to customize
-    the import behavior:
+        # Check if model exposes embeddings
+        model.has_embeddings  # True
+
+    For models that expose embeddings, you can generate embeddings for all
+    samples in a dataset (or a subset of it specified by a |DatasetView|) by
+    calling
+    :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`:
 
     .. code-block:: python
         :linenos:
 
-        # Load the zoo model and install any necessary requirements in order to
-        # use it (logging warnings if any issues arise)
-        model = fozm.load_zoo_model(
-            "efficientdet-d4-coco",
-            install_requirements=True,
-            error_level=1,
-        )
+        import fiftyone.zoo as foz
+        import fiftyone.zoo.models as fozm
+
+        # Load zoo model
+        model = fozm.load_zoo_model("inception-v3-imagenet-torch")
+        model.has_embeddings  # True
+
+        # Load zoo dataset
+        dataset = foz.load_zoo_dataset("quickstart")
+        samples = dataset.take(10)
+
+        # Generate embeddings for each sample and return them in an
+        `num_samples x dim` array
+        embeddings = samples.compute_embeddings(model)
+
+        # Generate embeddings for each sample and store them in a sample field
+        samples.compute_embeddings(model, embeddings_field="embeddings")
+
+  .. group-tab:: CLI
+
+    For models that expose embeddings, you can generate embeddings for all
+    samples in a dataset via the
+    :ref:`fiftyone model-zoo embed <cli-fiftyone-model-zoo-embed>` command.
+
+    For example, the snippet below loads the ``quickstart`` dataset from the
+    Dataset Zoo and generates embeddings for each sample using the
+    ``inception-v3-imagenet-torch`` model from the Model Zoo:
+
+    .. code-block:: shell
+
+        fiftyone zoo load quickstart
+
+        fiftyone model-zoo embed \
+            quickstart \                            # dataset
+            inception-v3-imagenet-torch \           # model
+            embeddings                              # embeddings field
 
 Controlling where zoo models are downloaded
 -------------------------------------------
@@ -388,8 +506,8 @@ Controlling where zoo models are downloaded
 By default, zoo models are downloaded into subdirectories of
 ``fiftyone.config.model_zoo_dir`` corresponding to their names.
 
-You can customize this backend by modifying the `model_zoo_dir` setting of your
-:doc:`FiftyOne config </user_guide/config>`.
+You can customize this backend by modifying the ``model_zoo_dir`` setting of
+your :ref:`FiftyOne config <configuring-fiftyone>`.
 
 .. tabs::
 
@@ -441,7 +559,7 @@ Deleting zoo models
 
         import fiftyone.zoo.models as fozm
 
-        fozm.delete_zoo_model("efficientdet-d4-coco")
+        fozm.delete_zoo_model("faster-rcnn-resnet50-fpn-coco-torch")
 
   .. group-tab:: CLI
 
@@ -450,4 +568,112 @@ Deleting zoo models
 
     .. code-block:: text
 
-        $ fiftyone model-zoo delete efficientdet-d4-coco
+        $ fiftyone model-zoo delete faster-rcnn-resnet50-fpn-coco-torch
+
+.. _model-zoo-adding-models:
+
+Adding models to the zoo
+------------------------
+
+We frequently add new models to the Model Zoo, which will automatically become
+accessible to you when you update your FiftyOne package.
+
+.. note::
+
+    FiftyOne is open source! You are welcome to contribute models to the public
+    model zoo by submitting a pull request to
+    `the GitHub repository <https://github.com/voxel51/fiftyone>`.
+
+You can also add your own models to your local model zoo, enabling you to work
+with these models via the ``fiftyone.zoo.models`` package and the CLI using the
+same syntax that you would with publicly available models.
+
+To add model(s) to your local zoo, you simply write a JSON manifest file in
+the format below to tell FiftyOne about the model(s). For example, the manifest
+below adds a second copy of the ``yolo-v2-coco-tf1`` model to the zoo under the
+alias ``yolo-v2-coco-tf1-high-conf`` that only returns predictions whose
+confidence is at least 0.5:
+
+.. code-block:: json
+
+    {
+        "models": [
+            {
+                "base_name": "yolo-v2-coco-tf1-high-conf",
+                "base_filename": "yolo-v2-coco-high-conf.weights",
+                "version": null,
+                "description": "A YOLOv2 model with confidence threshold set to 0.5",
+                "manager": {
+                    "type": "fiftyone.core.models.ModelManager",
+                    "config": {
+                        "google_drive_id": "1ajuPZws47SOw3xJc4Wvk1yuiB3qv8ycr"
+                    }
+                },
+                "default_deployment_config_dict": {
+                    "type": "fiftyone.core.eta_utils.ETAModel",
+                    "config": {
+                        "type": "eta.detectors.YOLODetector",
+                        "config": {
+                            "config_dir": "{{eta}}/tensorflow/darkflow/cfg/",
+                            "config_path": "{{eta}}/tensorflow/darkflow/cfg/yolo.cfg",
+                            "confidence_thresh": 0.5
+                        }
+                    }
+                },
+                "requirements": {
+                    "cpu": {
+                        "support": true,
+                        "packages": ["tensorflow<2"]
+                    },
+                    "gpu": {
+                        "support": true,
+                        "packages": ["tensorflow-gpu<2"]
+                    }
+                },
+                "tags": ["detection", "coco", "tf1"],
+                "date_added": "2020-12-11 13:45:51"
+            }
+        ]
+    }
+
+.. note::
+
+    Adjusting the hard-coded threshold of the above model is possible via
+    JSON-only changes in this case because the underlying
+    `eta.detectors.YOLODetector <https://github.com/voxel51/eta/blob/develop/eta/detectors/yolo.py>`_
+    class exposes this as a parameter.
+
+    In practice, there is no need to hard-code confidence thresholds in models,
+    since the
+    :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model`
+    method supports supplying an optional confidence threshold that is applied
+    post-facto to the predictions generated by any model.
+
+Models manifest JSON files should have a ``models`` key that contains a list
+of serialized
+:class:`ZooModel class definitions <fiftyone.zoo.models.ZooModel>` that
+describe how to download and load the model.
+
+Finally, expose your new models(s) to FiftyOne by adding your manifest to the
+``model_zoo_manifest_paths`` parameter of your
+:ref:`FiftyOne config <configuring-fiftyone>`. One way to do this is to set the
+``FIFTYONE_MODEL_ZOO_MANIFEST_PATHS`` environment variable:
+
+.. code-block:: shell
+
+    export FIFTYONE_MODEL_ZOO_MANIFEST_PATHS=/path/to/custom/manifest.json
+
+Now you can load and apply the ``yolo-v2-coco-tf1-high-conf`` model as you
+would any other zoo model:
+
+.. code-block:: python
+
+    import fiftyone as fo
+    import fiftyone.zoo.models as fozm
+
+    # Load custom model
+    model = fozm.load_zoo_model("yolo-v2-coco-tf1-high-conf")
+
+    # Apply model to a dataset
+    dataset = fo.load_dataset(...)
+    dataset.apply_model(model, label_field="predictions")
