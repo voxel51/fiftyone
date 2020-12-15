@@ -6,7 +6,7 @@ Project FiftyOne React/Electron App
 
 ## Installation
 
-These following installations steps are a part of the the
+The following installation steps are a part of the
 [install script](../install.bash)
 
 Install [`nvm`](https://github.com/nvm-sh/nvm) and set your node version to
@@ -28,7 +28,7 @@ yarn install
 yarn start-web
 ```
 
-This start the App client development server with hot reloading.
+This starts the App client development server with hot reloading.
 
 You will need to create a `fiftyone.core.session.Session` to start the backend
 server. Or you can start the backend server directly in your python virtual
