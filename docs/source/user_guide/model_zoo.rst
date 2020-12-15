@@ -86,9 +86,9 @@ Listing zoo models
     For example, to list the available zoo models and whether you have
     downloaded them, you can execute:
 
-    .. code-block:: text
+    .. code-block:: shell
 
-        $ fiftyone model-zoo list
+        fiftyone model-zoo list
 
     Models that have been downloaded are indicated by a checkmark in the
     ``downloaded`` column, and their location on disk is indicated by the
@@ -170,9 +170,11 @@ Getting information about zoo models
 
     For example, you can view information about a Faster R-CNN PyTorch model:
 
-    .. code-block:: text
+    .. code-block:: shell
 
-        $ fiftyone model-zoo info faster-rcnn-resnet50-fpn-coco-torch
+        fiftyone model-zoo info faster-rcnn-resnet50-fpn-coco-torch
+
+    .. code-block:: text
 
         ***** Model description *****
         {
@@ -252,9 +254,11 @@ Downloading zoo models
 
     For example, you can download a Faster R-CNN PyTorch model as follows:
 
-    .. code-block:: text
+    .. code-block:: shell
 
-        $ fiftyone model-zoo download faster-rcnn-resnet50-fpn-coco-torch
+        fiftyone model-zoo download faster-rcnn-resnet50-fpn-coco-torch
+
+    .. code-block:: text
 
         Downloading model from 'https://download.pytorch.org/models/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth'...
          100% |██████████████████████████████████|    1.2Gb/1.2Gb [4.7s elapsed, 0s remaining, 294.7Mb/s]
@@ -301,9 +305,9 @@ Installing model requirements
     :ref:`fiftyone model-zoo requirements <cli-fiftyone-model-zoo-requirements>`
     command:
 
-    .. code-block:: text
+    .. code-block:: shell
 
-        $ fiftyone model-zoo requirements faster-rcnn-resnet50-fpn-coco-torch
+        fiftyone model-zoo requirements faster-rcnn-resnet50-fpn-coco-torch
 
     .. code-block:: text
 
@@ -327,17 +331,17 @@ Installing model requirements
     You can use the `--ensure` flag to check to see if your current environment
     satisfies the requirements for a particular zoo model:
 
-    .. code-block:: text
+    .. code-block:: shell
 
         # Raises an error if the requirements are not satisfied
-        $ fiftyone model-zoo requirements --ensure faster-rcnn-resnet50-fpn-coco-torch
+        fiftyone model-zoo requirements --ensure faster-rcnn-resnet50-fpn-coco-torch
 
     You can also use the `--install` flag to install any necessary packages for
     a particular zoo model:
 
-    .. code-block:: text
+    .. code-block:: shell
 
-        $ fiftyone model-zoo requirements --install faster-rcnn-resnet50-fpn-coco-torch
+        fiftyone model-zoo requirements --install faster-rcnn-resnet50-fpn-coco-torch
 
 Loading zoo models
 ------------------
@@ -425,8 +429,10 @@ Applying zoo models
 
     .. code-block:: shell
 
+        # Load zoo dataset
         fiftyone zoo load quickstart
 
+        # Apply zoo model
         fiftyone model-zoo apply \
             quickstart \                            # dataset
             faster-rcnn-resnet50-fpn-coco-torch \   # model
@@ -493,8 +499,10 @@ Generating embeddings with zoo models
 
     .. code-block:: shell
 
+        # Load zoo dataset
         fiftyone zoo load quickstart
 
+        # Generate embeddings via zoo model
         fiftyone model-zoo embed \
             quickstart \                            # dataset
             inception-v3-imagenet-torch \           # model
@@ -566,9 +574,9 @@ Deleting zoo models
     You can delete the local copy of a zoo model via the
     :ref:`fiftyone model-zoo delete <cli-fiftyone-model-zoo-delete>` command:
 
-    .. code-block:: text
+    .. code-block:: shell
 
-        $ fiftyone model-zoo delete faster-rcnn-resnet50-fpn-coco-torch
+        fiftyone model-zoo delete faster-rcnn-resnet50-fpn-coco-torch
 
 .. _model-zoo-adding-models:
 

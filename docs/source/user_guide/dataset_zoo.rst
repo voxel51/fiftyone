@@ -101,9 +101,9 @@ Listing zoo datasets
     For example, to list the available zoo datasets and whether you have
     downloaded them, you can execute:
 
-    .. code-block:: text
+    .. code-block:: shell
 
-        $ fiftyone zoo list
+        fiftyone zoo list
 
     Dataset splits that have been downloaded are indicated by a checkmark in
     the ``downloaded`` column, and their location on disk is indicated by
@@ -232,9 +232,11 @@ Getting information about zoo datasets
 
     For example, you can view information about the CIFAR-10 dataset:
 
-    .. code-block:: text
+    .. code-block:: shell
 
-        $ fiftyone zoo info cifar10
+        fiftyone zoo info cifar10
+
+    .. code-block:: text
 
         ***** Dataset description *****
         The CIFAR-10 dataset consists of 60000 32 x 32 color images in 10
@@ -326,9 +328,11 @@ Downloading zoo datasets
     For example, you can download the test split of the CIFAR-10 dataset as
     follows:
 
-    .. code-block:: text
+    .. code-block:: shell
 
-        $ fiftyone zoo download cifar10 --splits test
+        fiftyone zoo download cifar10 --splits test
+
+    .. code-block:: text
 
         Downloading split 'test' to '~/fiftyone/cifar10/test'
         Downloading https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz to ~/fiftyone/cifar10/tmp-download/cifar-10-python.tar.gz
@@ -395,9 +399,11 @@ Loading zoo datasets
     For example, you can load the test split of the CIFAR-10 dataset as
     follows:
 
-    .. code-block:: text
+    .. code-block:: shell
 
-        $ fiftyone zoo load cifar10 --splits test
+        fiftyone zoo load cifar10 --splits test
+
+    .. code-block:: text
 
         Split 'test' already downloaded
         Loading 'cifar10' split 'test'
@@ -408,10 +414,12 @@ Loading zoo datasets
     to customize the import behavior. For example, you can load a random subset
     of 10 samples from the zoo dataset:
 
-    .. code-block:: text
+    .. code-block:: shell
 
-        $ fiftyone zoo load cifar10 --splits test \
+        fiftyone zoo load cifar10 --splits test \
             --dataset-name cifar10-test-sample --shuffle --max-samples 10
+
+    .. code-block:: text
 
         Split 'test' already downloaded
         Loading 'cifar10' split 'test'
@@ -519,9 +527,9 @@ Deleting zoo datasets
     You can delete the local copy of a zoo dataset (or individual split(s) of
     them) via the :ref:`fiftyone zoo delete <cli-fiftyone-zoo-delete>` command:
 
-    .. code-block:: text
+    .. code-block:: shell
 
-        $ fiftyone zoo delete cifar10 --splits test
+        fiftyone zoo delete cifar10 --splits test
 
 .. _zoo-adding-datasets:
 
