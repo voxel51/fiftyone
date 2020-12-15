@@ -132,6 +132,10 @@ cd fiftyone
 bash install.bash
 ```
 
+_This install script adds to your `~/.bashrc` `nvm` settings, which is needed
+for installing and building the frontend App. When you pull in new changes to
+the App, you will need to run `yarn build-web` in the `./app` directory._
+
 3. If you want to use the `fiftyone.brain` package, you will need to install it
    separately after installing FiftyOne:
 

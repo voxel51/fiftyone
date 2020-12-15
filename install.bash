@@ -86,6 +86,7 @@ export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || pr
 nvm install v12.16.2
 nvm use v12.16.2
 npm -g install yarn
+source ~/.bashrc
 cd app
 yarn
 yarn build-web
