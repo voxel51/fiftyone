@@ -11,7 +11,7 @@ App
 ^^^
 - Added web browser support, which is now the default settting
 - Changed the desktop App to be an optional dependency, `fiftyone-desktop`
-- Added IPython notebook support, e.g. Jupyter and Google Colab
+- Added IPython notebook support, e.g. Jupyter, Google Colab and VSCode
 - Fixed an issue where the App would freeze after filtering labels in the
   Fields Sidebar
 
@@ -19,8 +19,10 @@ Core
 ^^^^
 - Moved project hosting to `pypi.org <https://test.pypi.org/project/fiftyone/>`_
 - Added Python 3.9 support (note that tensorflow does not yet support 3.9)
+- Removed Python 3.5 support
 - Added the :meth:`fiftyone.core.session.Session.show` method for displaying
   the App in IPython notebook cells
+- Added an in-app feedback form. We would love to hear from you!
 
 Brain
 ^^^^^
