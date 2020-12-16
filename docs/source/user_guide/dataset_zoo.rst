@@ -9,6 +9,20 @@ FiftyOne Dataset Zoo
 FiftyOne provides a Dataset Zoo that contains a collection of common datasets
 that you can download and load into FiftyOne via a few simple commands.
 
+You can interact with the Dataset Zoo either via the Python library or
+the CLI.
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    The Dataset Zoo is accessible via the :mod:`fiftyone.zoo` package.
+
+  .. group-tab:: CLI
+
+    The :ref:`fiftyone zoo <cli-fiftyone-zoo>` CLI command provides convenient
+    utilities for working with datasets in the FiftyOne Dataset Zoo.
+
 .. note::
 
     Behind the scenes, FiftyOne's Dataset Zoo uses the
@@ -24,20 +38,6 @@ that you can download and load into FiftyOne via a few simple commands.
     See :ref:`customizing your ML backend <zoo-customizing-your-ml-backend>`
     for more information about configuring the backend behavior of the Dataset
     Zoo.
-
-You can interact with the Dataset Zoo either via the Python library or
-the CLI.
-
-.. tabs::
-
-  .. group-tab:: Python
-
-    The Dataset Zoo is accessible via the :mod:`fiftyone.zoo` package.
-
-  .. group-tab:: CLI
-
-    The :ref:`fiftyone zoo <cli-fiftyone-zoo>` CLI command provides convenient
-    utilities for working with datasets in the FiftyOne Dataset Zoo.
 
 Listing zoo datasets
 --------------------
