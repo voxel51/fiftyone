@@ -3,9 +3,9 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
-FiftyOne 0.6.6
+FiftyOne 0.7.0
 --------------
-*Released December 16, 2020*
+*Released December 17, 2020*
 
 App
 ^^^
@@ -17,7 +17,7 @@ App
 
 Core
 ^^^^
-- Moved project hosting to `pypi.org <https://test.pypi.org/project/fiftyone/>`_
+- Moved project hosting to `pypi.org <https://pypi.org/project/fiftyone/>`_
 - Added Python 3.9 support (note that tensorflow does not yet support 3.9)
 - Removed Python 3.5 support
 - Added the :meth:`fiftyone.core.session.Session.show` method for displaying
