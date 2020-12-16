@@ -21,7 +21,7 @@ Prerequisites
 -------------
 
 You will need a working Python installation. FiftyOne currently requires
-**Python 3.5 through Python 3.9**. Python 3.9 is supported, but do know that
+**Python 3.6 through Python 3.9**. Python 3.9 is supported, but do know that
 some dependencies, notably `scikit-image` and `scikit-learn`, will need to be
 built from source. Also note that `tensorflow` does not support 3.9.
 
