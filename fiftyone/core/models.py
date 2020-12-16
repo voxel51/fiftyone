@@ -76,10 +76,10 @@ def _apply_image_model_single(samples, model, label_field, confidence_thresh):
             for sample in pb(samples):
                 # @todo use DataLoader-like strategy to improve performance?
                 img = etai.read(sample.filepath)
-                label = model.predict(img)
+                labels = model.predict(img)
 
                 sample.add_labels(
-                    label, label_field, confidence_thresh=confidence_thresh
+                    labels, label_field, confidence_thresh=confidence_thresh
                 )
 
 
@@ -93,11 +93,13 @@ def _apply_image_model_batch(
             for sample_batch in samples_loader:
                 # @todo use DataLoader-like strategy to improve performance?
                 imgs = [etai.read(sample.filepath) for sample in sample_batch]
-                label_batch = model.predict_all(imgs)
+                labels_batch = model.predict_all(imgs)
 
-                for sample, label in zip(sample_batch, label_batch):
+                for sample, labels in zip(sample_batch, labels_batch):
                     sample.add_labels(
-                        label, label_field, confidence_thresh=confidence_thresh
+                        labels,
+                        label_field,
+                        confidence_thresh=confidence_thresh,
                     )
 
                 pb.set_iteration(pb.iteration + len(imgs))
@@ -108,11 +110,11 @@ def _apply_video_model(samples, model, label_field, confidence_thresh):
         with fou.ProgressBar() as pb:
             for sample in pb(samples):
                 with etav.FFmpegVideoReader(sample.filepath) as video_reader:
-                    label = model.predict(video_reader)
+                    labels = model.predict(video_reader)
 
                 # Save labels
                 sample.add_labels(
-                    label, label_field, confidence_thresh=confidence_thresh
+                    labels, label_field, confidence_thresh=confidence_thresh
                 )
 
 
@@ -493,6 +495,12 @@ class Model(etal.Model):
             ``with`` syntax
     """
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
     @property
     def has_embeddings(self):
         """Whether this instance can generate embeddings.
@@ -506,7 +514,7 @@ class Model(etal.Model):
     @property
     def ragged_batches(self):
         """True/False whether :meth:`transforms` may return tensors of
-        different sizes and therefore passing ragged lists of data to
+        different sizes. If True, then passing ragged lists of data to
         :meth:`predict_all` is not allowed.
         """
         raise NotImplementedError("subclasses must implement ragged_batches")
@@ -663,7 +671,7 @@ class ModelManagerConfig(etam.ModelManagerConfig):
 
 
 class ModelManager(etam.ModelManager):
-    """Class for downloading public FiftyOne models."""
+    """Class for downloading FiftyOne models from the web."""
 
     @staticmethod
     def upload_model(model_path, *args, **kwargs):

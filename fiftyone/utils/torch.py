@@ -78,11 +78,11 @@ def apply_torch_image_model(
         with fou.SetAttributes(model, preprocess=False):
             with model:
                 for sample_batch, imgs in zip(samples_loader, data_loader):
-                    labels = model.predict_all(imgs)
+                    labels_batch = model.predict_all(imgs)
 
-                    for sample, label in zip(sample_batch, labels):
+                    for sample, labels in zip(sample_batch, labels_batch):
                         sample.add_labels(
-                            label,
+                            labels,
                             label_field,
                             confidence_thresh=confidence_thresh,
                         )
@@ -545,7 +545,7 @@ class TorchImageModel(TorchEmbeddingsMixin, fom.TorchModelMixin, fom.Model):
     @property
     def ragged_batches(self):
         """True/False whether :meth:`transforms` may return tensors of
-        different sizes and therefore passing ragged lists of images to
+        different sizes. If True, then passing ragged lists of images to
         :meth:`predict_all` is not allowed.
         """
         return self._ragged_batches
