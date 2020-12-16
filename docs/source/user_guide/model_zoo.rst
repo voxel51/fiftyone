@@ -16,7 +16,7 @@ You can interact with the Model Zoo either via the Python library or the CLI.
 
   .. group-tab:: Python
 
-    The Model Zoo is accessible via the :mod:`fiftyone.zoo.models` package.
+    The Model Zoo is accessible via the :mod:`fiftyone.zoo` package.
 
   .. group-tab:: CLI
 
@@ -63,10 +63,9 @@ COCO-2017 dataset from the :ref:`Dataset Zoo <dataset-zoo>`:
 
     import fiftyone as fo
     import fiftyone.zoo as foz
-    import fiftyone.zoo.models as fozm
 
     # List available zoo models
-    model_names = fozm.list_zoo_models()
+    model_names = foz.list_zoo_models()
     print(model_names)
 
     #
@@ -75,7 +74,7 @@ COCO-2017 dataset from the :ref:`Dataset Zoo <dataset-zoo>`:
     # This will download the model from the web, if necessary, and ensure
     # that any required packages are installed
     #
-    model = fozm.load_zoo_model("faster-rcnn-resnet50-fpn-coco-torch")
+    model = foz.load_zoo_model("faster-rcnn-resnet50-fpn-coco-torch")
 
     #
     # Load some samples from the COCO-2017 validation split
@@ -120,10 +119,10 @@ Many models in the Model Zoo expose embeddings for their predictions:
 .. code-block:: python
     :linenos:
 
-    import fiftyone.zoo.models as fozm
+    import fiftyone.zoo as foz
 
     # Load zoo model
-    model = fozm.load_zoo_model("inception-v3-imagenet-torch")
+    model = foz.load_zoo_model("inception-v3-imagenet-torch")
 
     # Check if model exposes embeddings
     print(model.has_embeddings)  # True
@@ -137,10 +136,9 @@ calling
     :linenos:
 
     import fiftyone.zoo as foz
-    import fiftyone.zoo.models as fozm
 
     # Load zoo model
-    model = fozm.load_zoo_model("inception-v3-imagenet-torch")
+    model = foz.load_zoo_model("inception-v3-imagenet-torch")
     print(model.has_embeddings)  # True
 
     # Load zoo dataset
@@ -406,9 +404,9 @@ Listing zoo models
     .. code-block:: python
         :linenos:
 
-        import fiftyone.zoo.models as fozm
+        import fiftyone.zoo as foz
 
-        available_models = fozm.list_zoo_models()
+        available_models = foz.list_zoo_models()
 
         print(available_models)
 
@@ -429,9 +427,9 @@ Listing zoo models
         :linenos:
 
         import fiftyone as fo
-        import fiftyone.zoo.models as fozm
+        import fiftyone.zoo as foz
 
-        downloaded_models = fozm.list_downloaded_zoo_models()
+        downloaded_models = foz.list_downloaded_zoo_models()
         fo.pprint(downloaded_models)
 
     .. code-block:: text
@@ -485,9 +483,9 @@ Getting information about zoo models
     .. code-block:: python
         :linenos:
 
-        import fiftyone.zoo.models as fozm
+        import fiftyone.zoo as foz
 
-        zoo_model = fozm.get_zoo_model("faster-rcnn-resnet50-fpn-coco-torch")
+        zoo_model = foz.get_zoo_model("faster-rcnn-resnet50-fpn-coco-torch")
 
         print("***** Model description *****")
         print(zoo_model.description)
@@ -530,9 +528,9 @@ Getting information about zoo models
     .. code-block:: python
         :linenos:
 
-        import fiftyone.zoo.models as fozm
+        import fiftyone.zoo as foz
 
-        model_path = fozm.find_zoo_model("faster-rcnn-resnet50-fpn-coco-torch")
+        model_path = foz.find_zoo_model("faster-rcnn-resnet50-fpn-coco-torch")
 
   .. group-tab:: CLI
 
@@ -611,9 +609,9 @@ Downloading zoo models
     .. code-block:: python
         :linenos:
 
-        import fiftyone.zoo.models as fozm
+        import fiftyone.zoo as foz
 
-        model_path = fozm.download_zoo_model("faster-rcnn-resnet50-fpn-coco-torch")
+        model_path = foz.download_zoo_model("faster-rcnn-resnet50-fpn-coco-torch")
 
     .. code-block:: text
 
@@ -656,10 +654,10 @@ Installing zoo model requirements
     .. code-block:: python
         :linenos:
 
-        import fiftyone.zoo.models as fozm
+        import fiftyone.zoo as foz
 
         # Raises an error if the requirements are not satisfied
-        fozm.ensure_zoo_model_requirements("faster-rcnn-resnet50-fpn-coco-torch")
+        foz.ensure_zoo_model_requirements("faster-rcnn-resnet50-fpn-coco-torch")
 
     You can also use
     :meth:`install_zoo_model_requirements() <fiftyone.zoo.models.install_zoo_model_requirements>`
@@ -668,9 +666,9 @@ Installing zoo model requirements
     .. code-block:: python
         :linenos:
 
-        import fiftyone.zoo.models as fozm
+        import fiftyone.zoo as foz
 
-        fozm.install_zoo_model_requirements("faster-rcnn-resnet50-fpn-coco-torch")
+        foz.install_zoo_model_requirements("faster-rcnn-resnet50-fpn-coco-torch")
 
   .. group-tab:: CLI
 
@@ -733,10 +731,10 @@ time you access it if it is not already downloaded:
 .. code-block:: python
     :linenos:
 
-    import fiftyone.zoo.models as fozm
+    import fiftyone.zoo as foz
 
     # The model will be downloaded from the web the first time you access it
-    model = fozm.load_zoo_model("faster-rcnn-resnet50-fpn-coco-torch")
+    model = foz.load_zoo_model("faster-rcnn-resnet50-fpn-coco-torch")
 
 You can also provide additional arguments to
 :meth:`load_zoo_model() <fiftyone.zoo.models.load_zoo_model>` to customize
@@ -747,7 +745,7 @@ the import behavior:
 
     # Load the zoo model and install any necessary requirements in order to
     # use it (logging warnings if any issues arise)
-    model = fozm.load_zoo_model(
+    model = foz.load_zoo_model(
         "faster-rcnn-resnet50-fpn-coco-torch",
         install_requirements=True,
         error_level=1,
@@ -786,10 +784,9 @@ Applying zoo models
         :linenos:
 
         import fiftyone.zoo as foz
-        import fiftyone.zoo.models as fozm
 
         # Load zoo model
-        model = fozm.load_zoo_model("faster-rcnn-resnet50-fpn-coco-torch")
+        model = foz.load_zoo_model("faster-rcnn-resnet50-fpn-coco-torch")
 
         # Load zoo dataset
         dataset = foz.load_zoo_dataset("quickstart")
@@ -835,10 +832,10 @@ Generating embeddings with zoo models
     .. code-block:: python
         :linenos:
 
-        import fiftyone.zoo.models as fozm
+        import fiftyone.zoo as foz
 
         # Load zoo model
-        model = fozm.load_zoo_model("inception-v3-imagenet-torch")
+        model = foz.load_zoo_model("inception-v3-imagenet-torch")
 
         # Check if model exposes embeddings
         model.has_embeddings  # True
@@ -852,10 +849,9 @@ Generating embeddings with zoo models
         :linenos:
 
         import fiftyone.zoo as foz
-        import fiftyone.zoo.models as fozm
 
         # Load zoo model
-        model = fozm.load_zoo_model("inception-v3-imagenet-torch")
+        model = foz.load_zoo_model("inception-v3-imagenet-torch")
         model.has_embeddings  # True
 
         # Load zoo dataset
@@ -954,9 +950,9 @@ Deleting zoo models
     .. code-block:: python
         :linenos:
 
-        import fiftyone.zoo.models as fozm
+        import fiftyone.zoo as foz
 
-        fozm.delete_zoo_model("faster-rcnn-resnet50-fpn-coco-torch")
+        foz.delete_zoo_model("faster-rcnn-resnet50-fpn-coco-torch")
 
   .. group-tab:: CLI
 
@@ -1066,10 +1062,10 @@ would any other zoo model:
 .. code-block:: python
 
     import fiftyone as fo
-    import fiftyone.zoo.models as fozm
+    import fiftyone.zoo as foz
 
     # Load custom model
-    model = fozm.load_zoo_model("yolo-v2-coco-tf1-high-conf")
+    model = foz.load_zoo_model("yolo-v2-coco-tf1-high-conf")
 
     # Apply model to a dataset
     dataset = fo.load_dataset(...)

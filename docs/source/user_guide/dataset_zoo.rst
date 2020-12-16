@@ -52,8 +52,8 @@ visualizing it in the App is shown below.
 
   .. group-tab:: Python
 
-    Use :meth:`load_zoo_dataset() <fiftyone.zoo.load_zoo_dataset>` to load a
-    zoo dataset into a FiftyOne dataset.
+    Use :meth:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>` to
+    load a zoo dataset into a FiftyOne dataset.
 
     For example, the code sample below loads the validation split of the
     COCO-2017 dataset from the zoo and visualizes it in the FiftyOne App:
@@ -121,7 +121,7 @@ Listing zoo datasets
   .. group-tab:: Python
 
     You can list the available zoo datasets via
-    :meth:`list_zoo_datasets() <fiftyone.zoo.list_zoo_datasets>`:
+    :meth:`list_zoo_datasets() <fiftyone.zoo.datasets.list_zoo_datasets>`:
 
     .. code-block:: python
         :linenos:
@@ -141,7 +141,7 @@ Listing zoo datasets
         'voc-2012']
 
     To view the zoo datasets that you have downloaded, you can use
-    :meth:`list_downloaded_zoo_datasets() <fiftyone.zoo.list_downloaded_zoo_datasets>`:
+    :meth:`list_downloaded_zoo_datasets() <fiftyone.zoo.datasets.list_downloaded_zoo_datasets>`:
 
     .. code-block:: python
         :linenos:
@@ -158,11 +158,11 @@ Listing zoo datasets
             ...
             'cifar10': (
                 '~/fiftyone/cifar10',
-                <fiftyone.zoo.ZooDatasetInfo object at 0x141a63048>,
+                <fiftyone.zoo.datasets.ZooDatasetInfo object at 0x141a63048>,
             ),
             'kitti': (
                 '~/fiftyone/kitti',
-                <fiftyone.zoo.ZooDatasetInfo object at 0x141a62940>,
+                <fiftyone.zoo.datasets.ZooDatasetInfo object at 0x141a62940>,
             ),
             ...
         }
@@ -199,10 +199,10 @@ Getting information about zoo datasets
   .. group-tab:: Python
 
     Each zoo dataset is represented by a
-    :class:`ZooDataset <fiftyone.zoo.ZooDataset>` subclass, which contains
-    information about the dataset, its available splits, and more. You can
-    access this object for a given dataset via the
-    :meth:`get_zoo_dataset() <fiftyone.zoo.get_zoo_dataset>` method.
+    :class:`ZooDataset <fiftyone.zoo.datasets.ZooDataset>` subclass, which
+    contains information about the dataset, its available splits, and more. You
+    can access this object for a given dataset via the
+    :meth:`get_zoo_dataset() <fiftyone.zoo.datasets.get_zoo_dataset>` method.
 
     For example, let's print some information about the CIFAR-10 dataset:
 
@@ -243,13 +243,14 @@ Getting information about zoo datasets
         test, train
 
     When a zoo dataset is downloaded, a
-    :class:`ZooDatasetInfo <fiftyone.zoo.ZooDatasetInfo>` instance is created
-    in its root directory that contains additional information about the
-    dataset, including which splits have been downloaded (if applicable).
+    :class:`ZooDatasetInfo <fiftyone.zoo.datasets.ZooDatasetInfo>` instance is
+    created in its root directory that contains additional information about
+    the dataset, including which splits have been downloaded (if applicable).
 
-    You can load the :class:`ZooDatasetInfo <fiftyone.zoo.ZooDatasetInfo>`
+    You can load the
+    :class:`ZooDatasetInfo <fiftyone.zoo.datasets.ZooDatasetInfo>`
     instance for a downloaded dataset via
-    :meth:`load_zoo_dataset_info() <fiftyone.zoo.load_zoo_dataset_info>`.
+    :meth:`load_zoo_dataset_info() <fiftyone.zoo.datasets.load_zoo_dataset_info>`.
 
     For example, let's print some information about the CIFAR-10 dataset
     (assuming it is downloaded):
@@ -370,7 +371,8 @@ Downloading zoo datasets
   .. group-tab:: Python
 
     You can download zoo datasets (or individual split(s) of them) from the
-    web via :meth:`download_zoo_dataset() <fiftyone.zoo.download_zoo_dataset>`.
+    web via
+    :meth:`download_zoo_dataset() <fiftyone.zoo.datasets.download_zoo_dataset>`.
 
     For example, let's download the ``train`` split of CIFAR-10:
 
@@ -426,7 +428,7 @@ Loading zoo datasets
   .. group-tab:: Python
 
     You can load a zoo dataset (or individual split(s) of them) via
-    :meth:`load_zoo_dataset() <fiftyone.zoo.load_zoo_dataset>`.
+    :meth:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>`.
 
     By default, the dataset will be automatically downloaded from the web the
     first time you access it if it is not already downloaded:
@@ -446,8 +448,8 @@ Loading zoo datasets
         print(dataset.head())
 
     You can also provide additional arguments to
-    :meth:`load_zoo_dataset() <fiftyone.zoo.load_zoo_dataset>` to customize the
-    import behavior:
+    :meth:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>` to
+    customize the import behavior:
 
     .. code-block:: python
         :linenos:
@@ -503,19 +505,20 @@ Loading zoo datasets
 Loading zoo datasets with manual downloads
 ------------------------------------------
 
-Some zoo datasets such as :class:`BDD100K <fiftyone.zoo.base.BDD100KDataset>`
-and :class:`Cityscapes <fiftyone.zoo.base.CityscapesDataset>` require that you
-create accounts on a website and manually download the source files. In such
-cases, the :class:`ZooDataset <fiftyone.zoo.ZooDataset>` class will provide
-additional argument(s) that let you specify the paths to these files that you
-have manually downloaded on disk.
+Some zoo datasets such as
+:class:`BDD100K <fiftyone.zoo.datasets.base.BDD100KDataset>`
+and :class:`Cityscapes <fiftyone.zoo.datasets.base.CityscapesDataset>` require
+that you create accounts on a website and manually download the source files.
+In such cases, the :class:`ZooDataset <fiftyone.zoo.datasets.ZooDataset>` class
+will provide additional argument(s) that let you specify the paths to these
+files that you have manually downloaded on disk.
 
 You can load these datasets into FiftyOne by first calling
-:meth:`download_zoo_dataset() <fiftyone.zoo.download_zoo_dataset>` with the
-appropriate keyword arguments (which are passed to the underlying
-:class:`ZooDataset <fiftyone.zoo.ZooDataset>` constructor) to wrangle the raw
-download into FiftyOne format, and then calling
-:meth:`load_zoo_dataset() <fiftyone.zoo.load_zoo_dataset>` or using
+:meth:`download_zoo_dataset() <fiftyone.zoo.datasets.download_zoo_dataset>`
+with the appropriate keyword arguments (which are passed to the underlying
+:class:`ZooDataset <fiftyone.zoo.datasets.ZooDataset>` constructor) to wrangle
+the raw download into FiftyOne format, and then calling
+:meth:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>` or using
 :ref:`fiftyone zoo load <cli-fiftyone-zoo-load>` to load the dataset into
 FiftyOne.
 
@@ -587,7 +590,8 @@ Deleting zoo datasets
   .. group-tab:: Python
 
     You can delete the local copy of a zoo dataset (or individual split(s) of
-    them) via :meth:`delete_zoo_dataset() <fiftyone.zoo.delete_zoo_dataset>`:
+    them) via
+    :meth:`delete_zoo_dataset() <fiftyone.zoo.datasets.delete_zoo_dataset>`:
 
     .. code-block:: python
         :linenos:
@@ -641,9 +645,9 @@ arbitrary string and simply controls the column of the ``fiftyone zoo list``
 listing in which the dataset is annotated; ``quickstart-copy`` is the name of
 the new dataset; and ``fiftyone.zoo.base.QuickstartDataset`` is the
 fully-qualified class name of the
-:class:`ZooDataset class <fiftyone.zoo.ZooDataset>` for the dataset, which
-specifies how to download and load the dataset into FiftyOne. This class can be
-defined anywhere that is importable at runtime in your environment.
+:class:`ZooDataset class <fiftyone.zoo.datasets.ZooDataset>` for the dataset,
+which specifies how to download and load the dataset into FiftyOne. This class
+can be defined anywhere that is importable at runtime in your environment.
 
 Finally, expose your new dataset(s) to FiftyOne by adding your manifest to the
 ``dataset_zoo_manifest_paths`` parameter of your
