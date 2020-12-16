@@ -45,7 +45,7 @@ setup(
         "eventlet",
         "future",
         "Jinja2",
-        "mongoengine",
+        "mongoengine==0.20.0",
         "motor<3,>=2.3",
         "numpy",
         "packaging",
