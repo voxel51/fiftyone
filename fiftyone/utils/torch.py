@@ -640,7 +640,8 @@ class TorchImageModel(TorchEmbeddingsMixin, fom.TorchModelMixin, fom.Model):
         if isinstance(imgs, (list, tuple)):
             imgs = torch.stack(imgs)
 
-        frame_size = tuple(imgs.size())[-2:]
+        height, width = imgs.size()[-2:]
+        frame_size = (width, height)
 
         if self._using_gpu:
             imgs = imgs.cuda()

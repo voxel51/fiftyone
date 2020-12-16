@@ -102,6 +102,95 @@ class _DatasetSample(Document):
 
         self.save()
 
+    def add_labels(self, labels, label_field, confidence_thresh=None):
+        """Adds the given labels to the sample.
+
+        The provided ``labels`` can be any of the following:
+
+        -   A :class:`fiftyone.core.labels.Label` instance, in which case the
+            labels are directly saved in the specified ``label_field``
+
+        -   A dict mapping keys to :class:`fiftyone.core.labels.Label`
+            instances. In this case, the labels are added as follows::
+
+                for key, value in labels.items():
+                    sample[label_field + "_" + key] = value
+
+        -   A dict mapping frame numbers to :class:`fiftyone.core.labels.Label`
+            instances. In this case, the provided labels are interpreted as
+            frame-level labels that should be added as follows::
+
+                sample.frames.merge(
+                    {
+                        frame_number: {label_field: label}
+                        for frame_number, label in labels.items()
+                    }
+                )
+
+        -   A dict mapping frame numbers to dicts mapping keys to
+            :class:`fiftyone.core.labels.Label` instances. In this case, the
+            provided labels are interpreted as frame-level labels that should
+            be added as follows::
+
+                sample.frames.merge(
+                    {
+                        frame_number: {
+                            label_field + "_" + name: label
+                            for name, label in frame_dict.items()
+                        }
+                        for frame_number, frame_dict in labels.items()
+                    }
+                )
+
+        Args:
+            labels: a :class:`fiftyone.core.labels.Label` or dict of labels per
+                the description above
+            label_field: the sample field or prefix in which to save the labels
+            confidence_thresh (None): an optional confidence threshold to apply
+                to any applicable labels before saving them
+        """
+        if label_field:
+            label_key = lambda k: label_field + "_" + k
+        else:
+            label_key = lambda k: k
+
+        if confidence_thresh is not None:
+            labels = _apply_confidence_thresh(labels, confidence_thresh)
+
+        if _is_frames_dict(labels):
+            if self.media_type != fomm.VIDEO:
+                raise ValueError(
+                    "Cannot add frame labels to non-video samples"
+                )
+
+            if isinstance(next(iter(labels.values())), dict):
+                # Multiple frame-level fields
+                self.frames.merge(
+                    {
+                        frame_number: {
+                            label_key(fname): flabel
+                            for fname, flabel in frame_dict.items()
+                        }
+                        for frame_number, frame_dict in labels.items()
+                    }
+                )
+            else:
+                # Single frame-level field
+                self.frames.merge(
+                    {
+                        frame_number: {label_field: label}
+                        for frame_number, label in labels.items()
+                    }
+                )
+        elif isinstance(labels, dict):
+            # Multiple sample-level fields
+            self.update_fields({label_key(k): v for k, v in labels.items()})
+        elif labels is not None:
+            # Single sample-level field
+            self[label_field] = labels
+
+        self.save()
+
     def merge(self, sample, overwrite=True):
         """Merges the fields of the sample into this sample.
 
@@ -235,95 +324,6 @@ class Sample(_DatasetSample):
             return self._frames._serve(self).__iter__()
 
         raise StopIteration
-
-    def add_labels(self, labels, label_field, confidence_thresh=None):
-        """Adds the given labels to the sample.
-
-        The provided ``labels`` can be any of the following:
-
-        -   A :class:`fiftyone.core.labels.Label` instance, in which case the
-            labels are directly saved in the specified ``label_field``
-
-        -   A dict mapping keys to :class:`fiftyone.core.labels.Label`
-            instances. In this case, the labels are added as follows::
-
-                for key, value in labels.items():
-                    sample[label_field + "_" + key] = value
-
-        -   A dict mapping frame numbers to :class:`fiftyone.core.labels.Label`
-            instances. In this case, the provided labels are interpreted as
-            frame-level labels that should be added as follows::
-
-                sample.frames.merge(
-                    {
-                        frame_number: {label_field: label}
-                        for frame_number, label in labels.items()
-                    }
-                )
-
-        -   A dict mapping frame numbers to dicts mapping keys to
-            :class:`fiftyone.core.labels.Label` instances. In this case, the
-            provided labels are interpreted as frame-level labels that should
-            be added as follows::
-
-                sample.frames.merge(
-                    {
-                        frame_number: {
-                            label_field + "_" + name: label
-                            for name, label in frame_dict.items()
-                        }
-                        for frame_number, frame_dict in labels.items()
-                    }
-                )
-
-        Args:
-            labels: a :class:`fiftyone.core.labels.Label` or dict of labels per
-                the description above
-            label_field: the sample field or prefix in which to save the labels
-            confidence_thresh (None): an optional confidence threshold to apply
-                to any applicable labels before saving them
-        """
-        if label_field:
-            label_key = lambda k: label_field + "_" + k
-        else:
-            label_key = lambda k: k
-
-        if confidence_thresh is not None:
-            labels = _apply_confidence_thresh(labels, confidence_thresh)
-
-        if _is_frames_dict(labels):
-            if self.media_type != fomm.VIDEO:
-                raise ValueError(
-                    "Cannot add frame labels to non-video samples"
-                )
-
-            if isinstance(next(iter(labels.values())), dict):
-                # Multiple frame-level fields
-                self.frames.merge(
-                    {
-                        frame_number: {
-                            label_key(fname): flabel
-                            for fname, flabel in frame_dict.items()
-                        }
-                        for frame_number, frame_dict in labels.items()
-                    }
-                )
-            else:
-                # Single frame-level field
-                self.frames.merge(
-                    {
-                        frame_number: {label_field: label}
-                        for frame_number, label in labels.items()
-                    }
-                )
-        elif isinstance(labels, dict):
-            # Multiple sample-level fields
-            self.update_fields({label_key(k): v for k, v in labels.items()})
-        elif labels is not None:
-            # Single sample-level field
-            self[label_field] = labels
-
-        self.save()
 
     def save(self):
         """Saves the sample to the database."""
