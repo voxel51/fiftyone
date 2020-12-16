@@ -136,7 +136,7 @@ jobs:
           git clone https://github.com/voxel51/eta eta --depth 1 --branch develop
           cd eta
           python setup.py bdist_wheel
-          pip install ./dist/*.whl
+          pip install --force-reinstall ./dist/*.whl
       - name: Install test dependencies (non-Windows)
         if: ${{ !startsWith(matrix.os, 'windows') }}
         run: |
