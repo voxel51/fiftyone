@@ -20,13 +20,13 @@ import fiftyone.utils.data as foud
 import fiftyone.utils.hmdb51 as fouh
 import fiftyone.utils.lfw as foul
 import fiftyone.utils.ucf101 as fouu
-import fiftyone.zoo as foz
+import fiftyone.zoo.datasets as fozd
 
 
 logger = logging.getLogger(__name__)
 
 
-class FiftyOneDataset(foz.ZooDataset):
+class FiftyOneDataset(fozd.ZooDataset):
     """Base class for zoo datasets that are provided natively by FiftyOne."""
 
     pass

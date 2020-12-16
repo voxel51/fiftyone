@@ -10,7 +10,7 @@ import fiftyone.core.utils as fou
 import fiftyone.types as fot
 import fiftyone.utils.imagenet as foui
 import fiftyone.utils.data as foud
-import fiftyone.zoo as foz
+import fiftyone.zoo.datasets as fozd
 
 
 _TFDS_IMPORT_ERROR = """
@@ -29,7 +29,7 @@ _callback = lambda: fou.ensure_tfds(error_msg=_TFDS_IMPORT_ERROR)
 tfds = fou.lazy_import("tensorflow_datasets", callback=_callback)
 
 
-class TFDSDataset(foz.ZooDataset):
+class TFDSDataset(fozd.ZooDataset):
     """Base class for zoo datasets that are provided via the
     ``tensorflow_datasets`` package.
     """

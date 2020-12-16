@@ -6,7 +6,7 @@ FiftyOne quickstart.
 |
 """
 import fiftyone.core.session as fos
-import fiftyone.zoo as foz
+import fiftyone.zoo.datasets as fozd
 
 
 def quickstart(interactive=True, video=False, port=5151, remote=False):
@@ -38,7 +38,7 @@ def quickstart(interactive=True, video=False, port=5151, remote=False):
 
 
 def _quickstart(interactive, port, remote):
-    dataset = foz.load_zoo_dataset("quickstart")
+    dataset = fozd.load_zoo_dataset("quickstart")
     session = fos.launch_app(dataset=dataset, port=port, remote=remote)
 
     # @todo improve readability of stdout when launching remote sessions
@@ -53,7 +53,7 @@ def _quickstart(interactive, port, remote):
 
 
 def _video_quickstart(interactive, port, remote):
-    dataset = foz.load_zoo_dataset("quickstart-video")
+    dataset = fozd.load_zoo_dataset("quickstart-video")
     session = fos.launch_app(dataset=dataset, port=port, remote=remote)
 
     # @todo improve readability of stdout when launching remote sessions

@@ -27,7 +27,7 @@ import fiftyone.core.session as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 import fiftyone.utils.quickstart as fouq
-import fiftyone.zoo as foz
+import fiftyone.zoo.datasets as fozd
 import fiftyone.zoo.models as fozm
 
 
@@ -957,7 +957,7 @@ class AppViewCommand(Command):
             dataset_dir = args.dataset_dir
             kwargs = _parse_dataset_import_kwargs(args)
 
-            dataset = foz.load_zoo_dataset(
+            dataset = fozd.load_zoo_dataset(
                 name, splits=splits, dataset_dir=dataset_dir, **kwargs
             )
         elif args.dataset_dir:
@@ -1179,11 +1179,11 @@ class ZooListCommand(Command):
         downloaded_only = args.downloaded_only
         match_tags = args.tag
 
-        all_datasets = foz._get_zoo_datasets()
-        all_sources, default_source = foz._get_zoo_dataset_sources()
+        all_datasets = fozd._get_zoo_datasets()
+        all_sources, default_source = fozd._get_zoo_dataset_sources()
 
         base_dir = args.base_dir
-        downloaded_datasets = foz.list_downloaded_zoo_datasets(
+        downloaded_datasets = fozd.list_downloaded_zoo_datasets(
             base_dir=base_dir
         )
 
@@ -1318,7 +1318,7 @@ class ZooFindCommand(Command):
         name = args.name
         split = args.split
 
-        dataset_dir = foz.find_zoo_dataset(name, split=split)
+        dataset_dir = fozd.find_zoo_dataset(name, split=split)
         print(dataset_dir)
 
 
@@ -1351,7 +1351,7 @@ class ZooInfoCommand(Command):
         name = args.name
 
         # Print dataset info
-        zoo_dataset = foz.get_zoo_dataset(name)
+        zoo_dataset = fozd.get_zoo_dataset(name)
         print(
             "***** Dataset description *****\n%s"
             % textwrap.dedent("    " + zoo_dataset.__doc__)
@@ -1359,7 +1359,7 @@ class ZooInfoCommand(Command):
 
         # Check if dataset is downloaded
         base_dir = args.base_dir
-        downloaded_datasets = foz.list_downloaded_zoo_datasets(
+        downloaded_datasets = fozd.list_downloaded_zoo_datasets(
             base_dir=base_dir
         )
 
@@ -1420,7 +1420,7 @@ class ZooDownloadCommand(Command):
         name = args.name
         splits = args.splits
         dataset_dir = args.dataset_dir
-        foz.download_zoo_dataset(name, splits=splits, dataset_dir=dataset_dir)
+        fozd.download_zoo_dataset(name, splits=splits, dataset_dir=dataset_dir)
 
 
 class ZooLoadCommand(Command):
@@ -1500,7 +1500,7 @@ class ZooLoadCommand(Command):
         dataset_dir = args.dataset_dir
         kwargs = _parse_dataset_import_kwargs(args)
 
-        dataset = foz.load_zoo_dataset(
+        dataset = fozd.load_zoo_dataset(
             name,
             splits=splits,
             dataset_name=dataset_name,
@@ -1537,7 +1537,7 @@ class ZooDeleteCommand(Command):
     def execute(parser, args):
         name = args.name
         split = args.split
-        foz.delete_zoo_dataset(name, split=split)
+        fozd.delete_zoo_dataset(name, split=split)
 
 
 class ModelZooCommand(Command):
