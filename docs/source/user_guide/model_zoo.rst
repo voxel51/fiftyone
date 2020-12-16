@@ -16,7 +16,9 @@ You can interact with the Model Zoo either via the Python library or the CLI.
 
   .. group-tab:: Python
 
-    The Model Zoo is accessible via the :mod:`fiftyone.zoo` package.
+    The Model Zoo is accessible via the :mod:`fiftyone.zoo.models` package,
+    whose public methods are imported into the ``fiftyone.zoo`` namespace, for
+    convenience.
 
   .. group-tab:: CLI
 

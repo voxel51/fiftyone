@@ -16,7 +16,9 @@ the CLI.
 
   .. group-tab:: Python
 
-    The Dataset Zoo is accessible via the :mod:`fiftyone.zoo` package.
+    The Dataset Zoo is accessible via the :mod:`fiftyone.zoo.datasets` package,
+    whose public methods are imported into the ``fiftyone.zoo`` namespace, for
+    convenience.
 
   .. group-tab:: CLI
 
