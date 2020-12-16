@@ -814,8 +814,8 @@ Applying zoo models
 
         # Apply zoo model
         fiftyone model-zoo apply \
-            quickstart \                            # dataset
             faster-rcnn-resnet50-fpn-coco-torch \   # model
+            quickstart \                            # dataset
             faster_rcnn                             # label field
 
 .. _generating-zoo-model-embeddings:
@@ -891,8 +891,8 @@ Generating embeddings with zoo models
 
         # Generate embeddings via zoo model
         fiftyone model-zoo embed \
-            quickstart \                            # dataset
             inception-v3-imagenet-torch \           # model
+            quickstart \                            # dataset
             embeddings                              # embeddings field
 
 Controlling where zoo models are downloaded
