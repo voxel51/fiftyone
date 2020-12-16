@@ -104,6 +104,10 @@ visualizing it in the App is shown below.
         # Visualize the dataset in the App
         fiftyone app launch coco-2017-validation-example
 
+.. image:: ../images/dataset_zoo_coco_2017.png
+   :alt: Dataset Zoo
+   :align: center
+
 API Reference
 -------------
 
