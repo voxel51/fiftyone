@@ -53,10 +53,14 @@ jobs:
         run: |
           python setup.py bdist_wheel
           pip install dist/*.whl
-      - name: Upgrade ETA to pre-release
+      - name: Install ETA from source
+        if: ${{ !startsWith(github.ref, 'refs/heads/rel') && !startsWith(github.ref, 'refs/tags/') }}
         run: |
-          echo "Upgrading ETA because github.ref = ${{ github.ref }} (not a release)"
-          pip install --pre --extra-index-url https://test.pypi.org/simple/ -U "voxel51-eta>=0.dev0"
+          echo "Installing ETA from source because github.ref = ${{ github.ref }} (not a release)"
+          git clone https://github.com/voxel51/eta eta --depth 1 --branch develop
+          cd eta
+          python setup.py bdist_wheel
+          pip install ./dist/*.whl
       - name: Install
         run: |
           sudo apt-get install pandoc

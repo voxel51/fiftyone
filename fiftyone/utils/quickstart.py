@@ -128,7 +128,7 @@ Here are some things you can do to explore the dataset:
 Resources:
 
 -   Using the App: https://voxel51.com/docs/fiftyone/user_guide/app.html
--   Dataset Zoo:   https://voxel51.com/docs/fiftyone/user_guide/dataset_creation/zoo.html
+-   Dataset Zoo:   https://voxel51.com/docs/fiftyone/user_guide/dataset_zoo.html
 """
 
 
@@ -178,5 +178,5 @@ Here are some things you can do to explore the dataset:
 Resources:
 
 -   Using the App: https://voxel51.com/docs/fiftyone/user_guide/app.html
--   Dataset Zoo:   https://voxel51.com/docs/fiftyone/user_guide/dataset_creation/zoo.html
+-   Dataset Zoo:   https://voxel51.com/docs/fiftyone/user_guide/dataset_zoo.html
 """

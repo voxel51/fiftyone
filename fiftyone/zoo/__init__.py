@@ -8,6 +8,7 @@ download via FiftyOne.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import OrderedDict
 import logging
 import os
 
@@ -15,7 +16,6 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.dataset as fod
 
 
 logger = logging.getLogger(__name__)
@@ -40,14 +40,14 @@ def list_downloaded_zoo_datasets(base_dir=None):
 
     Args:
         base_dir (None): the base directory to search for downloaded datasets.
-            By default, ``fo.config.default_dataset_dir`` is used
+            By default, ``fo.config.dataset_zoo_dir`` is used
 
     Returns:
         a dict mapping dataset names to (dataset dir, :class:`ZooDatasetInfo`)
         tuples
     """
     if base_dir is None:
-        base_dir = fo.config.default_dataset_dir
+        base_dir = fo.config.dataset_zoo_dir
 
     try:
         sub_dirs = etau.list_subdirs(base_dir)
@@ -95,8 +95,8 @@ def download_zoo_dataset(
             downloaded. Consult the documentation for the :class:`ZooDataset`
             you specified to see the supported splits
         dataset_dir (None): the directory into which to download the dataset.
-            By default, :func:`fiftyone.core.dataset.get_default_dataset_dir`
-            is used to select the directory
+            By default, it is downloaded to a subdirectory of
+            ``fiftyone.config.dataset_zoo_dir``
         overwrite (False): whether to overwrite any existing files
         cleanup (True): whether to cleanup any temporary files generated during
             download
@@ -159,9 +159,8 @@ def load_zoo_dataset(
             :class:`fiftyone.core.dataset.Dataset`. By default, a name will be
             constructed based on the dataset and split(s) you are loading
         dataset_dir (None): the directory in which the dataset is stored or
-            will be downloaded. By default,
-            :func:`fiftyone.core.dataset.get_default_dataset_dir` is used to
-            select the directory
+            will be downloaded. By default, the dataset will be located in
+            ``fiftyone.config.dataset_zoo_dir``
         download_if_necessary (True): whether to download the dataset if it is
             not found in the specified dataset directory
         drop_existing_dataset (False): whether to drop an existing dataset
@@ -275,8 +274,8 @@ def load_zoo_dataset_info(name, dataset_dir=None):
     Args:
         name: the name of the zoo dataset
         dataset_dir (None): the directory in which the dataset is stored. By
-            default, :func:`fiftyone.core.dataset.get_default_dataset_dir` is
-            used to select the directory
+            default, the dataset is located in
+            ``fiftyone.config.dataset_zoo_dir``
 
     Returns:
         the :class:`ZooDatasetInfo` for the dataset
@@ -379,11 +378,30 @@ def _get_zoo_datasets():
     from fiftyone.zoo.torch import AVAILABLE_DATASETS as TORCH_DATASETS
     from fiftyone.zoo.tf import AVAILABLE_DATASETS as TF_DATASETS
 
-    return {
-        "base": BASE_DATASETS,
-        "torch": TORCH_DATASETS,
-        "tensorflow": TF_DATASETS,
-    }
+    zoo_datasets = OrderedDict()
+    zoo_datasets["base"] = BASE_DATASETS
+    zoo_datasets["torch"] = TORCH_DATASETS
+    zoo_datasets["tensorflow"] = TF_DATASETS
+
+    if fo.config.dataset_zoo_manifest_paths:
+        for manifest_path in fo.config.dataset_zoo_manifest_paths:
+            manifest = _load_zoo_dataset_manifest(manifest_path)
+            zoo_datasets.update(manifest)
+
+    return zoo_datasets
+
+
+def _load_zoo_dataset_manifest(manifest_path):
+    _manifest = etas.read_json(manifest_path)
+
+    manifest = OrderedDict()
+    for source, datasets in _manifest.items():
+        manifest[source] = {
+            name: etau.get_class(zoo_dataset_cls)
+            for name, zoo_dataset_cls in datasets.items()
+        }
+
+    return manifest
 
 
 def _get_zoo_dataset_sources():
@@ -394,17 +412,20 @@ def _get_zoo_dataset_sources():
     sources = []
 
     try:
+        # base first
         all_sources.remove("base")
         sources.append("base")
     except:
         pass
 
     try:
+        # then default source
         all_sources.remove(default_source)
         sources.append(default_source)
     except ValueError:
         default_source = None
 
+    # then remaining sources
     sources.extend(all_sources)
 
     return sources, default_source
@@ -414,9 +435,13 @@ def _parse_dataset_details(name, dataset_dir, **kwargs):
     zoo_dataset = get_zoo_dataset(name, **kwargs)
 
     if dataset_dir is None:
-        dataset_dir = fod.get_default_dataset_dir(zoo_dataset.name)
+        dataset_dir = _get_zoo_dataset_dir(zoo_dataset.name)
 
     return zoo_dataset, dataset_dir
+
+
+def _get_zoo_dataset_dir(name):
+    return os.path.join(fo.config.dataset_zoo_dir, name)
 
 
 class ZooDatasetInfo(etas.Serializable):
@@ -518,7 +543,7 @@ class ZooDatasetInfo(etas.Serializable):
         """Adds the split to the dataset.
 
         Args:
-            split_info: a :class:`ZooDatasetSplitInfo
+            split_info: a :class:`ZooDatasetSplitInfo`
         """
         self.downloaded_splits[split_info.split] = split_info
         self._compute_num_samples()
@@ -645,6 +670,16 @@ class ZooDataset(object):
         raise NotImplementedError("subclasses must implement name")
 
     @property
+    def tags(self):
+        """A tuple of tags for the dataset."""
+        return None
+
+    @property
+    def has_tags(self):
+        """Whether the dataset has tags."""
+        return self.tags is not None
+
+    @property
     def parameters(self):
         """An optional dict of parameters describing the configuration of the
         zoo dataset when it was downloaded.
@@ -662,6 +697,17 @@ class ZooDataset(object):
     def has_splits(self):
         """Whether the dataset has splits."""
         return self.supported_splits is not None
+
+    def has_tag(self, tag):
+        """Whether the dataset has the given tag.
+
+        Args:
+            tag: the tag
+
+        Returns:
+            True/False
+        """
+        return self.has_tags and (tag in self.tags)
 
     def has_split(self, split):
         """Whether the dataset has the given split.
@@ -727,9 +773,8 @@ class ZooDataset(object):
 
         Args:
             dataset_dir (None): the directory in which to construct the
-                dataset. By default,
-                :func:`fiftyone.core.dataset.get_default_dataset_dir` is used
-                to select the directory
+                dataset. By default, it is written to a subdirectory of
+                ``fiftyone.config.dataset_zoo_dir``
             split (None) a split to download, if applicable. If neither
                 ``split`` nor ``splits`` are provided, the full dataset is
                 downloaded
@@ -747,7 +792,7 @@ class ZooDataset(object):
             -   dataset_dir: the directory containing the dataset
         """
         if dataset_dir is None:
-            dataset_dir = fod.get_default_dataset_dir(self.name)
+            dataset_dir = _get_zoo_dataset_dir(self.name)
 
         # Parse splits
         splits = _parse_splits(split, splits)

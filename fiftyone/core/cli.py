@@ -13,6 +13,7 @@ import json
 import os
 import subprocess
 import sys
+import textwrap
 
 import argcomplete
 from tabulate import tabulate
@@ -28,6 +29,7 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 import fiftyone.utils.quickstart as fouq
 import fiftyone.zoo as foz
+import fiftyone.zoo.models as fozm
 
 
 _TABLE_FORMAT = "simple"
@@ -76,6 +78,7 @@ class FiftyOneCommand(Command):
         _register_command(subparsers, "datasets", DatasetsCommand)
         _register_command(subparsers, "app", AppCommand)
         _register_command(subparsers, "zoo", ZooCommand)
+        _register_command(subparsers, "model-zoo", ModelZooCommand)
 
     @staticmethod
     def execute(parser, args):
@@ -1196,13 +1199,27 @@ class ZooListCommand(Command):
         # List available datasets
         fiftyone zoo list
 
-        # List available datasets, using the specified base directory to search
-        # for downloaded datasets
-        fiftyone zoo list --base-dir <base-dir>
+        # List downloaded datasets
+        fiftyone zoo list --downloaded-only
+
+        # List available datasets with the given tag
+        fiftyone zoo list --tag <tag>
     """
 
     @staticmethod
     def setup(parser):
+        parser.add_argument(
+            "-d",
+            "--downloaded-only",
+            action="store_true",
+            help="only show datasets that have been downloaded",
+        )
+        parser.add_argument(
+            "-t",
+            "--tag",
+            metavar="TAG",
+            help="only show datasets with the specified tag or list,of,tags",
+        )
         parser.add_argument(
             "-b",
             "--base-dir",
@@ -1215,6 +1232,9 @@ class ZooListCommand(Command):
 
     @staticmethod
     def execute(parser, args):
+        downloaded_only = args.downloaded_only
+        match_tags = args.tag
+
         all_datasets = foz._get_zoo_datasets()
         all_sources, default_source = foz._get_zoo_dataset_sources()
 
@@ -1224,13 +1244,26 @@ class ZooListCommand(Command):
         )
 
         _print_zoo_dataset_list(
-            downloaded_datasets, all_datasets, all_sources, default_source
+            downloaded_datasets,
+            all_datasets,
+            all_sources,
+            default_source,
+            downloaded_only=downloaded_only,
+            match_tags=match_tags,
         )
 
 
 def _print_zoo_dataset_list(
-    downloaded_datasets, all_datasets, all_sources, default_source
+    downloaded_datasets,
+    all_datasets,
+    all_sources,
+    default_source,
+    downloaded_only=False,
+    match_tags=None,
 ):
+    if match_tags is not None:
+        match_tags = match_tags.split(",")
+
     available_datasets = defaultdict(dict)
     for source, datasets in all_datasets.items():
         for name, zoo_dataset_cls in datasets.items():
@@ -1240,7 +1273,20 @@ def _print_zoo_dataset_list(
 
     # Iterate over available datasets
     for name in sorted(available_datasets):
+        if downloaded_only and name not in downloaded_datasets:
+            continue
+
         dataset_sources = available_datasets[name]
+
+        tags = None
+        for source, zoo_model in dataset_sources.items():
+            if tags is None or source == default_source:
+                tags = zoo_model.tags
+
+        if (match_tags is not None) and (
+            tags is None or not all(tag in tags for tag in match_tags)
+        ):
+            continue
 
         # Check for downloaded splits
         if name in downloaded_datasets:
@@ -1281,13 +1327,17 @@ def _print_zoo_dataset_list(
             else:
                 split_dir = ""
 
+            if downloaded_only and not split_dir:
+                continue
+
+            tags_str = ",".join(tags) if tags else ""
             is_downloaded = "\u2713" if split_dir else ""
 
             records.append(
-                (name, split, is_downloaded, split_dir) + tuple(srcs)
+                (name, tags_str, split, is_downloaded, split_dir) + tuple(srcs)
             )
 
-    headers = ["name", "split", "downloaded", "dataset_dir"]
+    headers = ["name", "tags", "split", "downloaded", "dataset_dir"]
     for source in all_sources:
         if source == default_source:
             source += " (*)"
@@ -1358,13 +1408,20 @@ class ZooInfoCommand(Command):
 
         # Print dataset info
         zoo_dataset = foz.get_zoo_dataset(name)
-        print("***** Dataset description *****\n    %s" % zoo_dataset.__doc__)
+        print(
+            "***** Dataset description *****\n%s"
+            % textwrap.dedent("    " + zoo_dataset.__doc__)
+        )
 
         # Check if dataset is downloaded
         base_dir = args.base_dir
         downloaded_datasets = foz.list_downloaded_zoo_datasets(
             base_dir=base_dir
         )
+
+        if zoo_dataset.has_tags:
+            print("***** Tags *****")
+            print("%s\n" % ", ".join(zoo_dataset.tags))
 
         if zoo_dataset.has_splits:
             print("***** Supported splits *****")
@@ -1391,7 +1448,7 @@ class ZooDownloadCommand(Command):
         # Download the specified split(s) of the zoo dataset
         fiftyone zoo download <name> --splits <split1> ...
 
-        # Download to the zoo dataset to a custom directory
+        # Download the zoo dataset to a custom directory
         fiftyone zoo download <name> --dataset-dir <dataset-dir>
     """
 
@@ -1537,6 +1594,424 @@ class ZooDeleteCommand(Command):
         name = args.name
         split = args.split
         foz.delete_zoo_dataset(name, split=split)
+
+
+class ModelZooCommand(Command):
+    """Tools for working with the FiftyOne Model Zoo."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "list", ModelZooListCommand)
+        _register_command(subparsers, "find", ModelZooFindCommand)
+        _register_command(subparsers, "info", ModelZooInfoCommand)
+        _register_command(
+            subparsers, "requirements", ModelZooRequirementsCommand
+        )
+        _register_command(subparsers, "download", ModelZooDownloadCommand)
+        _register_command(subparsers, "apply", ModelZooApplyCommand)
+        _register_command(subparsers, "embed", ModelZooEmbedCommand)
+        _register_command(subparsers, "delete", ModelZooDeleteCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class ModelZooListCommand(Command):
+    """List datasets in the FiftyOne Model Zoo.
+
+    Examples::
+
+        # List available models
+        fiftyone model-zoo list
+
+        # List downloaded models
+        fiftyone model-zoo list --downloaded-only
+
+        # List available models with the given tag
+        fiftyone model-zoo list --tag <tag>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-d",
+            "--downloaded-only",
+            action="store_true",
+            help="only show models that have been downloaded",
+        )
+        parser.add_argument(
+            "-t",
+            "--tag",
+            metavar="TAG",
+            help="only show models with the specified tag or list,of,tags",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        downloaded_only = args.downloaded_only
+        match_tags = args.tag
+
+        models_manifest = fozm._load_zoo_models_manifest()
+        downloaded_models = fozm.list_downloaded_zoo_models()
+
+        _print_zoo_models_list(
+            models_manifest,
+            downloaded_models,
+            downloaded_only=downloaded_only,
+            match_tags=match_tags,
+        )
+
+
+def _print_zoo_models_list(
+    models_manifest, downloaded_models, downloaded_only=False, match_tags=None
+):
+    if match_tags is not None:
+        match_tags = match_tags.split(",")
+
+    records = []
+    for model in sorted(models_manifest.models, key=lambda model: model.name):
+        name = model.name
+
+        if downloaded_only and name not in downloaded_models:
+            continue
+
+        if (match_tags is not None) and not all(
+            model.has_tag(tag) for tag in match_tags
+        ):
+            continue
+
+        if name in downloaded_models:
+            is_downloaded = "\u2713"
+            model_path = downloaded_models[name][0]
+        else:
+            is_downloaded = ""
+            model_path = ""
+
+        tags = ",".join(model.tags or [])
+
+        records.append((name, tags, is_downloaded, model_path))
+
+    headers = ["name", "tags", "downloaded", "model_path"]
+    table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
+    print(table_str)
+
+
+def _print_zoo_models_list_sample(models_manifest, downloaded_models):
+    all_models = [model.name for model in models_manifest]
+
+    records = []
+    for name in sorted(all_models):
+        if name in downloaded_models:
+            is_downloaded = "\u2713"
+            model_path = downloaded_models[name][0]
+        else:
+            is_downloaded = ""
+            model_path = ""
+
+        records.append((name, is_downloaded, model_path))
+
+    headers = ["name", "downloaded", "model_path"]
+    table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
+    print(table_str)
+
+
+class ModelZooFindCommand(Command):
+    """Locate the downloaded zoo model on disk.
+
+    Examples::
+
+        # Print the location of the downloaded zoo model on disk
+        fiftyone model-zoo find <name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the model"
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+
+        model_path = fozm.find_zoo_model(name)
+        print(model_path)
+
+
+class ModelZooInfoCommand(Command):
+    """Print information about models in the FiftyOne Model Zoo.
+
+    Examples::
+
+        # Print information about a zoo model
+        fiftyone model-zoo info <name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the model"
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+
+        # Print model info
+        zoo_model = fozm.get_zoo_model(name)
+        print("***** Model description *****\n%s\n" % str(zoo_model))
+
+        # Check if model is downloaded
+        print("***** Model location *****")
+        if not fozm.is_zoo_model_downloaded(name):
+            print("Model '%s' is not downloaded" % name)
+        else:
+            model_path = fozm.find_zoo_model(name)
+            print(model_path)
+
+
+class ModelZooRequirementsCommand(Command):
+    """Handles package requirements for zoo models.
+
+    Examples::
+
+        # Print requirements for a zoo model
+        fiftyone model-zoo requirements <name> --print
+
+        # Install any requirements for the zoo model
+        fiftyone model-zoo requirements <name> --install
+
+        # Ensures that the requirements for the zoo model are satisfied
+        fiftyone model-zoo requirements <name> --ensure
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the model"
+        )
+        parser.add_argument(
+            "-p",
+            "--print",
+            action="store_true",
+            help="print the requirements for the zoo model",
+        )
+        parser.add_argument(
+            "-i",
+            "--install",
+            action="store_true",
+            help="install any requirements for the zoo model",
+        )
+        parser.add_argument(
+            "-e",
+            "--ensure",
+            action="store_true",
+            help="ensure the requirements for the zoo model are satisfied",
+        )
+        parser.add_argument(
+            "--error-level",
+            metavar="LEVEL",
+            type=int,
+            help=(
+                "the error level in {0, 1, 2} to use when installing or "
+                "ensuring model requirements"
+            ),
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        error_level = args.error_level
+
+        if args.print or (not args.install and not args.ensure):
+            zoo_model = fozm.get_zoo_model(name)
+            _print_model_requirements(zoo_model)
+
+        if args.install:
+            fozm.install_zoo_model_requirements(name, error_level=error_level)
+
+        if args.ensure:
+            fozm.ensure_zoo_model_requirements(name, error_level=error_level)
+
+
+def _print_model_requirements(zoo_model):
+    requirements = zoo_model.requirements
+    if requirements is None:
+        return
+
+    # Model requirements
+    print("***** Model requirements *****")
+    print(requirements)
+
+    # Current machine specs
+    print("\n***** Current machine *****")
+    if etau.has_gpu():
+        print("GPU: yes")
+        print("CUDA version: %s" % etau.get_cuda_version())
+        print("cuDNN version: %s" % etau.get_cudnn_version())
+    else:
+        print("GPU: no")
+
+
+class ModelZooDownloadCommand(Command):
+    """Download zoo models.
+
+    Examples::
+
+        # Download the zoo model
+        fiftyone model-zoo download <name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the zoo model"
+        )
+        parser.add_argument(
+            "-f",
+            "--force",
+            action="store_true",
+            help=(
+                "whether to force download the model if it is already "
+                "downloaded"
+            ),
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        force = args.force
+        fozm.download_zoo_model(name, overwrite=force)
+
+
+class ModelZooApplyCommand(Command):
+    """Apply zoo models to datasets.
+
+    Examples::
+
+        # Apply the zoo model to the dataset
+        fiftyone model-zoo apply <model-name> <dataset-name> <label-field>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "model_name",
+            metavar="MODEL_NAME",
+            help="the name of the zoo model",
+        )
+        parser.add_argument(
+            "dataset_name",
+            metavar="DATASET_NAME",
+            help="the name of the FiftyOne dataset to process",
+        )
+        parser.add_argument(
+            "label_field",
+            metavar="LABEL_FIELD",
+            help=(
+                "the name (or prefix) of the field in which to store the "
+                "predictions"
+            ),
+        )
+        parser.add_argument(
+            "-b",
+            "--batch-size",
+            metavar="BATCH_SIZE",
+            default=None,
+            type=int,
+            help="an optional batch size to use during inference",
+        )
+        parser.add_argument(
+            "-t",
+            "--confidence-thresh",
+            metavar="THRESH",
+            default=None,
+            type=float,
+            help=(
+                "an optional confidence threshold to apply to any applicable "
+                "labels generated by the model"
+            ),
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        model = fozm.load_zoo_model(args.model_name)
+        dataset = fod.load_dataset(args.dataset_name)
+        dataset.apply_model(
+            model,
+            args.label_field,
+            confidence_thresh=args.confidence_thresh,
+            batch_size=args.batch_size,
+        )
+
+
+class ModelZooEmbedCommand(Command):
+    """Generate embeddings for datasets with zoo models.
+
+    Examples::
+
+        # Generate embeddings for the dataset with the zoo model
+        fiftyone model-zoo embed <model-name> <dataset-name> <label-field>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "model_name",
+            metavar="MODEL_NAME",
+            help="the name of the zoo model",
+        )
+        parser.add_argument(
+            "dataset_name",
+            metavar="DATASET_NAME",
+            help="the name of the FiftyOne dataset to process",
+        )
+        parser.add_argument(
+            "embeddings_field",
+            metavar="EMBEDDINGS_FIELD",
+            help="the name of the field in which to store the embeddings",
+        )
+        parser.add_argument(
+            "-b",
+            "--batch-size",
+            metavar="BATCH_SIZE",
+            default=None,
+            type=int,
+            help="an optional batch size to use during inference",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        model = fozm.load_zoo_model(args.model_name)
+        dataset = fod.load_dataset(args.dataset_name)
+        dataset.compute_embeddings(
+            model,
+            embeddings_field=args.embeddings_field,
+            batch_size=args.batch_size,
+        )
+
+
+class ModelZooDeleteCommand(Command):
+    """Deletes the local copy of the zoo model on disk.
+
+    Examples::
+
+        # Delete the zoo model from disk
+        fiftyone model-zoo delete <name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the model"
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        name = args.name
+        fozm.delete_zoo_model(name)
 
 
 def _parse_dataset_import_kwargs(args):
