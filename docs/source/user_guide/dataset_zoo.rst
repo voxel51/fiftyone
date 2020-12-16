@@ -39,6 +39,76 @@ the CLI.
     for more information about configuring the backend behavior of the Dataset
     Zoo.
 
+.. _dataset-zoo-basic-recipe:
+
+Basic recipe
+------------
+
+Methods for working with the Dataset Zoo are conveniently exposed via the
+Python library and the CLI. The basic recipe for loading a zoo dataset and
+visualizing it in the App is shown below.
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    Use :meth:`load_zoo_dataset() <fiftyone.zoo.load_zoo_dataset>` to load a
+    zoo dataset into a FiftyOne dataset.
+
+    For example, the code sample below loads the validation split of the
+    COCO-2017 dataset from the zoo and visualizes it in the FiftyOne App:
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        # List available zoo datasets
+        print(foz.list_zoo_datasets())
+
+        #
+        # Load the COCO-2017 validation split into a FiftyOne dataset
+        #
+        # This will download the dataset from the web, if necessary
+        #
+        dataset = foz.load_zoo_dataset("coco-2017", split="validation")
+
+        # Give the dataset a new name, and make it persistent so that you can
+        # work with it in future sessions
+        dataset.name = "coco-2017-validation-example"
+        dataset.persistent = True
+
+        # Visualize the in the App
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    Use :ref:`fiftyone zoo load <cli-fiftyone-zoo-load>` to load a zoo dataset
+    into a FiftyOne dataset.
+
+    For example, the code sample below loads the validation split of the
+    COCO-2017 dataset from the zoo and visualizes it in the FiftyOne App:
+
+    .. code-block:: shell
+
+        #
+        # Load the COCO-2017 validation split into a FiftyOne dataset called
+        # `coco-2017-validation-example`
+        #
+        # This will download the dataset from the web, if necessary
+        #
+        fiftyone zoo load coco-2017 --split validation \
+            --dataset-name coco-2017-validation-example
+
+        # Visualize the dataset in the App
+        fiftyone app launch coco-2017-validation-example
+
+API Reference
+-------------
+
+The sections below describe the full API for working with the Dataset Zoo.
+
 Listing zoo datasets
 --------------------
 
@@ -543,7 +613,7 @@ become accessible to you when you update your FiftyOne package.
 
     FiftyOne is open source! You are welcome to contribute datasets to the
     public dataset zoo by submitting a pull request to
-    `the GitHub repository <https://github.com/voxel51/fiftyone>`.
+    `the GitHub repository <https://github.com/voxel51/fiftyone>`_.
 
 You can also add your own datasets to your local dataset zoo, enabling you to
 work with these datasets via the ``fiftyone.zoo`` package and the CLI using the
