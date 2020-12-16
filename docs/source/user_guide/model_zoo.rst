@@ -31,11 +31,11 @@ You can interact with the Model Zoo either via the Python library or the CLI.
     viewing/installing package requirements for models.
 
     If you try to load a zoo model without the proper packages installed, you
-    will receive an error message that will explain what to install.
+    will receive an error message that will explain what you need to install.
 
-    Depending on your compute environment, some package requirement errors may
-    be erroneous. In such cases, you can suppress error messages. See
-    :ref:`this section <applying-zoo-models>` for more information.
+    Depending on your compute environment, some package requirement failures
+    may be erroneous. In such cases, you can
+    :ref:`suppress error messages <applying-zoo-models>`.
 
 Basic recipe
 ------------
@@ -44,7 +44,7 @@ Methods for working with the Model Zoo are conveniently exposed via the Python
 library and the CLI. The basic recipe is that you load a model from the zoo and
 then apply it to a dataset (or a subset of the dataset specified by a
 |DatasetView|) using methods such as
-:meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model`.
+:meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`.
 
 Prediction
 ~~~~~~~~~~
@@ -75,11 +75,17 @@ COCO-2017 dataset from the :ref:`Dataset Zoo <dataset-zoo>`:
     #
     model = fozm.load_zoo_model("faster-rcnn-resnet50-fpn-coco-torch")
 
-    # Load the COCO-2017 validation split
+    #
+    # Load some samples from the COCO-2017 validation split
+    #
+    # This will download the dataset from the web, if necessary
+    #
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
         dataset_name="coco-2017-example",
+        max_samples=100,
+        shuffle=True,
     )
 
     #
@@ -91,9 +97,10 @@ COCO-2017 dataset from the :ref:`Dataset Zoo <dataset-zoo>`:
 
     #
     # Generate predictions for each sample and store the results in the
-    # `faster-rcnn` field of the dataset
+    # `faster_rcnn` field of the dataset, discarding all predictions with
+    # confidence below 0.5
     #
-    samples.apply_model(model, label_field="faster-rcnn")
+    samples.apply_model(model, "faster_rcnn", confidence_thresh=0.5)
     print(samples)
 
     # Visualize predictions in the App
@@ -166,7 +173,7 @@ defined input and output data formats.
     Zoo implement. If you write a wrapper for your custom model that implements
     the |Model| interface, then you can pass your models to builtin methods
     like
-    :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model`
+    :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
     and
     :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`
     too!
@@ -182,7 +189,7 @@ Prediction
 ~~~~~~~~~~
 
 Inside builtin methods like
-:meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model`,
+:meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`,
 predictions of a |Model| instance are generated using the following pattern:
 
 .. tabs::
@@ -201,8 +208,8 @@ predictions of a |Model| instance are generated using the following pattern:
             """Utility function that loads an image as an RGB numpy aray."""
             return np.asarray(Image.open(path).convert("rgb"))
 
-        # Load a `Model` instance that processes images (more on this later)
-        model = fo.load_model(...)
+        # Load a `Model` instance that processes images
+        model = ...
 
         # Load a FiftyOne dataset
         dataset = fo.load_dataset(...)
@@ -231,8 +238,8 @@ predictions of a |Model| instance are generated using the following pattern:
 
         import fiftyone as fo
 
-        # Load a `Model` instance that processes videos (more on this later)
-        model = fo.load_model(...)
+        # Load a `Model` instance that processes videos
+        model = ...
 
         # Load a FiftyOne dataset
         dataset = fo.load_dataset(...)
@@ -263,57 +270,70 @@ models should support the following basic signature of running inference and
 storing the output labels:
 
 .. code-block:: python
+    :linenos:
 
     labels = model.predict(arg)
     sample.add_labels(labels, label_field)
 
 where the model should, at minimum, support ``arg`` values that are:
 
--   (Image models) uint8 numpy arrays (HWC)
+-   *(Image models)* uint8 numpy arrays (HWC)
 
--   (Video models) ``eta.core.video.VideoReader`` instances
+-   *(Video models)* ``eta.core.video.VideoReader`` instances
 
 and the output ``labels`` can be any of the following:
 
--   A |Label| instance, in which case the labels are directly saved in the
+1.  A |Label| instance, in which case the labels are directly saved in the
     specified ``label_field`` of the sample
 
--   A dict mapping keys to |Label| instances. In this case, the labels are
+.. code-block:: python
+    :linenos:
+
+    # Single sample-level label
+    sample[label_field] = labels
+
+2.  A dict mapping keys to |Label| instances. In this case, the labels are
     added as follows:
 
-    .. code-block:: python
+.. code-block:: python
+    :linenos:
 
-        for key, value in labels.items():
-            sample[label_field + "_" + key] = value
+    # Multiple sample-level labels
+    for key, value in labels.items():
+        sample[label_field + "_" + key] = value
 
--   A dict mapping frame numbers to |Label| instances. In this case, the
+3.  A dict mapping frame numbers to |Label| instances. In this case, the
     provided labels are interpreted as frame-level labels that should be added
     as follows:
 
-    .. code-block:: python
+.. code-block:: python
+    :linenos:
 
-        sample.frames.merge(
-            {
-                frame_number: {label_field: label}
-                for frame_number, label in labels.items()
-            }
-        )
+    # Single set of per-frame labels
+    sample.frames.merge(
+        {
+            frame_number: {label_field: label}
+            for frame_number, label in labels.items()
+        }
+    )
 
--   A dict mapping frame numbers to dicts mapping keys to |Label| instances. In
+4.  A dict mapping frame numbers to dicts mapping keys to |Label| instances. In
     this case, the provided labels are interpreted as frame-level labels that
     should be added as follows:
 
-    .. code-block:: python
+.. code-block:: python
+    :linenos:
 
-        sample.frames.merge(
-            {
-                frame_number: {
-                    label_field + "_" + name: label
-                    for name, label in frame_dict.items()
-                }
-                for frame_number, frame_dict in labels.items()
+    # Multiple per-frame labels
+    sample.frames.merge(
+        {
+            frame_number: {
+                label_field + "_" + name: label
+                for name, label in frame_dict.items()
             }
-        )
+            for frame_number, frame_dict in labels.items()
+        }
+    )
 
 For models that support batching, the |Model| interface also provides a
 :meth:`predict_all() <fiftyone.core.models.Model.predict_all>` method that can
@@ -340,11 +360,11 @@ Models that can compute embeddings for their input data can expose this
 capability by implementing the |EmbeddingsMixin| mixin.
 
 Inside builtin methods like
-:meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings`,
+:meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`,
 embeddings for a collection of samples are generated using an analogous pattern
 to the prediction code shown above, except that the embeddings are generated
 using :meth:`Model.embed() <fiftyone.core.models.EmbeddingsMixin.embed>` in place of
-:meth:`Model.predict()`.
+:meth:`Model.predict() <fiftyone.core.models.Model.predict>`.
 
 By convention,
 :meth:`Model.embed() <fiftyone.core.models.EmbeddingsMixin.embed>` should
@@ -770,7 +790,7 @@ Applying zoo models
         samples = dataset.take(10)
 
         # Run inference
-        samples.apply_model(model, label_field="faster-rcnn")
+        samples.apply_model(model, label_field="faster_rcnn")
 
   .. group-tab:: CLI
 
@@ -790,7 +810,7 @@ Applying zoo models
         fiftyone model-zoo apply \
             quickstart \                            # dataset
             faster-rcnn-resnet50-fpn-coco-torch \   # model
-            faster-rcnn                             # label field
+            faster_rcnn                             # label field
 
 .. _generating-zoo-model-embeddings:
 
@@ -1016,7 +1036,7 @@ confidence is at least 0.5:
 
     In practice, there is no need to hard-code confidence thresholds in models,
     since the
-    :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model`
+    :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
     method supports supplying an optional confidence threshold that is applied
     post-facto to the predictions generated by any model.
 
