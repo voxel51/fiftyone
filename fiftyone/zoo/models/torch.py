@@ -38,10 +38,12 @@ class TorchvisionImageModelConfig(fout.TorchImageModelConfig, HasZooModel):
             model
         labels_path (None): the path to the labels map for the model
         use_half_precision (None): whether to use half precision
-        image_min_size (None): a minimum ``(width, height)`` to which to resize
-            the input images during preprocessing
-        image_min_dim (None): a minimum image dimension to which to resize the
-            input images during preprocessing
+        image_min_size (None): resize the input images during preprocessing, if
+            necessary, so that the image dimensions are at least this
+            ``(width, height)``
+        image_min_dim (None): resize input images during preprocessing, if
+            necessary, so that the smaller image dimension is at least this
+            value
         image_size (None): a ``(width, height)`` to which to resize the input
             images during preprocessing
         image_dim (None): resize the smaller input dimension to this value
