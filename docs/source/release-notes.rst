@@ -5,6 +5,33 @@ FiftyOne Release Notes
 
 FiftyOne 0.6.6
 --------------
+*Released December 16, 2020*
+
+App
+^^^
+- Added web browser support, which is now the default settting
+- Changed the desktop App to be an optional dependency, `fiftyone-desktop`
+- Added IPython notebook support, e.g. Jupyter and Google Colab
+- Fixed an issue where the App would freeze after filtering labels in the
+  Fields Sidebar
+
+Core
+^^^^
+- Moved project hosting to `pypi.org <https://test.pypi.org/project/fiftyone/>`_
+- Added Python 3.9 support (note that tensorflow does not yet support 3.9)
+- Added the :meth:`fiftyone.core.session.Session.show` method for displaying
+  the App in IPython notebook cells
+
+Brain
+^^^^^
+
+CLI
+^^^
+- Added the `-a` or `--desktop` flag to commands that launch the App
+
+
+FiftyOne 0.6.6
+--------------
 *Released November 25, 2020*
 
 App
