@@ -107,17 +107,17 @@ Remote sessions
 _______________
 
 If your data is stored on a remote machine, you can forward a session from
-the remote machine to the FiftyOne App on your local machine and seemlessly
-browse your remote dataset.
+the remote machine to your local machine and seemlessly browse your remote
+dataset via the App.
 
-See the :ref:`Environments page <environments>` for more information on
+Check out the :ref:`environments page <environments>` for more information on
 possible configurations of local/remote/cloud data and App access.
 
 Remote machine
 --------------
 
 On the remote machine, you can load a |Dataset| and launch a remote session
-using either the Python library or the CLI:
+using either the Python library or the CLI.
 
 .. tabs::
 
@@ -154,7 +154,7 @@ using either the Python library or the CLI:
 
         # On remote machine
 
-        fiftyone app launch <dataset-name> --remote  # optional --port XXXX
+        fiftyone app launch <dataset-name> --remote  # optional: --port XXXX
 
     You can use the optional ``--port`` flag to choose the port of your
     remote machine on which to serve the App. The default is ``5151``.
@@ -199,7 +199,7 @@ session using either the Python library or the CLI (recommended).
 
         import fiftyone as fo
 
-        fo.launch_app()  # optional port=YYYY
+        fo.launch_app()  # optional: port=YYYY
 
     If you chose a custom local port when configuring port forwarding, specify
     it via the ``port`` parameter of
