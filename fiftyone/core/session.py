@@ -466,33 +466,25 @@ class Session(foc.HasClient):
             dataset_name = None
             media_type = "N/A"
 
-        elements = [
-            "Dataset:          %s" % dataset_name,
-        ]
+        elements = ["Dataset:          %s" % dataset_name]
 
         if self.dataset:
+            num_samples = len(self.view) if self.view else len(self.dataset)
             elements.extend(
                 [
                     "Media type:       %s" % media_type,
+                    "Num samples:      %d" % num_samples,
                     "Selected samples: %d" % len(self.selected),
                     "Selected objects: %d" % len(self.selected_objects),
                 ]
             )
 
-        if self.view:
-            if self.view._stages:
-                pipeline_str = "    " + "\n    ".join(
-                    [
-                        "%d. %s" % (idx, str(d))
-                        for idx, d in enumerate(self.view._stages, 1)
-                    ]
-                )
-            else:
-                pipeline_str = "    ---"
-
-            elements.extend(["View stages:", pipeline_str])
-
         elements.extend(["URL:              %s" % self.url])
+
+        if self.view:
+            elements.extend(
+                ["View stages:", self.view._make_view_stages_str()]
+            )
 
         return "\n".join(elements)
 

@@ -135,19 +135,17 @@ class DatasetView(foc.SampleCollection):
                 ]
             )
 
-        if self._stages:
-            pipeline_str = "    " + "\n    ".join(
-                [
-                    "%d. %s" % (idx, str(d))
-                    for idx, d in enumerate(self._stages, 1)
-                ]
-            )
-        else:
-            pipeline_str = "    ---"
-
-        elements.extend(["View stages:", pipeline_str])
+        elements.extend(["View stages:", self._make_view_stages_str()])
 
         return "\n".join(elements)
+
+    def _make_view_stages_str(self):
+        if not self._stages:
+            return "    ---"
+
+        return "    " + "\n    ".join(
+            ["%d. %s" % (idx, str(d)) for idx, d in enumerate(self._stages, 1)]
+        )
 
     def iter_samples(self):
         """Returns an iterator over the samples in the view.
