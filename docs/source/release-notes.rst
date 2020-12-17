@@ -3,6 +3,8 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.7.0:
+
 FiftyOne 0.7.0
 --------------
 *Released December 17, 2020*
@@ -31,6 +33,7 @@ CLI
 ^^^
 - Added the `-a` or `--desktop` flag to commands that launch the App
 
+.. _release-notes-v0.6.6:
 
 FiftyOne 0.6.6
 --------------
@@ -72,6 +75,8 @@ Docs
    - :ref:`Can I connect multiple App instances to the same dataset? <faq-multiple-sessions-same-dataset>`
    - :ref:`Can I connect to multiple remote sessions? <faq-connect-to-multiple-remote-sessions>`
    - :ref:`Can I serve multiple remote sessions from a machine? <faq-serve-multiple-remote-sessions>`
+
+.. _release-notes-v0.6.5:
 
 FiftyOne 0.6.5
 --------------
@@ -140,6 +145,8 @@ Docs
   Google Cloud, and Azure
 - Add an :ref:`FAQ page <faq>`
 
+.. _release-notes-v0.6.4:
+
 FiftyOne 0.6.4
 --------------
 *Released October 29, 2020*
@@ -189,6 +196,8 @@ Brain
   by a set of detections/polylines when using
   :meth:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`
 
+.. _release-notes-v0.6.3:
+
 FiftyOne 0.6.3
 --------------
 *Released October 20, 2020*
@@ -220,6 +229,8 @@ Utils
 - Added a :meth:`reencode_videos() <fiftyone.utils.video.reencode_videos>`
   utility to re-encode the videos in a sample collection so that they are
   visualizable in the FiftyOne App
+
+.. _release-notes-v0.6.2:
 
 FiftyOne 0.6.2
 --------------
@@ -272,6 +283,8 @@ Brain
   :meth:`compute_hardness() <fiftyone.brain.compute_hardness>` now support
   multilabel classification tasks
 
+.. _release-notes-v0.6.1:
+
 FiftyOne 0.6.1
 --------------
 *Released October 7, 2020*
@@ -316,6 +329,8 @@ Documentation
 - Added a recipe for :doc:`merging datasets </recipes/merge_datasets>`
 - Fixed some table widths and other display issues
 
+.. _release-notes-v0.6.0:
+
 FiftyOne 0.6.0
 --------------
 *Released October 1, 2020*
@@ -344,6 +359,8 @@ Core
 - Added support for automatically creating database indexes when sorting by
   sample fields, for efficiency
 - Fixed issues with serializing vector fields and numpy arrays
+
+.. _release-notes-v0.5.6:
 
 FiftyOne 0.5.6
 --------------
@@ -374,6 +391,8 @@ Core
   :meth:`Dataset.rename_sample_field() <fiftyone.core.dataset.Dataset.rename_sample_field>`
   method for renaming sample fields of datasets
 
+.. _release-notes-v0.5.5:
+
 FiftyOne 0.5.5
 --------------
 *Released September 15, 2020*
@@ -397,6 +416,8 @@ Core
 ^^^^
 - Added support for :meth:`Session.wait() <fiftyone.core.session.Session.wait>`
   for remote sessions, to make starting a remote session from a script easier
+
+.. _release-notes-v0.5.4:
 
 FiftyOne 0.5.4
 --------------
@@ -424,6 +445,8 @@ Core
   expect |Detections| labels
 - Added support for importing/exporting supercategories for datasets in
   :ref:`COCO format <COCODetectionDataset-import>`
+
+.. _release-notes-v0.5.3:
 
 FiftyOne 0.5.3
 --------------
@@ -455,6 +478,8 @@ Core
   :meth:`shuffle() <fiftyone.core.collections.SampleCollection.shuffle>` view
   stages with random seeds to be regenerated when handing off between the App
   and Python shell
+
+.. _release-notes-v0.5.2:
 
 FiftyOne 0.5.2
 --------------
@@ -507,6 +532,8 @@ Docs
 - Refreshed all App-related media in the docs to reflect the new App design
   introduced in v0.5.0
 
+.. _release-notes-v0.5.1:
+
 FiftyOne 0.5.1
 --------------
 *Released August 18, 2020*
@@ -547,6 +574,8 @@ Documentation
   `Open Images Dataset <https://storage.googleapis.com/openimages/web/index.html>`_
   powered by FiftyOne
 
+.. _release-notes-v0.5.0:
+
 FiftyOne 0.5.0
 --------------
 *Released August 11, 2020*
@@ -579,6 +608,8 @@ Core
 - Upgraded the :meth:`take() <fiftyone.core.collections.SampleCollection.take>`
   view stage so that each instance of a view maintains a deterministic set of
   samples
+
+.. _release-notes-v0.4.1:
 
 FiftyOne 0.4.1
 --------------
@@ -613,6 +644,8 @@ Documentation
 - Improved layout of :doc:`tutorials </tutorials/index>`,
   :doc:`recipes </recipes/index>`, and :doc:`user guide </user_guide/index>`
   landing pages
+
+.. _release-notes-v0.4.0:
 
 FiftyOne 0.4.0
 --------------
@@ -649,6 +682,8 @@ Documentation
   :doc:`custom sample parsers </recipes/custom_parser>`
 - Added a :doc:`Configuring FiftyOne </user_guide/config>` page to the User
   Guide that explains how to customize your FiftyOne Config
+
+.. _release-notes-v0.3.0:
 
 FiftyOne 0.3.0
 --------------
@@ -689,6 +724,8 @@ CLI
   terminal with a `less`-like interface
 - Added `fiftyone datasets export` to export datasets in any available format
 
+.. _release-notes-v0.2.1:
+
 FiftyOne 0.2.1
 --------------
 *Released June 19, 2020*
@@ -704,6 +741,8 @@ CLI
 ^^^
 - Fixed an issue that could cause port forwarding to hang when initializing a
   remote session
+
+.. _release-notes-v0.2.0:
 
 FiftyOne 0.2.0
 --------------

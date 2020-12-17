@@ -1,0 +1,9 @@
+{
+    "compilerOptions": {
+        "module": "commonjs",
+        "noImplicitAny": false,
+        "sourceMap": true,
+        "outDir": "dist"
+    },
+    "exclude": ["src", "node_modules/**/*", "dist", "player51"]
+}

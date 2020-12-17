@@ -44,6 +44,7 @@ try:
 except ImportError:
     # development installation
     FIFTYONE_DB_BIN_DIR = os.path.join(FIFTYONE_CONFIG_DIR, "bin")
+
 DB_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var/lib/mongo")
 DB_LOG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var/log/mongodb/mongo.log")
 MIGRATIONS_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "migrations")
@@ -56,8 +57,13 @@ SERVER_NAME = "localhost"
 
 # App setup
 try:
-    from fiftyone.gui import FIFTYONE_APP_DIR
+    from fiftyone.desktop import FIFTYONE_DESKTOP_APP_DIR
 except ImportError:
-    FIFTYONE_APP_DIR = os.path.normpath(
-        os.path.join(FIFTYONE_DIR, "../electron")
+    FIFTYONE_DESKTOP_APP_DIR = os.path.normpath(
+        os.path.join(FIFTYONE_DIR, "../app")
     )
+
+# Analytics
+UA_DEV = "UA-141773487-10"
+UA_PROD = "UA-141773487-9"
+UA_ID = UA_DEV if DEV_INSTALL else UA_PROD

@@ -266,7 +266,7 @@ below to figure out which option is best for you.
     .. tab:: I don't have data
 
         Check out how to automatically download and load popular public
-        datasets using the :doc:`FiftyOne Dataset Zoo <zoo>`!
+        datasets using the :ref:`FiftyOne Dataset Zoo <dataset-zoo>`!
 
         You can download any dataset in the zoo and load it into FiftyOne using
         a single command:
@@ -285,7 +285,7 @@ below to figure out which option is best for you.
 
         .. note::
 
-            :doc:`Learn more <zoo>` about the FiftyOne Dataset Zoo!
+            :ref:`Learn more <dataset-zoo>` about the FiftyOne Dataset Zoo!
 
 Advanced loading options
 ------------------------
@@ -472,4 +472,3 @@ your custom format.
 
    Loading datasets <datasets>
    Adding samples <samples>
-   Zoo datasets <zoo>

@@ -69,3 +69,9 @@
 .. |Session| replace:: :class:`Session <fiftyone.core.session.Session>`
 
 .. |Aggregation| replace:: :class:`Aggregation <fiftyone.core.aggregations.Aggregation>`
+
+.. |Model| replace:: :class:`Model <fiftyone.core.models.Model>`
+.. |ModelConfig| replace:: :class:`ModelConfig <fiftyone.core.models.ModelConfig>`
+
+.. |EmbeddingsMixin| replace:: :class:`EmbeddingsMixin <fiftyone.core.models.EmbeddingsMixin>`
+.. |TorchModelMixin| replace:: :class:`TorchModelMixin <fiftyone.core.models.TorchModelMixin>`

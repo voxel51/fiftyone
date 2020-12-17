@@ -6,18 +6,81 @@ Frequently Asked Questions
 
 .. default-role:: code
 
+.. _faq-desktop-app-support:
+
+Can I run the FiftyOne App as a desktop application?
+----------------------------------------------------
+
+Yes! Simply :ref:`install the Desktop App <installing-fiftyone-desktop>`.
+
+Commands like :func:`launch_app() <fiftyone.core.session.launch_app>` provide
+an optional ``desktop`` flag that let you control whether to launch the App in
+your browser or as a desktop App.
+
+You can also set the ``desktop_app`` flag of your
+:ref:`FiftyOne config <configuring-fiftyone>` to use the desktop App by
+default.
+
+Check out the :ref:`enviornments guide <environments>` to see how to use
+FiftyOne in all common local, remote, cloud, and notebook environments.
+
 .. _faq-browser-support:
 
-Can I run this in a browser?
-----------------------------
+Can I open the FiftyOne App in a browser?
+-----------------------------------------
 
-Browsers are not yet supported; you must
-:ref:`install FiftyOne <installing-fiftyone>` on each machine from which you
-want to use the library or the App.
+Yes! In fact, as of :ref:`FiftyOne v0.7 <release-notes-v0.7.0>`, this is the
+default behavior; FiftyOne will open the App in your default web browser.
 
-However, check out the :doc:`environments guide </environments/index>` for
-best practices on using FiftyOne in common local, remote, and cloud
-environments.
+You can also run FiftyOne
+:ref:`as a desktop application <faq-desktop-app-support>` if you prefer.
+
+Check out the :ref:`enviornments guide <environments>` to see how to use
+FiftyOne in all common local, remote, cloud, and notebook environments.
+
+.. _faq-notebook-support:
+
+Can I run this in a notebook?
+-----------------------------
+
+Yes! FiftyOne supports both `Jupyter Notebooks <https://jupyter.org>`_ and
+`Google Colab Notebooks <https://colab.research.google.com>`_.
+
+All the usual FiftyOne commands can be run in notebook environments. The only
+difference is that you call
+:meth:`session.show() <fiftyone.core.session.Session.show>` to open the App
+in the output of a cell.
+
+For example, a typical workflow is:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    # Load a FiftyOne dataset
+    dataset = fo.load_dataset(...)
+
+    # Create an App session
+    session = fo.Session(dataset)
+
+.. code-block:: python
+    :linenos:
+
+    # Open the App in this cell's output
+    session.show()
+
+.. code-block:: python
+    :linenos:
+
+    # Updates the App in the prior cell's output
+    session.view = dataset.take(10)
+
+.. note::
+
+    If you run :meth:`session.show() <fiftyone.core.session.Session.show>` in
+    multiple cells, only the most recent instance will be connected to your
+    |Session| object.
 
 .. _faq-remote-server-data:
 
@@ -179,10 +242,6 @@ sessions.
     Keep in mind that all users must have ssh access to the system from which
     the remote session(s) are launched in order to connect to them.
 
-    In addition, and all users must have
-    :ref:`FiftyOne installed <installing-fiftyone>` on their local machines in
-    order to launch an App instance.
-
 You can achieve multiple connections in two ways:
 
 **Option 1: Same dataset, multiple sessions**
@@ -222,13 +281,28 @@ houses the |Dataset| using either the CLI or Python:
         session = fo.launch_app(dataset, remote=True)  # (optional) port=XXXX
 
 Then one or more users can use the CLI on their local machine to
-:ref:`connect to the remote session: <remote-app-local-machine>`:
+:ref:`connect to the remote session: <remote-app-local-machine>`, or manually
+configure a connection to the session. The latter approach does not require
+`fiftyone` to be installed, only a web browser.
+
+The CLI only requires the following command. The App will open in your
+configured window setting.
 
 .. code-block:: shell
 
     # On local machine(s)
     # If a custom port was used, append --port XXXX
     fiftyone app connect --destination <username>@<remote-ip-address>
+
+Manually configuring a connection requires setting up port forwarding:
+
+.. code-block:: shell
+
+    # `[<username>@]<hostname>` refers to your remote machine
+    ssh -N -L 5151:localhost:XXXX [<username>@]<hostname>
+    # where XXXX is the remote port number (5151 if you did not provide one)
+
+And then opening `http://localhost:5151` in your web browser.
 
 .. note::
 
@@ -275,7 +349,14 @@ that you own), using commands similar to:
 
 On your local machine, you can launch App instances to
 :ref:`connect to the remote sessions <remote-app-local-machine>` on each
-machine by specifying a different `--local-port` for each App instance to use:
+machine by specifying a different `--local-port` for each App instance to use,
+or by manually configuring each connection. The latter approach does not
+require `fiftyone` to be installed on you local machine:
+
+`XXXX` and `YYYY` used below are any open ports on your machine.
+
+The CLI only requires one command. The App will open in your configured window
+setting.
 
 .. code-block:: shell
 
@@ -287,7 +368,18 @@ machine by specifying a different `--local-port` for each App instance to use:
     # Connect to second remote session
     fiftyone app connect --destination <username2>@<remote-ip-address2> --local-port YYYY
 
-where `XXXX` and `YYYY` are any open ports on your machine.
+Manually configuring a connection requires setting up port forwarding. `RRRR`
+is the remote port number of the session you wish to connect to.
+
+.. code-block:: shell
+
+    # `[<username>@]<hostname>` refers to your remote machine
+    ssh -N -L XXXX:localhost:RRRR [<username>@]<hostname>
+    # then open `http://localhost:XXXX` in your web browser.
+
+.. code-block:: shell
+
+    ssh -N -L YYYY:localhost:RRRR [<username>@]<hostname>
 
 .. note::
 
@@ -339,7 +431,12 @@ specifying different ports for each |Session| that you create:
 
 On your local machine(s), you can launch App instances to
 :ref:`connect to the remote sessions <remote-app-local-machine>` that you
-created by specifying the corresponding remote ports that you used:
+created by specifying the corresponding remote ports that you used, or by
+manually configuring each connection. The latter approach does not require
+`fiftyone` to be installed on you local machine:
+
+The CLI only requires one command. The App will open in your configured window
+setting.
 
 .. code-block:: shell
 
@@ -359,4 +456,31 @@ created by specifying the corresponding remote ports that you used:
         --destination <username>@<remote-ip-address> \
         --port YYYY --local-port ZZZZ
 
-where `WWWW` and `ZZZZ` are any 4 digit ports on your local machine(s).
+Manually configuring a connection requires setting up port forwarding.
+
+.. code-block:: shell
+
+    # `[<username>@]<hostname>` refers to your remote machine
+    ssh -N -L WWWW:localhost:XXXX [<username>@]<hostname>
+    # then open `http://localhost:WWWW` in your web browser.
+
+.. code-block:: shell
+
+    ssh -N -L ZZZZ:localhost:YYYY [<username>@]<hostname>
+
+`WWWW` and `ZZZZ` are any 4 digit ports on your local machine(s).
+
+.. _faq-do-we-track:
+
+Does FiftyOne track me?
+-----------------------
+
+Yes, FiftyOne tracks anonymous UUID-based usage of the Python library and the
+App by default. We are a small team building an open source project, and basic
+knowledge of how users are engaging with the project is critical to informing
+the roadmap of the project.
+
+.. note::
+
+    You can disable tracking by setting the ``do_not_track`` flag of your
+    :ref:`FiftyOne config <configuring-fiftyone>`.
