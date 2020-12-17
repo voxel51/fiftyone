@@ -104,6 +104,14 @@ jobs:
         run: |
           python setup.py bdist_wheel
           pip install dist/*.whl
+      - name: Install test dependencies (non-Windows)
+        if: ${{ !startsWith(matrix.os, 'windows') }}
+        run: |
+          pip install pytest tensorflow tensorflow-datasets torch torchvision
+      - name: Install fiftyone
+        run: |
+          pip install --pre --extra-index-url https://test.pypi.org/simple/ fiftyone-brain voxel51-eta
+          pip install -e .
       - name: Install ETA from source
         if: ${{ !startsWith(github.ref, 'refs/heads/rel') && !startsWith(github.ref, 'refs/tags/') }}
         run: |
@@ -112,14 +120,6 @@ jobs:
           cd eta
           python setup.py bdist_wheel
           pip install ./dist/*.whl
-      - name: Install test dependencies (non-Windows)
-        if: ${{ !startsWith(matrix.os, 'windows') }}
-        run: |
-          pip install pytest tensorflow tensorflow-datasets torch torchvision
-      - name: Install fiftyone
-        run: |
-          pip install --pre --extra-index-url https://test.pypi.org/simple/ fiftyone-brain
-          pip install -e .
       # obtained from "Windows, pip" instructions at
       # https://pytorch.org/get-started/locally/ - unaware of a way to update
       # the version number automatically, but tests on other platforms should
