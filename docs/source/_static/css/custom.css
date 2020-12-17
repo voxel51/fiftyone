@@ -585,8 +585,7 @@ a.with-right-arrow,
 
 .fo-notebook-links {
   display: inline-block;
-  margin-left: 3px 0 0 0;
-  width: auto;
+  margin: 0 0 0.5rem 0 !important;
 }
 
 .fo-notebook-links tr {
@@ -602,10 +601,8 @@ a.with-right-arrow,
 .fo-notebook-links a,
 .fo-notebook-links :link,
 .tfo-notebook-links :visited {
-  border-radius: 8px;
-  box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.3),
-    0 1px 3px 1px rgba(60, 64, 67, 0.15);
-  color: #202124;
+  border-radius: 3px;
+  box-shadow: 0 1px 3px 0px #6c6c6d;
   padding: 12px 17px;
   transition: box-shadow 0.2s;
 }
