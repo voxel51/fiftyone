@@ -145,7 +145,7 @@ class DatasetView(foc.SampleCollection):
         else:
             pipeline_str = "    ---"
 
-        elements.extend(["Pipeline stages:", pipeline_str])
+        elements.extend(["View stages:", pipeline_str])
 
         return "\n".join(elements)
 
