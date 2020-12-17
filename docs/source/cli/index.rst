@@ -788,7 +788,7 @@ Connect to a remote FiftyOne App.
       -p PORT, --port PORT  the remote port to connect to
       -l PORT, --local-port PORT
                             the local port to use to serve the App
-      -i KEY, --ssh-key KEY an optional ssh key used to login 
+      -i KEY, --ssh-key KEY an optional ssh key used to login
 
 **Examples**
 
@@ -814,6 +814,30 @@ Connect to a remote FiftyOne App.
 
 .. _cli-fiftyone-zoo:
 
+FiftyOne Zoo
+------------
+
+Tools for working with the FiftyOne Zoo.
+
+.. code-block:: text
+
+    fiftyone zoo [-h] [--all-help] {datasets,models} ...
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help         show this help message and exit
+      --all-help         show help recurisvely and exit
+
+    available commands:
+      {datasets,models}
+        datasets         Tools for working with the FiftyOne Dataset Zoo.
+        models           Tools for working with the FiftyOne Model Zoo.
+
+.. _cli-fiftyone-zoo-datasets:
+
 FiftyOne Dataset Zoo
 --------------------
 
@@ -821,7 +845,8 @@ Tools for working with the FiftyOne Dataset Zoo.
 
 .. code-block:: text
 
-    fiftyone zoo [-h] [--all-help] {list,find,info,download,load} ...
+    fiftyone zoo datasets [-h] [--all-help]
+                          {list,find,info,download,load,delete} ...
 
 **Arguments**
 
@@ -839,7 +864,7 @@ Tools for working with the FiftyOne Dataset Zoo.
         download            Download zoo datasets.
         load                Load zoo datasets as persistent FiftyOne datasets.
 
-.. _cli-fiftyone-zoo-list:
+.. _cli-fiftyone-zoo-datasets-list:
 
 List datasets in zoo
 ~~~~~~~~~~~~~~~~~~~~
@@ -848,7 +873,7 @@ List datasets in the FiftyOne Dataset Zoo.
 
 .. code-block:: text
 
-    fiftyone zoo list [-h] [-b BASE_DIR]
+    fiftyone zoo datasets list [-h] [-d] [-t TAG] [-b BASE_DIR]
 
 **Arguments**
 
@@ -856,6 +881,9 @@ List datasets in the FiftyOne Dataset Zoo.
 
     optional arguments:
       -h, --help            show this help message and exit
+      -d, --downloaded-only
+                            only show datasets that have been downloaded
+      -t TAG, --tag TAG     only show datasets with the specified tag or list,of,tags
       -b BASE_DIR, --base-dir BASE_DIR
                             a custom base directory in which to search for downloaded datasets
 
@@ -864,14 +892,19 @@ List datasets in the FiftyOne Dataset Zoo.
 .. code-block:: shell
 
     # List available datasets
-    fiftyone zoo list
+    fiftyone zoo datasets list
 
 .. code-block:: shell
 
-    # List available datasets, using the specified base directory to search for downloaded datasets
-    fiftyone zoo list --base-dir <base-dir>
+    # List downloaded datasets
+    fiftyone zoo datasets list --downloaded-only
 
-.. _cli-fiftyone-zoo-find:
+.. code-block:: shell
+
+    # List available datasets with the given tag
+    fiftyone zoo datasets list --tag <tag>
+
+.. _cli-fiftyone-zoo-datasets-find:
 
 Find zoo datasets on disk
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -880,7 +913,7 @@ Locate the downloaded zoo dataset on disk.
 
 .. code-block:: text
 
-    fiftyone zoo find [-h] [-s SPLIT] NAME
+    fiftyone zoo datasets find [-h] [-s SPLIT] NAME
 
 **Arguments**
 
@@ -898,14 +931,14 @@ Locate the downloaded zoo dataset on disk.
 .. code-block:: shell
 
     # Print the location of the downloaded zoo dataset on disk
-    fiftyone zoo find <name>
+    fiftyone zoo datasets find <name>
 
 .. code-block:: shell
 
     # Print the location of a specific split of the dataset
-    fiftyone zoo find <name> --split <split>
+    fiftyone zoo datasets find <name> --split <split>
 
-.. _cli-fiftyone-zoo-info:
+.. _cli-fiftyone-zoo-datasets-info:
 
 Show zoo dataset info
 ~~~~~~~~~~~~~~~~~~~~~
@@ -914,7 +947,7 @@ Print information about datasets in the FiftyOne Dataset Zoo.
 
 .. code-block:: text
 
-    fiftyone zoo info [-h] [-b BASE_DIR] NAME
+    fiftyone zoo datasets info [-h] [-b BASE_DIR] NAME
 
 **Arguments**
 
@@ -933,9 +966,9 @@ Print information about datasets in the FiftyOne Dataset Zoo.
 .. code-block:: shell
 
     # Print information about a zoo dataset
-    fiftyone zoo info <name>
+    fiftyone zoo datasets info <name>
 
-.. _cli-fiftyone-zoo-download:
+.. _cli-fiftyone-zoo-datasets-download:
 
 Download zoo datasets
 ~~~~~~~~~~~~~~~~~~~~~
@@ -944,7 +977,9 @@ Download datasets from the FiftyOne Dataset Zoo.
 
 .. code-block:: text
 
-    fiftyone zoo download [-h] [-s SPLITS [SPLITS ...]] [-d DATASET_DIR] NAME
+    fiftyone zoo datasets download [-h] [-s SPLITS [SPLITS ...]]
+                                   [-d DATASET_DIR]
+                                   NAME
 
 **Arguments**
 
@@ -965,19 +1000,19 @@ Download datasets from the FiftyOne Dataset Zoo.
 .. code-block:: shell
 
     # Download the entire zoo dataset
-    fiftyone zoo download <name>
+    fiftyone zoo datasets download <name>
 
 .. code-block:: shell
 
     # Download the specified split(s) of the zoo dataset
-    fiftyone zoo download <name> --splits <split1> ...
+    fiftyone zoo datasets download <name> --splits <split1> ...
 
 .. code-block:: shell
 
-    # Download to the zoo dataset to a custom directory
-    fiftyone zoo download <name> --dataset-dir <dataset-dir>
+    # Download the zoo dataset to a custom directory
+    fiftyone zoo datasets download <name> --dataset-dir <dataset-dir>
 
-.. _cli-fiftyone-zoo-load:
+.. _cli-fiftyone-zoo-datasets-load:
 
 Load zoo datasets
 ~~~~~~~~~~~~~~~~~
@@ -986,10 +1021,11 @@ Load zoo datasets as persistent FiftyOne datasets.
 
 .. code-block:: text
 
-    fiftyone zoo load [-h] [-s SPLITS [SPLITS ...]] [-n DATASET_NAME]
-                      [-d DATASET_DIR] [--shuffle] [--seed SEED]
-                      [--max-samples MAX_SAMPLES]
-                      NAME
+    fiftyone zoo datasets load [-h] [-s SPLITS [SPLITS ...]]
+                               [-n DATASET_NAME] [-d DATASET_DIR]
+                               [--shuffle] [--seed SEED]
+                               [--max-samples MAX_SAMPLES]
+                               NAME
 
 **Arguments**
 
@@ -1016,38 +1052,38 @@ Load zoo datasets as persistent FiftyOne datasets.
 .. code-block:: shell
 
     # Load the zoo dataset with the given name
-    fiftyone zoo load <name>
+    fiftyone zoo datasets load <name>
 
 .. code-block:: shell
 
     # Load the specified split(s) of the zoo dataset
-    fiftyone zoo load <name> --splits <split1> ...
+    fiftyone zoo datasets load <name> --splits <split1> ...
 
 .. code-block:: shell
 
     # Load the zoo dataset with a custom name
-    fiftyone zoo load <name> --dataset-name <dataset-name>
+    fiftyone zoo datasets load <name> --dataset-name <dataset-name>
 
 .. code-block:: shell
 
     # Load the zoo dataset from a custom directory
-    fiftyone zoo load <name> --dataset-dir <dataset-dir>
+    fiftyone zoo datasets load <name> --dataset-dir <dataset-dir>
 
 .. code-block:: shell
 
     # Load a random subset of the zoo dataset
-    fiftyone zoo load <name> --shuffle --max-samples <max-samples>
+    fiftyone zoo datasets load <name> --shuffle --max-samples <max-samples>
 
-.. _cli-fiftyone-zoo-delete:
+.. _cli-fiftyone-zoo-datasets-delete:
 
-Delete zoo datasets on disk
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Delete zoo datasets
+~~~~~~~~~~~~~~~~~~~
 
 Deletes the local copy of the zoo dataset on disk.
 
 .. code-block:: text
 
-    fiftyone zoo delete [-h] [-s SPLIT] NAME
+    fiftyone zoo datasets delete [-h] [-s SPLIT] NAME
 
 **Arguments**
 
@@ -1066,9 +1102,304 @@ Deletes the local copy of the zoo dataset on disk.
 .. code-block:: shell
 
     # Delete an entire zoo dataset from disk
-    fiftyone zoo delete <name>
+    fiftyone zoo datasets delete <name>
 
 .. code-block:: shell
 
     # Delete a specific split of a zoo dataset from disk
-    fiftyone zoo delete <name> --split <split>
+    fiftyone zoo datasets delete <name> --split <split>
+
+.. _cli-fiftyone-zoo-models:
+
+FiftyOne Model Zoo
+------------------
+
+Tools for working with the FiftyOne Model Zoo.
+
+.. code-block:: text
+
+    fiftyone zoo models [-h] [--all-help]
+                        {list,find,info,requirements,download,apply,embed,delete}
+                        ...
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --all-help            show help recurisvely and exit
+
+    available commands:
+      {list,find,info,requirements,download,apply,embed,delete}
+        list                List datasets in the FiftyOne Model Zoo.
+        find                Locate the downloaded zoo model on disk.
+        info                Print information about models in the FiftyOne Model Zoo.
+        requirements        Handles package requirements for zoo models.
+        download            Download zoo models.
+        apply               Apply zoo models to datasets.
+        embed               Generate embeddings for datasets with zoo models.
+        delete              Deletes the local copy of the zoo model on disk.
+
+.. _cli-fiftyone-zoo-models-list:
+
+List models in zoo
+~~~~~~~~~~~~~~~~~~
+
+List datasets in the FiftyOne Model Zoo.
+
+.. code-block:: text
+
+    fiftyone zoo models list [-h] [-d] [-t TAG]
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -d, --downloaded-only
+                            only show models that have been downloaded
+      -t TAG, --tag TAG     only show models with the specified tag or list,of,tags
+
+**Examples**
+
+.. code-block:: shell
+
+    # List available models
+    fiftyone zoo models list
+
+.. code-block:: shell
+
+    # List downloaded models
+    fiftyone zoo models list --downloaded-only
+
+.. code-block:: shell
+
+    # List available models with the given tag
+    fiftyone zoo models list --tag <tag>
+
+.. _cli-fiftyone-zoo-models-find:
+
+Find zoo models on disk
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Locate the downloaded zoo model on disk.
+
+.. code-block:: text
+
+    fiftyone zoo models find [-h] NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                  the name of the model
+
+    optional arguments:
+      -h, --help            show this help message and exit
+
+**Examples**
+
+.. code-block:: shell
+
+    # Print the location of the downloaded zoo model on disk
+    fiftyone zoo models find <name>
+
+.. _cli-fiftyone-zoo-models-info:
+
+Show zoo model info
+~~~~~~~~~~~~~~~~~~~
+
+Print information about models in the FiftyOne Model Zoo.
+
+.. code-block:: text
+
+    fiftyone zoo models info [-h] NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                  the name of the model
+
+    optional arguments:
+      -h, --help            show this help message and exit
+
+**Examples**
+
+.. code-block:: shell
+
+    # Print information about a zoo model
+    fiftyone zoo models info <name>
+
+.. _cli-fiftyone-zoo-models-requirements:
+
+Zoo model requirements
+~~~~~~~~~~~~~~~~~~~~~~
+
+Handles package requirements for zoo models.
+
+.. code-block:: text
+
+    fiftyone zoo models requirements [-h] [-p] [-i] [-e]
+                                     [--error-level LEVEL]
+                                     NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                 the name of the model
+
+    optional arguments:
+      -h, --help           show this help message and exit
+      -p, --print          print the requirements for the zoo model
+      -i, --install        install any requirements for the zoo model
+      -e, --ensure         ensure the requirements for the zoo model are satisfied
+      --error-level LEVEL  the error level in {0, 1, 2} to use when installing or ensuring model requirements
+
+**Examples**
+
+.. code-block:: shell
+
+    # Print requirements for a zoo model
+    fiftyone zoo models requirements <name> --print
+
+.. code-block:: shell
+
+    # Install any requirements for the zoo model
+    fiftyone zoo models requirements <name> --install
+
+.. code-block:: shell
+
+    # Ensures that the requirements for the zoo model are satisfied
+    fiftyone zoo models requirements <name> --ensure
+
+.. _cli-fiftyone-zoo-models-download:
+
+Download zoo models
+~~~~~~~~~~~~~~~~~~~
+
+Download zoo models.
+
+.. code-block:: text
+
+    fiftyone zoo models download [-h] [-f] NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                  the name of the zoo model
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -f, --force           whether to force download the model if it is already downloaded
+
+**Examples**
+
+.. code-block:: shell
+
+    # Download the zoo model
+    fiftyone zoo models download <name>
+
+.. _cli-fiftyone-zoo-models-apply:
+
+Apply zoo models to datasets
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Apply zoo models to datasets.
+
+.. code-block:: text
+
+    fiftyone zoo models apply [-h] [-b BATCH_SIZE] [-t THRESH]
+                              MODEL_NAME DATASET_NAME LABEL_FIELD
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      MODEL_NAME            the name of the zoo model
+      DATASET_NAME          the name of the FiftyOne dataset to process
+      LABEL_FIELD           the name (or prefix) of the field in which to store the predictions
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -b BATCH_SIZE, --batch-size BATCH_SIZE
+                            an optional batch size to use during inference
+      -t THRESH, --confidence-thresh THRESH
+                            an optional confidence threshold to apply to any applicable labels generated by the model
+
+**Examples**
+
+.. code-block:: shell
+
+    # Apply the zoo model to the dataset
+    fiftyone zoo models apply <model-name> <dataset-name> <label-field>
+
+.. _cli-fiftyone-zoo-models-embed:
+
+Generate embeddings with zoo models
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Generate embeddings for datasets with zoo models.
+
+.. code-block:: text
+
+    fiftyone zoo models embed [-h] [-b BATCH_SIZE]
+                              MODEL_NAME DATASET_NAME EMBEDDINGS_FIELD
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      MODEL_NAME            the name of the zoo model
+      DATASET_NAME          the name of the FiftyOne dataset to process
+      EMBEDDINGS_FIELD      the name of the field in which to store the embeddings
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -b BATCH_SIZE, --batch-size BATCH_SIZE
+                            an optional batch size to use during inference
+
+**Examples**
+
+.. code-block:: shell
+
+    # Generate embeddings for the dataset with the zoo model
+    fiftyone zoo models embed <model-name> <dataset-name> <embeddings-field>
+
+.. _cli-fiftyone-zoo-models-delete:
+
+Delete zoo models
+~~~~~~~~~~~~~~~~~
+
+Deletes the local copy of the zoo model on disk.
+
+.. code-block:: text
+
+    fiftyone zoo models delete [-h] NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME        the name of the model
+
+    optional arguments:
+      -h, --help  show this help message and exit
+
+**Examples**
+
+.. code-block:: shell
+
+    # Delete the zoo model from disk
+    fiftyone zoo models delete <name>

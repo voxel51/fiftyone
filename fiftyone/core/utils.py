@@ -9,7 +9,9 @@ import atexit
 from base64 import b64encode, b64decode
 from collections import defaultdict
 from contextlib import contextmanager
+from copy import deepcopy
 import importlib
+import inspect
 import io
 import itertools
 import logging
@@ -31,6 +33,7 @@ import numpy as np
 import packaging.version
 import xmltodict
 
+import eta
 import eta.core.utils as etau
 
 import fiftyone as fo
@@ -106,8 +109,33 @@ def indent_lines(s, indent=4, skip=0):
     return s
 
 
+def available_patterns():
+    """Returns the available patterns that can be used by
+    :meth:`fill_patterns`.
+
+    Returns:
+        a dict mapping patterns to their replacements
+    """
+    return deepcopy(eta.config.patterns)
+
+
+def fill_patterns(string):
+    """Fills the patterns in in the given string.
+
+    Use :meth:`available_patterns` to see the available patterns that can be
+    used.
+
+    Args:
+        string: a string
+
+    Returns:
+        a copy of string with any patterns replaced
+    """
+    return etau.fill_patterns(string, available_patterns())
+
+
 def ensure_tf(error_msg=None):
-    """Verifies that TensorFlow is installed on the host machine.
+    """Verifies that TensorFlow is installed and importable.
 
     Args:
         error_msg (None): an optional custom error message to print
@@ -115,12 +143,12 @@ def ensure_tf(error_msg=None):
     Raises:
         ImportError: if ``tensorflow`` could not be imported
     """
-    _ensure_package("tensorflow", error_msg=error_msg)
+    _ensure_import("tensorflow", error_msg=error_msg)
 
 
 def ensure_tfds(error_msg=None):
-    """Verifies that the ``tensorflow_datasets`` package is installed on the
-    host machine.
+    """Verifies that the ``tensorflow_datasets`` package is installed and
+    importable.
 
     Args:
         error_msg (None): an optional custom error message to print
@@ -128,12 +156,12 @@ def ensure_tfds(error_msg=None):
     Raises:
         ImportError: if ``tensorflow_datasets`` could not be imported
     """
-    _ensure_package("tensorflow", min_version="1.15", error_msg=error_msg)
-    _ensure_package("tensorflow_datasets", error_msg=error_msg)
+    _ensure_import("tensorflow", min_version="1.15", error_msg=error_msg)
+    _ensure_import("tensorflow_datasets", error_msg=error_msg)
 
 
 def ensure_torch(error_msg=None):
-    """Verifies that PyTorch is installed on the host machine.
+    """Verifies that PyTorch is installed and importable.
 
     Args:
         error_msg (None): an optional custom error message to print
@@ -141,12 +169,12 @@ def ensure_torch(error_msg=None):
     Raises:
         ImportError: if ``torch`` or ``torchvision`` could not be imported
     """
-    _ensure_package("torch", error_msg=error_msg)
-    _ensure_package("torchvision", error_msg=error_msg)
+    _ensure_import("torch", error_msg=error_msg)
+    _ensure_import("torchvision", error_msg=error_msg)
 
 
 def ensure_pycocotools(error_msg=None):
-    """Verifies that pycocotools is installed on the host machine.
+    """Verifies that pycocotools is installed and importable.
 
     Args:
         error_msg (None): an optional custom error message to print
@@ -154,40 +182,41 @@ def ensure_pycocotools(error_msg=None):
     Raises:
         ImportError: if ``pycocotools`` could not be imported
     """
-    _ensure_package("pycocotools", error_msg=error_msg)
+    _ensure_import("pycocotools", error_msg=error_msg)
 
 
-def _ensure_package(package_name, min_version=None, error_msg=None):
+def _ensure_import(module_name, min_version=None, error_msg=None):
     has_min_ver = min_version is not None
 
     if has_min_ver:
         min_version = packaging.version.parse(min_version)
 
     try:
-        pkg = importlib.import_module(package_name)
+        mod = importlib.import_module(module_name)
     except ImportError as e:
         if has_min_ver:
-            pkg_str = "%s>=%s" % (package_name, min_version)
+            module_str = "%s>=%s" % (module_name, min_version)
         else:
-            pkg_str = package_name
+            module_str = module_name
 
         if error_msg is not None:
             raise ImportError(error_msg) from e
 
         raise ImportError(
             "The requested operation requires that '%s' is installed on your "
-            "machine" % pkg_str,
-            name=package_name,
+            "machine" % module_str,
+            name=module_name,
         ) from e
 
     if has_min_ver:
-        pkg_version = packaging.version.parse(pkg.__version__)
-        if pkg_version < min_version:
+        # @todo not all modules have `__version__`
+        mod_version = packaging.version.parse(mod.__version__)
+        if mod_version < min_version:
             raise ImportError(
                 "The requested operation requires that '%s>=%s' is installed "
                 "on your machine; found '%s==%s'"
-                % (package_name, min_version, package_name, pkg_version),
-                name=package_name,
+                % (module_name, min_version, module_name, mod_version),
+                name=module_name,
             )
 
 
@@ -561,7 +590,7 @@ def iter_batches(iterable, batch_size):
 
     Returns:
         a generator that emits tuples of elements of the requested batch size
-        from the input iterable
+        from the input
     """
     it = iter(iterable)
     while True:
@@ -569,6 +598,32 @@ def iter_batches(iterable, batch_size):
         if not chunk:
             return
 
+        yield chunk
+
+
+def iter_slices(sliceable, batch_size):
+    """Iterates over batches of the given object via slicing.
+
+    Args:
+        sliceable: an object that supports slicing
+        batch_size: the desired batch size, or None to return the contents in
+            a single batch
+
+    Returns:
+        a generator that emits batches of elements of the requested batch size
+        from the input
+    """
+    if batch_size is None:
+        yield sliceable
+        return
+
+    start = 0
+    while True:
+        chunk = sliceable[start : (start + batch_size)]
+        if len(chunk) == 0:  # works for numpy arrays, Torch tensors, etc
+            return
+
+        start += batch_size
         yield chunk
 
 
@@ -589,3 +644,89 @@ def call_on_exit(callback):
     """
     atexit.register(callback)
     signal.signal(signal.SIGTERM, lambda *args: callback())
+
+
+class MonkeyPatchFunction(object):
+    """Context manager that temporarily monkey patches the given function.
+
+    If a ``namespace`` is provided, all functions with same name as the
+    function you are monkey patching that are imported (recursively) by the
+    ``module_or_fcn`` module are also monkey patched.
+
+    Args:
+        module_or_fcn: a module or function
+        monkey_fcn: the function to monkey patch in
+        fcn_name (None): the name of the funciton to monkey patch. Required iff
+            ``module_or_fcn`` is a module
+        namespace (None): an optional package namespace
+    """
+
+    def __init__(
+        self, module_or_fcn, monkey_fcn, fcn_name=None, namespace=None
+    ):
+        if inspect.isfunction(module_or_fcn):
+            module = inspect.getmodule(module_or_fcn)
+            fcn_name = module_or_fcn.__name__
+        else:
+            module = module_or_fcn
+
+        self.module = module
+        self.fcn_name = fcn_name
+        self.monkey_fcn = monkey_fcn
+        self.namespace = namespace
+        self._orig = None
+        self._replace_modules = None
+
+    def __enter__(self):
+        self._orig = getattr(self.module, self.fcn_name)
+        self._replace_modules = []
+        self._find(self.module)
+        self._set(self.monkey_fcn)
+        return self
+
+    def __exit__(self, *args):
+        self._set(self._orig)
+
+    def _set(self, fcn):
+        for mod in self._replace_modules:
+            setattr(mod, self.fcn_name, fcn)
+
+    def _find(self, module):
+        dir_module = dir(module)
+        if self.fcn_name in dir_module:
+            self._replace_modules.append(module)
+
+        if self.namespace is not None:
+            for attr in dir_module:
+                mod = getattr(module, attr)
+                if inspect.ismodule(mod) and mod.__package__.startswith(
+                    self.namespace.__package__
+                ):
+                    self._find(mod)
+
+
+class SetAttributes(object):
+    """Context manager that temporarily sets the attributes of a class to new
+    values.
+
+    Args:
+        obj: the object
+        **kwargs: the attribute key-values to set while the context is active
+    """
+
+    def __init__(self, obj, **kwargs):
+        self._obj = obj
+        self._kwargs = kwargs
+        self._orig_kwargs = None
+
+    def __enter__(self):
+        self._orig_kwargs = {}
+        for k, v in self._kwargs.items():
+            self._orig_kwargs[k] = getattr(self._obj, k)
+            setattr(self._obj, k, v)
+
+        return self
+
+    def __exit__(self, *args):
+        for k, v in self._orig_kwargs.items():
+            setattr(self._obj, k, v)

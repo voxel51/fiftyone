@@ -27,6 +27,27 @@ class FiftyOneConfig(EnvConfig):
     """FiftyOne configuration settings."""
 
     def __init__(self, d):
+        self.dataset_zoo_dir = self.parse_string(
+            d,
+            "dataset_zoo_dir",
+            env_var="FIFTYONE_DATASET_ZOO_DIR",
+            default=None,
+        )
+        self.model_zoo_dir = self.parse_string(
+            d, "model_zoo_dir", env_var="FIFTYONE_MODEL_ZOO_DIR", default=None,
+        )
+        self.dataset_zoo_manifest_paths = self.parse_string_array(
+            d,
+            "dataset_zoo_manifest_paths",
+            env_var="FIFTYONE_DATASET_ZOO_MANIFEST_PATHS",
+            default=None,
+        )
+        self.model_zoo_manifest_paths = self.parse_string_array(
+            d,
+            "model_zoo_manifest_paths",
+            env_var="FIFTYONE_MODEL_ZOO_MANIFEST_PATHS",
+            default=None,
+        )
         self.default_dataset_dir = self.parse_string(
             d,
             "default_dataset_dir",
@@ -37,6 +58,12 @@ class FiftyOneConfig(EnvConfig):
             d,
             "default_ml_backend",
             env_var="FIFTYONE_DEFAULT_ML_BACKEND",
+            default=None,
+        )
+        self.default_batch_size = self.parse_int(
+            d,
+            "default_batch_size",
+            env_var="FIFTYONE_DEFAULT_BATCH_SIZE",
             default=None,
         )
         self.default_sequence_idx = self.parse_string(
@@ -64,6 +91,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_SHOW_PROGRESS_BARS",
             default=True,
         )
+        self.requirement_error_level = self.parse_int(
+            d,
+            "requirement_error_level",
+            env_var="FIFTYONE_REQUIREMENT_ERROR_LEVEL",
+            default=0,
+        )
 
         self._set_defaults()
         self._validate()
@@ -89,6 +122,14 @@ class FiftyOneConfig(EnvConfig):
         if self.default_dataset_dir is None:
             self.default_dataset_dir = os.path.join(
                 os.path.expanduser("~"), "fiftyone"
+            )
+
+        if self.dataset_zoo_dir is None:
+            self.dataset_zoo_dir = self.default_dataset_dir
+
+        if self.model_zoo_dir is None:
+            self.model_zoo_dir = os.path.join(
+                self.default_dataset_dir, "__models__"
             )
 
         if self.default_ml_backend is None:

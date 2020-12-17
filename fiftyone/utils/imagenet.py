@@ -66,5 +66,5 @@ def _raise_imagenet_error(msg):
         + "You must download the source files for the ImageNet dataset "
         "manually."
         + "\n\n"
-        + "Run `fiftyone zoo info imagenet-2012` for more information"
+        + "Run `fiftyone zoo datasets info imagenet-2012` for more information"
     )

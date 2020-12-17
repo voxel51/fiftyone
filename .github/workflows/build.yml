@@ -59,11 +59,11 @@ jobs:
           - ubuntu-18.04
           - windows-latest
         python-version:
-          - 3.5
+          - 3.6
           - 3.8
         exclude:
           - os: windows-latest
-            python-version: 3.5
+            python-version: 3.6
     defaults:
       run:
         shell: bash
@@ -129,13 +129,14 @@ jobs:
       # strategy as fiftyone-db/gui above because it's in a different repo).
       # Release branches and tags are excluded to force a proper compatible ETA
       # release to be published first.
-      - name: Upgrade ETA to pre-release
+      - name: Upgrade ETA from source
         if: ${{ !startsWith(github.ref, 'refs/heads/rel') && !startsWith(github.ref, 'refs/tags/') }}
-        env:
-          PIP_INDEX_URL: https://voxel51-ci@pypi.voxel51.com
         run: |
           echo "Upgrading ETA because github.ref = ${{ github.ref }} (not a release)"
-          pip install -U "voxel51-eta>=0.dev0"
+          git clone https://github.com/voxel51/eta eta --depth 1 --branch develop
+          cd eta
+          python setup.py bdist_wheel
+          pip install --force-reinstall ./dist/*.whl
       - name: Install test dependencies (non-Windows)
         if: ${{ !startsWith(matrix.os, 'windows') }}
         run: |
