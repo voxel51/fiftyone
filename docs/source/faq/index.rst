@@ -53,25 +53,28 @@ in the output of a cell.
 
 For example, a typical workflow is:
 
-```py
-import fiftyone as fo
+.. code-block:: python
+    :linenos:
 
-# Load a FiftyOne dataset
-dataset = fo.load_dataset(...)
+    import fiftyone as fo
 
-# Launch an App session
-session = fo.launch_app(dataset)
-```
+    # Load a FiftyOne dataset
+    dataset = fo.load_dataset(...)
 
-```
-# Open the App in this cell's output
-session.show()
-```
+    # Launch an App session
+    session = fo.launch_app(dataset)
 
-```
-# Updates the App in the above output
-session.view = dataset.take(10)
-```
+.. code-block:: python
+    :linenos:
+
+    # Open the App in this cell's output
+    session.show()
+
+.. code-block:: python
+    :linenos:
+
+    # Updates the App in the above output
+    session.view = dataset.take(10)
 
 .. note::
 
