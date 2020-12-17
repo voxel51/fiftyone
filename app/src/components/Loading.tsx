@@ -21,6 +21,12 @@ const Text = styled.div`
   padding-top: 1rem;
   font-weight: bold;
   text-align: center;
+
+  & a {
+    color: ${({ theme }) => theme.brand};
+    text-decoration: underline;
+    cursor: pointer;
+  }
 `;
 
 const Loading = React.memo(({ text = null, onClick = null }) => {
