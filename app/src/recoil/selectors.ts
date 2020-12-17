@@ -105,11 +105,21 @@ const host =
     ? "localhost:5151"
     : window.location.host;
 
+export const port = selector({
+  key: "port",
+  get: ({ get }) => {
+    if (isElectron()) {
+      return parseInt(process.env.FIFTYONE_SERVER_PORT) || 5151;
+    }
+    return parseInt(window.location.port);
+  },
+});
+
 export const http = selector({
   key: "http",
   get: ({ get }) => {
     if (isElectron()) {
-      return `http://localhost:${get(atoms.port)}`;
+      return `http://localhost:${get(port)}`;
     } else {
       const loc = window.location;
       return loc.protocol + "//" + host;
@@ -121,7 +131,7 @@ export const ws = selector({
   key: "ws",
   get: ({ get }) => {
     if (isElectron()) {
-      return `ws://localhost:${get(atoms.port)}/state`;
+      return `ws://localhost:${get(port)}/state`;
     }
     let url = null;
     const loc = window.location;

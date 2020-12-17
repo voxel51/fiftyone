@@ -1,6 +1,9 @@
 import React, { useContext, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
 import { animated, useSpring } from "react-spring";
+import { useRecoilValue } from "recoil";
+
+import * as selectors from "../recoil/selectors";
 
 const SectionTitle = styled.div`
   font-size: 2rem;
@@ -25,77 +28,64 @@ const Code = styled.pre`
   border-radius: 3px;
 `;
 
-const localSnippet = `
-import fiftyone as fo
-
-# Load your FiftyOne dataset
-dataset = ...
-
-# Launch the app locally
-# (if you're reading this from the app, you've already done this!)
-session = fo.launch_app()
-
-# Load a dataset
-session.dataset = dataset
-
-# Load a specific view into your dataset
-session.view = view
-`;
-
 const remoteSnippet = `
 import fiftyone as fo
 
 # Load your FiftyOne dataset
-dataset = ...
+dataset = fo.load_dataset(...)
 
-# Launch the app that you'll connect to from your local machine
-session = fo.launch_app(remote=True)
-
-# Load a dataset
-session.dataset = dataset
-
-# Load a specific view into your dataset
-session.view = view
+# Launch a remote App instance that you'll connect to from your local machine
+session = fo.launch_app(dataset, remote=True, port=XXXX)
 `;
 
-const bashSnippet = `
-# Configure port forwarding to access the session on your remote machine
-ssh -L 5151:127.0.0.1:5151 username@remote_machine_ip
+const LocalInstructions = () => {
+  const port = useRecoilValue(selectors.port);
+  const localSnippet = `
+import fiftyone as fo
 
-# Or you can use the FiftyOne CLI to launch the app
-fiftyone remote
+# Load your FiftyOne dataset
+dataset = fo.load_dataset(...)
+
+# Launch the app
+session = fo.launch_app(dataset, port=${port})
 `;
+  return (
+    <>
+      <SectionTitle>Local sessions</SectionTitle>
+      <Text>Here's how to connect to a local session from Python:</Text>
+      <Code>{localSnippet}</Code>
+    </>
+  );
+};
 
-const LocalInstructions = () => (
-  <>
-    <SectionTitle>Local sessions</SectionTitle>
-    <Text>
-      The following demonstrates how to connect to a local session from a python
-      shell.
-    </Text>
-    <Code>{localSnippet}</Code>
-  </>
-);
+const RemoteInstructions = () => {
+  const port = useRecoilValue(selectors.port);
+  const bashSnippet = `
+# Option 1
+# Use the CLI to connect to the remote session
+fiftyone app connect \\
+    --destination <username>@<remote-ip-address> \\
+    --port XXXX --local-port ${port}
 
-const RemoteInstructions = () => (
-  <>
-    <SectionTitle>Remote sessions</SectionTitle>
-    <Text>
-      If you would like to connect to a remote session, you'll have to configure
-      port forwarding on your local machine.
-    </Text>
-    <Subtitle>On your remote machine</Subtitle>
-    <Code>{remoteSnippet}</Code>
-    <Subtitle>On your local machine</Subtitle>
-    <Code>{bashSnippet}</Code>
-
-    <Subtitle>Port configuration</Subtitle>
-    <Text>
-      The default FiftyOne port is <code>5151</code>. You can configure at
-      anytime using the settings tab.
-    </Text>
-  </>
-);
+# Option 2
+# Manually configure port forwarding
+ssh -N -L ${port}:127.0.0.1:XXXX <username>@<remote-ip-address>
+`;
+  return (
+    <>
+      <SectionTitle>Remote sessions</SectionTitle>
+      <Text>
+        You can work with data on a remote machine by launching a remote App
+        session and connecting to it from your local machine. See this page for
+        more information.
+      </Text>
+      <Subtitle>On your remote machine</Subtitle>
+      <Code>{remoteSnippet}</Code>
+      <Subtitle>On your local machine</Subtitle>
+      <Code>{bashSnippet}</Code>
+    </>
+  );
+};
 
 const SetupContainer = styled.div`
   max-width: 800px;
