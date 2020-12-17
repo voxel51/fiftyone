@@ -18,6 +18,10 @@ const Text = styled.p`
   margin: 0;
   padding: 0;
   color: ${({ theme }) => theme.fontDark};
+
+  & > a {
+    color: ${({ theme }) => theme.brand};
+  }
 `;
 
 const Code = styled.pre`
@@ -76,8 +80,14 @@ ssh -N -L ${port}:127.0.0.1:XXXX <username>@<remote-ip-address>
       <SectionTitle>Remote sessions</SectionTitle>
       <Text>
         You can work with data on a remote machine by launching a remote App
-        session and connecting to it from your local machine. See this page for
-        more information.
+        session and connecting to it from your local machine. See{" "}
+        <a
+          target="_blank"
+          href="https://voxel51.com/docs/fiftyone/user_guide/app.html#remote-sessions"
+        >
+          this page
+        </a>{" "}
+        for more information.
       </Text>
       <Subtitle>On your remote machine</Subtitle>
       <Code>{remoteSnippet}</Code>
