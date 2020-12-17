@@ -107,7 +107,7 @@ def download_zoo_dataset(
     Returns:
         tuple of
 
-        -   info: the :class:`fiftyone.zoo.ZooDatasetInfo` for the dataset
+        -   info: the :class:`ZooDatasetInfo` for the dataset
         -   dataset_dir: the directory containing the dataset
     """
     zoo_dataset, dataset_dir = _parse_dataset_details(
