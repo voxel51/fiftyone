@@ -128,10 +128,7 @@ class QuickstartCommand(Command):
             "-a",
             "--desktop",
             action="store_true",
-            help=(
-                "whether to launch the desktop App. If provided, the desktop "
-                "App package must be installed (fiftyone-desktop)"
-            ),
+            help="whether to launch a desktop App instance",
         )
 
     @staticmethod
@@ -819,10 +816,7 @@ class AppLaunchCommand(Command):
             "-a",
             "--desktop",
             action="store_true",
-            help=(
-                "whether to launch the desktop App. If provided, the desktop "
-                "App package must be installed (fiftyone-desktop)"
-            ),
+            help="whether to launch a desktop App instance",
         )
 
     @staticmethod
@@ -881,7 +875,7 @@ class AppViewCommand(Command):
         # View the dataset in a remote App session
         fiftyone app view ... --remote
 
-        # View the dataset in a desktop App session
+        # View the dataset using the desktop App
         fiftyone app view ... --desktop
     """
 
@@ -982,10 +976,7 @@ class AppViewCommand(Command):
             "-a",
             "--desktop",
             action="store_true",
-            help=(
-                "whether to launch the desktop App. If provided, the desktop "
-                "App package must be installed (fiftyone-desktop)"
-            ),
+            help="whether to launch a desktop App instance",
         )
 
     @staticmethod
@@ -1069,8 +1060,8 @@ class AppConnectCommand(Command):
         # Connect to a remote App using a custom local port
         fiftyone app connect --local-port <port>
 
-        # Connect to a remote App with a desktop window
-        fiftyone app connect --local-port <port> --desktop
+        # Connect to a remote session using the desktop App
+        fiftyone app connect --desktop
     """
 
     @staticmethod
@@ -1110,10 +1101,7 @@ class AppConnectCommand(Command):
             "-a",
             "--desktop",
             action="store_true",
-            help=(
-                "whether to launch the desktop App. If provided, the desktop "
-                "App package must be installed (fiftyone-desktop)"
-            ),
+            help="whether to launch a desktop App instance",
         )
 
     @staticmethod

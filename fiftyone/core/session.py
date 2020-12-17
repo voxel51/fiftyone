@@ -21,9 +21,9 @@ import fiftyone.core.context as focx
 import fiftyone.core.service as fos
 from fiftyone.core.state import StateDescription
 
-
 html_escape = html.escape
 del html
+
 logger = logging.getLogger(__name__)
 
 #
@@ -44,21 +44,39 @@ _server_services = {}
 _subscribed_sessions = defaultdict(set)
 
 
-_APP_DESKTOP = """
-The desktop version of the App that has just been launched for you.
+_APP_DESKTOP_MESSAGE = """
+Desktop App launched.
 """
 
-_APP_NOTEBOOK = """
-The session object is your connection to the App, which can be displayed
-with `session.show()`.
+_APP_WEB_MESSAGE = """
+App launched. Point your web browser to http://localhost:{0}
 """
 
-_APP_WEB = """
-The App has just been opened in your web browser at http://localhost:%d
+_APP_NOTEBOOK_MESSAGE = """
+Session launched. Run `session.show()` to open the App in a cell output.
 """
 
-_APP_REMOTE = """
-The App is now serving from http://localhost:%d
+_REMOTE_INSTRUCTIONS = """
+You have launched a remote App on port {0}. To connect to this App from another
+machine, issue the following command:
+
+fiftyone app connect --destination [<username>@]<hostname> --port {0}
+
+where `[<username>@]<hostname>` refers to your current machine. Alternatively,
+you can manually configure port forwarding on another machine as follows:
+
+ssh -N -L 5151:127.0.0.1:{0} [<username>@]<hostname>
+
+The App can then be viewed in your browser at http://localhost:5151.
+
+See https://voxel51.com/docs/fiftyone/user_guide/app.html#remote-sessions
+for more information about remote sessions.
+"""
+
+_WAIT_INSTRUCTIONS = """
+A session appears to have terminated shortly after it was started. If you
+intended to start an App instance or a remote session from a script, you should
+call `session.wait()` to keep the session (and the script) alive.
 """
 
 
@@ -78,15 +96,13 @@ def launch_app(
         port (5151): the port number to use
         remote (False): whether this is a remote session, and opening the App
             should not be attempted
-        desktop (False): If `True`, the session will launch the desktop App.
-            The desktop App package must be installed (fiftyone-desktop),
-            if so. The `FIFTYONE_DESKTOP_APP=true` environment variable can
-            be used as a persistent desktop setting. DOES NOT apply to notebook
-            contexts (e.g. Jupyter), use :meth:`Session.show` instead.
+        desktop (False): whether to launch the App in the browser (False) or as
+            a desktop App (True). Not applicable to notebook contexts (e.g.,
+            Jupyter and Colab); use :meth:`Session.show` instead
 
-    Raises
-        VaueError: `desktop` is `True` and the desktop App package
-            (fiftyone-desktop) has not been installed.
+    Raises:
+        VaueError: if ``desktop`` is ``True`` but the desktop App package is
+            not installed
 
     Returns:
         a :class:`Session`
@@ -109,13 +125,14 @@ def launch_app(
     )
 
     if remote:
-        print(_APP_REMOTE)
+        logger.info(_REMOTE_INSTRUCTIONS.strip().format(_session.server_port))
+
     if desktop:
-        print(_APP_DESKTOP)
+        logger.info(_APP_DESKTOP_MESSAGE.strip())
     elif focx._get_context() != focx._NONE:
-        print(_APP_NOTEBOOK)
+        logger.info(_APP_NOTEBOOK_MESSAGE.strip())
     else:
-        print(_APP_WEB % port)
+        logger.info(_APP_WEB_MESSAGE.strip().format(port))
 
     return _session
 
@@ -179,11 +196,9 @@ class Session(foc.HasClient):
         port (5151): the port number to use
         remote (False): whether this is a remote session, and opening the App
             should not be attempted
-        desktop (False): If `True`, the session will launch the desktop App.
-            The desktop App package must be installed (fiftyone-desktop),
-            if so. The `FIFTYONE_DESKTOP_APP=true` environment variable can
-            be used as a persistent desktop setting. DOES NOT apply to notebook
-            contexts (e.g. Jupyter), use :meth:`Session.show` instead.
+        desktop (False): whether to launch the App in the browser (False) or as
+            a desktop App (True). Not applicable to notebook contexts (e.g.,
+            Jupyter and Colab); use :meth:`Session.show` instead
     """
 
     _HC_NAMESPACE = "state"
@@ -217,37 +232,35 @@ class Session(foc.HasClient):
             self.dataset = dataset
 
         if not desktop and self._context == focx._NONE:
-            self._desktop = fo.config.desktop
+            self._desktop = fo.config.desktop_app
         else:
             self._desktop = desktop
 
         self._start_time = self._get_time()
+
         if self._remote and self._context != focx._NONE:
-            raise ValueError(
-                "`remote` is not valid argument when in a notebook"
-            )
-        elif self._remote:
-            logger.info(
-                _REMOTE_INSTRUCTIONS.strip()
-                % (self.server_port, self.server_port, self.server_port)
-            )
+            raise ValueError("Remote sessions cannot be run from a notebook")
+
+        if self._remote:
             return
 
         if self._context == focx._NONE and self._desktop:
             try:
                 import fiftyone.desktop
-            except:
+            except ImportError as e:
                 if not focn.DEV_INSTALL:
-                    raise ValueError("fiftyone-desktop is not installed")
+                    raise ValueError(
+                        "You must install the 'fiftyone-desktop' package in "
+                        "order to launch a desktop App instance"
+                    ) from e
 
             self._app_service = fos.AppService(server_port=port)
-            logger.info("App launched")
         elif self._context == focx._NONE and not self._desktop:
             self.open()
         elif self._context != focx._NONE and self._desktop:
             raise ValueError(
-                "`desktop` cannot be `True` in notebooks, use the `show()`"
-                "method after instantiation instead "
+                "Cannot open a Desktop App instance from a notebook. Use "
+                "`session.show()` to open the App."
             )
 
     def __repr__(self):
@@ -282,13 +295,20 @@ class Session(foc.HasClient):
 
     @_update_state
     def show(self, height=800):
-        """Show the App in an IPython notebook
-        
+        """Opens the App in the output of the current notebook cell.
+
+        Only usable when working in notebook (e.g., Jupyter or Colab)
+        environments.
+
         Args:
-            height (800): the height, in pixels, of the App to show
+            height (800): a height, in pixels, for the App
+
+        Raises:
+            RuntimeError: if this command is run in a non-notebook environment
         """
         if self._context == focx._NONE:
-            raise RuntimeError("Cannot show App; not an IPython notebook")
+            raise RuntimeError("Cannot show App in a non-notebook environment")
+
         display(self._port, height=height)
 
     @property
@@ -305,6 +325,7 @@ class Session(foc.HasClient):
     def dataset(self, dataset):
         if dataset is not None:
             dataset._doc.reload()
+
         self.state.dataset = dataset
         self.state.view = None
         self.state.selected = []
@@ -492,28 +513,6 @@ class Session(foc.HasClient):
         self.state = self.state
 
 
-_REMOTE_INSTRUCTIONS = """
-You have launched a remote app on port %d. To connect to this app
-from another machine, issue the following command:
-
-fiftyone app connect --destination [<username>@]<hostname> --port %d
-
-where `[<username>@]<hostname>` refers to your current machine. Alternatively,
-you can manually configure port forwarding on another machine as follows:
-
-ssh -N -L 5151:127.0.0.1:%d [<username>@]<hostname>
-
-The App can then be viewed in your browser at http://localhost:5151.
-"""
-
-
-_WAIT_INSTRUCTIONS = """
-A session appears to have terminated shortly after it was started. If you
-intended to start an app instance or a remote session from a script, you
-should call `session.wait()` to keep the session (and the script) alive.
-"""
-
-
 def display(port=None, height=None):
     """Display a running FiftyOne instance.
 
@@ -546,17 +545,17 @@ def _display(port=None, height=None):
 def _display_colab(port, height):
     """Display a FiftyOne instance in a Colab output frame.
 
-    The Colab VM is not directly exposed to the network, so the Colab
-    runtime provides a service worker tunnel to proxy requests from the
-    end user's browser through to servers running on the Colab VM: the
-    output frame may issue requests to https://localhost:<port> (HTTPS
-    only), which will be forwarded to the specified port on the VM.
+    The Colab VM is not directly exposed to the network, so the Colab runtime
+    provides a service worker tunnel to proxy requests from the end user's
+    browser through to servers running on the Colab VM: the output frame may
+    issue requests to https://localhost:<port> (HTTPS only), which will be
+    forwarded to the specified port on the VM.
 
     It does not suffice to create an `iframe` and let the service worker
-    redirect its traffic (`<iframe src="https://localhost:6006">`),
-    because for security reasons service workers cannot intercept iframe
-    traffic. Instead, we manually fetch the FiftyOne index page with an
-    XHR in the output frame, and inject the raw HTML into `document.body`.
+    redirect its traffic (`<iframe src="https://localhost:6006">`), because for
+    security reasons service workers cannot intercept iframe traffic. Instead,
+    we manually fetch the FiftyOne index page with an XHR in the output frame,
+    and inject the raw HTML into `document.body`.
     """
     import IPython.display
 

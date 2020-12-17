@@ -31,11 +31,10 @@ def quickstart(
         port (5151): the port number to serve the App
         remote (False): whether this is a remote session, and opening the App
             should not be attempted
-        desktop (False): If `True`, the session will launch the desktop App.
-            The desktop App package must be installed (fiftyone-desktop),
-            if so. The `FIFTYONE_DESKTOP_WINDOW=true` environment variable can
-            be used as a persistent desktop setting. DOES NOT apply to notebook
-            contexts (e.g. Jupyter), use :meth:`Session.show` instead.
+        desktop (False): whether to launch the App in the browser (False) or as
+            a desktop App (True). Not applicable to notebook contexts (e.g.,
+            Jupyter and Colab); use :meth:`fiftyone.core.session.Session.show`
+            instead
 
     Returns:
         If ``interactive`` is ``True``, a tuple is returned containing:
