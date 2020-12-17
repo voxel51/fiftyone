@@ -52,18 +52,19 @@ def quickstart(
 
 
 def _quickstart(interactive, port, remote, desktop):
+    if interactive:
+        print(_QUICKSTART_GUIDE % (_FILTER_DETECTIONS_IN_PYTHON))
+    else:
+        print(_QUICKSTART_GUIDE % (""))
+
     dataset = fozd.load_zoo_dataset("quickstart")
     session = fos.launch_app(
         dataset=dataset, port=port, remote=remote, desktop=desktop
     )
 
-    # @todo improve readability of stdout when launching remote sessions
-
     if interactive:
-        print(_QUICKSTART_GUIDE % (_FILTER_DETECTIONS_IN_PYTHON))
         return dataset, session
 
-    print(_QUICKSTART_GUIDE % (""))
     if not _EXIT:
         session.wait()
 
@@ -71,18 +72,16 @@ def _quickstart(interactive, port, remote, desktop):
 
 
 def _video_quickstart(interactive, port, remote, desktop):
+    print(_VIDEO_QUICKSTART_GUIDE)
+
     dataset = fozd.load_zoo_dataset("quickstart-video")
     session = fos.launch_app(
         dataset=dataset, port=port, remote=remote, desktop=desktop
     )
-    instructions = _VIDEO_QUICKSTART_GUIDE
 
-    # @todo improve readability of stdout when launching remote sessions
     if interactive:
-        print(instructions)
         return dataset, session
 
-    print(instructions)
     if not _EXIT:
         session.wait()
 
@@ -128,6 +127,7 @@ Resources:
 
 -   Using the App: https://voxel51.com/docs/fiftyone/user_guide/app.html
 -   Dataset Zoo:   https://voxel51.com/docs/fiftyone/user_guide/dataset_zoo.html
+
 """
 
 
@@ -178,4 +178,5 @@ Resources:
 
 -   Using the App: https://voxel51.com/docs/fiftyone/user_guide/app.html
 -   Dataset Zoo:   https://voxel51.com/docs/fiftyone/user_guide/dataset_zoo.html
+
 """

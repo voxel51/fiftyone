@@ -126,8 +126,7 @@ def launch_app(
 
     if remote:
         logger.info(_REMOTE_INSTRUCTIONS.strip().format(_session.server_port))
-
-    if desktop:
+    elif desktop:
         logger.info(_APP_DESKTOP_MESSAGE.strip())
     elif focx._get_context() != focx._NONE:
         logger.info(_APP_NOTEBOOK_MESSAGE.strip())
