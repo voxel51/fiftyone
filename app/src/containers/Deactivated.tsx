@@ -5,15 +5,18 @@ import * as atoms from "../recoil/atoms";
 import "../components/Loading";
 import Loading from "../components/Loading";
 
-const Deactivated = () => {
+const Click = () => {
   const setDeactivated = useSetRecoilState(atoms.deactivated);
-
   return (
-    <Loading
-      text={"This App has been deactivated. Click here to activate"}
-      onClick={() => setDeactivated(false)}
-    />
+    <p>
+      This App has been deactivated.{" "}
+      <a onClick={() => setDeactivated(false)}>Click here</a> to activate.
+    </p>
   );
+};
+
+const Deactivated = () => {
+  return <Loading text={<Click />} />;
 };
 
 export default Deactivated;
