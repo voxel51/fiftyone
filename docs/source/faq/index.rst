@@ -85,8 +85,8 @@ What image file types are supported?
 ------------------------------------
 
 In general, FiftyOne supports `all image types supported by Chromium
-<https://en.wikipedia.org/wiki/Comparison_of_browser_engines_(graphics_support)>`_,
-which includes standard image types like JPEG, PNG, TIFF, and BMP.
+<https://en.wikipedia.org/wiki/Comparison_of_web_browsers#Image_format_support>`_,
+which includes standard image types like JPEG, PNG, and BMP.
 
 .. _faq-video-types:
 

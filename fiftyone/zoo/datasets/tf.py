@@ -10,7 +10,7 @@ import fiftyone.core.utils as fou
 import fiftyone.types as fot
 import fiftyone.utils.imagenet as foui
 import fiftyone.utils.data as foud
-import fiftyone.zoo as foz
+import fiftyone.zoo.datasets as fozd
 
 
 _TFDS_IMPORT_ERROR = """
@@ -21,7 +21,7 @@ TensorFlow backend, but you do not have the necessary packages installed.
 Ensure that you have `tensorflow` and `tensorflow_datasets` installed on your
 machine, and then try running this command again.
 
-See https://voxel51.com/docs/fiftyone/user_guide/dataset_creation/zoo.html
+See https://voxel51.com/docs/fiftyone/user_guide/dataset_zoo.html
 for more information about working with the Dataset Zoo.
 """
 
@@ -29,7 +29,7 @@ _callback = lambda: fou.ensure_tfds(error_msg=_TFDS_IMPORT_ERROR)
 tfds = fou.lazy_import("tensorflow_datasets", callback=_callback)
 
 
-class TFDSDataset(foz.ZooDataset):
+class TFDSDataset(fozd.ZooDataset):
     """Base class for zoo datasets that are provided via the
     ``tensorflow_datasets`` package.
     """
@@ -43,16 +43,20 @@ class MNISTDataset(TFDSDataset):
     The dataset consists of 70000 28 x 28 grayscale images in 10 classes.
     There are 60000 training images and 10000 test images.
 
-    Dataset size:
+    Dataset size
         21.00 MiB
 
-    Source:
+    Source
         http://yann.lecun.com/exdb/mnist
     """
 
     @property
     def name(self):
         return "mnist"
+
+    @property
+    def tags(self):
+        return ("image", "classification")
 
     @property
     def supported_splits(self):
@@ -87,16 +91,20 @@ class FashionMNISTDataset(TFDSDataset):
     The dataset consists of 70000 28 x 28 grayscale images in 10 classes.
     There are 60000 training images and 10000 test images.
 
-    Dataset size:
+    Dataset size
         36.42 MiB
 
-    Source:
+    Source
         https://github.com/zalandoresearch/fashion-mnist
     """
 
     @property
     def name(self):
         return "fashion-mnist"
+
+    @property
+    def tags(self):
+        return ("image", "classification")
 
     @property
     def supported_splits(self):
@@ -131,16 +139,20 @@ class CIFAR10Dataset(TFDSDataset):
     The dataset consists of 60000 32 x 32 color images in 10 classes, with 6000
     images per class. There are 50000 training images and 10000 test images.
 
-    Dataset size:
+    Dataset size
         132.40 MiB
 
-    Source:
+    Source
         https://www.cs.toronto.edu/~kriz/cifar.html
     """
 
     @property
     def name(self):
         return "cifar10"
+
+    @property
+    def tags(self):
+        return ("image", "classification")
 
     @property
     def supported_splits(self):
@@ -175,16 +187,20 @@ class CIFAR100Dataset(TFDSDataset):
     The dataset consists of 60000 32 x 32 color images in 100 classes, with 600
     images per class. There are 50000 training images and 10000 test images.
 
-    Dataset size:
+    Dataset size
         132.03 MiB
 
-    Source:
+    Source
         https://www.cs.toronto.edu/~kriz/cifar.html
     """
 
     @property
     def name(self):
         return "cifar100"
+
+    @property
+    def tags(self):
+        return ("image", "classification")
 
     @property
     def supported_splits(self):
@@ -222,16 +238,20 @@ class Caltech101Dataset(TFDSDataset):
     Images are of variable sizes, with typical edge lengths of 200-300 pixels.
     This version contains image-level labels only.
 
-    Dataset size:
+    Dataset size
         125.64 MiB
 
-    Source:
+    Source
         http://www.vision.caltech.edu/Image_Datasets/Caltech101
     """
 
     @property
     def name(self):
         return "caltech101"
+
+    @property
+    def tags(self):
+        return ("image", "classification")
 
     @property
     def supported_splits(self):
@@ -283,7 +303,7 @@ class ImageNet2012Dataset(TFDSDataset):
             train split: ILSVRC2012_img_train.tar
        validation split: ILSVRC2012_img_val.tar
 
-    You can register at `http://www.image-net.org/download-images`_ in order to
+    You can register at http://www.image-net.org/download-images in order to
     get links to download the data.
 
     Example usage::
@@ -298,10 +318,10 @@ class ImageNet2012Dataset(TFDSDataset):
         # Now load into FiftyOne
         dataset = foz.load_zoo_dataset("imagenet-2012", split="validation")
 
-    Dataset size:
+    Dataset size
         144.02 GiB
 
-    Source:
+    Source
         http://image-net.org
 
     Args:
@@ -315,6 +335,10 @@ class ImageNet2012Dataset(TFDSDataset):
     @property
     def name(self):
         return "imagenet-2012"
+
+    @property
+    def tags(self):
+        return ("image", "classification", "manual")
 
     @property
     def supported_splits(self):
@@ -359,22 +383,27 @@ class COCO2014Dataset(TFDSDataset):
     version of the dataset.
 
     Notes:
-        - COCO defines 91 classes but the data only uses 80 classes
-        - some images from the train and validation sets don't have annotations
-        - the test set does not have annotations
-        - COCO 2014 and 2017 uses the same images, but different train/val/test
-            splits
 
-    Dataset size:
+    -   COCO defines 91 classes but the data only uses 80 classes
+    -   Some images from the train and validation sets don't have annotations
+    -   The test set does not have annotations
+    -   COCO 2014 and 2017 uses the same images, but different train/val/test
+        splits
+
+    Dataset size
         37.57 GiB
 
-    Source:
+    Source
         http://cocodataset.org/#home
     """
 
     @property
     def name(self):
         return "coco-2014"
+
+    @property
+    def tags(self):
+        return ("image", "detection")
 
     @property
     def supported_splits(self):
@@ -415,22 +444,27 @@ class COCO2017Dataset(TFDSDataset):
     version of the dataset.
 
     Notes:
-        - COCO defines 91 classes but the data only uses 80 classes
-        - some images from the train and validation sets don't have annotations
-        - the test set does not have annotations
-        - COCO 2014 and 2017 uses the same images, but different train/val/test
-            splits
 
-    Dataset size:
+    -   COCO defines 91 classes but the data only uses 80 classes
+    -   Some images from the train and validation sets don't have annotations
+    -   The test set does not have annotations
+    -   COCO 2014 and 2017 uses the same images, but different train/val/test
+        splits
+
+    Dataset size
         25.20 GiB
 
-    Source:
+    Source
         http://cocodataset.org/#home
     """
 
     @property
     def name(self):
         return "coco-2017"
+
+    @property
+    def tags(self):
+        return ("image", "detection")
 
     @property
     def supported_splits(self):
@@ -474,16 +508,20 @@ class KITTIDataset(TFDSDataset):
     of the annotations can be found in the README of the object development kit
     on the KITTI homepage.
 
-    Dataset size:
+    Dataset size
         5.27 GiB
 
-    Source:
+    Source
         http://www.cvlibs.net/datasets/kitti
     """
 
     @property
     def name(self):
         return "kitti"
+
+    @property
+    def tags(self):
+        return ("image", "detection")
 
     @property
     def supported_splits(self):
@@ -527,16 +565,20 @@ class VOC2007Dataset(TFDSDataset):
     Note that, as per the official dataset, the test set of VOC2007 does not
     contain annotations.
 
-    Dataset size:
+    Dataset size
         868.85 MiB
 
-    Source:
+    Source
         http://host.robots.ox.ac.uk/pascal/VOC/voc2007
     """
 
     @property
     def name(self):
         return "voc-2007"
+
+    @property
+    def tags(self):
+        return ("image", "detection")
 
     @property
     def supported_splits(self):
@@ -580,16 +622,20 @@ class VOC2012Dataset(TFDSDataset):
     Note that, as per the official dataset, the test set of VOC2012 does not
     contain annotations.
 
-    Dataset size:
+    Dataset size
         3.59 GiB
 
-    Source:
+    Source
         http://host.robots.ox.ac.uk/pascal/VOC/voc2012
     """
 
     @property
     def name(self):
         return "voc-2012"
+
+    @property
+    def tags(self):
+        return ("image", "detection")
 
     @property
     def supported_splits(self):

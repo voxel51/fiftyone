@@ -71,7 +71,7 @@ setup(
         "eventlet",
         "future",
         "Jinja2",
-        "mongoengine",
+        "mongoengine==0.20.0",
         "motor<3,>=2.3",
         "numpy",
         "packaging",
@@ -103,6 +103,6 @@ setup(
         "License :: OSI Approved :: Apache Software License",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
-    python_requires=">=3.5",
+    python_requires=">=3.6",
     cmdclass={"bdist_wheel": BdistWheelCustom},
 )

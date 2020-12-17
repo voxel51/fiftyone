@@ -281,11 +281,15 @@ class Session(foc.HasClient):
         super().__del__()
 
     @_update_state
-    def show(self):
-        """Show the App in an IPython notebook"""
+    def show(self, height=800):
+        """Show the App in an IPython notebook
+        
+        Args:
+            height (800): the height, in pixels, of the App to show
+        """
         if self._context == focx._NONE:
             raise RuntimeError("Cannot show App; not an IPython notebook")
-        display(self._port)
+        display(self._port, height=height)
 
     @property
     def dataset(self):
@@ -520,17 +524,15 @@ def display(port=None, height=None):
         UI, as an `int` number of pixels, or `None` to use a default value
         (currently 800).
     """
-    _display(port=port, height=height, print_message=True, display_handle=None)
+    _display(port=port, height=height)
 
 
-def _display(port=None, height=None, print_message=False, display_handle=None):
+def _display(port=None, height=None):
     """Internal version of `display`.
 
     Args:
       port: As with `display`.
       height: As with `display`.
-      display_handle: If not None, an IPython display handle into which to
-        render FiftyOne.
     """
     if height is None:
         height = 800
@@ -538,10 +540,10 @@ def _display(port=None, height=None, print_message=False, display_handle=None):
     fn = {focx._COLAB: _display_colab, focx._IPYTHON: _display_ipython}[
         focx._get_context()
     ]
-    return fn(port=port, height=height, display_handle=display_handle)
+    return fn(port=port, height=height)
 
 
-def _display_colab(port, height, display_handle):
+def _display_colab(port, height):
     """Display a FiftyOne instance in a Colab output frame.
 
     The Colab VM is not directly exposed to the network, so the Colab
@@ -579,44 +581,12 @@ def _display_colab(port, height, display_handle):
         shell = shell.replace(k, v)
     script = IPython.display.Javascript(shell)
 
-    if display_handle:
-        display_handle.update(script)
-    else:
-        IPython.display.display(script)
+    IPython.display.display(script)
 
 
-def _display_ipython(port, height, display_handle):
+def _display_ipython(port, height):
     import IPython.display
 
-    frame_id = "fiftyone-frame-{:08x}".format(random.getrandbits(64))
-    shell = """
-      <iframe id="%HTML_ID%" width="100%" height="%HEIGHT%" frameborder="0">
-      </iframe>
-      <script>
-        (function() {
-          const frame = document.getElementById(%JSON_ID%);
-          const url = new URL(%URL%, window.location);
-          url.searchParams.set('notebook', 'true');
-          const port = %PORT%;
-          if (port) {
-            url.port = port;
-          }
-          frame.src = url;
-        })();
-      </script>
-    """
-    replacements = [
-        ("%HTML_ID%", html_escape(frame_id, quote=True)),
-        ("%JSON_ID%", json.dumps(frame_id)),
-        ("%HEIGHT%", "%d" % height),
-        ("%PORT%", "%d" % port),
-        ("%URL%", json.dumps("/")),
-    ]
-
-    for (k, v) in replacements:
-        shell = shell.replace(k, v)
-    iframe = IPython.display.HTML(shell)
-    if display_handle:
-        display_handle.update(iframe)
-    else:
-        IPython.display.display(iframe)
+    src = "http://localhost:%d/?notebook=true" % port
+    iframe = IPython.display.IFrame(src, height=800, width="100%")
+    IPython.display.display(iframe)
