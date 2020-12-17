@@ -6,6 +6,7 @@ Session class for interacting with the FiftyOne App.
 |
 """
 from collections import defaultdict
+from functools import wraps
 import html
 import json
 import logging
@@ -147,6 +148,7 @@ def close_app():
 
 
 def _update_state(func):
+    @wraps(func)
     def wrapper(self, *args, **kwargs):
         result = func(self, *args, **kwargs)
         self.state.datasets = fod.list_datasets()

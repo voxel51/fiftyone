@@ -21,7 +21,7 @@ You can also set the ``desktop_app`` flag of your
 :ref:`FiftyOne config <configuring-fiftyone>` to use the desktop App by
 default.
 
-Check out the :ref:enviornments guide <environments>` to see how to use
+Check out the :ref:`enviornments guide <environments>` to see how to use
 FiftyOne in all common local, remote, cloud, and notebook environments.
 
 .. _faq-browser-support:
@@ -61,8 +61,8 @@ For example, a typical workflow is:
     # Load a FiftyOne dataset
     dataset = fo.load_dataset(...)
 
-    # Launch an App session
-    session = fo.launch_app(dataset)
+    # Create an App session
+    session = fo.Session(dataset)
 
 .. code-block:: python
     :linenos:
