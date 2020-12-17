@@ -595,6 +595,14 @@ class ZooDatasetInfo(etas.Serializable):
         except KeyError:
             dataset_type = d["dataset_type"]
 
+        # @legacy pre-model zoo package name
+        old_pkg = "fiftyone.zoo."
+        new_pkg = "fiftyone.zoo.datasets."
+        if zoo_dataset.startswith(old_pkg) and not zoo_dataset.startswith(
+            new_pkg
+        ):
+            zoo_dataset = new_pkg + zoo_dataset[len(old_pkg) :]
+
         # @legacy dataset types
         _dt = "fiftyone.types.dataset_types"
         if dataset_type.endswith(".ImageClassificationDataset"):

@@ -22,8 +22,9 @@ the CLI.
 
   .. group-tab:: CLI
 
-    The :ref:`fiftyone zoo <cli-fiftyone-zoo>` CLI command provides convenient
-    utilities for working with datasets in the FiftyOne Dataset Zoo.
+    The :ref:`fiftyone zoo datasets <cli-fiftyone-zoo-datasets>` CLI command
+    provides convenient utilities for working with datasets in the FiftyOne
+    Dataset Zoo.
 
 .. note::
 
@@ -86,8 +87,8 @@ visualizing it in the App is shown below.
 
   .. group-tab:: CLI
 
-    Use :ref:`fiftyone zoo load <cli-fiftyone-zoo-load>` to load a zoo dataset
-    into a FiftyOne dataset.
+    Use :ref:`fiftyone zoo datasets load <cli-fiftyone-zoo-datasets-load>` to
+    load a zoo dataset into a FiftyOne dataset.
 
     For example, the code sample below loads the validation split of the
     COCO-2017 dataset from the zoo and visualizes it in the FiftyOne App:
@@ -100,7 +101,7 @@ visualizing it in the App is shown below.
         #
         # This will download the dataset from the web, if necessary
         #
-        fiftyone zoo load coco-2017 --split validation \
+        fiftyone zoo datasets load coco-2017 --split validation \
             --dataset-name coco-2017-validation-example
 
         # Visualize the dataset in the App
@@ -172,14 +173,14 @@ Listing zoo datasets
   .. group-tab:: CLI
 
     You can access information about the available zoo datasets via the
-    :ref:`fiftyone zoo list <cli-fiftyone-zoo-list>` command.
+    :ref:`fiftyone zoo datasets list <cli-fiftyone-zoo-datasets-list>` command.
 
     For example, to list the available zoo datasets and whether you have
     downloaded them, you can execute:
 
     .. code-block:: shell
 
-        fiftyone zoo list
+        fiftyone zoo datasets list
 
     Dataset splits that have been downloaded are indicated by a checkmark in
     the ``downloaded`` column, and their location on disk is indicated by
@@ -305,13 +306,14 @@ Getting information about zoo datasets
   .. group-tab:: CLI
 
     You can view detailed information about a dataset (either downloaded or
-    not) via the :ref:`fiftyone zoo info <cli-fiftyone-zoo-info>` command.
+    not) via the
+    :ref:`fiftyone zoo datasets info <cli-fiftyone-zoo-datasets-info>` command.
 
     For example, you can view information about the CIFAR-10 dataset:
 
     .. code-block:: shell
 
-        fiftyone zoo info cifar10
+        fiftyone zoo datasets info cifar10
 
     .. code-block:: text
 
@@ -400,7 +402,8 @@ Downloading zoo datasets
   .. group-tab:: CLI
 
     You can download zoo datasets (or individual splits of them) from the
-    web via the :ref:`fiftyone zoo download <cli-fiftyone-zoo-download>`
+    web via the
+    :ref:`fiftyone zoo datasets download <cli-fiftyone-zoo-datasets-download>`
     command.
 
     For example, you can download the test split of the CIFAR-10 dataset as
@@ -408,7 +411,7 @@ Downloading zoo datasets
 
     .. code-block:: shell
 
-        fiftyone zoo download cifar10 --splits test
+        fiftyone zoo datasets download cifar10 --splits test
 
     .. code-block:: text
 
@@ -471,7 +474,8 @@ Loading zoo datasets
   .. group-tab:: CLI
 
     After a zoo dataset has been downloaded from the web, you can load it as
-    a FiftyOne dataset via the :ref:`fiftyone zoo load <cli-fiftyone-zoo-load>`
+    a FiftyOne dataset via the
+    :ref:`fiftyone zoo datasets load <cli-fiftyone-zoo-datasets-load>`
     command.
 
     For example, you can load the test split of the CIFAR-10 dataset as
@@ -479,7 +483,7 @@ Loading zoo datasets
 
     .. code-block:: shell
 
-        fiftyone zoo load cifar10 --splits test
+        fiftyone zoo datasets load cifar10 --splits test
 
     .. code-block:: text
 
@@ -488,13 +492,14 @@ Loading zoo datasets
          100% |██████████████████████████████████████████████| 10000/10000 [3.6s elapsed, 0s remaining, 2.9K samples/s]
         Dataset 'cifar10-test' created
 
-    You can also provide :ref:`additional arguments <cli-fiftyone-zoo-load>`
-    to customize the import behavior. For example, you can load a random subset
-    of 10 samples from the zoo dataset:
+    You can also provide
+    :ref:`additional arguments <cli-fiftyone-zoo-datasets-load>` to customize
+    the import behavior. For example, you can load a random subset of 10
+    samples from the zoo dataset:
 
     .. code-block:: shell
 
-        fiftyone zoo load cifar10 --splits test \
+        fiftyone zoo datasets load cifar10 --splits test \
             --dataset-name cifar10-test-sample --shuffle --max-samples 10
 
     .. code-block:: text
@@ -521,8 +526,8 @@ with the appropriate keyword arguments (which are passed to the underlying
 :class:`ZooDataset <fiftyone.zoo.datasets.ZooDataset>` constructor) to wrangle
 the raw download into FiftyOne format, and then calling
 :meth:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>` or using
-:ref:`fiftyone zoo load <cli-fiftyone-zoo-load>` to load the dataset into
-FiftyOne.
+:ref:`fiftyone zoo datasets load <cli-fiftyone-zoo-datasets-load>` to load the
+dataset into FiftyOne.
 
 For example, the following snippet shows how to load the BDD100K dataset from
 the zoo:
@@ -605,11 +610,13 @@ Deleting zoo datasets
   .. group-tab:: CLI
 
     You can delete the local copy of a zoo dataset (or individual split(s) of
-    them) via the :ref:`fiftyone zoo delete <cli-fiftyone-zoo-delete>` command:
+    them) via the
+    :ref:`fiftyone zoo datasets delete <cli-fiftyone-zoo-datasets-delete>`
+    command:
 
     .. code-block:: shell
 
-        fiftyone zoo delete cifar10 --splits test
+        fiftyone zoo datasets delete cifar10 --splits test
 
 .. _zoo-adding-datasets:
 
@@ -643,13 +650,14 @@ alias ``quickstart-copy``:
     }
 
 In the above, ``custom`` specifies the source of the dataset, which can be an
-arbitrary string and simply controls the column of the ``fiftyone zoo list``
-listing in which the dataset is annotated; ``quickstart-copy`` is the name of
-the new dataset; and ``fiftyone.zoo.base.QuickstartDataset`` is the
-fully-qualified class name of the
-:class:`ZooDataset class <fiftyone.zoo.datasets.ZooDataset>` for the dataset,
-which specifies how to download and load the dataset into FiftyOne. This class
-can be defined anywhere that is importable at runtime in your environment.
+arbitrary string and simply controls the column of the
+``fiftyone zoo datasets list`` listing in which the dataset is annotated;
+``quickstart-copy`` is the name of the new dataset; and
+``fiftyone.zoo.base.QuickstartDataset`` is the fully-qualified class name of
+the :class:`ZooDataset class <fiftyone.zoo.datasets.ZooDataset>` for the
+dataset, which specifies how to download and load the dataset into FiftyOne.
+This class can be defined anywhere that is importable at runtime in your
+environment.
 
 Finally, expose your new dataset(s) to FiftyOne by adding your manifest to the
 ``dataset_zoo_manifest_paths`` parameter of your
@@ -666,10 +674,10 @@ dataset:
 .. code-block:: shell
 
     # Will contain `quickstart-copy`
-    fiftyone zoo list
+    fiftyone zoo datasets list
 
     # Load custom dataset into FiftyOne
-    fiftyone zoo load quickstart-copy
+    fiftyone zoo datasets load quickstart-copy
 
 .. _zoo-customizing-your-ml-backend:
 

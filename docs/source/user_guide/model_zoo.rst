@@ -22,8 +22,9 @@ You can interact with the Model Zoo either via the Python library or the CLI.
 
   .. group-tab:: CLI
 
-    The :ref:`fiftyone model-zoo <cli-fiftyone-model-zoo>` CLI command provides
-    convenient utilities for working with models in the FiftyOne Model Zoo.
+    The :ref:`fiftyone zoo models <cli-fiftyone-zoo-models>` CLI command
+    provides convenient utilities for working with models in the FiftyOne Model
+    Zoo.
 
 .. note::
 
@@ -370,8 +371,8 @@ Inside builtin methods like
 :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`,
 embeddings for a collection of samples are generated using an analogous pattern
 to the prediction code shown above, except that the embeddings are generated
-using :meth:`Model.embed() <fiftyone.core.models.EmbeddingsMixin.embed>` in place of
-:meth:`Model.predict() <fiftyone.core.models.Model.predict>`.
+using :meth:`Model.embed() <fiftyone.core.models.EmbeddingsMixin.embed>` in
+place of :meth:`Model.predict() <fiftyone.core.models.Model.predict>`.
 
 By convention,
 :meth:`Model.embed() <fiftyone.core.models.EmbeddingsMixin.embed>` should
@@ -451,14 +452,14 @@ Listing zoo models
   .. group-tab:: CLI
 
     You can access information about the available zoo models via the
-    :ref:`fiftyone model-zoo list <cli-fiftyone-model-zoo-list>` command.
+    :ref:`fiftyone zoo models list <cli-fiftyone-zoo-models-list>` command.
 
     For example, to list the available zoo models and whether you have
     downloaded them, you can execute:
 
     .. code-block:: shell
 
-        fiftyone model-zoo list
+        fiftyone zoo models list
 
     Models that have been downloaded are indicated by a checkmark in the
     ``downloaded`` column, and their location on disk is indicated by the
@@ -537,14 +538,14 @@ Getting information about zoo models
   .. group-tab:: CLI
 
     You can view detailed information about a model (either downloaded or
-    not) via the :ref:`fiftyone model-zoo info <cli-fiftyone-model-zoo-info>`
+    not) via the :ref:`fiftyone zoo models info <cli-fiftyone-zoo-models-info>`
     command.
 
     For example, you can view information about a Faster R-CNN PyTorch model:
 
     .. code-block:: shell
 
-        fiftyone model-zoo info faster-rcnn-resnet50-fpn-coco-torch
+        fiftyone zoo models info faster-rcnn-resnet50-fpn-coco-torch
 
     .. code-block:: text
 
@@ -623,14 +624,14 @@ Downloading zoo models
   .. group-tab:: CLI
 
     You can download zoo models from the web via the
-    :ref:`fiftyone model-zoo download <cli-fiftyone-model-zoo-download>`
+    :ref:`fiftyone zoo models download <cli-fiftyone-zoo-models-download>`
     command.
 
     For example, you can download a Faster R-CNN PyTorch model as follows:
 
     .. code-block:: shell
 
-        fiftyone model-zoo download faster-rcnn-resnet50-fpn-coco-torch
+        fiftyone zoo models download faster-rcnn-resnet50-fpn-coco-torch
 
     .. code-block:: text
 
@@ -678,12 +679,12 @@ Installing zoo model requirements
     installed by default when FiftyOne is installed.
 
     You can view the requirements for a zoo model via the
-    :ref:`fiftyone model-zoo requirements <cli-fiftyone-model-zoo-requirements>`
+    :ref:`fiftyone zoo models requirements <cli-fiftyone-zoo-models-requirements>`
     command:
 
     .. code-block:: shell
 
-        fiftyone model-zoo requirements faster-rcnn-resnet50-fpn-coco-torch
+        fiftyone zoo models requirements faster-rcnn-resnet50-fpn-coco-torch
 
     .. code-block:: text
 
@@ -710,14 +711,14 @@ Installing zoo model requirements
     .. code-block:: shell
 
         # Raises an error if the requirements are not satisfied
-        fiftyone model-zoo requirements --ensure faster-rcnn-resnet50-fpn-coco-torch
+        fiftyone zoo models requirements --ensure faster-rcnn-resnet50-fpn-coco-torch
 
     You can also use the `--install` flag to install any necessary packages for
     a particular zoo model:
 
     .. code-block:: shell
 
-        fiftyone model-zoo requirements --install faster-rcnn-resnet50-fpn-coco-torch
+        fiftyone zoo models requirements --install faster-rcnn-resnet50-fpn-coco-torch
 
 .. _loading-zoo-models:
 
@@ -800,7 +801,7 @@ Applying zoo models
   .. group-tab:: CLI
 
     You can run inference on a dataset with a zoo model via the
-    :ref:`fiftyone model-zoo apply <cli-fiftyone-model-zoo-apply>` command.
+    :ref:`fiftyone zoo models apply <cli-fiftyone-zoo-models-apply>` command.
 
     For example, the snippet below loads the ``quickstart`` dataset from the
     Dataset Zoo and applies the ``faster-rcnn-resnet50-fpn-coco-torch`` model
@@ -809,10 +810,10 @@ Applying zoo models
     .. code-block:: shell
 
         # Load zoo dataset
-        fiftyone zoo load quickstart
+        fiftyone zoo datasets load quickstart
 
         # Apply zoo model
-        fiftyone model-zoo apply \
+        fiftyone zoo models apply \
             faster-rcnn-resnet50-fpn-coco-torch \   # model
             quickstart \                            # dataset
             faster_rcnn                             # label field
@@ -876,7 +877,7 @@ Generating embeddings with zoo models
 
     For models that expose embeddings, you can generate embeddings for all
     samples in a dataset via the
-    :ref:`fiftyone model-zoo embed <cli-fiftyone-model-zoo-embed>` command.
+    :ref:`fiftyone zoo models embed <cli-fiftyone-zoo-models-embed>` command.
 
     For example, the snippet below loads the ``quickstart`` dataset from the
     Dataset Zoo and generates embeddings for each sample using the
@@ -885,10 +886,10 @@ Generating embeddings with zoo models
     .. code-block:: shell
 
         # Load zoo dataset
-        fiftyone zoo load quickstart
+        fiftyone zoo datasets load quickstart
 
         # Generate embeddings via zoo model
-        fiftyone model-zoo embed \
+        fiftyone zoo models embed \
             inception-v3-imagenet-torch \           # model
             quickstart \                            # dataset
             embeddings                              # embeddings field
@@ -959,11 +960,11 @@ Deleting zoo models
   .. group-tab:: CLI
 
     You can delete the local copy of a zoo model via the
-    :ref:`fiftyone model-zoo delete <cli-fiftyone-model-zoo-delete>` command:
+    :ref:`fiftyone zoo models delete <cli-fiftyone-zoo-models-delete>` command:
 
     .. code-block:: shell
 
-        fiftyone model-zoo delete faster-rcnn-resnet50-fpn-coco-torch
+        fiftyone zoo models delete faster-rcnn-resnet50-fpn-coco-torch
 
 .. _adding-zoo-models:
 
