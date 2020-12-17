@@ -133,12 +133,15 @@ class QuickstartCommand(Command):
 
     @staticmethod
     def execute(parser, args):
+        # If desktop wasn't explicitly requested, fallback to default
+        desktop = args.desktop or None
+
         fouq.quickstart(
             interactive=False,
             video=args.video,
             port=args.port,
             remote=args.remote,
-            desktop=args.desktop,
+            desktop=desktop,
         )
 
 
@@ -821,12 +824,16 @@ class AppLaunchCommand(Command):
 
     @staticmethod
     def execute(parser, args):
+        # If desktop wasn't explicitly requested, fallback to default
+        desktop = args.desktop or None
+
         dataset = fod.load_dataset(args.name)
+
         session = fos.launch_app(
             dataset=dataset,
             port=args.port,
             remote=args.remote,
-            desktop=args.desktop,
+            desktop=desktop,
         )
 
         _watch_session(session, remote=args.remote)
@@ -1032,11 +1039,14 @@ class AppViewCommand(Command):
                 "provided"
             )
 
+        # If desktop wasn't explicitly requested, fallback to default
+        desktop = args.desktop or None
+
         session = fos.launch_app(
             dataset=dataset,
             port=args.port,
             remote=args.remote,
-            desktop=args.desktop,
+            desktop=desktop,
         )
 
         _watch_session(session, remote=args.remote)
@@ -1154,7 +1164,10 @@ class AppConnectCommand(Command):
 
             fou.call_on_exit(stop_port_forward)
 
-        session = fos.launch_app(port=args.local_port, desktop=args.desktop)
+        # If desktop wasn't explicitly requested, fallback to default
+        desktop = args.desktop or None
+
+        session = fos.launch_app(port=args.local_port, desktop=desktop)
 
         _watch_session(session)
 

@@ -17,7 +17,7 @@ _EXIT = os.environ.get("FIFTYONE_EXIT", False)
 
 
 def quickstart(
-    interactive=True, video=False, port=5151, remote=False, desktop=False
+    interactive=True, video=False, port=5151, remote=False, desktop=None
 ):
     """Runs the FiftyOne quickstart.
 
@@ -31,10 +31,9 @@ def quickstart(
         port (5151): the port number to serve the App
         remote (False): whether this is a remote session, and opening the App
             should not be attempted
-        desktop (False): whether to launch the App in the browser (False) or as
-            a desktop App (True). Not applicable to notebook contexts (e.g.,
-            Jupyter and Colab); use :meth:`fiftyone.core.session.Session.show`
-            instead
+        desktop (None): whether to launch the App in the browser (False) or as
+            a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
+            used. Not applicable to notebook contexts (e.g., Jupyter and Colab)
 
     Returns:
         If ``interactive`` is ``True``, a tuple is returned containing:

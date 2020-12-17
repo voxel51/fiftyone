@@ -81,9 +81,7 @@ call `session.wait()` to keep the session (and the script) alive.
 """
 
 
-def launch_app(
-    dataset=None, view=None, port=5151, remote=False, desktop=False
-):
+def launch_app(dataset=None, view=None, port=5151, remote=False, desktop=None):
     """Launches the FiftyOne App.
 
     Only one app instance can be opened at a time. If this method is
@@ -97,9 +95,9 @@ def launch_app(
         port (5151): the port number to use
         remote (False): whether this is a remote session, and opening the App
             should not be attempted
-        desktop (False): whether to launch the App in the browser (False) or as
-            a desktop App (True). Not applicable to notebook contexts (e.g.,
-            Jupyter and Colab); use :meth:`Session.show` instead
+        desktop (None): whether to launch the App in the browser (False) or as
+            a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
+            used. Not applicable to notebook contexts (e.g., Jupyter and Colab)
 
     Raises:
         VaueError: if ``desktop`` is ``True`` but the desktop App package is
@@ -125,9 +123,9 @@ def launch_app(
         dataset=dataset, view=view, port=port, remote=remote, desktop=desktop
     )
 
-    if remote:
+    if _session.remote:
         logger.info(_REMOTE_INSTRUCTIONS.strip().format(_session.server_port))
-    elif desktop:
+    elif _session.desktop:
         logger.info(_APP_DESKTOP_MESSAGE.strip())
     elif focx._get_context() != focx._NONE:
         logger.info(_APP_NOTEBOOK_MESSAGE.strip())
@@ -187,8 +185,6 @@ class Session(foc.HasClient):
     -   Use :func:`close_app` to programmatically close the app and
         terminate the session.
 
-    Note that only one session instance can exist at any time.
-
     Args:
         dataset (None): an optional :class:`fiftyone.core.dataset.Dataset` to
             load
@@ -197,9 +193,9 @@ class Session(foc.HasClient):
         port (5151): the port number to use
         remote (False): whether this is a remote session, and opening the App
             should not be attempted
-        desktop (False): whether to launch the App in the browser (False) or as
-            a desktop App (True). Not applicable to notebook contexts (e.g.,
-            Jupyter and Colab); use :meth:`Session.show` instead
+        desktop (None): whether to launch the App in the browser (False) or as
+            a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
+            used. Not applicable to notebook contexts (e.g., Jupyter and Colab)
     """
 
     _HC_NAMESPACE = "state"
@@ -207,7 +203,7 @@ class Session(foc.HasClient):
     _HC_ATTR_TYPE = StateDescription
 
     def __init__(
-        self, dataset=None, view=None, port=5151, remote=False, desktop=False
+        self, dataset=None, view=None, port=5151, remote=False, desktop=None
     ):
         self._context = focx._get_context()
         self._port = port
@@ -232,33 +228,37 @@ class Session(foc.HasClient):
         elif dataset is not None:
             self.dataset = dataset
 
-        if not desktop and self._context == focx._NONE:
-            self._desktop = fo.config.desktop_app
-        else:
-            self._desktop = desktop
+        if desktop is None:
+            if self._context == focx._NONE:
+                desktop = fo.config.desktop_app
+            else:
+                desktop = False
+
+        self._desktop = desktop
 
         self._start_time = self._get_time()
 
-        if self._remote and self._context != focx._NONE:
+        if self._remote and (self._context != focx._NONE):
             raise ValueError("Remote sessions cannot be run from a notebook")
 
         if self._remote:
             return
 
-        if self._context == focx._NONE and self._desktop:
-            try:
-                import fiftyone.desktop
-            except ImportError as e:
-                if not focn.DEV_INSTALL:
-                    raise ValueError(
-                        "You must install the 'fiftyone-desktop' package in "
-                        "order to launch a desktop App instance"
-                    ) from e
+        if self._context == focx._NONE:
+            if self._desktop:
+                try:
+                    import fiftyone.desktop
+                except ImportError as e:
+                    if not focn.DEV_INSTALL:
+                        raise ValueError(
+                            "You must install the 'fiftyone-desktop' package in "
+                            "order to launch a desktop App instance"
+                        ) from e
 
-            self._app_service = fos.AppService(server_port=port)
-        elif self._context == focx._NONE and not self._desktop:
-            self.open()
-        elif self._context != focx._NONE and self._desktop:
+                self._app_service = fos.AppService(server_port=port)
+            else:
+                self.open()
+        elif self._desktop:
             raise ValueError(
                 "Cannot open a Desktop App instance from a notebook. Use "
                 "`session.show()` to open the App."
@@ -293,6 +293,16 @@ class Session(foc.HasClient):
             # e.g. globals were already garbage-collected
             pass
         super().__del__()
+
+    @property
+    def remote(self):
+        """Whether the session is remote."""
+        return self._remote
+
+    @property
+    def desktop(self):
+        """Whether the session is connected to a desktop App."""
+        return self._desktop
 
     @_update_state
     def show(self, height=800):
@@ -342,8 +352,7 @@ class Session(foc.HasClient):
 
     @property
     def server_port(self):
-        """Getter for the port number of the session.
-        """
+        """The server port for the session."""
         return self._port
 
     @property
@@ -409,22 +418,22 @@ class Session(foc.HasClient):
 
     @_update_state
     def refresh(self):
-        """Refreshes the FiftyOne App, reloading the current dataset/view."""
+        """Refreshes the App, reloading the current dataset/view."""
         # @todo achieve same behavoir as if CTRL + R were pressed in the App
         pass
 
     def open(self):
         """Opens the session.
 
-        This opens the FiftyOne App, if necessary.
+        This opens the App, if necessary.
         """
         if self._remote:
             raise ValueError("Remote sessions cannot launch the FiftyOne App")
 
         if self._context != focx._NONE:
             raise ValueError(
-                "Notebook sessions cannot launch the FiftyOne App, use "
-                "`show()` instead"
+                "Notebook sessions cannot launch the FiftyOne App; use "
+                "`session.show()` instead"
             )
 
         if not self._desktop:

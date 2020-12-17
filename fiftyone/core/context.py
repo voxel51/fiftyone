@@ -6,9 +6,6 @@ Context utilities.
 |
 """
 
-_BROWSER = "browser"
-_DESKTOP = "desktop"
-
 _COLAB = "COLAB"
 _IPYTHON = "IPYTHON"
 _NONE = "NONE"
@@ -20,19 +17,20 @@ def _get_context():
     """Determine the most specific context that we're in.
 
     Returns:
-      _COLAB: If in Colab with an IPython notebook context.
-      _IPYTHON: If not in Colab, but we are in an IPython notebook
-        context (e.g., from running `jupyter notebook` at the command
-        line).
-      _NONE: Otherwise (e.g., by running a Python script at the
-        command-line or using the `ipython` interactive shell).
+        one of
+
+        -   ``_COLAB``: we're in Colab with an IPython notebook context
+        -   ``_IPYTHON``: we're not in Colab, but we are in an IPython notebook
+            context (e.g., from running `jupyter notebook` at the command line)
+        -   ``_NONE``: we're in a non-notebook context, e.g., a Python script
+            or a Python REPL
     """
     global _context
     if _context is not None:
         return _context
-    # In Colab, the `google.colab` module is available, but the shell
-    # returned by `IPython.get_ipython` does not have a `get_trait`
-    # method.
+
+    # In Colab, the `google.colab` module is available, but the shell returned
+    # by `IPython.get_ipython` does not have a `get_trait` method.
     try:
         import google.colab  # noqa: F401
         import IPython
@@ -44,8 +42,8 @@ def _get_context():
             _context = _COLAB
             return _context
 
-    # In an IPython command line shell or Jupyter notebook, we can
-    # directly query whether we're in a notebook context.
+    # In an IPython command line shell or Jupyter notebook, we can directly
+    # query whether we're in a notebook context.
     try:
         import IPython
     except ImportError:
@@ -58,4 +56,5 @@ def _get_context():
 
     # Otherwise, we're not in a known notebook context.
     _context = _NONE
+
     return _context
