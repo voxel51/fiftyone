@@ -71,13 +71,9 @@ jobs:
       matrix:
         os:
           - ubuntu-18.04
-          - windows-latest
         python-version:
           - 3.6
           - 3.8
-        exclude:
-          - os: windows-latest
-            python-version: 3.6
     defaults:
       run:
         shell: bash

@@ -7,7 +7,6 @@ Session class for interacting with the FiftyOne App.
 """
 from collections import defaultdict
 from functools import wraps
-import html
 import json
 import logging
 import random
@@ -22,8 +21,6 @@ import fiftyone.core.context as focx
 import fiftyone.core.service as fos
 from fiftyone.core.state import StateDescription
 
-html_escape = html.escape
-del html
 
 logger = logging.getLogger(__name__)
 
@@ -309,7 +306,9 @@ class Session(foc.HasClient):
         """
         if self._context == focx._NONE:
             raise RuntimeError("Cannot show App in a non-notebook environment")
-
+        if self.dataset is not None:
+            self.dataset._doc.reload()
+        self.state.datasets = fod.list_datasets()
         display(self._port, height=height)
 
     @property
@@ -588,5 +587,5 @@ def _display_ipython(port, height):
     import IPython.display
 
     src = "http://localhost:%d/?notebook=true" % port
-    iframe = IPython.display.IFrame(src, height=800, width="100%")
+    iframe = IPython.display.IFrame(src, height=height, width="100%")
     IPython.display.display(iframe)
