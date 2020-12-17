@@ -71,13 +71,9 @@ jobs:
       matrix:
         os:
           - ubuntu-18.04
-          - windows-latest
         python-version:
           - 3.6
           - 3.8
-        exclude:
-          - os: windows-latest
-            python-version: 3.6
     defaults:
       run:
         shell: bash
@@ -126,6 +122,7 @@ jobs:
           pip install pytest tensorflow tensorflow-datasets torch torchvision
       - name: Install fiftyone
         run: |
+          pip install scikit-learn scikit-image
           pip install --pre --extra-index-url https://test.pypi.org/simple/ fiftyone-brain voxel51-eta
           pip install -e .
       - name: Install ETA from source
@@ -145,7 +142,7 @@ jobs:
         if: ${{ startsWith(matrix.os, 'windows') }}
         run: |
           pip install pytest tensorflow tensorflow-datasets
-          pip install torch==1.6.0+cpu torchvision==0.7.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          pip install torch==1.7.1+cpu torchvision==0.8.2+cpu -f https://download.pytorch.org/whl/torch_stable.html
       - name: Configure fiftyone for tests
         id: test_config
         run: |
