@@ -146,7 +146,7 @@ jobs:
         if: ${{ startsWith(matrix.os, 'windows') }}
         run: |
           pip install pytest tensorflow tensorflow-datasets
-          pip install torch==1.6.0+cpu torchvision==0.7.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          pip install torch==1.7.1+cpu torchvision==0.8.2+cpu -f https://download.pytorch.org/whl/torch_stable.html
       - name: Configure fiftyone for tests
         id: test_config
         run: |
