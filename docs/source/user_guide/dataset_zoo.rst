@@ -280,7 +280,7 @@ Getting information about zoo datasets
         ***** Dataset info *****
         {
             "name": "cifar10",
-            "zoo_dataset": "fiftyone.zoo.torch.CIFAR10Dataset",
+            "zoo_dataset": "fiftyone.zoo.datasets.torch.CIFAR10Dataset",
             "dataset_type": "fiftyone.types.dataset_types.ImageClassificationDataset",
             "num_samples": 10000,
             "downloaded_splits": {
@@ -340,7 +340,7 @@ Getting information about zoo datasets
         ***** Dataset info *****
         {
             "name": "cifar10",
-            "zoo_dataset": "fiftyone.zoo.torch.CIFAR10Dataset",
+            "zoo_dataset": "fiftyone.zoo.datasets.torch.CIFAR10Dataset",
             "dataset_type": "fiftyone.types.dataset_types.ImageClassificationDataset",
             "num_samples": 60000,
             "downloaded_splits": {
@@ -645,19 +645,19 @@ alias ``quickstart-copy``:
 
     {
         "custom": {
-            "quickstart-copy": "fiftyone.zoo.base.QuickstartDataset"
+            "quickstart-copy": "fiftyone.zoo.datasets.base.QuickstartDataset"
         }
     }
 
 In the above, ``custom`` specifies the source of the dataset, which can be an
 arbitrary string and simply controls the column of the
-``fiftyone zoo datasets list`` listing in which the dataset is annotated;
-``quickstart-copy`` is the name of the new dataset; and
-``fiftyone.zoo.base.QuickstartDataset`` is the fully-qualified class name of
-the :class:`ZooDataset class <fiftyone.zoo.datasets.ZooDataset>` for the
-dataset, which specifies how to download and load the dataset into FiftyOne.
-This class can be defined anywhere that is importable at runtime in your
-environment.
+:ref:`fiftyone zoo datasets list <cli-fiftyone-zoo-datasets-list>` listing in
+which the dataset is annotated; ``quickstart-copy`` is the name of the new
+dataset; and ``fiftyone.zoo.datasets.base.QuickstartDataset`` is the
+fully-qualified class name of the
+:class:`ZooDataset class <fiftyone.zoo.datasets.ZooDataset>` for the dataset,
+which specifies how to download and load the dataset into FiftyOne. This class
+can be defined anywhere that is importable at runtime in your environment.
 
 Finally, expose your new dataset(s) to FiftyOne by adding your manifest to the
 ``dataset_zoo_manifest_paths`` parameter of your
