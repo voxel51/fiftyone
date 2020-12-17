@@ -103,10 +103,25 @@ nbsphinx_requirejs_path = ""
 # Adds a link to download the notebook to the built HTML
 nbsphinx_prolog = """
 
-.. note::
+.. raw:: html
 
-    Download notebook:
-    :download:`{{ env.doc2path(env.docname, base=None) }} </{{ env.doc2path(env.docname, base=None) }}>`
+    <table class="fo-notebook-links" align="left">
+        <td>
+            <a target="_blank" href="https://colab.research.google.com/github/voxel51/fiftyone/blob/develop/docs/source/{{ env.doc2path(env.docname, base=None) }}">
+                <img src="../_static/images/logo/colab-logo-32px.png"/>Run in Google Colab
+            </a>
+        </td>
+        <td>
+            <a target="_blank" href="https://github.com/voxel51/fiftyone/blob/develop/docs/source/{{ env.doc2path(env.docname, base=None) }}">
+                <img src="../_static/images/logo/github-logo-32px.png"/>View source on GitHub
+            </a>
+        </td>
+        <td>
+            <a target="_blank" href="https://raw.githubusercontent.com/voxel51/fiftyone/blob/develop/docs/source/{{ env.doc2path(env.docname, base=None) }}" download>
+                <img src="../_static/images/logo/download-logo-32px.png"/>Download notebook
+            </a>
+        </td>
+    </table>
 
 """
 
