@@ -79,19 +79,6 @@ else
 fi
 cd -
 
-echo "***** INSTALLING APP *****"
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.2/install.sh | bash
-export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
-nvm install v12.16.2
-nvm use v12.16.2
-npm -g install yarn
-source ~/.bashrc
-cd app
-yarn
-yarn build-web
-cd ..
-
 echo "***** INSTALLING FIFTYONE *****"
 if [ ${DEV_INSTALL} = true ]; then
     echo "Performing dev install"
@@ -102,5 +89,23 @@ else
 fi
 pip install -e .
 
+echo "***** INSTALLING APP *****"
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.2/install.sh | bash
+export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
+nvm install v12.16.2
+nvm use v12.16.2
+npm -g install yarn
+if [ -f ~/.bashrc ]; then
+    source ~/.bashrc
+elif [ -f ~/.bash_profile ]; then
+    source ~/.bash_profile
+else
+    echo "WARNING: unable to locate a bash profile to 'source'; you may need to start a new shell"
+fi
+cd app
+yarn
+yarn build-web
+cd ..
 
 echo "***** INSTALLATION COMPLETE *****"
