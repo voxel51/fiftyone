@@ -7,6 +7,7 @@ Definition of the `fiftyone` command-line interface (CLI).
 """
 import argparse
 from collections import defaultdict
+from enum import Enum
 import io
 import json
 import os
@@ -96,6 +97,9 @@ class QuickstartCommand(Command):
 
         # Launch the quickstart as a remote session
         fiftyone quickstart --remote
+
+        # Launch the quickstart in a desktop App session
+        fiftyone quickstart --desktop
     """
 
     @staticmethod
@@ -120,14 +124,24 @@ class QuickstartCommand(Command):
             action="store_true",
             help="whether to launch a remote App session",
         )
+        parser.add_argument(
+            "-a",
+            "--desktop",
+            action="store_true",
+            help="whether to launch a desktop App instance",
+        )
 
     @staticmethod
     def execute(parser, args):
+        # If desktop wasn't explicitly requested, fallback to default
+        desktop = args.desktop or None
+
         fouq.quickstart(
             interactive=False,
             video=args.video,
             port=args.port,
             remote=args.remote,
+            desktop=desktop,
         )
 
 
@@ -777,6 +791,9 @@ class AppLaunchCommand(Command):
 
         # Launch a remote App session
         fiftyone app launch <name> --remote
+
+        # Launch a desktop App session
+        fiftyone app launch <name> --desktop
     """
 
     @staticmethod
@@ -798,12 +815,25 @@ class AppLaunchCommand(Command):
             action="store_true",
             help="whether to launch a remote App session",
         )
+        parser.add_argument(
+            "-a",
+            "--desktop",
+            action="store_true",
+            help="whether to launch a desktop App instance",
+        )
 
     @staticmethod
     def execute(parser, args):
+        # If desktop wasn't explicitly requested, fallback to default
+        desktop = args.desktop or None
+
         dataset = fod.load_dataset(args.name)
+
         session = fos.launch_app(
-            dataset=dataset, port=args.port, remote=args.remote
+            dataset=dataset,
+            port=args.port,
+            remote=args.remote,
+            desktop=desktop,
         )
 
         _watch_session(session, remote=args.remote)
@@ -851,6 +881,9 @@ class AppViewCommand(Command):
 
         # View the dataset in a remote App session
         fiftyone app view ... --remote
+
+        # View the dataset using the desktop App
+        fiftyone app view ... --desktop
     """
 
     @staticmethod
@@ -946,6 +979,12 @@ class AppViewCommand(Command):
             action="store_true",
             help="whether to launch a remote App session",
         )
+        parser.add_argument(
+            "-a",
+            "--desktop",
+            action="store_true",
+            help="whether to launch a desktop App instance",
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -1000,8 +1039,14 @@ class AppViewCommand(Command):
                 "provided"
             )
 
+        # If desktop wasn't explicitly requested, fallback to default
+        desktop = args.desktop or None
+
         session = fos.launch_app(
-            dataset=dataset, port=args.port, remote=args.remote
+            dataset=dataset,
+            port=args.port,
+            remote=args.remote,
+            desktop=desktop,
         )
 
         _watch_session(session, remote=args.remote)
@@ -1019,11 +1064,13 @@ class AppConnectCommand(Command):
         fiftyone app connect --destination <destination> --port <port>
 
         # Connect to a remote App session using an ssh key
-        fiftyone app connect --destination <destination> --port <port> \\
-            --ssh-key <path/to/key>
+        fiftyone app connect ... --ssh-key <path/to/key>
 
         # Connect to a remote App using a custom local port
-        fiftyone app connect --local-port <port>
+        fiftyone app connect ... --local-port <port>
+
+        # Connect to a remote session using the desktop App
+        fiftyone app connect ... --desktop
     """
 
     @staticmethod
@@ -1058,6 +1105,12 @@ class AppConnectCommand(Command):
             default=None,
             type=str,
             help="optional ssh key to use to login",
+        )
+        parser.add_argument(
+            "-a",
+            "--desktop",
+            action="store_true",
+            help="whether to launch a desktop App instance",
         )
 
     @staticmethod
@@ -1111,7 +1164,10 @@ class AppConnectCommand(Command):
 
             fou.call_on_exit(stop_port_forward)
 
-        session = fos.launch_app(port=args.local_port)
+        # If desktop wasn't explicitly requested, fallback to default
+        desktop = args.desktop or None
+
+        session = fos.launch_app(port=args.local_port, desktop=desktop)
 
         _watch_session(session)
 

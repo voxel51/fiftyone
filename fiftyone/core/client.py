@@ -47,16 +47,21 @@ class HasClient(object):
         self._url = "ws://%s:%d/%s" % (SERVER_NAME, port, self._HC_NAMESPACE)
 
         async def connect():
-            self._client = await websocket_connect(url=self._url)
-            self._initial_connection = False
+            try:
+                self._client = await websocket_connect(url=self._url)
+                self._initial_connection = False
+            except:
+                return
 
             while True:
                 message = await self._client.read_message()
 
-                if message is None:
-                    print(
-                        "\r\n%s disconnected, trying to reconnect\r\n" % self
-                    )
+                global _printer
+                if _printer[self._url] is None:
+                    _printer[self._url] = self
+
+                if message is None and _printer[self._url] == self:
+                    print("\r\nSession disconnected, trying to reconnect\r\n")
                     fiftyone_url = "http://%s:%d/fiftyone" % (
                         SERVER_NAME,
                         port,
@@ -71,12 +76,12 @@ class HasClient(object):
                             )
                         except:
                             print(
-                                "\r\nCould not connect %s, trying again in 10 seconds\r\n"
-                                % self
+                                "\r\nCould not connect session, trying again in 10 seconds\r\n"
                             )
                             time.sleep(10)
 
-                    print("\r\nSession %s reconnected\r\n" % self)
+                    if message is None and _printer[self._url] == self:
+                        print("\r\nSession reconnected\r\n")
                     continue
 
                 message = json_util.loads(message)
@@ -94,6 +99,7 @@ class HasClient(object):
         self._thread.start()
 
     def on_notification(self, data):
+        global _printer
         if _printer[self._url] is None:
             _printer[self._url] = self
 
@@ -114,7 +120,7 @@ class HasClient(object):
         """Gets the data via the attribute defined by ``_HC_ATTR_NAME``."""
         if name == self._HC_ATTR_NAME:
             if self._client is None and not self._initial_connection:
-                raise RuntimeError("Session %s is not connected" % self)
+                raise RuntimeError("Session is not connected")
             while self._data is None:
                 time.sleep(0.2)
             return self._data
@@ -132,7 +138,7 @@ class HasClient(object):
                     % (self._HC_ATTR_TYPE, type(value))
                 )
             if self._client is None and not self._initial_connection:
-                raise RuntimeError("Session %s is not connected" % self)
+                raise RuntimeError("Session is not connected")
             while self._data is None:
                 time.sleep(0.2)
             self._data = value

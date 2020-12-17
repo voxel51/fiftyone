@@ -21,7 +21,7 @@ repos:
         files: \.py$
         entry: pylint
         args: ["--errors-only"]
-        exclude: ^docs/theme/
+        exclude: ^(docs/theme/|app/)
   - repo: local
     hooks:
       - id: ipynb-strip
@@ -36,3 +36,4 @@ repos:
     hooks:
       - id: prettier
         exclude: ^docs/theme/
+        language_version: system

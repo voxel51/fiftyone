@@ -33,9 +33,9 @@ old, you may encounter errors like these:
 
 .. code-block:: text
 
-    fiftyone requires Python '>=3.5' but the running Python is 3.4.10
+    fiftyone requires Python '>=3.6' but the running Python is 3.4.10
 
-To resolve this, you will need to use Python 3.5 or newer, and pip 19.3 or
+To resolve this, you will need to use Python 3.6 or newer, and pip 19.3 or
 newer. See the :ref:`installation guide <installing-fiftyone>` for details. If
 you have installed a suitable version of Python in a virtual environment and
 still encounter this error, ensure that the virtual environment is activated.
@@ -116,8 +116,8 @@ your distribution, you may encounter an error similar to:
 
 .. code-block:: text
 
-    /usr/local/lib/python3.5/dist-packages/fiftyone/db/bin/mongod: failed to launch:
-    /usr/local/lib/python3.5/dist-packages/fiftyone/db/bin/mongod: error while loading shared libraries:
+    /usr/local/lib/python3.6/dist-packages/fiftyone/db/bin/mongod: failed to launch:
+    /usr/local/lib/python3.6/dist-packages/fiftyone/db/bin/mongod: error while loading shared libraries:
     libcrypto.so.1.1: cannot open shared object file: No such file or directory
 
 .. code-block:: text

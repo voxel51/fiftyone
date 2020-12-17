@@ -84,12 +84,18 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DEFAULT_VIDEO_EXT",
             default=".mp4",
         )
+        self.desktop_app = self.parse_bool(
+            d, "desktop_app", env_var="FIFTYONE_DESKTOP_APP", default=False,
+        )
         self._show_progress_bars = None  # declare
         self.show_progress_bars = self.parse_bool(
             d,
             "show_progress_bars",
             env_var="FIFTYONE_SHOW_PROGRESS_BARS",
             default=True,
+        )
+        self.do_not_track = self.parse_bool(
+            d, "do_not_track", env_var="FIFTYONE_DO_NOT_TRACK", default=False,
         )
         self.requirement_error_level = self.parse_int(
             d,

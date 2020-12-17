@@ -20,6 +20,10 @@ ___________
   machine (typically a remote server) from the one that will be used to launch
   the App
 
+* :ref:`Notebooks <notebooks>`: You are working from a
+  `Jupyter Notebook <https://jupyter.org>`_ or a
+  `Google Colab Notebook <https://colab.research.google.com>`_.
+
 * :ref:`Cloud storage <cloud-storage>`: Data is stored in a cloud bucket
   (e.g., :ref:`S3 <AWS>`, :ref:`GCS <google-cloud>`, or :ref:`Azure <azure>`)
 
@@ -81,8 +85,18 @@ machine and launch a remote session:
 Leave this session running, and note that instructions for connecting to this
 remote session were printed to your terminal (these are described below).
 
-On the local machine, you can :ref:`use the CLI <cli-fiftyone-app-connect>`
-to automatically configure port forwarding and open the App.
+If you do not have `fiftyone` installed on your local machine, and do not want
+to install it, you can set up port forwarding manually, and view the App in
+your browser.
+
+.. code-block:: shell
+
+    # `[<username>@]<hostname>` refers to your remote machine
+    ssh -N -L 5151:127.0.0.1:%d [<username>@]<hostname>
+
+If you have `fiftyone` installed on the local machine, you can
+:ref:`use the CLI <cli-fiftyone-app-connect>` to automatically configure port
+forwarding and open the App in either the desktop App or your web browser.
 
 In a local terminal, run the command:
 
@@ -107,6 +121,61 @@ then substitute the appropriate value in the local commands too.
 
     You can use custom ports when launching remote sessions in order to serve
     multiple remote sessions simultaneously.
+
+.. _notebooks:
+
+Notebooks
+_________
+
+FiftyOne officialy supports `Jupyter Notebooks <https://jupyter.org>`_ and
+`Google Colab Notebooks <https://colab.research.google.com>`_.
+
+To use FiftyOne in a notebook, simply install `fiftyone` via `pip`:
+
+.. code-block:: python
+    :linenos:
+
+    !pip install fiftyone
+
+and load datasets and create sessions as usual:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset(name="my_dataset")
+
+    session = fo.Session(dataset)
+
+Anytime you would like visualize your data in the App, simply call the
+:meth:`session.show() <fiftyone.core.session.Session.show>`, and an App
+instance will be created in the cell's output:
+
+.. code-block:: python
+   :linenos:
+
+   # Opens an App instance in the cell's output
+   session.show()
+
+This App instance will remain connected to your `session` object, so it will
+continue to update as you work in the notebook.
+
+.. note::
+
+    If you run :meth:`session.show() <fiftyone.core.session.Session.show>` in
+    multiple cells, only the most recently run cell will be active (connected
+    to the `session` object).
+
+    You can reactive an older cell by clicking `Activate` in the App window,
+    or by running the cell again. This will deactivate the previously active
+    cell.
+
+.. note::
+
+    You can open any App instance in a dedicated browser window or tab by
+    retrieving the URL of the session from its
+    :attr:`session.url <fiftyone.core.session.Session.url>` property.
 
 .. _cloud-storage:
 
