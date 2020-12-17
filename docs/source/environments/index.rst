@@ -130,7 +130,7 @@ _________
 FiftyOne officialy supports `Jupyter Notebooks <https://jupyter.org>`_ and
 `Google Colab Notebooks <https://colab.research.google.com>`_.
 
-To use FiftyOne in a notebook, simply install `fiftyone` via `pip`
+To use FiftyOne in a notebook, simply install `fiftyone` via `pip`:
 
 .. code-block:: python
     :linenos:

@@ -191,9 +191,7 @@ FiftyOne and all of its subpackages can be uninstalled with:
 
    pip uninstall fiftyone fiftyone-brain fiftyone-db voxel51-eta
 
-If you installed the optional desktop App via `pip install fiftyone[desktop]`
-or separately with `pip install fiftyone-desktop`, you should uninstall that, as
-well.
+If you installed the optional desktop App, you can uninstall that via:
 
 .. code-block:: shell
 
