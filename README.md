@@ -38,7 +38,7 @@ You can install the latest stable version of FiftyOne via `pip`:
 pip install fiftyone
 ```
 
-FiftyOne requires at least Python 3.5 and pip 19.3. Consult the
+Consult the
 [installation guide](https://voxel51.com/docs/fiftyone/getting_started/install.html)
 for troubleshooting and other information about getting up-and-running with
 FiftyOne.
