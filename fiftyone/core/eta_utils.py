@@ -398,17 +398,13 @@ def load_video_labels(
         video_labels_or_path: can be a ``eta.core.video.VideoLabels`` instance,
             a serialized dict representation of one, or the path to one on disk
         prefix (None): a string prefix to prepend to each label name in the
-            expanded frame label dictionaries. Only applicable when ``expand``
-            is True
+            expanded frame label dictionaries
         labels_dict (None): a dictionary mapping names of attributes/objects
-            in the frame labels to field names into which to expand them. Only
-            applicable when ``expand`` is True
+            in the frame labels to field names into which to expand them
         multilabel (False): whether to store frame attributes in a single
-            :class:`fiftyone.core.labels.Classifications` instance. Only
-            applicable when ``expand`` is True
+            :class:`fiftyone.core.labels.Classifications` instance
         skip_non_categorical (False): whether to skip non-categorical frame
-            attributes (True) or cast them to strings (False). Only applicable
-            when ``expand`` is True
+            attributes (True) or cast them to strings (False)
 
     Returns:
         a dictionary mapping frame numbers to dictionaries that map label
