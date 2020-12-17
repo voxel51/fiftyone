@@ -128,20 +128,20 @@ class QuickstartCommand(Command):
             "-a",
             "--desktop",
             action="store_true",
-            help=(
-                "whether to launch the desktop App. If provided, the desktop "
-                "App package must be installed (fiftyone-desktop)"
-            ),
+            help="whether to launch a desktop App instance",
         )
 
     @staticmethod
     def execute(parser, args):
+        # If desktop wasn't explicitly requested, fallback to default
+        desktop = args.desktop or None
+
         fouq.quickstart(
             interactive=False,
             video=args.video,
             port=args.port,
             remote=args.remote,
-            desktop=args.desktop,
+            desktop=desktop,
         )
 
 
@@ -819,20 +819,21 @@ class AppLaunchCommand(Command):
             "-a",
             "--desktop",
             action="store_true",
-            help=(
-                "whether to launch the desktop App. If provided, the desktop "
-                "App package must be installed (fiftyone-desktop)"
-            ),
+            help="whether to launch a desktop App instance",
         )
 
     @staticmethod
     def execute(parser, args):
+        # If desktop wasn't explicitly requested, fallback to default
+        desktop = args.desktop or None
+
         dataset = fod.load_dataset(args.name)
+
         session = fos.launch_app(
             dataset=dataset,
             port=args.port,
             remote=args.remote,
-            desktop=args.desktop,
+            desktop=desktop,
         )
 
         _watch_session(session, remote=args.remote)
@@ -881,7 +882,7 @@ class AppViewCommand(Command):
         # View the dataset in a remote App session
         fiftyone app view ... --remote
 
-        # View the dataset in a desktop App session
+        # View the dataset using the desktop App
         fiftyone app view ... --desktop
     """
 
@@ -982,10 +983,7 @@ class AppViewCommand(Command):
             "-a",
             "--desktop",
             action="store_true",
-            help=(
-                "whether to launch the desktop App. If provided, the desktop "
-                "App package must be installed (fiftyone-desktop)"
-            ),
+            help="whether to launch a desktop App instance",
         )
 
     @staticmethod
@@ -1041,11 +1039,14 @@ class AppViewCommand(Command):
                 "provided"
             )
 
+        # If desktop wasn't explicitly requested, fallback to default
+        desktop = args.desktop or None
+
         session = fos.launch_app(
             dataset=dataset,
             port=args.port,
             remote=args.remote,
-            desktop=args.desktop,
+            desktop=desktop,
         )
 
         _watch_session(session, remote=args.remote)
@@ -1063,14 +1064,13 @@ class AppConnectCommand(Command):
         fiftyone app connect --destination <destination> --port <port>
 
         # Connect to a remote App session using an ssh key
-        fiftyone app connect --destination <destination> --port <port> \\
-            --ssh-key <path/to/key>
+        fiftyone app connect ... --ssh-key <path/to/key>
 
         # Connect to a remote App using a custom local port
-        fiftyone app connect --local-port <port>
+        fiftyone app connect ... --local-port <port>
 
-        # Connect to a remote App with a desktop window
-        fiftyone app connect --local-port <port> --desktop
+        # Connect to a remote session using the desktop App
+        fiftyone app connect ... --desktop
     """
 
     @staticmethod
@@ -1110,10 +1110,7 @@ class AppConnectCommand(Command):
             "-a",
             "--desktop",
             action="store_true",
-            help=(
-                "whether to launch the desktop App. If provided, the desktop "
-                "App package must be installed (fiftyone-desktop)"
-            ),
+            help="whether to launch a desktop App instance",
         )
 
     @staticmethod
@@ -1167,7 +1164,10 @@ class AppConnectCommand(Command):
 
             fou.call_on_exit(stop_port_forward)
 
-        session = fos.launch_app(port=args.local_port, desktop=args.desktop)
+        # If desktop wasn't explicitly requested, fallback to default
+        desktop = args.desktop or None
+
+        session = fos.launch_app(port=args.local_port, desktop=desktop)
 
         _watch_session(session)
 
