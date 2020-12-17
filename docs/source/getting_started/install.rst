@@ -47,14 +47,6 @@ are using, then run:
    pip install --upgrade pip setuptools wheel
    pip install fiftyone
 
-If you would like to use the desktop version of the FiftyOne App, you can do so
-with the extra dependency `desktop`, which installs the optional
-`fiftyone-desktop` package alongside `fiftyone`.
-
-.. code-block:: shell
-  
-  pip install fiftyone[desktop] 
-
 This will install FiftyOne and all of its dependencies, which may take some
 time. Once this has completed, you can verify that FiftyOne is installed in
 your virtual environment by importing the `fiftyone` package:
@@ -88,6 +80,31 @@ dataset, launch the App, and print some suggestions for exploring the dataset!
 
     # Launch the FiftyOne quickstart
     fiftyone quickstart
+
+.. _installing-fiftyone-desktop:
+
+FiftyOne Desktop App
+--------------------
+
+By default, the :ref:`FiftyOne App <fiftyone-app>` will be opened in your web
+browser when you launch it.
+
+However, we also provide a desktop version of the FiftyOne App that you can
+install as follows:
+
+.. code-block:: shell
+
+  pip install fiftyone-desktop
+
+.. note::
+
+    Commands like :func:`launch_app() <fiftyone.core.session.launch_app>`
+    provide an optional ``desktop`` flag that let you control whether to launch
+    the App in your browser or as a desktop App.
+
+    You can also set the ``desktop_app`` flag of your
+    :ref:`FiftyOne config <configuring-fiftyone>` to use the desktop App by
+    default.
 
 .. _install-troubleshooting:
 

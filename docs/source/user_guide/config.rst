@@ -23,12 +23,6 @@ FiftyOne supports the configuration options described below:
 | `dataset_zoo_manifest_paths` | `FIFTYONE_ZOO_MANIFEST_PATHS`       | `None`                  | A list of manifest JSON files specifying additional zoo datasets. See                  |
 |                              |                                     |                         | :ref:`adding datasets to the zoo <adding-zoo-datasets>` for more information.          |
 +------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
-| `model_zoo_dir`              | `FIFTYONE_MODEL_ZOO_DIR`            | `~/fiftyone/__models__` | The default directory in which to store models that are downloaded from the            |
-|                              |                                     |                         | :ref:`FiftyOne Model Zoo <model-zoo>`.                                                 |
-+------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
-| `model_zoo_manifest_paths`   | `FIFTYONE_MODEL_ZOO_MANIFEST_PATHS` | `None`                  | A list of manifest JSON files specifying additional zoo models. See                    |
-|                              |                                     |                         | :ref:`adding models to the zoo <adding-zoo-models>` for more information.              |
-+------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
 | `default_dataset_dir`        | `FIFTYONE_DEFAULT_DATASET_DIR`      | `~/fiftyone`            | The default directory to use when performing FiftyOne operations that                  |
 |                              |                                     |                         | require writing dataset contents to disk, such as ingesting datasets via               |
 |                              |                                     |                         | :meth:`ingest_labeled_images() <fiftyone.core.dataset.Dataset.ingest_labeled_images>`. |
@@ -55,10 +49,17 @@ FiftyOne supports the configuration options described below:
 +------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
 | `default_video_ext`          | `FIFTYONE_DEFAULT_VIDEO_EXT`        | `.mp4`                  | The default video format to use when writing videos to disk.                           |
 +------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
-| `desktop`                    | `FIFTYONE_DESKTOP_APP`              | `False`                 | Launch session's in the desktop App instead of the browser. The `fiftyone-desktop`     |
-|                              |                                     |                         | package is required if `True`.                                                         |
+| `desktop_app`                | `FIFTYONE_DESKTOP_APP`              | `False`                 | Whether to launch the FiftyOne App in the browser (False) or as a desktop App (True)   |
+|                              |                                     |                         | by default. If True, the :ref:`FiftyOne Desktop App <installing-fiftyone-desktop>`     |
+|                              |                                     |                         | must be installed.                                                                     |
 +------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
-| `do_not_track`               | `FIFTYONE_DO_NOT_TRACK`             | `False`                 | Controls whether UUID based import and App usage events are tracked                    |
+| `do_not_track`               | `FIFTYONE_DO_NOT_TRACK`             | `False`                 | Controls whether UUID based import and App usage events are tracked.                   |
++------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
+| `model_zoo_dir`              | `FIFTYONE_MODEL_ZOO_DIR`            | `~/fiftyone/__models__` | The default directory in which to store models that are downloaded from the            |
+|                              |                                     |                         | :ref:`FiftyOne Model Zoo <model-zoo>`.                                                 |
++------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
+| `model_zoo_manifest_paths`   | `FIFTYONE_MODEL_ZOO_MANIFEST_PATHS` | `None`                  | A list of manifest JSON files specifying additional zoo models. See                    |
+|                              |                                     |                         | :ref:`adding models to the zoo <adding-zoo-models>` for more information.              |
 +------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
 | `show_progress_bars`         | `FIFTYONE_SHOW_PROGRESS_BARS`       | `True`                  | Controls whether progress bars are printed to the terminal when performing             |
 |                              |                                     |                         | operations such reading/writing large datasets or activiating FiftyOne                 |
@@ -96,6 +97,8 @@ described in the next section) at any time via the Python library and the CLI.
             "default_sequence_idx": "%08d",
             "default_image_ext": ".jpg",
             "default_video_ext": ".mp4",
+            "desktop_app": false,
+            "do_not_track": false,
             "model_zoo_dir": "~/fiftyone/__models__",
             "model_zoo_manifest_paths": null,
             "requirement_error_level": 0,
@@ -125,6 +128,8 @@ described in the next section) at any time via the Python library and the CLI.
             "default_sequence_idx": "%08d",
             "default_image_ext": ".jpg",
             "default_video_ext": ".mp4",
+            "desktop_app": false,
+            "do_not_track": false,
             "model_zoo_dir": "~/fiftyone/__models__",
             "model_zoo_manifest_paths": null,
             "requirement_error_level": 0,

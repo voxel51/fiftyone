@@ -53,6 +53,12 @@ programmatically with the App!
         # Blocks execution until the App is closed
         session.wait()
 
+.. note::
+
+    App sessions are highly flexible. For example, you can
+    :ref:`launch multiple App instances on a machine <faq-multiple-apps>` and
+    :ref:`connect multiple App instances to the same dataset <faq-multiple-sessions-same-dataset>`.
+
 .. image:: ../images/empty_app.png
    :alt: App Startup
    :align: center
@@ -102,28 +108,56 @@ _______________
 
 If your data is stored on a remote machine, you can forward a session from
 the remote machine to the FiftyOne App on your local machine and seemlessly
-browse your remote dataset. This is defined in detail in the :doc:`Environments
-</environments/index>` section.
+browse your remote dataset.
+
+See the :ref:`Environments page <environments>` for more information on
+possible configurations of local/remote/cloud data and App access.
 
 Remote machine
 --------------
 
-On the remote machine, load a |Dataset| and launch a session using
-:meth:`launch_app() <fiftyone.core.session.launch_app>` with the `remote=True`
-argument. This will open the session on port `5151` on your machine:
+On the remote machine, you can load a |Dataset| and launch a remote session
+using either the Python library or the CLI:
 
-.. code-block:: python
-    :linenos:
+.. tabs::
 
-    # On remote machine
+  .. group-tab:: Python
 
-    import fiftyone as fo
+    Load a |Dataset| and call
+    :meth:`launch_app() <fiftyone.core.session.launch_app>` with the
+    ``remote=True`` argument.
 
-    dataset = fo.Dataset(name="my_dataset")
-    session = fo.launch_app(dataset=dataset, remote=True)
+    .. code-block:: python
+        :linenos:
 
-You can manipulate the `session` object as usual to programmatically interact
-with the remote App instance that you'll connect to next.
+        # On remote machine
+
+        import fiftyone as fo
+
+        dataset = fo.load_dataset("<dataset-name>")
+
+        session = fo.launch_app(dataset, remote=True)  # optional: port=XXXX
+
+    You can use the optional ``port`` parameter to choose the port of your
+    remote machine on which to serve the App. The default is ``5151``.
+
+    Note that you can manipulate the `session` object on the remote machine as
+    usual to programmatically interact with the App instance that you'll
+    connect to next.
+
+  .. group-tab:: CLI
+
+    Run the :ref:`fiftyone app launch <cli-fiftyone-app-launch>` command in a
+    terminal:
+
+    .. code-block:: shell
+
+        # On remote machine
+
+        fiftyone app launch <dataset-name> --remote  # optional --port XXXX
+
+    You can use the optional ``--port`` flag to choose the port of your
+    remote machine on which to serve the App. The default is ``5151``.
 
 .. _remote-app-local-machine:
 
@@ -131,36 +165,29 @@ Local machine
 -------------
 
 On the local machine, you can launch an App instance connected to a remote
-session via the CLI. Alternatively, you can manually setup port forwarding on
-your local machine via `ssh` and connect to the App via Python.
+session using either the Python library or the CLI (recommended).
 
 .. tabs::
 
-  .. group-tab:: CLI
-
-    On the local machine, you can :ref:`use the CLI <cli-fiftyone-app-connect>`
-    to automatically configure port forwarding and open the App.
-
-    In a local terminal, run the command:
-
-    .. code-block:: shell
-
-        # On local machine
-        fiftyone app connect --destination username@remote_machine_ip --port 5151 # Optional --ssh-key /path/to/key
-
   .. group-tab:: Python
 
-    Open two terminal windows on the local machine. In order to forward the
-    port `5151` from the remote machine to the local machine, run the following
-    command in one terminal and leave the process running:
+    Open two terminal windows on the local machine.
+
+    The first step is to configure port forwarding of the remote machine's port
+    to your local machine. Do this by running the following command in one
+    terminal and leave the process running:
 
     .. code-block:: shell
 
         # On local machine
+
         ssh -N -L 5151:127.0.0.1:5151 username@remote_machine_ip
 
-    Port `5151` is now being forwarded from the remote machine to port
-    `5151` of the local machine.
+    If you chose a custom port `XXXX` on the remote machine, substitute it
+    for the second `5151` in the above command.
+
+    If you would like to use a custom local port to serve the App, substitute
+    it for the first `5151` in the above command.
 
     In the other terminal, launch the FiftyOne App locally by starting Python
     and running the following commands:
@@ -169,9 +196,39 @@ your local machine via `ssh` and connect to the App via Python.
         :linenos:
 
         # On local machine
-        import fiftyone.core.session as fos
 
-        fos.launch_app()
+        import fiftyone as fo
+
+        fo.launch_app()  # optional port=YYYY
+
+    If you chose a custom local port when configuring port forwarding, specify
+    it via the ``port`` parameter of
+    :meth:`launch_app() <fiftyone.core.session.launch_app>`.
+
+  .. group-tab:: CLI
+
+    On the local machine, use the
+    :ref:`fiftyone app connect <cli-fiftyone-app-connect>` command to connect
+    to a remote session:
+
+    .. code-block:: shell
+
+        # On local machine
+
+        fiftyone app connect --destination username@remote_machine_ip
+
+    If you choose a custom port `XXXX` on the remote machine, add a
+    ``--port XXXX`` flag to the above command.
+
+    If you would like to use a custom local port to serve the App, add a
+    ``--local-port YYYY`` flag to the above command.
+
+.. note::
+
+    Remote sessions are highly flexible. For example, you can
+    :ref:`connect to multiple remote sessions <faq-connect-to-multiple-remote-sessions>`
+    and
+    :ref:`run multiple remote sessions from a machine <faq-serve-multiple-remote-sessions>`.
 
 Fields
 ______

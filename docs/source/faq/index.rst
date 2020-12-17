@@ -8,35 +8,76 @@ Frequently Asked Questions
 
 .. _faq-desktop-app-support:
 
-Can I run this in as a desktop application?
--------------------------------------------
+Can I run the FiftyOne App as a desktop application?
+----------------------------------------------------
 
-Yes, installing the extra requirement `fiftyone-desktop` will install the
-desktop version of the App. The `desktop=True` keyword argument can be used in
-any methods that launch the App, and the desktop App will be used. The
-`FIFTYONE_DESKTOP_APP=true` environment variable can also be used for a
-persistent setting.
+Yes! Simply :ref:`install the Desktop App <installing-fiftyone-desktop>`.
+
+Commands like :func:`launch_app() <fiftyone.core.session.launch_app>` provide
+an optional ``desktop`` flag that let you control whether to launch the App in
+your browser or as a desktop App.
+
+You can also set the ``desktop_app`` flag of your
+:ref:`FiftyOne config <configuring-fiftyone>` to use the desktop App by
+default.
+
+Check out the :ref:enviornments guide <environments>` to see how to use
+FiftyOne in all common local, remote, cloud, and notebook environments.
 
 .. _faq-browser-support:
 
-Can I run this in a browser?
-----------------------------
+Can I open the FiftyOne App in a browser?
+-----------------------------------------
 
-Yes, FiftyOne defaults to using your default web browser. The desktop App can
-also be used, if the extra `fiftyone-desktop` dependency is installed. See
-:ref:`Installing FiftyOne <installing-fiftyone>` for more details.
+Yes! In fact, as of :ref:`FiftyOne v0.7 <release-notes-v0.7.0>`, this is the
+default behavior; FiftyOne will open the App in your default web browser.
 
-The :doc:`environments guide </environments/index>` offers further instruction
-on how to use FiftyOne in common local, remote, cloud, and notebook
-environments.
+You can also run FiftyOne
+:ref:`as a desktop application <faq-desktop-app-support>` if you prefer.
+
+Check out the :ref:`enviornments guide <environments>` to see how to use
+FiftyOne in all common local, remote, cloud, and notebook environments.
 
 .. _faq-notebook-support:
 
 Can I run this in a notebook?
 -----------------------------
 
-Yes! FiftyOne is supported in Jupyter and Google Colaboratory notebook
-environments.
+Yes! FiftyOne supports both `Jupyter Notebooks <https://jupyter.org>`_ and
+`Google Colab Notebooks <https://colab.research.google.com>`_.
+
+All the usual FiftyOne commands can be run in notebook environments. The only
+difference is that you call
+:meth:`session.show() <fiftyone.core.session.Session.show>` to open the App
+in the output of a cell.
+
+For example, a typical workflow is:
+
+```py
+import fiftyone as fo
+
+# Load a FiftyOne dataset
+dataset = fo.load_dataset(...)
+
+# Launch an App session
+session = fo.launch_app(dataset)
+```
+
+```
+# Open the App in this cell's output
+session.show()
+```
+
+```
+# Updates the App in the above output
+session.view = dataset.take(10)
+```
+
+.. note::
+
+    If you run :meth:`session.show() <fiftyone.core.session.Session.show>` in
+    multiple cells, only the most recent instance will be connected to your
+    |Session| object.
 
 .. _faq-remote-server-data:
 
@@ -337,13 +378,10 @@ is the remote port number of the session you wish to connect to.
 
     ssh -N -L YYYY:localhost:RRRR [<username>@]<hostname>
 
-
 .. note::
 
     You can also serve multiple remote sessions
     :ref:`from the same machine <faq-serve-multiple-remote-sessions>`.
-
-
 
 .. _faq-serve-multiple-remote-sessions:
 
@@ -429,14 +467,17 @@ Manually configuring a connection requires setting up port forwarding.
 
 `WWWW` and `ZZZZ` are any 4 digit ports on your local machine(s).
 
-
 .. _faq-do-we-track:
 
 Does FiftyOne track me?
 -----------------------
 
-Yes, FiftyOne tracks UUID based import and App usage by default. We are a small
-team looking to grow, and usage data is critical to that end.
- 
-To disable tracking, use the `FIFTYONE_DO_NOT_TRACK=true` environment
-variable.
+Yes, FiftyOne tracks anonymous UUID-based usage of the Python library and the
+App by default. We are a small team building an open source project, and basic
+knowledge of how users are engaging with the project is critical to informing
+the roadmap of the project.
+
+.. note::
+
+    You can disable tracking by setting the ``do_not_track`` flag of your
+    :ref:`FiftyOne config <configuring-fiftyone>`.

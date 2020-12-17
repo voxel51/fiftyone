@@ -20,6 +20,10 @@ ___________
   machine (typically a remote server) from the one that will be used to launch
   the App
 
+* :ref:`Notebooks <notebooks>`: You are working from a
+  `Jupyter Notebook <https://jupyter.org>`_ or a
+  `Google Colab Notebook <https://colab.research.google.com>`_.
+
 * :ref:`Cloud storage <cloud-storage>`: Data is stored in a cloud bucket
   (e.g., :ref:`S3 <AWS>`, :ref:`GCS <google-cloud>`, or :ref:`Azure <azure>`)
 
@@ -123,14 +127,21 @@ then substitute the appropriate value in the local commands too.
 Notebooks
 _________
 
-FiftyOne officialy supports Jupyter and Google Colaboratory notebook
-environments. To use FiftyOne in a notebook, install `fiftyone` via `pip`,
-and create a session:
+FiftyOne officialy supports `Jupyter Notebooks <https://jupyter.org>`_ and
+`Google Colab Notebooks <https://colab.research.google.com>`_.
+
+To use FiftyOne in a notebook, simply install `fiftyone` via `pip`
 
 .. code-block:: python
     :linenos:
 
     !pip install fiftyone
+
+and load datasets and create sessions as usual:
+
+.. code-block:: python
+    :linenos:
+
     import fiftyone as fo
 
     dataset = fo.Dataset(name="my_dataset")
@@ -138,26 +149,33 @@ and create a session:
     session = fo.Session(dataset)
 
 Anytime you would like visualize your data in the App, simply call the
-:meth:`show() <fiftyone.core.session.Session.show>` method:
+:meth:`session.show() <fiftyone.core.session.Session.show>`, and an App
+instance will be created in the cell's output:
 
 .. code-block:: python
    :linenos:
 
+   # Opens an App instance in the cell's output
    session.show()
 
-To cut down on resource usage in the notebook, only one App cell can be active
-at any given time. To activate a different cell, simply click `Activate` in
-the deactivated window, or run the cell again.
-
-If you would like to open the App in a dedicated browser window or tab, you can
-retrieve the URL of the session view the
-:attr:`url <fiftyone.core.session.Session.url>` property.
+This App instance will remain connected to your `session` object, so it will
+continue to update as you work in the notebook.
 
 .. note::
 
-   Currently, each session maintains a single state. Therefore displaying the
-   App once in the notebook is often sufficient. The window will continue to
-   update as you work in the notebook.
+    If you run :meth:`session.show() <fiftyone.core.session.Session.show>` in
+    multiple cells, only the most recently run cell will be active (connected
+    to the `session` object).
+
+    You can reactive an older cell by clicking `Activate` in the App window,
+    or by running the cell again. This will deactivate the previously active
+    cell.
+
+.. note::
+
+    You can open any App instance in a dedicated browser window or tab by
+    retrieving the URL of the session from its
+    :attr:`session.url <fiftyone.core.session.Session.url>` property.
 
 .. _cloud-storage:
 
