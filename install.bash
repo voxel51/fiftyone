@@ -79,6 +79,16 @@ else
 fi
 cd -
 
+echo "***** INSTALLING FIFTYONE *****"
+if [ ${DEV_INSTALL} = true ]; then
+    echo "Performing dev install"
+    pip install -r requirements/dev.txt
+    pre-commit install
+else
+    pip install -r requirements.txt
+fi
+pip install -e .
+
 echo "***** INSTALLING APP *****"
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.37.2/install.sh | bash
 export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
@@ -97,16 +107,5 @@ cd app
 yarn
 yarn build-web
 cd ..
-
-echo "***** INSTALLING FIFTYONE *****"
-if [ ${DEV_INSTALL} = true ]; then
-    echo "Performing dev install"
-    pip install -r requirements/dev.txt
-    pre-commit install
-else
-    pip install -r requirements.txt
-fi
-pip install -e .
-
 
 echo "***** INSTALLATION COMPLETE *****"
