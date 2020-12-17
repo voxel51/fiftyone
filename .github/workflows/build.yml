@@ -29,6 +29,20 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip setuptools wheel
+      - name: Fetch app dependency cache
+        uses: actions/cache@v2
+        with:
+          path: app/node_modules
+          key: npm-${{ hashFiles('app/package.json') }}
+          restore-keys: |
+            npm-${{ hashFiles('app/package.json') }}
+            npm-
+      - name: Install app dependencies
+        working-directory: app
+        run: yarn
+      - name: Build web app
+        working-directory: app
+        run: yarn build-web
       - name: Set environment
         env:
           RELEASE_TAG: ${{ github.ref }}

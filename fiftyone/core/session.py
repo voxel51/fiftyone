@@ -540,7 +540,7 @@ def _display(port=None, height=None):
     fn = {focx._COLAB: _display_colab, focx._IPYTHON: _display_ipython}[
         focx._get_context()
     ]
-    return fn(port=port, height=height)
+    return fn(port, height)
 
 
 def _display_colab(port, height):
