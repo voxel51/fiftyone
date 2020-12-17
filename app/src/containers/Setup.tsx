@@ -87,6 +87,28 @@ ssh -N -L ${port}:127.0.0.1:XXXX <username>@<remote-ip-address>
   );
 };
 
+const NotebookInstructions = () => {
+  const port = useRecoilValue(selectors.port);
+  const notebookSnippet = `
+import fiftyone as fo
+
+# Load your FiftyOne dataset
+dataset = fo.load_dataset(...)
+
+# Launch the app
+session = fo.launch_app(dataset, port=${port})
+`;
+  return (
+    <>
+      <SectionTitle>Notebook sessions</SectionTitle>
+      <Text>
+        You can run a cell with the following code to connect to a dataset:
+      </Text>
+      <Code>{notebookSnippet}</Code>
+    </>
+  );
+};
+
 const SetupContainer = styled.div`
   max-width: 800px;
   padding: 3rem 0;
@@ -127,6 +149,7 @@ const Tab = animated(styled.div`
 `);
 
 function Setup() {
+  const isNotebook = useRecoilValue(selectors.isNotebook);
   const theme = useContext(ThemeContext);
   const [activeTab, setActiveTab] = useState<string>("local");
   const localProps = useSpring({
@@ -142,15 +165,25 @@ function Setup() {
     <SetupContainer>
       <Title>Welcome to FiftyOne</Title>
       <Subtitle>It looks like you are not connected to a session</Subtitle>
-      <TabsContainer>
-        <Tab onClick={() => setActiveTab("local")} style={localProps}>
-          Local sessions
-        </Tab>
-        <Tab onClick={() => setActiveTab("remote")} style={remoteProps}>
-          Remote sessions
-        </Tab>
-      </TabsContainer>
-      {activeTab === "remote" ? <RemoteInstructions /> : <LocalInstructions />}
+      {isNotebook ? (
+        <NotebookInstructions />
+      ) : (
+        <>
+          <TabsContainer>
+            <Tab onClick={() => setActiveTab("local")} style={localProps}>
+              Local sessions
+            </Tab>
+            <Tab onClick={() => setActiveTab("remote")} style={remoteProps}>
+              Remote sessions
+            </Tab>
+          </TabsContainer>
+          {activeTab === "remote" ? (
+            <RemoteInstructions />
+          ) : (
+            <LocalInstructions />
+          )}
+        </>
+      )}
     </SetupContainer>
   );
 }
