@@ -769,6 +769,11 @@ View datasets in the FiftyOne App without persisting them to the database.
     # View the dataset in a remote App session
     fiftyone app view ... --remote
 
+.. code-block:: shell
+
+    # View the dataset using the desktop App
+    fiftyone app view ... --desktop
+
 .. _cli-fiftyone-app-connect:
 
 Connect to remote App
@@ -809,12 +814,17 @@ Connect to a remote FiftyOne App.
 .. code-block:: shell
 
    # Connect to a remote App session using an ssh key
-   fiftyone app connect --destination <destination> --port <port> --ssh-key <path/to/key>
+   fiftyone app connect ... --ssh-key <path/to/key>
 
 .. code-block:: shell
 
     # Connect to a remote App using a custom local port
-    fiftyone app connect --local-port <port>
+    fiftyone app connect ... --local-port <port>
+
+.. code-block:: shell
+
+    # Connect to a remote session using the desktop App
+    fiftyone app connect ... --desktop
 
 .. _cli-fiftyone-zoo:
 
