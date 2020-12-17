@@ -22,6 +22,8 @@ jobs:
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v2
+        with:
+          submodules: true
       - name: Set up Python 3.8
         uses: actions/setup-python@v2
         with:
@@ -29,6 +31,20 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip setuptools wheel
+      - name: Fetch app dependency cache
+        uses: actions/cache@v2
+        with:
+          path: app/node_modules
+          key: npm-${{ hashFiles('app/package.json') }}
+          restore-keys: |
+            npm-${{ hashFiles('app/package.json') }}
+            npm-
+      - name: Install app dependencies
+        working-directory: app
+        run: yarn
+      - name: Build web app
+        working-directory: app
+        run: yarn build-web
       - name: Set environment
         env:
           RELEASE_TAG: ${{ github.ref }}
@@ -110,6 +126,7 @@ jobs:
           pip install pytest tensorflow tensorflow-datasets torch torchvision
       - name: Install fiftyone
         run: |
+          pip install scikit-learn scikit-image
           pip install --pre --extra-index-url https://test.pypi.org/simple/ fiftyone-brain voxel51-eta
           pip install -e .
       - name: Install ETA from source
@@ -129,7 +146,7 @@ jobs:
         if: ${{ startsWith(matrix.os, 'windows') }}
         run: |
           pip install pytest tensorflow tensorflow-datasets
-          pip install torch==1.6.0+cpu torchvision==0.7.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          pip install torch==1.7.1+cpu torchvision==0.8.2+cpu -f https://download.pytorch.org/whl/torch_stable.html
       - name: Configure fiftyone for tests
         id: test_config
         run: |

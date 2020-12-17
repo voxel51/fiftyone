@@ -111,10 +111,7 @@ session = fo.launch_app(dataset, port=${port})
   return (
     <>
       <SectionTitle>Notebook sessions</SectionTitle>
-      <Text>
-        You can run a cell with the following code to connect to a dataset:
-      </Text>
-      <Code>{notebookSnippet}</Code>
+      <Text>Re-run the cell that created the session shown here.</Text>
     </>
   );
 };
