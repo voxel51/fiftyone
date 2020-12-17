@@ -83,7 +83,7 @@ setup(
         "scikit-image",
         "setuptools",
         "tabulate",
-        "tornado>=6.0.4,<7",
+        "tornado>=5.1.1,<7",
         "xmltodict",
         "universal-analytics-python3>=1.0.1,<2",
         # internal packages
