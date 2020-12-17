@@ -15,13 +15,13 @@ from fiftyone import ViewField as F
 
 @unittest.skip("Must be run manually")
 def test_all_models():
-    all_models = fozm.list_zoo_models()
+    all_models = foz.list_zoo_models()
     _apply_models(all_models)
 
 
 @unittest.skip("Must be run manually")
 def test_all_embedding_models():
-    all_models = fozm.list_zoo_models()
+    all_models = foz.list_zoo_models()
     _apply_embedding_models(all_models)
 
 
@@ -95,7 +95,7 @@ def _apply_models(model_names):
             "Running model %d/%d: '%s'" % (idx, len(model_names), model_name)
         )
 
-        model = fozm.load_zoo_model(model_name)
+        model = foz.load_zoo_model(model_name)
         dataset.apply_model(model, label_field=f(model_name))
 
     session = fo.launch_app(dataset)
@@ -117,7 +117,7 @@ def _apply_embedding_models(model_names):
             "Running model %d/%d: '%s'" % (idx, len(model_names), model_name)
         )
 
-        model = fozm.load_zoo_model(model_name)
+        model = foz.load_zoo_model(model_name)
 
         if not model.has_embeddings:
             print("Model does not have embeddings")
@@ -147,7 +147,7 @@ def _apply_person_keypoint_models(model_names):
             "Running model %d/%d: '%s'" % (idx, len(model_names), model_name)
         )
 
-        model = fozm.load_zoo_model(model_name)
+        model = foz.load_zoo_model(model_name)
         person_samples.apply_model(model, label_field=f(model_name))
 
     session = fo.launch_app(view=person_samples)

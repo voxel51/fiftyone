@@ -10,7 +10,7 @@ import os
 import fiftyone as fo
 import fiftyone.core.context as focx
 import fiftyone.core.session as fos
-import fiftyone.zoo as foz
+import fiftyone.zoo.datasets as fozd
 
 
 _EXIT = os.environ.get("FIFTYONE_EXIT", False)
@@ -53,7 +53,7 @@ def quickstart(
 
 
 def _quickstart(interactive, port, remote, desktop):
-    dataset = foz.load_zoo_dataset("quickstart")
+    dataset = fozd.load_zoo_dataset("quickstart")
     session = fos.launch_app(
         dataset=dataset, port=port, remote=remote, desktop=desktop
     )
@@ -72,7 +72,7 @@ def _quickstart(interactive, port, remote, desktop):
 
 
 def _video_quickstart(interactive, port, remote, desktop):
-    dataset = foz.load_zoo_dataset("quickstart-video")
+    dataset = fozd.load_zoo_dataset("quickstart-video")
     session = fos.launch_app(
         dataset=dataset, port=port, remote=remote, desktop=desktop
     )

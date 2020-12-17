@@ -12,13 +12,15 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
-from fiftyone.zoo.models import HasZooModel
+import fiftyone.zoo.models as fozm
 
 fou.ensure_torch()
 import torchvision
 
 
-class TorchvisionImageModelConfig(fout.TorchImageModelConfig, HasZooModel):
+class TorchvisionImageModelConfig(
+    fout.TorchImageModelConfig, fozm.HasZooModel
+):
     """Configuration for running a :class:`TorchvisionImageModel`.
 
     Args:

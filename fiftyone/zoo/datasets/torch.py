@@ -12,7 +12,7 @@ import fiftyone.utils.coco as fouc
 import fiftyone.utils.data as foud
 import fiftyone.utils.imagenet as foui
 import fiftyone.utils.voc as fouv
-import fiftyone.zoo as foz
+import fiftyone.zoo.datasets as fozd
 
 
 _TORCH_IMPORT_ERROR = """
@@ -31,7 +31,7 @@ _callback = lambda: fou.ensure_torch(error_msg=_TORCH_IMPORT_ERROR)
 torchvision = fou.lazy_import("torchvision", callback=_callback)
 
 
-class TorchVisionDataset(foz.ZooDataset):
+class TorchVisionDataset(fozd.ZooDataset):
     """Base class for zoo datasets that are provided via the
     ``torchvision.datasets`` package.
     """

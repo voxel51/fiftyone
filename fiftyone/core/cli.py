@@ -28,7 +28,7 @@ import fiftyone.core.session as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 import fiftyone.utils.quickstart as fouq
-import fiftyone.zoo as foz
+import fiftyone.zoo.datasets as fozd
 import fiftyone.zoo.models as fozm
 
 
@@ -78,7 +78,6 @@ class FiftyOneCommand(Command):
         _register_command(subparsers, "datasets", DatasetsCommand)
         _register_command(subparsers, "app", AppCommand)
         _register_command(subparsers, "zoo", ZooCommand)
-        _register_command(subparsers, "model-zoo", ModelZooCommand)
 
     @staticmethod
     def execute(parser, args):
@@ -998,7 +997,7 @@ class AppViewCommand(Command):
             dataset_dir = args.dataset_dir
             kwargs = _parse_dataset_import_kwargs(args)
 
-            dataset = foz.load_zoo_dataset(
+            dataset = fozd.load_zoo_dataset(
                 name, splits=splits, dataset_dir=dataset_dir, **kwargs
             )
         elif args.dataset_dir:
@@ -1174,36 +1173,50 @@ class AppConnectCommand(Command):
 
 
 class ZooCommand(Command):
-    """Tools for working with the FiftyOne Dataset Zoo."""
+    """Tools for working with the FiftyOne Zoo."""
 
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
-        _register_command(subparsers, "list", ZooListCommand)
-        _register_command(subparsers, "find", ZooFindCommand)
-        _register_command(subparsers, "info", ZooInfoCommand)
-        _register_command(subparsers, "download", ZooDownloadCommand)
-        _register_command(subparsers, "load", ZooLoadCommand)
-        _register_command(subparsers, "delete", ZooDeleteCommand)
+        _register_command(subparsers, "datasets", DatasetZooCommand)
+        _register_command(subparsers, "models", ModelZooCommand)
 
     @staticmethod
     def execute(parser, args):
         parser.print_help()
 
 
-class ZooListCommand(Command):
+class DatasetZooCommand(Command):
+    """Tools for working with the FiftyOne Dataset Zoo."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "list", DatasetZooListCommand)
+        _register_command(subparsers, "find", DatasetZooFindCommand)
+        _register_command(subparsers, "info", DatasetZooInfoCommand)
+        _register_command(subparsers, "download", DatasetZooDownloadCommand)
+        _register_command(subparsers, "load", DatasetZooLoadCommand)
+        _register_command(subparsers, "delete", DatasetZooDeleteCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class DatasetZooListCommand(Command):
     """List datasets in the FiftyOne Dataset Zoo.
 
     Examples::
 
         # List available datasets
-        fiftyone zoo list
+        fiftyone zoo datasets list
 
         # List downloaded datasets
-        fiftyone zoo list --downloaded-only
+        fiftyone zoo datasets list --downloaded-only
 
         # List available datasets with the given tag
-        fiftyone zoo list --tag <tag>
+        fiftyone zoo datasets list --tag <tag>
     """
 
     @staticmethod
@@ -1235,11 +1248,11 @@ class ZooListCommand(Command):
         downloaded_only = args.downloaded_only
         match_tags = args.tag
 
-        all_datasets = foz._get_zoo_datasets()
-        all_sources, default_source = foz._get_zoo_dataset_sources()
+        all_datasets = fozd._get_zoo_datasets()
+        all_sources, default_source = fozd._get_zoo_dataset_sources()
 
         base_dir = args.base_dir
-        downloaded_datasets = foz.list_downloaded_zoo_datasets(
+        downloaded_datasets = fozd.list_downloaded_zoo_datasets(
             base_dir=base_dir
         )
 
@@ -1348,16 +1361,16 @@ def _print_zoo_dataset_list(
     print(table_str)
 
 
-class ZooFindCommand(Command):
+class DatasetZooFindCommand(Command):
     """Locate the downloaded zoo dataset on disk.
 
     Examples::
 
         # Print the location of the downloaded zoo dataset on disk
-        fiftyone zoo find <name>
+        fiftyone zoo datasets find <name>
 
         # Print the location of a specific split of the dataset
-        fiftyone zoo find <name> --split <split>
+        fiftyone zoo datasets find <name> --split <split>
     """
 
     @staticmethod
@@ -1374,17 +1387,17 @@ class ZooFindCommand(Command):
         name = args.name
         split = args.split
 
-        dataset_dir = foz.find_zoo_dataset(name, split=split)
+        dataset_dir = fozd.find_zoo_dataset(name, split=split)
         print(dataset_dir)
 
 
-class ZooInfoCommand(Command):
+class DatasetZooInfoCommand(Command):
     """Print information about datasets in the FiftyOne Dataset Zoo.
 
     Examples::
 
         # Print information about a zoo dataset
-        fiftyone zoo info <name>
+        fiftyone zoo datasets info <name>
     """
 
     @staticmethod
@@ -1407,7 +1420,7 @@ class ZooInfoCommand(Command):
         name = args.name
 
         # Print dataset info
-        zoo_dataset = foz.get_zoo_dataset(name)
+        zoo_dataset = fozd.get_zoo_dataset(name)
         print(
             "***** Dataset description *****\n%s"
             % textwrap.dedent("    " + zoo_dataset.__doc__)
@@ -1415,7 +1428,7 @@ class ZooInfoCommand(Command):
 
         # Check if dataset is downloaded
         base_dir = args.base_dir
-        downloaded_datasets = foz.list_downloaded_zoo_datasets(
+        downloaded_datasets = fozd.list_downloaded_zoo_datasets(
             base_dir=base_dir
         )
 
@@ -1437,19 +1450,19 @@ class ZooInfoCommand(Command):
             print(info)
 
 
-class ZooDownloadCommand(Command):
+class DatasetZooDownloadCommand(Command):
     """Download zoo datasets.
 
     Examples::
 
         # Download the entire zoo dataset
-        fiftyone zoo download <name>
+        fiftyone zoo datasets download <name>
 
         # Download the specified split(s) of the zoo dataset
-        fiftyone zoo download <name> --splits <split1> ...
+        fiftyone zoo datasets download <name> --splits <split1> ...
 
         # Download the zoo dataset to a custom directory
-        fiftyone zoo download <name> --dataset-dir <dataset-dir>
+        fiftyone zoo datasets download <name> --dataset-dir <dataset-dir>
     """
 
     @staticmethod
@@ -1476,28 +1489,28 @@ class ZooDownloadCommand(Command):
         name = args.name
         splits = args.splits
         dataset_dir = args.dataset_dir
-        foz.download_zoo_dataset(name, splits=splits, dataset_dir=dataset_dir)
+        fozd.download_zoo_dataset(name, splits=splits, dataset_dir=dataset_dir)
 
 
-class ZooLoadCommand(Command):
+class DatasetZooLoadCommand(Command):
     """Load zoo datasets as persistent FiftyOne datasets.
 
     Examples::
 
         # Load the zoo dataset with the given name
-        fiftyone zoo load <name>
+        fiftyone zoo datasets load <name>
 
         # Load the specified split(s) of the zoo dataset
-        fiftyone zoo load <name> --splits <split1> ...
+        fiftyone zoo datasets load <name> --splits <split1> ...
 
         # Load the zoo dataset with a custom name
-        fiftyone zoo load <name> --dataset-name <dataset-name>
+        fiftyone zoo datasets load <name> --dataset-name <dataset-name>
 
         # Load the zoo dataset from a custom directory
-        fiftyone zoo load <name> --dataset-dir <dataset-dir>
+        fiftyone zoo datasets load <name> --dataset-dir <dataset-dir>
 
         # Load a random subset of the zoo dataset
-        fiftyone zoo load <name> --shuffle --max-samples <max-samples>
+        fiftyone zoo datasets load <name> --shuffle --max-samples <max-samples>
     """
 
     @staticmethod
@@ -1556,7 +1569,7 @@ class ZooLoadCommand(Command):
         dataset_dir = args.dataset_dir
         kwargs = _parse_dataset_import_kwargs(args)
 
-        dataset = foz.load_zoo_dataset(
+        dataset = fozd.load_zoo_dataset(
             name,
             splits=splits,
             dataset_name=dataset_name,
@@ -1568,16 +1581,16 @@ class ZooLoadCommand(Command):
         print("Dataset '%s' created" % dataset.name)
 
 
-class ZooDeleteCommand(Command):
+class DatasetZooDeleteCommand(Command):
     """Deletes the local copy of the zoo dataset on disk.
 
     Examples::
 
         # Delete an entire zoo dataset from disk
-        fiftyone zoo delete <name>
+        fiftyone zoo datasets delete <name>
 
         # Delete a specific split of a zoo dataset from disk
-        fiftyone zoo delete <name> --split <split>
+        fiftyone zoo datasets delete <name> --split <split>
     """
 
     @staticmethod
@@ -1593,7 +1606,7 @@ class ZooDeleteCommand(Command):
     def execute(parser, args):
         name = args.name
         split = args.split
-        foz.delete_zoo_dataset(name, split=split)
+        fozd.delete_zoo_dataset(name, split=split)
 
 
 class ModelZooCommand(Command):
@@ -1624,13 +1637,13 @@ class ModelZooListCommand(Command):
     Examples::
 
         # List available models
-        fiftyone model-zoo list
+        fiftyone zoo models list
 
         # List downloaded models
-        fiftyone model-zoo list --downloaded-only
+        fiftyone zoo models list --downloaded-only
 
         # List available models with the given tag
-        fiftyone model-zoo list --tag <tag>
+        fiftyone zoo models list --tag <tag>
     """
 
     @staticmethod
@@ -1723,7 +1736,7 @@ class ModelZooFindCommand(Command):
     Examples::
 
         # Print the location of the downloaded zoo model on disk
-        fiftyone model-zoo find <name>
+        fiftyone zoo models find <name>
     """
 
     @staticmethod
@@ -1746,7 +1759,7 @@ class ModelZooInfoCommand(Command):
     Examples::
 
         # Print information about a zoo model
-        fiftyone model-zoo info <name>
+        fiftyone zoo models info <name>
     """
 
     @staticmethod
@@ -1778,13 +1791,13 @@ class ModelZooRequirementsCommand(Command):
     Examples::
 
         # Print requirements for a zoo model
-        fiftyone model-zoo requirements <name> --print
+        fiftyone zoo models requirements <name> --print
 
         # Install any requirements for the zoo model
-        fiftyone model-zoo requirements <name> --install
+        fiftyone zoo models requirements <name> --install
 
         # Ensures that the requirements for the zoo model are satisfied
-        fiftyone model-zoo requirements <name> --ensure
+        fiftyone zoo models requirements <name> --ensure
     """
 
     @staticmethod
@@ -1861,7 +1874,7 @@ class ModelZooDownloadCommand(Command):
     Examples::
 
         # Download the zoo model
-        fiftyone model-zoo download <name>
+        fiftyone zoo models download <name>
     """
 
     @staticmethod
@@ -1892,7 +1905,7 @@ class ModelZooApplyCommand(Command):
     Examples::
 
         # Apply the zoo model to the dataset
-        fiftyone model-zoo apply <model-name> <dataset-name> <label-field>
+        fiftyone zoo models apply <model-name> <dataset-name> <label-field>
     """
 
     @staticmethod
@@ -1953,7 +1966,7 @@ class ModelZooEmbedCommand(Command):
     Examples::
 
         # Generate embeddings for the dataset with the zoo model
-        fiftyone model-zoo embed <model-name> <dataset-name> <label-field>
+        fiftyone zoo models embed <model-name> <dataset-name> <label-field>
     """
 
     @staticmethod
@@ -1999,7 +2012,7 @@ class ModelZooDeleteCommand(Command):
     Examples::
 
         # Delete the zoo model from disk
-        fiftyone model-zoo delete <name>
+        fiftyone zoo models delete <name>
     """
 
     @staticmethod
