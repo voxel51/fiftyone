@@ -25,7 +25,7 @@ import fiftyone.constants as foc
 
 
 with open("../../setup.py") as f:
-    setup_version = re.search(r'version="(.+?)"', f.read()).group(1)
+    setup_version = re.search(r'VERSION = "(.+?)"', f.read()).group(1)
 
 if setup_version != foc.VERSION:
     raise RuntimeError(

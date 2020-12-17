@@ -1,6 +1,7 @@
 argcomplete==1.11.0
 eventlet==0.25.2
 Flask==1.1.2
+httpx==0.7.7
 Jinja2==2.10.1
 mongoengine==0.20.0
 motor==2.3.0
@@ -12,4 +13,5 @@ scikit-image==0.16.2
 setuptools==45.2.0
 tabulate==0.8.5
 tornado==6.0.4
+universal-analytics-python3==1.0.1
 xmltodict==0.12.0
