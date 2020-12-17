@@ -73,7 +73,7 @@ For example, a typical workflow is:
 .. code-block:: python
     :linenos:
 
-    # Updates the App in the above output
+    # Updates the App in the prior cell's output
     session.view = dataset.take(10)
 
 .. note::

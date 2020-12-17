@@ -98,7 +98,7 @@ Launch a FiftyOne quickstart.
       -v, --video           launch the quickstart with a video dataset
       -p PORT, --port PORT  the port number to use
       -r, --remote          whether to launch a remote App session
-      -a, --desktop         whether to launch the desktop App. If provided, the desktop App package must be installed (fiftyone-desktop)
+      -a, --desktop         whether to launch a desktop App instance
 
 **Examples**
 
@@ -664,7 +664,7 @@ Launch the FiftyOne App.
       -h, --help            show this help message and exit
       -p PORT, --port PORT  the port number to use
       -r, --remote          whether to launch a remote App session
-      -a, --desktop         whether to launch the desktop App. If provided, the desktop App package must be installed (fiftyone-desktop)
+      -a, --desktop         whether to launch a desktop App instance
 
 **Examples**
 
@@ -720,7 +720,7 @@ View datasets in the FiftyOne App without persisting them to the database.
                             a maximum number of samples to import. By default, all samples are imported
       -p PORT, --port PORT  the port number to use
       -r, --remote          whether to launch a remote App session
-      -a, --desktop         whether to launch the desktop App. If provided, the desktop App package must be installed (fiftyone-desktop)
+      -a, --desktop         whether to launch a desktop App instance
 
 **Examples**
 
@@ -791,8 +791,8 @@ Connect to a remote FiftyOne App.
       -p PORT, --port PORT  the remote port to connect to
       -l PORT, --local-port PORT
                             the local port to use to serve the App
-      -i KEY, --ssh-key KEY an optional ssh key used to login 
-      -a, --desktop         whether to launch the desktop App. If provided, the desktop App package must be installed (fiftyone-desktop)
+      -i KEY, --ssh-key KEY an optional ssh key used to login
+      -a, --desktop         whether to launch a desktop App instance
 
 **Examples**
 
