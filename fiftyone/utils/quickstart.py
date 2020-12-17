@@ -17,7 +17,7 @@ _EXIT = os.environ.get("FIFTYONE_EXIT", False)
 
 
 def quickstart(
-    interactive=True, video=False, port=5151, remote=False, desktop=False
+    interactive=True, video=False, port=5151, remote=False, desktop=None
 ):
     """Runs the FiftyOne quickstart.
 
@@ -31,11 +31,9 @@ def quickstart(
         port (5151): the port number to serve the App
         remote (False): whether this is a remote session, and opening the App
             should not be attempted
-        desktop (False): If `True`, the session will launch the desktop App.
-            The desktop App package must be installed (fiftyone-desktop),
-            if so. The `FIFTYONE_DESKTOP_WINDOW=true` environment variable can
-            be used as a persistent desktop setting. DOES NOT apply to notebook
-            contexts (e.g. Jupyter), use :meth:`Session.show` instead.
+        desktop (None): whether to launch the App in the browser (False) or as
+            a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
+            used. Not applicable to notebook contexts (e.g., Jupyter and Colab)
 
     Returns:
         If ``interactive`` is ``True``, a tuple is returned containing:
@@ -53,18 +51,19 @@ def quickstart(
 
 
 def _quickstart(interactive, port, remote, desktop):
+    if interactive:
+        print(_QUICKSTART_GUIDE % (_FILTER_DETECTIONS_IN_PYTHON))
+    else:
+        print(_QUICKSTART_GUIDE % (""))
+
     dataset = fozd.load_zoo_dataset("quickstart")
     session = fos.launch_app(
         dataset=dataset, port=port, remote=remote, desktop=desktop
     )
 
-    # @todo improve readability of stdout when launching remote sessions
-
     if interactive:
-        print(_QUICKSTART_GUIDE % (_FILTER_DETECTIONS_IN_PYTHON))
         return dataset, session
 
-    print(_QUICKSTART_GUIDE % (""))
     if not _EXIT:
         session.wait()
 
@@ -72,18 +71,16 @@ def _quickstart(interactive, port, remote, desktop):
 
 
 def _video_quickstart(interactive, port, remote, desktop):
+    print(_VIDEO_QUICKSTART_GUIDE)
+
     dataset = fozd.load_zoo_dataset("quickstart-video")
     session = fos.launch_app(
         dataset=dataset, port=port, remote=remote, desktop=desktop
     )
-    instructions = _VIDEO_QUICKSTART_GUIDE
 
-    # @todo improve readability of stdout when launching remote sessions
     if interactive:
-        print(instructions)
         return dataset, session
 
-    print(instructions)
     if not _EXIT:
         session.wait()
 
@@ -129,6 +126,7 @@ Resources:
 
 -   Using the App: https://voxel51.com/docs/fiftyone/user_guide/app.html
 -   Dataset Zoo:   https://voxel51.com/docs/fiftyone/user_guide/dataset_zoo.html
+
 """
 
 
@@ -179,4 +177,5 @@ Resources:
 
 -   Using the App: https://voxel51.com/docs/fiftyone/user_guide/app.html
 -   Dataset Zoo:   https://voxel51.com/docs/fiftyone/user_guide/dataset_zoo.html
+
 """

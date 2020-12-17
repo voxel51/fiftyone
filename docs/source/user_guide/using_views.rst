@@ -42,7 +42,7 @@ You can explicitly create a view that contains an entire dataset via
         tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
         metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
         ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Classification)
-    Pipeline stages:
+    View stages:
         ---
 
 You can access specific information about a view in the natural ways:

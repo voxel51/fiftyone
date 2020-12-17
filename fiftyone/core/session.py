@@ -6,6 +6,7 @@ Session class for interacting with the FiftyOne App.
 |
 """
 from collections import defaultdict
+from functools import wraps
 import json
 import logging
 import random
@@ -41,27 +42,43 @@ _server_services = {}
 _subscribed_sessions = defaultdict(set)
 
 
-_APP_DESKTOP = """
-The desktop version of the App that has just been launched for you.
+_APP_DESKTOP_MESSAGE = """
+Desktop App launched.
 """
 
-_APP_NOTEBOOK = """
-The session object is your connection to the App, which can be displayed
-with `session.show()`.
+_APP_WEB_MESSAGE = """
+App launched. Point your web browser to http://localhost:{0}
 """
 
-_APP_WEB = """
-The App has just been opened in your web browser at http://localhost:%d
+_APP_NOTEBOOK_MESSAGE = """
+Session launched. Run `session.show()` to open the App in a cell output.
 """
 
-_APP_REMOTE = """
-The App is now serving from http://localhost:%d
+_REMOTE_INSTRUCTIONS = """
+You have launched a remote App on port {0}. To connect to this App from another
+machine, issue the following command:
+
+fiftyone app connect --destination [<username>@]<hostname> --port {0}
+
+where `[<username>@]<hostname>` refers to your current machine. Alternatively,
+you can manually configure port forwarding on another machine as follows:
+
+ssh -N -L 5151:127.0.0.1:{0} [<username>@]<hostname>
+
+The App can then be viewed in your browser at http://localhost:5151.
+
+See https://voxel51.com/docs/fiftyone/user_guide/app.html#remote-sessions
+for more information about remote sessions.
+"""
+
+_WAIT_INSTRUCTIONS = """
+A session appears to have terminated shortly after it was started. If you
+intended to start an App instance or a remote session from a script, you should
+call `session.wait()` to keep the session (and the script) alive.
 """
 
 
-def launch_app(
-    dataset=None, view=None, port=5151, remote=False, desktop=False
-):
+def launch_app(dataset=None, view=None, port=5151, remote=False, desktop=None):
     """Launches the FiftyOne App.
 
     Only one app instance can be opened at a time. If this method is
@@ -75,15 +92,13 @@ def launch_app(
         port (5151): the port number to use
         remote (False): whether this is a remote session, and opening the App
             should not be attempted
-        desktop (False): If `True`, the session will launch the desktop App.
-            The desktop App package must be installed (fiftyone-desktop),
-            if so. The `FIFTYONE_DESKTOP_APP=true` environment variable can
-            be used as a persistent desktop setting. DOES NOT apply to notebook
-            contexts (e.g. Jupyter), use :meth:`Session.show` instead.
+        desktop (None): whether to launch the App in the browser (False) or as
+            a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
+            used. Not applicable to notebook contexts (e.g., Jupyter and Colab)
 
-    Raises
-        VaueError: `desktop` is `True` and the desktop App package
-            (fiftyone-desktop) has not been installed.
+    Raises:
+        VaueError: if ``desktop`` is ``True`` but the desktop App package is
+            not installed
 
     Returns:
         a :class:`Session`
@@ -105,14 +120,14 @@ def launch_app(
         dataset=dataset, view=view, port=port, remote=remote, desktop=desktop
     )
 
-    if remote:
-        print(_APP_REMOTE)
-    if desktop:
-        print(_APP_DESKTOP)
+    if _session.remote:
+        logger.info(_REMOTE_INSTRUCTIONS.strip().format(_session.server_port))
+    elif _session.desktop:
+        logger.info(_APP_DESKTOP_MESSAGE.strip())
     elif focx._get_context() != focx._NONE:
-        print(_APP_NOTEBOOK)
+        logger.info(_APP_NOTEBOOK_MESSAGE.strip())
     else:
-        print(_APP_WEB % port)
+        logger.info(_APP_WEB_MESSAGE.strip().format(port))
 
     return _session
 
@@ -128,6 +143,7 @@ def close_app():
 
 
 def _update_state(func):
+    @wraps(func)
     def wrapper(self, *args, **kwargs):
         result = func(self, *args, **kwargs)
         self.state.datasets = fod.list_datasets()
@@ -166,8 +182,6 @@ class Session(foc.HasClient):
     -   Use :func:`close_app` to programmatically close the app and
         terminate the session.
 
-    Note that only one session instance can exist at any time.
-
     Args:
         dataset (None): an optional :class:`fiftyone.core.dataset.Dataset` to
             load
@@ -176,11 +190,9 @@ class Session(foc.HasClient):
         port (5151): the port number to use
         remote (False): whether this is a remote session, and opening the App
             should not be attempted
-        desktop (False): If `True`, the session will launch the desktop App.
-            The desktop App package must be installed (fiftyone-desktop),
-            if so. The `FIFTYONE_DESKTOP_APP=true` environment variable can
-            be used as a persistent desktop setting. DOES NOT apply to notebook
-            contexts (e.g. Jupyter), use :meth:`Session.show` instead.
+        desktop (None): whether to launch the App in the browser (False) or as
+            a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
+            used. Not applicable to notebook contexts (e.g., Jupyter and Colab)
     """
 
     _HC_NAMESPACE = "state"
@@ -188,7 +200,7 @@ class Session(foc.HasClient):
     _HC_ATTR_TYPE = StateDescription
 
     def __init__(
-        self, dataset=None, view=None, port=5151, remote=False, desktop=False
+        self, dataset=None, view=None, port=5151, remote=False, desktop=None
     ):
         self._context = focx._get_context()
         self._port = port
@@ -213,38 +225,40 @@ class Session(foc.HasClient):
         elif dataset is not None:
             self.dataset = dataset
 
-        if not desktop and self._context == focx._NONE:
-            self._desktop = fo.config.desktop
-        else:
-            self._desktop = desktop
+        if desktop is None:
+            if self._context == focx._NONE:
+                desktop = fo.config.desktop_app
+            else:
+                desktop = False
+
+        self._desktop = desktop
 
         self._start_time = self._get_time()
-        if self._remote and self._context != focx._NONE:
-            raise ValueError(
-                "`remote` is not valid argument when in a notebook"
-            )
-        elif self._remote:
-            logger.info(
-                _REMOTE_INSTRUCTIONS.strip()
-                % (self.server_port, self.server_port, self.server_port)
-            )
+
+        if self._remote and (self._context != focx._NONE):
+            raise ValueError("Remote sessions cannot be run from a notebook")
+
+        if self._remote:
             return
 
-        if self._context == focx._NONE and self._desktop:
-            try:
-                import fiftyone.desktop
-            except:
-                if not focn.DEV_INSTALL:
-                    raise ValueError("fiftyone-desktop is not installed")
+        if self._context == focx._NONE:
+            if self._desktop:
+                try:
+                    import fiftyone.desktop
+                except ImportError as e:
+                    if not focn.DEV_INSTALL:
+                        raise ValueError(
+                            "You must install the 'fiftyone-desktop' package in "
+                            "order to launch a desktop App instance"
+                        ) from e
 
-            self._app_service = fos.AppService(server_port=port)
-            logger.info("App launched")
-        elif self._context == focx._NONE and not self._desktop:
-            self.open()
-        elif self._context != focx._NONE and self._desktop:
+                self._app_service = fos.AppService(server_port=port)
+            else:
+                self.open()
+        elif self._desktop:
             raise ValueError(
-                "`desktop` cannot be `True` in notebooks, use the `show()`"
-                "method after instantiation instead "
+                "Cannot open a Desktop App instance from a notebook. Use "
+                "`session.show()` to open the App."
             )
 
     def __repr__(self):
@@ -277,15 +291,31 @@ class Session(foc.HasClient):
             pass
         super().__del__()
 
+    @property
+    def remote(self):
+        """Whether the session is remote."""
+        return self._remote
+
+    @property
+    def desktop(self):
+        """Whether the session is connected to a desktop App."""
+        return self._desktop
+
     @_update_state
     def show(self, height=800):
-        """Show the App in an IPython notebook
-        
+        """Opens the App in the output of the current notebook cell.
+
+        Only usable when working in notebook (e.g., Jupyter or Colab)
+        environments.
+
         Args:
-            height (800): the height, in pixels, of the App to show
+            height (800): a height, in pixels, for the App
+
+        Raises:
+            RuntimeError: if this command is run in a non-notebook environment
         """
         if self._context == focx._NONE:
-            raise RuntimeError("Cannot show App; not an IPython notebook")
+            raise RuntimeError("Cannot show App in a non-notebook environment")
         if self.dataset is not None:
             self.dataset._doc.reload()
         self.state.datasets = fod.list_datasets()
@@ -305,6 +335,7 @@ class Session(foc.HasClient):
     def dataset(self, dataset):
         if dataset is not None:
             dataset._doc.reload()
+
         self.state.dataset = dataset
         self.state.view = None
         self.state.selected = []
@@ -320,8 +351,7 @@ class Session(foc.HasClient):
 
     @property
     def server_port(self):
-        """Getter for the port number of the session.
-        """
+        """The server port for the session."""
         return self._port
 
     @property
@@ -387,22 +417,22 @@ class Session(foc.HasClient):
 
     @_update_state
     def refresh(self):
-        """Refreshes the FiftyOne App, reloading the current dataset/view."""
+        """Refreshes the App, reloading the current dataset/view."""
         # @todo achieve same behavoir as if CTRL + R were pressed in the App
         pass
 
     def open(self):
         """Opens the session.
 
-        This opens the FiftyOne App, if necessary.
+        This opens the App, if necessary.
         """
         if self._remote:
             raise ValueError("Remote sessions cannot launch the FiftyOne App")
 
         if self._context != focx._NONE:
             raise ValueError(
-                "Notebook sessions cannot launch the FiftyOne App, use "
-                "`show()` instead"
+                "Notebook sessions cannot launch the FiftyOne App; use "
+                "`session.show()` instead"
             )
 
         if not self._desktop:
@@ -435,33 +465,25 @@ class Session(foc.HasClient):
             dataset_name = None
             media_type = "N/A"
 
-        elements = [
-            "Dataset:          %s" % dataset_name,
-        ]
+        elements = ["Dataset:          %s" % dataset_name]
 
         if self.dataset:
+            num_samples = len(self.view) if self.view else len(self.dataset)
             elements.extend(
                 [
                     "Media type:       %s" % media_type,
+                    "Num samples:      %d" % num_samples,
                     "Selected samples: %d" % len(self.selected),
                     "Selected objects: %d" % len(self.selected_objects),
                 ]
             )
 
-        if self.view:
-            if self.view._stages:
-                pipeline_str = "    " + "\n    ".join(
-                    [
-                        "%d. %s" % (idx, str(d))
-                        for idx, d in enumerate(self.view._stages, 1)
-                    ]
-                )
-            else:
-                pipeline_str = "    ---"
-
-            elements.extend(["View stages:", pipeline_str])
-
         elements.extend(["URL:              %s" % self.url])
+
+        if self.view:
+            elements.extend(
+                ["View stages:", self.view._make_view_stages_str()]
+            )
 
         return "\n".join(elements)
 
@@ -490,28 +512,6 @@ class Session(foc.HasClient):
     def _update_state(self):
         # see fiftyone.core.client if you would like to understand this
         self.state = self.state
-
-
-_REMOTE_INSTRUCTIONS = """
-You have launched a remote app on port %d. To connect to this app
-from another machine, issue the following command:
-
-fiftyone app connect --destination [<username>@]<hostname> --port %d
-
-where `[<username>@]<hostname>` refers to your current machine. Alternatively,
-you can manually configure port forwarding on another machine as follows:
-
-ssh -N -L 5151:127.0.0.1:%d [<username>@]<hostname>
-
-The App can then be viewed in your browser at http://localhost:5151.
-"""
-
-
-_WAIT_INSTRUCTIONS = """
-A session appears to have terminated shortly after it was started. If you
-intended to start an app instance or a remote session from a script, you
-should call `session.wait()` to keep the session (and the script) alive.
-"""
 
 
 def display(port=None, height=None):
@@ -546,17 +546,17 @@ def _display(port=None, height=None):
 def _display_colab(port, height):
     """Display a FiftyOne instance in a Colab output frame.
 
-    The Colab VM is not directly exposed to the network, so the Colab
-    runtime provides a service worker tunnel to proxy requests from the
-    end user's browser through to servers running on the Colab VM: the
-    output frame may issue requests to https://localhost:<port> (HTTPS
-    only), which will be forwarded to the specified port on the VM.
+    The Colab VM is not directly exposed to the network, so the Colab runtime
+    provides a service worker tunnel to proxy requests from the end user's
+    browser through to servers running on the Colab VM: the output frame may
+    issue requests to https://localhost:<port> (HTTPS only), which will be
+    forwarded to the specified port on the VM.
 
     It does not suffice to create an `iframe` and let the service worker
-    redirect its traffic (`<iframe src="https://localhost:6006">`),
-    because for security reasons service workers cannot intercept iframe
-    traffic. Instead, we manually fetch the FiftyOne index page with an
-    XHR in the output frame, and inject the raw HTML into `document.body`.
+    redirect its traffic (`<iframe src="https://localhost:6006">`), because for
+    security reasons service workers cannot intercept iframe traffic. Instead,
+    we manually fetch the FiftyOne index page with an XHR in the output frame,
+    and inject the raw HTML into `document.body`.
     """
     import IPython.display
 
