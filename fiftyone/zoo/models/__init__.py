@@ -120,7 +120,7 @@ def install_zoo_model_requirements(name, error_level=None):
     model.install_requirements(error_level=error_level)
 
 
-def ensure_zoo_model_requirements(name, error_level=None):
+def ensure_zoo_model_requirements(name, error_level=None, log_success=True):
     """Ensures that the package requirements for the zoo model with the given
     name are satisfied.
 
@@ -135,12 +135,15 @@ def ensure_zoo_model_requirements(name, error_level=None):
             0: raise error if a requirement is not satisfied
             1: log warning if a requirement is not satisifed
             2: ignore unsatisifed requirements
+
+        log_success (True): whether to generate a log message when a
+            requirement is satisifed
     """
     if error_level is None:
         error_level = fo.config.requirement_error_level
 
     model = _get_model(name)
-    model.ensure_requirements(error_level=error_level)
+    model.ensure_requirements(error_level=error_level, log_success=log_success)
 
 
 def load_zoo_model(
