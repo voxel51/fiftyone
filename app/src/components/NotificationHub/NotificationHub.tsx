@@ -128,6 +128,7 @@ const NotificationHub = ({
       await next({ life: "0%" });
       await next({ opacity: 0 });
       await next({ height: 0 });
+      item.onClose && item.onClose();
     },
     onRest: (item) =>
       setItems((state) => state.filter((i) => i.key !== item.key)),
@@ -144,9 +145,14 @@ const NotificationHub = ({
 
   useEffect(
     () =>
-      void children((msg) =>
-        setItems((state) => [...state, { key: id++, ...msg }])
-      ),
+      children((msg) => {
+        const item = { key: id++, ...msg };
+        setItems((state) => [...state, item]);
+        return () => {
+          item.onClose && item.onClose();
+          cancelMap.has(item) && cancelMap.get(item)();
+        };
+      }),
     []
   );
 
@@ -170,9 +176,11 @@ const NotificationHub = ({
               </Button>
             </Header>
             <MessageText>{item.message}</MessageText>
-            {item.app_items.map((i, key) => (
-              <MessageText key={key}>{i}</MessageText>
-            ))}
+            {item.app_items &&
+              item.app_items.map((i, key) => (
+                <MessageText key={key}>{i}</MessageText>
+              ))}
+            {item.children && item.children}
           </Content>
         </Message>
       ))}

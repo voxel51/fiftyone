@@ -76,7 +76,7 @@ function App() {
       onReset={() => setReset(true)}
       resetKeys={[reset]}
     >
-      <Header />
+      <Header addNotification={addNotification} />
       <Body style={{ overflowY: connected ? "hidden" : "scroll" }}>
         {connected && (
           <Suspense fallback={Setup}>

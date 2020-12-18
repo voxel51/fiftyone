@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import styled from "styled-components";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { Checkbox } from "@material-ui/core";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import AuosizeInput from "react-input-autosize";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
@@ -10,6 +11,8 @@ import ErrorMessage from "./ViewBar/ViewStage/ErrorMessage";
 import { getMatch, computeBestMatchString } from "./ViewBar/ViewStage/utils";
 import { packageMessage } from "../utils/socket";
 import { animated, useSpring } from "react-spring";
+import { ThemeContext } from "styled-components";
+import { Close } from "@material-ui/icons";
 
 import ExternalLink from "./ExternalLink";
 import * as atoms from "../recoil/atoms";
@@ -77,6 +80,7 @@ const LeftDiv = styled.div`
 const RightDiv = styled.div`
   margin-left: auto;
   padding-right: 0.5rem;
+  display: flex;
 `;
 
 const FiftyOneDiv = styled.div`
@@ -111,6 +115,21 @@ const IconWrapper = styled.div`
 
   svg:focus {
     outline: none;
+  }
+`;
+
+const Button = styled.div`
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 1rem;
+  border-radius: 3px;
+  text-align: center;
+  padding: 0 0.5rem;
+  border: 1px solid ${({ theme }) => theme.brand};
+
+  &.disabled {
+    border: 1px solid ${({ theme }) => theme.fontDark};
+    cursor: default;
   }
 `;
 
@@ -280,6 +299,169 @@ const selectorMachine = Machine({
   },
 });
 
+const Input = styled.input`
+  width: 100%;
+  background-color: transparent;
+  border: none;
+  padding: 0.5rem 0;
+  margin-bottom: 1rem;
+  border
+  color: ${({ theme }) => theme.font};
+  line-height: 1rem;
+  border: none;
+  border-bottom: 1px solid ${({ theme }) => theme.brand};
+  font-weight: bold;
+
+  &:focus {
+    border-bottom: 1px solid ${({ theme }) => theme.brand};
+    outline: none;
+    font-weight: bold;
+  }
+
+  &::placeholder {
+    color: ${({ theme }) => theme.fontDark};
+    font-weight: bold;
+  }
+`;
+
+const TshirtForm = () => {
+  const [formState, setFormState] = useState({
+    email: "",
+    helping: "",
+    improving: "",
+    tshirt: false,
+  });
+  const [submitText, setSubmitText] = useState("Submit");
+  const [submitted, setSubmitted] = useRecoilState(atoms.feedbackSubmitted);
+  const portalId = 4972700;
+  const formId = "b56682f6-c297-4cea-95c4-9e05a00528af";
+  const postUrl = `https://api.hsforms.com/submissions/v3/integration/submit/${portalId}/${formId}`;
+  const appContext = useRecoilValue(selectors.appContext);
+  const closeFeedback = useRecoilValue(atoms.closeFeedback);
+  const theme = useContext(ThemeContext);
+
+  const setFormValue = (name) => (e) =>
+    setFormState({
+      ...formState,
+      [name]: e.target.value,
+    });
+  const disabled =
+    !(
+      formState.email &&
+      formState.helping?.length &&
+      formState.improve?.length
+    ) || submitted;
+  const submit = () => {
+    if (disabled) {
+      return;
+    }
+    setSubmitText("Submitting...");
+    const headers = new Headers();
+    headers.append("Content-Type", "application/json");
+    const finalize = () => {
+      setSubmitText("Submitted. Thank you!");
+      setSubmitted(true);
+      window.localStorage.setItem("fiftyone-feedback", "submitted");
+      setTimeout(() => closeFeedback && closeFeedback.close(), 2000);
+    };
+
+    fetch(postUrl, {
+      method: "post",
+      headers,
+      mode: "cors",
+      body: JSON.stringify({
+        submittedAt: Date.now(),
+        fields: [
+          {
+            name: "email",
+            value: formState.email,
+          },
+          {
+            name: "is_fiftyone_helping_your_work_how_so_",
+            value: formState.helping,
+          },
+          {
+            name: "how_could_we_improve_fiftyone_",
+            value: formState.improve,
+          },
+          {
+            name: "zoom_call_and_t_shirt",
+            value: formState.tshirt,
+          },
+          {
+            name: "app_context",
+            value: appContext,
+          },
+        ],
+        context: { pageUri: "www.example.com/page", pageName: "Example page" },
+      }),
+    })
+      .then((response) => {
+        if (response.status !== 200) {
+          throw new Error("Failed submission");
+        }
+        return response.json();
+      })
+      .then(() => {
+        finalize();
+      })
+      .catch((e) => {
+        setSubmitText("Something went wrong");
+      });
+  };
+  return (
+    <>
+      <Input
+        key="email"
+        placeholder={"Email"}
+        type="email"
+        value={formState.email ?? ""}
+        onChange={setFormValue("email")}
+      />
+      <Input
+        key="helping"
+        placeholder={"Is FiftyOne helping your work?"}
+        value={formState.helping ?? ""}
+        onChange={setFormValue("helping")}
+        maxLength={100}
+      />
+      <Input
+        key="improve"
+        placeholder={"How could we improve FiftyOne?"}
+        value={formState.improve ?? ""}
+        maxLength={100}
+        onChange={setFormValue("improve")}
+      />
+      <div style={{ display: "flex" }}>
+        <Checkbox
+          checked={formState.tshirt}
+          onChange={() =>
+            setFormState({ ...formState, tshirt: !formState.tshirt })
+          }
+          style={{
+            color: theme.brand,
+            paddingLeft: 0,
+            paddingTop: 0,
+          }}
+        />
+        <p style={{ color: theme.fontDark, marginTop: 4 }}>
+          I'm open to a Zoom call and a free t-shirt!
+        </p>
+      </div>
+      <Button
+        key="submit"
+        onClick={submit}
+        style={{
+          marginBottom: "1rem",
+        }}
+        className={disabled ? "disabled" : ""}
+      >
+        {submitText}
+      </Button>
+    </>
+  );
+};
+
 const DatasetSelector = () => {
   const datasetName = useRecoilValue(selectors.datasetName);
   const socket = useRecoilValue(selectors.socket);
@@ -289,7 +471,6 @@ const DatasetSelector = () => {
 
   const inputRef = useRef();
   const { results, currentResult, value, bestMatch, values } = state.context;
-
   useEffect(() => {
     send({
       type: "SET_VALUES",
@@ -379,12 +560,33 @@ const DatasetSelector = () => {
   );
 };
 
-const Header = () => {
+const Header = ({ addNotification }) => {
   const socket = useRecoilValue(selectors.socket);
   const [refresh, setRefresh] = useRecoilState(atoms.refresh);
   const logoProps = useSpring({
     transform: refresh ? `rotate(0turn)` : `rotate(1turn)`,
   });
+  const [appFeedbackIsOpen, setAppFeedbackIsOpen] = useRecoilState(
+    atoms.appFeedbackIsOpen
+  );
+  const [feedbackSubmitted, setFeedbackSubmitted] = useRecoilState(
+    atoms.feedbackSubmitted
+  );
+  const [closeFeedback, setCloseFeedback] = useRecoilState(atoms.closeFeedback);
+  const tshirtText = (
+    <span>
+      We are super dedicated to making FiftyOne as valuable as possible for our
+      users. If you're willing to jump on a quick Zoom call with us to chat
+      about your use cases in more detail, let us know by checking the box
+      below. We'll <i>mail you a free t-shirt</i> for your trouble :)
+    </span>
+  );
+  const theme = useContext(ThemeContext);
+
+  const showFeedbackButton =
+    window.localStorage.getItem("fiftyone-feedback") !== "submitted" &&
+    !feedbackSubmitted;
+
   return (
     <HeaderDiv>
       <LeftDiv>
@@ -401,6 +603,40 @@ const Header = () => {
       </LeftDiv>
       <RightDiv>
         <IconWrapper>
+          {showFeedbackButton && (
+            <Button
+              onClick={() => {
+                if (!appFeedbackIsOpen) {
+                  setAppFeedbackIsOpen(true);
+                  const callback = addNotification.current({
+                    kind: "We'd love your feedback",
+                    message: tshirtText,
+                    children: [<TshirtForm key="t-shirt" />],
+                    onClose: () => setAppFeedbackIsOpen(false),
+                  });
+                  setCloseFeedback({ close: callback });
+                }
+              }}
+              style={{ marginRight: "0.5rem", position: "relative" }}
+            >
+              Want a free t-shirt?
+              <Close
+                style={{
+                  position: "absolute",
+                  top: "-0.8rem",
+                  right: "-0.8rem",
+                  borderRadius: "1rem",
+                  background: theme.brand,
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFeedbackSubmitted(true);
+                  window.localStorage.setItem("fiftyone-feedback", "submitted");
+                  closeFeedback && closeFeedback.close();
+                }}
+              />
+            </Button>
+          )}
           <ExternalLink
             title="Slack"
             href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg"

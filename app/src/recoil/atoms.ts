@@ -12,6 +12,16 @@ export const connected = atom({
   default: false,
 });
 
+export const closeFeedback = atom({
+  key: "closeFeedback",
+  default: null,
+});
+
+export const feedbackSubmitted = atom({
+  key: "feedbackSubmitted",
+  default: false,
+});
+
 export const refresh = atom({
   key: "refresh",
   default: false,
@@ -161,5 +171,10 @@ export const colorByLabel = atom({
 
 export const modalColorByLabel = atom({
   key: "modalColorByLabel",
+  default: false,
+});
+
+export const appFeedbackIsOpen = atom({
+  key: "appFeedbackIsOpen",
   default: false,
 });
