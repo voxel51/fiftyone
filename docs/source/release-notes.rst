@@ -12,26 +12,34 @@ FiftyOne 0.7.0
 App
 ^^^
 - Added web browser support, which is now the default settting
-- Changed the desktop App to be an optional dependency, `fiftyone-desktop`
-- Added IPython notebook support, e.g. Jupyter, Google Colab and VSCode
+- Added :ref:`IPython notebook support <notebooks>`, e.g. Jupyter and Google
+  Colab
+- The desktop App can now be installed as an
+  :ref:`optional dependency <installing-fiftyone-desktop>`
 - Fixed an issue where the App would freeze after filtering labels in the
   Fields Sidebar
 
 Core
 ^^^^
+- Added a :ref:`Model Zoo <model-zoo>` containing over 70 pretrained detection,
+  classification, and segmentation models that you can use to generate
+  predictions and embeddings
 - Moved project hosting to `pypi.org <https://pypi.org/project/fiftyone/>`_
-- Added Python 3.9 support (note that tensorflow does not yet support 3.9)
+- Added the :meth:`Session.show() <fiftyone.core.session.Session.show>` method
+  for displaying the App in IPython notebook cells
+- Added an in-App feedback form. We would love to hear from you!
+- Added Python 3.9 support
 - Removed Python 3.5 support
-- Added the :meth:`fiftyone.core.session.Session.show` method for displaying
-  the App in IPython notebook cells
-- Added an in-app feedback form. We would love to hear from you!
-
-Brain
-^^^^^
 
 CLI
 ^^^
-- Added the `-a` or `--desktop` flag to commands that launch the App
+- Added a :ref:`fiftyone zoo models <cli-fiftyone-zoo-models>` command that
+  provides access to the model zoo
+- **(Breaking change)** moved the dataset zoo commands to
+  :ref:`fiftyone zoo datasets <cli-fiftyone-zoo-datasets>` (previously they
+  were at ``fiftyone zoo``)
+- Added a ``--desktop`` flag to commands that launch the App that enables
+  launching the App as a desktop App (rather than a web browser)
 
 .. _release-notes-v0.6.6:
 
