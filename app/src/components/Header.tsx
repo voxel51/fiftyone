@@ -418,13 +418,13 @@ const TshirtForm = () => {
         placeholder={"Is FiftyOne helping your work?"}
         value={formState.helping ?? ""}
         onChange={setFormValue("helping")}
-        maxlength={40}
+        maxLength={100}
       />
       <Input
         key="improve"
         placeholder={"How could we improve FiftyOne?"}
         value={formState.improve ?? ""}
-        maxlength={40}
+        maxLength={100}
         onChange={setFormValue("improve")}
       />
       <div style={{ display: "flex" }}>
