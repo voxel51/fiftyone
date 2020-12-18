@@ -1,3 +1,6 @@
+
+.. _fiftyone-cli:
+
 FiftyOne Command-Line Interface (CLI)
 =====================================
 
@@ -8,6 +11,8 @@ Installing FiftyOne automatically installs `fiftyone`, a command-line interface
 useful features, including creating and inspecting datasets, visualizing
 datasets in the App, exporting datasets and converting dataset formats,
 and downloading datasets from the FiftyOne Dataset Zoo.
+
+.. _cli-quickstart:
 
 Quickstart
 ----------
@@ -49,6 +54,8 @@ To enable tab completion in `tcsh`, add these lines to your `~/.tcshrc`:
 .. code-block:: shell
 
     eval `register-python-argcomplete --shell tcsh fiftyone`
+
+.._cli-fiftyone-main:
 
 FiftyOne CLI
 ------------
