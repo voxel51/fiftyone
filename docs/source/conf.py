@@ -100,30 +100,35 @@ rst_prolog = """
 # requires it
 nbsphinx_requirejs_path = ""
 
-# Adds a link to download the notebook to the built HTML
+# Adds helpful external links to the built HTML
+ref = os.environ.get("RELEASE_VERSION", "develop")
 nbsphinx_prolog = """
 
 .. raw:: html
 
     <table class="fo-notebook-links" align="left">
         <td>
-            <a target="_blank" href="https://colab.research.google.com/github/voxel51/fiftyone/blob/develop/docs/source/{{ env.doc2path(env.docname, base=None) }}">
+            <a target="_blank" href="https://colab.research.google.com/github/voxel51/fiftyone/blob/%s/docs/source/{{ env.doc2path(env.docname, base=None) }}">
                 <img src="../_static/images/logo/colab-logo-32px.png"/>Run in Google Colab
             </a>
         </td>
         <td>
-            <a target="_blank" href="https://github.com/voxel51/fiftyone/blob/develop/docs/source/{{ env.doc2path(env.docname, base=None) }}">
+            <a target="_blank" href="https://github.com/voxel51/fiftyone/blob/%s/docs/source/{{ env.doc2path(env.docname, base=None) }}">
                 <img src="../_static/images/logo/github-logo-32px.png"/>View source on GitHub
             </a>
         </td>
         <td>
-            <a target="_blank" href="https://raw.githubusercontent.com/voxel51/fiftyone/blob/develop/docs/source/{{ env.doc2path(env.docname, base=None) }}" download>
+            <a target="_blank" href="https://gitcdn.link/repo/voxel51/fiftyone/%s/docs/source/{{ env.doc2path(env.docname, base=None) }}" download>
                 <img src="../_static/images/logo/download-logo-32px.png"/>Download notebook
             </a>
         </td>
     </table>
 
-"""
+""" % (
+    ref,
+    ref,
+    ref,
+)
 
 # Path to the redirects file, relative to `source/`
 redirects_file = "redirects"

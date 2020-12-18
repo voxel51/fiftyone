@@ -614,6 +614,7 @@ a.with-right-arrow,
   display: -webkit-box;
   display: -ms-flexbox;
   display: flex;
+  color: #6c6c6d;
 }
 
 .fo-notebook-links img {
