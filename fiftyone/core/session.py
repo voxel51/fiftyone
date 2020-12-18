@@ -78,7 +78,15 @@ call `session.wait()` to keep the session (and the script) alive.
 """
 
 
-def launch_app(dataset=None, view=None, port=5151, remote=False, desktop=None):
+def launch_app(
+    dataset=None,
+    view=None,
+    port=5151,
+    remote=False,
+    desktop=None,
+    auto=True,
+    height=800,
+):
     """Launches the FiftyOne App.
 
     Only one app instance can be opened at a time. If this method is
@@ -95,6 +103,11 @@ def launch_app(dataset=None, view=None, port=5151, remote=False, desktop=None):
         desktop (None): whether to launch the App in the browser (False) or as
             a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
             used. Not applicable to notebook contexts (e.g., Jupyter and Colab)
+        auto (True): whether to automatically show a new App window
+            whenever the state of the session is updated. Only applicable
+            in notebook contexts
+        height (800): a height, in pixels, for the App. Only applicable in
+            notebook contexts
 
     Raises:
         VaueError: if ``desktop`` is ``True`` but the desktop App package is
@@ -117,7 +130,13 @@ def launch_app(dataset=None, view=None, port=5151, remote=False, desktop=None):
     close_app()
 
     _session = Session(
-        dataset=dataset, view=view, port=port, remote=remote, desktop=desktop
+        dataset=dataset,
+        view=view,
+        port=port,
+        remote=remote,
+        desktop=desktop,
+        auto=auto,
+        height=height,
     )
 
     if _session.remote:
@@ -148,6 +167,9 @@ def _update_state(func):
         result = func(self, *args, **kwargs)
         self.state.datasets = fod.list_datasets()
         self._update_state()
+        if self._context != focx._NONE and self._auto:
+            self.show()
+
         return result
 
     return wrapper
@@ -193,6 +215,11 @@ class Session(foc.HasClient):
         desktop (None): whether to launch the App in the browser (False) or as
             a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
             used. Not applicable to notebook contexts (e.g., Jupyter and Colab)
+        auto (True): whether to automatically show a new App window
+            whenever the state of the session is updated. Only applicable
+            in notebook contexts
+        height (800): a height, in pixels, for the App. Only applicable in
+            notebook contexts
     """
 
     _HC_NAMESPACE = "state"
@@ -200,7 +227,14 @@ class Session(foc.HasClient):
     _HC_ATTR_TYPE = StateDescription
 
     def __init__(
-        self, dataset=None, view=None, port=5151, remote=False, desktop=None
+        self,
+        dataset=None,
+        view=None,
+        port=5151,
+        remote=False,
+        desktop=None,
+        auto=True,
+        height=800,
     ):
         self._context = focx._get_context()
         self._port = port
@@ -209,6 +243,8 @@ class Session(foc.HasClient):
         self._get_time = time.perf_counter
         self._WAIT_INSTRUCTIONS = _WAIT_INSTRUCTIONS
         self._disable_wait_warning = False
+        self._auto = auto
+        self._height = height
 
         global _server_services  # pylint: disable=global-statement
         if port not in _server_services:
@@ -255,6 +291,8 @@ class Session(foc.HasClient):
                 self._app_service = fos.AppService(server_port=port)
             else:
                 self.open()
+        elif self._context != focx._NONE and self._auto:
+            self.show(self._height)
         elif self._desktop:
             raise ValueError(
                 "Cannot open a Desktop App instance from a notebook. Use "
