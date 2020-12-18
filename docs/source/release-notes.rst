@@ -35,7 +35,7 @@ CLI
 ^^^
 - Added a :ref:`fiftyone zoo models <cli-fiftyone-zoo-models>` command that
   provides access to the model zoo
-- **(Breaking change)** moved the dataset zoo commands to
+- Moved the dataset zoo commands to
   :ref:`fiftyone zoo datasets <cli-fiftyone-zoo-datasets>` (previously they
   were at ``fiftyone zoo``)
 - Added a ``--desktop`` flag to commands that launch the App that enables
