@@ -71,7 +71,7 @@ jobs:
         env:
           REF: ${{ github.ref }}
         run: |
-          if [[ $RELEASE_TAG =~ ^refs\/tags\/.*$ ]]; then
+          if [[ $REF =~ ^refs\/tags\/.*$ ]]; then
              echo "FO_DOCS_VERSION_REF=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/v/")" >> $GITHUB_ENV
           elif [[ $REF =~ ^refs\/head\/.*$ ]]; then
              echo "FO_DOCS_VERSION_REF=$(echo "${{ github.ref }}" | sed "s/^refs\/head\//")" >> $GITHUB_ENV
