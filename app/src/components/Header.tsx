@@ -345,7 +345,8 @@ const TshirtForm = () => {
         formState.email &&
         formState.helping?.length &&
         formState.improve?.length
-      )
+      ) ||
+      submitted
     ) {
       return;
     }
