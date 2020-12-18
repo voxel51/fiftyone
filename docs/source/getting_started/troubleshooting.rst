@@ -6,6 +6,13 @@ Install Troubleshooting
 
 .. default-role:: code
 
+.. note::
+
+    Most errors raised by pip when installing can be fixed by upgrading
+    these packages:
+
+    `pip install --upgrade pip setuptools wheel`
+
 This page lists common issues encountered when installing FiftyOne and possible
 solutions. If you encounter an issue that this page doesn't help you resolve,
 feel free to

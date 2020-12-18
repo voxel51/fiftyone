@@ -44,8 +44,15 @@ are using, then run:
 
 .. code-block:: shell
 
-   pip install --upgrade pip setuptools wheel
    pip install fiftyone
+
+.. note::
+
+    If you run into install errors, you should upgrade these packages and try
+    again:
+
+    `pip install --upgrade pip setuptools wheel`
+
 
 This will install FiftyOne and all of its dependencies, which may take some
 time. Once this has completed, you can verify that FiftyOne is installed in
