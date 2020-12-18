@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import styled from "styled-components";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { Checkbox } from "@material-ui/core";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import AuosizeInput from "react-input-autosize";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
@@ -10,11 +11,12 @@ import ErrorMessage from "./ViewBar/ViewStage/ErrorMessage";
 import { getMatch, computeBestMatchString } from "./ViewBar/ViewStage/utils";
 import { packageMessage } from "../utils/socket";
 import { animated, useSpring } from "react-spring";
+import { ThemeContext } from "styled-components";
 
 import ExternalLink from "./ExternalLink";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { Email, GitHub, MenuBook } from "@material-ui/icons";
+import { GitHub, MenuBook } from "@material-ui/icons";
 import { Slack } from "../icons";
 import SearchResults from "./ViewBar/ViewStage/SearchResults";
 
@@ -311,18 +313,26 @@ const Input = styled.input`
   }
 
   &::placeholder {
-    color: ${({ theme }) => theme.font};
+    color: ${({ theme }) => theme.fontDark};
     font-weight: bold;
   }
 `;
 
 const TshirtForm = () => {
-  const [formState, setFormState] = useState({});
+  const [formState, setFormState] = useState({
+    email: "",
+    helping: "",
+    improving: "",
+    tshirt: false,
+  });
   const [submitText, setSubmitText] = useState("Submit");
+  const [submitted, setSubmitted] = useRecoilState(atoms.feedbackSubmitted);
   const portalId = 4972700;
   const formId = "b56682f6-c297-4cea-95c4-9e05a00528af";
   const postUrl = `https://api.hsforms.com/submissions/v3/integration/submit/${portalId}/${formId}`;
   const appContext = useRecoilValue(selectors.appContext);
+  const closeFeedback = useRecoilValue(atoms.closeFeedback);
+  const theme = useContext(ThemeContext);
 
   const setFormValue = (name) => (e) =>
     setFormState({
@@ -330,12 +340,25 @@ const TshirtForm = () => {
       [name]: e.target.value,
     });
   const submit = () => {
-    if (!(formState.helping?.length && formState.improve?.length)) {
+    if (
+      !(
+        formState.email &&
+        formState.helping?.length &&
+        formState.improve?.length
+      )
+    ) {
       return;
     }
     setSubmitText("Submitting...");
     const headers = new Headers();
     headers.append("Content-Type", "application/json");
+    const finalize = () => {
+      setSubmitText("Submitted. Thank you!");
+      setSubmitted(true);
+      window.localStorage.setItem("fiftyone-feedback", "submitted");
+      setTimeout(() => closeFeedback && closeFeedback.close(), 2000);
+    };
+
     fetch(postUrl, {
       method: "post",
       headers,
@@ -356,6 +379,10 @@ const TshirtForm = () => {
             value: formState.improve,
           },
           {
+            name: "zoom_call_and_t_shirt",
+            value: formState.tshirt,
+          },
+          {
             name: "app_context",
             value: appContext,
           },
@@ -370,15 +397,17 @@ const TshirtForm = () => {
         return response.json();
       })
       .then(() => {
-        setSubmitText("Submitted. Thank you!");
+        finalize();
       })
-      .catch(() => setSubmitText("Something went wrong"));
+      .catch((e) => {
+        setSubmitText("Something went wrong");
+      });
   };
   return (
     <>
       <Input
         key="email"
-        placeholder={"Email (optional)"}
+        placeholder={"Email"}
         type="email"
         value={formState.email ?? ""}
         onChange={setFormValue("email")}
@@ -397,7 +426,29 @@ const TshirtForm = () => {
         maxlength={40}
         onChange={setFormValue("improve")}
       />
-      <Button key="submit" onClick={submit} style={{ marginBottom: "1rem" }}>
+      <div style={{ display: "flex" }}>
+        <Checkbox
+          checked={formState.tshirt}
+          onChange={() =>
+            setFormState({ ...formState, tshirt: !formState.tshirt })
+          }
+          style={{
+            color: theme.brand,
+            paddingLeft: 0,
+            paddingTop: 0,
+          }}
+        />
+        <p style={{ color: theme.fontDark, marginTop: 4 }}>
+          I'm open to a Zoom call and a free t-shirt!
+        </p>
+      </div>
+      <Button
+        key="submit"
+        onClick={submit}
+        style={{
+          marginBottom: "1rem",
+        }}
+      >
         {submitText}
       </Button>
     </>
@@ -511,6 +562,21 @@ const Header = ({ addNotification }) => {
   const [appFeedbackIsOpen, setAppFeedbackIsOpen] = useRecoilState(
     atoms.appFeedbackIsOpen
   );
+  const feedbackSubmitted = useRecoilValue(atoms.feedbackSubmitted);
+  const setCloseFeedback = useSetRecoilState(atoms.closeFeedback);
+  const tshirtText = (
+    <span>
+      We are super dedicated to making FiftyOne as valuable as possible for our
+      users. If you're willing to jump on a quick Zoom call with us to chat
+      about your use cases in more detail, let us know by checking the box
+      below. We'll <i>mail you a free t-shirt</i> for your trouble :)
+    </span>
+  );
+
+  const showFeedbackButton =
+    window.localStorage.getItem("fiftyone-feedback") !== "submitted" &&
+    !feedbackSubmitted;
+
   return (
     <HeaderDiv>
       <LeftDiv>
@@ -527,21 +593,25 @@ const Header = ({ addNotification }) => {
       </LeftDiv>
       <RightDiv>
         <IconWrapper>
-          <Button
-            onClick={() => {
-              !appFeedbackIsOpen && setAppFeedbackIsOpen(true);
-              !appFeedbackIsOpen &&
-                addNotification.current({
-                  kind: "We'd love your feedback",
-                  message:
-                    "We are super focused on making FiftyOne as valuable as possible to our users. If you provide your email in this form, we'll get in touch with you about mailing a free T-shirt to you. While supplies last!",
-                  children: [<TshirtForm key="t-shirt" />],
-                });
-            }}
-            style={{ marginRight: "0.5rem" }}
-          >
-            Want a free T-shirt?
-          </Button>
+          {showFeedbackButton && (
+            <Button
+              onClick={() => {
+                if (!appFeedbackIsOpen) {
+                  setAppFeedbackIsOpen(true);
+                  const r = addNotification.current({
+                    kind: "We'd love your feedback",
+                    message: tshirtText,
+                    children: [<TshirtForm key="t-shirt" />],
+                    onClose: () => setAppFeedbackIsOpen(false),
+                  });
+                  setCloseFeedback({ close: r });
+                }
+              }}
+              style={{ marginRight: "0.5rem" }}
+            >
+              Want a free t-shirt?
+            </Button>
+          )}
           <ExternalLink
             title="Slack"
             href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg"

@@ -122,7 +122,6 @@ const NotificationHub = ({
   const [refMap] = useState(() => new WeakMap());
   const [cancelMap] = useState(() => new WeakMap());
   const [items, setItems] = useState([]);
-  const setAppFeedbackIsOpen = useSetRecoilState(atoms.appFeedbackIsOpen);
   const transitions = useTransition(items, (item) => item.key, {
     from: { opacity: 0, height: 0, life: "100%" },
     enter: (item) => async (next) => {
@@ -133,7 +132,7 @@ const NotificationHub = ({
       await next({ life: "0%" });
       await next({ opacity: 0 });
       await next({ height: 0 });
-      setAppFeedbackIsOpen(false);
+      item.onClose && item.onClose();
     },
     onRest: (item) =>
       setItems((state) => state.filter((i) => i.key !== item.key)),
@@ -150,9 +149,14 @@ const NotificationHub = ({
 
   useEffect(
     () =>
-      void children((msg) =>
-        setItems((state) => [...state, { key: id++, ...msg }])
-      ),
+      children((msg) => {
+        const item = { key: id++, ...msg };
+        setItems((state) => [...state, item]);
+        return () => {
+          item.onClose && item.onClose();
+          cancelMap.has(item) && cancelMap.get(item)();
+        };
+      }),
     []
   );
 
