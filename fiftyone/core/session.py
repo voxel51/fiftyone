@@ -292,7 +292,7 @@ class Session(foc.HasClient):
             else:
                 self.open()
         elif self._context != focx._NONE and self._auto:
-            self.show(self._height)
+            self.show()
         elif self._desktop:
             raise ValueError(
                 "Cannot open a Desktop App instance from a notebook. Use "
@@ -358,6 +358,10 @@ class Session(foc.HasClient):
         if self.dataset is not None:
             self.dataset._doc.reload()
         self.state.datasets = fod.list_datasets()
+        if height != 800:
+            pass
+        elif self._height != 800:
+            height = self._height
         display(self._port, height=height)
 
     @property
