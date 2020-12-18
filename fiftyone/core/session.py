@@ -143,9 +143,9 @@ def launch_app(
         logger.info(_REMOTE_INSTRUCTIONS.strip().format(_session.server_port))
     elif _session.desktop:
         logger.info(_APP_DESKTOP_MESSAGE.strip())
-    elif focx._get_context() != focx._NONE:
+    elif focx._get_context() != focx._NONE and not auto:
         logger.info(_APP_NOTEBOOK_MESSAGE.strip())
-    else:
+    elif focx._get_context() == focx._NONE:
         logger.info(_APP_WEB_MESSAGE.strip().format(port))
 
     return _session
@@ -167,9 +167,6 @@ def _update_state(func):
         result = func(self, *args, **kwargs)
         self.state.datasets = fod.list_datasets()
         self._update_state()
-        if self._context != focx._NONE and self._auto:
-            self.show()
-
         return result
 
     return wrapper
@@ -291,8 +288,6 @@ class Session(foc.HasClient):
                 self._app_service = fos.AppService(server_port=port)
             else:
                 self.open()
-        elif self._context != focx._NONE and self._auto:
-            self.show()
         elif self._desktop:
             raise ValueError(
                 "Cannot open a Desktop App instance from a notebook. Use "
@@ -384,6 +379,7 @@ class Session(foc.HasClient):
         self.state.selected = []
         self.state.selected_objects = []
         self.state.filters = {}
+        self._auto_show()
 
     @_update_state
     def clear_dataset(self):
@@ -415,6 +411,7 @@ class Session(foc.HasClient):
         self.state.selected = []
         self.state.selected_objects = []
         self.state.filters = {}
+        self._auto_show()
 
     @_update_state
     def clear_view(self):
@@ -422,6 +419,7 @@ class Session(foc.HasClient):
         session, if any.
         """
         self.state.view = None
+        self._auto_show()
 
     @property
     def selected(self):
@@ -462,7 +460,7 @@ class Session(foc.HasClient):
     def refresh(self):
         """Refreshes the App, reloading the current dataset/view."""
         # @todo achieve same behavoir as if CTRL + R were pressed in the App
-        pass
+        self._auto_show()
 
     def open(self):
         """Opens the session.
@@ -555,6 +553,10 @@ class Session(foc.HasClient):
     def _update_state(self):
         # see fiftyone.core.client if you would like to understand this
         self.state = self.state
+
+    def _auto_show(self):
+        if self._context != focx._NONE and self._auto:
+            self.show()
 
 
 def display(port=None, height=None):
