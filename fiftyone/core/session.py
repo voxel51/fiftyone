@@ -315,7 +315,8 @@ class Session(foc.HasClient):
             RuntimeError: if this command is run in a non-notebook environment
         """
         if self._context == focx._NONE:
-            raise RuntimeError("Cannot show App in a non-notebook environment")
+            logger.warn("`Session.show()` is a no-op outside of notebooks")
+            return
         if self.dataset is not None:
             self.dataset._doc.reload()
         self.state.datasets = fod.list_datasets()
