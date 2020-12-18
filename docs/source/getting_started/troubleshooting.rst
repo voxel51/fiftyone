@@ -104,7 +104,6 @@ To resolve this, install IPython in your active virtual environment (see the
 
     pip install ipython
 
-
 .. _troubleshooting-mongodb-linux:
 
 MongoDB compatibility issues on Linux
@@ -126,7 +125,6 @@ your distribution, you may encounter an error similar to:
 
 To resolve this, you can install an alternative package on some distributions,
 detailed below, or install a compatible version of MongoDB system-wide.
-
 
 .. _alternative-builds:
 
