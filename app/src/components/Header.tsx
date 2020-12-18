@@ -12,6 +12,7 @@ import { getMatch, computeBestMatchString } from "./ViewBar/ViewStage/utils";
 import { packageMessage } from "../utils/socket";
 import { animated, useSpring } from "react-spring";
 import { ThemeContext } from "styled-components";
+import { Close } from "@material-ui/icons";
 
 import ExternalLink from "./ExternalLink";
 import * as atoms from "../recoil/atoms";
@@ -125,6 +126,11 @@ const Button = styled.div`
   text-align: center;
   padding: 0 0.5rem;
   border: 1px solid ${({ theme }) => theme.brand};
+
+  &.disabled {
+    border: 1px solid ${({ theme }) => theme.fontDark};
+    cursor: default;
+  }
 `;
 
 const selectorMachine = Machine({
@@ -339,15 +345,14 @@ const TshirtForm = () => {
       ...formState,
       [name]: e.target.value,
     });
+  const disabled =
+    !(
+      formState.email &&
+      formState.helping?.length &&
+      formState.improve?.length
+    ) || submitted;
   const submit = () => {
-    if (
-      !(
-        formState.email &&
-        formState.helping?.length &&
-        formState.improve?.length
-      ) ||
-      submitted
-    ) {
+    if (disabled) {
       return;
     }
     setSubmitText("Submitting...");
@@ -449,6 +454,7 @@ const TshirtForm = () => {
         style={{
           marginBottom: "1rem",
         }}
+        className={disabled ? "disabled" : ""}
       >
         {submitText}
       </Button>
@@ -563,8 +569,10 @@ const Header = ({ addNotification }) => {
   const [appFeedbackIsOpen, setAppFeedbackIsOpen] = useRecoilState(
     atoms.appFeedbackIsOpen
   );
-  const feedbackSubmitted = useRecoilValue(atoms.feedbackSubmitted);
-  const setCloseFeedback = useSetRecoilState(atoms.closeFeedback);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useRecoilState(
+    atoms.feedbackSubmitted
+  );
+  const [closeFeedback, setCloseFeedback] = useRecoilState(atoms.closeFeedback);
   const tshirtText = (
     <span>
       We are super dedicated to making FiftyOne as valuable as possible for our
@@ -573,6 +581,7 @@ const Header = ({ addNotification }) => {
       below. We'll <i>mail you a free t-shirt</i> for your trouble :)
     </span>
   );
+  const theme = useContext(ThemeContext);
 
   const showFeedbackButton =
     window.localStorage.getItem("fiftyone-feedback") !== "submitted" &&
@@ -599,18 +608,33 @@ const Header = ({ addNotification }) => {
               onClick={() => {
                 if (!appFeedbackIsOpen) {
                   setAppFeedbackIsOpen(true);
-                  const r = addNotification.current({
+                  const callback = addNotification.current({
                     kind: "We'd love your feedback",
                     message: tshirtText,
                     children: [<TshirtForm key="t-shirt" />],
                     onClose: () => setAppFeedbackIsOpen(false),
                   });
-                  setCloseFeedback({ close: r });
+                  setCloseFeedback({ close: callback });
                 }
               }}
-              style={{ marginRight: "0.5rem" }}
+              style={{ marginRight: "0.5rem", position: "relative" }}
             >
               Want a free t-shirt?
+              <Close
+                style={{
+                  position: "absolute",
+                  top: "-0.8rem",
+                  right: "-0.8rem",
+                  borderRadius: "1rem",
+                  background: theme.brand,
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFeedbackSubmitted(true);
+                  window.localStorage.setItem("fiftyone-feedback", "submitted");
+                  closeFeedback && closeFeedback.close();
+                }}
+              />
             </Button>
           )}
           <ExternalLink

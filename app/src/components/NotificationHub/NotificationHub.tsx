@@ -3,10 +3,6 @@ import { animated, useTransition } from "react-spring";
 import styled, { ThemeContext } from "styled-components";
 import { Close } from "@material-ui/icons";
 
-import { useSetRecoilState } from "recoil";
-
-import * as atoms from "../../recoil/atoms";
-
 const Container = styled("div")`
   position: fixed;
   z-index: 10000;
