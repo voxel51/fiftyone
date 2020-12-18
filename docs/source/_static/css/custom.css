@@ -585,7 +585,7 @@ a.with-right-arrow,
 
 .fo-notebook-links {
   display: inline-block;
-  margin: 0 0 0.5rem 0 !important;
+  margin: 0 0 1rem 0 !important;
 }
 
 .fo-notebook-links tr {
