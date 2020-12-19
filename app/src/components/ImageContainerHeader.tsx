@@ -16,6 +16,7 @@ const Wrapper = styled.div`
   background: ${({ theme }) => theme.background};
   display: flex;
   margin-bottom: 0.5rem;
+  flex-shrink: 0;
 
   ${DropdownHandle.Body} {
     width: 264px;
