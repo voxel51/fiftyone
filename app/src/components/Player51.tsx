@@ -107,7 +107,6 @@ export default ({
         },
       });
     } catch (e) {
-      console.log(e)
       setError(`This file type (${mimetype}) is not supported.`);
     }
   });
