@@ -117,8 +117,8 @@ session = fo.launch_app(dataset, port=${port})
 };
 
 const SetupContainer = styled.div`
-  max-width: 800px;
-  padding: 3rem 0;
+  max-width: 840px;
+  padding: 3rem 1rem;
   margin: auto;
 `;
 

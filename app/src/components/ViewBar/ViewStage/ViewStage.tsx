@@ -58,7 +58,6 @@ const ViewStageButtonContainer = animated(styled.div`
   border-radius: 3px;
   position: relative;
   margin: 0.5rem;
-  height: 1rem;
   cursor: pointer;
   font-weight: bold;
 
