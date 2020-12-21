@@ -17,7 +17,13 @@ _EXIT = os.environ.get("FIFTYONE_EXIT", False)
 
 
 def quickstart(
-    interactive=True, video=False, port=5151, remote=False, desktop=None
+    interactive=True,
+    video=False,
+    port=5151,
+    remote=False,
+    desktop=None,
+    auto=True,
+    height=800,
 ):
     """Runs the FiftyOne quickstart.
 
@@ -33,7 +39,12 @@ def quickstart(
             should not be attempted
         desktop (None): whether to launch the App in the browser (False) or as
             a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
-            used. Not applicable to notebook contexts (e.g., Jupyter and Colab)
+            used. Not applicable to notebook contexts
+        auto (True): whether to automatically show a new App window
+            whenever the state of the session is updated. Only applicable
+            in notebook contexts
+        height (800): a height, in pixels, for the App. Only applicable in
+            notebook contexts
 
     Returns:
         If ``interactive`` is ``True``, a tuple is returned containing:
@@ -45,12 +56,14 @@ def quickstart(
         If ``interactive`` is ``False``, ``None`` is returned
     """
     if video:
-        return _video_quickstart(interactive, port, remote, desktop)
+        return _video_quickstart(
+            interactive, port, remote, desktop, auto, height
+        )
     else:
-        return _quickstart(interactive, port, remote, desktop)
+        return _quickstart(interactive, port, remote, desktop, auto, height)
 
 
-def _quickstart(interactive, port, remote, desktop):
+def _quickstart(interactive, port, remote, desktop, auto, height):
     if interactive:
         print(_QUICKSTART_GUIDE % (_FILTER_DETECTIONS_IN_PYTHON))
     else:
@@ -58,7 +71,12 @@ def _quickstart(interactive, port, remote, desktop):
 
     dataset = fozd.load_zoo_dataset("quickstart")
     session = fos.launch_app(
-        dataset=dataset, port=port, remote=remote, desktop=desktop
+        dataset=dataset,
+        port=port,
+        remote=remote,
+        desktop=desktop,
+        auto=auto,
+        height=height,
     )
 
     if interactive:
@@ -70,12 +88,17 @@ def _quickstart(interactive, port, remote, desktop):
     return None
 
 
-def _video_quickstart(interactive, port, remote, desktop):
+def _video_quickstart(interactive, port, remote, desktop, auto, height):
     print(_VIDEO_QUICKSTART_GUIDE)
 
     dataset = fozd.load_zoo_dataset("quickstart-video")
     session = fos.launch_app(
-        dataset=dataset, port=port, remote=remote, desktop=desktop
+        dataset=dataset,
+        port=port,
+        remote=remote,
+        desktop=desktop,
+        auto=auto,
+        height=height,
     )
 
     if interactive:

@@ -209,7 +209,7 @@ const ClassInput = styled.input`
   box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
   border-radius: 2px;
   font-size: 14px;
-  line-height: 1.2rem;
+  height: 2.5rem;
   font-weight: bold;
   padding: 0.5rem;
   margin-bottom: 0.5rem;

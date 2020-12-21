@@ -7,9 +7,7 @@ Session class for interacting with the FiftyOne App.
 """
 from collections import defaultdict
 from functools import wraps
-import json
 import logging
-import random
 import time
 import webbrowser
 
@@ -78,11 +76,19 @@ call `session.wait()` to keep the session (and the script) alive.
 """
 
 
-def launch_app(dataset=None, view=None, port=5151, remote=False, desktop=None):
+def launch_app(
+    dataset=None,
+    view=None,
+    port=5151,
+    remote=False,
+    desktop=None,
+    auto=True,
+    height=800,
+):
     """Launches the FiftyOne App.
 
-    Only one app instance can be opened at a time. If this method is
-    called when another app exists, the existing app is closed.
+    Note that only one App instance can be opened at a time. If this method is
+    called when another App exists, the existing App will be closed.
 
     Args:
         dataset (None): an optional :class:`fiftyone.core.dataset.Dataset` to
@@ -94,11 +100,12 @@ def launch_app(dataset=None, view=None, port=5151, remote=False, desktop=None):
             should not be attempted
         desktop (None): whether to launch the App in the browser (False) or as
             a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
-            used. Not applicable to notebook contexts (e.g., Jupyter and Colab)
-
-    Raises:
-        VaueError: if ``desktop`` is ``True`` but the desktop App package is
-            not installed
+            used. Not applicable to notebook contexts
+        auto (True): whether to automatically show a new App window
+            whenever the state of the session is updated. Only applicable
+            in notebook contexts
+        height (800): a height, in pixels, for the App. Only applicable in
+            notebook contexts
 
     Returns:
         a :class:`Session`
@@ -117,7 +124,13 @@ def launch_app(dataset=None, view=None, port=5151, remote=False, desktop=None):
     close_app()
 
     _session = Session(
-        dataset=dataset, view=view, port=port, remote=remote, desktop=desktop
+        dataset=dataset,
+        view=view,
+        port=port,
+        remote=remote,
+        desktop=desktop,
+        auto=auto,
+        height=height,
     )
 
     if _session.remote:
@@ -125,7 +138,8 @@ def launch_app(dataset=None, view=None, port=5151, remote=False, desktop=None):
     elif _session.desktop:
         logger.info(_APP_DESKTOP_MESSAGE.strip())
     elif focx._get_context() != focx._NONE:
-        logger.info(_APP_NOTEBOOK_MESSAGE.strip())
+        if not auto:
+            logger.info(_APP_NOTEBOOK_MESSAGE.strip())
     else:
         logger.info(_APP_WEB_MESSAGE.strip().format(port))
 
@@ -134,7 +148,8 @@ def launch_app(dataset=None, view=None, port=5151, remote=False, desktop=None):
 
 def close_app():
     """Closes the FiftyOne App, if necessary.
-    If no app is currently open, this method has no effect.
+
+    If no App is currently open, this method has no effect.
     """
     global _session  # pylint: disable=global-statement
     if _session is not None:
@@ -148,6 +163,7 @@ def _update_state(func):
         result = func(self, *args, **kwargs)
         self.state.datasets = fod.list_datasets()
         self._update_state()
+        self._auto_show()
         return result
 
     return wrapper
@@ -158,10 +174,10 @@ class Session(foc.HasClient):
 
     **Basic Usage**
 
-    -   Use :func:`launch_app` to launch the app and retrieve its
+    -   Use :func:`launch_app` to launch the App and retrieve its
         corresponding :class:`Session` instance.
 
-    -   To open a dataset in the app, simply set the
+    -   To open a dataset in the App, simply set the
         :attr:`Session.dataset` property of the session to your
         :class:`fiftyone.core.dataset.Dataset`.
 
@@ -173,13 +189,13 @@ class Session(foc.HasClient):
         outside of the App
 
     -   Use :attr:`Session.selected` to retrieve the IDs of the currently
-        selected samples in the app.
+        selected samples in the App.
 
     -   Use :func:`Session.close` and :func:`Session.open` to temporarily close
-        and reopen the app without creating a new :class:`Session`
+        and reopen the App without creating a new :class:`Session`
         instance.
 
-    -   Use :func:`close_app` to programmatically close the app and
+    -   Use :func:`close_app` to programmatically close the App and
         terminate the session.
 
     Args:
@@ -193,6 +209,11 @@ class Session(foc.HasClient):
         desktop (None): whether to launch the App in the browser (False) or as
             a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
             used. Not applicable to notebook contexts (e.g., Jupyter and Colab)
+        auto (True): whether to automatically show a new App window
+            whenever the state of the session is updated. Only applicable
+            in notebook contexts
+        height (800): a height, in pixels, for the App. Only applicable in
+            notebook contexts
     """
 
     _HC_NAMESPACE = "state"
@@ -200,7 +221,14 @@ class Session(foc.HasClient):
     _HC_ATTR_TYPE = StateDescription
 
     def __init__(
-        self, dataset=None, view=None, port=5151, remote=False, desktop=None
+        self,
+        dataset=None,
+        view=None,
+        port=5151,
+        remote=False,
+        desktop=None,
+        auto=True,
+        height=800,
     ):
         self._context = focx._get_context()
         self._port = port
@@ -209,6 +237,8 @@ class Session(foc.HasClient):
         self._get_time = time.perf_counter
         self._WAIT_INSTRUCTIONS = _WAIT_INSTRUCTIONS
         self._disable_wait_warning = False
+        self._auto = auto
+        self._height = height
 
         global _server_services  # pylint: disable=global-statement
         if port not in _server_services:
@@ -220,11 +250,6 @@ class Session(foc.HasClient):
         _subscribed_sessions[port].add(self)
         super().__init__(self._port)
 
-        if view is not None:
-            self.view = view
-        elif dataset is not None:
-            self.dataset = dataset
-
         if desktop is None:
             if self._context == focx._NONE:
                 desktop = fo.config.desktop_app
@@ -232,34 +257,41 @@ class Session(foc.HasClient):
                 desktop = False
 
         self._desktop = desktop
-
         self._start_time = self._get_time()
 
-        if self._remote and (self._context != focx._NONE):
-            raise ValueError("Remote sessions cannot be run from a notebook")
+        if view is not None:
+            self.view = view
+        elif dataset is not None:
+            self.dataset = dataset
 
         if self._remote:
+            if self._context != focx._NONE:
+                raise ValueError(
+                    "Remote sessions cannot be run from a notebook"
+                )
+
+            return
+
+        if self._desktop:
+            if self._context == focx._COLAB:
+                raise ValueError(
+                    "Cannot open a Desktop App instance from a Colab notebook"
+                )
+
+            try:
+                import fiftyone.desktop  # pylint: disable=unused-import
+            except ImportError as e:
+                if not focn.DEV_INSTALL:
+                    raise ValueError(
+                        "You must install the 'fiftyone-desktop' package "
+                        "in order to launch a desktop App instance"
+                    ) from e
+
+            self._app_service = fos.AppService(server_port=port)
             return
 
         if self._context == focx._NONE:
-            if self._desktop:
-                try:
-                    import fiftyone.desktop
-                except ImportError as e:
-                    if not focn.DEV_INSTALL:
-                        raise ValueError(
-                            "You must install the 'fiftyone-desktop' package in "
-                            "order to launch a desktop App instance"
-                        ) from e
-
-                self._app_service = fos.AppService(server_port=port)
-            else:
-                self.open()
-        elif self._desktop:
-            raise ValueError(
-                "Cannot open a Desktop App instance from a notebook. Use "
-                "`session.show()` to open the App."
-            )
+            self.open()
 
     def __repr__(self):
         return self.summary()
@@ -292,6 +324,11 @@ class Session(foc.HasClient):
         super().__del__()
 
     @property
+    def server_port(self):
+        """The server port for the session."""
+        return self._port
+
+    @property
     def remote(self):
         """Whether the session is remote."""
         return self._remote
@@ -301,25 +338,19 @@ class Session(foc.HasClient):
         """Whether the session is connected to a desktop App."""
         return self._desktop
 
-    @_update_state
-    def show(self, height=800):
-        """Opens the App in the output of the current notebook cell.
+    @property
+    def url(self):
+        """The URL of the session."""
+        if self._context == focx._COLAB:
+            # pylint: disable=no-name-in-module,import-error
+            from google.colab.output import eval_js
 
-        Only usable when working in notebook (e.g., Jupyter or Colab)
-        environments.
+            url = eval_js(
+                "google.colab.kernel.proxyPort(%d)" % self.server_port
+            )
+            return "%s?fiftyoneColab=true" % url
 
-        Args:
-            height (800): a height, in pixels, for the App
-
-        Raises:
-            RuntimeError: if this command is run in a non-notebook environment
-        """
-        if self._context == focx._NONE:
-            raise RuntimeError("Cannot show App in a non-notebook environment")
-        if self.dataset is not None:
-            self.dataset._doc.reload()
-        self.state.datasets = fod.list_datasets()
-        display(self._port, height=height)
+        return "http://localhost:%d" % self.server_port
 
     @property
     def dataset(self):
@@ -334,7 +365,7 @@ class Session(foc.HasClient):
     @_update_state
     def dataset(self, dataset):
         if dataset is not None:
-            dataset._doc.reload()
+            dataset._reload()
 
         self.state.dataset = dataset
         self.state.view = None
@@ -350,11 +381,6 @@ class Session(foc.HasClient):
         self.state.dataset = None
 
     @property
-    def server_port(self):
-        """The server port for the session."""
-        return self._port
-
-    @property
     def view(self):
         """The :class:`fiftyone.core.view.DatasetView` connected to the
         session, or ``None`` if no view is connected.
@@ -367,7 +393,7 @@ class Session(foc.HasClient):
         self.state.view = view
         if view is not None:
             self.state.dataset = self.state.view._dataset
-            self.state.dataset._doc.reload()
+            self.state.dataset._reload()
 
         self.state.selected = []
         self.state.selected_objects = []
@@ -379,6 +405,11 @@ class Session(foc.HasClient):
         session, if any.
         """
         self.state.view = None
+
+    @_update_state
+    def refresh(self):
+        """Refreshes the App, reloading the current dataset/view."""
+        pass
 
     @property
     def selected(self):
@@ -400,57 +431,6 @@ class Session(foc.HasClient):
                 applicable to video samples)
         """
         return list(self.state.selected_objects)
-
-    @property
-    def url(self):
-        """The URL of the session."""
-        if self._context == focx._COLAB:
-            # pylint: disable=no-name-in-module,import-error
-            from google.colab.output import eval_js
-
-            url = eval_js(
-                "google.colab.kernel.proxyPort(%d)" % self.server_port
-            )
-            return "%s?fiftyoneColab=true" % url
-
-        return "http://localhost:%d" % self.server_port
-
-    @_update_state
-    def refresh(self):
-        """Refreshes the App, reloading the current dataset/view."""
-        # @todo achieve same behavoir as if CTRL + R were pressed in the App
-        pass
-
-    def open(self):
-        """Opens the session.
-
-        This opens the App, if necessary.
-        """
-        if self._remote:
-            raise ValueError("Remote sessions cannot launch the FiftyOne App")
-
-        if self._context != focx._NONE:
-            raise ValueError(
-                "Notebook sessions cannot launch the FiftyOne App; use "
-                "`session.show()` instead"
-            )
-
-        if not self._desktop:
-            webbrowser.open(self.url, new=2)
-            return
-
-        self._app_service.start()
-
-    def close(self):
-        """Closes the session.
-
-        This terminates the FiftyOne Desktop App, if necessary.
-        """
-        if self._remote:
-            return
-
-        self.state.close = True
-        self._update_state()
 
     def summary(self):
         """Returns a string summary of the session.
@@ -478,7 +458,16 @@ class Session(foc.HasClient):
                 ]
             )
 
-        elements.extend(["URL:              %s" % self.url])
+        if self._remote:
+            type_ = "remote"
+        elif self._context == focx._COLAB:
+            type_ = "colab"
+        elif self._desktop:
+            type_ = "desktop"
+        else:
+            type_ = self.url
+
+        elements.append("Session type:     %s" % type_)
 
         if self.view:
             elements.extend(
@@ -487,10 +476,75 @@ class Session(foc.HasClient):
 
         return "\n".join(elements)
 
-    def wait(self):
-        """Waits for the session to be closed by the user.
+    def open(self):
+        """Opens the App, if necessary.
 
-        For local sessions, this will wait until the app is closed by the user.
+        The behavior of this method depends on your context:
+
+        -   Notebooks: calls :meth:`Session.show` to open an App window in the
+            output of your current cell
+        -   Desktop: the desktop App will be opened, if necessary
+        -   Other (non-remote): the App will be opened in a new browser tab
+        """
+        if self._remote:
+            raise ValueError("Remote sessions cannot launch the App")
+
+        if self._context != focx._NONE:
+            self.show()
+            return
+
+        if self._desktop:
+            self._app_service.start()
+            return
+
+        self.open_tab()
+
+    def open_tab(self):
+        """Opens the App in a new tab of your default browser.
+
+        This method can be called from Jupyter notebooks and from desktop App
+        mode to override the default behavior of :meth:`Session.open`.
+
+        This method cannot be called on remote sessions or from Colab
+        notebooks.
+        """
+        if self._remote:
+            raise ValueError("Remote sessions cannot launch the App")
+
+        if self._context == focx._COLAB:
+            raise ValueError(
+                "Cannot open the App in a dedicated tab from Colab notebooks"
+            )
+
+        webbrowser.open(self.url, new=2)
+
+    def show(self, height=None):
+        """Opens the App in the output of the current notebook cell.
+
+        This method has no effect in non-notebook contexts.
+
+        Args:
+            height (None): a height, in pixels, for the App
+        """
+        if (self._context == focx._NONE) or self._desktop:
+            return
+
+        if self.dataset is not None:
+            self.dataset._reload()
+
+        self.state.datasets = fod.list_datasets()
+        self._update_state()
+
+        if height is None:
+            height = self._height
+
+        display(self._port, height=height)
+
+    def wait(self):
+        """Blocks execution until the session is closed by the user.
+
+        For local sessions, this will wait until the App is closed by the user.
+
         For remote sessions, this will wait until the server shuts down, which
         typically requires interrupting the calling process with Ctrl-C.
         """
@@ -507,39 +561,37 @@ class Session(foc.HasClient):
             self._disable_wait_warning = True
             raise
 
-    # PRIVATE #################################################################
+    def close(self):
+        """Closes the session and terminates the App, if necessary."""
+        if self._remote:
+            return
+
+        self.state.close = True
+        self._update_state()
 
     def _update_state(self):
         # see fiftyone.core.client if you would like to understand this
         self.state = self.state
 
+    def _auto_show(self):
+        if self._auto and (self._context != focx._NONE):
+            self.show()
+
 
 def display(port=None, height=None):
-    """Display a running FiftyOne instance.
+    """Displays a running FiftyOne instance.
 
     Args:
-      port: The port on which the FiftyOne server is listening, as an
-        `int`.
-      height: The height of the frame into which to render the FiftyOne
-        UI, as an `int` number of pixels, or `None` to use a default value
-        (currently 800).
-    """
-    _display(port=port, height=height)
-
-
-def _display(port=None, height=None):
-    """Internal version of `display`.
-
-    Args:
-      port: As with `display`.
-      height: As with `display`.
+        port (None): the integer port on which the FiftyOne server is listening
+        height (None): the height of the frame into which to render the
+            FiftyOne UI, in pixels. If None, a default value is used
     """
     if height is None:
         height = 800
 
-    fn = {focx._COLAB: _display_colab, focx._IPYTHON: _display_ipython}[
-        focx._get_context()
-    ]
+    funcs = {focx._COLAB: _display_colab, focx._IPYTHON: _display_ipython}
+    fn = funcs[focx._get_context()]
+
     return fn(port, height)
 
 

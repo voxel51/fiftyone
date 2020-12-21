@@ -10,15 +10,6 @@ import uuid
 import fiftyone.constants as foc
 
 
-_TRACKING_NOTE = """
-FiftyOne tracks UUID based import and App usage by default. We are a small team
-looking to grow, and usage data is critical to that end.
-
-To disable tracking, use the `FIFTYONE_DO_NOT_TRACK=true` environment
-variable.
-"""
-
-
 def _get_user_id():
     """Gets the UUID of the current user
 
@@ -39,6 +30,5 @@ def _get_user_id():
         with open(uid_path, "w") as f:
             f.write(str(uuid.uuid4()))
 
-        print(_TRACKING_NOTE)
         return read(), True
     return read(), False

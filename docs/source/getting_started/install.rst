@@ -46,7 +46,6 @@ are using, then run:
 
 .. code-block:: shell
 
-   pip install --upgrade pip setuptools wheel
    pip install fiftyone
 
 This will install FiftyOne and all of its dependencies, which may take some
@@ -115,6 +114,16 @@ Troubleshooting
 
 If you run into any installation issues, review the suggestions below or check
 the :ref:`troubleshooting page <troubleshooting>` for more details.
+
+.. note::
+
+    Most installation issues can be fixed by upgrading some packages and then
+    rerunning the FiftyOne install:
+
+    .. code-block:: shell
+
+        pip install --upgrade pip setuptools wheel
+        pip install fiftyone
 
 **Mac users:**
 

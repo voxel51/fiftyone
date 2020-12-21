@@ -24,7 +24,7 @@ const Body = styled.div`
   ${scrollbarStyles}
   padding: 0;
   flex-grow: 1;
-  display: flex:
+  display: flex;
   flex-direction: column;
 `;
 
@@ -76,7 +76,7 @@ function App() {
       onReset={() => setReset(true)}
       resetKeys={[reset]}
     >
-      <Header />
+      <Header addNotification={addNotification} />
       <Body style={{ overflowY: connected ? "hidden" : "scroll" }}>
         {connected && (
           <Suspense fallback={Setup}>

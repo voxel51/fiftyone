@@ -14,7 +14,7 @@ import * as selectors from "../recoil/selectors";
 const SidebarColumn = styled.div`
   ${scrollbarStyles}
   z-index: 400;
-  height: 100%;
+  max-height: 100%;
   overflow-y: scroll;
   width 256px;
 `;

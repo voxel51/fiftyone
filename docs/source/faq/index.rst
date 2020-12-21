@@ -37,45 +37,17 @@ FiftyOne in all common local, remote, cloud, and notebook environments.
 
 .. _faq-notebook-support:
 
-Can I run this in a notebook?
------------------------------
+Can I use FiftyOne in a notebook?
+---------------------------------
 
 Yes! FiftyOne supports both `Jupyter Notebooks <https://jupyter.org>`_ and
 `Google Colab Notebooks <https://colab.research.google.com>`_.
 
-All the usual FiftyOne commands can be run in notebook environments. The only
-difference is that you call
-:meth:`session.show() <fiftyone.core.session.Session.show>` to open the App
-in the output of a cell. For example, a typical workflow is:
+All the usual FiftyOne commands can be run in notebook environments, and the
+App will launch/update in the output of your notebook cells!
 
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-
-    # Load a FiftyOne dataset
-    dataset = fo.load_dataset(...)
-
-    # Create an App session
-    session = fo.Session(dataset)
-
-.. code-block:: python
-    :linenos:
-
-    # Open the App in this cell's output
-    session.show()
-
-.. code-block:: python
-    :linenos:
-
-    # Updates the App in the prior cell's output
-    session.view = dataset.take(10)
-
-.. note::
-
-    If you run :meth:`session.show() <fiftyone.core.session.Session.show>` in
-    multiple cells, only the most recent instance will be connected to your
-    |Session| object.
+Check out the :ref:`notebook environment guide <notebooks>` for more
+information about running FiftyOne in notebooks.
 
 .. _faq-remote-server-data:
 
