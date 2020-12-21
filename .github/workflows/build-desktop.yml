@@ -43,13 +43,6 @@ jobs:
         working-directory: package/desktop
         run: |
           pip install --no-deps -e .
-      - name: Validate version
-        run: |
-          SETUP_VERSION="$(pip list --format json | jq -r '.[] | select(.name=="fiftyone-desktop") | .version')"
-          TAG_VERSION="$(echo "${{ github.ref }}" | sed 's/^refs\/tags\/desktop-v//' | sed 's/-rc\..*//')"
-          echo "setup.py version: ${SETUP_VERSION}"
-          echo "tagged version: ${TAG_VERSION}"
-          test "${SETUP_VERSION}" = "${TAG_VERSION}"
       - name: Fetch dependency cache
         uses: actions/cache@v2
         with:
