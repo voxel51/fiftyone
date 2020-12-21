@@ -6,8 +6,8 @@
 #   from/broken/page2.rst to/existing.page2.rst
 #
 
-# Introduced in v0.6.7
-user_guide/dataset_creation/zoo.rst  user_guide/dataset_zoo.rst
+# Introduced in v0.7
+user_guide/dataset_creation/zoo.rst  user_guide/dataset_zoo/index.rst
 
 # Introduced in v0.4
 user_guide/dataset_creation/common_datasets.rst  user_guide/dataset_creation/datasets.rst

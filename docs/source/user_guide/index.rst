@@ -68,13 +68,13 @@ on your data quickly and easily.
     :header: FiftyOne Dataset Zoo
     :description: A collection of popular datasets that you can load into FiftyOne with a single command.
     :button_text: Check out the Dataset Zoo
-    :button_link: dataset_zoo.html
+    :button_link: dataset_zoo/index.html
 
 .. customcalloutitem::
     :header: FiftyOne Model Zoo
     :description: A collection of popular models that you can apply to your FiftyOne datasets.
     :button_text: Check out the Model Zoo
-    :button_link: model_zoo.html
+    :button_link: model_zoo/index.html
 
 .. customcalloutitem::
     :header: FiftyOne Brain
@@ -109,7 +109,7 @@ on your data quickly and easily.
     Using aggregations <using_aggregations>
     Exporting datasets <export_datasets>
     Drawing labels on samples <draw_labels>
-    FiftyOne Dataset Zoo <dataset_zoo>
-    FiftyOne Model Zoo <model_zoo>
+    FiftyOne Dataset Zoo <dataset_zoo/index>
+    FiftyOne Model Zoo <model_zoo/index>
     FiftyOne Brain <brain>
     Configuring FiftyOne <config>
