@@ -15,14 +15,14 @@ or `contact us on Slack <https://join.slack.com/t/fiftyone-users/shared_invite/z
 .. note::
 
     Most installation issues can be fixed by upgrading some packages and then
-    rerunning the FiftyOne install.
-
-    Try this first before reading on:
+    rerunning the FiftyOne install. So, try this first before reading on:
 
     .. code-block:: shell
 
         pip install --upgrade pip setuptools wheel
         pip install fiftyone
+
+.. _troubleshooting-pip:
 
 Python/pip incompatibilities
 ----------------------------
@@ -86,15 +86,17 @@ version. To fix this, upgrade pip. See the
 `opencv-python FAQ <https://pypi.org/project/opencv-python-headless/>`_ for more
 details.
 
+.. _troubleshooting-video:
 
-Videos do no load in the App
-----------------------------
+Videos do not load in the App
+-----------------------------
 
-To work video datasets in the App or otherwise, `ffmpeg` needs to be installed:
+You will need to install `FFmpeg <https://ffmpeg.org>`_ in order to work with
+video datasets:
 
 .. tabs::
 
-  .. group-tab:: Linux (APT)
+  .. group-tab:: Linux
 
     .. code-block:: shell
 
@@ -111,6 +113,8 @@ To work video datasets in the App or otherwise, `ffmpeg` needs to be installed:
     You can download a Windows build from
     `here <https://ffmpeg.org/download.html#build-windows>`_. Unzip it and be
     sure to add it to your path.
+
+.. _troubleshooting-ipython:
 
 IPython installation
 --------------------

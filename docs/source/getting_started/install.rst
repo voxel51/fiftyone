@@ -179,6 +179,12 @@ packages via `pip` in your virtual environment:
 For your own work, FiftyOne does not strictly require any of these packages, so
 you can install only what you need.
 
+.. note::
+
+    You must install `FFmpeg <https://ffmpeg.org>`_ in order to work with video
+    datasets in FiftyOne. See :ref:`this page <troubleshooting-video>` for
+    installation instructions.
+
 .. _upgrading-fiftyone:
 
 Upgrading FiftyOne

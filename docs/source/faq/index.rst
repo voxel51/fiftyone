@@ -115,6 +115,12 @@ If you try to view a video with an unsupported codec in the App, you will be
 prompted to use the :func:`reencode_videos() <fiftyone.utils.video.reencode_videos>`
 utility method to reencode the source video so it is viewable in the App.
 
+.. note::
+
+    You must install `FFmpeg <https://ffmpeg.org>`_ in order to work with video
+    datasets in FiftyOne. See :ref:`this page <troubleshooting-video>` for
+    installation instructions.
+
 .. _faq-supported-os:
 
 What operating systems does FiftyOne support?
