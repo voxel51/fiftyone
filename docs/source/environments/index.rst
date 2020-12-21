@@ -171,9 +171,9 @@ will be automatically opened in the output of the current cell.
     Only the most recently opened App window will be active, i.e, synced with
     the ``session`` object.
 
-    You can reactive an older cell by clicking `Activate` in the App window,
-    or by running the cell again. This will deactivate the previously active
-    cell.
+    You can reactivate an older cell by clicking the link in the deactivated
+    App window, or by running the cell again. This will deactivate the
+    previously active cell.
 
 Manually controlling App instances
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -194,8 +194,7 @@ When ``auto=False`` is provided, a new App window is created only when you call
 .. code-block:: python
     :linenos:
 
-    # Update the session's view
-    # No App window is created
+    # Update the session's view; no App windows is created
     session.view = dataset.take(10)
 
     # In another cell
@@ -212,9 +211,9 @@ it will stay in-sync with your session whenever it is active.
     multiple cells, only the most recently created App window will be active,
     i.e., synced with the ``session`` object.
 
-    You can reactive an older cell by clicking `Activate` in the App window,
-    or by running the cell again. This will deactivate the previously active
-    cell.
+    You can reactivate an older cell by clicking the link in the deactivated
+    App window, or by running the cell again. This will deactivate the
+    previously active cell.
 
 Opening the App in a dedicated tab
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
