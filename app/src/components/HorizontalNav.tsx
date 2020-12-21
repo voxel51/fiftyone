@@ -127,7 +127,6 @@ const HorizontalNav = ({ entries }: Props) => {
   });
 
   const height = expanded ? openedHeight : closedHeight;
-  const resizable = expanded;
 
   return (
     <Container

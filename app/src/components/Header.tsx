@@ -53,6 +53,7 @@ const DatasetInput = styled(AuosizeInput)`
 const HeaderDiv = styled.div`
   background-color: ${({ theme }) => theme.backgroundDark};
   display: flex;
+  flex-shrink: 0;
   justify-content: space-between;
   width: 100%;
   border-bottom: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;

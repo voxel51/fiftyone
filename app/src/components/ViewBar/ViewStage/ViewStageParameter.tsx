@@ -34,7 +34,7 @@ const ViewStageParameterInput = animated(styled(AutosizeInput)`
     border: none;
     padding: 0.5rem 0 0.5rem 0.5rem;
     color: ${({ theme }) => theme.font};
-    line-height: 1rem;
+    height: 1rem;
     font-weight: bold;
   }
 

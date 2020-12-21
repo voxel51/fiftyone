@@ -24,7 +24,7 @@ const Body = styled.div`
   ${scrollbarStyles}
   padding: 0;
   flex-grow: 1;
-  display: flex:
+  display: flex;
   flex-direction: column;
 `;
 
