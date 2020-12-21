@@ -74,6 +74,32 @@ version. To fix this, upgrade pip. See the
 `opencv-python FAQ <https://pypi.org/project/opencv-python-headless/>`_ for more
 details.
 
+
+Videos do no load in the App
+----------------------------
+
+To work video datasets in the App or otherwise, `ffmpeg` needs to be installed:
+
+.. tabs::
+
+  .. group-tab:: Linux (APT)
+
+    .. code-block:: shell
+
+        sudo apt install -y ffmpeg
+
+  .. group-tab:: macOS
+
+    .. code-block:: python
+
+        brew install ffmpeg
+
+  .. group-tab:: Windows
+
+    You can download a Windows build from
+    `here <https://ffmpeg.org/download.html#build-windows>`_. Unzip it and be
+    sure to add it to your path.
+
 IPython installation
 --------------------
 
