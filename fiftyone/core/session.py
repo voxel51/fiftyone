@@ -249,11 +249,6 @@ class Session(foc.HasClient):
         _subscribed_sessions[port].add(self)
         super().__init__(self._port)
 
-        if view is not None:
-            self.view = view
-        elif dataset is not None:
-            self.dataset = dataset
-
         if desktop is None:
             if self._context == focx._NONE:
                 desktop = fo.config.desktop_app
@@ -261,8 +256,12 @@ class Session(foc.HasClient):
                 desktop = False
 
         self._desktop = desktop
-
         self._start_time = self._get_time()
+
+        if view is not None:
+            self.view = view
+        elif dataset is not None:
+            self.dataset = dataset
 
         if self._remote:
             if self._context != focx._NONE:
