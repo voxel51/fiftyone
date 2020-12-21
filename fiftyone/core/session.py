@@ -7,9 +7,7 @@ Session class for interacting with the FiftyOne App.
 """
 from collections import defaultdict
 from functools import wraps
-import json
 import logging
-import random
 import time
 import webbrowser
 
@@ -266,31 +264,34 @@ class Session(foc.HasClient):
 
         self._start_time = self._get_time()
 
-        if self._remote and (self._context != focx._NONE):
-            raise ValueError("Remote sessions cannot be run from a notebook")
-
         if self._remote:
+            if self._context != focx._NONE:
+                raise ValueError(
+                    "Remote sessions cannot be run from a notebook"
+                )
+
+            return
+
+        if self._desktop:
+            if self._context == focx._COLAB:
+                raise ValueError(
+                    "Cannot open a Desktop App instance from a Colab notebook"
+                )
+
+            try:
+                import fiftyone.desktop  # pylint: disable=unused-import
+            except ImportError as e:
+                if not focn.DEV_INSTALL:
+                    raise ValueError(
+                        "You must install the 'fiftyone-desktop' package "
+                        "in order to launch a desktop App instance"
+                    ) from e
+
+            self._app_service = fos.AppService(server_port=port)
             return
 
         if self._context == focx._NONE:
-            if self._desktop:
-                try:
-                    import fiftyone.desktop
-                except ImportError as e:
-                    if not focn.DEV_INSTALL:
-                        raise ValueError(
-                            "You must install the 'fiftyone-desktop' package "
-                            "in order to launch a desktop App instance"
-                        ) from e
-
-                self._app_service = fos.AppService(server_port=port)
-            else:
-                self.open()
-        elif self._desktop:
-            raise ValueError(
-                "Cannot open a Desktop App instance from a notebook. Use "
-                "`session.show()` to open the App."
-            )
+            self.open()
 
     def __repr__(self):
         return self.summary()
@@ -476,19 +477,46 @@ class Session(foc.HasClient):
         return "\n".join(elements)
 
     def open(self):
-        """Opens the App, if necessary."""
+        """Opens the App, if necessary.
+
+        The behavior of this method depends on your context:
+
+        -   Notebooks: calls :meth:`Session.show` to open an App window in the
+            output of your current cell
+        -   Desktop: the desktop App will be opened, if necessary
+        -   Other (non-remote): the App will be opened in a new browser tab
+        """
         if self._remote:
-            raise ValueError("Remote sessions cannot launch the FiftyOne App")
+            raise ValueError("Remote sessions cannot launch the App")
 
         if self._context != focx._NONE:
             self.show()
             return
 
-        if not self._desktop:
-            webbrowser.open(self.url, new=2)
+        if self._desktop:
+            self._app_service.start()
             return
 
-        self._app_service.start()
+        self.open_tab()
+
+    def open_tab(self):
+        """Opens the App in a new tab of your default browser.
+
+        This method can be called from Jupyter notebooks and from desktop App
+        mode to override the default behavior of :meth:`Session.open`.
+
+        This method cannot be called on remote sessions or from Colab
+        notebooks.
+        """
+        if self._remote:
+            raise ValueError("Remote sessions cannot launch the App")
+
+        if self._context == focx._COLAB:
+            raise ValueError(
+                "Cannot open the App in a dedicated tab from Colab notebooks"
+            )
+
+        webbrowser.open(self.url, new=2)
 
     def show(self, height=None):
         """Opens the App in the output of the current notebook cell.
@@ -498,7 +526,7 @@ class Session(foc.HasClient):
         Args:
             height (None): a height, in pixels, for the App
         """
-        if self._context == focx._NONE:
+        if (self._context == focx._NONE) or self._desktop:
             return
 
         if self.dataset is not None:
