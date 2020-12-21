@@ -46,14 +46,6 @@ are using, then run:
 
    pip install fiftyone
 
-.. note::
-
-    If you run into install errors, you should upgrade these packages and try
-    again:
-
-    `pip install --upgrade pip setuptools wheel`
-
-
 This will install FiftyOne and all of its dependencies, which may take some
 time. Once this has completed, you can verify that FiftyOne is installed in
 your virtual environment by importing the `fiftyone` package:
@@ -120,6 +112,16 @@ Troubleshooting
 
 If you run into any installation issues, review the suggestions below or check
 the :ref:`troubleshooting page <troubleshooting>` for more details.
+
+.. note::
+
+    Most installation issues can be fixed by upgrading some packages and then
+    rerunning the FiftyOne install:
+
+    .. code-block:: shell
+
+        pip install --upgrade pip setuptools wheel
+        pip install fiftyone
 
 **Mac users:**
 

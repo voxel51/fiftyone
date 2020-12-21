@@ -6,18 +6,23 @@ Install Troubleshooting
 
 .. default-role:: code
 
-.. note::
-
-    Most errors raised by pip when installing can be fixed by upgrading
-    these packages:
-
-    `pip install --upgrade pip setuptools wheel`
-
 This page lists common issues encountered when installing FiftyOne and possible
 solutions. If you encounter an issue that this page doesn't help you resolve,
 feel free to
 `open an issue on GitHub <https://github.com/voxel51/fiftyone/issues/new?labels=bug&template=installation_issue_template.md&title=%5BSETUP-BUG%5D>`_
 or `contact us on Slack <https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg>`_.
+
+.. note::
+
+    Most installation issues can be fixed by upgrading some packages and then
+    rerunning the FiftyOne install.
+
+    Try this first before reading on:
+
+    .. code-block:: shell
+
+        pip install --upgrade pip setuptools wheel
+        pip install fiftyone
 
 Python/pip incompatibilities
 ----------------------------

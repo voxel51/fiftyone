@@ -137,9 +137,10 @@ def launch_app(
         logger.info(_REMOTE_INSTRUCTIONS.strip().format(_session.server_port))
     elif _session.desktop:
         logger.info(_APP_DESKTOP_MESSAGE.strip())
-    elif focx._get_context() != focx._NONE and not auto:
-        logger.info(_APP_NOTEBOOK_MESSAGE.strip())
-    elif focx._get_context() == focx._NONE:
+    elif focx._get_context() != focx._NONE:
+        if not auto:
+            logger.info(_APP_NOTEBOOK_MESSAGE.strip())
+    else:
         logger.info(_APP_WEB_MESSAGE.strip().format(port))
 
     return _session
