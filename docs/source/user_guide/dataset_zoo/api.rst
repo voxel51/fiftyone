@@ -561,8 +561,8 @@ become accessible to you when you update your FiftyOne package.
     `the GitHub repository <https://github.com/voxel51/fiftyone>`_.
 
 You can also add your own datasets to your local dataset zoo, enabling you to
-work with these datasets via the ``fiftyone.zoo`` package and the CLI using the
-same syntax that you would with publicly available datasets.
+work with these datasets via the :mod:`fiftyone.zoo.datasets` package and the
+CLI using the same syntax that you would with publicly available datasets.
 
 To add dataset(s) to your local zoo, you simply write a JSON manifest file in
 the format below to tell FiftyOne about the dataset. For example, the manifest
