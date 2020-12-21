@@ -137,7 +137,9 @@ To use FiftyOne in a notebook, simply install `fiftyone` via `pip`:
 
     !pip install fiftyone
 
-and load datasets and create sessions as usual:
+and load datasets as usual. When you run
+:meth:`launch_app() <fiftyone.core.session.launch_app>` in a notebook, an App
+window will be opened in the output of your current cell.
 
 .. code-block:: python
     :linenos:
@@ -146,36 +148,108 @@ and load datasets and create sessions as usual:
 
     dataset = fo.Dataset(name="my_dataset")
 
-    session = fo.Session(dataset)
+    # Creates a session and opens the App in the output of the cell
+    session = fo.launch_app(dataset)
 
-Anytime you would like visualize your data in the App, simply call the
-:meth:`session.show() <fiftyone.core.session.Session.show>`, and an App
-instance will be created in the cell's output:
+This App window will remain connected to your ``session`` object, so if you
+modify your session and refresh/reactivate this App winodw, it will sync with
+the current state of the ``session``.
+
+Any time you update the state of your ``session`` object; e.g., by setting
+:meth:`session.dataset <fiftyone.core.session.Session.dataset>` or
+:meth:`session.view <fiftyone.core.session.Session.view>`, a new App window
+will be automatically opened in the output of the current cell.
 
 .. code-block:: python
-   :linenos:
+    :linenos:
 
-   # Opens an App instance in the cell's output
-   session.show()
-
-This App instance will remain connected to your `session` object, so it will
-continue to update as you work in the notebook.
+    # A new App window will be created in the output of this cell
+    session.view = dataset.take(10)
 
 .. note::
 
-    If you run :meth:`session.show() <fiftyone.core.session.Session.show>` in
-    multiple cells, only the most recently run cell will be active (connected
-    to the `session` object).
+    Only the most recently opened App window will be active, i.e, synced with
+    the ``session`` object.
 
     You can reactive an older cell by clicking `Activate` in the App window,
     or by running the cell again. This will deactivate the previously active
     cell.
 
+Manually controlling App instances
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you would like to manually control when new App instances are created in a
+notebook, you can pass the ``auto=False`` flag to
+:meth:`launch_app() <fiftyone.core.session.launch_app>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Creates a session but does not open an App instance
+    session = fo.launch_app(dataset, auto=False)
+
+When ``auto=False`` is provided, a new App window is created only when you call
+:meth:`session.show() <fiftyone.core.session.Session.show>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Update the session's view
+    # No App window is created
+    session.view = dataset.take(10)
+
+    # In another cell
+
+    # Now open an App window in the cell's output
+    session.show()
+
+As usual, this App window will remain connected to your ``session`` object, so
+it will stay in-sync with your session whenever it is active.
+
 .. note::
 
-    You can open any App instance in a dedicated browser window or tab by
-    retrieving the URL of the session from its
-    :attr:`session.url <fiftyone.core.session.Session.url>` property.
+    If you run :meth:`session.show() <fiftyone.core.session.Session.show>` in
+    multiple cells, only the most recently created App window will be active,
+    i.e., synced with the ``session`` object.
+
+    You can reactive an older cell by clicking `Activate` in the App window,
+    or by running the cell again. This will deactivate the previously active
+    cell.
+
+Opening the App in a dedicated tab
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you are working from a Jupyter notebook, you can open the App in a separate
+browser tab rather than working with it in cell output(s).
+
+To do this, pass the ``auto=False`` flag to
+:meth:`launch_app() <fiftyone.core.session.launch_app>` when you launch the
+App and then call
+:meth:`session.open_tab() <fiftyone.core.session.Session.open_tab>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Launch the App in a dedicated browser tab
+    session = fo.launch_app(dataset, auto=False)
+    session.open_tab()
+
+Using the desktop App
+~~~~~~~~~~~~~~~~~~~~~
+
+If you are working from a Jupyter notebook on a machine with the
+:ref:`FiftyOne Desktop App <installing-fiftyone-desktop>` installed, you can
+optionally open the desktop App rather than working with the App in cell
+output(s).
+
+To do this, pass the ``desktop=True`` flag to
+:meth:`launch_app() <fiftyone.core.session.launch_app>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Creates a session and launches the desktop App
+    session = fo.launch_app(dataset, desktop=True)
 
 .. _cloud-storage:
 
