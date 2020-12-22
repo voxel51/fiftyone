@@ -467,7 +467,7 @@ def _raise_bdd100k_error(msg):
         + "\n\n"
         + "You must download the source files for BDD100k dataset manually."
         + "\n\n"
-        + "Run `fiftyone zoo info bdd100k` for more information"
+        + "Run `fiftyone zoo datasets info bdd100k` for more information"
     )
 
 

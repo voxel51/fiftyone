@@ -3,6 +3,89 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.7.0:
+
+FiftyOne 0.7.0
+--------------
+*Released December 21, 2020*
+
+App
+^^^
+- Added web browser support, which is now the default settting
+- Added :ref:`IPython notebook support <notebooks>`, e.g. Jupyter and Google
+  Colab
+- The desktop App can now be installed as an
+  :ref:`optional dependency <installing-fiftyone-desktop>`
+- Fixed an issue where the App would freeze after filtering labels in the
+  Fields Sidebar
+
+Core
+^^^^
+- Added a :ref:`Model Zoo <model-zoo>` containing over 70 pretrained detection,
+  classification, and segmentation models that you can use to generate
+  predictions and embeddings
+- Moved project hosting to `pypi.org <https://pypi.org/project/fiftyone/>`_
+- Added the :meth:`Session.show() <fiftyone.core.session.Session.show>` method
+  for displaying the App in IPython notebook cells
+- Added an in-App feedback form. We would love to hear from you!
+- Added Python 3.9 support
+- Removed Python 3.5 support
+
+CLI
+^^^
+- Added a :ref:`fiftyone zoo models <cli-fiftyone-zoo-models>` command that
+  provides access to the model zoo
+- Moved the dataset zoo commands to
+  :ref:`fiftyone zoo datasets <cli-fiftyone-zoo-datasets>` (previously they
+  were at ``fiftyone zoo``)
+- Added a ``--desktop`` flag to commands that launch the App that enables
+  launching the App as a desktop App (rather than a web browser)
+
+.. _release-notes-v0.6.6:
+
+FiftyOne 0.6.6
+--------------
+*Released November 25, 2020*
+
+App
+^^^
+- Added a dropdown in the header to change datasets from the App
+- Added the ability to refresh the App by clicking the FiftyOne logo in the
+  header
+- Fixed a bug the caused numeric (scalar field) range sliders to disappear
+  after changing the default value
+- Fixed a bug that prevented the App state from updating appropriately after
+  applying label filters
+
+Core
+^^^^
+- Fixed a bug that prevented COCO datasets from being loaded from the
+  :ref:`Dataset Zoo <dataset-zoo>`
+
+Brain
+^^^^^
+- Added support for computing mistakenness for detections when using
+  :meth:`compute_mistakenness() <fiftyone.brain.compute_mistakenness>`
+
+CLI
+^^^
+- Added support for customizing the local port when connecting to the App via
+  the CLI
+- Added an `--ssh-key` option to the `app connect` command
+
+Docs
+^^^^
+- Added :doc:`a recipe </recipes/detection_mistakenness>` demonstrating how to
+  use :meth:`compute_mistakenness() <fiftyone.brain.compute_mistakenness>` to
+  detect label mistakes for detection datasets
+- Added questions to the :ref:`FAQ page <faq>`:
+   - :ref:`Can I launch multiple App instances on a machine? <faq-multiple-apps>`
+   - :ref:`Can I connect multiple App instances to the same dataset? <faq-multiple-sessions-same-dataset>`
+   - :ref:`Can I connect to multiple remote sessions? <faq-connect-to-multiple-remote-sessions>`
+   - :ref:`Can I serve multiple remote sessions from a machine? <faq-serve-multiple-remote-sessions>`
+
+.. _release-notes-v0.6.5:
+
 FiftyOne 0.6.5
 --------------
 *Released November 16, 2020*
@@ -65,10 +148,12 @@ Utils
 
 Docs
 ^^^^
-- Added an :doc:`Environments </environments>` page which outlines how
+- Added an :ref:`Environments page <environments>` that outlines how
   to work with local, remote, and cloud data. Includes instructions for AWS,
-  Azure, Google Cloud.
-- Add an :doc:`FAQ </faq>` page
+  Google Cloud, and Azure
+- Add an :ref:`FAQ page <faq>`
+
+.. _release-notes-v0.6.4:
 
 FiftyOne 0.6.4
 --------------
@@ -119,6 +204,8 @@ Brain
   by a set of detections/polylines when using
   :meth:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`
 
+.. _release-notes-v0.6.3:
+
 FiftyOne 0.6.3
 --------------
 *Released October 20, 2020*
@@ -150,6 +237,8 @@ Utils
 - Added a :meth:`reencode_videos() <fiftyone.utils.video.reencode_videos>`
   utility to re-encode the videos in a sample collection so that they are
   visualizable in the FiftyOne App
+
+.. _release-notes-v0.6.2:
 
 FiftyOne 0.6.2
 --------------
@@ -202,6 +291,8 @@ Brain
   :meth:`compute_hardness() <fiftyone.brain.compute_hardness>` now support
   multilabel classification tasks
 
+.. _release-notes-v0.6.1:
+
 FiftyOne 0.6.1
 --------------
 *Released October 7, 2020*
@@ -246,6 +337,8 @@ Documentation
 - Added a recipe for :doc:`merging datasets </recipes/merge_datasets>`
 - Fixed some table widths and other display issues
 
+.. _release-notes-v0.6.0:
+
 FiftyOne 0.6.0
 --------------
 *Released October 1, 2020*
@@ -274,6 +367,8 @@ Core
 - Added support for automatically creating database indexes when sorting by
   sample fields, for efficiency
 - Fixed issues with serializing vector fields and numpy arrays
+
+.. _release-notes-v0.5.6:
 
 FiftyOne 0.5.6
 --------------
@@ -304,6 +399,8 @@ Core
   :meth:`Dataset.rename_sample_field() <fiftyone.core.dataset.Dataset.rename_sample_field>`
   method for renaming sample fields of datasets
 
+.. _release-notes-v0.5.5:
+
 FiftyOne 0.5.5
 --------------
 *Released September 15, 2020*
@@ -327,6 +424,8 @@ Core
 ^^^^
 - Added support for :meth:`Session.wait() <fiftyone.core.session.Session.wait>`
   for remote sessions, to make starting a remote session from a script easier
+
+.. _release-notes-v0.5.4:
 
 FiftyOne 0.5.4
 --------------
@@ -354,6 +453,8 @@ Core
   expect |Detections| labels
 - Added support for importing/exporting supercategories for datasets in
   :ref:`COCO format <COCODetectionDataset-import>`
+
+.. _release-notes-v0.5.3:
 
 FiftyOne 0.5.3
 --------------
@@ -385,6 +486,8 @@ Core
   :meth:`shuffle() <fiftyone.core.collections.SampleCollection.shuffle>` view
   stages with random seeds to be regenerated when handing off between the App
   and Python shell
+
+.. _release-notes-v0.5.2:
 
 FiftyOne 0.5.2
 --------------
@@ -437,6 +540,8 @@ Docs
 - Refreshed all App-related media in the docs to reflect the new App design
   introduced in v0.5.0
 
+.. _release-notes-v0.5.1:
+
 FiftyOne 0.5.1
 --------------
 *Released August 18, 2020*
@@ -477,6 +582,8 @@ Documentation
   `Open Images Dataset <https://storage.googleapis.com/openimages/web/index.html>`_
   powered by FiftyOne
 
+.. _release-notes-v0.5.0:
+
 FiftyOne 0.5.0
 --------------
 *Released August 11, 2020*
@@ -509,6 +616,8 @@ Core
 - Upgraded the :meth:`take() <fiftyone.core.collections.SampleCollection.take>`
   view stage so that each instance of a view maintains a deterministic set of
   samples
+
+.. _release-notes-v0.4.1:
 
 FiftyOne 0.4.1
 --------------
@@ -543,6 +652,8 @@ Documentation
 - Improved layout of :doc:`tutorials </tutorials/index>`,
   :doc:`recipes </recipes/index>`, and :doc:`user guide </user_guide/index>`
   landing pages
+
+.. _release-notes-v0.4.0:
 
 FiftyOne 0.4.0
 --------------
@@ -579,6 +690,8 @@ Documentation
   :doc:`custom sample parsers </recipes/custom_parser>`
 - Added a :doc:`Configuring FiftyOne </user_guide/config>` page to the User
   Guide that explains how to customize your FiftyOne Config
+
+.. _release-notes-v0.3.0:
 
 FiftyOne 0.3.0
 --------------
@@ -619,6 +732,8 @@ CLI
   terminal with a `less`-like interface
 - Added `fiftyone datasets export` to export datasets in any available format
 
+.. _release-notes-v0.2.1:
+
 FiftyOne 0.2.1
 --------------
 *Released June 19, 2020*
@@ -634,6 +749,8 @@ CLI
 ^^^
 - Fixed an issue that could cause port forwarding to hang when initializing a
   remote session
+
+.. _release-notes-v0.2.0:
 
 FiftyOne 0.2.0
 --------------

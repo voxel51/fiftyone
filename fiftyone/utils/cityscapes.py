@@ -193,7 +193,7 @@ def _raise_cityscapes_error(msg):
         + "You must download the source files for the Cityscapes dataset "
         "manually."
         + "\n\n"
-        + "Run `fiftyone zoo info cityscapes` for more information"
+        + "Run `fiftyone zoo datasets info cityscapes` for more information"
     )
 
 

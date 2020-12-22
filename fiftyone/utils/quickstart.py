@@ -5,11 +5,26 @@ FiftyOne quickstart.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
+
+import fiftyone as fo
+import fiftyone.core.context as focx
 import fiftyone.core.session as fos
-import fiftyone.zoo as foz
+import fiftyone.zoo.datasets as fozd
 
 
-def quickstart(interactive=True, video=False, port=5151, remote=False):
+_EXIT = os.environ.get("FIFTYONE_EXIT", False)
+
+
+def quickstart(
+    interactive=True,
+    video=False,
+    port=5151,
+    remote=False,
+    desktop=None,
+    auto=True,
+    height=800,
+):
     """Runs the FiftyOne quickstart.
 
     This method loads an interesting dataset from the Dataset Zoo, launches the
@@ -20,7 +35,16 @@ def quickstart(interactive=True, video=False, port=5151, remote=False):
             return a session
         video (False): whether to launch a video dataset
         port (5151): the port number to serve the App
-        remote (False): whether to launch a remote session
+        remote (False): whether this is a remote session, and opening the App
+            should not be attempted
+        desktop (None): whether to launch the App in the browser (False) or as
+            a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
+            used. Not applicable to notebook contexts
+        auto (True): whether to automatically show a new App window
+            whenever the state of the session is updated. Only applicable
+            in notebook contexts
+        height (800): a height, in pixels, for the App. Only applicable in
+            notebook contexts
 
     Returns:
         If ``interactive`` is ``True``, a tuple is returned containing:
@@ -32,46 +56,67 @@ def quickstart(interactive=True, video=False, port=5151, remote=False):
         If ``interactive`` is ``False``, ``None`` is returned
     """
     if video:
-        return _video_quickstart(interactive, port, remote)
+        return _video_quickstart(
+            interactive, port, remote, desktop, auto, height
+        )
     else:
-        return _quickstart(interactive, port, remote)
+        return _quickstart(interactive, port, remote, desktop, auto, height)
 
 
-def _quickstart(interactive, port, remote):
-    dataset = foz.load_zoo_dataset("quickstart")
-    session = fos.launch_app(dataset=dataset, port=port, remote=remote)
+def _quickstart(interactive, port, remote, desktop, auto, height):
+    if interactive:
+        print(_QUICKSTART_GUIDE % (_FILTER_DETECTIONS_IN_PYTHON))
+    else:
+        print(_QUICKSTART_GUIDE % (""))
 
-    # @todo improve readability of stdout when launching remote sessions
+    dataset = fozd.load_zoo_dataset("quickstart")
+    session = fos.launch_app(
+        dataset=dataset,
+        port=port,
+        remote=remote,
+        desktop=desktop,
+        auto=auto,
+        height=height,
+    )
 
     if interactive:
-        print(_QUICKSTART_GUIDE % _FILTER_DETECTIONS_IN_PYTHON)
         return dataset, session
 
-    print(_QUICKSTART_GUIDE % "")
-    session.wait()
+    if not _EXIT:
+        session.wait()
+
     return None
 
 
-def _video_quickstart(interactive, port, remote):
-    dataset = foz.load_zoo_dataset("quickstart-video")
-    session = fos.launch_app(dataset=dataset, port=port, remote=remote)
+def _video_quickstart(interactive, port, remote, desktop, auto, height):
+    print(_VIDEO_QUICKSTART_GUIDE)
 
-    # @todo improve readability of stdout when launching remote sessions
+    dataset = fozd.load_zoo_dataset("quickstart-video")
+    session = fos.launch_app(
+        dataset=dataset,
+        port=port,
+        remote=remote,
+        desktop=desktop,
+        auto=auto,
+        height=height,
+    )
 
     if interactive:
-        print(_VIDEO_QUICKSTART_GUIDE)
         return dataset, session
 
-    print(_VIDEO_QUICKSTART_GUIDE)
-    session.wait()
+    if not _EXIT:
+        session.wait()
+
     return None
 
 
 _QUICKSTART_GUIDE = """
 Welcome to FiftyOne!
 
-This quickstart downloaded a dataset from the Dataset Zoo and opened it in the
-App. The dataset contains ground truth labels in a `ground_truth` field and
+This quickstart downloaded a dataset from the Dataset Zoo and created a
+session, which is a connection to an instance of the App.
+
+The dataset contains ground truth labels in a `ground_truth` field and
 predictions from an off-the-shelf detector in a `predictions` field. It also
 has a `uniqueness` field that indexes the dataset by visual uniqueness.
 
@@ -103,7 +148,8 @@ Here are some things you can do to explore the dataset:
 Resources:
 
 -   Using the App: https://voxel51.com/docs/fiftyone/user_guide/app.html
--   Dataset Zoo:   https://voxel51.com/docs/fiftyone/user_guide/dataset_creation/zoo.html
+-   Dataset Zoo:   https://voxel51.com/docs/fiftyone/user_guide/dataset_zoo/index.html
+
 """
 
 
@@ -133,8 +179,10 @@ _FILTER_DETECTIONS_IN_PYTHON = """
 _VIDEO_QUICKSTART_GUIDE = """
 Welcome to FiftyOne!
 
-This quickstart downloaded a dataset from the Dataset Zoo and opened it in the
-App. The dataset contains small video segments with dense object detections
+This quickstart downloaded a dataset from the Dataset Zoo and created a
+session, which is a connection to an instance of the App.
+
+The dataset contains small video segments with dense object detections
 generated by human annotators.
 
 Here are some things you can do to explore the dataset:
@@ -151,5 +199,6 @@ Here are some things you can do to explore the dataset:
 Resources:
 
 -   Using the App: https://voxel51.com/docs/fiftyone/user_guide/app.html
--   Dataset Zoo:   https://voxel51.com/docs/fiftyone/user_guide/dataset_creation/zoo.html
+-   Dataset Zoo:   https://voxel51.com/docs/fiftyone/user_guide/dataset_zoo/index.html
+
 """

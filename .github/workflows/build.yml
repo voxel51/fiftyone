@@ -22,6 +22,8 @@ jobs:
     steps:
       - name: Clone fiftyone
         uses: actions/checkout@v2
+        with:
+          submodules: true
       - name: Set up Python 3.8
         uses: actions/setup-python@v2
         with:
@@ -29,29 +31,41 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip setuptools wheel
-      - name: Build wheel
+      - name: Fetch app dependency cache
+        uses: actions/cache@v2
+        with:
+          path: app/node_modules
+          key: npm-${{ hashFiles('app/package.json') }}
+          restore-keys: |
+            npm-${{ hashFiles('app/package.json') }}
+            npm-
+      - name: Install app dependencies
+        working-directory: app
+        run: yarn
+      - name: Build web app
+        working-directory: app
+        run: yarn build-web
+      - name: Set environment
+        env:
+          RELEASE_TAG: ${{ github.ref }}
+        run: |
+          if [[ $RELEASE_TAG =~ ^refs\/tags\/v.*-rc\..*$ ]]; then
+             echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/v//")" >> $GITHUB_ENV
+          fi
+      - name: Build dist
         run: |
           python setup.py bdist_wheel
-      - name: Upload wheel
+      - name: Upload dist
         uses: actions/upload-artifact@v2
         with:
-          name: wheel
-          path: dist/*.whl
-  check:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Clone fiftyone
-        uses: actions/checkout@v1
-        with:
-          fetch-depth: 1
-      - name: Check tag
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          python .github/tools/check-setup-version.py setup.py $(echo ${{ github.ref }} | sed 's/refs\/tags\/v//')
+          name: dist
+          path: dist/
 
   test:
     runs-on: ${{ matrix.os }}
-    needs: [build, check]
+    needs: [build]
+    env:
+      FIFTYONE_DO_NOT_TRACK: true
     strategy:
       fail-fast: false
       matrix:
@@ -59,11 +73,11 @@ jobs:
           - ubuntu-18.04
           - windows-latest
         python-version:
-          - 3.5
+          - 3.6
           - 3.8
         exclude:
           - os: windows-latest
-            python-version: 3.5
+            python-version: 3.6
     defaults:
       run:
         shell: bash
@@ -90,56 +104,39 @@ jobs:
             pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements/*.txt') }}
             pip-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('setup.py') }}-
             pip-${{ runner.os }}-${{ matrix.python-version }}-
-      - name: Download fiftyone wheel
+      - name: Download fiftyone dist
         uses: actions/download-artifact@v2
         with:
-          name: wheel
+          name: dist
           path: downloads
       - name: Fetch DB cache
         uses: actions/cache@v2
         with:
           key: db-${{ runner.os }}-${{ hashFiles('package/db/setup.py') }}
           path: package/db/cache/
-      # install prod versions of fiftyone-db and fiftyone-gui from source - this
-      # allows the build to succeed if requirements for those packages have been
-      # bumped but they have not been published yet
+      # install test versions of fiftyone-db and fiftyone-desktop from source
       - name: Install fiftyone-db
         working-directory: package/db
         run: |
           python setup.py bdist_wheel
           pip install dist/*.whl
-      - name: Install fiftyone-gui stub
-        working-directory: package/gui
-        run: |
-          if [[ ${{ matrix.os }} = windows-* ]]; then
-            ext=exe
-          else
-            ext=AppImage
-          fi
-          cp -v "$(which true)" ./FiftyOne-stub.${ext}
-          export FIFTYONE_GUI_EXE_PATH=./FiftyOne-stub.${ext}
-          python setup.py bdist_wheel
-          pip install dist/*.whl
-      - name: Install fiftyone
-        env:
-          PIP_INDEX_URL: https://voxel51-ci@pypi.voxel51.com
-        run: |
-          pip install -e . fiftyone-brain
-      # upgrade voxel51-eta to the latest pre-release (can't use the same
-      # strategy as fiftyone-db/gui above because it's in a different repo).
-      # Release branches and tags are excluded to force a proper compatible ETA
-      # release to be published first.
-      - name: Upgrade ETA to pre-release
-        if: ${{ !startsWith(github.ref, 'refs/heads/rel') && !startsWith(github.ref, 'refs/tags/') }}
-        env:
-          PIP_INDEX_URL: https://voxel51-ci@pypi.voxel51.com
-        run: |
-          echo "Upgrading ETA because github.ref = ${{ github.ref }} (not a release)"
-          pip install -U "voxel51-eta>=0.dev0"
       - name: Install test dependencies (non-Windows)
         if: ${{ !startsWith(matrix.os, 'windows') }}
         run: |
           pip install pytest tensorflow tensorflow-datasets torch torchvision
+      - name: Install fiftyone
+        run: |
+          pip install scikit-learn scikit-image
+          pip install --pre --extra-index-url https://test.pypi.org/simple/ fiftyone-brain voxel51-eta
+          pip install -e .
+      - name: Install ETA from source
+        if: ${{ !startsWith(github.ref, 'refs/heads/rel') && !startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          echo "Installing ETA from source because github.ref = ${{ github.ref }} (not a release)"
+          git clone https://github.com/voxel51/eta eta --depth 1 --branch develop
+          cd eta
+          python setup.py bdist_wheel
+          pip install ./dist/*.whl
       # obtained from "Windows, pip" instructions at
       # https://pytorch.org/get-started/locally/ - unaware of a way to update
       # the version number automatically, but tests on other platforms should
@@ -149,7 +146,7 @@ jobs:
         if: ${{ startsWith(matrix.os, 'windows') }}
         run: |
           pip install pytest tensorflow tensorflow-datasets
-          pip install torch==1.6.0+cpu torchvision==0.7.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+          pip install torch==1.7.1+cpu torchvision==0.8.2+cpu -f https://download.pytorch.org/whl/torch_stable.html
       - name: Configure fiftyone for tests
         id: test_config
         run: |
@@ -172,10 +169,10 @@ jobs:
       - name: Test quickstarts
         if: ${{ steps.test_config.outputs.run_integration == 'true' }}
         env:
-          PYTHONUNBUFFERED: 1
+          FIFTYONE_EXIT: 1
         run: |
-          python tests/utils/command_wrapper.py fiftyone quickstart
-          python tests/utils/command_wrapper.py fiftyone quickstart --video
+          fiftyone quickstart --remote
+          fiftyone quickstart --remote --video
 
   all-tests:
     needs: test
@@ -185,22 +182,32 @@ jobs:
       - run: sh -c ${{ needs.test.result == 'success' }}
 
   publish:
-    needs: [build, check, test]
+    needs: [build, test]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-18.04
     steps:
-      - name: Download wheel
+      - name: Download dist
         uses: actions/download-artifact@v2
         with:
-          name: wheel
+          name: dist
           path: downloads
       - name: Install dependencies
         run: |
           pip3 install twine
-      - name: Upload to pypi.voxel51.com
+      - name: Set environment
         env:
-          TWINE_USERNAME: voxel51-ci
-          TWINE_PASSWORD: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.ref }}
+        run: |
+          if [[ $RELEASE_TAG =~ ^refs\/tags\/v.*-rc\..*$ ]]; then
+             echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_TEST_PYPI_TOKEN }}" >> $GITHUB_ENV
+             echo "TWINE_REPOSITORY=testpypi" >> $GITHUB_ENV
+          else
+             echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_PYPI_TOKEN }}" >> $GITHUB_ENV
+             echo "TWINE_REPOSITORY=pypi" >> $GITHUB_ENV
+          fi
+      - name: Upload to pypi
+        env:
+          TWINE_USERNAME: __token__
           TWINE_NON_INTERACTIVE: 1
         run: |
-          python3 -m twine upload --repository-url https://pypi.voxel51.com downloads/*.whl
+          python3 -m twine upload downloads/*.whl

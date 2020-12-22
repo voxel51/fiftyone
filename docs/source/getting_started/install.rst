@@ -21,8 +21,11 @@ Prerequisites
 -------------
 
 You will need a working Python installation. FiftyOne currently requires
-**Python 3.5 through Python 3.8**. Python 3.9 is not yet supported because
-several FiftyOne dependencies do not support it yet.
+**Python 3.6 - 3.9**.
+
+Although Python 3.9 is supported, note that some dependencies, notably
+`scikit-image` and `scikit-learn`, will need to be built from source. Also
+note that `tensorflow` does not yet support 3.9.
 
 On Linux, we recommended installing Python through your system package manager
 (APT, YUM, etc.) if it is available. On other platforms, Python can be
@@ -43,8 +46,7 @@ are using, then run:
 
 .. code-block:: shell
 
-   pip install --upgrade pip setuptools wheel
-   pip install --index https://pypi.voxel51.com fiftyone
+   pip install fiftyone
 
 This will install FiftyOne and all of its dependencies, which may take some
 time. Once this has completed, you can verify that FiftyOne is installed in
@@ -80,6 +82,31 @@ dataset, launch the App, and print some suggestions for exploring the dataset!
     # Launch the FiftyOne quickstart
     fiftyone quickstart
 
+.. _installing-fiftyone-desktop:
+
+FiftyOne Desktop App
+--------------------
+
+By default, the :ref:`FiftyOne App <fiftyone-app>` will be opened in your web
+browser when you launch it.
+
+However, we also provide a desktop version of the FiftyOne App that you can
+install as follows:
+
+.. code-block:: shell
+
+  pip install fiftyone-desktop
+
+.. note::
+
+    Commands like :func:`launch_app() <fiftyone.core.session.launch_app>`
+    provide an optional ``desktop`` flag that let you control whether to launch
+    the App in your browser or as a desktop App.
+
+    You can also set the ``desktop_app`` flag of your
+    :ref:`FiftyOne config <configuring-fiftyone>` to use the desktop App by
+    default.
+
 .. _install-troubleshooting:
 
 Troubleshooting
@@ -87,6 +114,16 @@ Troubleshooting
 
 If you run into any installation issues, review the suggestions below or check
 the :ref:`troubleshooting page <troubleshooting>` for more details.
+
+.. note::
+
+    Most installation issues can be fixed by upgrading some packages and then
+    rerunning the FiftyOne install:
+
+    .. code-block:: shell
+
+        pip install --upgrade pip setuptools wheel
+        pip install fiftyone
 
 **Mac users:**
 
@@ -142,6 +179,12 @@ packages via `pip` in your virtual environment:
 For your own work, FiftyOne does not strictly require any of these packages, so
 you can install only what you need.
 
+.. note::
+
+    You must install `FFmpeg <https://ffmpeg.org>`_ in order to work with video
+    datasets in FiftyOne. See :ref:`this page <troubleshooting-video>` for
+    installation instructions.
+
 .. _upgrading-fiftyone:
 
 Upgrading FiftyOne
@@ -152,7 +195,7 @@ upgrade an existing FiftyOne installation:
 
 .. code-block:: shell
 
-   pip install --index https://pypi.voxel51.com --upgrade fiftyone
+   pip install --upgrade fiftyone
 
 .. _uninstalling-fiftyone:
 
@@ -163,4 +206,10 @@ FiftyOne and all of its subpackages can be uninstalled with:
 
 .. code-block:: shell
 
-   pip uninstall fiftyone fiftyone-brain fiftyone-db fiftyone-gui
+   pip uninstall fiftyone fiftyone-brain fiftyone-db voxel51-eta
+
+If you installed the optional desktop App, you can uninstall that via:
+
+.. code-block:: shell
+
+   pip uninstall fiftyone-desktop

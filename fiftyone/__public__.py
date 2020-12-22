@@ -73,6 +73,18 @@ from .core.metadata import (
     ImageMetadata,
     VideoMetadata,
 )
+from .core.models import (
+    apply_model,
+    compute_embeddings,
+    compute_patch_embeddings,
+    load_model,
+    Model,
+    ModelConfig,
+    EmbeddingsMixin,
+    TorchModelMixin,
+    ModelManagerConfig,
+    ModelManager,
+)
 from .core.sample import Sample
 from .core.session import (
     close_app,

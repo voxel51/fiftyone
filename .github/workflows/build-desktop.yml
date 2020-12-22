@@ -1,0 +1,137 @@
+name: Build Desktop App
+
+on:
+  push:
+    branches:
+      # - develop
+      - rel-*
+      - release-*
+      - desktop-*
+      - github-actions-*
+    tags:
+      - desktop-v*
+    paths:
+      - app/**
+      - package/desktop/**
+      - .github/workflows/build-desktop.yml
+  pull_request:
+    branches:
+      # - develop
+      - rel-*
+      - release-*
+    paths:
+      - app/**
+      - package/desktop/**
+      - .github/workflows/build-desktop.yml
+
+jobs:
+  build:
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Clone fiftyone
+        uses: actions/checkout@v1
+        with:
+          submodules: true
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip setuptools wheel
+      - name: Install package
+        working-directory: package/desktop
+        run: |
+          pip install --no-deps -e .
+      - name: Fetch dependency cache
+        uses: actions/cache@v2
+        with:
+          path: app/node_modules
+          key: npm-${{ hashFiles('app/package.json') }}
+          restore-keys: |
+            npm-${{ hashFiles('app/package.json') }}
+            npm-
+      - name: Install dependencies
+        working-directory: app
+        run: yarn
+      - name: Package App (Linux)
+        working-directory: app
+        run: yarn package-linux --publish never
+      - name: Package App (macOS)
+        working-directory: app
+        run: yarn package-mac --publish never
+      - name: Package App (Windows)
+        working-directory: app
+        # from https://www.electron.build/multi-platform-build#docker
+        # removed node_modules mount to use existing packages
+        run: |
+          docker run --rm \
+           --env-file <(env | grep -iE 'DEBUG|NODE_|ELECTRON_|YARN_|NPM_|CI|CIRCLE|TRAVIS_TAG|TRAVIS|TRAVIS_REPO_|TRAVIS_BUILD_|TRAVIS_BRANCH|TRAVIS_PULL_REQUEST_|APPVEYOR_|CSC_|GH_|GITHUB_|BT_|AWS_|STRIP|BUILD_') \
+           --env ELECTRON_CACHE="/root/.cache/electron" \
+           --env ELECTRON_BUILDER_CACHE="/root/.cache/electron-builder" \
+           -v ${PWD}:/project \
+           -v ~/.cache/electron:/root/.cache/electron \
+           -v ~/.cache/electron-builder:/root/.cache/electron-builder \
+           electronuserland/builder:wine \
+           yarn package-win --publish never
+      - name: Set environment
+        env:
+          RELEASE_TAG: ${{ github.ref }}
+        run: |
+          if [[ $RELEASE_TAG =~ ^refs\/tags\/desktop-v.*-rc\..*$ ]]; then
+             echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/desktop-v//")" >> $GITHUB_ENV
+          fi
+      - name: Build wheel (macOS)
+        working-directory: package/desktop
+        run: python setup.py bdist_wheel --plat-name mac
+      - name: Build wheel (Windows)
+        working-directory: package/desktop
+        run: python setup.py bdist_wheel --plat-name win
+      - name: Build wheel (Linux)
+        working-directory: package/desktop
+        run: python setup.py bdist_wheel --plat-name linux
+      - name: Upload wheel (Linux)
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheel-linux
+          path: package/desktop/dist/*linux*.whl
+      - name: Upload wheel (macOS)
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheel-macos
+          path: package/desktop/dist/*macos*.whl
+      - name: Upload wheel (Windows)
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheel-windows
+          path: package/desktop/dist/*win*.whl
+
+  publish:
+    runs-on: ubuntu-18.04
+    needs: [build]
+    if: startsWith(github.ref, 'refs/tags/desktop-v')
+    steps:
+      - name: Download wheels
+        uses: actions/download-artifact@v2
+        with:
+          path: downloads
+      - name: Install dependencies
+        run: |
+          pip3 install twine
+      - name: Set environment
+        env:
+          RELEASE_TAG: ${{ github.ref }}
+        run: |
+          if [[ $RELEASE_TAG =~ ^refs\/tags\/desktop-v.*-rc\..*$ ]]; then
+             echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_TEST_PYPI_TOKEN }}" >> $GITHUB_ENV
+             echo "TWINE_REPOSITORY=testpypi" >> $GITHUB_ENV
+          else
+             echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_PYPI_TOKEN }}" >> $GITHUB_ENV
+             echo "TWINE_REPOSITORY=pypi" >> $GITHUB_ENV
+          fi
+      - name: Upload to pypi
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_NON_INTERACTIVE: 1
+        run: |
+          python3 -m twine upload downloads/wheel-*/*.whl

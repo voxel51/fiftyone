@@ -8,6 +8,10 @@ See https://voxel51.com/fiftyone for more information.
 |
 """
 from pkgutil import extend_path
+import os as _os
+import threading as _threading
+
+import universal_analytics as _ua
 
 #
 # This statement allows multiple `fiftyone.XXX` packages to be installed in the
@@ -18,3 +22,37 @@ from pkgutil import extend_path
 __path__ = extend_path(__path__, __name__)
 
 from fiftyone.__public__ import *
+import fiftyone.constants as _foc
+from fiftyone.utils.uid import _get_user_id
+from fiftyone.core.context import _get_context
+
+
+def _log_import_if_allowed():
+    if config.do_not_track:
+        return
+
+    if _os.environ.get("FIFTYONE_SERVER", False):
+        return
+
+    uid, first_import = _get_user_id()
+
+    kind = "new" if first_import else "returning"
+
+    def send_import_event():
+        try:
+            with _ua.HTTPRequest() as http:
+                tracker = _ua.Tracker(_foc.UA_ID, http, client_id=uid)
+                tracker.send(
+                    "event",
+                    "import",
+                    kind,
+                    label="%s-%s" % (_foc.VERSION, _get_context()),
+                )
+        except:
+            pass
+
+    th = _threading.Thread(target=send_import_event)
+    th.start()
+
+
+_log_import_if_allowed()

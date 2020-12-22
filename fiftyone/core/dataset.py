@@ -2121,7 +2121,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 )
                 fields = self.get_field_schema(include_private=True)
 
-        self._doc.reload()
+        self._reload()
 
     def _expand_frame_schema(self, frames):
         fields = self.get_frame_field_schema(include_private=True)
@@ -2190,6 +2190,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 continue
 
             field.validate(value)
+
+    def _reload(self):
+        self._doc.reload()
 
 
 class DoesNotExistError(Exception):

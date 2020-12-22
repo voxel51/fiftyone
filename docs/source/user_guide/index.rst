@@ -65,16 +65,22 @@ on your data quickly and easily.
     :button_link: draw_labels.html
 
 .. customcalloutitem::
-    :header: The FiftyOne Brain
+    :header: FiftyOne Dataset Zoo
+    :description: A collection of popular datasets that you can load into FiftyOne with a single command.
+    :button_text: Check out the Dataset Zoo
+    :button_link: dataset_zoo/index.html
+
+.. customcalloutitem::
+    :header: FiftyOne Model Zoo
+    :description: A collection of popular models that you can apply to your FiftyOne datasets.
+    :button_text: Check out the Model Zoo
+    :button_link: model_zoo/index.html
+
+.. customcalloutitem::
+    :header: FiftyOne Brain
     :description: Use the FiftyOne Brain to automatically get insights into your datasets.
     :button_text: Learn more about the FiftyOne Brain
     :button_link: brain.html
-
-.. customcalloutitem::
-    :header: The Dataset Zoo
-    :description: A collection of popular datasets that you can load into FiftyOne with a single command.
-    :button_text: Check out the Dataset Zoo
-    :button_link: dataset_creation/zoo.html
 
 .. customcalloutitem::
     :header: Configuring FiftyOne
@@ -95,13 +101,15 @@ on your data quickly and easily.
     :maxdepth: 1
     :hidden:
 
-    Dataset basics<basics>
-    Loading datasets<dataset_creation/index>
-    Using datasets<using_datasets>
-    Dataset views<using_views>
-    Using the App<app>
-    Using aggregations<using_aggregations>
-    Exporting datasets<export_datasets>
-    Drawing labels on samples<draw_labels>
-    FiftyOne Brain<brain>
-    Configuring FiftyOne<config>
+    Dataset basics <basics>
+    Loading datasets <dataset_creation/index>
+    Using datasets <using_datasets>
+    Dataset views <using_views>
+    Using the App <app>
+    Using aggregations <using_aggregations>
+    Exporting datasets <export_datasets>
+    Drawing labels on samples <draw_labels>
+    FiftyOne Dataset Zoo <dataset_zoo/index>
+    FiftyOne Model Zoo <model_zoo/index>
+    FiftyOne Brain <brain>
+    Configuring FiftyOne <config>

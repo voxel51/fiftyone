@@ -4,7 +4,7 @@ FiftyOne currently consists of several packages:
 
 -   `fiftyone`: the core library
 -   `fiftyone-db`: a bundled copy of MongoDB
--   `fiftyone-gui`: a bundled production build of the app
+-   `fiftyone-app`: a bundled production build of the app
 -   `fiftyone-brain`: (external)
 -   `voxel51-eta`: https://github.com/voxel51/eta
 
@@ -28,7 +28,7 @@ Care should be taken when assigning version numbers to packages that `fiftyone`
 depends on. Generally, following [Semantic Versioning](https://semver.org/) for
 them is recommended. For instance:
 
--   A `fiftyone-gui` hotfix that is separate from a `fiftyone` release should
+-   A `fiftyone-app` hotfix that is separate from a `fiftyone` release should
     use a version number allowed by the latest `fiftyone` release
 -   A `voxel51-eta` release that breaks compatibility with the latest
     `fiftyone` release should use a version number above the range allowed by
@@ -48,8 +48,8 @@ Wheels are also published to PyPI under the following circumstances:
     `v*` is pushed. `*` must match the version in `setup.py`.
 -   `fiftyone-db` wheels are published when a tag matching `db-v*` is pushed.
     `*` must match the version in `package/db/setup.py`.
--   `fiftyone-gui` wheels are published when a tag matching `gui-v*` is pushed.
-    `*` must match the version in `package/gui/setup.py`.
+-   `fiftyone-app` wheels are published when a tag matching `app-v*` is pushed.
+    `*` must match the version in `package/app/setup.py`.
     -   For consistency, upgrading the versions in all `package.json` files is
         also recommended
 
@@ -80,7 +80,7 @@ give `*.whl` files that can be uploaded.
 ## Manual builds
 
 FiftyOne and its related packages can also be built manually. The `package`
-folder contains supporting code to package `fiftyone-db` and `fiftyone-gui`;
+folder contains supporting code to package `fiftyone-db` and `fiftyone-app`;
 the main `fiftyone` package is handled by the top-level `setup.py`.
 
 For each package, `python setup.py bdist_wheel` in the appropriate folder will
@@ -120,10 +120,10 @@ avoid a second download, you can copy the archive here - refer to
 `package/db/setup.py` for the expected filename (which should match the
 download URL).
 
-### Packaging `fiftyone-gui`
+### Packaging `fiftyone-app`
 
 This package supports the same platforms as `fiftyone-db` and the same
-portability constraints apply. It can be built from within the `package/gui`
+portability constraints apply. It can be built from within the `package/app`
 directory.
 
 Before building this package, you need to have built a native Electron app for
@@ -131,7 +131,7 @@ your target platform. To do this, switch to the `electron` folder and run
 `yarn package-linux` or `yarn package-mac`. This may take several minutes to
 complete, and may require additional system packages - see
 [this page](https://www.electron.build/multi-platform-build) for details. Once
-the Electron app is built, switch to the `package/gui` folder and build a wheel
+the Electron app is built, switch to the `package/app` folder and build a wheel
 using the above instructions.
 
 ### Testing with built wheels locally

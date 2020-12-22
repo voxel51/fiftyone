@@ -1,3 +1,6 @@
+
+.. _environments:
+
 FiftyOne Environments
 =====================
 
@@ -16,6 +19,10 @@ ___________
 * :ref:`Remote machine <remote-data>`: Data is stored on disk on a separate
   machine (typically a remote server) from the one that will be used to launch
   the App
+
+* :ref:`Notebooks <notebooks>`: You are working from a
+  `Jupyter Notebook <https://jupyter.org>`_ or a
+  `Google Colab Notebook <https://colab.research.google.com>`_.
 
 * :ref:`Cloud storage <cloud-storage>`: Data is stored in a cloud bucket
   (e.g., :ref:`S3 <AWS>`, :ref:`GCS <google-cloud>`, or :ref:`Azure <azure>`)
@@ -78,63 +85,33 @@ machine and launch a remote session:
 Leave this session running, and note that instructions for connecting to this
 remote session were printed to your terminal (these are described below).
 
-On your local machine, you need to set up `ssh` port forwarding so that you can
-connect to the App. This can be done either through the CLI or Python.
+If you do not have `fiftyone` installed on your local machine, and do not want
+to install it, you can set up port forwarding manually, and view the App in
+your browser.
 
-.. tabs::
+.. code-block:: shell
 
-  .. group-tab:: CLI
+    # `[<username>@]<hostname>` refers to your remote machine
+    ssh -N -L 5151:127.0.0.1:%d [<username>@]<hostname>
 
-    On the local machine, you can :ref:`use the CLI <cli-fiftyone-app-connect>`
-    to automatically configure port forwarding and open the App.
+If you have `fiftyone` installed on the local machine, you can
+:ref:`use the CLI <cli-fiftyone-app-connect>` to automatically configure port
+forwarding and open the App in either the desktop App or your web browser.
 
-    In a local terminal, run the command:
+In a local terminal, run the command:
 
-    .. code-block:: shell
+.. code-block:: shell
 
-        # On local machine
-        fiftyone app connect --destination <user>@<remote-ip-address> --port 5151
+    # On local machine
+    fiftyone app connect --destination <user>@<remote-ip-address> --port 5151 # (Optional) --ssh-key /path/to/key
 
-    Alternatively, you can manually configure port forwarding:
+.. note::
 
-    .. code-block:: shell
-
-        # On local machine
-        ssh -N -L 5151:127.0.0.1:5151 <user>@<remote-ip-address>
-
-    and then connect to the App via:
-
-    .. code-block:: shell
-
-        # On local machine
-        fiftyone app connect
-
-  .. group-tab:: Python
-
-    Open two terminal windows on the local machine.
-
-    In order to forward the port `5151` from the remote machine to the local
-    machine, run the following command in one terminal and leave the process
-    running:
-
-    .. code-block:: shell
-
-        # On local machine
-        ssh -N -L 5151:127.0.0.1:5151 <user>@<remote-ip-address>
-
-    Port `5151` is now being forwarded from the remote machine to port
-    `5151` of the local machine.
-
-    In the other terminal, launch the FiftyOne App locally by starting Python
-    and running the following commands:
-
-    .. code-block:: python
-        :linenos:
-
-        # On local machine
-        import fiftyone.core.session as fos
-
-        fos.launch_app()
+    If you are using :ref:`ssh keys instead of a password to login <cli-fiftyone-app-connect>` then you
+    can use the kwarg `--ssh-key`. Though if you are using this key
+    more often, `it is recommended to add it
+    <https://unix.stackexchange.com/a/494485>`_ to your `~/.ssh/config` as
+    the default `IdentityFile`.
 
 The above instructions assume that you used the default port `5151` when
 launching the remote session on the remote machine. If you used a custom port,
@@ -144,6 +121,134 @@ then substitute the appropriate value in the local commands too.
 
     You can use custom ports when launching remote sessions in order to serve
     multiple remote sessions simultaneously.
+
+.. _notebooks:
+
+Notebooks
+_________
+
+FiftyOne officialy supports `Jupyter Notebooks <https://jupyter.org>`_ and
+`Google Colab Notebooks <https://colab.research.google.com>`_.
+
+To use FiftyOne in a notebook, simply install `fiftyone` via `pip`:
+
+.. code-block:: python
+    :linenos:
+
+    !pip install fiftyone
+
+and load datasets as usual. When you run
+:meth:`launch_app() <fiftyone.core.session.launch_app>` in a notebook, an App
+window will be opened in the output of your current cell.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset(name="my_dataset")
+
+    # Creates a session and opens the App in the output of the cell
+    session = fo.launch_app(dataset)
+
+This App window will remain connected to your ``session`` object, so if you
+modify your session and refresh/reactivate this App winodw, it will sync with
+the current state of the ``session``.
+
+Any time you update the state of your ``session`` object; e.g., by setting
+:meth:`session.dataset <fiftyone.core.session.Session.dataset>` or
+:meth:`session.view <fiftyone.core.session.Session.view>`, a new App window
+will be automatically opened in the output of the current cell.
+
+.. code-block:: python
+    :linenos:
+
+    # A new App window will be created in the output of this cell
+    session.view = dataset.take(10)
+
+.. note::
+
+    Only the most recently opened App window will be active, i.e, synced with
+    the ``session`` object.
+
+    You can reactivate an older cell by clicking the link in the deactivated
+    App window, or by running the cell again. This will deactivate the
+    previously active cell.
+
+Manually controlling App instances
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you would like to manually control when new App instances are created in a
+notebook, you can pass the ``auto=False`` flag to
+:meth:`launch_app() <fiftyone.core.session.launch_app>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Creates a session but does not open an App instance
+    session = fo.launch_app(dataset, auto=False)
+
+When ``auto=False`` is provided, a new App window is created only when you call
+:meth:`session.show() <fiftyone.core.session.Session.show>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Update the session's view; no App windows is created
+    session.view = dataset.take(10)
+
+    # In another cell
+
+    # Now open an App window in the cell's output
+    session.show()
+
+As usual, this App window will remain connected to your ``session`` object, so
+it will stay in-sync with your session whenever it is active.
+
+.. note::
+
+    If you run :meth:`session.show() <fiftyone.core.session.Session.show>` in
+    multiple cells, only the most recently created App window will be active,
+    i.e., synced with the ``session`` object.
+
+    You can reactivate an older cell by clicking the link in the deactivated
+    App window, or by running the cell again. This will deactivate the
+    previously active cell.
+
+Opening the App in a dedicated tab
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you are working from a Jupyter notebook, you can open the App in a separate
+browser tab rather than working with it in cell output(s).
+
+To do this, pass the ``auto=False`` flag to
+:meth:`launch_app() <fiftyone.core.session.launch_app>` when you launch the
+App and then call
+:meth:`session.open_tab() <fiftyone.core.session.Session.open_tab>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Launch the App in a dedicated browser tab
+    session = fo.launch_app(dataset, auto=False)
+    session.open_tab()
+
+Using the desktop App
+~~~~~~~~~~~~~~~~~~~~~
+
+If you are working from a Jupyter notebook on a machine with the
+:ref:`FiftyOne Desktop App <installing-fiftyone-desktop>` installed, you can
+optionally open the desktop App rather than working with the App in cell
+output(s).
+
+To do this, pass the ``desktop=True`` flag to
+:meth:`launch_app() <fiftyone.core.session.launch_app>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Creates a session and launches the desktop App
+    session = fo.launch_app(dataset, desktop=True)
 
 .. _cloud-storage:
 
@@ -227,21 +332,23 @@ the mount point you specified above. Then launch the App as a
 Finally, on your local machine, connect to the remote session that you started
 on the cloud instance.
 
-To do so, first open an `ssh` connection connecting to port `5151` (or the
-custom port you chose in the previous step):
-
-.. code-block:: shell
+.. code-block:: bash
 
     # On local machine
-    ssh -N -L 5151:127.0.0.1:5151 -i <key>.pem <user>@<ec2-instance-ip-address>
+    fiftyone app connect --destination <user>@<remote-ip-address> --port 5151 # (Optional) --ssh-key /path/to/key
 
-Then launch an App instance connected to the remote session via the FiftyOne
-CLI:
+The above instructions assume that you used the default port `5151` when
+launching the remote session on the remote machine. If you used a custom port,
+then substitute the appropriate value in the local commands too.
 
-.. code-block:: shell
+.. note::
 
-    # On local machine
-    fiftyone app connect
+    If you are using :ref:`ssh keys instead of a password to login <cli-fiftyone-app-connect>` then you
+    can use the kwarg `--ssh-key`. Though if you are using this key
+    more often, `it is recommended to add it
+    <https://unix.stackexchange.com/a/494485>`_ to your `~/.ssh/config` as
+    the default `IdentityFile`.
+
 
 .. _google-cloud:
 
@@ -308,25 +415,22 @@ the mount point you specified above. Then launch the App as a
 Finally, on your local machine, connect to the remote session that you started
 on the cloud instance.
 
-To do so, first open an `ssh` connection connecting to port `5151` (or the
-custom port you chose in the previous step):
-
-.. code-block:: shell
+.. code-block:: bash
 
     # On local machine
-    ssh -N -L 5151:127.0.0.1:5151 -i <key> <user>@<gc-instance-ip-address>
+    fiftyone app connect --destination <user>@<remote-ip-address> --port 5151 # (Optional) --ssh-key /path/to/key
 
-You may need to
-`set up your ssh key <https://cloud.google.com/compute/docs/instances/adding-removing-ssh-keys#project-wide>`_
-in order to run the above command.
+The above instructions assume that you used the default port `5151` when
+launching the remote session on the remote machine. If you used a custom port,
+then substitute the appropriate value in the local commands too.
 
-Then launch an App instance connected to the remote session via the FiftyOne
-CLI:
+.. note::
 
-.. code-block:: shell
-
-    # On local machine
-    fiftyone app connect
+    If you are using :ref:`ssh keys instead of a password to login <cli-fiftyone-app-connect>` then you
+    can use the kwarg `--ssh-key`. Though if you are using this key
+    more often, `it is recommended to add it
+    <https://unix.stackexchange.com/a/494485>`_ to your `~/.ssh/config` as
+    the default `IdentityFile`.
 
 .. _azure:
 
@@ -389,21 +493,22 @@ the mount point you specified above. Then launch the App as a
 Finally, on your local machine, connect to the remote session that you started
 on the cloud instance.
 
-To do so, first open an `ssh` connection connecting to port `5151` (or the
-custom port you chose in the previous step):
-
-.. code-block:: shell
+.. code-block:: bash
 
     # On local machine
-    ssh -N -L 5151:127.0.0.1:5151 -i <key>.pem <user>@<azure-instance-ip-address>
+    fiftyone app connect --destination <user>@<remote-ip-address> --port 5151 # (Optional) --ssh-key /path/to/key
 
-Then launch an App instance connected to the remote session via the FiftyOne
-CLI:
+The above instructions assume that you used the default port `5151` when
+launching the remote session on the remote machine. If you used a custom port,
+then substitute the appropriate value in the local commands too.
 
-.. code-block:: shell
+.. note::
 
-    # On local machine
-    fiftyone app connect
+    If you are using :ref:`ssh keys instead of a password to login <cli-fiftyone-app-connect>` then you
+    can use the kwarg `--ssh-key`. Though if you are using this key
+    more often, `it is recommended to add it
+    <https://unix.stackexchange.com/a/494485>`_ to your `~/.ssh/config` as
+    the default `IdentityFile`.
 
 .. _compute-instance-setup:
 
@@ -450,3 +555,4 @@ successfully :ref:`install FiftyOne <installing-fiftyone>`.
     # Python packages
     pip install --upgrade pip setuptools wheel
     pip install ipython
+

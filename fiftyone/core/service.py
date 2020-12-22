@@ -20,6 +20,7 @@ from retrying import retry
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
+import fiftyone.core.context as focx
 import fiftyone.service.util as fosu
 
 
@@ -284,6 +285,9 @@ class DatabaseService(MultiClientService):
         if not sys.platform.startswith("win"):
             args.append("--nounixsocket")
 
+        if focx._get_context() == focx._COLAB:
+            args = ["sudo"] + args
+
         return args
 
     @property
@@ -344,11 +348,12 @@ class DatabaseService(MultiClientService):
             searched.add(folder)
             mongod_path = os.path.join(folder, DatabaseService.MONGOD_EXE_NAME)
             if os.path.isfile(mongod_path):
+                cmd = [mongod_path, "--version"]
+                if focx._get_context() == focx._COLAB:
+                    cmd = ["sudo"] + cmd
                 logger.debug("Trying %s", mongod_path)
                 p = psutil.Popen(
-                    [mongod_path, "--version"],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
+                    cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 )
                 out, err = p.communicate()
                 out = out.decode(errors="ignore").strip()
@@ -388,8 +393,9 @@ class ServerService(Service):
     working_dir = foc.SERVER_DIR
     allow_headless = True
 
-    def __init__(self, port):
+    def __init__(self, port, do_not_track=False):
         self._port = port
+        self._do_not_track = do_not_track
         super().__init__()
 
     def start(self):
@@ -438,6 +444,11 @@ class ServerService(Service):
         """Getter for the current port"""
         return self._port
 
+    @property
+    def env(self):
+        dnt = "1" if self._do_not_track else "0"
+        return {"FIFTYONE_DO_NOT_TRACK": dnt}
+
 
 class AppService(Service):
     """Service that controls the FiftyOne App.
@@ -447,7 +458,7 @@ class AppService(Service):
     """
 
     service_name = "app"
-    working_dir = foc.FIFTYONE_APP_DIR
+    working_dir = foc.FIFTYONE_DESKTOP_APP_DIR
 
     def __init__(self, server_port=None):
         # initialize before start() is called
@@ -456,25 +467,32 @@ class AppService(Service):
 
     @property
     def command(self):
-        with etau.WorkingDir(foc.FIFTYONE_APP_DIR):
-            if os.path.isfile("FiftyOne.AppImage"):
-                # Linux
-                args = ["./FiftyOne.AppImage"]
-            elif os.path.isdir("FiftyOne.app"):
-                # macOS
-                args = ["./FiftyOne.app/Contents/MacOS/FiftyOne"]
-            elif os.path.isfile("FiftyOne.exe"):
-                # Windows
-                args = ["./FiftyOne.exe"]
-            elif os.path.isfile("package.json"):
-                # dev build
-                args = ["yarn", "dev"]
-            else:
-                raise RuntimeError(
-                    "Could not find FiftyOne app in %r" % foc.FIFTYONE_APP_DIR
-                )
+        with etau.WorkingDir(foc.FIFTYONE_DESKTOP_APP_DIR):
+            return self.find_app()
 
-        return args
+    def find_app(self):
+        if foc.DEV_INSTALL:
+            return ["yarn", "start-app"]
+
+        for path in etau.list_files("./"):
+            if path.endswith(".tar.gz"):
+                logger.info("Installing FiftyOne App")
+                etau.extract_tar(path, "./", delete_tar=True)
+
+        pre = foc.FIFTYONE_DESKTOP_APP_DIR
+        for path in etau.list_files("./"):
+            if path.endswith(".exe"):
+                return [os.path.join(pre + path)]
+
+            if path.endswith(".AppImage"):
+                return [os.path.join(pre, path)]
+
+        if os.path.isdir("./FiftyOne.app"):
+            return [os.path.join(pre, "FiftyOne.app/Contents/MacOS/FiftyOne")]
+
+        raise RuntimeError(
+            "Could not find FiftyOne app in %r" % foc.FIFTYONE_DESKTOP_APP_DIR
+        )
 
     @property
     def env(self):

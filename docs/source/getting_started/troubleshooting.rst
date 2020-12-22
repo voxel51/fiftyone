@@ -12,6 +12,18 @@ feel free to
 `open an issue on GitHub <https://github.com/voxel51/fiftyone/issues/new?labels=bug&template=installation_issue_template.md&title=%5BSETUP-BUG%5D>`_
 or `contact us on Slack <https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg>`_.
 
+.. note::
+
+    Most installation issues can be fixed by upgrading some packages and then
+    rerunning the FiftyOne install. So, try this first before reading on:
+
+    .. code-block:: shell
+
+        pip install --upgrade pip setuptools wheel
+        pip install fiftyone
+
+.. _troubleshooting-pip:
+
 Python/pip incompatibilities
 ----------------------------
 
@@ -33,9 +45,9 @@ old, you may encounter errors like these:
 
 .. code-block:: text
 
-    fiftyone requires Python '>=3.5' but the running Python is 3.4.10
+    fiftyone requires Python '>=3.6' but the running Python is 3.4.10
 
-To resolve this, you will need to use Python 3.5 or newer, and pip 19.3 or
+To resolve this, you will need to use Python 3.6 or newer, and pip 19.3 or
 newer. See the :ref:`installation guide <installing-fiftyone>` for details. If
 you have installed a suitable version of Python in a virtual environment and
 still encounter this error, ensure that the virtual environment is activated.
@@ -74,6 +86,36 @@ version. To fix this, upgrade pip. See the
 `opencv-python FAQ <https://pypi.org/project/opencv-python-headless/>`_ for more
 details.
 
+.. _troubleshooting-video:
+
+Videos do not load in the App
+-----------------------------
+
+You will need to install `FFmpeg <https://ffmpeg.org>`_ in order to work with
+video datasets:
+
+.. tabs::
+
+  .. group-tab:: Linux
+
+    .. code-block:: shell
+
+        sudo apt install -y ffmpeg
+
+  .. group-tab:: macOS
+
+    .. code-block:: python
+
+        brew install ffmpeg
+
+  .. group-tab:: Windows
+
+    You can download a Windows build from
+    `here <https://ffmpeg.org/download.html#build-windows>`_. Unzip it and be
+    sure to add it to your path.
+
+.. _troubleshooting-ipython:
+
 IPython installation
 --------------------
 
@@ -104,7 +146,6 @@ To resolve this, install IPython in your active virtual environment (see the
 
     pip install ipython
 
-
 .. _troubleshooting-mongodb-linux:
 
 MongoDB compatibility issues on Linux
@@ -116,8 +157,8 @@ your distribution, you may encounter an error similar to:
 
 .. code-block:: text
 
-    /usr/local/lib/python3.5/dist-packages/fiftyone/db/bin/mongod: failed to launch:
-    /usr/local/lib/python3.5/dist-packages/fiftyone/db/bin/mongod: error while loading shared libraries:
+    /usr/local/lib/python3.6/dist-packages/fiftyone/db/bin/mongod: failed to launch:
+    /usr/local/lib/python3.6/dist-packages/fiftyone/db/bin/mongod: error while loading shared libraries:
     libcrypto.so.1.1: cannot open shared object file: No such file or directory
 
 .. code-block:: text
@@ -126,7 +167,6 @@ your distribution, you may encounter an error similar to:
 
 To resolve this, you can install an alternative package on some distributions,
 detailed below, or install a compatible version of MongoDB system-wide.
-
 
 .. _alternative-builds:
 

@@ -35,11 +35,28 @@ MONGODB_BINARIES = ["mongod"]
 LINUX_DISTRO = os.environ.get("FIFTYONE_DB_BUILD_LINUX_DISTRO")
 
 
+VERSION = "0.2.0"
+
+
+def get_version():
+    if "RELEASE_VERSION" in os.environ:
+        version = os.environ["RELEASE_VERSION"]
+        if not version.startswith(VERSION):
+            raise ValueError(
+                "Release version does not match version: %s and %s"
+                % (version, VERSION)
+            )
+        return version
+
+    return VERSION
+
+
 class CustomBdistWheel(bdist_wheel):
     def finalize_options(self):
         bdist_wheel.finalize_options(self)
         # not pure Python
         self.root_is_pure = False
+        self._plat_name = self.plat_name
         # rewrite platform name to match what mongodb supports
         if self.plat_name.startswith("mac"):
             # mongodb 4.2.6 supports macOS 10.12 or later
@@ -48,7 +65,7 @@ class CustomBdistWheel(bdist_wheel):
             self.plat_name = "macosx_10_12_x86_64"
         elif self.plat_name.startswith("linux"):
             # we only distribute 64-bit binaries
-            self.plat_name = "linux_x86_64"
+            self.plat_name = "manylinux1_x86_64"
         elif self.plat_name.startswith("win"):
             # we only distribute 64-bit binaries
             self.plat_name = "win_amd64"
@@ -73,10 +90,10 @@ class CustomBdistWheel(bdist_wheel):
         mongo_zip_url = next(
             v
             for k, v in MONGODB_DOWNLOAD_URLS.items()
-            if self.plat_name.startswith(k)
+            if self._plat_name.startswith(k)
         )
-        if LINUX_DISTRO is not None:
-            if not self.plat_name.startswith("linux"):
+        if LINUX_DISTRO:
+            if not self.plat_name.startswith("manylinux"):
                 raise ValueError(
                     "Cannot build for distro %r on platform %r"
                     % (LINUX_DISTRO, self.plat_name)
@@ -149,23 +166,27 @@ name_suffix = ""
 if LINUX_DISTRO:
     name_suffix = "_" + LINUX_DISTRO
 
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
 setup(
     name="fiftyone_db" + name_suffix,
-    version="0.1.2",
-    description="Project FiftyOne database",
+    version=get_version(),
+    description="FiftyOne DB",
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
     url="https://github.com/voxel51/fiftyone",
-    license="",
+    license="Apache",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     packages=["fiftyone.db"],
     package_dir={"fiftyone.db": "src"},
     classifiers=[
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",
         "Operating System :: Microsoft :: Windows",
-        "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
     ],
-    python_requires=">=2.7",
+    python_requires=">=3.5",
     cmdclass=cmdclass,
 )
