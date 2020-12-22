@@ -24,6 +24,7 @@ __path__ = extend_path(__path__, __name__)
 from fiftyone.__public__ import *
 import fiftyone.constants as _foc
 from fiftyone.utils.uid import _get_user_id
+from fiftyone.core.context import _get_context
 
 
 def _log_import_if_allowed():
@@ -41,9 +42,15 @@ def _log_import_if_allowed():
         try:
             with _ua.HTTPRequest() as http:
                 tracker = _ua.Tracker(_foc.UA_ID, http, client_id=uid)
-                tracker.send("event", "import", kind, label=_foc.VERSION)
+                tracker.send(
+                    "event",
+                    "import",
+                    kind,
+                    label="%s-%s" % (_foc.VERSION, _get_context()),
+                )
         except:
             pass
+
     th = _threading.Thread(target=send_import_event)
     th.start()
 

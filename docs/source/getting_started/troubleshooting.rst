@@ -15,14 +15,14 @@ or `contact us on Slack <https://join.slack.com/t/fiftyone-users/shared_invite/z
 .. note::
 
     Most installation issues can be fixed by upgrading some packages and then
-    rerunning the FiftyOne install.
-
-    Try this first before reading on:
+    rerunning the FiftyOne install. So, try this first before reading on:
 
     .. code-block:: shell
 
         pip install --upgrade pip setuptools wheel
         pip install fiftyone
+
+.. _troubleshooting-pip:
 
 Python/pip incompatibilities
 ----------------------------
@@ -86,6 +86,36 @@ version. To fix this, upgrade pip. See the
 `opencv-python FAQ <https://pypi.org/project/opencv-python-headless/>`_ for more
 details.
 
+.. _troubleshooting-video:
+
+Videos do not load in the App
+-----------------------------
+
+You will need to install `FFmpeg <https://ffmpeg.org>`_ in order to work with
+video datasets:
+
+.. tabs::
+
+  .. group-tab:: Linux
+
+    .. code-block:: shell
+
+        sudo apt install -y ffmpeg
+
+  .. group-tab:: macOS
+
+    .. code-block:: python
+
+        brew install ffmpeg
+
+  .. group-tab:: Windows
+
+    You can download a Windows build from
+    `here <https://ffmpeg.org/download.html#build-windows>`_. Unzip it and be
+    sure to add it to your path.
+
+.. _troubleshooting-ipython:
+
 IPython installation
 --------------------
 
@@ -116,7 +146,6 @@ To resolve this, install IPython in your active virtual environment (see the
 
     pip install ipython
 
-
 .. _troubleshooting-mongodb-linux:
 
 MongoDB compatibility issues on Linux
@@ -138,7 +167,6 @@ your distribution, you may encounter an error similar to:
 
 To resolve this, you can install an alternative package on some distributions,
 detailed below, or install a compatible version of MongoDB system-wide.
-
 
 .. _alternative-builds:
 

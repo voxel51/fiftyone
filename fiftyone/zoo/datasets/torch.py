@@ -23,7 +23,7 @@ backend, but you do not have the necessary packages installed.
 Ensure that you have `torch` and `torchvision` installed on your machine, and
 then try running this command again.
 
-See https://voxel51.com/docs/fiftyone/user_guide/dataset_zoo.html
+See https://voxel51.com/docs/fiftyone/user_guide/dataset_zoo/index.html
 for more information about working with the Dataset Zoo.
 """
 

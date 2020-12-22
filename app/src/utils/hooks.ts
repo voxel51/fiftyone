@@ -208,14 +208,14 @@ export const useGA = () => {
       [gaConfig.dimensions.context]: appContext,
     });
     setGAInitialized(true);
-    ReactGA.pageview(window.location.hash.replace(/^#/, ""));
+    ReactGA.pageview(window.location.pathname + window.location.search);
   }, []);
   useHashChangeHandler(() => {
     if (info.do_not_track) {
       return;
     }
     if (gaInitialized) {
-      ReactGA.pageview(window.location.hash.replace(/^#/, ""));
+      ReactGA.pageview(window.location.pathname + window.location.search);
     }
-  }, [window.location.hash]);
+  }, [window.location.pathname, window.location.search]);
 };

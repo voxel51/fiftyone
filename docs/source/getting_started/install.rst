@@ -21,9 +21,11 @@ Prerequisites
 -------------
 
 You will need a working Python installation. FiftyOne currently requires
-**Python 3.6 through Python 3.9**. Python 3.9 is supported, but do know that
-some dependencies, notably `scikit-image` and `scikit-learn`, will need to be
-built from source. Also note that `tensorflow` does not support 3.9.
+**Python 3.6 - 3.9**.
+
+Although Python 3.9 is supported, note that some dependencies, notably
+`scikit-image` and `scikit-learn`, will need to be built from source. Also
+note that `tensorflow` does not yet support 3.9.
 
 On Linux, we recommended installing Python through your system package manager
 (APT, YUM, etc.) if it is available. On other platforms, Python can be
@@ -176,6 +178,12 @@ packages via `pip` in your virtual environment:
 
 For your own work, FiftyOne does not strictly require any of these packages, so
 you can install only what you need.
+
+.. note::
+
+    You must install `FFmpeg <https://ffmpeg.org>`_ in order to work with video
+    datasets in FiftyOne. See :ref:`this page <troubleshooting-video>` for
+    installation instructions.
 
 .. _upgrading-fiftyone:
 

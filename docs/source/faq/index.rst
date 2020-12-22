@@ -15,10 +15,8 @@ Yes! Simply :ref:`install the Desktop App <installing-fiftyone-desktop>`.
 
 Commands like :func:`launch_app() <fiftyone.core.session.launch_app>` provide
 an optional ``desktop`` flag that let you control whether to launch the App in
-your browser or as a desktop App.
-
-You can also set the ``desktop_app`` flag of your
-:ref:`FiftyOne config <configuring-fiftyone>` to use the desktop App by
+your browser or as a desktop App. You can also set the ``desktop_app`` flag of
+your :ref:`FiftyOne config <configuring-fiftyone>` to use the desktop App by
 default.
 
 Check out the :ref:`enviornments guide <environments>` to see how to use
@@ -30,10 +28,9 @@ Can I open the FiftyOne App in a browser?
 -----------------------------------------
 
 Yes! In fact, as of :ref:`FiftyOne v0.7 <release-notes-v0.7.0>`, this is the
-default behavior; FiftyOne will open the App in your default web browser.
-
-You can also run FiftyOne
-:ref:`as a desktop application <faq-desktop-app-support>` if you prefer.
+default behavior; the App will open in your default web browser. You can also
+run FiftyOne :ref:`as a desktop application <faq-desktop-app-support>` if you
+prefer.
 
 Check out the :ref:`enviornments guide <environments>` to see how to use
 FiftyOne in all common local, remote, cloud, and notebook environments.
@@ -98,7 +95,7 @@ load labels in each of these formats.
 What image file types are supported?
 ------------------------------------
 
-In general, FiftyOne supports `all image types supported by Chromium
+In general, FiftyOne supports all image types `supported by your browser
 <https://en.wikipedia.org/wiki/Comparison_of_web_browsers#Image_format_support>`_,
 which includes standard image types like JPEG, PNG, and BMP.
 
@@ -111,12 +108,18 @@ Core methods that process videos can generally handle any
 `codec supported by ffmpeg <https://www.ffmpeg.org/general.html#Video-Codecs>`_.
 
 The App can play any video codec that is supported by
-`HTML5 video on Chromium <https://en.wikipedia.org/wiki/HTML5_video#Browser_support>`_,
+`HTML5 video on your browser <https://en.wikipedia.org/wiki/HTML5_video#Browser_support>`_,
 including MP4 (H.264), WebM, and Ogg.
 
 If you try to view a video with an unsupported codec in the App, you will be
 prompted to use the :func:`reencode_videos() <fiftyone.utils.video.reencode_videos>`
 utility method to reencode the source video so it is viewable in the App.
+
+.. note::
+
+    You must install `FFmpeg <https://ffmpeg.org>`_ in order to work with video
+    datasets in FiftyOne. See :ref:`this page <troubleshooting-video>` for
+    installation instructions.
 
 .. _faq-supported-os:
 
@@ -445,8 +448,8 @@ Manually configuring a connection requires setting up port forwarding.
 Does FiftyOne track me?
 -----------------------
 
-Yes, FiftyOne tracks anonymous UUID-based usage of the Python library and the
-App by default. We are a small team building an open source project, and basic
+FiftyOne tracks anonymous UUID-based usage of the Python library and the App by
+default. We are a small team building an open source project, and basic
 knowledge of how users are engaging with the project is critical to informing
 the roadmap of the project.
 

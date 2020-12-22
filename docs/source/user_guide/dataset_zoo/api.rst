@@ -1,13 +1,17 @@
 
-.. _dataset-zoo:
+.. _dataset-zoo-api:
 
-FiftyOne Dataset Zoo
-====================
+Dataset Zoo API Reference
+=========================
 
 .. default-role:: code
 
-FiftyOne provides a Dataset Zoo that contains a collection of common datasets
-that you can download and load into FiftyOne via a few simple commands.
+This page describes the full API for working with the Dataset Zoo.
+
+.. _dataset-zoo-package:
+
+Dataset zoo package
+-------------------
 
 You can interact with the Dataset Zoo either via the Python library or
 the CLI.
@@ -22,99 +26,11 @@ the CLI.
 
   .. group-tab:: CLI
 
-    The :ref:`fiftyone zoo datasets <cli-fiftyone-zoo-datasets>` CLI command
+    The :ref:`fiftyone zoo datasets <cli-fiftyone-zoo-datasets>` command
     provides convenient utilities for working with datasets in the FiftyOne
     Dataset Zoo.
 
-.. note::
-
-    Behind the scenes, FiftyOne's Dataset Zoo uses the
-    `TorchVision Datasets <https://pytorch.org/docs/stable/torchvision/datasets.html>`_ or
-    `TensorFlow Datasets <https://www.tensorflow.org/datasets>`_
-    libraries to wrangle some datasets, depending on which ML library you have
-    installed.
-
-    If you do not have the proper packages installed when attempting to
-    download a zoo dataset, you will receive an error message that will help
-    you resolve the issue.
-
-    See :ref:`customizing your ML backend <zoo-customizing-your-ml-backend>`
-    for more information about configuring the backend behavior of the Dataset
-    Zoo.
-
-.. _dataset-zoo-basic-recipe:
-
-Basic recipe
-------------
-
-Methods for working with the Dataset Zoo are conveniently exposed via the
-Python library and the CLI. The basic recipe for loading a zoo dataset and
-visualizing it in the App is shown below.
-
-.. tabs::
-
-  .. group-tab:: Python
-
-    Use :meth:`load_zoo_dataset() <fiftyone.zoo.datasets.load_zoo_dataset>` to
-    load a zoo dataset into a FiftyOne dataset.
-
-    For example, the code sample below loads the validation split of the
-    COCO-2017 dataset from the zoo and visualizes it in the FiftyOne App:
-
-    .. code-block:: python
-        :linenos:
-
-        import fiftyone as fo
-        import fiftyone.zoo as foz
-
-        # List available zoo datasets
-        print(foz.list_zoo_datasets())
-
-        #
-        # Load the COCO-2017 validation split into a FiftyOne dataset
-        #
-        # This will download the dataset from the web, if necessary
-        #
-        dataset = foz.load_zoo_dataset("coco-2017", split="validation")
-
-        # Give the dataset a new name, and make it persistent so that you can
-        # work with it in future sessions
-        dataset.name = "coco-2017-validation-example"
-        dataset.persistent = True
-
-        # Visualize the in the App
-        session = fo.launch_app(dataset)
-
-  .. group-tab:: CLI
-
-    Use :ref:`fiftyone zoo datasets load <cli-fiftyone-zoo-datasets-load>` to
-    load a zoo dataset into a FiftyOne dataset.
-
-    For example, the code sample below loads the validation split of the
-    COCO-2017 dataset from the zoo and visualizes it in the FiftyOne App:
-
-    .. code-block:: shell
-
-        #
-        # Load the COCO-2017 validation split into a FiftyOne dataset called
-        # `coco-2017-validation-example`
-        #
-        # This will download the dataset from the web, if necessary
-        #
-        fiftyone zoo datasets load coco-2017 --split validation \
-            --dataset-name coco-2017-validation-example
-
-        # Visualize the dataset in the App
-        fiftyone app launch coco-2017-validation-example
-
-.. image:: ../images/dataset_zoo_coco_2017.png
-   :alt: Dataset Zoo
-   :align: center
-
-API Reference
--------------
-
-The sections below describe the full API for working with the Dataset Zoo.
+.. _dataset-zoo-list:
 
 Listing zoo datasets
 --------------------
@@ -193,6 +109,8 @@ Listing zoo datasets
     dataset split is provided via the respective ML backend. The ``(*)``
     indicates your default ML backend, which will be used in case a given
     split is available through multiple ML backends.
+
+.. _dataset-zoo-info:
 
 Getting information about zoo datasets
 --------------------------------------
@@ -367,6 +285,8 @@ Getting information about zoo datasets
             ]
         }
 
+.. _dataset-zoo-download:
+
 Downloading zoo datasets
 ------------------------
 
@@ -424,6 +344,8 @@ Downloading zoo datasets
         Writing labels to '~/fiftyone/cifar10/test/labels.json'
         Dataset created
         Dataset info written to '~/fiftyone/cifar10/info.json'
+
+.. _dataset-zoo-load:
 
 Loading zoo datasets
 --------------------
@@ -509,6 +431,8 @@ Loading zoo datasets
          100% |██████████████████████████████████████████████| 10/10 [3.2ms elapsed, 0s remaining, 2.9K samples/s]
         Dataset 'cifar10-test' created
 
+.. _dataset-zoo-manual-download:
+
 Loading zoo datasets with manual downloads
 ------------------------------------------
 
@@ -544,6 +468,8 @@ the zoo:
 
     # Now load into FiftyOne
     dataset = foz.load_zoo_dataset("bdd100k", split="validation")
+
+.. _dataset-zoo-custom-dir:
 
 Controlling where zoo datasets are downloaded
 ---------------------------------------------
@@ -589,6 +515,8 @@ of your :ref:`FiftyOne config <configuring-fiftyone>`.
 
             foc.set_config_settings(dataset_zoo_dir="/your/custom/directory")
 
+.. _dataset-zoo-delete:
+
 Deleting zoo datasets
 ---------------------
 
@@ -618,7 +546,7 @@ Deleting zoo datasets
 
         fiftyone zoo datasets delete cifar10 --splits test
 
-.. _zoo-adding-datasets:
+.. _dataset-zoo-add:
 
 Adding datasets to the zoo
 --------------------------
@@ -633,8 +561,8 @@ become accessible to you when you update your FiftyOne package.
     `the GitHub repository <https://github.com/voxel51/fiftyone>`_.
 
 You can also add your own datasets to your local dataset zoo, enabling you to
-work with these datasets via the ``fiftyone.zoo`` package and the CLI using the
-same syntax that you would with publicly available datasets.
+work with these datasets via the :mod:`fiftyone.zoo.datasets` package and the
+CLI using the same syntax that you would with publicly available datasets.
 
 To add dataset(s) to your local zoo, you simply write a JSON manifest file in
 the format below to tell FiftyOne about the dataset. For example, the manifest
@@ -679,7 +607,7 @@ dataset:
     # Load custom dataset into FiftyOne
     fiftyone zoo datasets load quickstart-copy
 
-.. _zoo-customizing-your-ml-backend:
+.. _dataset-zoo-ml-backend:
 
 Customizing your ML backend
 ---------------------------
