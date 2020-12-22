@@ -94,7 +94,7 @@ to make adjustments.
 
 You will need:
 
--   [Python](https://www.python.org/) (3.5 or newer)
+-   [Python](https://www.python.org/) (3.6 or newer)
 -   [Node.js](https://nodejs.org/) - on Linux, we recommend using
     [nvm](https://github.com/nvm-sh/nvm) to install an up-to-date version.
 -   [Yarn](https://yarnpkg.com/) - once Node.js is installed, you can install
