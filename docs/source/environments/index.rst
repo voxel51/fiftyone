@@ -118,7 +118,7 @@ appropriate value in the local commands too.
     :ref:`fiftyone app connect <cli-fiftyone-app-connect>` command.
 
     However, if you are using this key regularly,
-    `it is recommended <https://unix.stackexchange.com/a/494485>`_ to to add it
+    `it is recommended <https://unix.stackexchange.com/a/494485>`_ to add it
     to your `~/.ssh/config` as the default `IdentityFile`.
 
 .. note::
@@ -354,7 +354,7 @@ appropriate value in the local commands too.
     :ref:`fiftyone app connect <cli-fiftyone-app-connect>` command.
 
     However, if you are using this key regularly,
-    `it is recommended <https://unix.stackexchange.com/a/494485>`_ to to add it
+    `it is recommended <https://unix.stackexchange.com/a/494485>`_ to add it
     to your `~/.ssh/config` as the default `IdentityFile`.
 
 .. note::
@@ -445,7 +445,7 @@ appropriate value in the local commands too.
     :ref:`fiftyone app connect <cli-fiftyone-app-connect>` command.
 
     However, if you are using this key regularly,
-    `it is recommended <https://unix.stackexchange.com/a/494485>`_ to to add it
+    `it is recommended <https://unix.stackexchange.com/a/494485>`_ to add it
     to your `~/.ssh/config` as the default `IdentityFile`.
 
 .. note::
@@ -532,7 +532,7 @@ appropriate value in the local commands too.
     :ref:`fiftyone app connect <cli-fiftyone-app-connect>` command.
 
     However, if you are using this key regularly,
-    `it is recommended <https://unix.stackexchange.com/a/494485>`_ to to add it
+    `it is recommended <https://unix.stackexchange.com/a/494485>`_ to add it
     to your `~/.ssh/config` as the default `IdentityFile`.
 
 .. note::
