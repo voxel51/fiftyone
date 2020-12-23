@@ -19,7 +19,7 @@ _EXIT = os.environ.get("FIFTYONE_EXIT", False)
 def quickstart(
     interactive=True,
     video=False,
-    port=5151,
+    port=None,
     remote=False,
     desktop=None,
     auto=True,
@@ -34,7 +34,8 @@ def quickstart(
         interactive (True): whether to launch the session asynchronously and
             return a session
         video (False): whether to launch a video dataset
-        port (5151): the port number to serve the App
+        port (None): the port number to serve the App. If None,
+            ``fiftyone.config.default_app_port`` is used
         remote (False): whether this is a remote session, and opening the App
             should not be attempted
         desktop (None): whether to launch the App in the browser (False) or as

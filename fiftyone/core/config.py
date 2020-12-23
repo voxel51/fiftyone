@@ -84,6 +84,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DEFAULT_VIDEO_EXT",
             default=".mp4",
         )
+        self.default_app_port = self.parse_int(
+            d,
+            "default_app_port",
+            env_var="FIFTYONE_DEFAULT_APP_PORT",
+            default=5151,
+        )
         self.desktop_app = self.parse_bool(
             d, "desktop_app", env_var="FIFTYONE_DESKTOP_APP", default=False,
         )
