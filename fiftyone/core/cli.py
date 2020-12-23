@@ -114,7 +114,7 @@ class QuickstartCommand(Command):
             "-p",
             "--port",
             metavar="PORT",
-            default=5151,
+            default=None,
             type=int,
             help="the port number to use",
         )
@@ -805,7 +805,7 @@ class AppLaunchCommand(Command):
             "-p",
             "--port",
             metavar="PORT",
-            default=5151,
+            default=None,
             type=int,
             help="the port number to use",
         )
@@ -969,7 +969,7 @@ class AppViewCommand(Command):
             "-p",
             "--port",
             metavar="PORT",
-            default=5151,
+            default=None,
             type=int,
             help="the port number to use",
         )
@@ -1086,7 +1086,7 @@ class AppConnectCommand(Command):
             "-p",
             "--port",
             metavar="PORT",
-            default=5151,
+            default=None,
             type=int,
             help="the remote port to connect to",
         )
@@ -1094,7 +1094,7 @@ class AppConnectCommand(Command):
             "-l",
             "--local-port",
             metavar="PORT",
-            default=5151,
+            default=None,
             type=int,
             help="the local port to use to serve the App",
         )
@@ -1115,6 +1115,9 @@ class AppConnectCommand(Command):
 
     @staticmethod
     def execute(parser, args):
+        remote_port = args.port or fo.config.default_app_port
+        local_port = args.local_port or fo.config.default_app_port
+
         if args.destination:
             if sys.platform.startswith("win"):
                 raise RuntimeError(
@@ -1134,7 +1137,7 @@ class AppConnectCommand(Command):
                 "-S",
                 control_path,
                 "-L",
-                "%d:127.0.0.1:%d" % (args.local_port, args.port),
+                "%d:127.0.0.1:%d" % (local_port, remote_port),
             ]
 
             if args.ssh_key:
@@ -1167,7 +1170,7 @@ class AppConnectCommand(Command):
         # If desktop wasn't explicitly requested, fallback to default
         desktop = args.desktop or None
 
-        session = fos.launch_app(port=args.local_port, desktop=desktop)
+        session = fos.launch_app(port=local_port, desktop=desktop)
 
         _watch_session(session)
 
