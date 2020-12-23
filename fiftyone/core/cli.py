@@ -786,20 +786,26 @@ class AppLaunchCommand(Command):
 
     Examples::
 
-        # Launch the App with the given dataset
+        # Launch the App
+        fiftyone app launch
+
+        # Launch the App with the given dataset loaded
         fiftyone app launch <name>
 
         # Launch a remote App session
-        fiftyone app launch <name> --remote
+        fiftyone app launch ... --remote
 
         # Launch a desktop App session
-        fiftyone app launch <name> --desktop
+        fiftyone app launch ... --desktop
     """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "name", metavar="NAME", help="the name of the dataset to open",
+            "name",
+            metavar="NAME",
+            nargs="?",
+            help="the name of a dataset to open",
         )
         parser.add_argument(
             "-p",
@@ -827,7 +833,10 @@ class AppLaunchCommand(Command):
         # If desktop wasn't explicitly requested, fallback to default
         desktop = args.desktop or None
 
-        dataset = fod.load_dataset(args.name)
+        if args.name:
+            dataset = fod.load_dataset(args.name)
+        else:
+            dataset = None
 
         session = fos.launch_app(
             dataset=dataset,
