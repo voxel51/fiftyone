@@ -1,0 +1,16 @@
+diff --git a/node_modules/html2canvas/dist/html2canvas.esm.js b/node_modules/html2canvas/dist/html2canvas.esm.js
+index d6a2689..61ef341 100644
+--- a/node_modules/html2canvas/dist/html2canvas.esm.js
++++ b/node_modules/html2canvas/dist/html2canvas.esm.js
+@@ -6194,9 +6194,11 @@ var CanvasRenderer = /** @class */ (function () {
+     CanvasRenderer.prototype.renderTextWithLetterSpacing = function (text, letterSpacing) {
+         var _this = this;
+         if (letterSpacing === 0) {
++	    this.ctx.textBaseline = 'ideographic'; console.log(text);
+             this.ctx.fillText(text.text, text.bounds.left, text.bounds.top + text.bounds.height);
+         }
+         else {
++	     // this.ctx.textBaseline = 'ideographic';
+             var letters = toCodePoints(text.text).map(function (i) { return fromCodePoint(i); });
+             letters.reduce(function (left, letter) {
+                 _this.ctx.fillText(letter, left, text.bounds.top + text.bounds.height);

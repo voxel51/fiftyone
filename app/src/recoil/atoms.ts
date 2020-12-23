@@ -2,6 +2,11 @@ import { atom, atomFamily } from "recoil";
 
 import { SelectedObjectMap } from "../utils/selection";
 
+export const canvas = atom({
+  key: "canvas",
+  default: null,
+});
+
 export const deactivated = atom({
   key: "deactivated",
   default: false,

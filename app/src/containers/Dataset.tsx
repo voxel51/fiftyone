@@ -6,6 +6,7 @@ import {
   useResetRecoilState,
 } from "recoil";
 import styled from "styled-components";
+import html2canvas from "html2canvas";
 
 import SamplesContainer from "./SamplesContainer";
 import HorizontalNav from "../components/HorizontalNav";
@@ -59,6 +60,7 @@ function Dataset(props) {
   const currentSamples = useRecoilValue(atoms.currentSamples);
   const labelTuples = useRecoilValue(selectors.labelTuples("sample"));
   const frameLabelTuples = useRecoilValue(selectors.labelTuples("frame"));
+  const setCanvas = useSetRecoilState(atoms.canvas);
   const tagNames = useRecoilValue(selectors.tagNames);
   const setExtendedDatasetStats = useSetRecoilState(
     atoms.extendedDatasetStatsRaw
@@ -83,7 +85,23 @@ function Dataset(props) {
     notebook: isNotebook,
   });
 
-  useMessageHandler("deactivate", () => setDeactivated(true));
+  useMessageHandler("deactivate", () => {
+    const svgElements = document.body.querySelectorAll("svg");
+    svgElements.forEach((item) => {
+      item.setAttribute("width", item.getBoundingClientRect().width);
+      item.setAttribute("height", item.getBoundingClientRect().height);
+      item.style.width = null;
+      item.style.height = null;
+    });
+    html2canvas(document.body, {
+      useCORS: true,
+    }).then((canvas) => {
+      const imgData = canvas.toDataURL("image/png");
+      console.log(imgData);
+      setCanvas(imgData);
+      setDeactivated(true);
+    });
+  });
 
   // update color map
   useEffect(() => {

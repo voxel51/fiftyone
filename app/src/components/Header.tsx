@@ -32,9 +32,10 @@ const DatasetInput = styled(AuosizeInput)`
     background-color: transparent;
     border: none;
     color: ${({ theme }) => theme.font};
-    line-height: 40px;
+    height: 40px;
     font-size: 1.2rem;
     border: none;
+    align-items: center;
     font-weight: bold;
   }
 
@@ -598,7 +599,7 @@ const Header = ({ addNotification }) => {
           }}
         >
           <LogoImg style={logoProps} src={"./logo.png"} />
-          <FiftyOneDiv>FiftyOne</FiftyOneDiv>
+          <FiftyOneDiv className="fix-me">FiftyOne</FiftyOneDiv>
         </TitleDiv>
         <DatasetSelector />
       </LeftDiv>
