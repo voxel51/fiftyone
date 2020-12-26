@@ -95,9 +95,23 @@ load labels in each of these formats.
 What image file types are supported?
 ------------------------------------
 
-In general, FiftyOne supports all image types `supported by your browser
-<https://en.wikipedia.org/wiki/Comparison_of_web_browsers#Image_format_support>`_,
+In general, FiftyOne supports all image types
+`supported by your browser <https://en.wikipedia.org/wiki/Comparison_of_web_browsers#Image_format_support>`_,
 which includes standard image types like JPEG, PNG, and BMP.
+
+Some browsers like Safari natively support other image types such as TIFF,
+while others do not. You may be able to install a browser extension to work
+with additional image types. For example, you can install
+`this extension <https://chrome.google.com/webstore/detail/tiff-viewer/fciggfkkblggmebjbekbebbcffeacknj>`_
+to view TIFF images in Chrome.
+
+.. note::
+
+    The :ref:`FiftyOne Desktop App <installing-fiftyone-desktop>` is an
+    `Electron App <https://electronjs.org>`_, which uses the Chromium rendering
+    engine. Therefore, refer to Chromium in
+    `this chart <https://en.wikipedia.org/wiki/Comparison_of_web_browsers#Image_format_support>`_
+    for supported image types.
 
 .. _faq-video-types:
 
@@ -105,21 +119,28 @@ What video file types are supported?
 ------------------------------------
 
 Core methods that process videos can generally handle any
-`codec supported by ffmpeg <https://www.ffmpeg.org/general.html#Video-Codecs>`_.
+`codec supported by FFmpeg <https://www.ffmpeg.org/general.html#Video-Codecs>`_.
 
 The App can play any video codec that is supported by
 `HTML5 video on your browser <https://en.wikipedia.org/wiki/HTML5_video#Browser_support>`_,
-including MP4 (H.264), WebM, and Ogg.
-
-If you try to view a video with an unsupported codec in the App, you will be
-prompted to use the :func:`reencode_videos() <fiftyone.utils.video.reencode_videos>`
-utility method to reencode the source video so it is viewable in the App.
+including MP4 (H.264), WebM, and Ogg. If you try to view a video with an
+unsupported codec in the App, you will be prompted to use the
+:func:`reencode_videos() <fiftyone.utils.video.reencode_videos>` utility method
+to reencode the source video so it is viewable in the App.
 
 .. note::
 
     You must install `FFmpeg <https://ffmpeg.org>`_ in order to work with video
     datasets in FiftyOne. See :ref:`this page <troubleshooting-video>` for
     installation instructions.
+
+.. note::
+
+    The :ref:`FiftyOne Desktop App <installing-fiftyone-desktop>` is an
+    `Electron App <https://electronjs.org>`_, which uses the Chromium rendering
+    engine. Therefore, refer to Chromium in
+    `this chart <https://en.wikipedia.org/wiki/HTML5_video#Browser_support>`_
+    for supported video types.
 
 .. _faq-supported-os:
 
