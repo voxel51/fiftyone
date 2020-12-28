@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import {
   useRecoilState,
   useRecoilValue,
@@ -15,8 +15,13 @@ import { ModalWrapper } from "../components/utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { VALID_LABEL_TYPES } from "../utils/labels";
-import { useMessageHandler, useSendMessage } from "../utils/hooks";
+import {
+  useMessageHandler,
+  useOutsideClick,
+  useSendMessage,
+} from "../utils/hooks";
 import Loading from "../components/Loading";
+import { packageMessage } from "../utils/socket";
 
 const PLOTS = ["labels", "scalars", "tags"];
 
@@ -55,7 +60,6 @@ function Dataset(props) {
   const currentSamples = useRecoilValue(atoms.currentSamples);
   const labelTuples = useRecoilValue(selectors.labelTuples("sample"));
   const frameLabelTuples = useRecoilValue(selectors.labelTuples("frame"));
-  const setCanvas = useSetRecoilState(atoms.canvas);
   const socket = useRecoilValue(selectors.socket);
   const tagNames = useRecoilValue(selectors.tagNames);
   const setExtendedDatasetStats = useSetRecoilState(
@@ -70,15 +74,10 @@ function Dataset(props) {
   );
   const activeOther = useRecoilValue(atoms.activeOther("sample"));
   const activeFrameOther = useRecoilValue(atoms.activeOther("frame"));
-  const isNotebook = useRecoilValue(selectors.isNotebook);
-  const setDeactivated = useSetRecoilState(atoms.deactivated);
 
   useMessageHandler("statistics", ({ stats, view, filters }) => {
     filters && setExtendedDatasetStats({ stats, view, filters });
     !filters && setDatasetStats({ stats, view });
-  });
-  useSendMessage("as_app", {
-    notebook: isNotebook,
   });
 
   useMessageHandler("deactivate", () => {
@@ -91,8 +90,7 @@ function Dataset(props) {
       useCORS: true,
     }).then((canvas) => {
       const imgData = canvas.toDataURL("image/png");
-      setCanvas(imgData);
-      setDeactivated(true);
+      socket.send(packageMessage("capture", { src: imgData }));
     });
   });
 
@@ -187,6 +185,9 @@ function Dataset(props) {
       modalProps.onNext = () => setModal({ ...modal, ...nextSample });
     }
   }
+  const ref = useRef();
+
+  useOutsideClick(ref, handleHideModal);
 
   return (
     <>
@@ -201,6 +202,7 @@ function Dataset(props) {
             sampleUrl={src}
             onClose={handleHideModal}
             {...modalProps}
+            ref={ref}
           />
         </ModalWrapper>
       ) : null}

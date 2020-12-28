@@ -215,15 +215,10 @@ const Row = ({ name, renderedName, value, children, ...rest }) => (
   </div>
 );
 
-const SampleModal = ({
-  sample,
-  sampleUrl,
-  metadata,
-  colorMap = {},
-  onClose,
-  port,
-  ...rest
-}: Props) => {
+const SampleModal = (
+  { sample, sampleUrl, metadata, colorMap = {}, onClose, port, ...rest }: Props,
+  ref
+) => {
   const playerContainerRef = useRef();
   const [playerStyle, setPlayerStyle] = useState({
     height: "100%",
@@ -470,6 +465,7 @@ const SampleModal = ({
       <Container
         style={{ zIndex: 10001 }}
         className={fullscreen ? "fullscreen" : ""}
+        ref={ref}
       >
         <div className="player" ref={playerContainerRef}>
           {showJSON ? (
@@ -619,4 +615,4 @@ const SampleModal = ({
   );
 };
 
-export default SampleModal;
+export default React.forwardRef(SampleModal);

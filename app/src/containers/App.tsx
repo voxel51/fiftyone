@@ -8,7 +8,12 @@ import styled from "styled-components";
 import Header from "../components/Header";
 import Dataset from "./Dataset";
 
-import { useEventHandler, useMessageHandler, useGA } from "../utils/hooks";
+import {
+  useEventHandler,
+  useMessageHandler,
+  useGA,
+  useSendMessage,
+} from "../utils/hooks";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { convertSelectedObjectsListToMap } from "../utils/selection";
@@ -18,7 +23,6 @@ import { scrollbarStyles } from "../components/utils";
 import Setup from "./Setup";
 import "player51/src/css/player51.css";
 import "../app.global.css";
-import Deactivated from "./Deactivated";
 
 const Body = styled.div`
   ${scrollbarStyles}
@@ -43,7 +47,8 @@ function App() {
   const setSelectedSamples = useSetRecoilState(atoms.selectedSamples);
   const [viewCounterValue, setViewCounter] = useRecoilState(atoms.viewCounter);
   const setSelectedObjects = useSetRecoilState(atoms.selectedObjects);
-  const deactivated = useRecoilValue(atoms.deactivated);
+  const handle = useRecoilValue(selectors.handleId);
+  const isNotebook = useRecoilValue(selectors.isNotebook);
   const handleStateUpdate = (state) => {
     setStateDescription(state);
     setSelectedSamples(new Set(state.selected));
@@ -69,6 +74,10 @@ function App() {
 
   useMessageHandler("notification", (data) => addNotification.current(data));
   const connected = useRecoilValue(atoms.connected);
+  useSendMessage("as_app", {
+    notebook: isNotebook,
+    handle,
+  });
 
   return (
     <ErrorBoundary
@@ -80,7 +89,7 @@ function App() {
       {connected && (
         <Suspense fallback={Setup}>
           <GA />
-          {deactivated ? <Deactivated /> : <Dataset />}
+          <Dataset />
         </Suspense>
       )}
       {!connected && <Setup />}

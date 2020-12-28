@@ -147,7 +147,7 @@ def _catch_errors(func):
     return wrapper
 
 
-_notebook_clients = set()
+_notebook_clients = {}
 
 
 class PollingHandler(tornado.web.RequestHandler):
@@ -192,7 +192,7 @@ class PollingHandler(tornado.web.RequestHandler):
                 if message["notebook"]:
                     message["ignore"] = client
                     global _notebook_clients
-                    _notebook_clients.add(client)
+                    _notebook_clients[client] = message["handle"]
 
             if event in {"distributions", "page", "get_video_data"}:
                 caller = self
@@ -361,7 +361,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         StateHandler.clients.remove(self)
         StateHandler.app_clients.discard(self)
         global _notebook_clients
-        _notebook_clients.discard(self)
+        try:
+            del _notebook_clients[self]
+        except:
+            pass
 
     @_catch_errors
     async def on_message(self, message):
@@ -376,22 +379,22 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         await event(self, **message)
 
     @staticmethod
-    async def on_as_app(self, notebook, ignore=None):
+    async def on_capture(self, src):
+        global _notebook_clients
+        for client in StateHandler.clients:
+            client.write_message(
+                {"type": "capture", _notebook_clients[self]: src}
+            )
+
+    @staticmethod
+    async def on_as_app(self, notebook, handle, ignore=None):
         """Event for registering a client as an App."""
         if isinstance(self, StateHandler):
             StateHandler.app_clients.add(self)
         global _notebook_clients
         if isinstance(self, StateHandler) and notebook:
-            _notebook_clients.add(self)
+            _notebook_clients[self] = handle
             ignore = self
-
-        for client in _notebook_clients:
-            if client == ignore:
-                continue
-            if isinstance(client, StateHandler):
-                client.write_message({"type": "deactivate"})
-            else:
-                PollingHandler.clients[client].add("deactivate")
 
         if not isinstance(self, StateHandler):
             return
@@ -501,8 +504,24 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         Args:
             state: a serialized :class:`fiftyone.core.state.StateDescription`
         """
+        print("ACTIVE", state["active_handle"])
         StateHandler.state = state
+        active_handle = state["active_handle"]
+        global _notebook_clients
+        if (
+            active_handle
+            and self in _notebook_clients
+            and _notebook_clients[self] != active_handle
+        ):
+            return
         for client, events in PollingHandler.clients.items():
+            if (
+                active_handle
+                and _notebook_clients.get(client, None) != active_handle
+            ):
+                events.clear()
+                events.add("deactivate")
+                continue
             if client == ignore_polling_client:
                 events.update({"statistics", "extended_statistics"})
             events.update({"update", "statistics", "extended_statistics"})
@@ -672,7 +691,15 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             only.write_message(response)
             return
 
+        global _notebook_clients
+        active_handle = StateHandler.state["active_handle"]
         for client in cls.clients:
+            if (
+                active_handle
+                and _notebook_clients.get(client, None) != active_handle
+            ):
+                client.write_message({"type": "deactivate"})
+                continue
             if client == ignore:
                 continue
             client.write_message(response)
@@ -714,7 +741,14 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         if only:
             only.write_message(message)
         else:
+            global _notebook_clients
+            active_handle = StateHandler.state["active_handle"]
             for client in StateHandler.app_clients:
+                if (
+                    active_handle
+                    and _notebook_clients.get(client, None) != active_handle
+                ):
+                    continue
                 client.write_message(message)
 
     @classmethod

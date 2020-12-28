@@ -100,6 +100,28 @@ class HTTPSSocket {
 
 export const sessionId = uuid();
 
+export const handleId = selector({
+  key: "handleId",
+  get: () => {
+    const search = window.location.search;
+    const params = new URLSearchParams(search);
+    return params.get("handleId");
+  },
+});
+
+export const deactivated = selector({
+  key: "deactivated",
+  get: ({ get }) => {
+    const handle = get(handleId);
+    const activeHandle = get(atoms.stateDescription)?.active_handle;
+    const notebook = get(isNotebook);
+    if (notebook) {
+      return handle !== activeHandle && typeof activeHandle === "string";
+    }
+    return false;
+  },
+});
+
 const host =
   process.env.NODE_ENV === "development"
     ? "localhost:5151"

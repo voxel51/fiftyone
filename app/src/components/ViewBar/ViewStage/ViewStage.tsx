@@ -114,23 +114,23 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
   }, [active]);
 
   const [addProps, setAdd] = useSpring(() => ({
-    y: active ? 0 : 40,
+    y: active ? 9 : 31,
   }));
 
   const [arrowProps, setArrow] = useSpring(() => ({
-    y: active ? -40 : 0,
+    y: active ? -31 : 9,
   }));
 
   const setEnterProps = () => {
     set({ background: theme.background });
-    setAdd({ y: 0 });
-    setArrow({ y: -40 });
+    setAdd({ y: 9 });
+    setArrow({ y: -31 });
   };
 
   const setLeaveProps = () => {
     set({ background: theme.backgroundDark });
-    setAdd({ y: 40 });
-    setArrow({ y: 0 });
+    setAdd({ y: 31 });
+    setArrow({ y: 9 });
   };
 
   useEffect(() => {
@@ -151,7 +151,6 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
             transform: arrowProps.y.interpolate(arrowTransform),
             display: "block",
             fontSize: "14px",
-            margin: "9px 0",
           }}
         />
         <AddIcon
@@ -159,7 +158,6 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
             transform: addProps.y.interpolate(addTransform),
             display: "block",
             fontSize: "14px",
-            margin: "9px 0",
           }}
         />
       </ViewStageButton>
@@ -332,18 +330,25 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
             </BestMatchDiv>
           ) : null}
           {isCompleted && (
-            <ExternalLink
-              href={`https://voxel51.com/docs/fiftyone/api/fiftyone.core.stages.html#fiftyone.core.stages.${stage}`}
-              style={{ lineHeight: "0.8rem" }}
+            <div
+              style={{
+                width: "1rem",
+                height: "1rem",
+                margin: "0.4rem 0.5rem 0.5rem 0.5rem",
+              }}
             >
-              <Help
-                style={{
-                  width: "1rem",
-                  height: "1rem",
-                  margin: "0.5rem",
-                }}
-              />
-            </ExternalLink>
+              <ExternalLink
+                href={`https://voxel51.com/docs/fiftyone/api/fiftyone.core.stages.html#fiftyone.core.stages.${stage}`}
+                style={{ maxHeight: "1rem", width: "1rem", display: "block" }}
+              >
+                <Help
+                  style={{
+                    width: "1rem",
+                    height: "1rem",
+                  }}
+                />
+              </ExternalLink>
+            </div>
           )}
         </ViewStageDiv>
         {parameters

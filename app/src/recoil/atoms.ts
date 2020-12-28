@@ -12,16 +12,6 @@ export const modal = atom({
   },
 });
 
-export const canvas = atom({
-  key: "canvas",
-  default: null,
-});
-
-export const deactivated = atom({
-  key: "deactivated",
-  default: false,
-});
-
 export const connected = atom({
   key: "connected",
   default: false,

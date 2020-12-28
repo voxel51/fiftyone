@@ -9,6 +9,7 @@ from collections import defaultdict
 from functools import wraps
 import logging
 import time
+from uuid import uuid4
 import webbrowser
 
 import fiftyone as fo
@@ -162,8 +163,8 @@ def _update_state(func):
     def wrapper(self, *args, **kwargs):
         result = func(self, *args, **kwargs)
         self.state.datasets = fod.list_datasets()
-        self._update_state()
         self._auto_show()
+        self._update_state()
         return result
 
     return wrapper
@@ -239,6 +240,7 @@ class Session(foc.HasClient):
         self._disable_wait_warning = False
         self._auto = auto
         self._height = height
+        self._handles = {}
 
         global _server_services  # pylint: disable=global-statement
         if port not in _server_services:
@@ -476,6 +478,13 @@ class Session(foc.HasClient):
 
         return "\n".join(elements)
 
+    def _capture(self, data):
+        from IPython.display import HTML
+
+        for k, v in data.items():
+            if k in self._handles:
+                self._handles[k].update(HTML("<img src='%s'/>" % v))
+
     def open(self):
         """Opens the App, if necessary.
 
@@ -532,13 +541,18 @@ class Session(foc.HasClient):
         if self.dataset is not None:
             self.dataset._reload()
 
+        import IPython.display
+
         self.state.datasets = fod.list_datasets()
-        self._update_state()
+        handle = IPython.display.display(display_id=True)
+        uuid = str(uuid4())
+        self.state.active_handle = uuid
+        self._handles[uuid] = handle
 
         if height is None:
             height = self._height
 
-        display(self._port, height=height)
+        display(handle, uuid, self._port, height=height)
 
     def wait(self):
         """Blocks execution until the session is closed by the user.
@@ -578,7 +592,7 @@ class Session(foc.HasClient):
             self.show()
 
 
-def display(port=None, height=None):
+def display(handle, uuid, port=None, height=None):
     """Displays a running FiftyOne instance.
 
     Args:
@@ -592,10 +606,10 @@ def display(port=None, height=None):
     funcs = {focx._COLAB: _display_colab, focx._IPYTHON: _display_ipython}
     fn = funcs[focx._get_context()]
 
-    return fn(port, height)
+    return fn(handle, uuid, port, height)
 
 
-def _display_colab(port, height):
+def _display_colab(handle, uuid, port, height):
     """Display a FiftyOne instance in a Colab output frame.
 
     The Colab VM is not directly exposed to the network, so the Colab runtime
@@ -633,12 +647,12 @@ def _display_colab(port, height):
         shell = shell.replace(k, v)
     script = IPython.display.Javascript(shell)
 
-    IPython.display.display(script)
+    handle.display(script)
 
 
-def _display_ipython(port, height):
+def _display_ipython(handle, uuid, port, height):
     import IPython.display
 
-    src = "http://localhost:%d/?notebook=true" % port
+    src = "http://localhost:%d/?notebook=true&handleId=%s" % (8080, uuid)
     iframe = IPython.display.IFrame(src, height=height, width="100%")
-    IPython.display.display(iframe)
+    handle.display(iframe)

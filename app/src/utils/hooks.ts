@@ -28,10 +28,8 @@ export const useEventHandler = (target, eventType, handler) => {
 };
 
 export const useMessageHandler = (type, handler) => {
-  const deactivated = useRecoilValue(atoms.deactivated);
   const socket = useRecoilValue(selectors.socket);
   const wrapper = ({ data }) => {
-    if (deactivated) return;
     data = JSON.parse(data);
     data.type === type && handler(data);
   };
