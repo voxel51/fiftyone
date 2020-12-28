@@ -11,7 +11,7 @@ import json
 import numbers
 import six
 
-from bson import json_util
+from bson import json_util, ObjectId
 from bson.binary import Binary
 from mongoengine.errors import InvalidQueryError
 import numpy as np
@@ -121,6 +121,18 @@ class DatasetMixin(object):
         return self._get_fields_ordered(include_private=include_private)
 
     @classmethod
+    def _sample_collection_name(cls):
+        return cls.__name__
+
+    @classmethod
+    def _dataset_doc_fields_col(cls):
+        return "sample_fields"
+
+    @classmethod
+    def _frame_collection_name(cls):
+        return "frames." + cls.__name__
+
+    @classmethod
     def get_field_schema(
         cls, ftype=None, embedded_doc_type=None, include_private=False
     ):
@@ -211,51 +223,14 @@ class DatasetMixin(object):
         """
         # Additional arg `save` is to prevent saving the fields when reloading
         # a dataset from the database.
-
-        # pylint: disable=no-member
-        if field_name in cls._fields:
-            raise ValueError("Field '%s' already exists" % field_name)
-
-        field = _create_field(
+        cls._add_field_schema(
             field_name,
             ftype,
             embedded_doc_type=embedded_doc_type,
             subfield=subfield,
-            kwargs=kwargs,
+            save=save,
+            **kwargs
         )
-
-        cls._fields[field_name] = field
-        cls._fields_ordered += (field_name,)
-        try:
-            if issubclass(cls, SampleDocument):
-                # Only set the attribute if it is a class
-                setattr(cls, field_name, field)
-        except TypeError:
-            # Instance, not class, so do not `setattr`
-            pass
-
-        if save:
-            # Update dataset meta class
-            dataset_doc = DatasetDocument.objects.get(
-                sample_collection_name=cls._sample_collection_name()
-            )
-
-            field = cls._fields[field_name]
-            sample_field = SampleFieldDocument.from_field(field)
-            dataset_doc[cls._dataset_doc_fields_col()].append(sample_field)
-            dataset_doc.save()
-
-    @classmethod
-    def _sample_collection_name(cls):
-        return cls.__name__
-
-    @classmethod
-    def _dataset_doc_fields_col(cls):
-        return "sample_fields"
-
-    @classmethod
-    def _frame_collection_name(cls):
-        return "frames." + cls.__name__
 
     @classmethod
     def add_implied_field(cls, field_name, value, **kwargs):
@@ -313,14 +288,186 @@ class DatasetMixin(object):
         Raises:
             AttributeError: if the field does not exist
         """
+        cls._rename_field_schema(field_name, new_field_name, is_frame_field)
+
+        """
         try:
-            # Rename field on all samples
             # pylint: disable=no-member
             cls.objects.update(**{"rename__%s" % field_name: new_field_name})
         except InvalidQueryError:
             raise AttributeError("Sample has no field '%s'" % field_name)
+        """
 
-        # Rename field on dataset
+        cls._rename_field_docs(field_name, new_field_name)
+
+    @classmethod
+    def rename_embedded_field(cls, field_name, new_field_name):
+        """Renames the embedded field of the sample(s).
+
+        If the sample is in a dataset, the embedded field will be renamed on
+        all samples in the dataset.
+
+        Args:
+            field_name: the "embedded.field.name"
+            new_field_name: the "new.embedded.field.name"
+
+        Raises:
+            AttributeError: if the field does not exist
+        """
+        cls._rename_field_docs(field_name, new_field_name)
+
+    @classmethod
+    def clone_field(cls, field_name, new_field_name, sample_ids=None):
+        """Clones the field of the sample(s).
+
+        If the sample is in a dataset, the field will be cloned on all samples
+        in the dataset.
+
+        Args:
+            field_name: the field name
+            new_field_name: the new field name
+            sample_ids (None): an optional list of sample IDs to operate on
+
+        Raises:
+            AttributeError: if the field does not exist
+        """
+        cls._clone_field_schema(field_name, new_field_name)
+        cls._clone_field_docs(field_name, new_field_name, sample_ids)
+
+    @classmethod
+    def clone_embedded_field(cls, field_name, new_field_name, sample_ids=None):
+        """Clones the embedded field of the sample(s).
+
+        If the sample is in a dataset, the embedded field will be cloned on
+        all samples in the dataset.
+
+        Args:
+            field_name: the "embedded.field.name"
+            new_field_name: the "new.embedded.field.name"
+            sample_ids (None): an optional list of sample IDs to operate on
+
+        Raises:
+            AttributeError: if the field does not exist
+        """
+        cls._clone_field_docs(field_name, new_field_name, sample_ids)
+
+    @classmethod
+    @no_delete_default_field
+    def delete_field(
+        cls, field_name, is_frame_field=False, update_schema=False
+    ):
+        """Deletes the field from the sample(s).
+
+        If the sample is in a dataset, the field will be removed from all
+        samples in the dataset.
+
+        Args:
+            field_name: the field name
+            is_frame_field (False): whether this is a frame-level field
+            update_schema (False): whether to remove the field from the dataset
+                schema
+
+        Raises:
+            AttributeError: if the field does not exist
+        """
+        if update_schema:
+            cls._delete_field_schema(field_name, is_frame_field)
+
+        """
+        try:
+            # pylint: disable=no-member
+            cls.objects.update(**{"unset__%s" % field_name: None})
+        except InvalidQueryError:
+            raise AttributeError("Sample has no field '%s'" % field_name)
+        """
+
+        cls._delete_field_docs(field_name)
+
+    @classmethod
+    def delete_embedded_field(cls, field_name):
+        """Deletes the embedded field from the sample(s).
+
+        If the sample is in a dataset, the embedded field will be removed from
+        all samples in the dataset.
+
+        Args:
+            field_name: the "embedded.field.name"
+        """
+        cls._delete_field_docs(field_name)
+
+    @classmethod
+    def _rename_field_docs(cls, field_name, new_field_name):
+        collection_name = cls.__name__
+        collection = get_db_conn()[collection_name]
+        collection.update_many({}, {"$rename": {field_name: new_field_name}})
+
+    @classmethod
+    def _clone_field_docs(cls, field_name, new_field_name, sample_ids):
+        if sample_ids is not None:
+            filt = {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
+        else:
+            filt = {}
+
+        collection_name = cls.__name__
+        collection = get_db_conn()[collection_name]
+        collection.update_many(
+            filt, [{"$addFields": {new_field_name: "$" + field_name}}]
+        )
+
+    @classmethod
+    def _delete_field_docs(cls, field_name):
+        collection_name = cls.__name__
+        collection = get_db_conn()[collection_name]
+        collection.update_many({}, {"$unset": {field_name: ""}})
+
+    @classmethod
+    def _add_field_schema(
+        cls,
+        field_name,
+        ftype,
+        embedded_doc_type=None,
+        subfield=None,
+        save=True,
+        **kwargs
+    ):
+        # pylint: disable=no-member
+        if field_name in cls._fields:
+            raise AttributeError("Field '%s' already exists" % field_name)
+
+        field = _create_field(
+            field_name,
+            ftype,
+            embedded_doc_type=embedded_doc_type,
+            subfield=subfield,
+            kwargs=kwargs,
+        )
+
+        cls._fields[field_name] = field
+        cls._fields_ordered += (field_name,)
+        try:
+            if issubclass(cls, SampleDocument):
+                # Only set the attribute if it is a class
+                setattr(cls, field_name, field)
+        except TypeError:
+            # Instance, not class, so do not `setattr`
+            pass
+
+        if save:
+            dataset_doc = DatasetDocument.objects.get(
+                sample_collection_name=cls._sample_collection_name()
+            )
+
+            field = cls._fields[field_name]
+            sample_field = SampleFieldDocument.from_field(field)
+            dataset_doc[cls._dataset_doc_fields_col()].append(sample_field)
+            dataset_doc.save()
+
+    @classmethod
+    def _rename_field_schema(cls, field_name, new_field_name, is_frame_field):
+        # pylint: disable=no-member
+        if field_name not in cls._fields:
+            raise AttributeError("Field '%s' does not exist" % field_name)
+
         # pylint: disable=no-member
         field = cls._fields[field_name]
         field = _rename_field(field, new_field_name)
@@ -339,7 +486,6 @@ class DatasetMixin(object):
             # Instance, not class, so do not `setattr`
             pass
 
-        # Update dataset document
         if is_frame_field:
             # @todo this hack assumes that
             # frames_collection_name = "frames." + sample_collection_name
@@ -363,53 +509,23 @@ class DatasetMixin(object):
             dataset_doc.save()
 
     @classmethod
-    def rename_embedded_field(cls, field_name, new_field_name):
-        """Renames the embedded field of the sample(s).
+    def _clone_field_schema(cls, field_name, new_field_name):
+        # pylint: disable=no-member
+        if field_name not in cls._fields:
+            raise AttributeError("Field '%s' does not exist" % field_name)
 
-        If the sample is in a dataset, the embedded field will be renamed on
-        all samples in the dataset.
-
-        Args:
-            field_name: the "embedded.field.name"
-            new_field_name: the "new.embedded.field.name"
-
-        Raises:
-            AttributeError: if the field does not exist
-        """
-        collection_name = cls.__name__
-        collection = get_db_conn()[collection_name]
-        collection.update_many({}, {"$rename": {field_name: new_field_name}})
+        # pylint: disable=no-member
+        field = cls._fields[field_name]
+        cls._add_field_schema(
+            new_field_name, save=True, **get_field_kwargs(field)
+        )
 
     @classmethod
-    @no_delete_default_field
-    def delete_field(
-        cls, field_name, is_frame_field=False, update_schema=False
-    ):
-        """Deletes the field from the sample(s).
+    def _delete_field_schema(cls, field_name, is_frame_field):
+        # pylint: disable=no-member
+        if field_name not in cls._fields:
+            raise AttributeError("Field '%s' does not exist" % field_name)
 
-        If the sample is in a dataset, the field will be removed from all
-        samples in the dataset.
-
-        Args:
-            field_name: the field name
-            is_frame_field (False): whether this is a frame-level field
-            update_schema (False): whether to remove the field from the dataset
-                schema
-
-        Raises:
-            AttributeError: if the field does not exist
-        """
-        try:
-            # Delete from all samples
-            # pylint: disable=no-member
-            cls.objects.update(**{"unset__%s" % field_name: None})
-        except InvalidQueryError:
-            raise AttributeError("Sample has no field '%s'" % field_name)
-
-        if not update_schema:
-            return
-
-        # Remove from dataset
         # pylint: disable=no-member
         del cls._fields[field_name]
         cls._fields_ordered = tuple(
@@ -417,7 +533,6 @@ class DatasetMixin(object):
         )
         delattr(cls, field_name)
 
-        # Update dataset document
         if is_frame_field:
             # @todo this hack assumes that
             # frames_collection_name = "frames." + sample_collection_name
@@ -437,20 +552,6 @@ class DatasetMixin(object):
                 f for f in dataset_doc.sample_fields if f.name != field_name
             ]
             dataset_doc.save()
-
-    @classmethod
-    def delete_embedded_field(cls, field_name):
-        """Deletes the embedded field from the sample(s).
-
-        If the sample is in a dataset, the embedded field will be removed from
-        all samples in the dataset.
-
-        Args:
-            field_name: the "embedded.field.name"
-        """
-        collection_name = cls.__name__
-        collection = get_db_conn()[collection_name]
-        collection.update_many({}, {"$unset": {field_name: ""}})
 
     def _update(self, object_id, update_doc, filtered_fields=None, **kwargs):
         """Updates an existing document.
@@ -767,6 +868,19 @@ class NoDatasetMixin(object):
         nothing.
         """
         pass
+
+
+def get_field_kwargs(field):
+    ftype = field.__class__
+    kwargs = {"ftype": ftype}
+
+    if issubclass(ftype, fof.EmbeddedDocumentField):
+        kwargs["embedded_doc_type"] = field.document_type
+
+    if issubclass(ftype, (fof.ListField, fof.DictField)):
+        kwargs["subfield"] = field.field
+
+    return kwargs
 
 
 def get_implied_field_kwargs(value, **kwargs):

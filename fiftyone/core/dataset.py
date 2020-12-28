@@ -651,6 +651,74 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self._frame_collection_name, field_name, new_field_name
             )
 
+    def clone_sample_field(self, field_name, new_field_name, samples=None):
+        """Clones the given sample field into a new field of the dataset.
+
+        You can use dot notation (``embedded.field.name``) to clone embedded
+        fields.
+
+        Args:
+            field_name: the field name to clone
+            new_field_name: the new field name to populate
+            samples (None): an optional
+                :class:`fiftyone.core.collections.SampleCollection` or list of
+                sample IDs specifying a subset of the samples to process. By
+                default, the entire dataset is processed
+        """
+        sample_ids = self._parse_samples_arg(samples)
+
+        if "." in field_name:
+            self._sample_doc_cls.clone_embedded_field(
+                field_name, new_field_name, sample_ids=sample_ids
+            )
+        else:
+            self._sample_doc_cls.clone_field(
+                field_name, new_field_name, sample_ids=sample_ids
+            )
+
+        fos.Sample._reload_docs(self._sample_collection_name)
+
+    def clone_frame_field(self, field_name, new_field_name, samples=None):
+        """Clones the frame-level field into a new field.
+
+        You can use dot notation (``embedded.field.name``) to clone embedded
+        frame fields.
+
+        Only applicable to video datasets.
+
+        Args:
+            field_name: the field name
+            new_field_name: the new field name
+            samples (None): an optional
+                :class:`fiftyone.core.collections.SampleCollection` or list of
+                sample IDs specifying a subset of the samples to process. By
+                default, the entire dataset is processed
+        """
+        if self.media_type != fom.VIDEO:
+            raise ValueError("Only video datasets have frame fields")
+
+        sample_ids = self._parse_samples_arg(samples)
+
+        if "." in field_name:
+            self._frame_doc_cls.clone_embedded_field(
+                field_name, new_field_name, sample_ids=sample_ids
+            )
+        else:
+            self._frame_doc_cls.clone_field(
+                field_name, new_field_name, sample_ids=sample_ids
+            )
+
+        fofr.Frame._reload_docs(self._frame_collection_name)
+
+    def _parse_samples_arg(self, samples):
+        if samples is None:
+            return None
+
+        if isinstance(samples, foc.SampleCollection):
+            return [sample.id for sample in samples.select_fields()]
+
+        return samples
+
     def clear_sample_field(self, field_name):
         """Clears the values of the field from all samples in the dataset.
 
@@ -741,48 +809,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 field_name, is_frame_field=True, update_schema=True
             )
             fofr.Frame._purge_field(self._frame_collection_name, field_name)
-
-    def clone_field(self, field_name, new_field_name, samples=None):
-        """Clones the field values of the samples into a new field of this
-        dataset.
-
-        Any samples in ``samples`` that are not in this dataset (i.e., their
-        sample ID does not match any samples in this dataset) are skipped.
-
-        The fields of the input samples are **deep copied**.
-
-        Args:
-            field_name: the field name to clone
-            new_field_name: the new field name to populate
-            samples (None): an iterable of :class:`fiftyone.core.sample.Sample`
-                instances whose fields to clone. For example, ``samples`` may
-                be a :class:`fiftyone.core.views.DatasetView`. By default, this
-                dataset itself is used
-
-        Returns:
-            tuple of
-
-            -   num_cloned: the number of samples that were cloned
-            -   num_skipped: the number of samples that were skipped
-        """
-        if samples is None:
-            samples = self
-
-        num_cloned = 0
-        num_skipped = 0
-        with fou.ProgressBar() as pb:
-            for sample in pb(samples):
-                try:
-                    _sample = self[sample.id]
-                except KeyError:
-                    num_skipped += 1
-                    continue
-
-                _sample[new_field_name] = deepcopy(sample[field_name])
-                _sample.save()
-                num_cloned += 1
-
-        return num_cloned, num_skipped
 
     def get_tags(self):
         """Returns the list of unique tags of samples in the dataset.
