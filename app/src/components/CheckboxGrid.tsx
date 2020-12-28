@@ -73,32 +73,15 @@ const Body = styled.div`
       .MuiIconButton-label {
         position: relative;
         svg {
-          z-index: 1;
-        }
-      }
-
-      &.Mui-checked .MuiIconButton-label::after {
-          /* fill checkmark with font color */
-          content: "";
-          position: absolute;
-          background: ${({ theme }) => theme.font};
-          top: 0.2em;
-          left: 0.2em;
-          width: 0.6em;
-          height: 0.6em;
-          z-index: 0;
+          z-index: 2;
         }
       }
     }
 
     .MuiFormControlLabel-label {
-      display: inline-flex;
+      display: flex;
       font-weight: bold;
       color: unset;
-
-      span {
-        display: inline-block;
-      }
 
       span.name {
         padding: 0 4px;
@@ -108,6 +91,8 @@ const Body = styled.div`
         flex-grow: 1;
         max-width: 100%;
         line-height: 24px;
+        display: flex;
+        align-items: center;
       }
       span.count {
         white-space: nowrap;
@@ -116,6 +101,8 @@ const Body = styled.div`
       span.data {
         margin-left: 0.5em;
         line-height: 24px;
+        display: flex;
+        align-items: center;
       }
     }
   }
@@ -124,7 +111,8 @@ const Body = styled.div`
     cursor: not-allowed;
     color: ${({ theme }) => theme.fontDarkest};
 
-    svg, input[type=checkbox] {
+    svg,
+    input[type="checkbox"] {
       display: none;
     }
   }

@@ -74,8 +74,8 @@ const PlotButton = styled.div`
 `;
 
 const TogglePlotsButton = animated(styled.div`
-  line-height: 2rem;
-  padding: 0 0.5rem;
+  line-height: 1.5rem;
+  padding: 0.25rem 0.75rem;
   cursor: pointer;
   background-color: ${({ theme }) => theme.button};
   height: 2rem;
@@ -90,7 +90,6 @@ const TogglePlotsButton = animated(styled.div`
   }
   & > svg {
     display: inline-block;
-    margin: 0.25rem;
     height: 1.5rem;
     width: 1.5rem;
   }
@@ -180,9 +179,7 @@ const HorizontalNav = ({ entries }: Props) => {
             style={togglePlotButton}
           >
             <Assessment />
-            <span style={{ lineHeight: "2rem" }}>
-              {expanded ? "Hide" : "Show"}
-            </span>
+            <span>{expanded ? "Hide" : "Show"}</span>
             {expanded ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
           </TogglePlotsButton>
         </NavButtons>

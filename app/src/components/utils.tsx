@@ -33,16 +33,6 @@ export const Button = styled.button`
   }
 `;
 
-export const Overlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: ${({ theme }) => theme.overlay};
-  z-index: 10000;
-`;
-
 export const ModalWrapper = styled.div`
   position: fixed;
   top: 0;
@@ -53,10 +43,7 @@ export const ModalWrapper = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-
-  > *:not(${Overlay}) {
-    z-index: 10001;
-  }
+  background-color: ${({ theme }) => theme.overlay};
 `;
 
 export const ModalFooter = styled.footer`

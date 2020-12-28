@@ -77,15 +77,13 @@ function App() {
       resetKeys={[reset]}
     >
       <Header addNotification={addNotification} />
-      <Body style={{ overflowY: connected ? "hidden" : "scroll" }}>
-        {connected && (
-          <Suspense fallback={Setup}>
-            <GA />
-            {deactivated ? <Deactivated /> : <Dataset />}
-          </Suspense>
-        )}
-        {!connected && <Setup />}
-      </Body>
+      {connected && (
+        <Suspense fallback={Setup}>
+          <GA />
+          {deactivated ? <Deactivated /> : <Dataset />}
+        </Suspense>
+      )}
+      {!connected && <Setup />}
       <NotificationHub children={(add) => (addNotification.current = add)} />
     </ErrorBoundary>
   );

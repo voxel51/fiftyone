@@ -28,6 +28,7 @@ type Props = {
 };
 
 const Container = styled.div`
+  position: relative;
   display: grid;
   grid-template-columns: auto 280px;
   width: 90vw;
@@ -466,7 +467,10 @@ const SampleModal = ({
 
   return (
     <SampleContext.Provider value={sample}>
-      <Container className={fullscreen ? "fullscreen" : ""}>
+      <Container
+        style={{ zIndex: 10001 }}
+        className={fullscreen ? "fullscreen" : ""}
+      >
         <div className="player" ref={playerContainerRef}>
           {showJSON ? (
             <JSONView

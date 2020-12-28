@@ -2,8 +2,6 @@ import React, { useRef } from "react";
 import { useSetRecoilState, useRecoilValue } from "recoil";
 
 import * as atoms from "../recoil/atoms";
-import "../components/Loading";
-import Loading from "../components/Loading";
 
 const Click = () => {
   const setDeactivated = useSetRecoilState(atoms.deactivated);
@@ -27,6 +25,7 @@ const Deactivated = () => {
         position: "absolute",
         top: 0,
         left: 0,
+        zIndex: 20000,
       }}
       src={canvas}
       ref={ref}

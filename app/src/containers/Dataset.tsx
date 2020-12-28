@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import {
   useRecoilState,
   useRecoilValue,
@@ -11,7 +11,7 @@ import html2canvas from "html2canvas";
 import SamplesContainer from "./SamplesContainer";
 import HorizontalNav from "../components/HorizontalNav";
 import SampleModal from "../components/SampleModal";
-import { ModalWrapper, Overlay } from "../components/utils";
+import { ModalWrapper } from "../components/utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { VALID_LABEL_TYPES } from "../utils/labels";
@@ -46,12 +46,7 @@ const applyActiveLabels = (tuples, current, setter) => {
 };
 
 function Dataset(props) {
-  const [modal, setModal] = useState({
-    visible: false,
-    sample: null,
-    metadata: null,
-    activeLabels: {},
-  });
+  const [modal, setModal] = useRecoilState(atoms.modal);
   const http = useRecoilValue(selectors.http);
   const hasDataset = useRecoilValue(selectors.hasDataset);
   const colorMap = useRecoilValue(atoms.colorMap);
@@ -61,6 +56,7 @@ function Dataset(props) {
   const labelTuples = useRecoilValue(selectors.labelTuples("sample"));
   const frameLabelTuples = useRecoilValue(selectors.labelTuples("frame"));
   const setCanvas = useSetRecoilState(atoms.canvas);
+  const socket = useRecoilValue(selectors.socket);
   const tagNames = useRecoilValue(selectors.tagNames);
   const setExtendedDatasetStats = useSetRecoilState(
     atoms.extendedDatasetStatsRaw
@@ -90,14 +86,11 @@ function Dataset(props) {
     svgElements.forEach((item) => {
       item.setAttribute("width", item.getBoundingClientRect().width);
       item.setAttribute("height", item.getBoundingClientRect().height);
-      item.style.width = null;
-      item.style.height = null;
     });
     html2canvas(document.body, {
       useCORS: true,
     }).then((canvas) => {
       const imgData = canvas.toDataURL("image/png");
-      console.log(imgData);
       setCanvas(imgData);
       setDeactivated(true);
     });
@@ -199,7 +192,6 @@ function Dataset(props) {
     <>
       {modal.visible ? (
         <ModalWrapper>
-          <Overlay onClick={handleHideModal} />
           <SampleModal
             activeLabels={modal.activeLabels}
             activeFrameLabels={modal.activeFrameLabels}
