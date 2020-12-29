@@ -148,6 +148,7 @@ def _catch_errors(func):
 
 
 _notebook_clients = {}
+_deactivated_clients = set()
 
 
 class PollingHandler(tornado.web.RequestHandler):
@@ -504,10 +505,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         Args:
             state: a serialized :class:`fiftyone.core.state.StateDescription`
         """
-        print("ACTIVE", state["active_handle"])
         StateHandler.state = state
         active_handle = state["active_handle"]
         global _notebook_clients
+        global _deactivated_clients
         if (
             active_handle
             and self in _notebook_clients
@@ -515,13 +516,17 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         ):
             return
         for client, events in PollingHandler.clients.items():
-            if (
-                active_handle
-                and _notebook_clients.get(client, None) != active_handle
-            ):
-                events.clear()
-                events.add("deactivate")
-                continue
+            if client in _notebook_clients:
+                uuid = _notebook_clients[client]
+                if (
+                    active_handle
+                    and uuid != active_handle
+                    and uuid not in _deactivated_clients
+                ):
+                    events.clear()
+                    _deactivated_clients.add(uuid)
+                    events.add("deactivate")
+                    continue
             if client == ignore_polling_client:
                 events.update({"statistics", "extended_statistics"})
             events.update({"update", "statistics", "extended_statistics"})
@@ -692,14 +697,19 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             return
 
         global _notebook_clients
+        global _deactivated_clients
         active_handle = StateHandler.state["active_handle"]
         for client in cls.clients:
-            if (
-                active_handle
-                and _notebook_clients.get(client, None) != active_handle
-            ):
-                client.write_message({"type": "deactivate"})
-                continue
+            if client in _notebook_clients:
+                uuid = _notebook_clients[client]
+                if (
+                    active_handle
+                    and uuid != active_handle
+                    and uuid not in _deactivated_clients
+                ):
+                    _deactivated_clients.add(uuid)
+                    client.write_message({"type": "deactivate"})
+                    continue
             if client == ignore:
                 continue
             client.write_message(response)

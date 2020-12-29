@@ -352,7 +352,7 @@ class Session(foc.HasClient):
             )
             return "%s?fiftyoneColab=true" % url
 
-        return "http://localhost:%d" % self.server_port
+        return "http://localhost:%d/" % self.server_port
 
     @property
     def dataset(self):
@@ -483,7 +483,40 @@ class Session(foc.HasClient):
 
         for k, v in data.items():
             if k in self._handles:
-                self._handles[k].update(HTML("<img src='%s'/>" % v))
+                self._handles[k].update(
+                    HTML(
+                        """
+<div id="container">
+   <img src='%s'/>
+   <button style="
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 1rem;
+      border-radius: 3px;
+      text-align: center;
+      padding: 0 0.5rem;
+      border: 1px solid hsl(27, 95%%, 49%%); position: absolute: right: 1rem; bottom: 1rem;" id="button"></button>
+</div>
+<script>
+   (function() {
+     var button = document.getElementById("button");
+     var container = document.getElementById("container");
+     var text;
+     fetch(%sfiftyone)
+     .then(() => button.textContent = "Activate")
+     .catch(() => {
+       button.textContent = "Re-run the cell to activate")
+       button.disabled = true;
+     }).finally(() => {
+       container.addEventListener("mouseenter", button.style.display = "block";
+       container.addEventListener("mouseleave", button.style.display = "none";
+     });
+   })();
+</script>
+"""
+                        % (v, self.url)
+                    )
+                )
 
     def open(self):
         """Opens the App, if necessary.
