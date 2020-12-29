@@ -12,6 +12,8 @@ import time
 from uuid import uuid4
 import webbrowser
 
+from jinja2 import Template
+
 import fiftyone as fo
 import fiftyone.constants as focn
 import fiftyone.core.dataset as fod
@@ -170,14 +172,15 @@ def _update_state(func):
     return wrapper
 
 
-_SCREENSHOT_HTML = """
+_SCREENSHOT_HTML = Template(
+    """
 <style>
 @import url("https://fonts.googleapis.com/css2?family=Palanquin&display=swap");
 
-#focontainer {
+#focontainer-{{ handle }} {
   position: relative;
 }
-#foactivate {
+#foactivate-{{ handle }} {
   font-weight: bold;
   cursor: pointer;
   font-size: 16px;
@@ -190,26 +193,26 @@ _SCREENSHOT_HTML = """
   position: absolute;
   right: 1em;
   bottom: 1em;
-  background: hsl(210,11%%,15%%);
-  border: 1px solid hsl(27, 95%%, 49%%);
+  background: hsl(210,11%,15%);
+  border: 1px solid hsl(27, 95%, 49%);
   position: absolute:
 }
-#foactivate:focus {
+#foactivate-{{ handle }}:focus {
   outline: none;
 }
 </style>
-<div id="focontainer">
-   <img src='%s'/>
-   <button id="foactivate" >Activate</button>
+<div id="focontainer-{{ handle }}">
+   <img src='{{ image }}'/>
+   <button id="foactivate-{{ handle }}" >Activate</button>
 </div>
 <script type="text/javascript">
    (function() {
-     var button = document.getElementById("foactivate");
-     var container = document.getElementById("focontainer");
-     fetch("%sfiftyone")
+     var button = document.getElementById("foactivate-{{ handle }}");
+     var container = document.getElementById("focontainer-{{ handle }}");
+     fetch("{{ url }}fiftyone")
      .then(() => {
         button.addEventListener("click", () => {
-          fetch("%sreactivate?handleId=%s")
+          fetch("{{ url }}reactivate?handleId={{ handle }}")
         });
         container.addEventListener("mouseenter", () => button.style.display = "block");
         container.addEventListener("mouseleave", () => button.style.display = "none");
@@ -217,6 +220,7 @@ _SCREENSHOT_HTML = """
    })();
 </script>
 """
+)
 
 
 class Session(foc.HasClient):
@@ -616,11 +620,27 @@ class Session(foc.HasClient):
     def _capture(self, data):
         from IPython.display import HTML
 
-        for k, v in data.items():
-            if k in self._handles:
-                self._handles[k]["target"].update(
-                    HTML(_SCREENSHOT_HTML % (v, self.url, self.url, k))
+        for handle, image in data.items():
+
+            if handle in self._handles:
+                self._handles[handle]["target"].update(
+                    HTML(
+                        _SCREENSHOT_HTML.render(
+                            handle=handle, image=image, url=self._base_url()
+                        )
+                    )
                 )
+
+    def _base_url(self):
+        if self._context == focx._COLAB:
+            # pylint: disable=no-name-in-module,import-error
+            from google.colab.output import eval_js
+
+            return eval_js(
+                "google.colab.kernel.proxyPort(%d)" % self.server_port
+            )
+
+        return "http://localhost:%d/" % self.server_port
 
     def _reactivate(self, data):
         handle = data["handle"]

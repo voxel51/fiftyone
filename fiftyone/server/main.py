@@ -206,6 +206,8 @@ class PollingHandler(tornado.web.RequestHandler):
 
             if event in {"distributions", "page", "get_video_data"}:
                 caller = self
+            elif event == "capture":
+                caller = client
             else:
                 caller = StateHandler
 
