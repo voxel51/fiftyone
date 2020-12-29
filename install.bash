@@ -45,12 +45,11 @@ cd eta
 git checkout develop
 git pull
 pip install -e .
-if [[ ! -f config.json ]]; then
+if [[ ! -f eta/config.json ]]; then
     echo "Installing default ETA config"
-    cp config-example.json config.json
+    cp config-example.json eta/config.json
 fi
 cd ..
-
 
 echo "***** INSTALLING PLAYER51 *****"
 git submodule update --init
