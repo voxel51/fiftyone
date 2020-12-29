@@ -92,6 +92,8 @@ class HasClient(object):
                     self.on_notification(message)
                 if event == "capture":
                     self.on_capture(message)
+                if event == "reactivate":
+                    self.on_reactivate(message)
 
         def run_client():
             io_loop = IOLoop(make_current=True)
@@ -120,6 +122,12 @@ class HasClient(object):
 
     def on_capture(self, data):
         self._capture(data)
+
+    def _capture(self, data):
+        raise NotImplementedError("subclasses must implement reactivate()")
+
+    def on_reactivate(self, data):
+        self._reactivate(data)
 
     def __del__(self):
         _printer[self._url] = None

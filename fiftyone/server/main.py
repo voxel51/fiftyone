@@ -106,6 +106,8 @@ class ReactivateHandler(RequestHandler):
         for client in StateHandler.clients:
             client.write_message({"type": "reactivate", "handle": handle})
 
+        return {}
+
 
 class StagesHandler(RequestHandler):
     """Returns the definitions of stages available to the App"""
@@ -1026,7 +1028,7 @@ class Application(tornado.web.Application):
             (r"/filepath/(.*)", FileHandler, {"path": static_path},),
             (r"/stages", StagesHandler),
             (r"/state", StateHandler),
-            (r"/reactivate", RequestHandler),
+            (r"/reactivate", ReactivateHandler),
             (
                 r"/(.*)",
                 tornado.web.StaticFileHandler,

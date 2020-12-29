@@ -170,6 +170,55 @@ def _update_state(func):
     return wrapper
 
 
+_SCREENSHOT_HTML = """
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Palanquin&display=swap");
+
+#focontainer {
+  position: relative;
+}
+#foactivate {
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 16px;
+  border-radius: 3px;
+  text-align: center;
+  padding: 0.5em;
+  display: none;
+  color: rgb(255, 255, 255);
+  font-family: "Palanquin", sans-serif;
+  position: absolute;
+  right: 1em;
+  bottom: 1em;
+  background: hsl(210,11%%,15%%);
+  border: 1px solid hsl(27, 95%%, 49%%);
+  position: absolute:
+}
+#foactivate:focus {
+  outline: none;
+}
+</style>
+<div id="focontainer">
+   <img src='%s'/>
+   <button id="foactivate" >Activate</button>
+</div>
+<script type="text/javascript">
+   (function() {
+     var button = document.getElementById("foactivate");
+     var container = document.getElementById("focontainer");
+     fetch("%sfiftyone")
+     .then(() => {
+        button.addEventListener("click", () => {
+          fetch("%sreactivate?handleId=%s")
+        });
+        container.addEventListener("mouseenter", () => button.style.display = "block");
+        container.addEventListener("mouseleave", () => button.style.display = "none");
+     });
+   })();
+</script>
+"""
+
+
 class Session(foc.HasClient):
     """Session that maintains a 1-1 shared state with the FiftyOne App.
 
@@ -478,61 +527,6 @@ class Session(foc.HasClient):
 
         return "\n".join(elements)
 
-    def _capture(self, data):
-        from IPython.display import HTML
-
-        for k, v in data.items():
-            if k in self._handles:
-                self._handles[k].update(
-                    HTML(
-                        """
-<style>
-@import url("https://fonts.googleapis.com/css2?family=Palanquin&display=swap");
-
-#foactivate {
-      font-weight: bold;
-      cursor: pointer;
-      font-size: 16px;
-      border-radius: 3px;
-      text-align: center;
-      padding: 0.5em;
-      display: none;
-      color: rgb(255, 255, 255);
-      font-family: "Palanquin", sans-serif;
-      position: absolute;
-      right: 1em;
-      bottom: 1em;
-      background: hsl(210,11%%,15%%);
-      border: 1px solid hsl(27, 95%%, 49%%);
-      position: absolute:
-}
-#foactivate:focus {
-     outline: none;
-}
-</style>
-<div id="container">
-   <img src='%s'/>
-   <button id="foactivate" >Activate</button>
-</div>
-<script type="text/javascript">
-   (function() {
-     var button = document.getElementById("foactivate");
-     var container = document.getElementById("container");
-     fetch("%sfiftyone")
-     .then(() => {
-        button.addEventListener("click", () => {
-          fetch("%reactivate?handleId=%s")
-        });
-        container.addEventListener("mouseenter", () => button.style.display = "block");
-        container.addEventListener("mouseleave", () => button.style.display = "none");
-     });
-   })();
-</script>
-"""
-                        % (v, self.url, self.url, k)
-                    )
-                )
-
     def open(self):
         """Opens the App, if necessary.
 
@@ -583,24 +577,8 @@ class Session(foc.HasClient):
         Args:
             height (None): a height, in pixels, for the App
         """
-        if (self._context == focx._NONE) or self._desktop:
-            return
-
-        if self.dataset is not None:
-            self.dataset._reload()
-
-        import IPython.display
-
-        self.state.datasets = fod.list_datasets()
-        handle = IPython.display.display(display_id=True)
-        uuid = str(uuid4())
-        self.state.active_handle = uuid
-        self._handles[uuid] = handle
-
-        if height is None:
-            height = self._height
-
-        display(handle, uuid, self._port, height=height)
+        self._show(height)
+        self._update_state()
 
     def wait(self):
         """Blocks execution until the session is closed by the user.
@@ -631,16 +609,60 @@ class Session(foc.HasClient):
         self.state.close = True
         self._update_state()
 
+    def _auto_show(self):
+        if self._auto and (self._context != focx._NONE):
+            self._show()
+
+    def _capture(self, data):
+        from IPython.display import HTML
+
+        for k, v in data.items():
+            if k in self._handles:
+                self._handles[k]["target"].update(
+                    HTML(_SCREENSHOT_HTML % (v, self.url, self.url, k))
+                )
+
+    def _reactivate(self, data):
+        handle = data["handle"]
+        if handle in self._handles:
+            source = self._handles[handle]
+            display(
+                source["target"],
+                handle,
+                self._port,
+                source["height"],
+                update=True,
+            )
+            self.state.active_handle = handle
+            self._update_state()
+
+    def _show(self, height=None):
+        if (self._context == focx._NONE) or self._desktop:
+            return
+
+        if self.dataset is not None:
+            self.dataset._reload()
+
+        import IPython.display
+
+        self.state.datasets = fod.list_datasets()
+        handle = IPython.display.display(display_id=True)
+        uuid = str(uuid4())
+        self.state.active_handle = uuid
+
+        if height is None:
+            height = self._height
+
+        self._handles[uuid] = {"target": handle, "height": height}
+
+        display(handle, uuid, self._port, height=height)
+
     def _update_state(self):
         # see fiftyone.core.client if you would like to understand this
         self.state = self.state
 
-    def _auto_show(self):
-        if self._auto and (self._context != focx._NONE):
-            self.show()
 
-
-def display(handle, uuid, port=None, height=None):
+def display(handle, uuid, port=None, height=None, update=False):
     """Displays a running FiftyOne instance.
 
     Args:
@@ -654,10 +676,10 @@ def display(handle, uuid, port=None, height=None):
     funcs = {focx._COLAB: _display_colab, focx._IPYTHON: _display_ipython}
     fn = funcs[focx._get_context()]
 
-    return fn(handle, uuid, port, height)
+    return fn(handle, uuid, port, height, update)
 
 
-def _display_colab(handle, uuid, port, height):
+def _display_colab(handle, uuid, port, height, update=False):
     """Display a FiftyOne instance in a Colab output frame.
 
     The Colab VM is not directly exposed to the network, so the Colab runtime
@@ -698,9 +720,12 @@ def _display_colab(handle, uuid, port, height):
     handle.display(script)
 
 
-def _display_ipython(handle, uuid, port, height):
+def _display_ipython(handle, uuid, port, height, update=False):
     import IPython.display
 
-    src = "http://localhost:%d/?notebook=true&handleId=%s" % (8080, uuid)
+    src = "http://localhost:%d/?notebook=true&handleId=%s" % (port, uuid)
     iframe = IPython.display.IFrame(src, height=height, width="100%")
-    handle.display(iframe)
+    if update:
+        handle.update(iframe)
+    else:
+        handle.display(iframe)
