@@ -59,22 +59,39 @@ mkdir -p ~/.fiftyone/bin
 cd ~/.fiftyone
 mkdir -p var/log/mongodb
 mkdir -p var/lib/mongo
+INSTALL_MONGODB=true
 if [ -x bin/mongod ]; then
-    echo "MongoDB already installed"
-elif [ "${OS}" == "Darwin" ]; then
-    curl https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.2.6.tgz --output mongodb.tgz
-    tar -zxvf mongodb.tgz
-    mv mongodb-macos-x86_64-4.2.6/bin/* ./bin/
-    rm mongodb.tgz
-    rm -rf mongodb-macos-x86_64-4.2.6
-elif [ "${OS}" == "Linux" ]; then
-    curl https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.2.6.tgz --output mongodb.tgz
-    tar -zxvf mongodb.tgz
-    mv mongodb-linux-x86_64-ubuntu1804-4.2.6/bin/* ./bin/
-    rm mongodb.tgz
-    rm -rf mongodb-linux-x86_64-ubuntu1804-4.2.6
+    VERSION_FULL=$(bin/mongod --version | grep 'db version')
+    VERSION="${VERSION_FULL:12}"
+    if [ ${VERSION} != "4.4.2" ]; then
+        echo "Upgrading MongoDB v${VERSION} to v4.4.2"
+    else
+        echo "MongoDB v4.4.2 already installed"
+        INSTALL_MONGODB=false
+    fi
 else
-    echo "WARNING: unsupported OS, skipping MongoDB installation"
+    echo "Installing MongoDB v4.4.2"
+fi
+if [ ${INSTALL_MONGODB} = true ]; then
+    if [ "${OS}" == "Darwin" ]; then
+        MONGODB_BUILD=mongodb-macos-x86_64-4.4.2
+
+        curl https://fastdl.mongodb.org/osx/${MONGODB_BUILD}.tgz --output mongodb.tgz
+        tar -zxvf mongodb.tgz
+        mv ${MONGODB_BUILD}/bin/* ./bin/
+        rm mongodb.tgz
+        rm -rf ${MONGODB_BUILD}
+    elif [ "${OS}" == "Linux" ]; then
+        MONGODB_BUILD=mongodb-linux-x86_64-ubuntu1804-4.4.2
+
+        curl https://fastdl.mongodb.org/linux/${MONGODB_BUILD}.tgz --output mongodb.tgz
+        tar -zxvf mongodb.tgz
+        mv ${MONGODB_BUILD}/bin/* ./bin/
+        rm mongodb.tgz
+        rm -rf ${MONGODB_BUILD}
+    else
+        echo "WARNING: unsupported OS, skipping MongoDB installation"
+    fi
 fi
 cd -
 
