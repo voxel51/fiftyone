@@ -486,35 +486,50 @@ class Session(foc.HasClient):
                 self._handles[k].update(
                     HTML(
                         """
-<div id="container">
-   <img src='%s'/>
-   <button style="
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Palanquin&display=swap");
+
+#foactivate {
       font-weight: bold;
       cursor: pointer;
-      font-size: 1rem;
+      font-size: 16px;
       border-radius: 3px;
       text-align: center;
-      padding: 0 0.5rem;
-      border: 1px solid hsl(27, 95%%, 49%%); position: absolute: right: 1rem; bottom: 1rem;" id="button"></button>
+      padding: 0.5em;
+      display: none;
+      color: rgb(255, 255, 255);
+      font-family: "Palanquin", sans-serif;
+      position: absolute;
+      right: 1em;
+      bottom: 1em;
+      background: hsl(210,11%%,15%%);
+      border: 1px solid hsl(27, 95%%, 49%%);
+      position: absolute:
+}
+#foactivate:focus {
+     outline: none;
+}
+</style>
+<div id="container">
+   <img src='%s'/>
+   <button id="foactivate" >Activate</button>
 </div>
-<script>
+<script type="text/javascript">
    (function() {
-     var button = document.getElementById("button");
+     var button = document.getElementById("foactivate");
      var container = document.getElementById("container");
-     var text;
-     fetch(%sfiftyone)
-     .then(() => button.textContent = "Activate")
-     .catch(() => {
-       button.textContent = "Re-run the cell to activate")
-       button.disabled = true;
-     }).finally(() => {
-       container.addEventListener("mouseenter", button.style.display = "block";
-       container.addEventListener("mouseleave", button.style.display = "none";
+     fetch("%sfiftyone")
+     .then(() => {
+        button.addEventListener("click", () => {
+          fetch("%reactivate?handleId=%s")
+        });
+        container.addEventListener("mouseenter", () => button.style.display = "block");
+        container.addEventListener("mouseleave", () => button.style.display = "none");
      });
    })();
 </script>
 """
-                        % (v, self.url)
+                        % (v, self.url, self.url, k)
                     )
                 )
 
