@@ -393,7 +393,6 @@ class Document(object):
                 default, all documents are reset
         """
         if doc_ids is None:
-            # Reset all
             dataset_instances = cls._instances.pop(collection_name)
             for document in dataset_instances.values():
                 document._reset_backing_doc()
@@ -425,9 +424,13 @@ class Document(object):
 
         dataset_instances = cls._instances[collection_name]
 
+        reset_ids = set()
         for document in dataset_instances.values():
             if document.id in doc_ids:
                 document.reload()
             else:
-                dataset_instances.pop(document.id, None)
+                reset_ids.add(document.id)
                 document._reset_backing_doc()
+
+        for doc_id in reset_ids:
+            dataset_instances.pop(doc_id, None)
