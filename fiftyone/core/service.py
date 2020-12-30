@@ -220,9 +220,9 @@ class MultiClientService(Service):
                     self.child = process
                     return
                 else:
-                    logger.warn("Failed to connect to %s: %r", desc, reply)
+                    logger.warning("Failed to connect to %s: %r", desc, reply)
             except IOError:
-                logger.warn("%s did not respond", desc)
+                logger.warning("%s did not respond", desc)
 
         super().start()
 
@@ -263,6 +263,7 @@ class DatabaseService(MultiClientService):
             args.append("--nounixsocket")
         if focx._get_context() == focx._COLAB:
             args = ["sudo"] + args
+
         return args
 
     @property
@@ -317,12 +318,14 @@ class DatabaseService(MultiClientService):
         for folder in search_paths:
             if folder in searched:
                 continue
+
             searched.add(folder)
             mongod_path = os.path.join(folder, DatabaseService.MONGOD_EXE_NAME)
             if os.path.isfile(mongod_path):
                 cmd = [mongod_path, "--version"]
                 if focx._get_context() == focx._COLAB:
                     cmd = ["sudo"] + cmd
+
                 logger.debug("Trying %s", mongod_path)
                 p = psutil.Popen(
                     cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -339,18 +342,20 @@ class DatabaseService(MultiClientService):
                             DatabaseService.MIN_MONGO_VERSION
                         ):
                             return mongod_path
+
                 attempts.append(
                     (mongod_path, mongod_version, p.returncode, err)
                 )
+
         for path, version, code, err in attempts:
             if version is not None:
-                logger.warn("%s: incompatible version %s" % (path, version))
+                logger.warning("%s: incompatible version %s" % (path, version))
             else:
                 logger.error(
                     "%s: failed to launch (code %r): %s" % (path, code, err)
                 )
         raise RuntimeError(
-            "Could not find mongod >= %s" % DatabaseService.MIN_MONGO_VERSION
+            "Could not find mongod>=%s" % DatabaseService.MIN_MONGO_VERSION
         )
 
 
@@ -389,7 +394,7 @@ class ServerService(Service):
                 "to start a new session and specify a port.\n"
             )
             if server_version != foc.VERSION:
-                logger.warn(
+                logger.warning(
                     "Server version (%s) does not match client version (%s)"
                     % (server_version, foc.VERSION)
                 )
