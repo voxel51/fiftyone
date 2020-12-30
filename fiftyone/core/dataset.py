@@ -1232,7 +1232,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name = get_default_dataset_name()
 
         if view is not None:
-            # @todo respect excluded fields when saving schema?
             _clone_dataset_or_view(view, name)
         else:
             _clone_dataset_or_view(self, name)
@@ -2490,10 +2489,30 @@ def _clone_dataset_or_view(dataset_or_view, name):
         )
 
     # Clone dataset document
+
     dataset._doc.reload()
     dataset_doc = dataset._doc.copy()
     dataset_doc.name = name
     dataset_doc.sample_collection_name = sample_collection_name
+
+    if view is not None:
+        # Respect filtered sample fields, if any
+        schema = view.get_field_schema()
+        sample_fields = list(schema.keys())
+        dataset_doc.sample_fields = [
+            sf for sf in dataset_doc.sample_fields if sf.name in sample_fields
+        ]
+
+        # Respect filtered frame fields, if any
+        if dataset.media_type == fom.VIDEO:
+            schema = view.get_frame_field_schema()
+            frame_fields = list(schema.keys())
+            dataset_doc.frame_fields = [
+                sf
+                for sf in dataset_doc.frame_fields
+                if sf.name in frame_fields
+            ]
+
     dataset_doc.save()
 
 
