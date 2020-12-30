@@ -996,7 +996,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         skip_existing=False,
         insert_new=True,
         omit_default_fields=False,
-        overwrite=False,
     ):
         """Merges the given samples into this dataset.
 
@@ -1022,8 +1021,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 them (False)
             omit_default_fields (False): whether to omit default sample fields
                 when merging. If ``True``, ``insert_new`` must be ``False``
-            overwrite (False): whether to overwrite (True) or skip (False)
-                existing sample fields
         """
         if key_fcn is None:
             key_fcn = lambda k: k
@@ -1052,7 +1049,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                             sample,
                             omit_fields=omit_fields,
                             omit_none_fields=omit_none_fields,
-                            overwrite=overwrite,
                         )
                         existing_sample.save()
                 elif insert_new:

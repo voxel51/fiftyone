@@ -131,33 +131,29 @@ class DatasetTests(unittest.TestCase):
         dataset2.add_sample(fo.Sample(filepath=filepath2, field=2))
         dataset2.add_sample(common2)
 
-        #
-        # Non-overwriting
-        #
+        # Standard merge
 
         dataset12 = dataset1.clone()
-        dataset12.merge_samples(dataset2, overwrite=False)
+        dataset12.merge_samples(dataset2)
         self.assertEqual(len(dataset12), 3)
 
-        common12_view = dataset12.match(F("filepath") == common1.filepath)
+        common12_view = dataset12.match(F("filepath") == common_filepath)
         self.assertEqual(len(common12_view), 1)
 
         common12 = common12_view.first()
-        self.assertEqual(common12.field, common1.field)
+        self.assertEqual(common12.field, common2.field)
 
-        #
-        # Overwriting
-        #
+        # Merge a view with excluded fields
 
         dataset21 = dataset1.clone()
-        dataset21.merge_samples(dataset2, overwrite=True)
+        dataset21.merge_samples(dataset2.exclude_fields("field"))
         self.assertEqual(len(dataset21), 3)
 
-        common21_view = dataset21.match(F("filepath") == common1.filepath)
+        common21_view = dataset21.match(F("filepath") == common_filepath)
         self.assertEqual(len(common21_view), 1)
 
         common21 = common21_view.first()
-        self.assertEqual(common21.field, common2.field)
+        self.assertEqual(common21.field, common1.field)
 
     @drop_datasets
     def test_rename_sample_field(self):
