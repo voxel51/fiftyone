@@ -241,14 +241,23 @@ class DatasetView(foc.SampleCollection):
         """
         return self.aggregate(foa.Distinct("tags")).values
 
-    def create_index(self, field):
-        """Creates a database index on the given field, enabling efficient
-        sorting on that field.
+    def create_index(self, field, unique=False):
+        """Creates an index on the given field, enabling efficient sorting on
+        that field.
+
+        Args:
+            field: the name of the field to index
+            unique (False): whether to add a uniqueness constraint to the index
+        """
+        self._dataset.create_index(field, unique=unique)
+
+    def drop_index(self, field):
+        """Drops the index on the given field, if one exists.
 
         Args:
             field: the name of the field to index
         """
-        self._dataset.create_index(field)
+        self._dataset.drop_index(field)
 
     def clone_sample_field(self, field_name, new_field_name):
         """Clones the given sample field of the view into a new field of the

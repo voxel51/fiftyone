@@ -1108,6 +1108,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             when_not_matched = "skip"
 
+        # Must create unique indexes in order to use `$merge`
+        self.create_index(key_field, unique=True)
+        sample_collection.create_index(key_field, unique=True)
+
         schema = sample_collection.get_field_schema()
         self._sample_doc_cls.merge_field_schema(schema)
 
@@ -1123,7 +1127,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         except ValueError:
             pass
 
-        pipeline = [{"$unset": omit_fields}]
+        pipeline = []
+
+        if omit_fields:
+            pipeline.append({"$unset": omit_fields})
 
         if omit_none_fields:
             pipeline.append(
@@ -2056,15 +2063,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dataset.add_videos_patt(videos_patt, tags=tags)
         return dataset
 
-    def create_index(self, field):
-        """Creates a database index on the given field, enabling efficient
-        sorting on that field.
+    def create_index(self, field, unique=False):
+        """Creates an index on the given field, enabling efficient sorting on
+        that field.
+
+        Args:
+            field: the name of the field to index
+            unique (False): whether to add a uniqueness constraint to the index
+        """
+        if field not in self._sample_indexes:
+            self._sample_collection.create_index(field, unique=unique)
+
+    def drop_index(self, field):
+        """Drops the index on the given field, if one exists.
 
         Args:
             field: the name of the field to index
         """
-        if field not in self._sample_indexes:
-            self._sample_collection.create_index(field)
+        if field in self._sample_indexes:
+            self._sample_collection.drop_index(field)
 
     @classmethod
     def from_dict(cls, d, name=None, rel_dir=None, frame_labels_dir=None):
@@ -2439,6 +2456,12 @@ def _create_dataset(name, persistent=False, media_type=None):
     dataset_doc.save()
 
     # Create indexes
+    _create_indexes(sample_collection_name, frames_collection_name)
+
+    return dataset_doc, sample_doc_cls, frame_doc_cls
+
+
+def _create_indexes(sample_collection_name, frames_collection_name):
     conn = foo.get_db_conn()
     collection = conn[sample_collection_name]
     collection.create_index("filepath", unique=True)
@@ -2446,8 +2469,6 @@ def _create_dataset(name, persistent=False, media_type=None):
     frames_collection.create_index(
         [("sample_id", foo.ASC), ("frame_number", foo.ASC)]
     )
-
-    return dataset_doc, sample_doc_cls, frame_doc_cls
 
 
 def _clone_dataset_or_view(dataset_or_view, name):
@@ -2461,19 +2482,26 @@ def _clone_dataset_or_view(dataset_or_view, name):
         dataset = dataset_or_view
         view = None
 
+    sample_collection_name = _make_sample_collection_name()
+    frames_collection_name = "frames." + sample_collection_name
+
+    #
     # Clone samples
+    #
 
     if view is not None:
         pipeline = view._pipeline(attach_frames=False)
     else:
         pipeline = [{"$match": {}}]
 
-    sample_collection_name = _make_sample_collection_name()
     dataset._sample_collection.aggregate(
         pipeline + [{"$out": sample_collection_name}]
     )
 
-    # Clone frames, if necessary
+    #
+    # Clone frames
+    #
+
     if dataset.media_type == fom.VIDEO:
         if view is not None:
             # @todo support this
@@ -2483,12 +2511,13 @@ def _clone_dataset_or_view(dataset_or_view, name):
         else:
             frames_pipeline = [{"$match": {}}]
 
-        frames_collection_name = "frames." + sample_collection_name
         dataset._frame_collection.aggregate(
             frames_pipeline + [{"$out": frames_collection_name}]
         )
 
+    #
     # Clone dataset document
+    #
 
     dataset._doc.reload()
     dataset_doc = dataset._doc.copy()
@@ -2514,6 +2543,9 @@ def _clone_dataset_or_view(dataset_or_view, name):
             ]
 
     dataset_doc.save()
+
+    # Create indexes
+    _create_indexes(sample_collection_name, frames_collection_name)
 
 
 def _save_view(view):

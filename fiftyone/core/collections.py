@@ -1775,14 +1775,23 @@ class SampleCollection(object):
             frame_labels_field_or_dict=frame_labels_field_or_dict,
         )
 
-    def create_index(self, field):
-        """Creates a database index on the given field, enabling efficient
-        sorting on that field.
+    def create_index(self, field, unique=False):
+        """Creates an index on the given field, enabling efficient sorting on
+        that field.
+
+        Args:
+            field: the name of the field to index
+            unique (False): whether to add a uniqueness constraint to the index
+        """
+        raise NotImplementedError("Subclass must implement create_index()")
+
+    def drop_index(self, field):
+        """Drops the index on the given field, if one exists.
 
         Args:
             field: the name of the field to index
         """
-        raise NotImplementedError("Subclass must implement make_index()")
+        raise NotImplementedError("Subclass must implement drop_index()")
 
     def to_dict(self, rel_dir=None, frame_labels_dir=None, pretty_print=False):
         """Returns a JSON dictionary representation of the collection.
