@@ -26,7 +26,7 @@ except ImportError:
 MONGODB_DOWNLOAD_URLS = {
     "linux": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.4.2.tgz",
     "mac": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.4.2.tgz",
-    "win": "https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2012plus-4.4.2.zip",
+    "win": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-4.4.2.zip",
     "ubuntu1604": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.4.2.tgz",
     "debian9": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian92-4.4.2.tgz",
 }
