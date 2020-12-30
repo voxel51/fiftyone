@@ -165,8 +165,12 @@ export const showFeedbackButton = selector({
   get: ({ get }) => {
     const feedback = get(fiftyone).feedback;
     const localFeedback = get(atoms.feedbackSubmitted);
-    console.log(feedback.submitted, "A");
-    if (feedback.submitted || localFeedback.submitted) {
+    const storedFeedback = window.localStorage.getItem("fiftyone-feedback");
+    if (
+      feedback.submitted ||
+      localFeedback.submitted ||
+      storedFeedback === "submitted"
+    ) {
       return "hidden";
     }
     if (feedback.minimized || localFeedback.minimized) {
