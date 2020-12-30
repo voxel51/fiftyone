@@ -368,8 +368,8 @@ const TshirtForm = () => {
     headers.append("Content-Type", "application/json");
     const finalize = () => {
       setSubmitText("Submitted. Thank you!");
-      setSubmitted(true);
-      fetch(`${http}/feedback`, { method: "post" });
+      setSubmitted({ ...submitted, submitted: true });
+      fetch(`${http}/feedback?submitted=true`, { method: "post" });
       setTimeout(() => closeFeedback && closeFeedback.close(), 2000);
     };
 
@@ -617,12 +617,23 @@ const FeedbackButton = ({ addNotification }) => {
         }}
         onClick={(e) => {
           e.stopPropagation();
-          setFeedbackSubmitted(true);
-          fetch(`${http}/feedback?submitted=true`, { method: "post" });
+          setFeedbackSubmitted({ ...feedbackSubmitted, minimized: true });
+          fetch(`${http}/feedback`, { method: "post" });
           closeFeedback && closeFeedback.close();
         }}
       />
     </Button>
+  ) : showFeedbackButton === "minimized" ? (
+    <img
+      onClick={onClick}
+      style={{
+        cursor: "pointer",
+        marginRight: "0.5rem",
+        height: "1.5rem",
+        width: "1.5rem",
+      }}
+      src={"./t-shirt.svg"}
+    />
   ) : null;
 };
 
