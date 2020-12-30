@@ -205,20 +205,22 @@ class Document(object):
         for field_name in field_names:
             yield field_name, self.get_field(field_name)
 
-    def merge(self, document, overwrite=True):
+    def merge(self, document, omit_none_fields=True, overwrite=True):
         """Merges the fields of the document into this document.
 
         ``None``-valued fields are always omitted.
 
         Args:
             document: a :class:`Document` of the same type
+            omit_none_fields (True): whether to omit ``None``-valued fields of
+                the provided document
             overwrite (True): whether to overwrite existing fields. Note that
                 existing fields whose values are ``None`` are always
                 overwritten
         """
         existing_field_names = self.field_names
         for field_name, value in document.iter_fields():
-            if value is None:
+            if omit_none_fields and value is None:
                 continue
 
             if (

@@ -264,7 +264,7 @@ class Frames(object):
 
                 self[frame_number] = frame
 
-    def merge(self, frames, overwrite=True):
+    def merge(self, frames, omit_none_fields=True, overwrite=True):
         """Merges the frame labels into this instance.
 
         Args:
@@ -277,6 +277,8 @@ class Frames(object):
                     label fields to :class:`fiftyone.core.labels.Label`
                     instances
 
+            omit_none_fields (True): whether to omit ``None``-valued fields of
+                the provided frames
             overwrite (True): whether to overwrite existing fields
         """
         for frame_number, frame in frames.items():
@@ -284,7 +286,11 @@ class Frames(object):
                 frame = Frame(frame_number=frame_number, **frame)
 
             if frame_number in self:
-                self[frame_number].merge(frame, overwrite=overwrite)
+                self[frame_number].merge(
+                    frame,
+                    omit_none_fields=omit_none_fields,
+                    overwrite=overwrite,
+                )
             else:
                 self[frame_number] = frame
 

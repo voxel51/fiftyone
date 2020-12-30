@@ -191,13 +191,13 @@ class _DatasetSample(Document):
 
         self.save()
 
-    def merge(self, sample, overwrite=True):
+    def merge(self, sample, omit_none_fields=True, overwrite=True):
         """Merges the fields of the sample into this sample.
-
-        ``None``-valued fields are always omitted.
 
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
+            omit_none_fields (True): whether to omit ``None``-valued fields of
+                the provided sample
             overwrite (True): whether to overwrite existing fields. Note that
                 existing fields whose values are ``None`` are always
                 overwritten
@@ -208,10 +208,16 @@ class _DatasetSample(Document):
                 "media type '%s'" % (sample.media_type, self.media_type)
             )
 
-        super().merge(sample, overwrite=overwrite)
+        super().merge(
+            sample, omit_none_fields=omit_none_fields, overwrite=overwrite
+        )
 
         if self.media_type == fomm.VIDEO:
-            self.frames.merge(sample.frames, overwrite=overwrite)
+            self.frames.merge(
+                sample.frames,
+                omit_none_fields=omit_none_fields,
+                overwrite=overwrite,
+            )
 
     def copy(self):
         """Returns a deep copy of the sample that has not been added to the

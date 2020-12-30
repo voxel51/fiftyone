@@ -988,11 +988,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return [str(d["_id"]) for d in dicts]
 
     def merge_samples(
-        self, samples, overwrite=False, key_field="filepath", key_fcn=None
+        self,
+        samples,
+        key_field="filepath",
+        key_fcn=None,
+        omit_none_fields=True,
+        skip_existing=False,
+        insert_new=True,
+        overwrite=False,
     ):
         """Merges the given samples into this dataset.
-
-        ``None``-valued fields of the provided samples are always omitted.
 
         By default, samples with the same absolute ``filepath`` are merged.
         You can customize this behavior via the ``key_field`` and ``key_fcn``
@@ -1004,12 +1009,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples: an iterable of :class:`fiftyone.core.sample.Sample`
                 instances. For example, ``samples`` may be a :class:`Dataset`
                 or a :class:`fiftyone.core.views.DatasetView`
-            overwrite (False): whether to overwrite (True) or skip (False)
-                existing sample fields
             key_field ("filepath"): the sample field to use to decide whether
                 to join with an existing sample
             key_fcn (None): a function to apply to ``key_field`` to generate
                 the comparator used to decide if two samples should be merged
+            omit_none_fields (True): whether to omit ``None``-valued fields of
+                the provided samples when merging their fields
+            skip_existing (False): whether to skip existing samples (True) or
+                merge them (False)
+            insert_new (True): whether to insert new samples (True) or skip
+                them (False)
+            overwrite (False): whether to overwrite (True) or skip (False)
+                existing sample fields
         """
         if key_fcn is None:
             key_fcn = lambda k: k
@@ -1022,29 +1033,69 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             for sample in pb(samples):
                 key = key_fcn(sample[key_field])
                 if key in id_map:
-                    existing_sample = self[id_map[key]]
-                    existing_sample.merge(sample, overwrite=overwrite)
-                    existing_sample.save()
-                else:
+                    if not skip_existing:
+                        existing_sample = self[id_map[key]]
+                        existing_sample.merge(
+                            sample,
+                            omit_none_fields=omit_none_fields,
+                            overwrite=overwrite,
+                        )
+                        existing_sample.save()
+                elif insert_new:
                     self.add_sample(sample)
 
-    # @todo use this? do we need to think more about private/default fields?
+    # @todo expose this as a public method?
     def _merge_samples(
         self,
         sample_collection,
         key_field="filepath",
+        omit_none_fields=True,
+        skip_existing=False,
+        insert_new=True,
         omit_default_fields=False,
     ):
+        """Merges the given sample collection into this dataset.
+
+        By default, samples with the same absolute ``filepath`` are merged.
+        You can customize this behavior via the ``key_field`` parameter.
+
+        Args:
+            sample_collection: a
+                :class:`fiftyone.core.collections.SampleCollection`
+            key_field ("filepath"): the sample field to use to decide whether
+                to join with an existing sample
+            omit_none_fields (True): whether to omit ``None``-valued fields of
+                the provided samples when merging their fields
+            skip_existing (False): whether to skip existing samples (True) or
+                merge them (False)
+            insert_new (True): whether to insert new samples (True) or skip
+                them (False)
+            omit_default_fields (False): whether to omit default sample fields
+                when merging. If ``True``, ``insert_new`` must be ``False``
+        """
         if self.media_type == fom.VIDEO:
             raise ValueError("Merging video collections is not yet supported")
 
-        schema = sample_collection.get_field_schema()
-        self._sample_doc_cls.merge_field_schema(schema)
-
-        pipeline = []
+        if omit_default_fields and insert_new:
+            raise ValueError(
+                "Cannot omit default fields when `insert_new=True`"
+            )
 
         if key_field == "id":
             key_field = "_id"
+
+        if skip_existing:
+            when_matched = "keepExisting"
+        else:
+            when_matched = "merge"
+
+        if insert_new:
+            when_not_matched = "insert"
+        else:
+            when_not_matched = "skip"
+
+        schema = sample_collection.get_field_schema()
+        self._sample_doc_cls.merge_field_schema(schema)
 
         if omit_default_fields:
             omit_fields = list(
@@ -1058,10 +1109,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         except ValueError:
             pass
 
-        pipeline.append({"$unset": omit_fields})
+        pipeline = [{"$unset": omit_fields}]
 
-        pipeline.extend(
-            [
+        if omit_none_fields:
+            pipeline.append(
                 {
                     "$replaceWith": {
                         "$arrayToObject": {
@@ -1072,14 +1123,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                             }
                         }
                     }
-                },
-                {
-                    "$merge": {
-                        "into": self._sample_collection_name,
-                        "on": key_field,
-                    }
-                },
-            ]
+                }
+            )
+
+        pipeline.append(
+            {
+                "$merge": {
+                    "into": self._sample_collection_name,
+                    "on": key_field,
+                    "whenMatched": when_matched,
+                    "whenNotMatched": when_not_matched,
+                }
+            }
         )
 
         sample_collection._aggregate(pipeline=pipeline, attach_frames=False)
