@@ -679,7 +679,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _clone_sample_field(self, field_name, new_field_name, view=None):
         if view is not None:
-            pipeline = view._pipeline()
+            pipeline = view._pipeline(attach_frames=False)
         else:
             pipeline = None
 
@@ -747,7 +747,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _clear_sample_field(self, field_name, view=None):
         if view is not None:
-            pipeline = view._pipeline()
+            pipeline = view._pipeline(attach_frames=False)
         else:
             pipeline = None
 
@@ -1086,7 +1086,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _save(self, view=None):
         if view is not None:
             self._sample_collection.aggregate(
-                view._pipeline() + [{"$out": self._sample_collection_name}]
+                view._pipeline(attach_frames=False)
+                + [{"$out": self._sample_collection_name}]
             )
             doc_ids = [
                 str(_id) for _id in self._sample_collection.distinct("_id")
@@ -2356,7 +2357,7 @@ def _clone_dataset_or_view(dataset_or_view, name):
     # Clone samples
 
     if view is not None:
-        pipeline = view._pipeline()
+        pipeline = view._pipeline(attach_frames=False)
     else:
         pipeline = [{"$match": {}}]
 
