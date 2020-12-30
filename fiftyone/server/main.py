@@ -83,20 +83,17 @@ class RequestHandler(tornado.web.RequestHandler):
 class FiftyOneHandler(RequestHandler):
     """Returns the version info of the fiftyone being used"""
 
-    feedback_path = os.path.join(
-        foc.FIFTYONE_CONFIG_DIR, "var", "feedback.json"
-    )
-
-    def get_response(self):
+    @staticmethod
+    def get_response():
         """Returns the serializable response
 
         Returns:
             dict
         """
         uid, first_import = _get_user_id()
-        isfile = os.path.isfile(self.feedback_path)
+        isfile = os.path.isfile(foc.FEEDBACK_PATH)
         if isfile:
-            submitted = etas.load_json(self.feedback_path)["submitted"]
+            submitted = etas.load_json(foc.FEEDBACK_PATH)["submitted"]
         else:
             submitted = False
         return {
@@ -111,7 +108,8 @@ class FiftyOneHandler(RequestHandler):
 class StagesHandler(RequestHandler):
     """Returns the definitions of stages available to the App"""
 
-    def get_response(self):
+    @staticmethod
+    def get_response():
         """Returns the serializable response
 
         Returns:
@@ -128,13 +126,9 @@ class StagesHandler(RequestHandler):
 class FeedbackHandler(RequestHandler):
     """Returns whether the feedback button should be minimized"""
 
-    feedback_path = os.path.join(
-        foc.FIFTYONE_CONFIG_DIR, "var", "feedback.json"
-    )
-
     def post(self):
         submitted = self.get_argument("submitted", False)
-        etas.write_json({"submitted": submitted}, self.feedback_path)
+        etas.write_json({"submitted": submitted}, foc.FEEDBACK_PATH)
 
 
 def _catch_errors(func):
