@@ -59,7 +59,7 @@ class CustomBdistWheel(bdist_wheel):
         self._plat_name = self.plat_name
         # rewrite platform name to match what mongodb supports
         if self.plat_name.startswith("mac"):
-            # mongodb 4.2.6 supports macOS 10.12 or later
+            # mongodb 4.4.6 supports macOS 10.13 or later
             # https://docs.mongodb.com/manual/tutorial/install-mongodb-on-os-x/#platform-support
             # also, we only distribute 64-bit binaries
             self.plat_name = "macosx_10_12_x86_64"
