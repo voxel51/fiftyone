@@ -144,6 +144,9 @@ class Document(object):
         Raises:
             AttributeError: if the field does not exist
         """
+        if field_name == "id":
+            return self.id
+
         return self._doc.get_field(field_name)
 
     def set_field(self, field_name, value, create=True):
