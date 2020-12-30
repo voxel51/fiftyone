@@ -480,7 +480,7 @@ class DatasetMixin(object):
     def _delete_field_docs(cls, field_name):
         collection_name = cls.__name__
         collection = get_db_conn()[collection_name]
-        collection.update_many({}, {"$unset": field_name})
+        collection.update_many({}, {"$unset": {field_name: ""}})
 
     @classmethod
     def _add_field_schema(
@@ -494,7 +494,7 @@ class DatasetMixin(object):
     ):
         # pylint: disable=no-member
         if field_name in cls._fields:
-            raise AttributeError("Field '%s' already exists" % field_name)
+            raise ValueError("Field '%s' already exists" % field_name)
 
         field = _create_field(
             field_name,
