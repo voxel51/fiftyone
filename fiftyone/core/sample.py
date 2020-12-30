@@ -20,6 +20,20 @@ import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
 
 
+def get_default_sample_fields(include_private=False):
+    """Returns the default fields present on all samples.
+
+    Args:
+        include_private (False): whether to include fields that start with `_`
+
+    Returns:
+        a tuple of field names
+    """
+    return foo.default_sample_fields(
+        foo.DatasetSampleDocument, include_private=include_private
+    )
+
+
 class _DatasetSample(Document):
     def __getattr__(self, name):
         if name == "frames" and self.media_type == fomm.VIDEO:
@@ -191,11 +205,20 @@ class _DatasetSample(Document):
 
         self.save()
 
-    def merge(self, sample, omit_none_fields=True, overwrite=True):
+    def merge(
+        self,
+        sample,
+        omit_fields=None,
+        omit_frame_fields=None,
+        omit_none_fields=True,
+        overwrite=True,
+    ):
         """Merges the fields of the sample into this sample.
 
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
+            omit_fields (None): an optional list of fields to omit
+            omit_frame_fields (None): an optional lits of frame fields to omit
             omit_none_fields (True): whether to omit ``None``-valued fields of
                 the provided sample
             overwrite (True): whether to overwrite existing fields. Note that
@@ -209,12 +232,16 @@ class _DatasetSample(Document):
             )
 
         super().merge(
-            sample, omit_none_fields=omit_none_fields, overwrite=overwrite
+            sample,
+            omit_fields=omit_fields,
+            omit_none_fields=omit_none_fields,
+            overwrite=overwrite,
         )
 
         if self.media_type == fomm.VIDEO:
             self.frames.merge(
                 sample.frames,
+                omit_fields=omit_frame_fields,
                 omit_none_fields=omit_none_fields,
                 overwrite=overwrite,
             )

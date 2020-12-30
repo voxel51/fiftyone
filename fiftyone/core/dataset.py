@@ -995,6 +995,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         omit_none_fields=True,
         skip_existing=False,
         insert_new=True,
+        omit_default_fields=False,
         overwrite=False,
     ):
         """Merges the given samples into this dataset.
@@ -1019,11 +1020,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 merge them (False)
             insert_new (True): whether to insert new samples (True) or skip
                 them (False)
+            omit_default_fields (False): whether to omit default sample fields
+                when merging. If ``True``, ``insert_new`` must be ``False``
             overwrite (False): whether to overwrite (True) or skip (False)
                 existing sample fields
         """
         if key_fcn is None:
             key_fcn = lambda k: k
+
+        if omit_default_fields:
+            if insert_new:
+                raise ValueError(
+                    "Cannot omit default fields when `insert_new=True`"
+                )
+
+            omit_fields = fos.get_default_sample_fields()
+        else:
+            omit_fields = None
 
         id_map = {}
         for sample in self.select_fields(key_field):
@@ -1037,6 +1050,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         existing_sample = self[id_map[key]]
                         existing_sample.merge(
                             sample,
+                            omit_fields=omit_fields,
                             omit_none_fields=omit_none_fields,
                             overwrite=overwrite,
                         )

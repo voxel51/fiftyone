@@ -26,7 +26,8 @@ import fiftyone.core.utils as fou
 
 
 def default_sample_fields(cls, include_private=False, include_id=False):
-    """The default fields present on all :class:`SampleDocument` objects.
+    """Returns the default fields present on all instances of the given
+    :class:`SampleDocument` class.
 
     Args:
         cls: the :class:`SampleDocument` class
