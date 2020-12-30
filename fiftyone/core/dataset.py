@@ -1101,6 +1101,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     "Saving views into video datasets is not yet supported"
                 )
 
+            # @todo respect excluded fields when saving schema?
+
         self._doc.save()
 
     def clone(self, name=None):
@@ -1121,6 +1123,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             name = get_default_dataset_name()
 
         if view is not None:
+            # @todo respect excluded fields when saving schema?
             _clone_dataset_or_view(view, name)
         else:
             _clone_dataset_or_view(self, name)
