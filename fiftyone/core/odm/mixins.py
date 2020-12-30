@@ -187,6 +187,32 @@ class DatasetMixin(object):
 
         return d
 
+    @classmethod
+    def merge_field_schema(cls, schema):
+        """Merges the field schema into the sample.
+
+        Args:
+            schema: a dictionary mapping field names to field types
+
+        Raises:
+            ValueError: if a field in the schema is not compliant with an
+                existing field of the same name
+        """
+        _schema = cls.get_field_schema()
+
+        add_fields = []
+        for field_name, field in schema.items():
+            if field_name in _schema:
+                validate_fields_match(field_name, field, _schema[field_name])
+            else:
+                add_fields.append(field_name)
+
+        for field_name in add_fields:
+            field = schema[field_name]
+            cls._add_field_schema(
+                field_name, save=True, **get_field_kwargs(field)
+            )
+
     def has_field(self, field_name):
         # pylint: disable=no-member
         return field_name in self._fields
@@ -453,7 +479,7 @@ class DatasetMixin(object):
     def _delete_field_docs(cls, field_name):
         collection_name = cls.__name__
         collection = get_db_conn()[collection_name]
-        collection.update_many({}, {"$unset": {field_name: ""}})
+        collection.update_many({}, {"$unset": field_name})
 
     @classmethod
     def _add_field_schema(
@@ -905,8 +931,39 @@ class NoDatasetMixin(object):
         pass
 
 
+def validate_fields_match(field_name, field, ref_field):
+    if type(field) is not type(ref_field):
+        raise ValueError(
+            "Field '%s' type %s does not match existing field "
+            "type %s" % (field_name, field, ref_field)
+        )
+
+    if isinstance(field, fof.EmbeddedDocumentField):
+        if not issubclass(field.document_type, ref_field.document_type):
+            raise ValueError(
+                "Embedded document field '%s' type %s does not match existing "
+                "field type %s"
+                % (field_name, field.document_type, ref_field.document_type)
+            )
+
+    if isinstance(field, (fof.ListField, fof.DictField)):
+        if (ref_field.field is not None) and not isinstance(
+            field.field, type(ref_field.field)
+        ):
+            raise ValueError(
+                "%s '%s' type %s does not match existing "
+                "field type %s"
+                % (
+                    field.__class__.__name__,
+                    field_name,
+                    field.field,
+                    ref_field.field,
+                )
+            )
+
+
 def get_field_kwargs(field):
-    ftype = field.__class__
+    ftype = type(field)
     kwargs = {"ftype": ftype}
 
     if issubclass(ftype, fof.EmbeddedDocumentField):

@@ -513,7 +513,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             include_private=include_private,
         )
 
-        if not include_private and self.media_type == fom.VIDEO:
+        if not include_private and (self.media_type == fom.VIDEO):
             d.pop("frames", None)
 
         return d
@@ -990,10 +990,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def merge_samples(
         self, samples, overwrite=False, key_field="filepath", key_fcn=None
     ):
-        """Merges the contents of the given samples into the dataset.
+        """Merges the given samples into this dataset.
+
+        ``None``-valued fields of the provided samples are always omitted.
 
         By default, samples with the same absolute ``filepath`` are merged.
-
         You can customize this behavior via the ``key_field`` and ``key_fcn``
         parameters. For example, you could set
         ``key_fcn = lambda k: os.path.basename(k)`` to merge samples with the
@@ -1026,6 +1027,62 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     existing_sample.save()
                 else:
                     self.add_sample(sample)
+
+    # @todo use this? do we need to think more about private/default fields?
+    def _merge_samples(
+        self,
+        sample_collection,
+        key_field="filepath",
+        omit_default_fields=False,
+    ):
+        if self.media_type == fom.VIDEO:
+            raise ValueError("Merging video collections is not yet supported")
+
+        schema = sample_collection.get_field_schema()
+        self._sample_doc_cls.merge_field_schema(schema)
+
+        pipeline = []
+
+        if key_field == "id":
+            key_field = "_id"
+
+        if omit_default_fields:
+            omit_fields = list(
+                self.get_default_sample_fields(include_private=True)
+            )
+        else:
+            omit_fields = ["_id"]
+
+        try:
+            omit_fields.remove(key_field)
+        except ValueError:
+            pass
+
+        pipeline.append({"$unset": omit_fields})
+
+        pipeline.extend(
+            [
+                {
+                    "$replaceWith": {
+                        "$arrayToObject": {
+                            "$filter": {
+                                "input": {"$objectToArray": "$$ROOT"},
+                                "as": "item",
+                                "cond": {"$ne": ["$$item.v", None]},
+                            }
+                        }
+                    }
+                },
+                {
+                    "$merge": {
+                        "into": self._sample_collection_name,
+                        "on": key_field,
+                    }
+                },
+            ]
+        )
+
+        sample_collection._aggregate(pipeline=pipeline, attach_frames=False)
 
     def remove_sample(self, sample_or_id):
         """Removes the given sample from the dataset.
@@ -1066,9 +1123,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             for sample_or_id in samples_or_ids
         ]
 
-        sample_object_ids = [ObjectId(id) for id in sample_ids]
         self._sample_collection.delete_many(
-            {"_id": {"$in": sample_object_ids}}
+            {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
         )
 
         fos.Sample._reset_backing_docs(
@@ -1085,24 +1141,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _save(self, view=None):
         if view is not None:
-            self._sample_collection.aggregate(
-                view._pipeline(attach_frames=False)
-                + [{"$out": self._sample_collection_name}]
-            )
-            doc_ids = [
-                str(_id) for _id in self._sample_collection.distinct("_id")
-            ]
-            fos.Sample._refresh_backing_docs(
-                self._sample_collection_name, doc_ids
-            )
-
-            if self.media_type == fom.VIDEO:
-                # @todo support this
-                raise ValueError(
-                    "Saving views into video datasets is not yet supported"
-                )
-
-            # @todo respect excluded fields when saving schema?
+            _save_view(view)
 
         self._doc.save()
 
@@ -2387,6 +2426,26 @@ def _clone_dataset_or_view(dataset_or_view, name):
     dataset_doc.name = name
     dataset_doc.sample_collection_name = sample_collection_name
     dataset_doc.save()
+
+
+def _save_view(view):
+    dataset = view._dataset
+    dataset._sample_collection.aggregate(
+        view._pipeline(attach_frames=False)
+        + [{"$out": dataset._sample_collection_name}]
+    )
+
+    doc_ids = [str(_id) for _id in dataset._sample_collection.distinct("_id")]
+    fos.Sample._refresh_backing_docs(dataset._sample_collection_name, doc_ids)
+
+    for field_name in view._get_missing_fields():
+        dataset._sample_doc_cls._delete_field_schema(field_name, False)
+
+    if dataset.media_type == fom.VIDEO:
+        # @todo support this
+        raise ValueError(
+            "Saving views into video datasets is not yet supported"
+        )
 
 
 def _make_sample_collection_name():

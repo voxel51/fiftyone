@@ -482,6 +482,16 @@ class DatasetView(foc.SampleCollection):
 
         return selected_fields, excluded_fields
 
+    def _get_missing_fields(self, frames=False):
+        if frames:
+            dataset_schema = self._dataset.get_frame_field_schema()
+            view_schema = self.get_frame_field_schema()
+        else:
+            dataset_schema = self._dataset.get_field_schema()
+            view_schema = self.get_field_schema()
+
+        return set(dataset_schema.keys()) - set(view_schema.keys())
+
     def _get_filtered_fields(self):
         filtered_fields = set()
         for stage in self._stages:
