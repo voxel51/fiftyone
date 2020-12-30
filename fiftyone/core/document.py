@@ -308,43 +308,6 @@ class Document(object):
         doc = cls._NO_COLL_CL.from_json(s)
         return cls.from_doc(doc)
 
-    @classmethod
-    def _rename_field(cls, collection_name, field_name, new_field_name):
-        """Renames any field values for in-memory document instances that
-        belong to the specified collection.
-
-        Args:
-            collection_name: the name of the MongoDB collection
-            field_name: the name of the field to rename
-            new_field_name: the new field name
-        """
-        for document in cls._instances[collection_name].values():
-            data = document._doc._data
-            data[new_field_name] = data.pop(field_name, None)
-
-    @classmethod
-    def _purge_field(cls, collection_name, field_name):
-        """Removes values for the given field from all in-memory document
-        instances that belong to the specified collection.
-
-        Args:
-            collection_name: the name of the MongoDB collection
-            field_name: the name of the field to purge
-        """
-        for document in cls._instances[collection_name].values():
-            document._doc._data.pop(field_name, None)
-
-    @classmethod
-    def _reload_docs(cls, collection_name):
-        """Reloads the backing documents for all in-memory document instances
-        that belong to the specified collection.
-
-        Args:
-            collection_name: the name of the MongoDB collection
-        """
-        for document in cls._instances[collection_name].values():
-            document.reload()
-
     def _set_backing_doc(self, doc, dataset=None):
         """Sets the backing doc for the document.
 
@@ -366,34 +329,105 @@ class Document(object):
 
         self._dataset = dataset
 
+    def _reset_backing_doc(self):
+        self._doc = self.copy()._doc
+        self._dataset = None
+
     @classmethod
-    def _reset_backing_docs(cls, collection_name, doc_ids):
-        """Resets the document(s) backing documents.
+    def _rename_field(cls, collection_name, field_name, new_field_name):
+        """Renames the field on all in-memory documents in the collection.
 
         Args:
             collection_name: the name of the MongoDB collection
-            doc_ids: a list of document IDs
+            field_name: the name of the field to rename
+            new_field_name: the new field name
         """
+        for document in cls._instances[collection_name].values():
+            data = document._doc._data
+            data[new_field_name] = data.pop(field_name, None)
+
+    @classmethod
+    def _clear_field(cls, collection_name, field_name):
+        """Clears the values for the given field (i.e., sets it to None) on all
+        in-memory documents in the collection.
+
+        Args:
+            collection_name: the name of the MongoDB collection
+            field_name: the name of the field to purge
+        """
+        for document in cls._instances[collection_name].values():
+            document._doc._data[field_name] = None
+
+    @classmethod
+    def _purge_field(cls, collection_name, field_name):
+        """Removes the field from all in-memory documents in the collection.
+
+        Args:
+            collection_name: the name of the MongoDB collection
+            field_name: the name of the field to purge
+        """
+        for document in cls._instances[collection_name].values():
+            document._doc._data.pop(field_name, None)
+
+    @classmethod
+    def _reload_docs(cls, collection_name):
+        """Reloads the backing documents for all in-memory documents in the
+        collection.
+
+        Args:
+            collection_name: the name of the MongoDB collection
+        """
+        for document in cls._instances[collection_name].values():
+            document.reload()
+
+    @classmethod
+    def _reset_backing_docs(cls, collection_name, doc_ids=None):
+        """Resets the backing documents for in-memory documents in the
+        collection.
+
+        Reset documents will no longer belong to their parent dataset.
+
+        Args:
+            collection_name: the name of the MongoDB collection
+            doc_ids (None): an optional list of document IDs to reset. By
+                default, all documents are reset
+        """
+        if doc_ids is None:
+            # Reset all
+            dataset_instances = cls._instances.pop(collection_name)
+            for document in dataset_instances.values():
+                document._reset_backing_doc()
+
+            return
+
         dataset_instances = cls._instances[collection_name]
+
         for doc_id in doc_ids:
             document = dataset_instances.pop(doc_id, None)
             if document is not None:
                 document._reset_backing_doc()
 
     @classmethod
-    def _reset_all_backing_docs(cls, collection_name):
-        """Resets the backing documents for all documents in the collection.
+    def _refresh_backing_docs(cls, collection_name, doc_ids):
+        """Refreshes the backing documents for all in-memory documents in the
+        collection.
+
+        Documents that are still in the collection will be reloaded, and
+        documents that are no longer in the collection will be reset.
 
         Args:
             collection_name: the name of the MongoDB collection
+            doc_ids: a list of IDs of documents that are still in the
+                collection
         """
         if collection_name not in cls._instances:
             return
 
-        dataset_instances = cls._instances.pop(collection_name)
-        for document in dataset_instances.values():
-            document._reset_backing_doc()
+        dataset_instances = cls._instances[collection_name]
 
-    def _reset_backing_doc(self):
-        self._doc = self.copy()._doc
-        self._dataset = None
+        for document in dataset_instances.values():
+            if document.id in doc_ids:
+                document.reload()
+            else:
+                dataset_instances.pop(document.id, None)
+                document._reset_backing_doc()

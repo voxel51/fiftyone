@@ -490,6 +490,12 @@ class Frame(Document):
                 data[new_field_name] = data.pop(field_name, None)
 
     @classmethod
+    def _clear_field(cls, collection_name, field_name):
+        for samples in cls._instances[collection_name].values():
+            for document in samples.values():
+                document._doc._data[field_name] = None
+
+    @classmethod
     def _purge_field(cls, collection_name, field_name):
         for samples in cls._instances[collection_name].values():
             for document in samples.values():
