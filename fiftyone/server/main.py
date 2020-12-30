@@ -23,6 +23,7 @@ import tornado.web
 import tornado.websocket
 
 import eta.core.labels as etal
+import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
 
@@ -70,8 +71,7 @@ class RequestHandler(tornado.web.RequestHandler):
     async def get(self):
         self.write(self.get_response())
 
-    @staticmethod
-    def get_response():
+    def get_response(self):
         """Returns the serializable response
 
         Returns:
@@ -83,27 +83,35 @@ class RequestHandler(tornado.web.RequestHandler):
 class FiftyOneHandler(RequestHandler):
     """Returns the version info of the fiftyone being used"""
 
-    @staticmethod
-    def get_response():
+    feedback_path = os.path.join(
+        foc.FIFTYONE_CONFIG_DIR, "var", "feedback.json"
+    )
+
+    def get_response(self):
         """Returns the serializable response
 
         Returns:
             dict
         """
         uid, first_import = _get_user_id()
+        isfile = os.path.isfile(self.feedback_path)
+        if isfile:
+            submitted = etas.load_json(self.feedback_path)["submitted"]
+        else:
+            submitted = False
         return {
             "version": foc.VERSION,
             "user_id": uid,
             "do_not_track": fo.config.do_not_track,
             "dev_install": foc.DEV_INSTALL,
+            "feedback": {"submitted": submitted, "minimized": isfile},
         }
 
 
 class StagesHandler(RequestHandler):
     """Returns the definitions of stages available to the App"""
 
-    @staticmethod
-    def get_response():
+    def get_response(self):
         """Returns the serializable response
 
         Returns:
@@ -115,6 +123,18 @@ class StagesHandler(RequestHandler):
                 for stage in _STAGES
             ]
         }
+
+
+class FeedbackHandler(RequestHandler):
+    """Returns whether the feedback button should be minimized"""
+
+    feedback_path = os.path.join(
+        foc.FIFTYONE_CONFIG_DIR, "var", "feedback.json"
+    )
+
+    def post(self):
+        submitted = self.get_argument("submitted", False)
+        etas.write_json({"submitted": submitted}, self.feedback_path)
 
 
 def _catch_errors(func):
@@ -972,6 +992,7 @@ class Application(tornado.web.Application):
         handlers = [
             (r"/fiftyone", FiftyOneHandler),
             (r"/polling", PollingHandler),
+            (r"/feedback", FeedbackHandler),
             (r"/filepath/(.*)", FileHandler, {"path": static_path},),
             (r"/stages", StagesHandler),
             (r"/state", StateHandler),

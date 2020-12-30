@@ -1,4 +1,10 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, {
+  Suspense,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import styled from "styled-components";
 import { Checkbox } from "@material-ui/core";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
@@ -339,6 +345,7 @@ const TshirtForm = () => {
   const postUrl = `https://api.hsforms.com/submissions/v3/integration/submit/${portalId}/${formId}`;
   const appContext = useRecoilValue(selectors.appContext);
   const closeFeedback = useRecoilValue(atoms.closeFeedback);
+  const http = useRecoilValue(selectors.http);
   const theme = useContext(ThemeContext);
 
   const setFormValue = (name) => (e) =>
@@ -362,7 +369,7 @@ const TshirtForm = () => {
     const finalize = () => {
       setSubmitText("Submitted. Thank you!");
       setSubmitted(true);
-      window.localStorage.setItem("fiftyone-feedback", "submitted");
+      fetch(`${http}/feedback`, { method: "post" });
       setTimeout(() => closeFeedback && closeFeedback.close(), 2000);
     };
 
@@ -561,12 +568,7 @@ const DatasetSelector = () => {
   );
 };
 
-const Header = ({ addNotification }) => {
-  const socket = useRecoilValue(selectors.socket);
-  const [refresh, setRefresh] = useRecoilState(atoms.refresh);
-  const logoProps = useSpring({
-    transform: refresh ? `rotate(0turn)` : `rotate(1turn)`,
-  });
+const FeedbackButton = ({ addNotification }) => {
   const [appFeedbackIsOpen, setAppFeedbackIsOpen] = useRecoilState(
     atoms.appFeedbackIsOpen
   );
@@ -574,6 +576,7 @@ const Header = ({ addNotification }) => {
     atoms.feedbackSubmitted
   );
   const [closeFeedback, setCloseFeedback] = useRecoilState(atoms.closeFeedback);
+  const http = useRecoilValue(selectors.http);
   const tshirtText = (
     <span>
       We are super dedicated to making FiftyOne as valuable as possible for our
@@ -583,10 +586,52 @@ const Header = ({ addNotification }) => {
     </span>
   );
   const theme = useContext(ThemeContext);
+  const showFeedbackButton = useRecoilValue(selectors.showFeedbackButton);
 
-  const showFeedbackButton =
-    window.localStorage.getItem("fiftyone-feedback") !== "submitted" &&
-    !feedbackSubmitted;
+  const onClick = () => {
+    if (!appFeedbackIsOpen) {
+      setAppFeedbackIsOpen(true);
+      const callback = addNotification.current({
+        kind: "We'd love your feedback",
+        message: tshirtText,
+        children: [<TshirtForm key="t-shirt" />],
+        onClose: () => setAppFeedbackIsOpen(false),
+      });
+      setCloseFeedback({ close: callback });
+    }
+  };
+
+  return showFeedbackButton === "shown" ? (
+    <Button
+      onClick={onClick}
+      style={{ marginRight: "0.5rem", position: "relative" }}
+    >
+      Want a free t-shirt?
+      <Close
+        style={{
+          position: "absolute",
+          top: "-0.8rem",
+          right: "-0.8rem",
+          borderRadius: "1rem",
+          background: theme.brand,
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setFeedbackSubmitted(true);
+          fetch(`${http}/feedback?submitted=true`, { method: "post" });
+          closeFeedback && closeFeedback.close();
+        }}
+      />
+    </Button>
+  ) : null;
+};
+
+const Header = ({ addNotification }) => {
+  const socket = useRecoilValue(selectors.socket);
+  const [refresh, setRefresh] = useRecoilState(atoms.refresh);
+  const logoProps = useSpring({
+    transform: refresh ? `rotate(0turn)` : `rotate(1turn)`,
+  });
 
   return (
     <HeaderDiv>
@@ -604,40 +649,9 @@ const Header = ({ addNotification }) => {
       </LeftDiv>
       <RightDiv>
         <IconWrapper>
-          {showFeedbackButton && (
-            <Button
-              onClick={() => {
-                if (!appFeedbackIsOpen) {
-                  setAppFeedbackIsOpen(true);
-                  const callback = addNotification.current({
-                    kind: "We'd love your feedback",
-                    message: tshirtText,
-                    children: [<TshirtForm key="t-shirt" />],
-                    onClose: () => setAppFeedbackIsOpen(false),
-                  });
-                  setCloseFeedback({ close: callback });
-                }
-              }}
-              style={{ marginRight: "0.5rem", position: "relative" }}
-            >
-              Want a free t-shirt?
-              <Close
-                style={{
-                  position: "absolute",
-                  top: "-0.8rem",
-                  right: "-0.8rem",
-                  borderRadius: "1rem",
-                  background: theme.brand,
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setFeedbackSubmitted(true);
-                  window.localStorage.setItem("fiftyone-feedback", "submitted");
-                  closeFeedback && closeFeedback.close();
-                }}
-              />
-            </Button>
-          )}
+          <Suspense fallback={null}>
+            <FeedbackButton addNotification={addNotification} />
+          </Suspense>
           <ExternalLink
             title="Slack"
             href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg"
