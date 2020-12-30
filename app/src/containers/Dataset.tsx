@@ -26,7 +26,7 @@ import { packageMessage } from "../utils/socket";
 const PLOTS = ["labels", "scalars", "tags"];
 
 const Container = styled.div`
-  height: 100%;
+  height: calc(100% - 74px);
   display: flex;
   flex-direction: column;
 `;

@@ -622,21 +622,29 @@ const Header = ({ addNotification }) => {
               style={{ marginRight: "0.5rem", position: "relative" }}
             >
               Want a free t-shirt?
-              <Close
+              <div
                 style={{
                   position: "absolute",
                   top: "-0.8rem",
                   right: "-0.8rem",
-                  borderRadius: "1rem",
-                  background: theme.brand,
                 }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setFeedbackSubmitted(true);
-                  window.localStorage.setItem("fiftyone-feedback", "submitted");
-                  closeFeedback && closeFeedback.close();
-                }}
-              />
+              >
+                <Close
+                  style={{
+                    borderRadius: "1rem",
+                    background: theme.brand,
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFeedbackSubmitted(true);
+                    window.localStorage.setItem(
+                      "fiftyone-feedback",
+                      "submitted"
+                    );
+                    closeFeedback && closeFeedback.close();
+                  }}
+                />
+              </div>
             </Button>
           )}
           <ExternalLink

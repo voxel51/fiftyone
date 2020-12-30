@@ -24,14 +24,6 @@ import Setup from "./Setup";
 import "player51/src/css/player51.css";
 import "../app.global.css";
 
-const Body = styled.div`
-  ${scrollbarStyles}
-  padding: 0;
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-`;
-
 const GA = () => {
   useGA();
   return null;

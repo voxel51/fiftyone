@@ -60,7 +60,6 @@ const Body = styled.div`
       align-items: center;
       padding-right: 3px;
       max-width: 100%;
-      font-family: "Palanquin", sans-serif;
     }
 
     .MuiTypography-body1.with-checkbox {
@@ -82,26 +81,36 @@ const Body = styled.div`
       display: flex;
       font-weight: bold;
       color: unset;
+      line-height: 29px;
+      height: 29px;
 
       span.name {
+        display: block;
         padding: 0 4px;
         white-space: nowrap;
         overflow-x: hidden;
         text-overflow: ellipsis;
         flex-grow: 1;
         max-width: 100%;
-        line-height: 24px;
-        display: flex;
+        line-height: 29px;
+        height: 29px;
         align-items: center;
+        vertical-align: middle;
       }
       span.count {
+        display: block;
         white-space: nowrap;
+        height: 29px;
+        line-height: 29px;
+        vertical-align: middle;
       }
 
       span.data {
+        display: block;
         margin-left: 0.5em;
-        line-height: 24px;
+        line-height: 29px;
         display: flex;
+        vertical-align: middle;
         align-items: center;
       }
     }

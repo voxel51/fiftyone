@@ -18905,13 +18905,13 @@ modclean-patterns-default@latest:
   linkType: hard
 
 "postcss@npm:^8.1.8":
-  version: 8.2.1
-  resolution: "postcss@npm:8.2.1"
+  version: 8.2.2
+  resolution: "postcss@npm:8.2.2"
   dependencies:
     colorette: ^1.2.1
     nanoid: ^3.1.20
     source-map: ^0.6.1
-  checksum: aa7ba3d80a4d8e25bc1a3f61461d7f6b60d361fb1301465d0eb973c5f38b347ad0842b02b8cc8801ede46559391d7c640c7313301a829ef9ca77e34be7230854
+  checksum: c661b093d245ef8e3b0340958f672e3abeb89627afa7064771dafafa49c80742f0b6e05c55ee5ab14aa1da2095aebfd69325778df8a90d4e41fdf685a76993f2
   languageName: node
   linkType: hard
 
