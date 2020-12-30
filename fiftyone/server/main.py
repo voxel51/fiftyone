@@ -95,7 +95,7 @@ class FiftyOneHandler(RequestHandler):
             "version": foc.VERSION,
             "user_id": uid,
             "do_not_track": fo.config.do_not_track,
-            "dev_install": foc.DEV_INSTALL,
+            "dev_install": foc.DEV_INSTALL or foc.RC_INSTALL,
         }
 
 
