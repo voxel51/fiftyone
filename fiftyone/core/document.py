@@ -225,7 +225,11 @@ class Document(object):
                 existing fields whose values are ``None`` are always
                 overwritten
         """
-        omit_fields = set(omit_fields) or set()
+        if omit_fields is not None:
+            omit_fields = set(omit_fields)
+        else:
+            omit_fields = set()
+
         existing_field_names = self.field_names
 
         for field_name, value in document.iter_fields():
@@ -359,6 +363,9 @@ class Document(object):
             field_name: the name of the field to rename
             new_field_name: the new field name
         """
+        if collection_name not in cls._instances:
+            return
+
         for document in cls._instances[collection_name].values():
             data = document._doc._data
             data[new_field_name] = data.pop(field_name, None)
@@ -372,6 +379,9 @@ class Document(object):
             collection_name: the name of the MongoDB collection
             field_name: the name of the field to purge
         """
+        if collection_name not in cls._instances:
+            return
+
         for document in cls._instances[collection_name].values():
             document._doc._data[field_name] = None
 
@@ -383,6 +393,9 @@ class Document(object):
             collection_name: the name of the MongoDB collection
             field_name: the name of the field to purge
         """
+        if collection_name not in cls._instances:
+            return
+
         for document in cls._instances[collection_name].values():
             document._doc._data.pop(field_name, None)
 
@@ -394,6 +407,9 @@ class Document(object):
         Args:
             collection_name: the name of the MongoDB collection
         """
+        if collection_name not in cls._instances:
+            return
+
         for document in cls._instances[collection_name].values():
             document.reload()
 
@@ -409,6 +425,9 @@ class Document(object):
             doc_ids (None): an optional list of document IDs to reset. By
                 default, all documents are reset
         """
+        if collection_name not in cls._instances:
+            return
+
         if doc_ids is None:
             dataset_instances = cls._instances.pop(collection_name)
             for document in dataset_instances.values():
