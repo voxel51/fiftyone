@@ -86,7 +86,7 @@ described in the next section) at any time via the Python library and the CLI.
         print(fo.config)
 
         # Print a specific config field
-        print(co.config.default_ml_backend)
+        print(fo.config.default_ml_backend)
 
     .. code-block:: text
 
