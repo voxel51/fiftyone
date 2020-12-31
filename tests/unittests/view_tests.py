@@ -213,10 +213,10 @@ class ViewFieldTests(unittest.TestCase):
             filepath="image1.jpg",
             predictions=fo.Detections(
                 detections=[
-                    fo.Detection(label="friend", confidence=0.9, field=1),
-                    fo.Detection(label="big bro", confidence=0.6, field=2),
-                    fo.Detection(label="contact", confidence=0.3, field=3),
-                    fo.Detection(label="stopper", confidence=0.1, field=4),
+                    fo.Detection(label="high", confidence=0.9, field=1),
+                    fo.Detection(label="high", confidence=0.6, field=2),
+                    fo.Detection(label="low", confidence=0.3, field=3),
+                    fo.Detection(label="low", confidence=0.1, field=4),
                 ]
             ),
         )
@@ -225,9 +225,9 @@ class ViewFieldTests(unittest.TestCase):
             filepath="image2.jpg",
             predictions=fo.Detections(
                 detections=[
-                    fo.Detection(label="bestie", confidence=1.0, field=1),
-                    fo.Detection(label="bff", confidence=0.8, field=2),
-                    fo.Detection(label="enemy", confidence=0.2, field=3),
+                    fo.Detection(label="high", confidence=1.0, field=1),
+                    fo.Detection(label="high", confidence=0.8, field=2),
+                    fo.Detection(label="low", confidence=0.2, field=3),
                 ]
             ),
         )
