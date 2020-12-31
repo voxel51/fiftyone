@@ -11,18 +11,13 @@ import json
 import weakref
 import six
 
-from bson import ObjectId, json_util
+from bson import json_util
 from pymongo import ReplaceOne
 
 import fiftyone as fo
 from fiftyone.core.document import Document
-import fiftyone.core.fields as fof
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.labels as fol
-from fiftyone.core.odm.document import (
-    DynamicEmbeddedDocument,
-    EmbeddedDocument,
-)
 from fiftyone.core.odm.frame import (
     NoDatasetFrameSampleDocument,
     DatasetFrameSampleDocument,

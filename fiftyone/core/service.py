@@ -349,10 +349,10 @@ class DatabaseService(MultiClientService):
 
         for path, version, code, err in attempts:
             if version is not None:
-                logger.warning("%s: incompatible version %s" % (path, version))
+                logger.warning("%s: incompatible version %s", path, version)
             else:
                 logger.error(
-                    "%s: failed to launch (code %r): %s" % (path, code, err)
+                    "%s: failed to launch (code %r): %s", path, code, err
                 )
         raise RuntimeError(
             "Could not find mongod>=%s" % DatabaseService.MIN_MONGO_VERSION
@@ -388,15 +388,16 @@ class ServerService(Service):
             super().start()
             self._wait_for_child_port(self._port)
         else:
-            logger.info("Connected to fiftyone on local port %i" % self._port)
+            logger.info("Connected to fiftyone on local port %i", self._port)
             logger.info(
                 "If you are not connecting to a remote session, you may need\n"
                 "to start a new session and specify a port.\n"
             )
             if server_version != foc.VERSION:
                 logger.warning(
-                    "Server version (%s) does not match client version (%s)"
-                    % (server_version, foc.VERSION)
+                    "Server version (%s) does not match client version (%s)",
+                    server_version,
+                    foc.VERSION,
                 )
 
     @property

@@ -30,10 +30,10 @@ class Document(object):
         try:
             return super().__getattribute__(name)
         except AttributeError:
-            if name != "_doc":
-                return self._doc.get_field(name)
-            else:
+            if name == "_doc":
                 raise
+
+        return self._doc.get_field(name)
 
     def __setattr__(self, name, value):
         if name.startswith("_") or (
@@ -139,7 +139,7 @@ class Document(object):
             field_name: the field name
 
         Returns:
-            True/False<
+            True/False
         """
         return self._doc.has_field(field_name)
 

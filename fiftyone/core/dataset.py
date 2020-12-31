@@ -5,7 +5,6 @@ FiftyOne datasets.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import deepcopy
 import datetime
 import fnmatch
 import inspect
@@ -699,6 +698,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise ValueError("Only video datasets have frame fields")
 
         if view is not None:
+            # @todo support this
             raise ValueError(
                 "Cloning frame fields of a view is not yet supported"
             )
@@ -765,6 +765,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise ValueError("Only video datasets have frame fields")
 
         if view is not None:
+            # @todo support this
             raise ValueError(
                 "Clearing frame fields of a view is not yet supported"
             )
@@ -2529,9 +2530,8 @@ def _clone_dataset_or_view(dataset_or_view, name):
             raise ValueError(
                 "Cloning views into video datasets is not yet supported"
             )
-        else:
-            frames_pipeline = [{"$match": {}}]
 
+        frames_pipeline = [{"$match": {}}]
         dataset._frame_collection.aggregate(
             frames_pipeline + [{"$out": frames_collection_name}]
         )

@@ -11,9 +11,8 @@ import json
 import numbers
 import six
 
-from bson import json_util, ObjectId
+from bson import json_util
 from bson.binary import Binary
-from mongoengine.errors import InvalidQueryError
 import numpy as np
 
 import fiftyone as fo
@@ -21,7 +20,6 @@ from .database import get_db_conn
 from .dataset import SampleFieldDocument, DatasetDocument
 from .document import Document, BaseEmbeddedDocument, SampleDocument
 import fiftyone.core.fields as fof
-import fiftyone.core.media as fomm
 import fiftyone.core.utils as fou
 
 
