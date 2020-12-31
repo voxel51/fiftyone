@@ -364,7 +364,7 @@ class DatasetMixin(object):
                 a view into the samples to clone
         """
         if pipeline is not None:
-            cls._clone_field_docs_pipeline(
+            cls._clone_embedded_field_docs_pipeline(
                 field_name, new_field_name, pipeline
             )
         else:
@@ -400,7 +400,7 @@ class DatasetMixin(object):
                 a view into the samples to clear
         """
         if pipeline is not None:
-            cls._clear_field_docs_pipeline(field_name, pipeline)
+            cls._clear_embedded_field_docs_pipeline(field_name, pipeline)
         else:
             cls._clear_field_docs(field_name)
 
@@ -441,6 +441,12 @@ class DatasetMixin(object):
     def _clone_field_docs(cls, field_name, new_field_name):
         collection_name = cls.__name__
         collection = get_db_conn()[collection_name]
+
+        #
+        # Note: this will not do the right thing if `field_name` is an embedded
+        # field of an array. In that case, we'd actually need to do something
+        # like https://stackoverflow.com/q/60362503
+        #
         collection.update_many(
             {}, [{"$set": {new_field_name: "$" + field_name}}]
         )
@@ -453,8 +459,27 @@ class DatasetMixin(object):
             pipeline
             + [
                 {"$project": {new_field_name: "$" + field_name}},
-                # @todo required for embedded fields?
-                # {"$set": {new_field_name: "$" + field_name}},
+                {"$merge": collection_name},  # requires mongodb>=4.4
+            ]
+        )
+
+    @classmethod
+    def _clone_embedded_field_docs_pipeline(
+        cls, field_name, new_field_name, pipeline
+    ):
+        collection_name = cls.__name__
+        collection = get_db_conn()[collection_name]
+
+        # Ideally only the embedded field would be merged in, but the `$merge`
+        # operator will always overwrite top-level fields of each sample, so we
+        # limit the damage by projecting onto the base field
+        base_field = new_field_name.split(".", 1)[0]
+
+        collection.aggregate(
+            pipeline
+            + [
+                {"$set": {new_field_name: "$" + field_name}},
+                {"$project": {base_field: True}},
                 {"$merge": collection_name},  # requires mongodb>=4.4
             ]
         )
@@ -472,8 +497,26 @@ class DatasetMixin(object):
         collection.aggregate(
             pipeline
             + [
-                # @todo omit for embedded fields?
                 {"$project": {field_name: True}},
+                {"$set": {field_name: None}},
+                {"$merge": collection_name},  # requires mongodb>=4.4
+            ]
+        )
+
+    @classmethod
+    def _clear_embedded_field_docs_pipeline(cls, field_name, pipeline):
+        collection_name = cls.__name__
+        collection = get_db_conn()[collection_name]
+
+        # Ideally only the embedded field would be merged in, but the `$merge`
+        # operator will always overwrite top-level fields of each sample, so we
+        # limit the damage by projecting onto the base field
+        base_field = field_name.split(".", 1)[0]
+
+        collection.aggregate(
+            pipeline
+            + [
+                {"$project": {base_field: True}},
                 {"$set": {field_name: None}},
                 {"$merge": collection_name},  # requires mongodb>=4.4
             ]
