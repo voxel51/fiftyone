@@ -132,6 +132,17 @@ class Document(object):
         """
         return self._doc._get_field_names(include_private=include_private)
 
+    def has_field(self, field_name):
+        """Determines whether the document has the given field.
+
+        Args:
+            field_name: the field name
+
+        Returns:
+            True/False<
+        """
+        return self._doc.has_field(field_name)
+
     def get_field(self, field_name):
         """Gets the value of a field of the document.
 

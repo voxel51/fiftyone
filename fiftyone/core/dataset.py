@@ -755,10 +755,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._sample_doc_cls._clear_embedded_field(
                 field_name, pipeline=pipeline
             )
-            fos.Sample._reload_docs(self._sample_collection_name)
         else:
             self._sample_doc_cls._clear_field(field_name, pipeline=pipeline)
-            fos.Sample._clear_field(self._sample_collection_name, field_name)
+
+        fos.Sample._reload_docs(self._sample_collection_name)
 
     def _clear_frame_field(self, field_name, view=None):
         if self.media_type != fom.VIDEO:
@@ -775,10 +775,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._frame_doc_cls._clear_embedded_field(
                 field_name, pipeline=pipeline
             )
-            fofr.Frame._reload_docs(self._frame_collection_name)
         else:
             self._frame_doc_cls._clear_field(field_name, pipeline=pipeline)
-            fofr.Frame._clear_field(self._frame_collection_name, field_name)
+
+        fofr.Frame._reload_docs(self._frame_collection_name)
 
     def delete_sample_field(self, field_name):
         """Deletes the field from all samples in the dataset.
@@ -1159,6 +1159,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
         sample_collection._aggregate(pipeline=pipeline, attach_frames=False)
+        fos.Sample._reload_docs(self._sample_collection_name)
 
     def remove_sample(self, sample_or_id):
         """Removes the given sample from the dataset.

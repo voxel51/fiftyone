@@ -114,7 +114,7 @@ class DatasetTests(unittest.TestCase):
         self.assertIs(dataset1c, dataset1)
 
     @drop_datasets
-    def test_merge_samples(self):
+    def test_merge_samples1(self):
         dataset1 = fo.Dataset()
         dataset2 = fo.Dataset()
 
@@ -154,6 +154,108 @@ class DatasetTests(unittest.TestCase):
 
         common21 = common21_view.first()
         self.assertEqual(common21.field, common1.field)
+
+    @drop_datasets
+    def test_merge_samples2(self):
+        dataset1 = fo.Dataset()
+        dataset2 = fo.Dataset()
+
+        sample11 = fo.Sample(filepath="image1.jpg", field=1)
+        sample12 = fo.Sample(
+            filepath="image2.jpg", field=1, gt=fo.Classification(label="cat"),
+        )
+
+        sample21 = fo.Sample(filepath="image1.jpg", field=2, new_field=3)
+        sample22 = fo.Sample(
+            filepath="image2.jpg",
+            gt=fo.Classification(label="dog"),
+            new_gt=fo.Classification(label="dog"),
+        )
+
+        dataset1.add_samples([sample11, sample12])
+        dataset2.add_samples([sample21, sample22])
+
+        sample1 = dataset2.first()
+        sample1.gt = None
+        sample1.save()
+
+        sample2 = dataset2.last()
+        sample2.field = None
+        sample2.save()
+
+        dataset1.merge_samples(dataset2.select_fields("field"))
+
+        self.assertEqual(sample11.field, 2)
+        self.assertEqual(sample12.field, 1)
+        self.assertIsNone(sample11.gt)
+        self.assertIsNotNone(sample12.gt)
+        with self.assertRaises(AttributeError):
+            sample11.new_field
+
+        with self.assertRaises(AttributeError):
+            sample12.new_gt
+
+        dataset1.merge_samples(dataset2)
+
+        self.assertEqual(sample11.field, 2)
+        self.assertEqual(sample11.new_field, 3)
+        self.assertEqual(sample12.field, 1)
+        self.assertIsNone(sample12.new_field)
+        self.assertIsNone(sample11.gt)
+        self.assertIsNone(sample11.new_gt)
+        self.assertIsNotNone(sample12.gt)
+        self.assertIsNotNone(sample12.new_gt)
+
+    @drop_datasets
+    def test_merge_samples3(self):
+        dataset1 = fo.Dataset()
+        dataset2 = fo.Dataset()
+
+        sample11 = fo.Sample(filepath="image1.jpg", field=1)
+        sample12 = fo.Sample(
+            filepath="image2.jpg", field=1, gt=fo.Classification(label="cat"),
+        )
+
+        sample21 = fo.Sample(filepath="image1.jpg", field=2, new_field=3)
+        sample22 = fo.Sample(
+            filepath="image2.jpg",
+            gt=fo.Classification(label="dog"),
+            new_gt=fo.Classification(label="dog"),
+        )
+
+        dataset1.add_samples([sample11, sample12])
+        dataset2.add_samples([sample21, sample22])
+
+        sample1 = dataset2.first()
+        sample1.gt = None
+        sample1.save()
+
+        sample2 = dataset2.last()
+        sample2.field = None
+        sample2.save()
+
+        dataset1._merge_samples(dataset2.select_fields("field"))
+
+        self.assertEqual(sample11.field, 2)
+        self.assertEqual(sample12.field, 1)
+        self.assertIsNone(sample11.gt)
+        self.assertIsNotNone(sample12.gt)
+        with self.assertRaises(AttributeError):
+            sample11.new_field
+
+        with self.assertRaises(AttributeError):
+            sample12.new_gt
+
+        dataset1._merge_samples(dataset2)
+
+        self.assertEqual(sample11.field, 2)
+        self.assertEqual(sample11.new_field, 3)
+        self.assertEqual(sample12.field, 1)
+        self.assertIsNone(sample12.new_field)
+        self.assertIsNone(sample11.gt)
+        self.assertIsNone(sample11.new_gt)
+        self.assertIsNotNone(sample12.gt)
+        self.assertIsNotNone(sample12.new_gt)
 
     @drop_datasets
     def test_rename_sample_field(self):
