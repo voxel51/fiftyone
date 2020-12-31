@@ -31,7 +31,7 @@ def _log_import_if_allowed():
     if config.do_not_track:
         return
 
-    if _os.environ.get("FIFTYONE_SERVER", False):
+    if _os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
         return
 
     uid, first_import = _get_user_id()

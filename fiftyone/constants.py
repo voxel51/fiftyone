@@ -21,12 +21,6 @@ BASE_DIR = os.path.dirname(FIFTYONE_DIR)
 FEEDBACK_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var", "feedback.json")
 RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
 
-DEV_INSTALL = os.path.isdir(
-    os.path.normpath(
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".git")
-    )
-)
-
 # Package metadata
 _META = metadata("fiftyone")
 NAME = _META["name"]
@@ -38,6 +32,13 @@ URL = _META["home-page"]
 LICENSE = _META["license"]
 VERSION_LONG = "%s v%s, %s" % (NAME, VERSION, AUTHOR)
 COPYRIGHT = "2017-%d, %s" % (datetime.now().year, AUTHOR)
+
+DEV_INSTALL = os.path.isdir(
+    os.path.normpath(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".git")
+    )
+)
+RC_INSTALL = "rc" in VERSION
 
 # MongoDB setup
 try:
@@ -67,4 +68,4 @@ except ImportError:
 # Analytics
 UA_DEV = "UA-141773487-10"
 UA_PROD = "UA-141773487-9"
-UA_ID = UA_DEV if DEV_INSTALL else UA_PROD
+UA_ID = UA_DEV if DEV_INSTALL or RC_INSTALL else UA_PROD
