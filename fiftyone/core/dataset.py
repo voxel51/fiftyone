@@ -1106,7 +1106,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if insert_new:
             when_not_matched = "insert"
         else:
-            when_not_matched = "skip"
+            when_not_matched = "discard"
 
         # Must create unique indexes in order to use `$merge`
         self.create_index(key_field, unique=True)
