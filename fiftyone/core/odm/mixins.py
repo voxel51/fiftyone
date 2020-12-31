@@ -442,7 +442,7 @@ class DatasetMixin(object):
         collection_name = cls.__name__
         collection = get_db_conn()[collection_name]
         collection.update_many(
-            {}, [{"$addFields": {new_field_name: "$" + field_name}}]
+            {}, [{"$set": {new_field_name: "$" + field_name}}]
         )
 
     @classmethod
@@ -452,7 +452,7 @@ class DatasetMixin(object):
         collection.aggregate(
             pipeline
             + [
-                {"$project": {new_field_name: "$" + field_name}},
+                {"$set": {new_field_name: "$" + field_name}},
                 {"$merge": collection_name},  # requires mongodb>=4.4
             ]
         )
@@ -470,7 +470,6 @@ class DatasetMixin(object):
         collection.aggregate(
             pipeline
             + [
-                {"$project": {field_name: True}},
                 {"$set": {field_name: None}},
                 {"$merge": collection_name},  # requires mongodb>=4.4
             ]
@@ -480,7 +479,7 @@ class DatasetMixin(object):
     def _delete_field_docs(cls, field_name):
         collection_name = cls.__name__
         collection = get_db_conn()[collection_name]
-        collection.update_many({}, {"$unset": {field_name: ""}})
+        collection.update_many({}, [{"$unset": field_name}])
 
     @classmethod
     def _add_field_schema(
