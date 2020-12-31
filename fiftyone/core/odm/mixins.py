@@ -452,7 +452,9 @@ class DatasetMixin(object):
         collection.aggregate(
             pipeline
             + [
-                {"$set": {new_field_name: "$" + field_name}},
+                {"$project": {new_field_name: "$" + field_name}},
+                # @todo required for embedded fields?
+                # {"$set": {new_field_name: "$" + field_name}},
                 {"$merge": collection_name},  # requires mongodb>=4.4
             ]
         )
@@ -470,6 +472,8 @@ class DatasetMixin(object):
         collection.aggregate(
             pipeline
             + [
+                # @todo omit for embedded fields?
+                {"$project": {field_name: True}},
                 {"$set": {field_name: None}},
                 {"$merge": collection_name},  # requires mongodb>=4.4
             ]

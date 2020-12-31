@@ -276,6 +276,100 @@ class DatasetTests(unittest.TestCase):
 
         self.assertEqual(sample["new_field"], value)
 
+    @drop_datasets
+    def test_clone_fields(self):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(
+            filepath="image.jpg", predictions=fo.Classification(label="friend")
+        )
+
+        dataset.add_sample(sample)
+
+        # Test `Dataset.clone_sample_field`
+
+        dataset.clone_sample_field("predictions", "predictions_copy")
+
+        schema = dataset.get_field_schema()
+        self.assertIn("predictions", schema)
+        self.assertIn("predictions_copy", schema)
+
+        self.assertIsNotNone(sample.predictions)
+        self.assertIsNotNone(sample.predictions_copy)
+
+        # Test `Dataset.clear_sample_field`
+
+        dataset.clear_sample_field("predictions")
+
+        schema = dataset.get_field_schema()
+        self.assertIn("predictions", schema)
+
+        self.assertIsNone(sample.predictions)
+        self.assertIsNotNone(sample.predictions_copy)
+
+        # Test `Dataset.delete_sample_field`
+
+        dataset.delete_sample_field("predictions")
+
+        self.assertIsNotNone(sample.predictions_copy)
+
+        with self.assertRaises(AttributeError):
+            sample.predictions
+
+        # Test `Dataset.rename_sample_field`
+
+        dataset.rename_sample_field("predictions_copy", "predictions")
+
+        self.assertIsNotNone(sample.predictions)
+
+        with self.assertRaises(AttributeError):
+            sample.predictions_copy
+
+    @drop_datasets
+    def test_clone_embedded_fields(self):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(
+            filepath="image.jpg",
+            predictions=fo.Classification(label="friend", field=1),
+        )
+
+        dataset.add_sample(sample)
+
+        # Test `Dataset.clone_sample_field` on embedded fields
+
+        dataset.clone_sample_field(
+            "predictions.field", "predictions.new_field"
+        )
+
+        self.assertIsNotNone(sample.predictions.new_field)
+
+        # Test `Dataset.clear_sample_field` on embedded fields
+
+        dataset.clear_sample_field("predictions.field")
+
+        self.assertIsNone(sample.predictions.field)
+
+        # Test `Dataset.delete_sample_field` on embedded fields
+
+        dataset.delete_sample_field("predictions.field")
+
+        self.assertIsNotNone(sample.predictions.new_field)
+
+        with self.assertRaises(AttributeError):
+            sample.predictions.field
+
+        # Test `Dataset.rename_sample_field` on embedded fields
+
+        dataset.rename_sample_field(
+            "predictions.new_field", "predictions.field"
+        )
+
+        self.assertIsNotNone(sample.predictions.field)
+
+        with self.assertRaises(AttributeError):
+            sample.predictions.new_field
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
