@@ -658,14 +658,14 @@ Launch the FiftyOne App.
 
 .. code-block:: text
 
-    fiftyone app launch [-h] [-p PORT] [-r] NAME
+    fiftyone app launch [-h] [-p PORT] [-r] [-a] [NAME]
 
 **Arguments**
 
 .. code-block:: text
 
     positional arguments:
-      NAME                  the name of the dataset to open
+      NAME                  the name of a dataset to open
 
     optional arguments:
       -h, --help            show this help message and exit
@@ -677,13 +677,23 @@ Launch the FiftyOne App.
 
 .. code-block:: shell
 
-    # Launch the App with the given dataset
+    # Launch the App
+    fiftyone app launch
+
+.. code-block:: shell
+
+    # Launch the App with the given dataset loaded
     fiftyone app launch <name>
 
 .. code-block:: shell
 
     # Launch a remote App session
-    fiftyone app launch <name> --remote
+    fiftyone app launch ... --remote
+
+.. code-block:: shell
+
+    # Launch a desktop App session
+    fiftyone app launch ... --desktop
 
 .. _cli-fiftyone-app-view:
 

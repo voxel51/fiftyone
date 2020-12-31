@@ -82,7 +82,7 @@ call `session.wait()` to keep the session (and the script) alive.
 def launch_app(
     dataset=None,
     view=None,
-    port=5151,
+    port=None,
     remote=False,
     desktop=None,
     auto=True,
@@ -98,7 +98,8 @@ def launch_app(
             load
         view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
-        port (5151): the port number to use
+        port (None): the port number to serve the App. If None,
+            ``fiftyone.config.default_app_port`` is used
         remote (False): whether this is a remote session, and opening the App
             should not be attempted
         desktop (None): whether to launch the App in the browser (False) or as
@@ -144,7 +145,7 @@ def launch_app(
         if not auto:
             logger.info(_APP_NOTEBOOK_MESSAGE.strip())
     else:
-        logger.info(_APP_WEB_MESSAGE.strip().format(port))
+        logger.info(_APP_WEB_MESSAGE.strip().format(_session.server_port))
 
     return _session
 
@@ -257,7 +258,8 @@ class Session(foc.HasClient):
             load
         view (None): an optional :class:`fiftyone.core.view.DatasetView` to
             load
-        port (5151): the port number to use
+        port (None): the port number to serve the App. If None,
+            ``fiftyone.config.default_app_port`` is used
         remote (False): whether this is a remote session, and opening the App
             should not be attempted
         desktop (None): whether to launch the App in the browser (False) or as
@@ -278,12 +280,15 @@ class Session(foc.HasClient):
         self,
         dataset=None,
         view=None,
-        port=5151,
+        port=None,
         remote=False,
         desktop=None,
         auto=True,
         height=800,
     ):
+        if port is None:
+            port = fo.config.default_app_port
+
         self._context = focx._get_context()
         self._port = port
         self._remote = remote
