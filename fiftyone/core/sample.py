@@ -444,36 +444,19 @@ class Sample(_DatasetSample):
         return cls.from_doc(doc)
 
     @classmethod
-    def _reload_dataset_sample(cls, collection_name, sample_id):
-        """Reloads the fields for the in-memory sample instance that belong to
-        the specified collection.
-
-        If the sample does not exist in-memory, nothing is done.
+    def _reload_sample(cls, collection_name, sample_id):
+        """Reloads the fields for the specified in-memory sample in the
+        collection, if necessary.
 
         Args:
             collection_name: the name of the MongoDB collection
             sample_id: the sample ID
-
-        Returns:
-            True/False whether the sample was reloaded
         """
-        dataset_instances = cls._instances[collection_name]
-        sample = dataset_instances.get(sample_id, None)
-        if sample:
-            sample.reload()
-            return True
+        if collection_name not in cls._instances:
+            return
 
-        return False
-
-    @classmethod
-    def _reload_dataset_samples(cls, collection_name):
-        """Reloads the fields for in-memory sample instances that belong to the
-        specified collection.
-
-        Args:
-            collection_name: the name of the MongoDB collection
-        """
-        for sample in cls._instances[collection_name].values():
+        sample = cls._instances[collection_name].get(sample_id, None)
+        if sample is not None:
             sample.reload()
 
     def _set_backing_doc(self, doc, dataset=None):
@@ -638,11 +621,7 @@ class SampleView(_DatasetSample):
         return d
 
     def save(self):
-        """Saves the sample to the database.
-
-        Any modified fields are updated, and any in-memory :class:`Sample`
-        instances of this sample are updated.
-        """
+        """Saves the sample to the database."""
         if self.media_type == fomm.VIDEO and self._in_db:
             try:
                 self.frames._save()
@@ -652,10 +631,8 @@ class SampleView(_DatasetSample):
 
         self._doc.save(filtered_fields=self._filtered_fields)
 
-        # Reload the sample singleton if it exists in memory
-        Sample._reload_dataset_sample(
-            self.dataset._sample_collection_name, self.id
-        )
+        # Reload the sample if it exists in memory
+        Sample._reload_sample(self.dataset._sample_collection_name, self.id)
 
 
 def _apply_confidence_thresh(label, confidence_thresh):

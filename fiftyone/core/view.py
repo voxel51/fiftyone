@@ -294,6 +294,9 @@ class DatasetView(foc.SampleCollection):
         The field will remain in the dataset's schema, and all samples in the
         view will have the value ``None`` for the field.
 
+        You can use dot notation (``embedded.field.name``) to clear embedded
+        fields.
+
         Args:
             field_name: the field name
         """
@@ -304,6 +307,11 @@ class DatasetView(foc.SampleCollection):
 
         The field will remain in the dataset's frame schema, and all frames in
         the view will have the value ``None`` for the field.
+
+        You can use dot notation (``embedded.field.name``) to clear embedded
+        frame fields.
+
+        Only applicable to video datasets.
 
         Args:
             field_name: the field name
