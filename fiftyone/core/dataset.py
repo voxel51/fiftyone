@@ -1003,8 +1003,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         By default, samples with the same absolute ``filepath`` are merged.
         You can customize this behavior via the ``key_field`` and ``key_fcn``
         parameters. For example, you could set
-        ``key_fcn = lambda k: os.path.basename(k)`` to merge samples with the
-        same base filename.
+        ``key_fcn = lambda sample: os.path.basename(sample.filepath)`` to merge
+        samples with the same base filename.
 
         Args:
             samples: an iterable of :class:`fiftyone.core.sample.Sample`
@@ -1012,8 +1012,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 or a :class:`fiftyone.core.views.DatasetView`
             key_field ("filepath"): the sample field to use to decide whether
                 to join with an existing sample
-            key_fcn (None): a function to apply to ``key_field`` to generate
-                the comparator used to decide if two samples should be merged
+            key_fcn (None): a function that accepts a
+                :class:`fiftyone.core.sample.Sample` instance and computes a
+                key to decide if two samples should be merged. If a ``key_fcn``
+                is provided, ``key_field`` is ignored
             omit_none_fields (True): whether to omit ``None``-valued fields of
                 the provided samples when merging their fields
             skip_existing (False): whether to skip existing samples (True) or
@@ -1025,8 +1027,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             overwrite (True): whether to overwrite (True) or skip (False)
                 existing sample fields
         """
+        # Use efficient implementation when possible
+        if (
+            isinstance(samples, foc.SampleCollection)
+            and key_fcn is None
+            and overwrite
+        ):
+            self._merge_samples(
+                samples,
+                key_field=key_field,
+                omit_none_fields=omit_none_fields,
+                skip_existing=skip_existing,
+                insert_new=insert_new,
+                omit_default_fields=omit_default_fields,
+            )
+            return
+
         if key_fcn is None:
-            key_fcn = lambda k: k
+            key_fcn = lambda sample: sample[key_field]
 
         if omit_default_fields:
             if insert_new:
@@ -1039,12 +1057,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             omit_fields = None
 
         id_map = {}
-        for sample in self.select_fields(key_field):
-            id_map[key_fcn(sample[key_field])] = sample.id
+        logger.info("Indexing dataset...")
+        with fou.ProgressBar() as pb:
+            for sample in pb(self):
+                id_map[key_fcn(sample)] = sample.id
 
+        logger.info("Merging samples...")
         with fou.ProgressBar() as pb:
             for sample in pb(samples):
-                key = key_fcn(sample[key_field])
+                key = key_fcn(sample)
                 if key in id_map:
                     if not skip_existing:
                         existing_sample = self[id_map[key]]
@@ -1058,7 +1079,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 elif insert_new:
                     self.add_sample(sample)
 
-    # @todo expose this as a public method?
     def _merge_samples(
         self,
         sample_collection,
