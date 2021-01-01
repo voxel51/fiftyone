@@ -406,9 +406,9 @@ class CityscapesDataset(FiftyOneDataset):
 
 class BDD100KDataset(FiftyOneDataset):
     """The Berkeley Deep Drive (BDD) dataset is one of the largest and most
-    diverese video datasets for autonomous vehicles.
+    diverse video datasets for autonomous vehicles.
 
-    The BDD100k dataset contains 100,000 video clips collected from more than
+    The BDD100K dataset contains 100,000 video clips collected from more than
     50,000 rides covering New York, San Francisco Bay Area, and other regions.
     The dataset contains diverse scene types such as city streets, residential
     areas, and highways. Furthermore, the videos were recorded in diverse
@@ -423,7 +423,7 @@ class BDD100KDataset(FiftyOneDataset):
     the videos as described above, together with the image classification,
     detection, and segmentation labels.
 
-    In order to load the BDD100k dataset, you must download the source data
+    In order to load the BDD100K dataset, you must download the source data
     manually into ``source_dir`` as follows::
 
         source_dir/
@@ -459,7 +459,7 @@ class BDD100KDataset(FiftyOneDataset):
 
     Args:
         source_dir (None): the directory containing the manually downloaded
-            BDD100k files
+            BDD100K files
         copy_files (True): whether to move (False) or create copies (True) of
             the source files when populating the dataset directory
     """
@@ -482,7 +482,7 @@ class BDD100KDataset(FiftyOneDataset):
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         #
-        # BDD100k must be manually downloaded by the user in `source_dir`
+        # BDD100K must be manually downloaded by the user in `source_dir`
         #
         # The download contains all splits, so we remove the split from
         # `dataset_dir` here and wrangle the whole dataset (if necessary)
