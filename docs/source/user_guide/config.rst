@@ -14,59 +14,61 @@ Configuration options
 
 FiftyOne supports the configuration options described below:
 
-+------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
-| Config field                 | Environment variable                | Default value           | Description                                                                            |
-+==============================+=====================================+=========================+========================================================================================+
-| `dataset_zoo_dir`            | `FIFTYONE_DATASET_ZOO_DIR`          | `~/fiftyone`            | The default directory in which to store datasets that are downloaded from the          |
-|                              |                                     |                         | :ref:`FiftyOne Dataset Zoo <dataset-zoo>`.                                             |
-+------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
-| `dataset_zoo_manifest_paths` | `FIFTYONE_ZOO_MANIFEST_PATHS`       | `None`                  | A list of manifest JSON files specifying additional zoo datasets. See                  |
-|                              |                                     |                         | :ref:`adding datasets to the zoo <adding-zoo-datasets>` for more information.          |
-+------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
-| `default_dataset_dir`        | `FIFTYONE_DEFAULT_DATASET_DIR`      | `~/fiftyone`            | The default directory to use when performing FiftyOne operations that                  |
-|                              |                                     |                         | require writing dataset contents to disk, such as ingesting datasets via               |
-|                              |                                     |                         | :meth:`ingest_labeled_images() <fiftyone.core.dataset.Dataset.ingest_labeled_images>`. |
-+------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
-| `default_ml_backend`         | `FIFTYONE_DEFAULT_ML_BACKEND`       | `torch`                 | The default ML backend to use when performing operations such as                       |
-|                              |                                     |                         | downloading datasets from the FiftyOne Dataset Zoo that support multiple ML            |
-|                              |                                     |                         | backends. Supported values are `torch` and `tensorflow`. By default,                   |
-|                              |                                     |                         | `torch` is used if `PyTorch <https://pytorch.org>`_ is installed in your               |
-|                              |                                     |                         | Python environment, and `tensorflow` is used if                                        |
-|                              |                                     |                         | `TensorFlow <http://tensorflow.org>`_ is installed. If no supported backend            |
-|                              |                                     |                         | is detected, this defaults to `None`, and any operation that requires an               |
-|                              |                                     |                         | installed ML backend will raise an informative error message if invoked in             |
-|                              |                                     |                         | this state.                                                                            |
-+------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
-| `default_batch_size`         | `FIFTYONE_DEFAULT_BATCH_SIZE`       | `None`                  | A default batch size to use when :ref:`applying models to datasets <applying-models>`. |
-+------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
-| `requirement_error_level`    | `FIFTYONE_REQUIREMENT_ERROR_LEVEL`  | `0`                     | A default error level to use when ensuring/installing requirements for models from the |
-|                              |                                     |                         | model zoo. See :ref:`loading zoo models <loading-zoo-models>` for more information.    |
-+------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
-| `default_sequence_idx`       | `FIFTYONE_DEFAULT_SEQUENCE_IDX`     | `%06d`                  | The default numeric string pattern to use when writing sequential lists of             |
-|                              |                                     |                         | files.                                                                                 |
-+------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
-| `default_image_ext`          | `FIFTYONE_DEFAULT_IMAGE_EXT`        | `.jpg`                  | The default image format to use when writing images to disk.                           |
-+------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
-| `default_video_ext`          | `FIFTYONE_DEFAULT_VIDEO_EXT`        | `.mp4`                  | The default video format to use when writing videos to disk.                           |
-+------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
-| `default_app_port`           | `FIFTYONE_DEFAULT_APP_PORT`         | `5151`                  | The default port to use to serve the :ref:`FiftyOne App <fiftyone-app>`.               |
-+------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
-| `desktop_app`                | `FIFTYONE_DESKTOP_APP`              | `False`                 | Whether to launch the FiftyOne App in the browser (False) or as a desktop App (True)   |
-|                              |                                     |                         | by default. If True, the :ref:`FiftyOne Desktop App <installing-fiftyone-desktop>`     |
-|                              |                                     |                         | must be installed.                                                                     |
-+------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
-| `do_not_track`               | `FIFTYONE_DO_NOT_TRACK`             | `False`                 | Controls whether UUID based import and App usage events are tracked.                   |
-+------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
-| `model_zoo_dir`              | `FIFTYONE_MODEL_ZOO_DIR`            | `~/fiftyone/__models__` | The default directory in which to store models that are downloaded from the            |
-|                              |                                     |                         | :ref:`FiftyOne Model Zoo <model-zoo>`.                                                 |
-+------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
-| `model_zoo_manifest_paths`   | `FIFTYONE_MODEL_ZOO_MANIFEST_PATHS` | `None`                  | A list of manifest JSON files specifying additional zoo models. See                    |
-|                              |                                     |                         | :ref:`adding models to the zoo <adding-zoo-models>` for more information.              |
-+------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
-| `show_progress_bars`         | `FIFTYONE_SHOW_PROGRESS_BARS`       | `True`                  | Controls whether progress bars are printed to the terminal when performing             |
-|                              |                                     |                         | operations such reading/writing large datasets or activiating FiftyOne                 |
-|                              |                                     |                         | Brain methods on datasets.                                                             |
-+------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
++------------------------------+-------------------------------------+-----------------------------+----------------------------------------------------------------------------------------+
+| Config field                 | Environment variable                | Default value               | Description                                                                            |
++==============================+=====================================+=============================+========================================================================================+
+| `database_dir`               | `FIFTYONE_DATABASE_DIR`             | `~/.fiftyone/var/lib/mongo` | The directory in which to store FiftyOne's backing database.                           |
++------------------------------+-------------------------------------+-----------------------------+----------------------------------------------------------------------------------------+
+| `dataset_zoo_dir`            | `FIFTYONE_DATASET_ZOO_DIR`          | `~/fiftyone`                | The default directory in which to store datasets that are downloaded from the          |
+|                              |                                     |                             | :ref:`FiftyOne Dataset Zoo <dataset-zoo>`.                                             |
++------------------------------+-------------------------------------+-----------------------------+----------------------------------------------------------------------------------------+
+| `dataset_zoo_manifest_paths` | `FIFTYONE_ZOO_MANIFEST_PATHS`       | `None`                      | A list of manifest JSON files specifying additional zoo datasets. See                  |
+|                              |                                     |                             | :ref:`adding datasets to the zoo <adding-zoo-datasets>` for more information.          |
++------------------------------+-------------------------------------+-----------------------------+----------------------------------------------------------------------------------------+
+| `default_dataset_dir`        | `FIFTYONE_DEFAULT_DATASET_DIR`      | `~/fiftyone`                | The default directory to use when performing FiftyOne operations that                  |
+|                              |                                     |                             | require writing dataset contents to disk, such as ingesting datasets via               |
+|                              |                                     |                             | :meth:`ingest_labeled_images() <fiftyone.core.dataset.Dataset.ingest_labeled_images>`. |
++------------------------------+-------------------------------------+-----------------------------+----------------------------------------------------------------------------------------+
+| `default_ml_backend`         | `FIFTYONE_DEFAULT_ML_BACKEND`       | `torch`                     | The default ML backend to use when performing operations such as                       |
+|                              |                                     |                             | downloading datasets from the FiftyOne Dataset Zoo that support multiple ML            |
+|                              |                                     |                             | backends. Supported values are `torch` and `tensorflow`. By default,                   |
+|                              |                                     |                             | `torch` is used if `PyTorch <https://pytorch.org>`_ is installed in your               |
+|                              |                                     |                             | Python environment, and `tensorflow` is used if                                        |
+|                              |                                     |                             | `TensorFlow <http://tensorflow.org>`_ is installed. If no supported backend            |
+|                              |                                     |                             | is detected, this defaults to `None`, and any operation that requires an               |
+|                              |                                     |                             | installed ML backend will raise an informative error message if invoked in             |
+|                              |                                     |                             | this state.                                                                            |
++------------------------------+-------------------------------------+-----------------------------+----------------------------------------------------------------------------------------+
+| `default_batch_size`         | `FIFTYONE_DEFAULT_BATCH_SIZE`       | `None`                      | A default batch size to use when :ref:`applying models to datasets <applying-models>`. |
++------------------------------+-------------------------------------+-----------------------------+----------------------------------------------------------------------------------------+
+| `requirement_error_level`    | `FIFTYONE_REQUIREMENT_ERROR_LEVEL`  | `0`                         | A default error level to use when ensuring/installing requirements for models from the |
+|                              |                                     |                             | model zoo. See :ref:`loading zoo models <loading-zoo-models>` for more information.    |
++------------------------------+-------------------------------------+-----------------------------+----------------------------------------------------------------------------------------+
+| `default_sequence_idx`       | `FIFTYONE_DEFAULT_SEQUENCE_IDX`     | `%06d`                      | The default numeric string pattern to use when writing sequential lists of             |
+|                              |                                     |                             | files.                                                                                 |
++------------------------------+-------------------------------------+-----------------------------+----------------------------------------------------------------------------------------+
+| `default_image_ext`          | `FIFTYONE_DEFAULT_IMAGE_EXT`        | `.jpg`                      | The default image format to use when writing images to disk.                           |
++------------------------------+-------------------------------------+-----------------------------+----------------------------------------------------------------------------------------+
+| `default_video_ext`          | `FIFTYONE_DEFAULT_VIDEO_EXT`        | `.mp4`                      | The default video format to use when writing videos to disk.                           |
++------------------------------+-------------------------------------+-----------------------------+----------------------------------------------------------------------------------------+
+| `default_app_port`           | `FIFTYONE_DEFAULT_APP_PORT`         | `5151`                      | The default port to use to serve the :ref:`FiftyOne App <fiftyone-app>`.               |
++------------------------------+-------------------------------------+-----------------------------+----------------------------------------------------------------------------------------+
+| `desktop_app`                | `FIFTYONE_DESKTOP_APP`              | `False`                     | Whether to launch the FiftyOne App in the browser (False) or as a desktop App (True)   |
+|                              |                                     |                             | by default. If True, the :ref:`FiftyOne Desktop App <installing-fiftyone-desktop>`     |
+|                              |                                     |                             | must be installed.                                                                     |
++------------------------------+-------------------------------------+-----------------------------+----------------------------------------------------------------------------------------+
+| `do_not_track`               | `FIFTYONE_DO_NOT_TRACK`             | `False`                     | Controls whether UUID based import and App usage events are tracked.                   |
++------------------------------+-------------------------------------+-----------------------------+----------------------------------------------------------------------------------------+
+| `model_zoo_dir`              | `FIFTYONE_MODEL_ZOO_DIR`            | `~/fiftyone/__models__`     | The default directory in which to store models that are downloaded from the            |
+|                              |                                     |                             | :ref:`FiftyOne Model Zoo <model-zoo>`.                                                 |
++------------------------------+-------------------------------------+-----------------------------+----------------------------------------------------------------------------------------+
+| `model_zoo_manifest_paths`   | `FIFTYONE_MODEL_ZOO_MANIFEST_PATHS` | `None`                      | A list of manifest JSON files specifying additional zoo models. See                    |
+|                              |                                     |                             | :ref:`adding models to the zoo <adding-zoo-models>` for more information.              |
++------------------------------+-------------------------------------+-----------------------------+----------------------------------------------------------------------------------------+
+| `show_progress_bars`         | `FIFTYONE_SHOW_PROGRESS_BARS`       | `True`                      | Controls whether progress bars are printed to the terminal when performing             |
+|                              |                                     |                             | operations such reading/writing large datasets or activiating FiftyOne                 |
+|                              |                                     |                             | Brain methods on datasets.                                                             |
++------------------------------+-------------------------------------+-----------------------------+----------------------------------------------------------------------------------------+
 
 Viewing your config
 -------------------
@@ -91,6 +93,7 @@ described in the next section) at any time via the Python library and the CLI.
     .. code-block:: text
 
         {
+            "database_dir": "~/.fiftyone/var/lib/mongo",
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
             "default_app_port": 5151,
@@ -123,6 +126,7 @@ described in the next section) at any time via the Python library and the CLI.
     .. code-block:: text
 
         {
+            "database_dir": "~/.fiftyone/var/lib/mongo",
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
             "default_app_port": 5151,
