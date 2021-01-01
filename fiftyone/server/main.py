@@ -27,7 +27,7 @@ import eta.core.utils as etau
 import eta.core.video as etav
 
 os.environ["FIFTYONE_SERVER"] = "1"
-from fiftyone import config
+import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.constants as foc
 from fiftyone.core.expressions import ViewField as F
@@ -94,8 +94,8 @@ class FiftyOneHandler(RequestHandler):
         return {
             "version": foc.VERSION,
             "user_id": uid,
-            "do_not_track": config.do_not_track,
-            "dev_install": foc.DEV_INSTALL,
+            "do_not_track": fo.config.do_not_track,
+            "dev_install": foc.DEV_INSTALL or foc.RC_INSTALL,
         }
 
 
@@ -365,7 +365,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     @_catch_errors
     async def on_message(self, message):
-        """On message, call the associated event awaitable, with respect to 
+        """On message, call the associated event awaitable, with respect to
         the provided message type.
 
         Args:
@@ -640,7 +640,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     def get_statistics_awaitables(cls, only=None):
         """Gets statistic awaitables that will send statistics to the relevant
         client(s) when executed
-    
+
         Args:
             only (None): a client to restrict the messages to
 
@@ -991,7 +991,7 @@ if __name__ == "__main__":
     etau.ensure_basedir(log_path)
     # pylint: disable=no-member
     parser = argparse.ArgumentParser()
-    parser.add_argument("--port", type=int, default=5151)
+    parser.add_argument("--port", type=int, default=fo.config.default_app_port)
     args = parser.parse_args()
     app = Application(debug=foc.DEV_INSTALL)
     app.listen(args.port)

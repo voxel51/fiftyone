@@ -49,6 +49,8 @@ FiftyOne supports the configuration options described below:
 +------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
 | `default_video_ext`          | `FIFTYONE_DEFAULT_VIDEO_EXT`        | `.mp4`                  | The default video format to use when writing videos to disk.                           |
 +------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
+| `default_app_port`           | `FIFTYONE_DEFAULT_APP_PORT`         | `5151`                  | The default port to use to serve the :ref:`FiftyOne App <fiftyone-app>`.               |
++------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
 | `desktop_app`                | `FIFTYONE_DESKTOP_APP`              | `False`                 | Whether to launch the FiftyOne App in the browser (False) or as a desktop App (True)   |
 |                              |                                     |                         | by default. If True, the :ref:`FiftyOne Desktop App <installing-fiftyone-desktop>`     |
 |                              |                                     |                         | must be installed.                                                                     |
@@ -84,13 +86,14 @@ described in the next section) at any time via the Python library and the CLI.
         print(fo.config)
 
         # Print a specific config field
-        print(co.config.default_ml_backend)
+        print(fo.config.default_ml_backend)
 
     .. code-block:: text
 
         {
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
+            "default_app_port": 5151,
             "default_batch_size": null,
             "default_dataset_dir": "~/fiftyone",
             "default_ml_backend": "torch",
@@ -122,6 +125,7 @@ described in the next section) at any time via the Python library and the CLI.
         {
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
+            "default_app_port": 5151,
             "default_batch_size": null,
             "default_dataset_dir": "~/fiftyone",
             "default_ml_backend": "torch",

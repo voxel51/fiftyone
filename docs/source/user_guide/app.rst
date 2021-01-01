@@ -139,7 +139,9 @@ using either the Python library or the CLI.
         session = fo.launch_app(dataset, remote=True)  # optional: port=XXXX
 
     You can use the optional ``port`` parameter to choose the port of your
-    remote machine on which to serve the App. The default is ``5151``.
+    remote machine on which to serve the App. The default is ``5151``, which
+    can be customized via the ``default_app_port`` parameter of your
+    :ref:`FiftyOne config <configuring-fiftyone>`.
 
     Note that you can manipulate the `session` object on the remote machine as
     usual to programmatically interact with the App instance that you'll
@@ -157,7 +159,9 @@ using either the Python library or the CLI.
         fiftyone app launch <dataset-name> --remote  # optional: --port XXXX
 
     You can use the optional ``--port`` flag to choose the port of your
-    remote machine on which to serve the App. The default is ``5151``.
+    remote machine on which to serve the App. The default is ``5151``, which
+    can be customized via the ``default_app_port`` parameter of your
+    :ref:`FiftyOne config <configuring-fiftyone>`.
 
 .. _remote-app-local-machine:
 

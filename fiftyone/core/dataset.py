@@ -209,11 +209,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             :func:`get_default_dataset_name` is used
         persistent (False): whether the dataset should persist in the database
             after the session terminates
+        overwrite (False): whether to overwrite an existing dataset of the same
+            name
     """
 
-    def __init__(self, name=None, persistent=False, _create=True):
+    def __init__(
+        self, name=None, persistent=False, overwrite=False, _create=True
+    ):
         if name is None and _create:
             name = get_default_dataset_name()
+
+        if overwrite and dataset_exists(name):
+            delete_dataset(name)
 
         if _create:
             (

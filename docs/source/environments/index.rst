@@ -103,19 +103,23 @@ In a local terminal, run the command:
 .. code-block:: shell
 
     # On local machine
-    fiftyone app connect --destination <user>@<remote-ip-address> --port 5151 # (Optional) --ssh-key /path/to/key
-
-.. note::
-
-    If you are using :ref:`ssh keys instead of a password to login <cli-fiftyone-app-connect>` then you
-    can use the kwarg `--ssh-key`. Though if you are using this key
-    more often, `it is recommended to add it
-    <https://unix.stackexchange.com/a/494485>`_ to your `~/.ssh/config` as
-    the default `IdentityFile`.
+    fiftyone app connect --destination <user>@<remote-ip-address> --port 5151
 
 The above instructions assume that you used the default port `5151` when
 launching the remote session on the remote machine. If you used a custom port,
-then substitute the appropriate value in the local commands too.
+(or if you customized your default port via the ``default_app_port`` parameter
+of your :ref:`FiftyOne config <configuring-fiftyone>`), then substitute the
+appropriate value in the local commands too.
+
+.. note::
+
+    If you use ssh keys to connect to your remote machine, you can use the
+    optional `--ssh-key` argument of the
+    :ref:`fiftyone app connect <cli-fiftyone-app-connect>` command.
+
+    However, if you are using this key regularly,
+    `it is recommended <https://unix.stackexchange.com/a/494485>`_ to add it
+    to your `~/.ssh/config` as the default `IdentityFile`.
 
 .. note::
 
@@ -335,20 +339,28 @@ on the cloud instance.
 .. code-block:: bash
 
     # On local machine
-    fiftyone app connect --destination <user>@<remote-ip-address> --port 5151 # (Optional) --ssh-key /path/to/key
+    fiftyone app connect --destination <user>@<remote-ip-address> --port 5151
 
 The above instructions assume that you used the default port `5151` when
 launching the remote session on the remote machine. If you used a custom port,
-then substitute the appropriate value in the local commands too.
+(or if you customized your default port via the ``default_app_port`` parameter
+of your :ref:`FiftyOne config <configuring-fiftyone>`), then substitute the
+appropriate value in the local commands too.
 
 .. note::
 
-    If you are using :ref:`ssh keys instead of a password to login <cli-fiftyone-app-connect>` then you
-    can use the kwarg `--ssh-key`. Though if you are using this key
-    more often, `it is recommended to add it
-    <https://unix.stackexchange.com/a/494485>`_ to your `~/.ssh/config` as
-    the default `IdentityFile`.
+    If you use ssh keys to connect to your remote machine, you can use the
+    optional `--ssh-key` argument of the
+    :ref:`fiftyone app connect <cli-fiftyone-app-connect>` command.
 
+    However, if you are using this key regularly,
+    `it is recommended <https://unix.stackexchange.com/a/494485>`_ to add it
+    to your `~/.ssh/config` as the default `IdentityFile`.
+
+.. note::
+
+    You can use custom ports when launching remote sessions in order to serve
+    multiple remote sessions simultaneously.
 
 .. _google-cloud:
 
@@ -418,19 +430,28 @@ on the cloud instance.
 .. code-block:: bash
 
     # On local machine
-    fiftyone app connect --destination <user>@<remote-ip-address> --port 5151 # (Optional) --ssh-key /path/to/key
+    fiftyone app connect --destination <user>@<remote-ip-address> --port 5151
 
 The above instructions assume that you used the default port `5151` when
 launching the remote session on the remote machine. If you used a custom port,
-then substitute the appropriate value in the local commands too.
+(or if you customized your default port via the ``default_app_port`` parameter
+of your :ref:`FiftyOne config <configuring-fiftyone>`), then substitute the
+appropriate value in the local commands too.
 
 .. note::
 
-    If you are using :ref:`ssh keys instead of a password to login <cli-fiftyone-app-connect>` then you
-    can use the kwarg `--ssh-key`. Though if you are using this key
-    more often, `it is recommended to add it
-    <https://unix.stackexchange.com/a/494485>`_ to your `~/.ssh/config` as
-    the default `IdentityFile`.
+    If you use ssh keys to connect to your remote machine, you can use the
+    optional `--ssh-key` argument of the
+    :ref:`fiftyone app connect <cli-fiftyone-app-connect>` command.
+
+    However, if you are using this key regularly,
+    `it is recommended <https://unix.stackexchange.com/a/494485>`_ to add it
+    to your `~/.ssh/config` as the default `IdentityFile`.
+
+.. note::
+
+    You can use custom ports when launching remote sessions in order to serve
+    multiple remote sessions simultaneously.
 
 .. _azure:
 
@@ -496,19 +517,28 @@ on the cloud instance.
 .. code-block:: bash
 
     # On local machine
-    fiftyone app connect --destination <user>@<remote-ip-address> --port 5151 # (Optional) --ssh-key /path/to/key
+    fiftyone app connect --destination <user>@<remote-ip-address> --port 5151
 
 The above instructions assume that you used the default port `5151` when
 launching the remote session on the remote machine. If you used a custom port,
-then substitute the appropriate value in the local commands too.
+(or if you customized your default port via the ``default_app_port`` parameter
+of your :ref:`FiftyOne config <configuring-fiftyone>`), then substitute the
+appropriate value in the local commands too.
 
 .. note::
 
-    If you are using :ref:`ssh keys instead of a password to login <cli-fiftyone-app-connect>` then you
-    can use the kwarg `--ssh-key`. Though if you are using this key
-    more often, `it is recommended to add it
-    <https://unix.stackexchange.com/a/494485>`_ to your `~/.ssh/config` as
-    the default `IdentityFile`.
+    If you use ssh keys to connect to your remote machine, you can use the
+    optional `--ssh-key` argument of the
+    :ref:`fiftyone app connect <cli-fiftyone-app-connect>` command.
+
+    However, if you are using this key regularly,
+    `it is recommended <https://unix.stackexchange.com/a/494485>`_ to add it
+    to your `~/.ssh/config` as the default `IdentityFile`.
+
+.. note::
+
+    You can use custom ports when launching remote sessions in order to serve
+    multiple remote sessions simultaneously.
 
 .. _compute-instance-setup:
 
