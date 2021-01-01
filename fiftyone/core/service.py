@@ -241,8 +241,8 @@ class MultiClientService(Service):
                     self.attached = True
                     self.child = process
                     return
-
-                logger.warn("Failed to connect to %s: %r", desc, reply)
+                else:
+                    logger.warn("Failed to connect to %s: %r", desc, reply)
             except IOError:
                 logger.warn("%s did not respond", desc)
 
