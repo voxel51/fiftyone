@@ -22,7 +22,7 @@ simple commands.
 
     Depending on your compute environment, some package requirement failures
     may be erroneous. In such cases, you can
-    :ref:`suppress error messages <applying-zoo-models>`.
+    :ref:`suppress error messages <model-zoo-add>`.
 
 API reference
 -------------
