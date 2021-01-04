@@ -163,7 +163,7 @@ your distribution, you may encounter an error similar to:
 
 .. code-block:: text
 
-    RuntimeError: Could not find mongod >= 3.6
+    RuntimeError: Could not find mongod >= 4.4
 
 To resolve this, you can install an alternative package on some distributions,
 detailed below, or install a compatible version of MongoDB system-wide.
@@ -196,7 +196,7 @@ installation by adding `--force-reinstall` to the commands below.
 Manual installation
 ~~~~~~~~~~~~~~~~~~~
 
-FiftyOne also supports using an existing MongoDB installation (version 3.6 or
+FiftyOne also supports using an existing MongoDB installation (version 4.4 or
 newer). This can be installed through many distributions' package managers.
 Note that only the `mongod` (server) binary is required, so you may not need
 the complete MongoDB package. For example, Debian-based distributions make this
@@ -223,4 +223,4 @@ which should produce output that looks like this:
        distarch: x86_64
        target_arch: x86_64
 
-Verify that the version after "db version" is at least 3.6.
+Verify that the version after "db version" is at least 4.4.
