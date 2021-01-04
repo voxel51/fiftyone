@@ -25,13 +25,11 @@ from fiftyone.__public__ import *
 import fiftyone.constants as _foc
 from fiftyone.utils.uid import _get_user_id
 from fiftyone.core.context import _get_context
+from fiftyone.migrations import migrate_database_if_necessary as _migrate
 
 
 def _log_import_if_allowed():
     if config.do_not_track:
-        return
-
-    if _os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
         return
 
     uid, first_import = _get_user_id()
@@ -55,4 +53,6 @@ def _log_import_if_allowed():
     th.start()
 
 
-_log_import_if_allowed()
+if _os.environ.get("FIFTYONE_DISABLE_SERVICES", "0") != "1":
+    _migrate()
+    _log_import_if_allowed()

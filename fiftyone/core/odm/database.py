@@ -9,8 +9,8 @@ from mongoengine import connect
 import motor
 import pymongo
 
+from fiftyone.constants import DEFAULT_DATABASE
 
-_DEFAULT_DATABASE = "fiftyone"
 _client = None
 _async_client = None
 _default_port = 27017
@@ -23,7 +23,7 @@ DESC = pymongo.DESCENDING
 def _connect():
     global _client
     if _client is None:
-        connect(_DEFAULT_DATABASE, port=_default_port)
+        connect(DEFAULT_DATABASE, port=_default_port)
         _client = pymongo.MongoClient(port=_default_port)
 
 
@@ -45,14 +45,23 @@ def set_default_port(port):
     _default_port = int(port)
 
 
+def get_db_client():
+    """Returns a database client.
+
+    Returns:
+        a ``pymongo.mongo_client.MongoClient``
+    """
+    return pymongo.MongoClient(port=_default_port)
+
+
 def get_db_conn():
     """Returns a connection to the database.
 
     Returns:
-        a ``pymongo.MongoClient``
+        a ``pymongo.database.Database``
     """
     _connect()
-    return _client[_DEFAULT_DATABASE]
+    return _client[DEFAULT_DATABASE]
 
 
 def get_async_db_conn():
@@ -62,13 +71,13 @@ def get_async_db_conn():
         a ``motor.motor_tornado.MotorDatabase``
     """
     _async_connect()
-    return _async_client[_DEFAULT_DATABASE]
+    return _async_client[DEFAULT_DATABASE]
 
 
 def drop_database():
     """Drops the database."""
     _connect()
-    _client.drop_database(_DEFAULT_DATABASE)
+    _client.drop_database(DEFAULT_DATABASE)
 
 
 def sync_database():
