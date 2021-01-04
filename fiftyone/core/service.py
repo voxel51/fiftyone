@@ -261,7 +261,7 @@ class DatabaseService(MultiClientService):
             "--dbpath",
             self.database_dir,
             "--logpath",
-            os.path.join(self.database_dir, "log"),
+            os.path.join(self.database_dir, "log/mongo.log"),
             "--port",
             "0",
         ]
