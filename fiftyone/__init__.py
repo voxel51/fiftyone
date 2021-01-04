@@ -7,7 +7,7 @@ See https://voxel51.com/fiftyone for more information.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from pkgutil import extend_path
+from pkgutil import extend_path as _extend_path
 import os as _os
 import threading as _threading
 
@@ -19,7 +19,7 @@ import universal_analytics as _ua
 #
 # https://docs.python.org/3/library/pkgutil.html#pkgutil.extend_path
 #
-__path__ = extend_path(__path__, __name__)
+__path__ = _extend_path(__path__, __name__)
 
 from fiftyone.__public__ import *
 import fiftyone.constants as _foc
@@ -31,7 +31,7 @@ def _log_import_if_allowed():
     if config.do_not_track:
         return
 
-    if _os.environ.get("FIFTYONE_SERVER", False):
+    if _os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
         return
 
     uid, first_import = _get_user_id()

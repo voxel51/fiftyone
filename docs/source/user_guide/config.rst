@@ -21,7 +21,7 @@ FiftyOne supports the configuration options described below:
 |                              |                                     |                         | :ref:`FiftyOne Dataset Zoo <dataset-zoo>`.                                             |
 +------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
 | `dataset_zoo_manifest_paths` | `FIFTYONE_ZOO_MANIFEST_PATHS`       | `None`                  | A list of manifest JSON files specifying additional zoo datasets. See                  |
-|                              |                                     |                         | :ref:`adding datasets to the zoo <adding-zoo-datasets>` for more information.          |
+|                              |                                     |                         | :ref:`adding datasets to the zoo <dataset-zoo-add>` for more information.              |
 +------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
 | `default_dataset_dir`        | `FIFTYONE_DEFAULT_DATASET_DIR`      | `~/fiftyone`            | The default directory to use when performing FiftyOne operations that                  |
 |                              |                                     |                         | require writing dataset contents to disk, such as ingesting datasets via               |
@@ -37,10 +37,10 @@ FiftyOne supports the configuration options described below:
 |                              |                                     |                         | installed ML backend will raise an informative error message if invoked in             |
 |                              |                                     |                         | this state.                                                                            |
 +------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
-| `default_batch_size`         | `FIFTYONE_DEFAULT_BATCH_SIZE`       | `None`                  | A default batch size to use when :ref:`applying models to datasets <applying-models>`. |
+| `default_batch_size`         | `FIFTYONE_DEFAULT_BATCH_SIZE`       | `None`                  | A default batch size to use when :ref:`applying models to datasets <model-zoo-apply>`. |
 +------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
 | `requirement_error_level`    | `FIFTYONE_REQUIREMENT_ERROR_LEVEL`  | `0`                     | A default error level to use when ensuring/installing requirements for models from the |
-|                              |                                     |                         | model zoo. See :ref:`loading zoo models <loading-zoo-models>` for more information.    |
+|                              |                                     |                         | model zoo. See :ref:`loading zoo models <model-zoo-load>` for more information.        |
 +------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
 | `default_sequence_idx`       | `FIFTYONE_DEFAULT_SEQUENCE_IDX`     | `%06d`                  | The default numeric string pattern to use when writing sequential lists of             |
 |                              |                                     |                         | files.                                                                                 |
@@ -61,7 +61,7 @@ FiftyOne supports the configuration options described below:
 |                              |                                     |                         | :ref:`FiftyOne Model Zoo <model-zoo>`.                                                 |
 +------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
 | `model_zoo_manifest_paths`   | `FIFTYONE_MODEL_ZOO_MANIFEST_PATHS` | `None`                  | A list of manifest JSON files specifying additional zoo models. See                    |
-|                              |                                     |                         | :ref:`adding models to the zoo <adding-zoo-models>` for more information.              |
+|                              |                                     |                         | :ref:`adding models to the zoo <model-zoo-add>` for more information.                  |
 +------------------------------+-------------------------------------+-------------------------+----------------------------------------------------------------------------------------+
 | `show_progress_bars`         | `FIFTYONE_SHOW_PROGRESS_BARS`       | `True`                  | Controls whether progress bars are printed to the terminal when performing             |
 |                              |                                     |                         | operations such reading/writing large datasets or activiating FiftyOne                 |
@@ -86,7 +86,7 @@ described in the next section) at any time via the Python library and the CLI.
         print(fo.config)
 
         # Print a specific config field
-        print(co.config.default_ml_backend)
+        print(fo.config.default_ml_backend)
 
     .. code-block:: text
 
