@@ -46,7 +46,7 @@ except ImportError:
     # development installation
     FIFTYONE_DB_BIN_DIR = os.path.join(FIFTYONE_CONFIG_DIR, "bin")
 
-DB_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var/lib/mongo")
+DEFAULT_DB_DIR = os.path.join(FIFTYONE_CONFIG_DIR, "var/lib/mongo")
 DB_LOG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var/log/mongodb/mongo.log")
 MIGRATIONS_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "migrations")
 MIGRATIONS_HEAD_PATH = os.path.join(MIGRATIONS_PATH, "head.json")
