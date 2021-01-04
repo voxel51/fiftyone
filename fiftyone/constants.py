@@ -48,7 +48,6 @@ except ImportError:
 
 DEFAULT_DATABASE = "fiftyone"
 DEFAULT_DB_DIR = os.path.join(FIFTYONE_CONFIG_DIR, "var/lib/mongo")
-DB_LOG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var/log/mongodb/mongo.log")
 MIGRATIONS_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "migrations")
 MIGRATIONS_HEAD_PATH = os.path.join(MIGRATIONS_PATH, "head.json")
 MIGRATIONS_REVISIONS_DIR = os.path.join(FIFTYONE_DIR, "migrations/revisions")

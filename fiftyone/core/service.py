@@ -261,7 +261,7 @@ class DatabaseService(MultiClientService):
             "--dbpath",
             self.database_dir,
             "--logpath",
-            foc.DB_LOG_PATH,
+            os.path.join(self.database_dir, "log"),
             "--port",
             "0",
         ]
@@ -277,8 +277,7 @@ class DatabaseService(MultiClientService):
 
     def start(self):
         """Starts the DatabaseService."""
-        etau.ensure_dir(self.database_dir)
-        etau.ensure_basedir(foc.DB_LOG_PATH)
+        etau.ensure_dir(os.path.join(self.database_dir, "log"))
         super().start()
 
         # Set up a default connection
