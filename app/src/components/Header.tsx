@@ -357,7 +357,7 @@ const TshirtForm = () => {
     !(
       formState.email &&
       formState.helping?.length &&
-      formState.improve?.length
+      formState.improving?.length
     ) || submitted;
   const submit = () => {
     if (disabled) {

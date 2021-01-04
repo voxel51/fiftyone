@@ -166,6 +166,10 @@ export const showFeedbackButton = selector({
     const feedback = get(fiftyone).feedback;
     const localFeedback = get(atoms.feedbackSubmitted);
     const storedFeedback = window.localStorage.getItem("fiftyone-feedback");
+    if (storedFeedback) {
+      window.localStorage.removeItem("fiftyone-feedback");
+      fetch(`${get(http)}/feedback?submitted=true`, { method: "post" });
+    }
     if (
       feedback.submitted ||
       localFeedback.submitted ||
