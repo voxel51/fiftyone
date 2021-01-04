@@ -82,7 +82,8 @@ class RequestHandler(tornado.web.RequestHandler):
 class FiftyOneHandler(RequestHandler):
     """Returns the version info of the fiftyone being used"""
 
-    def get_response(self):
+    @staticmethod
+    def get_response():
         """Returns the serializable response
 
         Returns:
@@ -100,11 +101,19 @@ class FiftyOneHandler(RequestHandler):
 class ReactivateHandler(RequestHandler):
     """Reactivates an IPython display handle"""
 
-    def get_response(self):
-        """Returns on success"""
-        handle = self.get_argument("handleId")
+    async def get(self):
+        handle_id = self.get_argument("handleId")
+        self.write(self.get_response(handle_id))
+
+    @staticmethod
+    def get_response(handle_id):
+        """Returns on success
+
+        Args:
+            handle_id: a handle uuid
+        """
         for client in StateHandler.clients:
-            client.write_message({"type": "reactivate", "handle": handle})
+            client.write_message({"type": "reactivate", "handle": handle_id})
 
         return {}
 
@@ -112,7 +121,8 @@ class ReactivateHandler(RequestHandler):
 class StagesHandler(RequestHandler):
     """Returns the definitions of stages available to the App"""
 
-    def get_response(self):
+    @staticmethod
+    def get_response():
         """Returns the serializable response
 
         Returns:
