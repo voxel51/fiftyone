@@ -25,7 +25,6 @@ from .frame import (
     DatasetFrameSampleDocument,
     NoDatasetFrameSampleDocument,
 )
-from .meta import MetaDocument
 from .mixins import get_implied_field_kwargs
 from .sample import (
     DatasetSampleDocument,

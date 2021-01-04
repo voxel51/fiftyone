@@ -161,14 +161,15 @@ class DatabaseConfig(etas.Serializable):
 
 def migrate_database_if_necessary():
     """Migrates the fiftyone database, if necessary."""
+    config_path = os.path.join(fo.config.database_dir, "config.json")
     client = foo.get_db_client()
     if foc.DEFAULT_DATABASE not in client.list_database_names():
         config = DatabaseConfig(version=foc.VERSION)
-        config.write_json(foc.DB_CONFIG_PATH)
+        config.write_json(config_path)
         return
 
     try:
-        config = DatabaseConfig.from_json(foc.DB_CONFIG_PATH)
+        config = DatabaseConfig.from_json(config_path)
         head = config.version
         config.version = foc.VERSION
     except FileNotFoundError:
@@ -183,4 +184,4 @@ def migrate_database_if_necessary():
                 "Migrating database to the current version (%s)", foc.VERSION,
             )
             runner.run()
-            config.write_json(foc.DB_CONFIG_PATH)
+            config.write_json(config_path)

@@ -20,6 +20,7 @@ from retrying import retry
 import eta.core.utils as etau
 
 import fiftyone.constants as foc
+import fiftyone.core.config as focn
 import fiftyone.core.context as focx
 import fiftyone.service.util as fosu
 
@@ -249,11 +250,16 @@ class DatabaseService(MultiClientService):
     MIN_MONGO_VERSION = "3.6"
 
     @property
+    def database_dir(self):
+        config = focn.load_config()
+        return config.database_dir
+
+    @property
     def command(self):
         args = [
             DatabaseService.find_mongod(),
             "--dbpath",
-            foc.DB_PATH,
+            self.database_dir,
             "--logpath",
             foc.DB_LOG_PATH,
             "--port",
@@ -271,10 +277,8 @@ class DatabaseService(MultiClientService):
 
     def start(self):
         """Starts the DatabaseService."""
-        for folder in (foc.DB_PATH, os.path.dirname(foc.DB_LOG_PATH)):
-            if not os.path.isdir(folder):
-                os.makedirs(folder)
-
+        etau.ensure_dir(self.database_dir)
+        etau.ensure_basedir(foc.DB_LOG_PATH)
         super().start()
 
         # Set up a default connection

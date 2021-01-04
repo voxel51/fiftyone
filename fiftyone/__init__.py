@@ -7,7 +7,7 @@ See https://voxel51.com/fiftyone for more information.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from pkgutil import extend_path
+from pkgutil import extend_path as _extend_path
 import os as _os
 import threading as _threading
 
@@ -19,7 +19,7 @@ import universal_analytics as _ua
 #
 # https://docs.python.org/3/library/pkgutil.html#pkgutil.extend_path
 #
-__path__ = extend_path(__path__, __name__)
+__path__ = _extend_path(__path__, __name__)
 
 from fiftyone.__public__ import *
 import fiftyone.constants as _foc
