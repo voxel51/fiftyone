@@ -5,14 +5,18 @@ FiftyOne migrations runner.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
 import os
 
 import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.odm as foo
 import fiftyone.constants as foc
+import fiftyone.core.odm as foo
+
+
+logger = logging.getLogger(__name__)
 
 
 DOWN = "down"
@@ -41,11 +45,17 @@ class Runner(object):
         Args:
             dataset_names: a list of names of dataset to run the migration against
         """
-        conn = foo.get_db_conn()
-        for dataset_name in dataset_names:
+        if self._admin:
+            client = foo.get_db_client()
             for revision, module in self._revisions_to_run:
                 fcn = etau.get_function(self.direction, module)
-                fcn(conn, dataset_name)
+                fcn(client)
+        else:
+            conn = foo.get_db_conn()
+            for dataset_name in dataset_names:
+                for revision, module in self._revisions_to_run:
+                    fcn = etau.get_function(self.direction, module)
+                    fcn(conn, dataset_name)
 
     @property
     def direction(self):
@@ -110,9 +120,11 @@ def get_revisions(admin=False):
     revisions_dir = foc.MIGRATIONS_REVISIONS_DIR
     if admin:
         revisions_dir = os.path.join(revisions_dir, "admin")
-    files = etau.list_files(foc.MIGRATIONS_REVISIONS_DIR)
+    files = etau.list_files(revisions_dir)
     filtered_files = filter(lambda r: r.endswith(".py"), files)
     module_prefix = ".".join(__loader__.name.split(".")[:-1] + ["revisions"])
+    if admin:
+        module_prefix = ".".join([module_prefix, "admin"])
     return list(
         map(
             lambda r: (
@@ -130,8 +142,45 @@ def get_migration_runner(head, destination, admin=False):
     Args:
         head: the current version
         destination: the destination version
+        admin: whether to target admin revisions
     """
     revisions = get_revisions(admin=admin)
     return Runner(
         head=head, destination=destination, revisions=revisions, admin=admin
     )
+
+
+class DatabaseConfig(etas.Serializable):
+    """Config for a database's state."""
+
+    destination = foc.VERSION
+
+    def __init__(self, version=None):
+        self.version = version
+
+
+def migrate_database_if_necessary():
+    """Migrates the fiftyone database, if necessary."""
+    client = foo.get_db_client()
+    if foc.DEFAULT_DATABASE not in client.list_database_names():
+        config = DatabaseConfig(version=foc.VERSION)
+        config.write_json(foc.DB_CONFIG_PATH)
+        return
+
+    try:
+        config = DatabaseConfig.from_json(foc.DB_CONFIG_PATH)
+        head = config.version
+        config.version = foc.VERSION
+    except FileNotFoundError:
+        config = DatabaseConfig(version=foc.VERSION)
+        head = None
+
+    destination = foc.VERSION
+    if head != destination:
+        runner = get_migration_runner(head, destination, admin=True)
+        if runner.has_revisions:
+            logger.info(
+                "Migrating database to the current version (%s)", foc.VERSION,
+            )
+            runner.run()
+            config.write_json(foc.DB_CONFIG_PATH)
