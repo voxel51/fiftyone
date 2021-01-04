@@ -28,7 +28,8 @@ class Runner(object):
         revisions: the list of revisions
     """
 
-    def __init__(self, head=None, destination=None, revisions=[]):
+    def __init__(self, head=None, destination=None, revisions=[], admin=False):
+        self._admin = admin
         self._head = head
         self._destination = destination
         self._revisions = revisions
@@ -100,12 +101,15 @@ class Runner(object):
         return revisions_to_run, direction
 
 
-def get_revisions():
+def get_revisions(admin=False):
     """Get the list of FiftyOne revisions.
 
     Returns:
         (revision_number, module_name)
     """
+    revisions_dir = foc.MIGRATIONS_REVISIONS_DIR
+    if admin:
+        revisions_dir = os.path.join(revisions_dir, "admin")
     files = etau.list_files(foc.MIGRATIONS_REVISIONS_DIR)
     filtered_files = filter(lambda r: r.endswith(".py"), files)
     module_prefix = ".".join(__loader__.name.split(".")[:-1] + ["revisions"])
@@ -120,12 +124,14 @@ def get_revisions():
     )
 
 
-def get_migration_runner(head, destination):
+def get_migration_runner(head, destination, admin=False):
     """Migrates a single dataset to the latest revision.
 
     Args:
         head: the current version
         destination: the destination version
     """
-    revisions = get_revisions()
-    return Runner(head=head, destination=destination, revisions=revisions)
+    revisions = get_revisions(admin=admin)
+    return Runner(
+        head=head, destination=destination, revisions=revisions, admin=admin
+    )

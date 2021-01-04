@@ -45,11 +45,20 @@ def set_default_port(port):
     _default_port = int(port)
 
 
+def get_db_client():
+    """Returns a database client.
+
+    Returns:
+        a ``pymongo.mongo_client.MongoClient``
+    """
+    return pymongo.MongoClient(port=_default_port)
+
+
 def get_db_conn():
     """Returns a connection to the database.
 
     Returns:
-        a ``pymongo.MongoClient``
+        a ``pymongo.database.Database``
     """
     _connect()
     return _client[_DEFAULT_DATABASE]

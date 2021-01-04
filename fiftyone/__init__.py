@@ -7,6 +7,7 @@ See https://voxel51.com/fiftyone for more information.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
 from pkgutil import extend_path
 import os as _os
 import threading as _threading
@@ -25,6 +26,34 @@ from fiftyone.__public__ import *
 import fiftyone.constants as _foc
 from fiftyone.utils.uid import _get_user_id
 from fiftyone.core.context import _get_context
+from fiftyone.core.odm import MetaDocument
+from fiftyone.migrations import get_migration_runner
+
+from mongoengine import DoesNotExist
+
+
+logger = logging.getLogger(__name__)
+
+
+def _migrate_if_necessary():
+    try:
+        # pylint: disable=no-member
+        doc = MetaDocument.objects.get()
+        head = doc.version
+        doc.version = _foc.VERSION
+    except DoesNotExist:
+        head = None
+        doc = MetaDocument(version=_foc.VERSION)
+    doc.save()
+    destination = _foc.VERSION
+    if head != destination:
+        runner = get_migration_runner(head, destination, admin=True)
+        if runner.has_revisions:
+            logger.info(
+                "Migrating fiftyone-db to the current version (%s)",
+                _foc.VERSION,
+            )
+            runner.run()
 
 
 def _log_import_if_allowed():
@@ -55,4 +84,5 @@ def _log_import_if_allowed():
     th.start()
 
 
+_migrate_if_necessary()
 _log_import_if_allowed()
