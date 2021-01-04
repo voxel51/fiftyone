@@ -32,9 +32,6 @@ def _log_import_if_allowed():
     if config.do_not_track:
         return
 
-    if _os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
-        return
-
     uid, first_import = _get_user_id()
 
     kind = "new" if first_import else "returning"
@@ -56,5 +53,6 @@ def _log_import_if_allowed():
     th.start()
 
 
-_migrate()
-_log_import_if_allowed()
+if _os.environ.get("FIFTYONE_DISABLE_SERVICES", "0") != "1":
+    _migrate()
+    _log_import_if_allowed()
