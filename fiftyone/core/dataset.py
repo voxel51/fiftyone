@@ -16,7 +16,7 @@ import reprlib
 import string
 
 from bson import ObjectId
-from mongoengine.errors import DoesNotExist, FieldDoesNotExist
+import mongoengine.errors as moe
 from pymongo.errors import BulkWriteError
 
 import eta.core.serial as etas
@@ -67,7 +67,7 @@ def dataset_exists(name):
         # pylint: disable=no-member
         foo.DatasetDocument.objects.get(name=name)
         return True
-    except DoesNotExist:
+    except moe.DoesNotExist:
         return False
 
 
@@ -2402,7 +2402,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 non_existest_fields,
                 self.name,
             )
-            raise FieldDoesNotExist(msg)
+            raise moe.FieldDoesNotExist(msg)
 
         for field_name, value in sample.iter_fields():
             field = fields[field_name]
@@ -2611,7 +2611,7 @@ def _load_dataset(name):
     try:
         # pylint: disable=no-member
         dataset_doc = foo.DatasetDocument.objects.get(name=name)
-    except DoesNotExist:
+    except moe.DoesNotExist:
         raise DoesNotExistError("Dataset '%s' not found" % name)
 
     version = dataset_doc.version
@@ -2696,7 +2696,7 @@ def _drop_dataset(name, drop_persistent=True):
     try:
         # pylint: disable=no-member
         dataset_doc = foo.DatasetDocument.objects.get(name=name)
-    except DoesNotExist:
+    except moe.DoesNotExist:
         raise DoesNotExistError("Dataset '%s' not found" % name)
 
     if dataset_doc.persistent and not drop_persistent:
