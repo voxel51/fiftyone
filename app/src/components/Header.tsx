@@ -335,7 +335,7 @@ const TshirtForm = () => {
   const [formState, setFormState] = useState({
     email: "",
     helping: "",
-    improving: "",
+    improve: "",
     tshirt: false,
   });
   const [submitText, setSubmitText] = useState("Submit");
@@ -355,10 +355,10 @@ const TshirtForm = () => {
     });
   const disabled =
     !(
-      formState.email &&
+      formState.email?.length &&
       formState.helping?.length &&
-      formState.improving?.length
-    ) || submitted;
+      formState.improve?.length
+    ) || submitted.submitted;
   const submit = () => {
     if (disabled) {
       return;
