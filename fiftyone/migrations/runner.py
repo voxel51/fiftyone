@@ -153,10 +153,17 @@ def get_migration_runner(head, destination, admin=False):
 class DatabaseConfig(etas.Serializable):
     """Config for a database's state."""
 
-    destination = foc.VERSION
-
     def __init__(self, version=None):
+        """Creates a DatabaseConfig instance.
+
+        version: the installed version of fiftyone
+        """
         self.version = version
+
+    @classmethod
+    def from_dict(cls, d):
+        """Constructs a DatabaseConfig object from a JSON dictionary."""
+        return cls(**d)
 
 
 def migrate_database_if_necessary():
