@@ -37,6 +37,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 from fiftyone.core.service import DatabaseService
+from fiftyone.core.session import _SCREENSHOT_HTML
 from fiftyone.core.stages import _STAGES
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
@@ -241,7 +242,10 @@ class PollingHandler(tornado.web.RequestHandler):
             self.write_message({"type": "update", "state": StateHandler.state})
 
         elif event == "deactivate":
-            self.write_message({"type": "deactivate"})
+            html = _SCREENSHOT_HTML.render(
+                handle="handle-id", image="img-data-src", url="/"
+            )
+            self.write_message({"type": "deactivate", "html": html})
 
         elif event == "statistics":
             state = fos.StateDescription.from_dict(StateHandler.state)
@@ -409,7 +413,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             )
 
     @staticmethod
-    async def on_as_app(self, notebook, handle, ignore=None):
+    async def on_as_app(self, notebook=False, handle=None, ignore=None):
         """Event for registering a client as an App."""
         if isinstance(self, StateHandler):
             StateHandler.app_clients.add(self)

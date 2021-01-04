@@ -74,13 +74,14 @@ function Dataset(props) {
   );
   const activeOther = useRecoilValue(atoms.activeOther("sample"));
   const activeFrameOther = useRecoilValue(atoms.activeOther("frame"));
+  const handleId = useRecoilValue(selectors.handleId);
 
   useMessageHandler("statistics", ({ stats, view, filters }) => {
     filters && setExtendedDatasetStats({ stats, view, filters });
     !filters && setDatasetStats({ stats, view });
   });
 
-  useMessageHandler("deactivate", () => {
+  useMessageHandler("deactivate", ({ html }) => {
     const svgElements = document.body.querySelectorAll("svg");
     svgElements.forEach((item) => {
       item.setAttribute("width", item.getBoundingClientRect().width);
@@ -90,7 +91,13 @@ function Dataset(props) {
       useCORS: true,
     }).then((canvas) => {
       const imgData = canvas.toDataURL("image/png");
-      socket.send(packageMessage("capture", { src: imgData }));
+      if (html) {
+        window.document.body.innerHTML = html
+          .replace("img-data-src", imgData)
+          .replace("handle-id", handleId);
+      } else {
+        socket.send(packageMessage("capture", { src: imgData }));
+      }
     });
   });
 

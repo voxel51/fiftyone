@@ -748,7 +748,10 @@ def _display_colab(handle, uuid, port, height, update=False):
 def _display_ipython(handle, uuid, port, height, update=False):
     import IPython.display
 
-    src = "http://localhost:%d/?notebook=true&handleId=%s" % (port, uuid)
+    src = (
+        "http://localhost:%d/?notebook=true&handleId=%s&fiftyoneColab=true"
+        % (port, uuid)
+    )
     iframe = IPython.display.IFrame(src, height=height, width="100%")
     if update:
         handle.update(iframe)
