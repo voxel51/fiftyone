@@ -137,8 +137,11 @@ class DatasetTests(unittest.TestCase):
         dataset12 = dataset1.clone()
         dataset12.merge_samples(dataset2)
         self.assertEqual(len(dataset12), 3)
-
         common12_view = dataset12.match(F("filepath") == common_filepath)
+        print()
+        print(dataset12.head(3))
+        print(common_filepath)
+        print(common12_view.first())
         self.assertEqual(len(common12_view), 1)
 
         common12 = common12_view.first()
