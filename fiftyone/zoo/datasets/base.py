@@ -9,6 +9,7 @@ import logging
 import os
 import shutil
 
+import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -69,16 +70,10 @@ class QuickstartDataset(FiftyOneDataset):
         return None
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, _):
-        # Download dataset
-        tmp_zip_path = os.path.join(scratch_dir, "dataset.zip")
-        etaw.download_google_drive_file(self._GDRIVE_ID, path=tmp_zip_path)
+        _download_and_extract_zip(
+            self._GDRIVE_ID, self._DIR_IN_ZIP, dataset_dir, scratch_dir
+        )
 
-        # Extract zip
-        logger.info("Extracting dataset")
-        etau.extract_zip(tmp_zip_path, delete_zip=True)
-        _move_dir(os.path.join(scratch_dir, self._DIR_IN_ZIP), dataset_dir)
-
-        # Get metadata
         logger.info("Parsing dataset metadata")
         dataset_type = fot.FiftyOneDataset()
         importer = foud.FiftyOneDatasetImporter
@@ -124,16 +119,10 @@ class VideoQuickstartDataset(FiftyOneDataset):
         return None
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, _):
-        # Download dataset
-        tmp_zip_path = os.path.join(scratch_dir, "dataset.zip")
-        etaw.download_google_drive_file(self._GDRIVE_ID, path=tmp_zip_path)
+        _download_and_extract_zip(
+            self._GDRIVE_ID, self._DIR_IN_ZIP, dataset_dir, scratch_dir
+        )
 
-        # Extract zip
-        logger.info("Extracting dataset")
-        etau.extract_zip(tmp_zip_path, delete_zip=True)
-        _move_dir(os.path.join(scratch_dir, self._DIR_IN_ZIP), dataset_dir)
-
-        # Get metadata
         logger.info("Parsing dataset metadata")
         dataset_type = fot.FiftyOneVideoLabelsDataset()
         num_samples = foud.FiftyOneVideoLabelsDatasetImporter.get_num_samples(
@@ -142,6 +131,96 @@ class VideoQuickstartDataset(FiftyOneDataset):
         logger.info("Found %d samples", num_samples)
 
         return dataset_type, num_samples, None
+
+
+class ImageNetSampleDataset(FiftyOneDataset):
+    """A small sample of images from the ImageNet 2012 dataset.
+
+    The dataset contains 1,000 images, one randomly chosen from each class of
+    the validation split of the ImageNet 2012 dataset.
+
+    These images are provided according to the terms below.
+
+    Terms::
+
+        You have been granted access for non-commercial research/educational
+        use. By accessing the data, you have agreed to the following terms.
+
+        You (the "Researcher") have requested permission to use the ImageNet
+        database (the "Database") at Princeton University and Stanford
+        University. In exchange for such permission, Researcher hereby agrees
+        to the following terms and conditions:
+
+        1.  Researcher shall use the Database only for non-commercial research
+            and educational purposes.
+        2.  Princeton University and Stanford University make no
+            representations or warranties regarding the Database, including but
+            not limited to warranties of non-infringement or fitness for a
+            particular purpose.
+        3.  Researcher accepts full responsibility for his or her use of the
+            Database and shall defend and indemnify Princeton University and
+            Stanford University, including their employees, Trustees, officers
+            and agents, against any and all claims arising from Researcher's
+            use of the Database, including but not limited to Researcher's use
+            of any copies of copyrighted images that he or she may create from
+            the Database.
+        4.  Researcher may provide research associates and colleagues with
+            access to the Database provided that they first agree to be bound
+            by these terms and conditions.
+        5.  Princeton University and Stanford University reserve the right to
+            terminate Researcher's access to the Database at any time.
+        6.  If Researcher is employed by a for-profit, commercial entity,
+            Researcher's employer shall also be bound by these terms and
+            conditions, and Researcher hereby represents that he or she is
+            fully authorized to enter into this agreement on behalf of such
+            employer.
+        7.  The law of the State of New Jersey shall apply to all disputes
+            under this agreement.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("imagenet-sample")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        98.26 MB
+
+    Source
+        http://image-net.org
+    """
+
+    _GDRIVE_ID = "1FZ9GpiRjiBbOS0iPyNZsS_B00W2RYSmS"
+    _DIR_IN_ZIP = "imagenet-sample"
+
+    @property
+    def name(self):
+        return "imagenet-sample"
+
+    @property
+    def tags(self):
+        return ("image", "classification")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        _download_and_extract_zip(
+            self._GDRIVE_ID, self._DIR_IN_ZIP, dataset_dir, scratch_dir
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.FiftyOneImageClassificationDataset()
+        importer = foud.FiftyOneImageClassificationDatasetImporter
+        classes = importer.get_classes(dataset_dir)
+        num_samples = importer.get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, classes
 
 
 class COCO2014Dataset(FiftyOneDataset):
@@ -713,6 +792,7 @@ class UCF101Dataset(FiftyOneDataset):
 AVAILABLE_DATASETS = {
     "quickstart": QuickstartDataset,
     "quickstart-video": VideoQuickstartDataset,
+    "imagenet-sample": ImageNetSampleDataset,
     "coco-2014-segmentation": COCO2014Dataset,
     "coco-2017-segmentation": COCO2017Dataset,
     "lfw": LabeledFacesInTheWildDataset,
@@ -721,6 +801,16 @@ AVAILABLE_DATASETS = {
     "hmdb51": HMDB51Dataset,
     "ucf101": UCF101Dataset,
 }
+
+
+def _download_and_extract_zip(fid, dir_in_zip, dataset_dir, scratch_dir):
+    logger.info("Downloading dataset...")
+    tmp_zip_path = os.path.join(scratch_dir, "dataset.zip")
+    etaw.download_google_drive_file(fid, path=tmp_zip_path)
+
+    logger.info("Extracting dataset")
+    etau.extract_zip(tmp_zip_path, delete_zip=True)
+    _move_dir(os.path.join(scratch_dir, dir_in_zip), dataset_dir)
 
 
 def _move_dir(src, dst):

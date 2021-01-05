@@ -86,9 +86,8 @@ _MODEL_TEMPLATE = """
 
 {% if 'imagenet' in name %}
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -96,7 +95,7 @@ _MODEL_TEMPLATE = """
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
