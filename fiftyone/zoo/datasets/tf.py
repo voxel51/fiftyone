@@ -40,11 +40,20 @@ class TFDSDataset(fozd.ZooDataset):
 class MNISTDataset(TFDSDataset):
     """The MNIST database of handwritten digits.
 
-    The dataset consists of 70000 28 x 28 grayscale images in 10 classes.
-    There are 60000 training images and 10000 test images.
+    The dataset consists of 70,000 28 x 28 grayscale images in 10 classes.
+    There are 60,000 training images and 10,000 test images.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("mnist", split="test")
+
+        session = fo.launch_app(dataset)
 
     Dataset size
-        21.00 MiB
+        21.00 MB
 
     Source
         http://yann.lecun.com/exdb/mnist
@@ -60,7 +69,7 @@ class MNISTDataset(TFDSDataset):
 
     @property
     def supported_splits(self):
-        return ("test", "train")
+        return ("train", "test")
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
@@ -88,11 +97,20 @@ class MNISTDataset(TFDSDataset):
 class FashionMNISTDataset(TFDSDataset):
     """The Fashion-MNIST database of Zalando's fashion article images.
 
-    The dataset consists of 70000 28 x 28 grayscale images in 10 classes.
-    There are 60000 training images and 10000 test images.
+    The dataset consists of 70,000 28 x 28 grayscale images in 10 classes.
+    There are 60,000 training images and 10,000 test images.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("fashion-mnist", split="test")
+
+        session = fo.launch_app(dataset)
 
     Dataset size
-        36.42 MiB
+        36.42 MB
 
     Source
         https://github.com/zalandoresearch/fashion-mnist
@@ -108,7 +126,7 @@ class FashionMNISTDataset(TFDSDataset):
 
     @property
     def supported_splits(self):
-        return ("test", "train")
+        return ("train", "test")
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
@@ -136,11 +154,21 @@ class FashionMNISTDataset(TFDSDataset):
 class CIFAR10Dataset(TFDSDataset):
     """The CIFAR-10 dataset of images.
 
-    The dataset consists of 60000 32 x 32 color images in 10 classes, with 6000
-    images per class. There are 50000 training images and 10000 test images.
+    The dataset consists of 60,000 32 x 32 color images in 10 classes, with
+    6,000 images per class. There are 50,000 training images and 10,000 test
+    images.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("cifar10", split="test")
+
+        session = fo.launch_app(dataset)
 
     Dataset size
-        132.40 MiB
+        132.40 MB
 
     Source
         https://www.cs.toronto.edu/~kriz/cifar.html
@@ -156,7 +184,7 @@ class CIFAR10Dataset(TFDSDataset):
 
     @property
     def supported_splits(self):
-        return ("test", "train")
+        return ("train", "test")
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
@@ -184,11 +212,21 @@ class CIFAR10Dataset(TFDSDataset):
 class CIFAR100Dataset(TFDSDataset):
     """The CIFAR-100 dataset of images.
 
-    The dataset consists of 60000 32 x 32 color images in 100 classes, with 600
-    images per class. There are 50000 training images and 10000 test images.
+    The dataset consists of 60,000 32 x 32 color images in 100 classes, with
+    600 images per class. There are 50,000 training images and 10,000 test
+    images.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("cifar100", split="test")
+
+        session = fo.launch_app(dataset)
 
     Dataset size
-        132.03 MiB
+        132.03 MB
 
     Source
         https://www.cs.toronto.edu/~kriz/cifar.html
@@ -204,7 +242,7 @@ class CIFAR100Dataset(TFDSDataset):
 
     @property
     def supported_splits(self):
-        return ("test", "train")
+        return ("train", "test")
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
@@ -234,12 +272,21 @@ class Caltech101Dataset(TFDSDataset):
 
     The dataset consists of pictures of objects belonging to 101 classes, plus
     one background clutter class. Each image is labelled with a single object.
-    Each class contains roughly 40 to 800 images, totalling around 9k images.
-    Images are of variable sizes, with typical edge lengths of 200-300 pixels.
-    This version contains image-level labels only.
+    Each class contains roughly 40 to 800 images, totalling around 9,000
+    images. Images are of variable sizes, with typical edge lengths of 200-300
+    pixels. This version contains image-level labels only.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("caltech101", split="test")
+
+        session = fo.launch_app(dataset)
 
     Dataset size
-        125.64 MiB
+        125.64 MB
 
     Source
         http://www.vision.caltech.edu/Image_Datasets/Caltech101
@@ -255,7 +302,7 @@ class Caltech101Dataset(TFDSDataset):
 
     @property
     def supported_splits(self):
-        return ("test", "train")
+        return ("train", "test")
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
@@ -287,8 +334,8 @@ class ImageNet2012Dataset(TFDSDataset):
     to the WordNet hierarchy. Each meaningful concept in WordNet, possibly
     described by multiple words or word phrases, is called a "synonym set" or
     "synset". There are more than 100,000 synsets in WordNet, majority of them
-    are nouns (80,000+). ImageNet provides on average 1000 images to illustrate
-    each synset. Images of each concept are quality-controlled and
+    are nouns (80,000+). ImageNet provides on average 1,000 images to
+    illustrate each synset. Images of each concept are quality-controlled and
     human-annotated. In its completion, we hope ImageNet will offer tens of
     millions of cleanly sorted images for most of the concepts in the WordNet
     hierarchy.
@@ -297,29 +344,33 @@ class ImageNet2012Dataset(TFDSDataset):
     training and validation sets are provided.
 
     In order to load the ImageNet dataset, you must download the source data
-    manually into ``source_dir`` as follows::
+    manually. The directory should be organized in the following format::
 
-            both splits: ILSVRC2012_devkit_t12.tar.gz
-            train split: ILSVRC2012_img_train.tar
-       validation split: ILSVRC2012_img_val.tar
+        source_dir/
+            ILSVRC2012_devkit_t12.tar.gz    # both splits
+            ILSVRC2012_img_train.tar        # train split
+            ILSVRC2012_img_val.tar          # validation split
 
     You can register at http://www.image-net.org/download-images in order to
     get links to download the data.
 
     Example usage::
 
+        import fiftyone as fo
         import fiftyone.zoo as foz
 
-        # First parse the manually downloaded files in `source_dir`
-        foz.download_zoo_dataset(
-            "imagenet-2012", source_dir="/path/to/dir-with-imagenet-files"
-        )
+        # The path to the source files that you manually downloaded
+        SOURCE_DIR = "/path/to/dir-with-imagenet-files"
 
-        # Now load into FiftyOne
+        # Parse the manually downloaded files
+        foz.download_zoo_dataset("imagenet-2012", source_dir=SOURCE_DIR)
+
         dataset = foz.load_zoo_dataset("imagenet-2012", split="validation")
 
+        session = fo.launch_app(dataset)
+
     Dataset size
-        144.02 GiB
+        144.02 GB
 
     Source
         http://image-net.org
@@ -390,8 +441,17 @@ class COCO2014Dataset(TFDSDataset):
     -   COCO 2014 and 2017 uses the same images, but different train/val/test
         splits
 
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("coco-2014", split="validation")
+
+        session = fo.launch_app(dataset)
+
     Dataset size
-        37.57 GiB
+        37.57 GB
 
     Source
         http://cocodataset.org/#home
@@ -407,7 +467,7 @@ class COCO2014Dataset(TFDSDataset):
 
     @property
     def supported_splits(self):
-        return ("test", "train", "validation")
+        return ("train", "validation", "test")
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
@@ -451,8 +511,17 @@ class COCO2017Dataset(TFDSDataset):
     -   COCO 2014 and 2017 uses the same images, but different train/val/test
         splits
 
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("coco-2017", split="validation")
+
+        session = fo.launch_app(dataset)
+
     Dataset size
-        25.20 GiB
+        25.20 GB
 
     Source
         http://cocodataset.org/#home
@@ -468,7 +537,7 @@ class COCO2017Dataset(TFDSDataset):
 
     @property
     def supported_splits(self):
-        return ("test", "train", "validation")
+        return ("train", "validation", "test")
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
@@ -504,12 +573,21 @@ class KITTIDataset(TFDSDataset):
     The full benchmark contains many tasks such as stereo, optical flow, visual
     odometry, etc. This dataset contains the object detection dataset,
     including the monocular images and bounding boxes. The dataset contains
-    7481 training images annotated with 3D bounding boxes. A full description
+    7,481 training images annotated with 3D bounding boxes. A full description
     of the annotations can be found in the README of the object development kit
     on the KITTI homepage.
 
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("kitti", split="validation")
+
+        session = fo.launch_app(dataset)
+
     Dataset size
-        5.27 GiB
+        5.27 GB
 
     Source
         http://www.cvlibs.net/datasets/kitti
@@ -525,7 +603,7 @@ class KITTIDataset(TFDSDataset):
 
     @property
     def supported_splits(self):
-        return ("test", "train", "validation")
+        return ("train", "validation", "test")
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
@@ -558,15 +636,24 @@ class VOC2007Dataset(TFDSDataset):
     """The dataset for the PASCAL Visual Object Classes Challenge 2007
     (VOC2007) for the detection competition.
 
-    A total of 9963 images are included in this dataset, where each image
+    A total of 9,963 images are included in this dataset, where each image
     contains a set of objects, out of 20 different classes, making a total of
-    24640 annotated objects.
+    24,640 annotated objects.
 
     Note that, as per the official dataset, the test set of VOC2007 does not
     contain annotations.
 
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("voc-2007", split="validation")
+
+        session = fo.launch_app(dataset)
+
     Dataset size
-        868.85 MiB
+        868.85 MB
 
     Source
         http://host.robots.ox.ac.uk/pascal/VOC/voc2007
@@ -615,15 +702,24 @@ class VOC2012Dataset(TFDSDataset):
     """The dataset for the PASCAL Visual Object Classes Challenge 2012
     (VOC2012) for the detection competition.
 
-    A total of 11540 images are included in this dataset, where each image
+    A total of 11,540 images are included in this dataset, where each image
     contains a set of objects, out of 20 different classes, making a total of
-    27450 annotated objects.
+    27,450 annotated objects.
 
     Note that, as per the official dataset, the test set of VOC2012 does not
     contain annotations.
 
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("voc-2012", split="validation")
+
+        session = fo.launch_app(dataset)
+
     Dataset size
-        3.59 GiB
+        3.59 GB
 
     Source
         http://host.robots.ox.ac.uk/pascal/VOC/voc2012
