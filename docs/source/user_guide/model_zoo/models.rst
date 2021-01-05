@@ -142,11 +142,9 @@ AlexNet model architecture from `One weird trick for parallelizing convolutional
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -195,7 +193,7 @@ DeepLabV3 model from `Rethinking Atrous Convolution for Semantic Image Segmentat
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -244,7 +242,7 @@ DeepLabV3 model from `Rethinking Atrous Convolution for Semantic Image Segmentat
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -290,11 +288,9 @@ Densenet-121 model from `Densely Connected Convolutional Networks <https://arxiv
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -340,11 +336,9 @@ Densenet-161 model from `Densely Connected Convolutional Networks <https://arxiv
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -390,11 +384,9 @@ Densenet-169 model from `Densely Connected Convolutional Networks <https://arxiv
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -440,11 +432,9 @@ Densenet-201 model from `Densely Connected Convolutional Networks <https://arxiv
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -493,7 +483,7 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -542,7 +532,7 @@ FCN model from `Fully Convolutional Networks for Semantic Segmentation <https://
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -591,7 +581,7 @@ FCN model from `Fully Convolutional Networks for Semantic Segmentation <https://
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -637,11 +627,9 @@ GoogLeNet (Inception v1) model from `Going Deeper with Convolutions <https://arx
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -687,11 +675,9 @@ Inception v3 model from `Rethinking the Inception Architecture for Computer Visi
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -740,7 +726,7 @@ Keypoint R-CNN model from `Keypoint Density-based Region Proposal for Fine-Grain
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -789,7 +775,7 @@ Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ with ResN
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -835,11 +821,9 @@ MNASNet model from from `MnasNet: Platform-Aware Neural Architecture Search for 
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -885,11 +869,9 @@ MNASNet model from `MnasNet: Platform-Aware Neural Architecture Search for Mobil
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -935,11 +917,9 @@ MobileNetV2 model from `MobileNetV2: Inverted Residuals and Linear Bottlenecks <
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -985,11 +965,9 @@ ResNet-101 model from `Deep Residual Learning for Image Recognition <https://arx
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -1035,11 +1013,9 @@ ResNet-152 model from `Deep Residual Learning for Image Recognition <https://arx
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -1085,11 +1061,9 @@ ResNet-18 model from `Deep Residual Learning for Image Recognition <https://arxi
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -1135,11 +1109,9 @@ ResNet-34 model from `Deep Residual Learning for Image Recognition <https://arxi
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -1185,11 +1157,9 @@ ResNet-50 model from `Deep Residual Learning for Image Recognition <https://arxi
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -1235,11 +1205,9 @@ ResNeXt-101 32x8d model from `Aggregated Residual Transformations for Deep Neura
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -1285,11 +1253,9 @@ ResNeXt-50 32x4d model from `Aggregated Residual Transformations for Deep Neural
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -1338,7 +1304,7 @@ RetinaNet model from `Focal Loss for Dense Object Detection <https://arxiv.org/a
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -1384,11 +1350,9 @@ ShuffleNetV2 model from `ShuffleNet V2: Practical Guidelines for Efficient CNN A
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -1434,11 +1398,9 @@ ShuffleNetV2 model from `ShuffleNet V2: Practical Guidelines for Efficient CNN A
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -1484,11 +1446,9 @@ SqueezeNet 1.1 model from `the official SqueezeNet repo <https://github.com/forr
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -1534,11 +1494,9 @@ SqueezeNet model from `SqueezeNet: AlexNet-level accuracy with 50x fewer paramet
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -1584,11 +1542,9 @@ VGG-11 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -1634,11 +1590,9 @@ VGG-11 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -1684,11 +1638,9 @@ VGG-13 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -1734,11 +1686,9 @@ VGG-13 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -1784,11 +1734,9 @@ VGG-16 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -1834,11 +1782,9 @@ VGG-16 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -1884,11 +1830,9 @@ VGG-19 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -1934,11 +1878,9 @@ VGG-19 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -1984,11 +1926,9 @@ Wide ResNet-101-2 model from `Wide Residual Networks <https://arxiv.org/abs/1605
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -2034,11 +1974,9 @@ Wide ResNet-50-2 model from `Wide Residual Networks <https://arxiv.org/abs/1605.
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -2171,7 +2109,7 @@ DeepLabv3+ semantic segmentation model from `Encoder-Decoder with Atrous Separab
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -2220,7 +2158,7 @@ DeepLabv3+ semantic segmentation model from `Encoder-Decoder with Atrous Separab
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -2242,7 +2180,7 @@ EfficientDet-D0 model from `EfficientDet: Scalable and Efficient Object Detectio
 
 -   Model name: ``efficientdet-d0-coco-tf1``
 -   Model source: https://github.com/voxel51/automl/tree/master/efficientdet
--   Model size: 4.17 MB
+-   Model size: 17.27 MB
 -   Exposes embeddings? no
 -   Tags: ``detection, coco, tf1``
 
@@ -2269,7 +2207,7 @@ EfficientDet-D0 model from `EfficientDet: Scalable and Efficient Object Detectio
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -2291,7 +2229,7 @@ EfficientDet-D1 model from `EfficientDet: Scalable and Efficient Object Detectio
 
 -   Model name: ``efficientdet-d1-coco-tf1``
 -   Model source: https://github.com/voxel51/automl/tree/master/efficientdet
--   Model size: 4.17 MB
+-   Model size: 17.27 MB
 -   Exposes embeddings? no
 -   Tags: ``detection, coco, tf1``
 
@@ -2318,7 +2256,7 @@ EfficientDet-D1 model from `EfficientDet: Scalable and Efficient Object Detectio
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -2340,7 +2278,7 @@ EfficientDet-D2 model from `EfficientDet: Scalable and Efficient Object Detectio
 
 -   Model name: ``efficientdet-d2-coco-tf1``
 -   Model source: https://github.com/voxel51/automl/tree/master/efficientdet
--   Model size: 4.17 MB
+-   Model size: 17.27 MB
 -   Exposes embeddings? no
 -   Tags: ``detection, coco, tf1``
 
@@ -2367,7 +2305,7 @@ EfficientDet-D2 model from `EfficientDet: Scalable and Efficient Object Detectio
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -2389,7 +2327,7 @@ EfficientDet-D3 model from `EfficientDet: Scalable and Efficient Object Detectio
 
 -   Model name: ``efficientdet-d3-coco-tf1``
 -   Model source: https://github.com/voxel51/automl/tree/master/efficientdet
--   Model size: 4.17 MB
+-   Model size: 17.27 MB
 -   Exposes embeddings? no
 -   Tags: ``detection, coco, tf1``
 
@@ -2416,7 +2354,7 @@ EfficientDet-D3 model from `EfficientDet: Scalable and Efficient Object Detectio
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -2438,7 +2376,7 @@ EfficientDet-D4 model from `EfficientDet: Scalable and Efficient Object Detectio
 
 -   Model name: ``efficientdet-d4-coco-tf1``
 -   Model source: https://github.com/voxel51/automl/tree/master/efficientdet
--   Model size: 4.17 MB
+-   Model size: 17.27 MB
 -   Exposes embeddings? no
 -   Tags: ``detection, coco, tf1``
 
@@ -2465,7 +2403,7 @@ EfficientDet-D4 model from `EfficientDet: Scalable and Efficient Object Detectio
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -2487,7 +2425,7 @@ EfficientDet-D5 model from `EfficientDet: Scalable and Efficient Object Detectio
 
 -   Model name: ``efficientdet-d5-coco-tf1``
 -   Model source: https://github.com/voxel51/automl/tree/master/efficientdet
--   Model size: 4.17 MB
+-   Model size: 17.27 MB
 -   Exposes embeddings? no
 -   Tags: ``detection, coco, tf1``
 
@@ -2514,7 +2452,7 @@ EfficientDet-D5 model from `EfficientDet: Scalable and Efficient Object Detectio
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -2536,7 +2474,7 @@ EfficientDet-D6 model from `EfficientDet: Scalable and Efficient Object Detectio
 
 -   Model name: ``efficientdet-d6-coco-tf1``
 -   Model source: https://github.com/voxel51/automl/tree/master/efficientdet
--   Model size: 4.17 MB
+-   Model size: 17.27 MB
 -   Exposes embeddings? no
 -   Tags: ``detection, coco, tf1``
 
@@ -2563,7 +2501,7 @@ EfficientDet-D6 model from `EfficientDet: Scalable and Efficient Object Detectio
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -2612,7 +2550,7 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -2661,7 +2599,7 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -2710,7 +2648,7 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -2759,7 +2697,7 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -2808,7 +2746,7 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -2857,7 +2795,7 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -2906,7 +2844,7 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -2955,7 +2893,7 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -3004,7 +2942,7 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -3050,11 +2988,9 @@ Inception v2 model from `Rethinking the Inception Architecture for Computer Visi
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -3100,11 +3036,9 @@ Inception v4 model from `Inception-v4, Inception-ResNet and the Impact of Residu
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -3153,7 +3087,7 @@ Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous ve
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -3202,7 +3136,7 @@ Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ with Ince
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -3251,7 +3185,7 @@ Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous ve
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -3300,7 +3234,7 @@ Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous ve
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -3346,11 +3280,9 @@ MobileNetV2 model from `MobileNetV2: Inverted Residuals and Linear Bottlenecks <
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -3396,11 +3328,9 @@ ResNet-50 v1 model from `Deep Residual Learning for Image Recognition <https://a
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -3446,11 +3376,9 @@ ResNet-50 v2 model from `Deep Residual Learning for Image Recognition <https://a
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -3499,7 +3427,7 @@ R-FCN object detection model from `R-FCN: Object Detection via Region-based Full
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -3548,7 +3476,7 @@ Inception Single Shot Detector model from `SSD: Single Shot MultiBox Detector <h
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -3597,7 +3525,7 @@ Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arx
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -3646,7 +3574,7 @@ FPN Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https:/
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -3695,7 +3623,7 @@ FPN Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https:/
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -3741,11 +3669,9 @@ VGG-16 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Use CIFAR-10 because it is small and can be downloaded automatically
     dataset = foz.load_zoo_dataset(
-        "cifar10",
-        split="test",
-        dataset_name="cifar10-test-sample",
+        "imagenet-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
@@ -3794,7 +3720,7 @@ YOLOv2 model from `YOLO9000: Better, Faster, Stronger <https://arxiv.org/abs/161
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
-        dataset_name="coco-2017-validation-sample",
+        dataset_name=fo.get_default_dataset_name(),
         max_samples=50,
         shuffle=True,
     )
