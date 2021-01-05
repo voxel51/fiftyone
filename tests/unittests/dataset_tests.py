@@ -116,12 +116,15 @@ class DatasetTests(unittest.TestCase):
 
     @drop_datasets
     def test_merge_samples1(self):
+        def expand_path(path):
+            return os.path.abspath(os.path.expanduser(path))
+
         dataset1 = fo.Dataset()
         dataset2 = fo.Dataset()
 
-        common_filepath = "/path/to/image.png"
-        filepath1 = "/path/to/image1.png"
-        filepath2 = "/path/to/image2.png"
+        common_filepath = expand_path("/path/to/image.png")
+        filepath1 = expand_path("/path/to/image1.png")
+        filepath2 = expand_path("/path/to/image2.png")
 
         common1 = fo.Sample(filepath=common_filepath, field=1)
         common2 = fo.Sample(filepath=common_filepath, field=2)
@@ -138,10 +141,6 @@ class DatasetTests(unittest.TestCase):
         dataset12.merge_samples(dataset2)
         self.assertEqual(len(dataset12), 3)
         common12_view = dataset12.match(F("filepath") == common_filepath)
-        print()
-        print(dataset12.head(3))
-        print(common_filepath)
-        print(common12_view.first())
         self.assertEqual(len(common12_view), 1)
 
         common12 = common12_view.first()
