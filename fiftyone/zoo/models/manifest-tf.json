@@ -1,0 +1,1208 @@
+{
+    "models": [
+        {
+            "base_name": "yolo-v2-coco-tf1",
+            "base_filename": "yolo-v2-coco.weights",
+            "version": null,
+            "description": "YOLOv2 model from `YOLO9000: Better, Faster, Stronger <https://arxiv.org/abs/1612.08242>`_ trained on COCO",
+            "source": "https://github.com/thtrieu/darkflow",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1ajuPZws47SOw3xJc4Wvk1yuiB3qv8ycr"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.YOLODetector",
+                    "config": {
+                        "config_dir": "{{eta}}/tensorflow/darkflow/cfg/",
+                        "config_path": "{{eta}}/tensorflow/darkflow/cfg/yolo.cfg"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "efficientdet-d0-coco-tf1",
+            "base_filename": "efficientdet-d0-coco.tar",
+            "version": null,
+            "description": "EfficientDet-D0 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO",
+            "source": "https://github.com/voxel51/automl/tree/master/efficientdet",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1mDclIDAMmJzfh7UKe-oBN72XdtwnDC2N",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.EfficientDet",
+                    "config": {
+                        "architecture_name": "efficientdet-d0",
+                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=1.14,<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu>=1.14,<2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "efficientdet-d1-coco-tf1",
+            "base_filename": "efficientdet-d1-coco.tar",
+            "version": null,
+            "description": "EfficientDet-D1 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO",
+            "source": "https://github.com/voxel51/automl/tree/master/efficientdet",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1_IkkEDwPe9SkYbeiuP-ZTOZB9P39Ihm5",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.EfficientDet",
+                    "config": {
+                        "architecture_name": "efficientdet-d1",
+                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=1.14,<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu>=1.14,<2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "efficientdet-d2-coco-tf1",
+            "base_filename": "efficientdet-d2-coco.tar",
+            "version": null,
+            "description": "EfficientDet-D2 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO",
+            "source": "https://github.com/voxel51/automl/tree/master/efficientdet",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1hgEPV1nzwtOb-lfE3bODmvbG7wmWv_Ve",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.EfficientDet",
+                    "config": {
+                        "architecture_name": "efficientdet-d2",
+                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=1.14,<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu>=1.14,<2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "efficientdet-d3-coco-tf1",
+            "base_filename": "efficientdet-d3-coco.tar",
+            "version": null,
+            "description": "EfficientDet-D3 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO",
+            "source": "https://github.com/voxel51/automl/tree/master/efficientdet",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1OKPbwZ2KMH33KRQhCERPkqT8gTVM2c4h",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.EfficientDet",
+                    "config": {
+                        "architecture_name": "efficientdet-d3",
+                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=1.14,<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu>=1.14,<2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "efficientdet-d4-coco-tf1",
+            "base_filename": "efficientdet-d4-coco.tar",
+            "version": null,
+            "description": "EfficientDet-D4 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO",
+            "source": "https://github.com/voxel51/automl/tree/master/efficientdet",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1FO2WwtubQ0I6giHKHSutI-C628JpQM71",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.EfficientDet",
+                    "config": {
+                        "architecture_name": "efficientdet-d4",
+                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=1.14,<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu>=1.14,<2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "efficientdet-d5-coco-tf1",
+            "base_filename": "efficientdet-d5-coco.tar",
+            "version": null,
+            "description": "EfficientDet-D5 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO",
+            "source": "https://github.com/voxel51/automl/tree/master/efficientdet",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1xErF-ZrQi_5Z51l2drXoYzR-JoFhkiB1",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.EfficientDet",
+                    "config": {
+                        "architecture_name": "efficientdet-d5",
+                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=1.14,<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu>=1.14,<2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "efficientdet-d6-coco-tf1",
+            "base_filename": "efficientdet-d6-coco.tar",
+            "version": null,
+            "description": "EfficientDet-D6 model from `EfficientDet: Scalable and Efficient Object Detection <https://arxiv.org/abs/1911.09070>`_ trained on COCO",
+            "source": "https://github.com/voxel51/automl/tree/master/efficientdet",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1gaGhnZuPdWKsn8IH0dVUXiLYUsqRaZ1a",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.EfficientDet",
+                    "config": {
+                        "architecture_name": "efficientdet-d6",
+                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=1.14,<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu>=1.14,<2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "faster-rcnn-inception-v2-coco-tf1",
+            "base_filename": "faster-rcnn-inception-v2-coco.pb",
+            "version": null,
+            "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with Inception v2 backbone trained on COCO",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1l1pNy5eH0DzvlMST8mCFXTYODHZBsPls"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "faster-rcnn-nas-coco-tf1",
+            "base_filename": "faster-rcnn-nas-coco.pb",
+            "version": null,
+            "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with NAS-net backbone trained on COCO",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1GSHaIQh_kJ0YU4qqulEY67mufwslk5u9"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "faster-rcnn-nas-lowproposals-coco-tf1",
+            "base_filename": "faster-rcnn-nas-lowproposals-coco.pb",
+            "version": null,
+            "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with low-proposals and NAS-net backbone trained on COCO",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1dpsLJRTcHyso78OmMSHQtz_2SUlHAt0l"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "faster-rcnn-resnet50-coco-tf1",
+            "base_filename": "faster-rcnn-resnet50-coco.pb",
+            "version": null,
+            "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with ResNet-50 backbone trained on COCO",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1N7SZcZwedztcSxXKFQiXDIhjpibAtnJx"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "faster-rcnn-resnet50-lowproposals-coco-tf1",
+            "base_filename": "faster-rcnn-resnet50-lowproposals-coco.pb",
+            "version": null,
+            "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with low-proposals and ResNet-50 backbone trained on COCO",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1VJghRs4W7i_F6GAzoFwAzuMs_wm1g8vT"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "faster-rcnn-resnet101-coco-tf1",
+            "base_filename": "faster-rcnn-resnet101-coco.pb",
+            "version": null,
+            "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with ResNet-101 backbone trained on COCO",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "18OOcBY45JYWwHdWyBRUaoe2H0DF4G8Gw"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "faster-rcnn-resnet101-lowproposals-coco-tf1",
+            "base_filename": "faster-rcnn-resnet101-lowproposals-coco.pb",
+            "version": null,
+            "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with low-proposals and ResNet-101 backbone trained on COCO",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1poAw-ZTwEXNfP3NTqlpBxGcQUR5Y7A7D"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "faster-rcnn-inception-resnet-atrous-v2-coco-tf1",
+            "base_filename": "faster-rcnn-inception-resnet-atrous-v2-coco.pb",
+            "version": null,
+            "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ atrous version with Inception backbone trained on COCO",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1tbDgXKYWBKazY6U6whRHhR4OsxZS9LOP"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco-tf1",
+            "base_filename": "faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco.pb",
+            "version": null,
+            "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ atrous version with low-proposals and Inception backbone trained on COCO",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "17bR21aOsS8AoxMuGjTbHIUaXWYo7sz9X"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "inception-resnet-v2-imagenet-tf1",
+            "base_filename": "inception-resnet-v2-imagenet.pb",
+            "version": null,
+            "description": "Inception v2 model from `Rethinking the Inception Architecture for Computer Vision <https://arxiv.org/abs/1512.00567>`_ trained on ImageNet",
+            "source": "https://github.com/tensorflow/models/tree/archive/research/slim#pre-trained-models",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1hCw4ocYcoxQ4psKEjvlPQd5-CCroHsZ6"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.classifiers.TFSlimClassifier",
+                    "config": {
+                        "attr_name": "imagenet",
+                        "network_name": "inception_resnet_v2",
+                        "generate_features": true,
+                        "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
+            "tags": ["classification", "embeddings", "imagenet", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "inception-v4-imagenet-tf1",
+            "base_filename": "inception-v4-imagenet.pb",
+            "version": null,
+            "description": "Inception v4 model from `Inception-v4, Inception-ResNet and the Impact of Residual Connections on Learning <https://arxiv.org/abs/1602.07261>`_ trained on ImageNet",
+            "source": "https://github.com/tensorflow/models/tree/archive/research/slim#pre-trained-models",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1WaLe57G8wt0rty_GL0fnHwGZDqdJhKwT"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.classifiers.TFSlimClassifier",
+                    "config": {
+                        "attr_name": "imagenet",
+                        "network_name": "inception_v4",
+                        "generate_features": true,
+                        "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
+            "tags": ["classification", "embeddings", "imagenet", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "mask-rcnn-inception-resnet-v2-atrous-coco-tf1",
+            "base_filename": "mask-rcnn-inception-resnet-v2-atrous-coco.pb",
+            "version": null,
+            "description": "Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous version with Inception backbone trained on COCO",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1-Q2LoPx3LIYSQo4_AXau9fd8zYyjSjmK"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TFModelsInstanceSegmenter",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "mask_thresh": 0.5
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
+            "tags": ["instances", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "mask-rcnn-inception-v2-coco-tf1",
+            "base_filename": "mask-rcnn-inception-v2-coco.pb",
+            "version": null,
+            "description": "Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ with Inception backbone trained on COCO",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1Nj5WCeI6MeO4OyltOaZbvBoz_RmRE3pI"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TFModelsInstanceSegmenter",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "mask_thresh": 0.5
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
+            "tags": ["instances", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "mask-rcnn-resnet50-atrous-coco-tf1",
+            "base_filename": "mask-rcnn-resnet50-atrous-coco.pb",
+            "version": null,
+            "description": "Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous version with ResNet-50 backbone trained on COCO",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1QGlpJw97j7XxPlHC5FtWjgil6ebPTgEG"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TFModelsInstanceSegmenter",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "mask_thresh": 0.5
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
+            "tags": ["instances", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "mask-rcnn-resnet101-atrous-coco-tf1",
+            "base_filename": "mask-rcnn-resnet101-atrous-coco.pb",
+            "version": null,
+            "description": "Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous version with ResNet-101 backbone trained on COCO",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1PvW3E6Ey3yC7E7mri_Bw6FyjyOOy4_aX"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TFModelsInstanceSegmenter",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "mask_thresh": 0.5
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
+            "tags": ["instances", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "mobilenet-v2-imagenet-tf1",
+            "base_filename": "mobilenet-v2-imagenet.pb",
+            "version": null,
+            "description": "MobileNetV2 model from `MobileNetV2: Inverted Residuals and Linear Bottlenecks <https://arxiv.org/abs/1801.04381>`_ trained on ImageNet",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1cey7kmMTnDQG0zcdHauC291fann-Xthz"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.classifiers.TFSlimClassifier",
+                    "config": {
+                        "attr_name": "imagenet",
+                        "network_name": "mobilenet_v2",
+                        "generate_features": true,
+                        "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
+            "tags": ["classification", "embeddings", "imagenet", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "resnet-v1-50-imagenet-tf1",
+            "base_filename": "resnet-v1-50-imagenet.pb",
+            "version": null,
+            "description": "ResNet-50 v1 model from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`_ trained on ImageNet",
+            "source": "https://github.com/tensorflow/models/tree/archive/research/slim#pre-trained-models",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1NCGP3KzdKII97mpYYtNHg2mcp7Ew_HRR"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.classifiers.TFSlimClassifier",
+                    "config": {
+                        "attr_name": "imagenet",
+                        "network_name": "resnet_v1_50",
+                        "generate_features": true,
+                        "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
+            "tags": ["classification", "embeddings", "imagenet", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "resnet-v2-50-imagenet-tf1",
+            "base_filename": "resnet-v2-50-imagenet.pb",
+            "version": null,
+            "description": "ResNet-50 v2 model from `Deep Residual Learning for Image Recognition <https://arxiv.org/abs/1512.03385>`_ trained on ImageNet",
+            "source": "https://github.com/tensorflow/models/tree/archive/research/slim#pre-trained-models",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1cWT55Pp9wl2zR0Om8y-g8QVskYEthQfi"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.classifiers.TFSlimClassifier",
+                    "config": {
+                        "attr_name": "imagenet",
+                        "network_name": "resnet_v2_50",
+                        "generate_features": true,
+                        "labels_path": "{{eta-resources}}/tfslim-imagenet-labels.txt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
+            "tags": ["classification", "embeddings", "imagenet", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "rfcn-resnet101-coco-tf1",
+            "base_filename": "rfcn-resnet101-coco.pb",
+            "version": null,
+            "description": "R-FCN object detection model from `R-FCN: Object Detection via Region-based Fully Convolutional Networks <https://arxiv.org/abs/1605.06409>`_ with ResNet-101 backbone trained on COCO",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "15BMAAo0cGBINTsM-KL9ZrwSHnkZlFtNc"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "ssd-inception-v2-coco-tf1",
+            "base_filename": "ssd-inception-v2-coco.pb",
+            "version": null,
+            "description": "Inception Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arxiv.org/abs/1512.02325>`_ trained on COCO",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1Vt_fuMhEdWxI2XBWLEtNLTJhG00rid4R"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "ssd-resnet50-fpn-coco-tf1",
+            "base_filename": "ssd-resnet50-fpn-coco.pb",
+            "version": null,
+            "description": "FPN Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arxiv.org/abs/1512.02325>`_ with ResNet-50 backbone trained on COCO",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1pC9WX7Ol2cy4ERAcLQ-a2Dd04d91vJxj"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "ssd-mobilenet-v1-coco-tf1",
+            "base_filename": "ssd-mobilenet-v1-coco.pb",
+            "version": null,
+            "description": "Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arxiv.org/abs/1512.02325>`_ with MobileNet-v1 backbone trained on COCO",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1X6i1Q2hBfDZ6D4ROoJn1Xbwu0vMqvgQs"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "ssd-mobilenet-v1-fpn-coco-tf1",
+            "base_filename": "ssd-mobilenet-v1-fpn-coco.pb",
+            "version": null,
+            "description": "FPN Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arxiv.org/abs/1512.02325>`_ with MobileNet-v1 backbone trained on COCO",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1ZvVQTuDIexyfntq8ajBVp5aSndHW6wQk"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TFModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow<2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu<2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf1"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "deeplabv3-cityscapes-tf",
+            "base_filename": "deeplabv3-cityscapes.pb",
+            "version": null,
+            "description": "DeepLabv3+ semantic segmentation model from `Encoder-Decoder with Atrous Separable Convolution for Semantic Image Segmentation <https://arxiv.org/abs/1802.02611>`_ with Xception backbone trained on the Cityscapes dataset",
+            "source": "https://github.com/tensorflow/models/blob/master/research/deeplab/g3doc/model_zoo.md",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1GKJtItUirHZ2DY_mQu872QuoWZuAHNr8"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.segmenters.TFSemanticSegmenter",
+                    "config": {
+                        "labels_path": "{{eta-resources}}/tf-semantic-segmenters-cityscapes-train-labels.txt",
+                        "resize_to_max_dim": 513,
+                        "input_name": "ImageTensor",
+                        "output_name": "SemanticPredictions"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu"]
+                }
+            },
+            "tags": ["segmentation", "cityscapes", "tf"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "deeplabv3-mnv2-cityscapes-tf",
+            "base_filename": "deeplabv3-mnv2-cityscapes.pb",
+            "version": null,
+            "description": "DeepLabv3+ semantic segmentation model from `Encoder-Decoder with Atrous Separable Convolution for Semantic Image Segmentation <https://arxiv.org/abs/1802.02611>`_ with MobileNetV2 backbone trained on the Cityscapes dataset",
+            "source": "https://github.com/tensorflow/models/blob/master/research/deeplab/g3doc/model_zoo.md",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "google_drive_id": "1JYx2Z6or9Jm24aWv79-5aQ8Gg9IF_m6Z"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.segmenters.TFSemanticSegmenter",
+                    "config": {
+                        "labels_path": "{{eta-resources}}/tf-semantic-segmenters-cityscapes-train-labels.txt",
+                        "resize_to_max_dim": 513,
+                        "input_name": "ImageTensor",
+                        "output_name": "SemanticPredictions"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu"]
+                }
+            },
+            "tags": ["segmentation", "cityscapes", "tf"],
+            "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "vgg16-imagenet-tf",
+            "base_filename": "vgg16-imagenet.npz",
+            "version": null,
+            "description": "VGG-16 model from `Very Deep Convolutional Networks for Large-Scale Image Recognition <https://arxiv.org/abs/1409.1556>`_ trained on ImageNet",
+            "source": "https://gist.github.com/ksimonyan/211839e770f7b538e2d8#file-readme-md",
+            "manager": {
+                "config": {
+                    "google_drive_id": "0B_-5gc091ngGMzBFMVJ0RE9HNmc"
+                },
+                "type": "fiftyone.core.models.ModelManager"
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.classifiers.VGG16Classifier",
+                    "config": {
+                        "attr_name": "imagenet",
+                        "generate_features": true,
+                        "labels_path": "{{eta-resources}}/vgg16-imagenet-labels.txt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu"]
+                }
+            },
+            "tags": ["classification", "embeddings", "imagenet", "tf"],
+            "date_added": "2020-12-11 13:45:51"
+        }
+    ]
+}
