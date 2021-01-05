@@ -1,8 +1,8 @@
 
 .. _dataset-zoo-datasets:
 
-Available Datasets
-==================
+Available Zoo Datasets
+======================
 
 .. default-role:: code
 
@@ -11,15 +11,62 @@ This page lists all of the datasets available in the Dataset Zoo.
 .. note::
 
     Check out the :ref:`API reference <dataset-zoo-api>` for complete
-    instructions for using the Dataset Zoo library.
+    instructions for using the Dataset Zoo.
+
+Available models
+----------------
+
+.. table::
+    :widths: 40 60
+
+    +--------------------------------------------------------------------+---------------------------------------------+
+    | Dataset name                                                       | Tags                                        |
+    +====================================================================+=============================================+
+    | :ref:`BDD100K <dataset-zoo-bdd100k>`                               | image, multilabel, automotive, manual       |
+    +--------------------------------------------------------------------+---------------------------------------------+
+    | :ref:`Caltech-101 <dataset-zoo-caltech101>`                        | image, classification                       |
+    +--------------------------------------------------------------------+---------------------------------------------+
+    | :ref:`CIFAR-10 <dataset-zoo-cifar10>`                              | image, classification                       |
+    +--------------------------------------------------------------------+---------------------------------------------+
+    | :ref:`CIFAR-100 <dataset-zoo-cifar100>`                            | image, classification                       |
+    +--------------------------------------------------------------------+---------------------------------------------+
+    | :ref:`Cityscapes <dataset-zoo-cityscapes>`                         | image, multilabel, automotive, manual       |
+    +--------------------------------------------------------------------+---------------------------------------------+
+    | :ref:`COCO-2014 <dataset-zoo-coco-2014>`                           | image, detection                            |
+    +--------------------------------------------------------------------+---------------------------------------------+
+    | :ref:`COCO-2014 Segmentation <dataset-zoo-coco-2014-segmentation>` | image, detection, segmentation              |
+    +--------------------------------------------------------------------+---------------------------------------------+
+    | :ref:`COCO-2017 <dataset-zoo-coco-2017>`                           | image, detection                            |
+    +--------------------------------------------------------------------+---------------------------------------------+
+    | :ref:`COCO-2017 Segmentation <dataset-zoo-coco-2017-segmentation>` | image, detection, segmentation              |
+    +--------------------------------------------------------------------+---------------------------------------------+
+    | :ref:`Fashion MNIST <dataset-zoo-fashion-mnist>`                   | image, classification                       |
+    +--------------------------------------------------------------------+---------------------------------------------+
+    | :ref:`HMDB51 <dataset-zoo-hmdb51>`                                 | video, action-recognition                   |
+    +--------------------------------------------------------------------+---------------------------------------------+
+    | :ref:`ImageNet 2012 <dataset-zoo-imagenet-2012>`                   | image, classification, manual               |
+    +--------------------------------------------------------------------+---------------------------------------------+
+    | :ref:`KITTI <dataset-zoo-kitti>`                                   | image, detection                            |
+    +--------------------------------------------------------------------+---------------------------------------------+
+    | :ref:`Labeled Faces in the Wild <dataset-zoo-lfw>`                 | image, classification, facial-recognition   |
+    +--------------------------------------------------------------------+---------------------------------------------+
+    | :ref:`MNIST <dataset-zoo-mnist>`                                   | image, classification                       |
+    +--------------------------------------------------------------------+---------------------------------------------+
+    | :ref:`Quickstart <dataset-zoo-quickstart>`                         | image, quickstart                           |
+    +--------------------------------------------------------------------+---------------------------------------------+
+    | :ref:`Quickstart Video <dataset-zoo-quickstart-video>`             | video, quickstart                           |
+    +--------------------------------------------------------------------+---------------------------------------------+
+    | :ref:`UCF101 <dataset-zoo-ucf101>`                                 | video, action-recognition                   |
+    +--------------------------------------------------------------------+---------------------------------------------+
+    | :ref:`VOC-2007 <dataset-zoo-voc-2007>`                             | image, detection                            |
+    +--------------------------------------------------------------------+---------------------------------------------+
+    | :ref:`VOC-2012 <dataset-zoo-voc-2012>`                             | image, detection                            |
+    +--------------------------------------------------------------------+---------------------------------------------+
 
 .. _dataset-zoo-bdd100k:
 
 BDD100K
 -------
-
-Description
-~~~~~~~~~~~
 
 The Berkeley Deep Drive (BDD) dataset is one of the largest and most diverse
 video datasets for autonomous vehicles.
@@ -59,19 +106,17 @@ detection, and segmentation labels.
     You can register at https://bdd-data.berkeley.edu in order to get links
     to download the data.
 
-Details
-~~~~~~~
+**Details**
 
+-   Dataset name: ``bdd100k``
 -   Dataset source: https://bdd-data.berkeley.edu
-
--   Dataset size: 7.1GB
-
+-   Dataset size: 7.1 GB
 -   Tags: ``image, multilabel, automotive, manual``
-
 -   Supported splits: ``train, validation, test``
+-   ZooDataset class:
+    :class:`BDD100KDataset <fiftyone.zoo.datasets.base.BDD100KDataset>`
 
-Example usage
-~~~~~~~~~~~~~
+**Example usage**
 
 .. code-block:: python
     :linenos:
@@ -82,11 +127,839 @@ Example usage
     # The path to the source files that you manually downloaded
     SOURCE_DIR="/path/to/dir-with-bdd100k-files"
 
-    # First parse the manually downloaded files
+    # Parse the manually downloaded files
     foz.download_zoo_dataset("bdd100k", source_dir=SOURCE_DIR)
 
-    # Now load into FiftyOne
     dataset = foz.load_zoo_dataset("bdd100k", split="validation")
 
-    # View dataset in the App
+    session = fo.launch_app(dataset)
+
+.. _dataset-zoo-caltech101:
+
+Caltech-101
+-----------
+
+The Caltech-101 dataset of images.
+
+The dataset consists of pictures of objects belonging to 101 classes, plus
+one background clutter class. Each image is labelled with a single object.
+Each class contains roughly 40 to 800 images, totalling around 9,000
+images. Images are of variable sizes, with typical edge lengths of 200-300
+pixels. This version contains image-level labels only.
+
+**Details**
+
+-   Dataset name: ``caltech101``
+-   Dataset source: http://www.vision.caltech.edu/Image_Datasets/Caltech101
+-   Dataset size: 125.64 MB
+-   Tags: ``image, classification``
+-   Supported splits: ``train, test``
+-   ZooDataset class:
+    :class:`Caltech101Dataset <fiftyone.zoo.datasets.tf.Caltech101Dataset>` (TF backend)
+
+.. note::
+
+    You must have the :ref:`TensorFlow backend <dataset-zoo-ml-backend>`
+    installed to load this dataset.
+
+**Example usage**
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("caltech101", split="test")
+
+    session = fo.launch_app(dataset)
+
+.. _dataset-zoo-cifar10:
+
+CIFAR-10
+--------
+
+The CIFAR-10 dataset of images.
+
+The dataset consists of 60,000 32 x 32 color images in 10 classes, with 6,000
+images per class. There are 50,000 training images and 10,000 test images.
+
+**Details**
+
+-   Dataset name: ``cifar10``
+-   Dataset source: https://www.cs.toronto.edu/~kriz/cifar.html
+-   Dataset size: 132.40 MB
+-   Tags: ``image, classification``
+-   Supported splits: ``train, test``
+-   ZooDataset classes:
+
+    -   :class:`CIFAR10Dataset <fiftyone.zoo.datasets.tf.CIFAR10Dataset>` (TF backend)
+    -   :class:`CIFAR10Dataset <fiftyone.zoo.datasets.torch.CIFAR10Dataset>` (Torch backend)
+
+.. note::
+
+    You must have the
+    :ref:`Torch or TensorFlow backend(s) <dataset-zoo-ml-backend>` installed to
+    load this dataset.
+
+**Example usage**
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("cifar10", split="test")
+
+    session = fo.launch_app(dataset)
+
+.. _dataset-zoo-cifar100:
+
+CIFAR-100
+---------
+
+The CIFAR-100 dataset of images.
+
+The dataset consists of 60,000 32 x 32 color images in 100 classes, with
+600 images per class. There are 50,000 training images and 10,000 test
+images.
+
+**Details**
+
+-   Dataset name: ``cifar100``
+-   Dataset source: https://www.cs.toronto.edu/~kriz/cifar.html
+-   Dataset size: 132.03 MB
+-   Tags: ``image, classification``
+-   Supported splits: ``train, test``
+-   ZooDataset classes:
+
+    -   :class:`CIFAR100Dataset <fiftyone.zoo.datasets.tf.CIFAR100Dataset>` (TF backend)
+    -   :class:`CIFAR100Dataset <fiftyone.zoo.datasets.torch.CIFAR100Dataset>` (Torch backend)
+
+.. note::
+
+    You must have the
+    :ref:`Torch or TensorFlow backend(s) <dataset-zoo-ml-backend>` installed to
+    load this dataset.
+
+**Example usage**
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("cifar100", split="test")
+
+    session = fo.launch_app(dataset)
+
+.. _dataset-zoo-cityscapes:
+
+Cityscapes
+----------
+
+Cityscapes is a large-scale dataset that contains a diverse set of
+stereo video sequences recorded in street scenes from 50 different cities,
+with high quality pixel-level annotations of 5,000 frames in addition to a
+larger set of 20,000 weakly annotated frames.
+
+The dataset is intended for:
+
+-   Assessing the performance of vision algorithms for major tasks of
+    semantic urban scene understanding: pixel-level, instance-level, and
+    panoptic semantic labeling
+-   Supporting research that aims to exploit large volumes of (weakly)
+    annotated data, e.g. for training deep neural networks
+
+.. note::
+
+    In order to load the Cityscapes dataset, you must download the source data
+    manually. The directory should be organized in the following format:
+
+    .. code-block:: text
+
+        source_dir/
+            leftImg8bit_trainvaltest.zip
+            gtFine_trainvaltest.zip         # optional
+            gtCoarse.zip                    # optional
+            gtBbox_cityPersons_trainval     # optional
+
+    You can register at https://www.cityscapes-dataset.com/register in order
+    to get links to download the data.
+
+**Details**
+
+-   Dataset name: ``cityscapes``
+-   Dataset source: https://www.cityscapes-dataset.com
+-   Dataset size: 11.8 GB
+-   Tags: ``image, multilabel, automotive, manual``
+-   Supported splits: ``train, validation, test``
+-   ZooDataset class:
+    :class:`CityscapesDataset <fiftyone.zoo.datasets.base.CityscapesDataset>`
+
+**Example usage**
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    # The path to the source files that you manually downloaded
+    SOURCE_DIR="/path/to/dir-with-cityscapes-files"
+
+    # Parse the manually downloaded files
+    foz.download_zoo_dataset("cityscapes", source_dir=SOURCE_DIR)
+
+    dataset = foz.load_zoo_dataset("cityscapes", split="validation")
+
+    session = fo.launch_app(dataset)
+
+.. _dataset-zoo-coco-2014:
+
+COCO-2014
+---------
+
+COCO is a large-scale object detection, segmentation, and captioning
+dataset.
+
+This version contains images, bounding boxes and labels for the 2014
+version of the dataset.
+
+Notes:
+
+-   COCO defines 91 classes but the data only uses 80 classes
+-   Some images from the train and validation sets don't have annotations
+-   The test set does not have annotations
+-   COCO 2014 and 2017 uses the same images, but different train/val/test
+    splits
+
+**Details**
+
+-   Dataset name: ``coco-2014``
+-   Dataset source: http://cocodataset.org/#home
+-   Dataset size: 37.57 GB
+-   Tags: ``image, detection``
+-   Supported splits: ``train, validation, test``
+-   ZooDataset classes:
+
+    -   :class:`COCO2014Dataset <fiftyone.zoo.datasets.tf.COCO2014Dataset>` (TF backend)
+    -   :class:`COCO2014Dataset <fiftyone.zoo.datasets.torch.COCO2014Dataset>` (Torch backend)
+
+.. note::
+
+    You must have the
+    :ref:`Torch or TensorFlow backend(s) <dataset-zoo-ml-backend>` installed to
+    load this dataset.
+
+**Example usage**
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("coco-2014", split="validation")
+
+    session = fo.launch_app(dataset)
+
+.. _dataset-zoo-coco-2014-segmentation:
+
+COCO-2014 Segmentation
+----------------------
+
+COCO is a large-scale object detection, segmentation, and captioning
+dataset.
+
+This version contains images, bounding boxes, segmentations, and labels for
+the 2014 version of the dataset.
+
+Notes:
+
+-   COCO defines 91 classes but the data only uses 80 classes
+-   Some images from the train and validation sets don't have annotations
+-   The test set does not have annotations
+-   COCO 2014 and 2017 uses the same images, but different train/val/test
+    splits
+
+**Details**
+
+-   Dataset name: ``coco-2014-segmentation``
+-   Dataset source: http://cocodataset.org/#home
+-   Dataset size: 37.57 GB
+-   Tags: ``image, detection, segmentation``
+-   Supported splits: ``test, train, validation``
+-   ZooDataset class:
+    :class:`COCO2014Dataset <fiftyone.zoo.datasets.base.COCO2014Dataset>`
+
+**Example usage**
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("coco-2014-segmentation", split="validation")
+
+    session = fo.launch_app(dataset)
+
+.. _dataset-zoo-coco-2017:
+
+COCO-2017
+---------
+
+COCO is a large-scale object detection, segmentation, and captioning
+dataset.
+
+This version contains images, bounding boxes and labels for the 2017
+version of the dataset.
+
+Notes:
+
+-   COCO defines 91 classes but the data only uses 80 classes
+-   Some images from the train and validation sets don't have annotations
+-   The test set does not have annotations
+-   COCO 2014 and 2017 uses the same images, but different train/val/test
+    splits
+
+**Details**
+
+-   Dataset name: ``coco-2017``
+-   Dataset source: http://cocodataset.org/#home
+-   Dataset size: 25.20 GB
+-   Tags: ``image, detection``
+-   Supported splits: ``train, validation, test``
+-   ZooDataset classes:
+
+    -   :class:`COCO2017Dataset <fiftyone.zoo.datasets.tf.COCO2017Dataset>` (TF backend)
+    -   :class:`COCO2017Dataset <fiftyone.zoo.datasets.torch.COCO2017Dataset>` (Torch backend)
+
+.. note::
+
+    You must have the
+    :ref:`Torch or TensorFlow backend(s) <dataset-zoo-ml-backend>` installed to
+    load this dataset.
+
+**Example usage**
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("coco-2017", split="validation")
+
+    session = fo.launch_app(dataset)
+
+.. _dataset-zoo-coco-2017-segmentation:
+
+COCO-2017 Segmentation
+----------------------
+
+COCO is a large-scale object detection, segmentation, and captioning
+dataset.
+
+This version contains images, bounding boxes, segmentations, and labels for
+the 2017 version of the dataset.
+
+Notes:
+
+-   COCO defines 91 classes but the data only uses 80 classes
+-   Some images from the train and validation sets don't have annotations
+-   The test set does not have annotations
+-   COCO 2014 and 2017 uses the same images, but different train/val/test
+    splits
+
+**Details**
+
+-   Dataset name: ``coco-2017-segmentation``
+-   Dataset source: http://cocodataset.org/#home
+-   Dataset size: 25.20 GB
+-   Tags: ``image, detection, segmentation``
+-   Supported splits: ``test, train, validation``
+-   ZooDataset class:
+    :class:`COCO2017Dataset <fiftyone.zoo.datasets.base.COCO2017Dataset>`
+
+**Example usage**
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("coco-2017-segmentation", split="validation")
+
+    session = fo.launch_app(dataset)
+
+.. _dataset-zoo-fashion-mnist:
+
+Fashion MNIST
+-------------
+
+The Fashion-MNIST database of Zalando's fashion article images.
+
+The dataset consists of 70,000 28 x 28 grayscale images in 10 classes.
+There are 60,000 training images and 10,000 test images.
+
+**Details**
+
+-   Dataset name: ``fashion-mnist``
+-   Dataset source: https://github.com/zalandoresearch/fashion-mnist
+-   Dataset size: 36.42 MB
+-   Tags: ``image, classification``
+-   Supported splits: ``train, test``
+-   ZooDataset classes:
+
+    -   :class:`FashionMNISTDataset <fiftyone.zoo.datasets.tf.FashionMNISTDataset>` (TF backend)
+    -   :class:`FashionMNISTDataset <fiftyone.zoo.datasets.torch.FashionMNISTDataset>` (Torch backend)
+
+.. note::
+
+    You must have the
+    :ref:`Torch or TensorFlow backend(s) <dataset-zoo-ml-backend>` installed to
+    load this dataset.
+
+**Example usage**
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("fashion-mnist", split="test")
+
+    session = fo.launch_app(dataset)
+
+.. _dataset-zoo-hmdb51:
+
+HMBD51
+-------
+
+HMDB51 is an action recognition dataset containing a total of 6,766
+clips distributed across 51 action classes.
+
+**Details**
+
+-   Dataset name: ``hmdb51``
+-   Dataset source: https://serre-lab.clps.brown.edu/resource/hmdb-a-large-human-motion-database
+-   Dataset size: 2.16 GB
+-   Tags: ``video, action-recognition``
+-   Supported splits: ``train, test, other``
+-   ZooDataset class:
+    :class:`HMDB51Dataset <fiftyone.zoo.datasets.base.HMDB51Dataset>`
+
+**Example usage**
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("hmdb51", split="test")
+
+    session = fo.launch_app(dataset)
+
+.. _dataset-zoo-imagenet-2012:
+
+ImageNet 2012
+-------------
+
+The ImageNet 2012 dataset.
+
+ImageNet, as known as ILSVRC 2012, is an image dataset organized according
+to the WordNet hierarchy. Each meaningful concept in WordNet, possibly
+described by multiple words or word phrases, is called a "synonym set" or
+"synset". There are more than 100,000 synsets in WordNet, majority of them
+are nouns (80,000+). ImageNet provides on average 1,000 images to
+illustrate each synset. Images of each concept are quality-controlled and
+human-annotated. In its completion, we hope ImageNet will offer tens of
+millions of cleanly sorted images for most of the concepts in the WordNet
+hierarchy.
+
+Note that labels were never publicly released for the test set, so only the
+training and validation sets are provided.
+
+.. note::
+
+    In order to load the ImageNet dataset, you must download the source data
+    manually. The directory should be organized in the following format:
+
+    .. code-block:: text
+
+        source_dir/
+            ILSVRC2012_devkit_t12.tar.gz    # both splits
+            ILSVRC2012_img_train.tar        # train split
+            ILSVRC2012_img_val.tar          # validation split
+
+    You can register at http://www.image-net.org/download-images in order to
+    get links to download the data.
+
+**Details**
+
+-   Dataset name: ``imagenet-2012``
+-   Dataset source: http://image-net.org
+-   Dataset size: 144.02 GB
+-   Tags: ``image, classification, manual``
+-   Supported splits: ``train, validation``
+-   ZooDataset classes:
+
+    -   :class:`ImageNet2012Dataset <fiftyone.zoo.datasets.tf.ImageNet2012Dataset>` (TF backend)
+    -   :class:`ImageNet2012Dataset <fiftyone.zoo.datasets.torch.ImageNet2012Dataset>` (Torch backend)
+
+.. note::
+
+    You must have the
+    :ref:`Torch or TensorFlow backend(s) <dataset-zoo-ml-backend>` installed to
+    load this dataset.
+
+**Example usage**
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    # The path to the source files that you manually downloaded
+    SOURCE_DIR = "/path/to/dir-with-imagenet-files"
+
+    # Parse the manually downloaded files
+    foz.download_zoo_dataset("imagenet-2012", source_dir=SOURCE_DIR)
+
+    dataset = foz.load_zoo_dataset("imagenet-2012", split="validation")
+
+    session = fo.launch_app(dataset)
+
+.. _dataset-zoo-kitti:
+
+KITTI
+-----
+
+KITTI contains a suite of vision tasks built using an autonomous
+driving platform.
+
+The full benchmark contains many tasks such as stereo, optical flow, visual
+odometry, etc. This dataset contains the object detection dataset,
+including the monocular images and bounding boxes. The dataset contains
+7,481 training images annotated with 3D bounding boxes. A full description
+of the annotations can be found in the README of the object development kit
+on the KITTI homepage.
+
+**Details**
+
+-   Dataset name: ``kitti``
+-   Dataset source: http://www.cvlibs.net/datasets/kitti
+-   Dataset size: 5.27 GB
+-   Tags: ``image, detection``
+-   Supported splits: ``train, validation, test``
+-   ZooDataset class:
+    :class:`KITTIDataset <fiftyone.zoo.datasets.tf.KITTIDataset>` (TF backend)
+
+.. note::
+
+    You must have the :ref:`TensorFlow backend <dataset-zoo-ml-backend>`
+    installed to load this dataset.
+
+**Example usage**
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("kitti", split="validation")
+
+    session = fo.launch_app(dataset)
+
+.. _dataset-zoo-lfw:
+
+Labeled Faces in the Wild
+-------------------------
+
+Labeled Faces in the Wild is a public benchmark for face verification,
+also known as pair matching.
+
+The dataset contains 13,233 images of 5,749 people's faces collected from
+the web. Each face has been labeled with the name of the person pictured.
+1,680 of the people pictured have two or more distinct photos in the data
+set. The only constraint on these faces is that they were detected by the
+Viola-Jones face detector.
+
+**Details**
+
+-   Dataset name: ``lfw``
+-   Dataset source: http://vis-www.cs.umass.edu/lfw
+-   Dataset size: 173 MB
+-   Tags: ``image, classification, facial-recognition``
+-   Supported splits: ``test, train``
+-   ZooDataset class:
+    :class:`LabeledFacesInTheWildDataset <fiftyone.zoo.datasets.base.LabeledFacesInTheWildDataset>`
+
+**Example usage**
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("lfw", split="test")
+
+    session = fo.launch_app(dataset)
+
+.. _dataset-zoo-mnist:
+
+MNIST
+-----
+
+The MNIST database of handwritten digits.
+
+The dataset consists of 70,000 28 x 28 grayscale images in 10 classes.
+There are 60,000 training images and 10,000 test images.
+
+**Details**
+
+-   Dataset name: ``mnist``
+-   Dataset source: http://yann.lecun.com/exdb/mnist
+-   Dataset size: 21.00 MB
+-   Tags: ``image, classification``
+-   Supported splits: ``train, test``
+-   ZooDataset classes:
+
+    -   :class:`MNISTDataset <fiftyone.zoo.datasets.tf.MNISTDataset>` (TF backend)
+    -   :class:`MNISTDataset <fiftyone.zoo.datasets.torch.MNISTDataset>` (Torch backend)
+
+.. note::
+
+    You must have the
+    :ref:`Torch or TensorFlow backend(s) <dataset-zoo-ml-backend>` installed to
+    load this dataset.
+
+**Example usage**
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("mnist", split="test")
+
+    session = fo.launch_app(dataset)
+
+.. _dataset-zoo-quickstart:
+
+Quickstart
+----------
+
+A small dataset with ground truth bounding boxes and predictions.
+
+The dataset consists of 200 images from the validation split of COCO-2017,
+with model predictions generated by an out-of-the-box Faster R-CNN model
+from
+`torchvision.models <https://pytorch.org/docs/stable/torchvision/models.html>`_.
+
+**Details**
+
+-   Dataset name: ``quickstart``
+-   Dataset size: 23.4 MB
+-   Tags: ``image, quickstart``
+-   Supported splits: ``N/A``
+-   ZooDataset class:
+    :class:`QuickstartDataset <fiftyone.zoo.datasets.base.QuickstartDataset>`
+
+**Example usage**
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    session = fo.launch_app(dataset)
+
+.. _dataset-zoo-quickstart-video:
+
+Quickstart Video
+----------------
+
+A small video dataset with dense annotations.
+
+The dataset consists of 10 video segments with dense object detections
+generated by human annotators.
+
+**Details**
+
+-   Dataset name: ``quickstart-video``
+-   Dataset size: 35.2 MB
+-   Tags: ``video, quickstart``
+-   Supported splits: ``N/A``
+-   ZooDataset class:
+    :class:`VideoQuickstartDataset <fiftyone.zoo.datasets.base.VideoQuickstartDataset>`
+
+**Example usage**
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+
+    session = fo.launch_app(dataset)
+
+.. _dataset-zoo-ucf101:
+
+UCF101
+------
+
+UCF101 is an action recognition data set of realistic action videos,
+collected from YouTube, having 101 action categories. This data set is an
+extension of UCF50 data set which has 50 action categories.
+
+With 13,320 videos from 101 action categories, UCF101 gives the largest
+diversity in terms of actions and with the presence of large variations in
+camera motion, object appearance and pose, object scale, viewpoint,
+cluttered background, illumination conditions, etc, it is the most
+challenging data set to date. As most of the available action recognition
+data sets are not realistic and are staged by actors, UCF101 aims to
+encourage further research into action recognition by learning and
+exploring new realistic action categories.
+
+The videos in 101 action categories are grouped into 25 groups, where each
+group can consist of 4-7 videos of an action. The videos from the same
+group may share some common features, such as similar background, similar
+viewpoint, etc.
+
+**Details**
+
+-   Dataset name: ``ucf101``
+-   Dataset source: https://www.crcv.ucf.edu/research/data-sets/ucf101
+-   Dataset size: 6.48 GB
+-   Tags: ``video, action-recognition``
+-   Supported splits: ``train, test``
+-   ZooDataset class:
+    :class:`UCF101Dataset <fiftyone.zoo.datasets.base.UCF101Dataset>`
+
+**Example usage**
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("ucf101", split="test")
+
+    session = fo.launch_app(dataset)
+
+.. _dataset-zoo-voc-2007:
+
+VOC-2007
+--------
+
+The dataset for the PASCAL Visual Object Classes Challenge 2007
+(VOC2007) for the detection competition.
+
+A total of 9,963 images are included in this dataset, where each image
+contains a set of objects, out of 20 different classes, making a total of
+24,640 annotated objects.
+
+Note that, as per the official dataset, the test set of VOC2007 does not
+contain annotations.
+
+**Details**
+
+-   Dataset name: ``voc-2007``
+-   Dataset source: http://host.robots.ox.ac.uk/pascal/VOC/voc2007
+-   Dataset size: 868.85 MB
+-   Tags: ``image, detection``
+-   Supported splits: ``train, validation, test``
+-   ZooDataset classes:
+
+    -   :class:`VOC2007Dataset <fiftyone.zoo.datasets.tf.VOC2007Dataset>` (TF backend)
+    -   :class:`VOC2007Dataset <fiftyone.zoo.datasets.torch.VOC2007Dataset>` (Torch backend)
+
+.. note::
+
+    The ``test`` split is only available via the
+    :ref:`TensorFlow backend <dataset-zoo-ml-backend>`.
+
+.. note::
+
+    You must have the
+    :ref:`Torch or TensorFlow backend(s) <dataset-zoo-ml-backend>` installed to
+    load this dataset.
+
+**Example usage**
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("voc-2007", split="validation")
+
+    session = fo.launch_app(dataset)
+
+.. _dataset-zoo-voc-2012:
+
+VOC-2012
+--------
+
+The dataset for the PASCAL Visual Object Classes Challenge 2012
+(VOC2012) for the detection competition.
+
+A total of 11540 images are included in this dataset, where each image
+contains a set of objects, out of 20 different classes, making a total of
+27450 annotated objects.
+
+Note that, as per the official dataset, the test set of VOC2012 does not
+contain annotations.
+
+**Details**
+
+-   Dataset name: ``voc-2012``
+-   Dataset source: http://host.robots.ox.ac.uk/pascal/VOC/voc2012
+-   Dataset size: 3.59 GB
+-   Tags: ``image, detection``
+-   Supported splits: ``train, validation, test``
+-   ZooDataset classes
+    -   :class:`VOC2012Dataset <fiftyone.zoo.datasets.tf.VOC2012Dataset>` (TF backend)
+    -   :class:`VOC2012Dataset <fiftyone.zoo.datasets.torch.VOC2012Dataset>` (Torch backend)
+
+.. note::
+
+    The ``test`` split is only available via the
+    :ref:`TensorFlow backend <dataset-zoo-ml-backend>`.
+
+.. note::
+
+    You must have the
+    :ref:`Torch or TensorFlow backend(s) <dataset-zoo-ml-backend>` installed to
+    load this dataset.
+
+**Example usage**
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("voc-2012", split="validation")
+
     session = fo.launch_app(dataset)
