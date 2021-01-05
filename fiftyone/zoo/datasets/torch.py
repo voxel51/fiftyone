@@ -268,11 +268,12 @@ class ImageNet2012Dataset(TorchVisionDataset):
     training and validation sets are provided.
 
     In order to load the ImageNet dataset, you must download the source data
-    manually into ``source_dir`` as follows::
+    manually. The directory should be organized in the following format::
 
-            both splits: ILSVRC2012_devkit_t12.tar.gz
-            train split: ILSVRC2012_img_train.tar
-       validation split: ILSVRC2012_img_val.tar
+        source_dir/
+            ILSVRC2012_devkit_t12.tar.gz    # both splits
+            ILSVRC2012_img_train.tar        # train split
+            ILSVRC2012_img_val.tar          # validation split
 
     You can register at http://www.image-net.org/download-images in order to
     get links to download the data.
@@ -320,7 +321,9 @@ class ImageNet2012Dataset(TorchVisionDataset):
 
     def _download_and_prepare(self, dataset_dir, _, split):
         # Ensure that the source files have been manually downloaded
-        foui.ensure_imagenet_manual_download(self.source_dir, split)
+        foui.ensure_imagenet_manual_download(
+            self.source_dir, split, devkit=True
+        )
 
         if split == "validation":
             _split = "val"

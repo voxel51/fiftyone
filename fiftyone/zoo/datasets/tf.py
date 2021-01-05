@@ -397,7 +397,9 @@ class ImageNet2012Dataset(TFDSDataset):
 
     def _download_and_prepare(self, dataset_dir, _, split):
         # Ensure that the source files have been manually downloaded
-        foui.ensure_imagenet_manual_download(self.source_dir, split)
+        foui.ensure_imagenet_manual_download(
+            self.source_dir, split, devkit=True
+        )
 
         if split == "validation":
             _split = "val"
