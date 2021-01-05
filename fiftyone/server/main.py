@@ -1026,7 +1026,6 @@ class FileHandler(tornado.web.StaticFileHandler):
         self.set_header("Access-Control-Allow-Origin", "*")
         self.set_header("Access-Control-Allow-Headers", "x-requested-with")
         self.set_header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
-        self.set_header("x-colab-notebook-cache-control", "no-cache")
         self.set_header("content-length", self.get_content_size())
 
 
@@ -1047,7 +1046,7 @@ class Application(tornado.web.Application):
             (r"/reactivate", ReactivateHandler),
             (
                 r"/(.*)",
-                tornado.web.StaticFileHandler,
+                FileHandler,
                 {"path": web_path, "default_filename": "index.html"},
             ),
         ]
