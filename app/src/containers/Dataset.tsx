@@ -22,6 +22,8 @@ import {
 } from "../utils/hooks";
 import Loading from "../components/Loading";
 import { packageMessage } from "../utils/socket";
+import { Cache } from "../utils/html2canvas";
+import uuid from "uuid-v4";
 
 const PLOTS = ["labels", "scalars", "tags"];
 
@@ -88,13 +90,31 @@ function Dataset(props) {
       item.setAttribute("height", item.getBoundingClientRect().height);
     });
     html2canvas(document.body, {
-      useCORS: true,
+      cache: new Cache(uuid(), {}),
     }).then((canvas) => {
       const imgData = canvas.toDataURL("image/png");
       if (html) {
-        window.document.body.innerHTML = html
+        html = html
           .replace("img-data-src", imgData)
-          .replace("handle-id", handleId);
+          .replace(/handle-id/g, handleId);
+        window.document.body.innerHTML = html;
+        (function () {
+          var button = document.getElementById(`foactivate-${handleId}`);
+          var container = document.getElementById(`focontainer-${handleId}`);
+          fetch("/fiftyone").then(() => {
+            button.addEventListener("click", () => {
+              fetch(`/reactivate?handleId=${handleId}`);
+            });
+            container.addEventListener(
+              "mouseenter",
+              () => (button.style.display = "block")
+            );
+            container.addEventListener(
+              "mouseleave",
+              () => (button.style.display = "none")
+            );
+          });
+        })();
       } else {
         socket.send(packageMessage("capture", { src: imgData }));
       }
