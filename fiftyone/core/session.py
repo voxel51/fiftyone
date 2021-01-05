@@ -726,6 +726,7 @@ def _display_colab(handle, uuid, port, height, update=False):
             const url = new URL(await google.colab.kernel.proxyPort(%PORT%, {'cache': true}));
             url.searchParams.set('fiftyoneColab', 'true');
             url.searchParams.set('notebook', 'true');
+            url.searchParams.set('handleId', '%HANDLE%');
             const iframe = document.createElement('iframe');
             iframe.src = url;
             iframe.setAttribute('width', '100%');
@@ -736,6 +737,7 @@ def _display_colab(handle, uuid, port, height, update=False):
     """
     replacements = [
         ("%PORT%", "%d" % port),
+        ("%HANDLE%", uuid),
         ("%HEIGHT%", "%d" % height),
     ]
     for (k, v) in replacements:
@@ -748,10 +750,7 @@ def _display_colab(handle, uuid, port, height, update=False):
 def _display_ipython(handle, uuid, port, height, update=False):
     import IPython.display
 
-    src = (
-        "http://localhost:%d/?notebook=true&handleId=%s&fiftyoneColab=true"
-        % (port, uuid)
-    )
+    src = "http://localhost:%d/?notebook=true&handleId=%s&" % (port, uuid)
     iframe = IPython.display.IFrame(src, height=height, width="100%")
     if update:
         handle.update(iframe)

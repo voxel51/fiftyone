@@ -22,6 +22,7 @@ import {
 } from "../utils/hooks";
 import Loading from "../components/Loading";
 import { packageMessage } from "../utils/socket";
+import imgToBlob from "image-to-blob";
 import { Cache } from "../utils/html2canvas";
 import uuid from "uuid-v4";
 
@@ -89,36 +90,73 @@ function Dataset(props) {
       item.setAttribute("width", item.getBoundingClientRect().width);
       item.setAttribute("height", item.getBoundingClientRect().height);
     });
-    html2canvas(document.body, {
-      cache: new Cache(uuid(), {}),
-    }).then((canvas) => {
-      const imgData = canvas.toDataURL("image/png");
-      if (html) {
-        html = html
-          .replace("img-data-src", imgData)
-          .replace(/handle-id/g, handleId);
-        window.document.body.innerHTML = html;
-        (function () {
-          var button = document.getElementById(`foactivate-${handleId}`);
-          var container = document.getElementById(`focontainer-${handleId}`);
-          fetch("/fiftyone").then(() => {
-            button.addEventListener("click", () => {
-              fetch(`/reactivate?handleId=${handleId}`);
+    const images = document.body.querySelectorAll("img");
+    const promises = [];
+    images.forEach((img) => {
+      promises.push(
+        fetch(img.src)
+          .then((response) => response.blob())
+          .then((blob) => {
+            return new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => {
+                resolve(reader.result);
+              };
+              reader.onerror = (error) => reject(error);
+              reader.readAsDataURL(blob);
             });
-            container.addEventListener(
-              "mouseenter",
-              () => (button.style.display = "block")
-            );
-            container.addEventListener(
-              "mouseleave",
-              () => (button.style.display = "none")
-            );
-          });
-        })();
-      } else {
-        socket.send(packageMessage("capture", { src: imgData }));
-      }
+          })
+          .then((dataURL) => {
+            return new Promise((resolve, reject) => {
+              img.src = dataURL;
+              img.onload = function () {
+                resolve(img);
+              };
+              img.onerror = reject;
+            });
+          })
+      );
     });
+    Promise.all(promises)
+      .then(() => {
+        return fetch("/_dist_/index.css");
+      })
+      .then((r) => r.text())
+      .then((text) => {
+        const style = document.createElement("style");
+        style.appendChild(document.createTextNode(text));
+        document.head.appendChild(style);
+        html2canvas(document.body).then((canvas) => {
+          const imgData = canvas.toDataURL("image/png");
+          if (html) {
+            html = html
+              .replace("img-data-src", imgData)
+              .replace(/handle-id/g, handleId);
+            window.document.getElementById("root").innerHTML = html;
+            (function () {
+              var button = document.getElementById(`foactivate-${handleId}`);
+              var container = document.getElementById(
+                `focontainer-${handleId}`
+              );
+              fetch("/fiftyone").then(() => {
+                button.addEventListener("click", () => {
+                  fetch(`/reactivate?handleId=${handleId}`);
+                });
+                container.addEventListener(
+                  "mouseenter",
+                  () => (button.style.display = "block")
+                );
+                container.addEventListener(
+                  "mouseleave",
+                  () => (button.style.display = "none")
+                );
+              });
+            })();
+          } else {
+            socket.send(packageMessage("capture", { src: imgData }));
+          }
+        });
+      });
   });
 
   // update color map
