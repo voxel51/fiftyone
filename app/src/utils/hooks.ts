@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRecoilState, useSetRecoilState, useRecoilValue } from "recoil";
 import ResizeObserver from "resize-observer-polyfill";
 import ReactGA from "react-ga";
+import html2canvas from "html2canvas";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
@@ -218,4 +219,75 @@ export const useGA = () => {
       ReactGA.pageview(window.location.pathname + window.location.search);
     }
   }, [window.location.pathname, window.location.search]);
+};
+
+export const useScreenshot = () => {
+  const handleId = useRecoilValue(selectors.handleId);
+  const socket = useRecoilValue(selectors.socket);
+  const isColab = useRecoilValue(selectors.isColab);
+
+  const fitSVGs = useCallback(() => {
+    const svgElements = document.body.querySelectorAll("svg");
+    svgElements.forEach((item) => {
+      item.setAttribute("width", item.getBoundingClientRect().width);
+      item.setAttribute("height", item.getBoundingClientRect().height);
+    });
+  }, []);
+
+  const inlineImages = useCallback(() => {
+    const images = document.body.querySelectorAll("img");
+    const promises = [];
+    images.forEach((img) => {
+      promises.push(
+        fetch(img.src)
+          .then((response) => response.blob())
+          .then((blob) => {
+            return new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => {
+                resolve(reader.result);
+              };
+              reader.onerror = (error) => reject(error);
+              reader.readAsDataURL(blob);
+            });
+          })
+          .then((dataURL) => {
+            return new Promise((resolve, reject) => {
+              img.src = dataURL;
+              img.onload = function () {
+                resolve(img);
+              };
+              img.onerror = reject;
+            });
+          })
+      );
+    });
+    return Promise.all(promises);
+  }, []);
+
+  const applyStyles = useCallback(() => {
+    return fetch("/_dist_/index.css")
+      .then((response) => response.text())
+      .then((text) => {
+        const style = document.createElement("style");
+        style.appendChild(document.createTextNode(text));
+        document.head.appendChild(style);
+      });
+  }, []);
+
+  const capture = useCallback(() => {
+    html2canvas(document.body).then((canvas) => {
+      const imgData = canvas.toDataURL("image/png");
+      socket.send(packageMessage("capture", { src: imgData }));
+    });
+  }, []);
+
+  useMessageHandler("deactivate", () => {
+    if (isColab) {
+      fitSVGs();
+      inlineImages().then(applyStyles).then(capture);
+    } else {
+      capture();
+    }
+  });
 };

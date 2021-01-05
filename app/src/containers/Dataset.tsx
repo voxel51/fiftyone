@@ -6,7 +6,6 @@ import {
   useResetRecoilState,
 } from "recoil";
 import styled from "styled-components";
-import html2canvas from "html2canvas";
 
 import SamplesContainer from "./SamplesContainer";
 import HorizontalNav from "../components/HorizontalNav";
@@ -19,12 +18,9 @@ import {
   useMessageHandler,
   useOutsideClick,
   useSendMessage,
+  useScreenshot,
 } from "../utils/hooks";
 import Loading from "../components/Loading";
-import { packageMessage } from "../utils/socket";
-import imgToBlob from "image-to-blob";
-import { Cache } from "../utils/html2canvas";
-import uuid from "uuid-v4";
 
 const PLOTS = ["labels", "scalars", "tags"];
 
@@ -63,7 +59,6 @@ function Dataset(props) {
   const currentSamples = useRecoilValue(atoms.currentSamples);
   const labelTuples = useRecoilValue(selectors.labelTuples("sample"));
   const frameLabelTuples = useRecoilValue(selectors.labelTuples("frame"));
-  const socket = useRecoilValue(selectors.socket);
   const tagNames = useRecoilValue(selectors.tagNames);
   const setExtendedDatasetStats = useSetRecoilState(
     atoms.extendedDatasetStatsRaw
@@ -77,86 +72,10 @@ function Dataset(props) {
   );
   const activeOther = useRecoilValue(atoms.activeOther("sample"));
   const activeFrameOther = useRecoilValue(atoms.activeOther("frame"));
-  const handleId = useRecoilValue(selectors.handleId);
 
   useMessageHandler("statistics", ({ stats, view, filters }) => {
     filters && setExtendedDatasetStats({ stats, view, filters });
     !filters && setDatasetStats({ stats, view });
-  });
-
-  useMessageHandler("deactivate", ({ html }) => {
-    const svgElements = document.body.querySelectorAll("svg");
-    svgElements.forEach((item) => {
-      item.setAttribute("width", item.getBoundingClientRect().width);
-      item.setAttribute("height", item.getBoundingClientRect().height);
-    });
-    const images = document.body.querySelectorAll("img");
-    const promises = [];
-    images.forEach((img) => {
-      promises.push(
-        fetch(img.src)
-          .then((response) => response.blob())
-          .then((blob) => {
-            return new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onloadend = () => {
-                resolve(reader.result);
-              };
-              reader.onerror = (error) => reject(error);
-              reader.readAsDataURL(blob);
-            });
-          })
-          .then((dataURL) => {
-            return new Promise((resolve, reject) => {
-              img.src = dataURL;
-              img.onload = function () {
-                resolve(img);
-              };
-              img.onerror = reject;
-            });
-          })
-      );
-    });
-    Promise.all(promises)
-      .then(() => {
-        return fetch("/_dist_/index.css");
-      })
-      .then((r) => r.text())
-      .then((text) => {
-        const style = document.createElement("style");
-        style.appendChild(document.createTextNode(text));
-        document.head.appendChild(style);
-        html2canvas(document.body).then((canvas) => {
-          const imgData = canvas.toDataURL("image/png");
-          if (html) {
-            html = html
-              .replace("img-data-src", imgData)
-              .replace(/handle-id/g, handleId);
-            window.document.getElementById("root").innerHTML = html;
-            (function () {
-              var button = document.getElementById(`foactivate-${handleId}`);
-              var container = document.getElementById(
-                `focontainer-${handleId}`
-              );
-              fetch("/fiftyone").then(() => {
-                button.addEventListener("click", () => {
-                  fetch(`/reactivate?handleId=${handleId}`);
-                });
-                container.addEventListener(
-                  "mouseenter",
-                  () => (button.style.display = "block")
-                );
-                container.addEventListener(
-                  "mouseleave",
-                  () => (button.style.display = "none")
-                );
-              });
-            })();
-          } else {
-            socket.send(packageMessage("capture", { src: imgData }));
-          }
-        });
-      });
   });
 
   // update color map
@@ -185,6 +104,8 @@ function Dataset(props) {
     resetSelectedObjects();
     resetHiddenObjects();
   };
+
+  useScreenshot();
 
   useEffect(() => {
     document.body.classList.toggle("noscroll", modal.visible);
