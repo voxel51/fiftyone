@@ -470,5 +470,5 @@ your custom format.
    :maxdepth: 1
    :hidden:
 
-   Loading datasets <datasets>
+   Datasets from disk <datasets>
    Adding samples <samples>
