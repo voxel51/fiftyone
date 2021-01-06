@@ -305,6 +305,7 @@ class ZooModel(etam.Model):
         version (None): the version of the model
         description (None): the description of the model
         source (None): the source of the model
+        size_bytes (None): the size of the model on disk
         default_deployment_config_dict (None): a
             :class:`fiftyone.core.models.ModelConfig` dict describing the
             recommended settings for deploying the model

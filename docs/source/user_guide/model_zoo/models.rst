@@ -2184,7 +2184,7 @@ EfficientDet-D0 model from `EfficientDet: Scalable and Efficient Object Detectio
 
 -   Model name: ``efficientdet-d0-coco-tf1``
 -   Model source: https://github.com/voxel51/automl/tree/master/efficientdet
--   Model size: 17.27 MB
+-   Model size: 38.20 MB
 -   Exposes embeddings? no
 -   Tags: ``detection, coco, tf1``
 
@@ -2233,7 +2233,7 @@ EfficientDet-D1 model from `EfficientDet: Scalable and Efficient Object Detectio
 
 -   Model name: ``efficientdet-d1-coco-tf1``
 -   Model source: https://github.com/voxel51/automl/tree/master/efficientdet
--   Model size: 17.27 MB
+-   Model size: 61.64 MB
 -   Exposes embeddings? no
 -   Tags: ``detection, coco, tf1``
 
@@ -2282,7 +2282,7 @@ EfficientDet-D2 model from `EfficientDet: Scalable and Efficient Object Detectio
 
 -   Model name: ``efficientdet-d2-coco-tf1``
 -   Model source: https://github.com/voxel51/automl/tree/master/efficientdet
--   Model size: 17.27 MB
+-   Model size: 74.00 MB
 -   Exposes embeddings? no
 -   Tags: ``detection, coco, tf1``
 
@@ -2331,7 +2331,7 @@ EfficientDet-D3 model from `EfficientDet: Scalable and Efficient Object Detectio
 
 -   Model name: ``efficientdet-d3-coco-tf1``
 -   Model source: https://github.com/voxel51/automl/tree/master/efficientdet
--   Model size: 17.27 MB
+-   Model size: 106.44 MB
 -   Exposes embeddings? no
 -   Tags: ``detection, coco, tf1``
 
@@ -2380,7 +2380,7 @@ EfficientDet-D4 model from `EfficientDet: Scalable and Efficient Object Detectio
 
 -   Model name: ``efficientdet-d4-coco-tf1``
 -   Model source: https://github.com/voxel51/automl/tree/master/efficientdet
--   Model size: 17.27 MB
+-   Model size: 175.33 MB
 -   Exposes embeddings? no
 -   Tags: ``detection, coco, tf1``
 
@@ -2429,7 +2429,7 @@ EfficientDet-D5 model from `EfficientDet: Scalable and Efficient Object Detectio
 
 -   Model name: ``efficientdet-d5-coco-tf1``
 -   Model source: https://github.com/voxel51/automl/tree/master/efficientdet
--   Model size: 17.27 MB
+-   Model size: 275.81 MB
 -   Exposes embeddings? no
 -   Tags: ``detection, coco, tf1``
 
@@ -2478,7 +2478,7 @@ EfficientDet-D6 model from `EfficientDet: Scalable and Efficient Object Detectio
 
 -   Model name: ``efficientdet-d6-coco-tf1``
 -   Model source: https://github.com/voxel51/automl/tree/master/efficientdet
--   Model size: 17.27 MB
+-   Model size: 416.43 MB
 -   Exposes embeddings? no
 -   Tags: ``detection, coco, tf1``
 

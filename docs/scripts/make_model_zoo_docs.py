@@ -133,23 +133,6 @@ def _render_section_content(template, all_models, print_source, header_name):
     )
 
 
-def _get_model_size(model_name):
-    if not foz.is_zoo_model_downloaded(model_name):
-        return None
-
-    model_path = foz.find_zoo_model(model_name)
-
-    if etau.is_archive(model_path):
-        archive_dir = etau.split_archive(model_path)[0]
-        if os.path.isdir(archive_dir):
-            return etau.get_dir_size(archive_dir)
-
-    if os.path.isfile(model_path):
-        return os.path.getsize(model_path)
-
-    return None
-
-
 def _render_model_content(template, model_name):
     zoo_model = foz.get_zoo_model(model_name)
 
@@ -162,15 +145,8 @@ def _render_model_content(template, model_name):
 
     header_name = model_name
 
-    size_bytes = _get_model_size(model_name)
-    if size_bytes is not None:
-        size_str = etau.to_human_bytes_str(size_bytes, decimals=2)
-        size_str = size_str[:-2] + " " + size_str[-2:]  # 123 MB, not 123MB
-    else:
-        logger.warning(
-            "Model '%s' is not downloaded; cannot infer size", model_name
-        )
-        size_str = "????"
+    size_str = etau.to_human_bytes_str(zoo_model.size_bytes, decimals=2)
+    size_str = size_str[:-2] + " " + size_str[-2:]  # 123.45 MB, not 123.45MB
 
     if "embeddings" in zoo_model.tags:
         exposes_embeddings = "yes"
