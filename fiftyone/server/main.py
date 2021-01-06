@@ -124,6 +124,10 @@ class CaptureHandler(RequestHandler):
     notebooks.
     """
 
+    async def get(self):
+        handle_id = self.get_argument("handleId")
+        self.write(self.get_response(handle_id))
+
     @staticmethod
     def get_response(handle_id):
         if handle_id in PollingHandler.screenshots:
@@ -232,8 +236,7 @@ class PollingHandler(tornado.web.RequestHandler):
             if event in {"distributions", "page", "get_video_data"}:
                 caller = self
             elif event == "capture":
-                PollingHandler.screenshots[message["handle"]] = message["src"]
-                return
+                caller = client
             else:
                 caller = StateHandler
 
@@ -1053,6 +1056,7 @@ class Application(tornado.web.Application):
         rel_web_path = "static"
         web_path = os.path.join(server_path, rel_web_path)
         handlers = [
+            (r"/capture", CaptureHandler),
             (r"/fiftyone", FiftyOneHandler),
             (r"/polling", PollingHandler),
             (r"/filepath/(.*)", FileHandler, {"path": static_path},),

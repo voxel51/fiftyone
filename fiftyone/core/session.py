@@ -631,21 +631,33 @@ class Session(foc.HasClient):
             self._show()
 
     def _capture(self, data):
-        from IPython.display import HTML
-
-        if self._context != focx._IPYTHON:
-            return
+        from IPython.display import HTML, Javascript
 
         for handle, image in data.items():
 
             if handle in self._handles:
-                self._handles[handle]["target"].update(
-                    HTML(
-                        _SCREENSHOT_HTML.render(
-                            handle=handle, image=image, url=self._base_url()
+                if self._context != focx._COLAB:
+                    # pylint: disable=undefined-variable
+                    display(
+                        Javascript(
+                            """
+                      console.log("CAPTURING");
+                      const senderChannel = new BroadcastChannel("%s");
+                      senderChannel.postMessage("%s");
+                    """
+                            % (handle, image)
                         )
                     )
-                )
+                else:
+                    self._handles[handle]["target"].update(
+                        HTML(
+                            _SCREENSHOT_HTML.render(
+                                handle=handle,
+                                image=image,
+                                url=self._base_url(),
+                            )
+                        )
+                    )
 
     def _base_url(self):
         if self._context == focx._COLAB:
@@ -662,7 +674,7 @@ class Session(foc.HasClient):
         handle = data["handle"]
         if handle in self._handles:
             source = self._handles[handle]
-            display(
+            _display(
                 source["target"],
                 handle,
                 self._port,
@@ -691,14 +703,14 @@ class Session(foc.HasClient):
 
         self._handles[uuid] = {"target": handle, "height": height}
 
-        display(handle, uuid, self._port, height=height)
+        _display(handle, uuid, self._port, height=height)
 
     def _update_state(self):
         # see fiftyone.core.client if you would like to understand this
         self.state = self.state
 
 
-def display(handle, uuid, port=None, height=None, update=False):
+def _display(handle, uuid, port=None, height=None, update=False):
     """Displays a running FiftyOne instance.
 
     Args:
@@ -732,72 +744,49 @@ def _display_colab(handle, uuid, port, height, update=False):
     """
     import IPython.display
 
-    shell = """
-        (async () => {
-            const url = new URL(await google.colab.kernel.proxyPort(%PORT%, {'cache': true}));
-            url.searchParams.set('fiftyoneColab', 'true');
-            url.searchParams.set('notebook', 'true');
-            url.searchParams.set('handleId', '%HANDLE%');
-            const iframe = document.createElement('iframe');
-            iframe.src = url;
-            iframe.setAttribute('width', '100%');
-            iframe.setAttribute('height', '%HEIGHT%');
-            iframe.setAttribute('frameborder', 0);
-            document.body.appendChild(iframe);
-        })();
-    """
-    replacements = [
-        ("%PORT%", "%d" % port),
-        ("%HANDLE%", uuid),
-        ("%HEIGHT%", "%d" % height),
-    ]
-    for (k, v) in replacements:
-        shell = shell.replace(k, v)
-    script = IPython.display.Javascript(shell)
-
-    handle.display(script)
-
-
-def _display_ipython(handle, uuid, port, height, update=False):
-    import IPython.display
-
     style_text = Template(_SCREENSHOT_STYLE).render(handle=uuid)
     div_text = Template(_SCREENSHOT_DIV).render(image="", handle=uuid)
     script_text = Template(_SCREENSHOT_SCRIPT).render(
         url="${baseUrl}", handle=uuid
     )
     shell = """
-        (async () => {
-            const styleText = "%STYLE%";
-            const divText = "%DIV%";
-            const baseURL = "http://localhost:5151/";
-            const url = new URL("http://localhost:5151/");
-            url.searchParams.set('fiftyoneColab', 'true');
-            url.searchParams.set('notebook', 'true');
-            url.searchParams.set('handleId', '%HANDLE%');
-            const iframe = document.createElement('iframe');
-            iframe.src = url;
-            iframe.setAttribute('width', '100%');
-            iframe.setAttribute('height', '%HEIGHT%');
-            iframe.setAttribute('frameborder', 0);
-            document.body.appendChild(iframe);
-            const poll = () => {
-              fetch(`${baseURL}capture`).then(response => reponse.json()).then((json) => {
-                if (json.src) {
-                   const img = new Image();
-                   img.src = json.src;
-                   img.style.height = '%HEIGHT%px';
-                   img.style.width = '100%';
-                   var tmp = document.createElement("div");
-                   tmp.innerHTML = divText;
-                   document.body.replaceChild(tmp.children[0], iframe);
-                   %SCRIPT%
-                } else {
-                   setTimeout(poll, 1000);
-              }).catch(() => ;
-            }
-            setTimeout(poll, 1000);
-        })();
+(async () => {
+    const styleText = `%STYLE%`;
+    const divText = `%DIV%`;
+    const baseURL = await google.colab.kernel.proxyPort(%PORT%, {'cache': true});
+    const url = new URL(baseURL);
+    const channel = new BroadcastChannel("%HANDLE%");
+    url.searchParams.set('fiftyoneColab', 'true');
+    url.searchParams.set('notebook', 'true');
+    url.searchParams.set('handleId', '%HANDLE%');
+    const iframe = document.createElement('iframe');
+    iframe.src = url;
+    iframe.setAttribute('width', '100%');
+    iframe.setAttribute('height', '%HEIGHT%');
+    iframe.setAttribute('frameborder', 0);
+    document.body.appendChild(iframe);
+    listenerChannel.onmessage = (src) => {
+        const style = document.createElement("style");
+        style.appendChild(document.createTextNode(styleText));
+        document.head.appendChild(style);
+        const img = new Image();
+        img.src = json.src;
+        img.style.height = '%HEIGHT%px';
+        img.style.width = '100%';
+        const tmp = document.createElement("div");
+        tmp.innerHTML = divText;
+        const div = tmp.children[0];
+        div.replaceChild(img, div.children[0]);
+        document.body.replaceChild(div, iframe);
+        const button = document.getElementById("foactivate-%HANDLE%");
+        const container = document.getElementById("focontainer-%HANDLE%");
+        button.addEventListener("click", () => {
+            document.body.replaceChild(iframe, div);
+        });
+        container.addEventListener("mouseenter", () => button.style.display = "block");
+        container.addEventListener("mouseleave", () => button.style.display = "none");
+    }
+})();
     """
     replacements = [
         ("%PORT%", "%d" % port),
@@ -812,7 +801,10 @@ def _display_ipython(handle, uuid, port, height, update=False):
     script = IPython.display.Javascript(shell)
 
     handle.display(script)
-    return
+
+
+def _display_ipython(handle, uuid, port, height, update=False):
+    import IPython.display
 
     src = "http://localhost:%d/?notebook=true&handleId=%s&" % (port, uuid)
     iframe = IPython.display.IFrame(src, height=height, width="100%")
