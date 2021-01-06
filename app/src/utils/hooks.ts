@@ -239,7 +239,7 @@ export const useScreenshot = () => {
     const images = document.body.querySelectorAll("img");
     const promises = [];
     images.forEach((img) => {
-      img.classList.contains("fo-captured") &&
+      !img.classList.contains("fo-captured") &&
         promises.push(
           fetch(img.src)
             .then((response) => response.blob())

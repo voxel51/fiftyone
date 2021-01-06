@@ -715,18 +715,28 @@ _SCREENSHOT_STYLE = """
   border-radius: 3px;
   text-align: center;
   padding: 0.5em;
-  display: none;
   color: rgb(255, 255, 255);
   font-family: "Palanquin", sans-serif;
   position: absolute;
-  right: 1em;
-  bottom: 1em;
+  left: 50%;
+  top: 50%;
+  width: 80px;
+  margin-left: -40px;
+  margin-top: -23.5px;
   background: hsl(210,11%,15%);
   border: 1px solid hsl(27, 95%, 49%);
-  position: absolute:
 }
 #foactivate-{{ handle }}:focus {
   outline: none;
+}
+#fooverlay-{{ handle }} {
+  width: 100%;
+  height: 100%;
+  background: hsla(208, 7%, 46%, 0.7);
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: none;
 }
 """
 
@@ -734,20 +744,23 @@ _SCREENSHOT_SCRIPT = """
    (function() {
      var button = document.getElementById("foactivate-{{ handle }}");
      var container = document.getElementById("focontainer-{{ handle }}");
+     var overlay = document.getElementById("fooverlay-{{ handle }}");
      fetch(`{{ url }}fiftyone`)
      .then(() => {
         button.addEventListener("click", () => {
           fetch(`{{ url }}reactivate?handleId={{ handle }}`)
         });
-        container.addEventListener("mouseenter", () => button.style.display = "block");
-        container.addEventListener("mouseleave", () => button.style.display = "none");
+        container.addEventListener("mouseenter", () => overlay.style.display = "block");
+        container.addEventListener("mouseleave", () => overlay.style.display = "none");
      });
    })();
 """
 _SCREENSHOT_DIV = """
 <div id="focontainer-{{ handle }}">
+   <div id="fooverlay-{{ handle }}">
+      <button id="foactivate-{{ handle }}" >Activate</button>
+   </div>
    <img src='{{ image }}'/>
-   <button id="foactivate-{{ handle }}" >Activate</button>
 </div>
 """
 
@@ -792,13 +805,14 @@ _SCREENSHOT_COLAB = """
         const div = tmp.children[0];
         div.replaceChild(img, div.children[0]);
         document.body.replaceChild(div, iframe);
-        const button = document.getElementById(`foactivate-${handleId}`);
-        const container = document.getElementById(`focontainer-${handleId}`);
+        var button = document.getElementById(`foactivate-${handleId}`);
+        var container = document.getElementById(`focontainer-${handleId}`);
+        var overlay = document.getElementById(`fooverlay-${handleId}`);
         button.addEventListener("click", () => {
-            document.body.replaceChild(iframe, div);
+          document.body.replaceChild(iframe, div);
         });
-        container.addEventListener("mouseenter", () => button.style.display = "block");
-        container.addEventListener("mouseleave", () => button.style.display = "none");
+        container.addEventListener("mouseenter", () => overlay.style.display = "block");
+        container.addEventListener("mouseleave", () => overlay.style.display = "none");
     });
 })();
 """
