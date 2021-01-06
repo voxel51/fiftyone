@@ -1998,11 +1998,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow<2", "tf_slim"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu<2", "tf_slim"]
                 }
             },
             "tags": ["classification", "embeddings", "imagenet", "tf1"],
@@ -2034,13 +2034,14 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow<2", "tf_slim"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu<2", "tf_slim"]
                 }
             },
+
             "tags": ["classification", "embeddings", "imagenet", "tf1"],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2206,11 +2207,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow<2, tf_slim"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu<2, tf_slim"]
                 }
             },
             "tags": ["classification", "embeddings", "imagenet", "tf1"],
@@ -2242,11 +2243,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow<2", "tf_slim"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu<2", "tf_slim"]
                 }
             },
             "tags": ["classification", "embeddings", "imagenet", "tf1"],
@@ -2278,11 +2279,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow<2", "tf_slim"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu<2", "tf_slim"]
                 }
             },
             "tags": ["classification", "embeddings", "imagenet", "tf1"],
