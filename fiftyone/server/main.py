@@ -119,6 +119,19 @@ class ReactivateHandler(RequestHandler):
         return {}
 
 
+class CaptureHandler(RequestHandler):
+    """Polling endpoint for initiating receiving screenshot capture for Colab
+    notebooks.
+    """
+
+    @staticmethod
+    def get_response(handle_id):
+        if handle_id in PollingHandler.screenshots:
+            src = PollingHandler.screenshots.pop(handle_id)
+            return {"src": src}
+        return {}
+
+
 class StagesHandler(RequestHandler):
     """Returns the definitions of stages available to the App"""
 
@@ -174,6 +187,7 @@ _deactivated_clients = set()
 class PollingHandler(tornado.web.RequestHandler):
 
     clients = defaultdict(set)
+    screenshots = {}
 
     def set_default_headers(self, *args, **kwargs):
         self.set_header("Access-Control-Allow-Origin", "*")
@@ -218,7 +232,8 @@ class PollingHandler(tornado.web.RequestHandler):
             if event in {"distributions", "page", "get_video_data"}:
                 caller = self
             elif event == "capture":
-                caller = client
+                PollingHandler.screenshots[message["handle"]] = message["src"]
+                return
             else:
                 caller = StateHandler
 

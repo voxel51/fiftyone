@@ -173,9 +173,7 @@ def _update_state(func):
     return wrapper
 
 
-_SCREENSHOT_HTML = Template(
-    """
-<style>
+_SCREENSHOT_STYLE = """
 @import url("https://fonts.googleapis.com/css2?family=Palanquin&display=swap");
 
 #focontainer-{{ handle }} {
@@ -201,26 +199,36 @@ _SCREENSHOT_HTML = Template(
 #foactivate-{{ handle }}:focus {
   outline: none;
 }
-</style>
-<div id="focontainer-{{ handle }}">
-   <img src='{{ image }}'/>
-   <button id="foactivate-{{ handle }}" >Activate</button>
-</div>
-<script type="text/javascript">
+"""
+
+_SCREENSHOT_SCRIPT = """
    (function() {
      var button = document.getElementById("foactivate-{{ handle }}");
      var container = document.getElementById("focontainer-{{ handle }}");
-     fetch("{{ url }}fiftyone")
+     fetch(`{{ url }}fiftyone`)
      .then(() => {
         button.addEventListener("click", () => {
-          fetch("{{ url }}reactivate?handleId={{ handle }}")
+          fetch(`{{ url }}reactivate?handleId={{ handle }}`)
         });
         container.addEventListener("mouseenter", () => button.style.display = "block");
         container.addEventListener("mouseleave", () => button.style.display = "none");
      });
    })();
-</script>
 """
+_SCREENSHOT_DIV = """
+<div id="focontainer-{{ handle }}">
+   <img src='{{ image }}'/>
+   <button id="foactivate-{{ handle }}" >Activate</button>
+</div>
+"""
+
+_SCREENSHOT_HTML = Template(
+    """
+<style>%s</style>
+%s
+<script type="text/javascript">%s</script>
+"""
+    % (_SCREENSHOT_STYLE, _SCREENSHOT_DIV, _SCREENSHOT_SCRIPT)
 )
 
 
@@ -625,6 +633,9 @@ class Session(foc.HasClient):
     def _capture(self, data):
         from IPython.display import HTML
 
+        if self._context != focx._IPYTHON:
+            return
+
         for handle, image in data.items():
 
             if handle in self._handles:
@@ -749,6 +760,59 @@ def _display_colab(handle, uuid, port, height, update=False):
 
 def _display_ipython(handle, uuid, port, height, update=False):
     import IPython.display
+
+    style_text = Template(_SCREENSHOT_STYLE).render(handle=uuid)
+    div_text = Template(_SCREENSHOT_DIV).render(image="", handle=uuid)
+    script_text = Template(_SCREENSHOT_SCRIPT).render(
+        url="${baseUrl}", handle=uuid
+    )
+    shell = """
+        (async () => {
+            const styleText = "%STYLE%";
+            const divText = "%DIV%";
+            const baseURL = "http://localhost:5151/";
+            const url = new URL("http://localhost:5151/");
+            url.searchParams.set('fiftyoneColab', 'true');
+            url.searchParams.set('notebook', 'true');
+            url.searchParams.set('handleId', '%HANDLE%');
+            const iframe = document.createElement('iframe');
+            iframe.src = url;
+            iframe.setAttribute('width', '100%');
+            iframe.setAttribute('height', '%HEIGHT%');
+            iframe.setAttribute('frameborder', 0);
+            document.body.appendChild(iframe);
+            const poll = () => {
+              fetch(`${baseURL}capture`).then(response => reponse.json()).then((json) => {
+                if (json.src) {
+                   const img = new Image();
+                   img.src = json.src;
+                   img.style.height = '%HEIGHT%px';
+                   img.style.width = '100%';
+                   var tmp = document.createElement("div");
+                   tmp.innerHTML = divText;
+                   document.body.replaceChild(tmp.children[0], iframe);
+                   %SCRIPT%
+                } else {
+                   setTimeout(poll, 1000);
+              }).catch(() => ;
+            }
+            setTimeout(poll, 1000);
+        })();
+    """
+    replacements = [
+        ("%PORT%", "%d" % port),
+        ("%HANDLE%", uuid),
+        ("%HEIGHT%", "%d" % height),
+        ("%STYLE%", style_text),
+        ("%DIV%", div_text),
+        ("%SCRIPT%", script_text),
+    ]
+    for (k, v) in replacements:
+        shell = shell.replace(k, v)
+    script = IPython.display.Javascript(shell)
+
+    handle.display(script)
+    return
 
     src = "http://localhost:%d/?notebook=true&handleId=%s&" % (port, uuid)
     iframe = IPython.display.IFrame(src, height=height, width="100%")
