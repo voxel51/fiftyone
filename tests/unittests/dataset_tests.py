@@ -116,6 +116,7 @@ class DatasetTests(unittest.TestCase):
 
     @drop_datasets
     def test_merge_samples1(self):
+        # Windows compatibility
         def expand_path(path):
             return os.path.abspath(os.path.expanduser(path))
 
