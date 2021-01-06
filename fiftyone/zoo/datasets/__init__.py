@@ -216,6 +216,7 @@ def load_zoo_dataset(
             )
             return fo.load_dataset(dataset_name)
 
+        logger.info("Deleting existing dataset '%s'", dataset_name)
         fo.delete_dataset(dataset_name)
 
     if splits is None and zoo_dataset.has_splits:
@@ -238,6 +239,8 @@ def load_zoo_dataset(
     if info.classes is not None:
         dataset.info["classes"] = info.classes
         dataset.save()
+
+    logger.info("Dataset '%s' created", dataset.name)
 
     return dataset
 

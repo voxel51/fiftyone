@@ -1654,9 +1654,7 @@ class DatasetZooLoadCommand(Command):
             dataset_dir=dataset_dir,
             **kwargs
         )
-
         dataset.persistent = True
-        print("Dataset '%s' created" % dataset.name)
 
 
 class DatasetZooDeleteCommand(Command):
