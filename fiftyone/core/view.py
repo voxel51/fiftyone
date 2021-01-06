@@ -252,6 +252,12 @@ class DatasetView(foc.SampleCollection):
     def create_index(self, field, unique=False):
         """Creates an index on the given field.
 
+        If the given field already has a unique index, it will be retained
+        regardless of the ``unique`` value you specify.
+
+        If the given field already has a non-unique index but you requested a
+        unique index, the existing index will be dropped.
+
         Indexes enable efficient sorting, merging, and other such operations.
 
         Args:
@@ -261,7 +267,7 @@ class DatasetView(foc.SampleCollection):
         self._dataset.create_index(field, unique=unique)
 
     def drop_index(self, field):
-        """Drops the index on the given field, if one exists.
+        """Drops the index on the given field.
 
         Args:
             field: the field name

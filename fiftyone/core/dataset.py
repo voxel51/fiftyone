@@ -2092,11 +2092,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a list of field names
         """
         index_info = self._sample_collection.index_information()
-        index_fields = [k["key"][0][0] for k in index_info.values()]
+        index_fields = [v["key"][0][0] for v in index_info.values()]
         return [f for f in index_fields if not f.startswith("_")]
 
     def create_index(self, field, unique=False):
         """Creates an index on the given field.
+
+        If the given field already has a unique index, it will be retained
+        regardless of the ``unique`` value you specify.
+
+        If the given field already has a non-unique index but you requested a
+        unique index, the existing index will be dropped.
 
         Indexes enable efficient sorting, merging, and other such operations.
 
@@ -2106,6 +2112,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         if field not in self.get_field_schema():
             raise ValueError("Dataset has no field '%s'" % field)
+
+        index_info = self._sample_collection.index_information()
+        index_map = {
+            v["key"][0][0]: v.get("unique", False) for v in index_info.values()
+        }
+        if field in index_map:
+            _unique = index_map[field]
+            if _unique or (unique == _unique):
+                # Satisfactory index already exists
+                return
+
+            # Must drop existing index
+            self.drop_index(field)
 
         self._sample_collection.create_index(field, unique=unique)
 
