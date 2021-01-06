@@ -549,7 +549,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         for client, events in PollingHandler.clients.items():
             if client in _notebook_clients:
                 uuid = _notebook_clients[client]
-                if active_handle and uuid != active_handle:
+                if uuid != active_handle:
                     events.clear()
                     _deactivated_clients.add(uuid)
                     events.add("deactivate")
@@ -730,11 +730,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         for client in cls.clients:
             if client in _notebook_clients:
                 uuid = _notebook_clients[client]
-                if (
-                    active_handle
-                    and uuid != active_handle
-                    and uuid not in _deactivated_clients
-                ):
+                if uuid != active_handle and uuid not in _deactivated_clients:
                     _deactivated_clients.add(uuid)
                     client.write_message({"type": "deactivate"})
                     continue
