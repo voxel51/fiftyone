@@ -711,7 +711,7 @@ _SCREENSHOT_STYLE = """
 #foactivate-{{ handle }} {
   font-weight: bold;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 24px;
   border-radius: 3px;
   text-align: center;
   padding: 0.5em;
@@ -720,9 +720,9 @@ _SCREENSHOT_STYLE = """
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 80px;
+  width: 120px;
   margin-left: -40px;
-  margin-top: -23.5px;
+  margin-top: -28px;
   background: hsl(210,11%,15%);
   border: 1px solid hsl(27, 95%, 49%);
 }
@@ -737,17 +737,17 @@ _SCREENSHOT_STYLE = """
   top: 0;
   left: 0;
   display: none;
+  cursor: pointer;
 }
 """
 
 _SCREENSHOT_SCRIPT = """
    (function() {
-     var button = document.getElementById("foactivate-{{ handle }}");
      var container = document.getElementById("focontainer-{{ handle }}");
      var overlay = document.getElementById("fooverlay-{{ handle }}");
      fetch(`{{ url }}fiftyone`)
      .then(() => {
-        button.addEventListener("click", () => {
+        overlay.addEventListener("click", () => {
           fetch(`{{ url }}reactivate?handleId={{ handle }}`)
         });
         container.addEventListener("mouseenter", () => overlay.style.display = "block");
@@ -803,12 +803,11 @@ _SCREENSHOT_COLAB = """
         const tmp = document.createElement("div");
         tmp.innerHTML = divText;
         const div = tmp.children[0];
-        div.replaceChild(img, div.children[0]);
+        div.replaceChild(img, div.children[1]);
         document.body.replaceChild(div, iframe);
-        var button = document.getElementById(`foactivate-${handleId}`);
         var container = document.getElementById(`focontainer-${handleId}`);
         var overlay = document.getElementById(`fooverlay-${handleId}`);
-        button.addEventListener("click", () => {
+        overlay.addEventListener("click", () => {
           document.body.replaceChild(iframe, div);
         });
         container.addEventListener("mouseenter", () => overlay.style.display = "block");

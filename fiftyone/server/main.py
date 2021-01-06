@@ -37,7 +37,6 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 from fiftyone.core.service import DatabaseService
-from fiftyone.core.session import _SCREENSHOT_HTML
 from fiftyone.core.stages import _STAGES
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
@@ -231,7 +230,12 @@ class PollingHandler(tornado.web.RequestHandler):
                 if message["notebook"]:
                     message["ignore"] = client
                     global _notebook_clients
+                    global _deactivated_clients
+                    StateHandler.state["active_handle"] = message["handle"]
+                    _deactivated_clients.discard(client)
                     _notebook_clients[client] = message["handle"]
+                    event == "update"
+                    message = {"state": StateHandler.state}
 
             if event in {"distributions", "page", "get_video_data"}:
                 caller = self
@@ -260,10 +264,7 @@ class PollingHandler(tornado.web.RequestHandler):
             self.write_message({"type": "update", "state": StateHandler.state})
 
         elif event == "deactivate":
-            html = _SCREENSHOT_HTML.render(
-                handle="handle-id", image="img-data-src", url="/"
-            )
-            self.write_message({"type": "deactivate", "html": html})
+            self.write_message({"type": "deactivate"})
 
         elif event == "statistics":
             state = fos.StateDescription.from_dict(StateHandler.state)
