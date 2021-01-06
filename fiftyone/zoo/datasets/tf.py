@@ -362,10 +362,11 @@ class ImageNet2012Dataset(TFDSDataset):
         # The path to the source files that you manually downloaded
         SOURCE_DIR = "/path/to/dir-with-imagenet-files"
 
-        # Parse the manually downloaded files
-        foz.download_zoo_dataset("imagenet-2012", source_dir=SOURCE_DIR)
-
-        dataset = foz.load_zoo_dataset("imagenet-2012", split="validation")
+        dataset = foz.load_zoo_dataset(
+            "imagenet-2012",
+            split="validation",
+            source_dir=SOURCE_DIR,
+        )
 
         session = fo.launch_app(dataset)
 
@@ -394,6 +395,10 @@ class ImageNet2012Dataset(TFDSDataset):
     @property
     def supported_splits(self):
         return ("train", "validation")
+
+    @property
+    def requires_manual_download(self):
+        return True
 
     def _download_and_prepare(self, dataset_dir, _, split):
         # Ensure that the source files have been manually downloaded

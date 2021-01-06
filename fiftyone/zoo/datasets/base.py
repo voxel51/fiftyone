@@ -51,7 +51,7 @@ class QuickstartDataset(FiftyOneDataset):
         session = fo.launch_app(dataset)
 
     Dataset size
-        23.4 MB
+        23.40 MB
     """
 
     _GDRIVE_ID = "1UWTlFmdq8H-wdJHxVsAKpXBilY1CWwm_"
@@ -100,7 +100,7 @@ class VideoQuickstartDataset(FiftyOneDataset):
         session = fo.launch_app(dataset)
 
     Dataset size
-        35.2 MB
+        35.20 MB
     """
 
     _GDRIVE_ID = "1O-WMjtiBBMXGEHnnus6y2nSlJu8pY5vo"
@@ -139,9 +139,7 @@ class ImageNetSampleDataset(FiftyOneDataset):
     The dataset contains 1,000 images, one randomly chosen from each class of
     the validation split of the ImageNet 2012 dataset.
 
-    These images are provided according to the terms below.
-
-    Terms::
+    These images are provided according to the terms below::
 
         You have been granted access for non-commercial research/educational
         use. By accessing the data, you have agreed to the following terms.
@@ -377,7 +375,7 @@ class LabeledFacesInTheWildDataset(FiftyOneDataset):
         session = fo.launch_app(dataset)
 
     Dataset size
-        173 MB
+        173.00 MB
 
     Source
         http://vis-www.cs.umass.edu/lfw
@@ -456,15 +454,16 @@ class CityscapesDataset(FiftyOneDataset):
         # The path to the source files that you manually downloaded
         SOURCE_DIR = "/path/to/dir-with-cityscapes-files"
 
-        # Parse the manually downloaded files
-        foz.download_zoo_dataset("cityscapes", source_dir=)
-
-        dataset = foz.load_zoo_dataset("cityscapes", split="validation")
+        dataset = foz.load_zoo_dataset(
+            "cityscapes",
+            split="validation",
+            source_dir=SOURCE_DIR,
+        )
 
         session = fo.launch_app(dataset)
 
     Dataset size
-        11.8 GB
+        11.80 GB
 
     Source
         https://www.cityscapes-dataset.com
@@ -503,6 +502,10 @@ class CityscapesDataset(FiftyOneDataset):
     @property
     def supported_splits(self):
         return ("train", "validation", "test")
+
+    @property
+    def requires_manual_download(self):
+        return True
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         #
@@ -575,15 +578,16 @@ class BDD100KDataset(FiftyOneDataset):
         # The path to the source files that you manually downloaded
         SOURCE_DIR = "/path/to/dir-with-bdd100k-files"
 
-        # Parse the manually downloaded files
-        foz.download_zoo_dataset("bdd100k", source_dir=SOURCE_DIR)
-
-        dataset = foz.load_zoo_dataset("bdd100k", split="validation")
+        dataset = foz.load_zoo_dataset(
+            "bdd100k",
+            split="validation",
+            source_dir=SOURCE_DIR,
+        )
 
         session = fo.launch_app(dataset)
 
     Dataset size
-        7.1GB
+        7.10 GB
 
     Source
         https://bdd-data.berkeley.edu
@@ -610,6 +614,10 @@ class BDD100KDataset(FiftyOneDataset):
     @property
     def supported_splits(self):
         return ("train", "validation", "test")
+
+    @property
+    def requires_manual_download(self):
+        return True
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         #
