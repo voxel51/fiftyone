@@ -646,7 +646,7 @@ training and validation sets are provided.
 .. _dataset-zoo-imagenet-sample:
 
 ImageNet Sample
---------------
+---------------
 
 A small sample of images from the ImageNet 2012 dataset.
 

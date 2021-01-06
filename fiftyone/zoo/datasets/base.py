@@ -139,7 +139,9 @@ class ImageNetSampleDataset(FiftyOneDataset):
     The dataset contains 1,000 images, one randomly chosen from each class of
     the validation split of the ImageNet 2012 dataset.
 
-    These images are provided according to the terms below::
+    These images are provided according to the terms below:
+
+    .. code-block:: text
 
         You have been granted access for non-commercial research/educational
         use. By accessing the data, you have agreed to the following terms.
