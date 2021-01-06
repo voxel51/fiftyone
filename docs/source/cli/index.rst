@@ -1024,6 +1024,7 @@ Download datasets from the FiftyOne Dataset Zoo.
 
     fiftyone zoo datasets download [-h] [-s SPLITS [SPLITS ...]]
                                    [-d DATASET_DIR]
+                                   [-k KEY=VAL [KEY=VAL ...]]
                                    NAME
 
 **Arguments**
@@ -1034,11 +1035,14 @@ Download datasets from the FiftyOne Dataset Zoo.
       NAME                  the name of the dataset
 
     optional arguments:
+
       -h, --help            show this help message and exit
       -s SPLITS [SPLITS ...], --splits SPLITS [SPLITS ...]
                             the dataset splits to download
       -d DATASET_DIR, --dataset-dir DATASET_DIR
                             a custom directory to which to download the dataset
+      -k KEY=VAL [KEY=VAL ...], --kwargs KEY=VAL [KEY=VAL ...]
+                            optional dataset-specific keyword argument(s)
 
 **Examples**
 
@@ -1057,6 +1061,12 @@ Download datasets from the FiftyOne Dataset Zoo.
     # Download the zoo dataset to a custom directory
     fiftyone zoo datasets download <name> --dataset-dir <dataset-dir>
 
+.. code-block:: shell
+
+    # Download a zoo dataset that requires extra keyword arguments
+    fiftyone zoo datasets download <name> \
+        --kwargs source_dir=/path/to/source/files
+
 .. _cli-fiftyone-zoo-datasets-load:
 
 Load zoo datasets
@@ -1070,6 +1080,7 @@ Load zoo datasets as persistent FiftyOne datasets.
                                [-n DATASET_NAME] [-d DATASET_DIR]
                                [--shuffle] [--seed SEED]
                                [--max-samples MAX_SAMPLES]
+                               [-k KEY=VAL [KEY=VAL ...]]
                                NAME
 
 **Arguments**
@@ -1084,13 +1095,15 @@ Load zoo datasets as persistent FiftyOne datasets.
       -s SPLITS [SPLITS ...], --splits SPLITS [SPLITS ...]
                             the dataset splits to load
       -n DATASET_NAME, --dataset-name DATASET_NAME
-                        a custom name to give the FiftyOne dataset
+                            a custom name to give the FiftyOne dataset
       -d DATASET_DIR, --dataset-dir DATASET_DIR
                             a custom directory in which the dataset is downloaded
       --shuffle             whether to randomly shuffle the order in which the samples are imported
       --seed SEED           a random seed to use when shuffling
       --max-samples MAX_SAMPLES
                             a maximum number of samples to import. By default, all samples are imported
+      -k KEY=VAL [KEY=VAL ...], --kwargs KEY=VAL [KEY=VAL ...]
+                            optional dataset-specific keyword argument(s)
 
 **Examples**
 
@@ -1118,6 +1131,12 @@ Load zoo datasets as persistent FiftyOne datasets.
 
     # Load a random subset of the zoo dataset
     fiftyone zoo datasets load <name> --shuffle --max-samples <max-samples>
+
+.. code-block:: shell
+
+    # Load a zoo dataset that requires custom keyword arguments
+    fiftyone zoo datasets load <name> \
+        --kwargs source_dir=/path/to/source_files
 
 .. _cli-fiftyone-zoo-datasets-delete:
 
@@ -1371,6 +1390,7 @@ Apply zoo models to datasets.
     fiftyone zoo models apply [-h] [-b BATCH_SIZE] [-t THRESH] [-i]
                               [--error-level LEVEL]
                               MODEL_NAME DATASET_NAME LABEL_FIELD
+
 **Arguments**
 
 .. code-block:: text

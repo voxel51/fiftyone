@@ -1512,6 +1512,10 @@ class DatasetZooDownloadCommand(Command):
 
         # Download the zoo dataset to a custom directory
         fiftyone zoo datasets download <name> --dataset-dir <dataset-dir>
+
+        # Download a zoo dataset that requires extra keyword arguments
+        fiftyone zoo datasets download <name> \\
+            --kwargs source_dir=/path/to/source/files
     """
 
     @staticmethod
@@ -1532,13 +1536,25 @@ class DatasetZooDownloadCommand(Command):
             metavar="DATASET_DIR",
             help="a custom directory to which to download the dataset",
         )
+        parser.add_argument(
+            "-k",
+            "--kwargs",
+            nargs="+",
+            metavar="KEY=VAL",
+            action=_StoreDictAction,
+            help="optional dataset-specific keyword argument(s)",
+        )
 
     @staticmethod
     def execute(parser, args):
         name = args.name
         splits = args.splits
         dataset_dir = args.dataset_dir
-        fozd.download_zoo_dataset(name, splits=splits, dataset_dir=dataset_dir)
+        kwargs = args.kwargs or {}
+
+        fozd.download_zoo_dataset(
+            name, splits=splits, dataset_dir=dataset_dir, **kwargs
+        )
 
 
 class DatasetZooLoadCommand(Command):
@@ -1560,6 +1576,10 @@ class DatasetZooLoadCommand(Command):
 
         # Load a random subset of the zoo dataset
         fiftyone zoo datasets load <name> --shuffle --max-samples <max-samples>
+
+        # Load a zoo dataset that requires custom keyword arguments
+        fiftyone zoo datasets load <name> \\
+            --kwargs source_dir=/path/to/source_files
     """
 
     @staticmethod
@@ -1609,6 +1629,14 @@ class DatasetZooLoadCommand(Command):
                 "samples are imported"
             ),
         )
+        parser.add_argument(
+            "-k",
+            "--kwargs",
+            nargs="+",
+            metavar="KEY=VAL",
+            action=_StoreDictAction,
+            help="optional dataset-specific keyword argument(s)",
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -1617,6 +1645,7 @@ class DatasetZooLoadCommand(Command):
         dataset_name = args.dataset_name
         dataset_dir = args.dataset_dir
         kwargs = _parse_dataset_import_kwargs(args)
+        kwargs.update(args.kwargs or {})
 
         dataset = fozd.load_zoo_dataset(
             name,
@@ -2181,6 +2210,20 @@ def _iter_subparsers(parser):
                 yield subparser
 
 
+def _parse_value(val):
+    try:
+        return int(val)
+    except ValueError:
+        pass
+
+    try:
+        return float(val)
+    except ValueError:
+        pass
+
+    return val
+
+
 class _RecursiveHelpAction(argparse._HelpAction):
     def __call__(self, parser, *args, **kwargs):
         self._recurse(parser)
@@ -2191,6 +2234,19 @@ class _RecursiveHelpAction(argparse._HelpAction):
         print("\n%s\n%s" % ("*" * 79, parser.format_help()))
         for subparser in _iter_subparsers(parser):
             _RecursiveHelpAction._recurse(subparser)
+
+
+class _StoreDictAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        kwargs = {}
+        if not isinstance(values, list):
+            values = [values]
+
+        for value in values:
+            key, val = value.split("=")
+            kwargs[key.replace("-", "_")] = _parse_value(val)
+
+        setattr(namespace, self.dest, kwargs)
 
 
 def _register_main_command(command, version=None, recursive_help=True):
