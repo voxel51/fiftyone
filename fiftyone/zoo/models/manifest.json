@@ -2454,6 +2454,42 @@
             "date_added": "2020-12-11 13:45:51"
         },
         {
+            "base_name": "centernet-hg105-512-coco",
+            "base_filename": "centernet_hg104_512x512_coco17_tpu-8/checkpoint/ckpt-0",
+            "version": null,
+            "description": "CenterNet architecture from the Objects as Points paper [https://arxiv.org/abs/1904.07850] with the hourglass backbone trained on COCO",
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "http://download.tensorflow.org/models/object_detection/tf2/20200713/centernet_hg104_512x512_coco17_tpu-8.tar.gz",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TF2ModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "pipeline_path": "{{eta}}/tensorflow/models/research/object_detection/configs/tf2/centernet_hourglass104_512x512_coco17_tpu-8"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu>=2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf2"],
+            "date_added": "2021-01-6 11:01:34"
+        },
+        {
             "base_name": "deeplabv3-cityscapes-tf",
             "base_filename": "deeplabv3-cityscapes.pb",
             "version": null,
