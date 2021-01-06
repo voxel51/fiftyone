@@ -120,22 +120,38 @@ detection, and segmentation labels.
 
 **Example usage**
 
-.. code-block:: python
-    :linenos:
+.. tabs::
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+  .. group-tab:: Python
 
-    # The path to the source files that you manually downloaded
-    SOURCE_DIR="/path/to/dir-with-bdd100k-files"
+    .. code-block:: python
+        :linenos:
 
-    dataset = foz.load_zoo_dataset(
-        "bdd100k",
-        split="validation",
-        source_dir=SOURCE_DIR,
-    )
+        import fiftyone as fo
+        import fiftyone.zoo as foz
 
-    session = fo.launch_app(dataset)
+        # The path to the source files that you manually downloaded
+        source_dir = "/path/to/dir-with-bdd100k-files"
+
+        dataset = foz.load_zoo_dataset(
+            "bdd100k",
+            split="validation",
+            source_dir=source_dir,
+        )
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        # The path to the source files that you manually downloaded
+        SOURCE_DIR="/path/to/dir-with-bdd100k-files"
+
+        fiftyone zoo datasets load bdd100k --split validation \
+            --kwargs "source_dir=${SOURCE_DIR}"
+
+        fiftyone app launch bdd100k-validation
 
 .. _dataset-zoo-caltech101:
 
@@ -167,15 +183,27 @@ pixels. This version contains image-level labels only.
 
 **Example usage**
 
-.. code-block:: python
-    :linenos:
+.. tabs::
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+  .. group-tab:: Python
 
-    dataset = foz.load_zoo_dataset("caltech101", split="test")
+    .. code-block:: python
+        :linenos:
 
-    session = fo.launch_app(dataset)
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("caltech101", split="test")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load caltech101 --split test
+
+        fiftyone app launch caltech101-test
 
 .. _dataset-zoo-cifar10:
 
@@ -207,15 +235,27 @@ images per class. There are 50,000 training images and 10,000 test images.
 
 **Example usage**
 
-.. code-block:: python
-    :linenos:
+.. tabs::
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+  .. group-tab:: Python
 
-    dataset = foz.load_zoo_dataset("cifar10", split="test")
+    .. code-block:: python
+        :linenos:
 
-    session = fo.launch_app(dataset)
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("cifar10", split="test")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load cifar10 --split test
+
+        fiftyone app launch cifar10-test
 
 .. _dataset-zoo-cifar100:
 
@@ -248,15 +288,27 @@ images.
 
 **Example usage**
 
-.. code-block:: python
-    :linenos:
+.. tabs::
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+  .. group-tab:: Python
 
-    dataset = foz.load_zoo_dataset("cifar100", split="test")
+    .. code-block:: python
+        :linenos:
 
-    session = fo.launch_app(dataset)
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("cifar100", split="test")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load cifar100 --split test
+
+        fiftyone app launch cifar100-test
 
 .. _dataset-zoo-cityscapes:
 
@@ -304,22 +356,38 @@ The dataset is intended for:
 
 **Example usage**
 
-.. code-block:: python
-    :linenos:
+.. tabs::
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+  .. group-tab:: Python
 
-    # The path to the source files that you manually downloaded
-    SOURCE_DIR="/path/to/dir-with-cityscapes-files"
+    .. code-block:: python
+        :linenos:
 
-    dataset = foz.load_zoo_dataset(
-        "cityscapes",
-        split="validation",
-        source_dir=SOURCE_DIR,
-    )
+        import fiftyone as fo
+        import fiftyone.zoo as foz
 
-    session = fo.launch_app(dataset)
+        # The path to the source files that you manually downloaded
+        source_dir = "/path/to/dir-with-cityscapes-files"
+
+        dataset = foz.load_zoo_dataset(
+            "cityscapes",
+            split="validation",
+            source_dir=source_dir,
+        )
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        # The path to the source files that you manually downloaded
+        SOURCE_DIR="/path/to/dir-with-cityscapes-files"
+
+        fiftyone zoo datasets load cityscapes --split validation \
+            --kwargs "source_dir=${SOURCE_DIR}"
+
+        fiftyone app launch cityscapes-validation
 
 .. _dataset-zoo-coco-2014:
 
@@ -360,15 +428,27 @@ Notes:
 
 **Example usage**
 
-.. code-block:: python
-    :linenos:
+.. tabs::
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+  .. group-tab:: Python
 
-    dataset = foz.load_zoo_dataset("coco-2014", split="validation")
+    .. code-block:: python
+        :linenos:
 
-    session = fo.launch_app(dataset)
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("coco-2014", split="validation")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load coco-2014 --split validation
+
+        fiftyone app launch coco-2014-validation
 
 .. _dataset-zoo-coco-2014-segmentation:
 
@@ -401,15 +481,27 @@ Notes:
 
 **Example usage**
 
-.. code-block:: python
-    :linenos:
+.. tabs::
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+  .. group-tab:: Python
 
-    dataset = foz.load_zoo_dataset("coco-2014-segmentation", split="validation")
+    .. code-block:: python
+        :linenos:
 
-    session = fo.launch_app(dataset)
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("coco-2014-segmentation", split="validation")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load coco-2014-segmentation --split validation
+
+        fiftyone app launch coco-2014-segmentation-validation
 
 .. _dataset-zoo-coco-2017:
 
@@ -450,15 +542,27 @@ Notes:
 
 **Example usage**
 
-.. code-block:: python
-    :linenos:
+.. tabs::
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+  .. group-tab:: Python
 
-    dataset = foz.load_zoo_dataset("coco-2017", split="validation")
+    .. code-block:: python
+        :linenos:
 
-    session = fo.launch_app(dataset)
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("coco-2017", split="validation")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load coco-2017 --split validation
+
+        fiftyone app launch coco-2017-validation
 
 .. _dataset-zoo-coco-2017-segmentation:
 
@@ -491,15 +595,27 @@ Notes:
 
 **Example usage**
 
-.. code-block:: python
-    :linenos:
+.. tabs::
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+  .. group-tab:: Python
 
-    dataset = foz.load_zoo_dataset("coco-2017-segmentation", split="validation")
+    .. code-block:: python
+        :linenos:
 
-    session = fo.launch_app(dataset)
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("coco-2017-segmentation", split="validation")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load coco-2017-segmentation --split validation
+
+        fiftyone app launch coco-2017-segmentation-validation
 
 .. _dataset-zoo-fashion-mnist:
 
@@ -531,15 +647,27 @@ There are 60,000 training images and 10,000 test images.
 
 **Example usage**
 
-.. code-block:: python
-    :linenos:
+.. tabs::
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+  .. group-tab:: Python
 
-    dataset = foz.load_zoo_dataset("fashion-mnist", split="test")
+    .. code-block:: python
+        :linenos:
 
-    session = fo.launch_app(dataset)
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("fashion-mnist", split="test")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load fashion-mnist --split test
+
+        fiftyone app launch fashion-mnist-test
 
 .. _dataset-zoo-hmdb51:
 
@@ -561,15 +689,27 @@ clips distributed across 51 action classes.
 
 **Example usage**
 
-.. code-block:: python
-    :linenos:
+.. tabs::
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+  .. group-tab:: Python
 
-    dataset = foz.load_zoo_dataset("hmdb51", split="test")
+    .. code-block:: python
+        :linenos:
 
-    session = fo.launch_app(dataset)
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("hmdb51", split="test")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load hmdb51 --split test
+
+        fiftyone app launch hmdb51-test
 
 .. _dataset-zoo-imagenet-2012:
 
@@ -626,22 +766,38 @@ training and validation sets are provided.
 
 **Example usage**
 
-.. code-block:: python
-    :linenos:
+.. tabs::
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+  .. group-tab:: Python
 
-    # The path to the source files that you manually downloaded
-    SOURCE_DIR = "/path/to/dir-with-imagenet-files"
+    .. code-block:: python
+        :linenos:
 
-    dataset = foz.load_zoo_dataset(
-        "imagenet-2012",
-        split="validation",
-        source_dir=SOURCE_DIR,
-    )
+        import fiftyone as fo
+        import fiftyone.zoo as foz
 
-    session = fo.launch_app(dataset)
+        # The path to the source files that you manually downloaded
+        source_dir = "/path/to/dir-with-imagenet-files"
+
+        dataset = foz.load_zoo_dataset(
+            "imagenet-2012",
+            split="validation",
+            source_dir=source_dir,
+        )
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        # The path to the source files that you manually downloaded
+        SOURCE_DIR="/path/to/dir-with-imagenet-files"
+
+        fiftyone zoo datasets load imagenet-2012 --split validation \
+            --kwargs "source_dir=${SOURCE_DIR}"
+
+        fiftyone app launch imagenet-2012-validation
 
 .. _dataset-zoo-imagenet-sample:
 
@@ -703,15 +859,27 @@ These images are provided according to the terms below.
 
 **Example usage**
 
-.. code-block:: python
-    :linenos:
+.. tabs::
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+  .. group-tab:: Python
 
-    dataset = foz.load_zoo_dataset("imagenet-sample")
+    .. code-block:: python
+        :linenos:
 
-    session = fo.launch_app(dataset)
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("imagenet-sample")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load imagenet-sample
+
+        fiftyone app launch imagenet-sample
 
 .. _dataset-zoo-kitti:
 
@@ -745,15 +913,27 @@ on the KITTI homepage.
 
 **Example usage**
 
-.. code-block:: python
-    :linenos:
+.. tabs::
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+  .. group-tab:: Python
 
-    dataset = foz.load_zoo_dataset("kitti", split="validation")
+    .. code-block:: python
+        :linenos:
 
-    session = fo.launch_app(dataset)
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("kitti", split="validation")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load kitti --split validation
+
+        fiftyone app launch kitti-validation
 
 .. _dataset-zoo-lfw:
 
@@ -781,15 +961,27 @@ Viola-Jones face detector.
 
 **Example usage**
 
-.. code-block:: python
-    :linenos:
+.. tabs::
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+  .. group-tab:: Python
 
-    dataset = foz.load_zoo_dataset("lfw", split="test")
+    .. code-block:: python
+        :linenos:
 
-    session = fo.launch_app(dataset)
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("lfw", split="test")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load lfw --split test
+
+        fiftyone app launch lfw-test
 
 .. _dataset-zoo-mnist:
 
@@ -821,15 +1013,27 @@ There are 60,000 training images and 10,000 test images.
 
 **Example usage**
 
-.. code-block:: python
-    :linenos:
+.. tabs::
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+  .. group-tab:: Python
 
-    dataset = foz.load_zoo_dataset("mnist", split="test")
+    .. code-block:: python
+        :linenos:
 
-    session = fo.launch_app(dataset)
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("mnist", split="test")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load mnist --split test
+
+        fiftyone app launch mnist-test
 
 .. _dataset-zoo-quickstart:
 
@@ -854,15 +1058,27 @@ from
 
 **Example usage**
 
-.. code-block:: python
-    :linenos:
+.. tabs::
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+  .. group-tab:: Python
 
-    dataset = foz.load_zoo_dataset("quickstart")
+    .. code-block:: python
+        :linenos:
 
-    session = fo.launch_app(dataset)
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load quickstart
+
+        fiftyone app launch quickstart
 
 .. _dataset-zoo-quickstart-video:
 
@@ -885,15 +1101,27 @@ generated by human annotators.
 
 **Example usage**
 
-.. code-block:: python
-    :linenos:
+.. tabs::
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+  .. group-tab:: Python
 
-    dataset = foz.load_zoo_dataset("quickstart-video")
+    .. code-block:: python
+        :linenos:
 
-    session = fo.launch_app(dataset)
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart-video")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load quickstart-video
+
+        fiftyone app launch quickstart-video
 
 .. _dataset-zoo-ucf101:
 
@@ -930,15 +1158,27 @@ viewpoint, etc.
 
 **Example usage**
 
-.. code-block:: python
-    :linenos:
+.. tabs::
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+  .. group-tab:: Python
 
-    dataset = foz.load_zoo_dataset("ucf101", split="test")
+    .. code-block:: python
+        :linenos:
 
-    session = fo.launch_app(dataset)
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("ucf101", split="test")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load ucf101 --split test
+
+        fiftyone app launch ucf101-test
 
 .. _dataset-zoo-voc-2007:
 
@@ -980,15 +1220,27 @@ contain annotations.
 
 **Example usage**
 
-.. code-block:: python
-    :linenos:
+.. tabs::
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+  .. group-tab:: Python
 
-    dataset = foz.load_zoo_dataset("voc-2007", split="validation")
+    .. code-block:: python
+        :linenos:
 
-    session = fo.launch_app(dataset)
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("voc-2007", split="validation")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load voc-2007 --split validation
+
+        fiftyone app launch voc-2007-validation
 
 .. _dataset-zoo-voc-2012:
 
@@ -1029,12 +1281,24 @@ contain annotations.
 
 **Example usage**
 
-.. code-block:: python
-    :linenos:
+.. tabs::
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+  .. group-tab:: Python
 
-    dataset = foz.load_zoo_dataset("voc-2012", split="validation")
+    .. code-block:: python
+        :linenos:
 
-    session = fo.launch_app(dataset)
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("voc-2012", split="validation")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load voc-2012 --split validation
+
+        fiftyone app launch voc-2012-validation

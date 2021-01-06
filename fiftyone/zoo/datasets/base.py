@@ -454,12 +454,12 @@ class CityscapesDataset(FiftyOneDataset):
         import fiftyone.zoo as foz
 
         # The path to the source files that you manually downloaded
-        SOURCE_DIR = "/path/to/dir-with-cityscapes-files"
+        source_dir = "/path/to/dir-with-cityscapes-files"
 
         dataset = foz.load_zoo_dataset(
             "cityscapes",
             split="validation",
-            source_dir=SOURCE_DIR,
+            source_dir=source_dir,
         )
 
         session = fo.launch_app(dataset)
@@ -578,12 +578,12 @@ class BDD100KDataset(FiftyOneDataset):
         import fiftyone.zoo as foz
 
         # The path to the source files that you manually downloaded
-        SOURCE_DIR = "/path/to/dir-with-bdd100k-files"
+        source_dir = "/path/to/dir-with-bdd100k-files"
 
         dataset = foz.load_zoo_dataset(
             "bdd100k",
             split="validation",
-            source_dir=SOURCE_DIR,
+            source_dir=source_dir,
         )
 
         session = fo.launch_app(dataset)
