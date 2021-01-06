@@ -19,7 +19,10 @@ export const closeFeedback = atom({
 
 export const feedbackSubmitted = atom({
   key: "feedbackSubmitted",
-  default: false,
+  default: {
+    submitted: false,
+    minimized: false,
+  },
 });
 
 export const refresh = atom({

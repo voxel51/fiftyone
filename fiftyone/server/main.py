@@ -23,6 +23,7 @@ import tornado.web
 import tornado.websocket
 
 import eta.core.labels as etal
+import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
 
@@ -70,8 +71,7 @@ class RequestHandler(tornado.web.RequestHandler):
     async def get(self):
         self.write(self.get_response())
 
-    @staticmethod
-    def get_response():
+    def get_response(self):
         """Returns the serializable response
 
         Returns:
@@ -91,10 +91,16 @@ class FiftyOneHandler(RequestHandler):
             dict
         """
         uid, first_import = _get_user_id()
+        isfile = os.path.isfile(foc.FEEDBACK_PATH)
+        if isfile:
+            submitted = etas.load_json(foc.FEEDBACK_PATH)["submitted"]
+        else:
+            submitted = False
         return {
             "version": foc.VERSION,
             "user_id": uid,
             "do_not_track": fo.config.do_not_track,
+            "feedback": {"submitted": submitted, "minimized": isfile},
             "dev_install": foc.DEV_INSTALL or foc.RC_INSTALL,
         }
 
@@ -115,6 +121,14 @@ class StagesHandler(RequestHandler):
                 for stage in _STAGES
             ]
         }
+
+
+class FeedbackHandler(RequestHandler):
+    """Returns whether the feedback button should be minimized"""
+
+    def post(self):
+        submitted = self.get_argument("submitted", False)
+        etas.write_json({"submitted": submitted}, foc.FEEDBACK_PATH)
 
 
 def _catch_errors(func):
@@ -980,6 +994,7 @@ class Application(tornado.web.Application):
         handlers = [
             (r"/fiftyone", FiftyOneHandler),
             (r"/polling", PollingHandler),
+            (r"/feedback", FeedbackHandler),
             (r"/filepath/(.*)", FileHandler, {"path": static_path},),
             (r"/stages", StagesHandler),
             (r"/state", StateHandler),
