@@ -24,18 +24,18 @@ except ImportError:
 
 
 MONGODB_DOWNLOAD_URLS = {
-    "linux": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.2.6.tgz",
-    "mac": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.2.6.tgz",
-    "win": "https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2012plus-4.2.6.zip",
-    "ubuntu1604": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.2.6.tgz",
-    "debian9": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian92-4.2.6.tgz",
+    "linux": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.4.2.tgz",
+    "mac": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.4.2.tgz",
+    "win": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-4.4.2.zip",
+    "ubuntu1604": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-4.4.2.tgz",
+    "debian9": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian92-4.4.2.tgz",
 }
 # mongodb binaries to distribute
 MONGODB_BINARIES = ["mongod"]
 LINUX_DISTRO = os.environ.get("FIFTYONE_DB_BUILD_LINUX_DISTRO")
 
 
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 
 
 def get_version():
@@ -59,7 +59,7 @@ class CustomBdistWheel(bdist_wheel):
         self._plat_name = self.plat_name
         # rewrite platform name to match what mongodb supports
         if self.plat_name.startswith("mac"):
-            # mongodb 4.2.6 supports macOS 10.12 or later
+            # mongodb 4.4.6 supports macOS 10.13 or later
             # https://docs.mongodb.com/manual/tutorial/install-mongodb-on-os-x/#platform-support
             # also, we only distribute 64-bit binaries
             self.plat_name = "macosx_10_12_x86_64"

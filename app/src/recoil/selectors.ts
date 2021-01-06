@@ -160,6 +160,30 @@ export const fiftyone = selector({
   },
 });
 
+export const showFeedbackButton = selector({
+  key: "showFeedbackButton",
+  get: ({ get }) => {
+    const feedback = get(fiftyone).feedback;
+    const localFeedback = get(atoms.feedbackSubmitted);
+    const storedFeedback = window.localStorage.getItem("fiftyone-feedback");
+    if (storedFeedback) {
+      window.localStorage.removeItem("fiftyone-feedback");
+      fetch(`${get(http)}/feedback?submitted=true`, { method: "post" });
+    }
+    if (
+      feedback.submitted ||
+      localFeedback.submitted ||
+      storedFeedback === "submitted"
+    ) {
+      return "hidden";
+    }
+    if (feedback.minimized || localFeedback.minimized) {
+      return "minimized";
+    }
+    return "shown";
+  },
+});
+
 export const isColab = selector({
   key: "isColab",
   get: () => {

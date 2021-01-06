@@ -16,7 +16,6 @@ except ImportError:
 import eta
 from eta.core.config import EnvConfig
 
-import fiftyone as fo
 import fiftyone.constants as foc
 
 
@@ -27,6 +26,12 @@ class FiftyOneConfig(EnvConfig):
     """FiftyOne configuration settings."""
 
     def __init__(self, d):
+        self.database_dir = self.parse_string(
+            d,
+            "database_dir",
+            env_var="FIFTYONE_DATABASE_DIR",
+            default=foc.DEFAULT_DB_DIR,
+        )
         self.dataset_zoo_dir = self.parse_string(
             d,
             "dataset_zoo_dir",
@@ -178,6 +183,8 @@ def set_config_settings(**kwargs):
     Raises:
         EnvConfigError: if the settings were invalid
     """
+    import fiftyone as fo
+
     # Validiate settings
     _config = FiftyOneConfig.from_dict(kwargs)
 

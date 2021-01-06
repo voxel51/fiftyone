@@ -9,6 +9,8 @@ import uuid
 
 import fiftyone.constants as foc
 
+_FIRST_IMPORT = "FIFTYONE_FIRST_IMPORT"
+
 
 def _get_user_id():
     """Gets the UUID of the current user
@@ -25,10 +27,16 @@ def _get_user_id():
         except (IOError, StopIteration):
             return None
 
+    first_import = False
+    if _FIRST_IMPORT in os.environ:
+        first_import = os.environ[_FIRST_IMPORT] == "1"
+
     if not read():
+        os.environ[_FIRST_IMPORT] = "1"
         os.makedirs(os.path.dirname(uid_path), exist_ok=True)
         with open(uid_path, "w") as f:
             f.write(str(uuid.uuid4()))
 
         return read(), True
-    return read(), False
+
+    return read(), first_import

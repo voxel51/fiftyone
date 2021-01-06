@@ -18,6 +18,7 @@ FIFTYONE_DIR = os.path.dirname(os.path.abspath(__file__))
 FIFTYONE_CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".fiftyone")
 FIFTYONE_CONFIG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "config.json")
 BASE_DIR = os.path.dirname(FIFTYONE_DIR)
+FEEDBACK_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var", "feedback.json")
 RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
 
 # Package metadata
@@ -46,8 +47,8 @@ except ImportError:
     # development installation
     FIFTYONE_DB_BIN_DIR = os.path.join(FIFTYONE_CONFIG_DIR, "bin")
 
-DB_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var/lib/mongo")
-DB_LOG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var/log/mongodb/mongo.log")
+DEFAULT_DATABASE = "fiftyone"
+DEFAULT_DB_DIR = os.path.join(FIFTYONE_CONFIG_DIR, "var/lib/mongo")
 MIGRATIONS_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "migrations")
 MIGRATIONS_HEAD_PATH = os.path.join(MIGRATIONS_PATH, "head.json")
 MIGRATIONS_REVISIONS_DIR = os.path.join(FIFTYONE_DIR, "migrations/revisions")
