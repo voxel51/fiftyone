@@ -222,7 +222,7 @@ export const useGA = () => {
 };
 
 export const useScreenshot = () => {
-  const handleId = useRecoilValue(selectors.handleId);
+  const isVideoDataset = useRecoilValue(selectors.isVideoDataset);
   const socket = useRecoilValue(selectors.socket);
   const isColab = useRecoilValue(selectors.isColab);
 
@@ -238,29 +238,28 @@ export const useScreenshot = () => {
     const images = document.body.querySelectorAll("img");
     const promises = [];
     images.forEach((img) => {
-      promises.push(
-        fetch(img.src)
-          .then((response) => response.blob())
-          .then((blob) => {
-            return new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onloadend = () => {
-                resolve(reader.result);
-              };
-              reader.onerror = (error) => reject(error);
-              reader.readAsDataURL(blob);
-            });
-          })
-          .then((dataURL) => {
-            return new Promise((resolve, reject) => {
-              img.src = dataURL;
-              img.onload = function () {
-                resolve(img);
-              };
-              img.onerror = reject;
-            });
-          })
-      );
+      img.classList.contains("fo-captured") &&
+        promises.push(
+          fetch(img.src)
+            .then((response) => response.blob())
+            .then((blob) => {
+              return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                  resolve(reader.result);
+                };
+                reader.onerror = (error) => reject(error);
+                reader.readAsDataURL(blob);
+              });
+            })
+            .then((dataURL) => {
+              return new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = reject;
+                img.src = dataURL;
+              });
+            })
+        );
     });
     return Promise.all(promises);
   }, []);
@@ -275,6 +274,31 @@ export const useScreenshot = () => {
       });
   }, []);
 
+  const captureVideos = useCallback(() => {
+    const videos = document.body.querySelectorAll("video");
+    const promises = [];
+    videos.forEach((video) => {
+      const canvas = document.createElement("canvas");
+      const rect = video.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      var dataURI = canvas.toDataURL("image/png");
+      const img = new Image(rect.width, rect.height);
+      img.className = "p51-contained-image fo-captured";
+      video.parentNode.replaceChild(img, video);
+      promises.push(
+        new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = dataURI;
+        })
+      );
+    });
+    return Promise.all(promises);
+  }, []);
+
   const capture = useCallback(() => {
     html2canvas(document.body).then((canvas) => {
       const imgData = canvas.toDataURL("image/png");
@@ -283,11 +307,15 @@ export const useScreenshot = () => {
   }, []);
 
   useMessageHandler("deactivate", () => {
+    fitSVGs();
+    let chain = Promise.resolve(null);
+    if (isVideoDataset) {
+      chain = chain.then(captureVideos);
+    }
     if (isColab) {
-      fitSVGs();
-      inlineImages().then(applyStyles).then(capture);
+      chain.then(inlineImages).then(applyStyles).then(capture);
     } else {
-      capture();
+      chain.then(capture);
     }
   });
 };

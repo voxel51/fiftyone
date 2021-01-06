@@ -261,6 +261,13 @@ export const mediaType = selector({
   },
 });
 
+export const isVideoDataset = selector({
+  key: "isVideoDataset",
+  get: ({ get }) => {
+    return get(mediaType) === "video";
+  },
+});
+
 export const view = selector({
   key: "view",
   get: ({ get }) => {
