@@ -225,6 +225,7 @@ export const useScreenshot = () => {
   const isVideoDataset = useRecoilValue(selectors.isVideoDataset);
   const socket = useRecoilValue(selectors.socket);
   const isColab = useRecoilValue(selectors.isColab);
+  const handleId = useRecoilValue(selectors.handleId);
 
   const fitSVGs = useCallback(() => {
     const svgElements = document.body.querySelectorAll("svg");
@@ -284,7 +285,7 @@ export const useScreenshot = () => {
       canvas.height = rect.height;
       const ctx = canvas.getContext("2d");
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      var dataURI = canvas.toDataURL("image/png");
+      const dataURI = canvas.toDataURL("image/png");
       const img = new Image(rect.width, rect.height);
       img.className = "p51-contained-image fo-captured";
       video.parentNode.replaceChild(img, video);
@@ -302,7 +303,18 @@ export const useScreenshot = () => {
   const capture = useCallback(() => {
     html2canvas(document.body).then((canvas) => {
       const imgData = canvas.toDataURL("image/png");
-      socket.send(packageMessage("capture", { src: imgData }));
+      if (isColab) {
+        console.log("POSTING MESSAGE");
+        window.parent.postMessage(
+          {
+            src: imgData,
+            handleId: handleId,
+          },
+          "*"
+        );
+      } else {
+        socket.send(packageMessage("capture", { src: imgData }));
+      }
     });
   }, []);
 

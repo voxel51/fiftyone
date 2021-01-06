@@ -173,65 +173,6 @@ def _update_state(func):
     return wrapper
 
 
-_SCREENSHOT_STYLE = """
-@import url("https://fonts.googleapis.com/css2?family=Palanquin&display=swap");
-
-#focontainer-{{ handle }} {
-  position: relative;
-}
-#foactivate-{{ handle }} {
-  font-weight: bold;
-  cursor: pointer;
-  font-size: 16px;
-  border-radius: 3px;
-  text-align: center;
-  padding: 0.5em;
-  display: none;
-  color: rgb(255, 255, 255);
-  font-family: "Palanquin", sans-serif;
-  position: absolute;
-  right: 1em;
-  bottom: 1em;
-  background: hsl(210,11%,15%);
-  border: 1px solid hsl(27, 95%, 49%);
-  position: absolute:
-}
-#foactivate-{{ handle }}:focus {
-  outline: none;
-}
-"""
-
-_SCREENSHOT_SCRIPT = """
-   (function() {
-     var button = document.getElementById("foactivate-{{ handle }}");
-     var container = document.getElementById("focontainer-{{ handle }}");
-     fetch(`{{ url }}fiftyone`)
-     .then(() => {
-        button.addEventListener("click", () => {
-          fetch(`{{ url }}reactivate?handleId={{ handle }}`)
-        });
-        container.addEventListener("mouseenter", () => button.style.display = "block");
-        container.addEventListener("mouseleave", () => button.style.display = "none");
-     });
-   })();
-"""
-_SCREENSHOT_DIV = """
-<div id="focontainer-{{ handle }}">
-   <img src='{{ image }}'/>
-   <button id="foactivate-{{ handle }}" >Activate</button>
-</div>
-"""
-
-_SCREENSHOT_HTML = Template(
-    """
-<style>%s</style>
-%s
-<script type="text/javascript">%s</script>
-"""
-    % (_SCREENSHOT_STYLE, _SCREENSHOT_DIV, _SCREENSHOT_SCRIPT)
-)
-
-
 class Session(foc.HasClient):
     """Session that maintains a 1-1 shared state with the FiftyOne App.
 
@@ -634,30 +575,14 @@ class Session(foc.HasClient):
         from IPython.display import HTML, Javascript
 
         for handle, image in data.items():
-
             if handle in self._handles:
-                if self._context != focx._COLAB:
-                    # pylint: disable=undefined-variable
-                    display(
-                        Javascript(
-                            """
-                      console.log("CAPTURING");
-                      const senderChannel = new BroadcastChannel("%s");
-                      senderChannel.postMessage("%s");
-                    """
-                            % (handle, image)
+                self._handles[handle]["target"].update(
+                    HTML(
+                        _SCREENSHOT_HTML.render(
+                            handle=handle, image=image, url=self._base_url(),
                         )
                     )
-                else:
-                    self._handles[handle]["target"].update(
-                        HTML(
-                            _SCREENSHOT_HTML.render(
-                                handle=handle,
-                                image=image,
-                                url=self._base_url(),
-                            )
-                        )
-                    )
+                )
 
     def _base_url(self):
         if self._context == focx._COLAB:
@@ -749,45 +674,7 @@ def _display_colab(handle, uuid, port, height, update=False):
     script_text = Template(_SCREENSHOT_SCRIPT).render(
         url="${baseUrl}", handle=uuid
     )
-    shell = """
-(async () => {
-    const styleText = `%STYLE%`;
-    const divText = `%DIV%`;
-    const baseURL = await google.colab.kernel.proxyPort(%PORT%, {'cache': true});
-    const url = new URL(baseURL);
-    const channel = new BroadcastChannel("%HANDLE%");
-    url.searchParams.set('fiftyoneColab', 'true');
-    url.searchParams.set('notebook', 'true');
-    url.searchParams.set('handleId', '%HANDLE%');
-    const iframe = document.createElement('iframe');
-    iframe.src = url;
-    iframe.setAttribute('width', '100%');
-    iframe.setAttribute('height', '%HEIGHT%');
-    iframe.setAttribute('frameborder', 0);
-    document.body.appendChild(iframe);
-    listenerChannel.onmessage = (src) => {
-        const style = document.createElement("style");
-        style.appendChild(document.createTextNode(styleText));
-        document.head.appendChild(style);
-        const img = new Image();
-        img.src = json.src;
-        img.style.height = '%HEIGHT%px';
-        img.style.width = '100%';
-        const tmp = document.createElement("div");
-        tmp.innerHTML = divText;
-        const div = tmp.children[0];
-        div.replaceChild(img, div.children[0]);
-        document.body.replaceChild(div, iframe);
-        const button = document.getElementById("foactivate-%HANDLE%");
-        const container = document.getElementById("focontainer-%HANDLE%");
-        button.addEventListener("click", () => {
-            document.body.replaceChild(iframe, div);
-        });
-        container.addEventListener("mouseenter", () => button.style.display = "block");
-        container.addEventListener("mouseleave", () => button.style.display = "none");
-    }
-})();
-    """
+    shell = _SCREENSHOT_COLAB
     replacements = [
         ("%PORT%", "%d" % port),
         ("%HANDLE%", uuid),
@@ -798,6 +685,7 @@ def _display_colab(handle, uuid, port, height, update=False):
     ]
     for (k, v) in replacements:
         shell = shell.replace(k, v)
+
     script = IPython.display.Javascript(shell)
 
     handle.display(script)
@@ -812,3 +700,105 @@ def _display_ipython(handle, uuid, port, height, update=False):
         handle.update(iframe)
     else:
         handle.display(iframe)
+
+
+_SCREENSHOT_STYLE = """
+@import url("https://fonts.googleapis.com/css2?family=Palanquin&display=swap");
+
+#focontainer-{{ handle }} {
+  position: relative;
+}
+#foactivate-{{ handle }} {
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 16px;
+  border-radius: 3px;
+  text-align: center;
+  padding: 0.5em;
+  display: none;
+  color: rgb(255, 255, 255);
+  font-family: "Palanquin", sans-serif;
+  position: absolute;
+  right: 1em;
+  bottom: 1em;
+  background: hsl(210,11%,15%);
+  border: 1px solid hsl(27, 95%, 49%);
+  position: absolute:
+}
+#foactivate-{{ handle }}:focus {
+  outline: none;
+}
+"""
+
+_SCREENSHOT_SCRIPT = """
+   (function() {
+     var button = document.getElementById("foactivate-{{ handle }}");
+     var container = document.getElementById("focontainer-{{ handle }}");
+     fetch(`{{ url }}fiftyone`)
+     .then(() => {
+        button.addEventListener("click", () => {
+          fetch(`{{ url }}reactivate?handleId={{ handle }}`)
+        });
+        container.addEventListener("mouseenter", () => button.style.display = "block");
+        container.addEventListener("mouseleave", () => button.style.display = "none");
+     });
+   })();
+"""
+_SCREENSHOT_DIV = """
+<div id="focontainer-{{ handle }}">
+   <img src='{{ image }}'/>
+   <button id="foactivate-{{ handle }}" >Activate</button>
+</div>
+"""
+
+_SCREENSHOT_HTML = Template(
+    """
+<style>%s</style>
+%s
+<script type="text/javascript">%s</script>
+"""
+    % (_SCREENSHOT_STYLE, _SCREENSHOT_DIV, _SCREENSHOT_SCRIPT)
+)
+
+_SCREENSHOT_COLAB = """
+(async () => {
+    const styleText = `%STYLE%`;
+    const divText = `%DIV%`;
+    const baseURL = await google.colab.kernel.proxyPort(%PORT%, {'cache': true});
+    const url = new URL(baseURL);
+    const handleId = "%HANDLE%";
+    url.searchParams.set('fiftyoneColab', 'true');
+    url.searchParams.set('notebook', 'true');
+    url.searchParams.set('handleId', handleId);
+    const iframe = document.createElement('iframe');
+    iframe.src = url;
+    iframe.setAttribute('width', '100%');
+    iframe.setAttribute('height', '%HEIGHT%');
+    iframe.setAttribute('frameborder', 0);
+    document.body.appendChild(iframe);
+    window.addEventListener("message", (event) => {
+        console.log(event.data);
+        if (event.data.handleId !== handleId) return;
+        console.log("RECEIVED");
+        const style = document.createElement("style");
+        style.appendChild(document.createTextNode(styleText));
+        document.head.appendChild(style);
+        const img = new Image();
+        img.src = event.data.src;
+        img.style.height = '%HEIGHT%px';
+        img.style.width = '100%';
+        const tmp = document.createElement("div");
+        tmp.innerHTML = divText;
+        const div = tmp.children[0];
+        div.replaceChild(img, div.children[0]);
+        document.body.replaceChild(div, iframe);
+        const button = document.getElementById(`foactivate-${handleId}`);
+        const container = document.getElementById(`focontainer-${handleId}`);
+        button.addEventListener("click", () => {
+            document.body.replaceChild(iframe, div);
+        });
+        container.addEventListener("mouseenter", () => button.style.display = "block");
+        container.addEventListener("mouseleave", () => button.style.display = "none");
+    });
+})();
+"""
