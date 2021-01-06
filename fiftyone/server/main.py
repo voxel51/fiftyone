@@ -118,23 +118,6 @@ class ReactivateHandler(RequestHandler):
         return {}
 
 
-class CaptureHandler(RequestHandler):
-    """Polling endpoint for initiating receiving screenshot capture for Colab
-    notebooks.
-    """
-
-    async def get(self):
-        handle_id = self.get_argument("handleId")
-        self.write(self.get_response(handle_id))
-
-    @staticmethod
-    def get_response(handle_id):
-        if handle_id in PollingHandler.screenshots:
-            src = PollingHandler.screenshots.pop(handle_id)
-            return {"src": src}
-        return {}
-
-
 class StagesHandler(RequestHandler):
     """Returns the definitions of stages available to the App"""
 
@@ -225,6 +208,7 @@ class PollingHandler(tornado.web.RequestHandler):
         mode = self.get_argument("mode")
         message = StateHandler.loads(self.request.body)
         event = message.pop("type")
+        force_update = False
         if mode == "push":
             if event == "as_app":
                 if message["notebook"]:
@@ -232,14 +216,15 @@ class PollingHandler(tornado.web.RequestHandler):
                     global _notebook_clients
                     global _deactivated_clients
                     StateHandler.state["active_handle"] = message["handle"]
-                    _deactivated_clients.discard(client)
+                    _deactivated_clients.discard(message["handle"])
                     _notebook_clients[client] = message["handle"]
-                    event == "update"
+                    event = "update"
+                    force_update = True
                     message = {"state": StateHandler.state}
 
             if event in {"distributions", "page", "get_video_data"}:
                 caller = self
-            elif event == "capture":
+            elif event in {"capture", "update"}:
                 caller = client
             else:
                 caller = StateHandler
@@ -247,7 +232,7 @@ class PollingHandler(tornado.web.RequestHandler):
             if event == "refresh":
                 message["polling_client"] = client
 
-            if event == "update":
+            if event == "update" and not force_update:
                 message["ignore_polling_client"] = client
 
             handle = getattr(StateHandler, "on_%s" % event)
@@ -264,6 +249,7 @@ class PollingHandler(tornado.web.RequestHandler):
             self.write_message({"type": "update", "state": StateHandler.state})
 
         elif event == "deactivate":
+            print("DEACTIVATE")
             self.write_message({"type": "deactivate"})
 
         elif event == "statistics":
@@ -542,7 +528,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         self.write_message(message)
 
     @staticmethod
-    async def on_update(self, state, ignore_polling_client=None):
+    async def on_update(caller, state, ignore_polling_client=None):
         """Event for state updates. Sends an update message to all active
         clients, and statistics messages to active App clients.
 
@@ -553,31 +539,29 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         active_handle = state["active_handle"]
         global _notebook_clients
         global _deactivated_clients
+        _deactivated_clients.discard(active_handle)
         if (
             active_handle
-            and self in _notebook_clients
-            and _notebook_clients[self] != active_handle
+            and caller in _notebook_clients
+            and _notebook_clients[caller] != active_handle
         ):
             return
         for client, events in PollingHandler.clients.items():
             if client in _notebook_clients:
                 uuid = _notebook_clients[client]
-                if (
-                    active_handle
-                    and uuid != active_handle
-                    and uuid not in _deactivated_clients
-                ):
+                if active_handle and uuid != active_handle:
                     events.clear()
                     _deactivated_clients.add(uuid)
                     events.add("deactivate")
                     continue
+
             if client == ignore_polling_client:
                 events.update({"statistics", "extended_statistics"})
             events.update({"update", "statistics", "extended_statistics"})
         awaitables = [
-            self.send_updates(),
+            StateHandler.send_updates(),
         ]
-        awaitables += self.get_statistics_awaitables()
+        awaitables += StateHandler.get_statistics_awaitables()
         asyncio.gather(*awaitables)
 
     @staticmethod
@@ -1057,7 +1041,6 @@ class Application(tornado.web.Application):
         rel_web_path = "static"
         web_path = os.path.join(server_path, rel_web_path)
         handlers = [
-            (r"/capture", CaptureHandler),
             (r"/fiftyone", FiftyOneHandler),
             (r"/polling", PollingHandler),
             (r"/filepath/(.*)", FileHandler, {"path": static_path},),

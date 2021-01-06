@@ -304,7 +304,6 @@ export const useScreenshot = () => {
     html2canvas(document.body).then((canvas) => {
       const imgData = canvas.toDataURL("image/png");
       if (isColab) {
-        console.log("POSTING MESSAGE");
         window.parent.postMessage(
           {
             src: imgData,
@@ -312,9 +311,8 @@ export const useScreenshot = () => {
           },
           "*"
         );
-      } else {
-        socket.send(packageMessage("capture", { src: imgData }));
       }
+      socket.send(packageMessage("capture", { src: imgData }));
     });
   }, []);
 
