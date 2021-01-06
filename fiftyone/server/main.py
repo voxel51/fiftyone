@@ -221,14 +221,16 @@ class PollingHandler(tornado.web.RequestHandler):
         elif event == "deactivate":
             self.write_message({"type": "deactivate"})
 
-        elif event == "statistics":
-            state = fos.StateDescription.from_dict(StateHandler.state)
-            view = state.view or state.dataset
+        state = fos.StateDescription.from_dict(StateHandler.state)
+        if state.view is not None:
+            view = state.view
+        else:
+            view = state.dataset
+
+        if event == "statistics":
             await StateHandler.send_statistics(view, only=self)
 
         elif event == "extended_statistics":
-            state = fos.StateDescription.from_dict(StateHandler.state)
-            view = state.view or state.dataset
             await StateHandler.send_statistics(
                 view, only=self, filters=state.filters
             )
@@ -425,7 +427,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         """
         state = fos.StateDescription.from_dict(StateHandler.state)
         state.filters = filters
-        view = state.view or state.dataset
+        if state.view is not None:
+            view = state.view
+        else:
+            view = state.dataset
         StateHandler.state = state.serialize()
         for clients in PollingHandler.clients.values():
             clients.update({"extended_statistics"})
@@ -650,7 +655,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         if StateHandler.state["dataset"] is None:
             return []
         state = fos.StateDescription.from_dict(StateHandler.state)
-        view = state.view or state.dataset
+        if state.view is not None:
+            view = state.view
+        else:
+            view = state.dataset
         awaitables = [cls.send_statistics(view, only=only)]
 
         awaitables.append(
