@@ -2455,7 +2455,7 @@
             "date_added": "2020-12-11 13:45:51"
         },
         {
-            "base_name": "centernet-hg105-512-coco",
+            "base_name": "centernet-hg105-512-coco-tf2",
             "base_filename": "centernet_hg104_512x512_coco17_tpu-8.tar.gz",
             "version": null,
             "description": "CenterNet architecture from the Objects as Points paper [https://arxiv.org/abs/1904.07850] with the hourglass backbone trained on COCO",
