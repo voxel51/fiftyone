@@ -241,12 +241,21 @@ class DatasetView(foc.SampleCollection):
         """
         return self.aggregate(foa.Distinct("tags")).values
 
+    def list_indexes(self):
+        """Returns the fields of the dataset that are indexed.
+
+        Returns:
+            a list of field names
+        """
+        return self._dataset.list_indexes()
+
     def create_index(self, field, unique=False):
-        """Creates an index on the given field, enabling efficient sorting on
-        that field.
+        """Creates an index on the given field.
+
+        Indexes enable efficient sorting, merging, and other such operations.
 
         Args:
-            field: the name of the field to index
+            field: the field name
             unique (False): whether to add a uniqueness constraint to the index
         """
         self._dataset.create_index(field, unique=unique)
@@ -255,7 +264,7 @@ class DatasetView(foc.SampleCollection):
         """Drops the index on the given field, if one exists.
 
         Args:
-            field: the name of the field to index
+            field: the field name
         """
         self._dataset.drop_index(field)
 

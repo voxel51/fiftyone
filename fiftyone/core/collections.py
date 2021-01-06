@@ -1775,21 +1775,30 @@ class SampleCollection(object):
             frame_labels_field_or_dict=frame_labels_field_or_dict,
         )
 
+    def list_indexes(self):
+        """Returns the fields of the dataset that are indexed.
+
+        Returns:
+            a list of field names
+        """
+        raise NotImplementedError("Subclass must implement list_indexes()")
+
     def create_index(self, field, unique=False):
-        """Creates an index on the given field, enabling efficient sorting on
-        that field.
+        """Creates an index on the given field.
+
+        Indexes enable efficient sorting, merging, and other such operations.
 
         Args:
-            field: the name of the field to index
+            field: the field name
             unique (False): whether to add a uniqueness constraint to the index
         """
         raise NotImplementedError("Subclass must implement create_index()")
 
     def drop_index(self, field):
-        """Drops the index on the given field, if one exists.
+        """Drops the index on the given field.
 
         Args:
-            field: the name of the field to index
+            field: the field name
         """
         raise NotImplementedError("Subclass must implement drop_index()")
 

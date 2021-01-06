@@ -2085,25 +2085,46 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dataset.add_videos_patt(videos_patt, tags=tags)
         return dataset
 
+    def list_indexes(self):
+        """Returns the fields of the dataset that are indexed.
+
+        Returns:
+            a list of field names
+        """
+        index_info = self._sample_collection.index_information()
+        index_fields = [k["key"][0][0] for k in index_info.values()]
+        return [f for f in index_fields if not f.startswith("_")]
+
     def create_index(self, field, unique=False):
-        """Creates an index on the given field, enabling efficient sorting on
-        that field.
+        """Creates an index on the given field.
+
+        Indexes enable efficient sorting, merging, and other such operations.
 
         Args:
-            field: the name of the field to index
+            field: the field name
             unique (False): whether to add a uniqueness constraint to the index
         """
-        if field not in self._sample_indexes:
-            self._sample_collection.create_index(field, unique=unique)
+        if field not in self.get_field_schema():
+            raise ValueError("Dataset has no field '%s'" % field)
+
+        self._sample_collection.create_index(field, unique=unique)
 
     def drop_index(self, field):
-        """Drops the index on the given field, if one exists.
+        """Drops the index on the given field.
 
         Args:
-            field: the name of the field to index
+            field: the field name
         """
-        if field in self._sample_indexes:
-            self._sample_collection.drop_index(field)
+        if field not in self.get_field_schema():
+            raise ValueError("Dataset has no field '%s'" % field)
+
+        index_info = self._sample_collection.index_information()
+        index_map = {v["key"][0][0]: k for k, v in index_info.items()}
+
+        if field not in index_map:
+            raise ValueError("Dataset field '%s' is not indexed" % field)
+
+        self._sample_collection.drop_index(index_map[field])
 
     @classmethod
     def from_dict(cls, d, name=None, rel_dir=None, frame_labels_dir=None):
@@ -2257,11 +2278,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @property
     def _sample_collection(self):
         return foo.get_db_conn()[self._sample_collection_name]
-
-    @property
-    def _sample_indexes(self):
-        index_info = self._sample_collection.index_information()
-        return [k["key"][0][0] for k in index_info.values()]
 
     @property
     def _frame_collection_name(self):
