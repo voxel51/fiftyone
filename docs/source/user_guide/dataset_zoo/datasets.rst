@@ -170,16 +170,11 @@ pixels. This version contains image-level labels only.
 
 -   Dataset name: ``caltech101``
 -   Dataset source: http://www.vision.caltech.edu/Image_Datasets/Caltech101
--   Dataset size: 125.64 MB
+-   Dataset size: 138.60 MB
 -   Tags: ``image, classification``
--   Supported splits: ``train, test``
+-   Supported splits: ``N/A``
 -   ZooDataset class:
-    :class:`Caltech101Dataset <fiftyone.zoo.datasets.tf.Caltech101Dataset>` (TF backend)
-
-.. note::
-
-    You must have the :ref:`TensorFlow backend <dataset-zoo-ml-backend>`
-    installed to load this dataset.
+    :class:`Caltech101Dataset <fiftyone.zoo.datasets.base.Caltech101Dataset>`
 
 **Example usage**
 
@@ -193,7 +188,7 @@ pixels. This version contains image-level labels only.
         import fiftyone as fo
         import fiftyone.zoo as foz
 
-        dataset = foz.load_zoo_dataset("caltech101", split="test")
+        dataset = foz.load_zoo_dataset("caltech101")
 
         session = fo.launch_app(dataset)
 
@@ -201,9 +196,9 @@ pixels. This version contains image-level labels only.
 
     .. code-block:: shell
 
-        fiftyone zoo datasets load caltech101 --split test
+        fiftyone zoo datasets load caltech101
 
-        fiftyone app launch caltech101-test
+        fiftyone app launch caltech101
 
 .. _dataset-zoo-cifar10:
 

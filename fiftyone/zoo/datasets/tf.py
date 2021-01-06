@@ -267,66 +267,6 @@ class CIFAR100Dataset(TFDSDataset):
         )
 
 
-class Caltech101Dataset(TFDSDataset):
-    """The Caltech-101 dataset of images.
-
-    The dataset consists of pictures of objects belonging to 101 classes, plus
-    one background clutter class. Each image is labelled with a single object.
-    Each class contains roughly 40 to 800 images, totalling around 9,000
-    images. Images are of variable sizes, with typical edge lengths of 200-300
-    pixels. This version contains image-level labels only.
-
-    Example usage::
-
-        import fiftyone as fo
-        import fiftyone.zoo as foz
-
-        dataset = foz.load_zoo_dataset("caltech101", split="test")
-
-        session = fo.launch_app(dataset)
-
-    Dataset size
-        125.64 MB
-
-    Source
-        http://www.vision.caltech.edu/Image_Datasets/Caltech101
-    """
-
-    @property
-    def name(self):
-        return "caltech101"
-
-    @property
-    def tags(self):
-        return ("image", "classification")
-
-    @property
-    def supported_splits(self):
-        return ("train", "test")
-
-    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
-        def download_fcn(download_dir):
-            return tfds.load(
-                "caltech101",
-                split=split,
-                data_dir=download_dir,
-                download=True,
-                with_info=True,
-            )
-
-        get_class_labels_fcn = lambda info: info.features["label"].names
-        get_num_samples_fcn = lambda info: info.splits[split].num_examples
-        sample_parser = _TFDSImageClassificationSampleParser()
-        return _download_and_prepare(
-            dataset_dir,
-            scratch_dir,
-            download_fcn,
-            get_class_labels_fcn,
-            get_num_samples_fcn,
-            sample_parser,
-        )
-
-
 class ImageNet2012Dataset(TFDSDataset):
     """The ImageNet 2012 dataset.
 
@@ -772,7 +712,6 @@ class VOC2012Dataset(TFDSDataset):
 AVAILABLE_DATASETS = {
     "mnist": MNISTDataset,
     "fashion-mnist": FashionMNISTDataset,
-    "caltech101": Caltech101Dataset,
     "cifar10": CIFAR10Dataset,
     "cifar100": CIFAR100Dataset,
     "imagenet-2012": ImageNet2012Dataset,

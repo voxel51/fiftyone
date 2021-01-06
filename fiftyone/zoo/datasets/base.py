@@ -33,6 +33,71 @@ class FiftyOneDataset(fozd.ZooDataset):
     pass
 
 
+class Caltech101Dataset(FiftyOneDataset):
+    """The Caltech-101 dataset of images.
+
+    The dataset consists of pictures of objects belonging to 101 classes, plus
+    one background clutter class. Each image is labelled with a single object.
+    Each class contains roughly 40 to 800 images, totalling around 9,000
+    images. Images are of variable sizes, with typical edge lengths of 200-300
+    pixels. This version contains image-level labels only.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("caltech101")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        138.60 MB
+
+    Source
+        http://www.vision.caltech.edu/Image_Datasets/Caltech101
+    """
+
+    #
+    # The source URL for the data is
+    # http://www.vision.caltech.edu/Image_Datasets/Caltech101/101_ObjectCategories.tar.gz
+    # but this now redirects to the Google Drive file below
+    #
+    _GDRIVE_ID = "137RyRjvTBkBiIfeYBNZBtViDHQ6_Ewsp"
+    _ARCHIVE_NAME = "101_ObjectCategories.tar.gz"
+    _DIR_IN_ARCHIVE = "101_ObjectCategories"
+
+    @property
+    def name(self):
+        return "caltech101"
+
+    @property
+    def tags(self):
+        return ("image", "classification")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        _download_and_extract_archive(
+            self._GDRIVE_ID,
+            self._ARCHIVE_NAME,
+            self._DIR_IN_ARCHIVE,
+            dataset_dir,
+            scratch_dir,
+        )
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.ImageClassificationDirectoryTree()
+        importer = foud.ImageClassificationDirectoryTreeImporter
+        classes = importer.get_classes(dataset_dir)
+        num_samples = importer.get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, classes
+
+
 class QuickstartDataset(FiftyOneDataset):
     """A small dataset with ground truth bounding boxes and predictions.
 
@@ -55,7 +120,8 @@ class QuickstartDataset(FiftyOneDataset):
     """
 
     _GDRIVE_ID = "1UWTlFmdq8H-wdJHxVsAKpXBilY1CWwm_"
-    _DIR_IN_ZIP = "quickstart"
+    _ARCHIVE_NAME = "quickstart.zip"
+    _DIR_IN_ARCHIVE = "quickstart"
 
     @property
     def name(self):
@@ -70,8 +136,12 @@ class QuickstartDataset(FiftyOneDataset):
         return None
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, _):
-        _download_and_extract_zip(
-            self._GDRIVE_ID, self._DIR_IN_ZIP, dataset_dir, scratch_dir
+        _download_and_extract_archive(
+            self._GDRIVE_ID,
+            self._ARCHIVE_NAME,
+            self._DIR_IN_ARCHIVE,
+            dataset_dir,
+            scratch_dir,
         )
 
         logger.info("Parsing dataset metadata")
@@ -104,7 +174,8 @@ class VideoQuickstartDataset(FiftyOneDataset):
     """
 
     _GDRIVE_ID = "1O-WMjtiBBMXGEHnnus6y2nSlJu8pY5vo"
-    _DIR_IN_ZIP = "quickstart-video"
+    _ARCHIVE_NAME = "quickstart-video.zip"
+    _DIR_IN_ARCHIVE = "quickstart-video"
 
     @property
     def name(self):
@@ -119,8 +190,12 @@ class VideoQuickstartDataset(FiftyOneDataset):
         return None
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, _):
-        _download_and_extract_zip(
-            self._GDRIVE_ID, self._DIR_IN_ZIP, dataset_dir, scratch_dir
+        _download_and_extract_archive(
+            self._GDRIVE_ID,
+            self._ARCHIVE_NAME,
+            self._DIR_IN_ARCHIVE,
+            dataset_dir,
+            scratch_dir,
         )
 
         logger.info("Parsing dataset metadata")
@@ -194,7 +269,8 @@ class ImageNetSampleDataset(FiftyOneDataset):
     """
 
     _GDRIVE_ID = "1FZ9GpiRjiBbOS0iPyNZsS_B00W2RYSmS"
-    _DIR_IN_ZIP = "imagenet-sample"
+    _ARCHIVE_NAME = "imagenet-sample.zip"
+    _DIR_IN_ARCHIVE = "imagenet-sample"
 
     @property
     def name(self):
@@ -209,8 +285,12 @@ class ImageNetSampleDataset(FiftyOneDataset):
         return None
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, _):
-        _download_and_extract_zip(
-            self._GDRIVE_ID, self._DIR_IN_ZIP, dataset_dir, scratch_dir
+        _download_and_extract_archive(
+            self._GDRIVE_ID,
+            self._ARCHIVE_NAME,
+            self._DIR_IN_ARCHIVE,
+            dataset_dir,
+            scratch_dir,
         )
 
         logger.info("Parsing dataset metadata")
@@ -800,6 +880,7 @@ class UCF101Dataset(FiftyOneDataset):
 
 
 AVAILABLE_DATASETS = {
+    "caltech101": Caltech101Dataset,
     "quickstart": QuickstartDataset,
     "quickstart-video": VideoQuickstartDataset,
     "imagenet-sample": ImageNetSampleDataset,
@@ -813,14 +894,16 @@ AVAILABLE_DATASETS = {
 }
 
 
-def _download_and_extract_zip(fid, dir_in_zip, dataset_dir, scratch_dir):
+def _download_and_extract_archive(
+    fid, archive_name, dir_in_archive, dataset_dir, scratch_dir
+):
     logger.info("Downloading dataset...")
-    tmp_zip_path = os.path.join(scratch_dir, "dataset.zip")
-    etaw.download_google_drive_file(fid, path=tmp_zip_path)
+    archive_path = os.path.join(scratch_dir, archive_name)
+    etaw.download_google_drive_file(fid, path=archive_path)
 
-    logger.info("Extracting dataset")
-    etau.extract_zip(tmp_zip_path, delete_zip=True)
-    _move_dir(os.path.join(scratch_dir, dir_in_zip), dataset_dir)
+    logger.info("Extracting dataset...")
+    etau.extract_archive(archive_path)
+    _move_dir(os.path.join(scratch_dir, dir_in_archive), dataset_dir)
 
 
 def _move_dir(src, dst):
