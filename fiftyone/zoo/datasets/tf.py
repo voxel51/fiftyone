@@ -400,11 +400,9 @@ class ImageNet2012Dataset(TFDSDataset):
     def requires_manual_download(self):
         return True
 
-    def _download_and_prepare(self, dataset_dir, _, split):
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         # Ensure that the source files have been manually downloaded
-        foui.ensure_imagenet_manual_download(
-            self.source_dir, split, devkit=True
-        )
+        foui.ensure_imagenet_manual_download(self.source_dir, split)
 
         if split == "validation":
             _split = "val"
@@ -416,8 +414,8 @@ class ImageNet2012Dataset(TFDSDataset):
                 "imagenet2012",
                 split=_split,
                 data_dir=self.source_dir,
-                download=False,
                 with_info=True,
+                download_and_prepare_kwargs={"download_dir": scratch_dir},
             )
 
         get_class_labels_fcn = lambda info: info.features["label"].names
