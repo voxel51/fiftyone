@@ -130,13 +130,13 @@ AlexNet model architecture from `One weird trick for parallelizing convolutional
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -178,13 +178,13 @@ DeepLabV3 model from `Rethinking Atrous Convolution for Semantic Image Segmentat
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -227,13 +227,13 @@ DeepLabV3 model from `Rethinking Atrous Convolution for Semantic Image Segmentat
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -276,13 +276,13 @@ Densenet-121 model from `Densely Connected Convolutional Networks <https://arxiv
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -324,13 +324,13 @@ Densenet-161 model from `Densely Connected Convolutional Networks <https://arxiv
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -372,13 +372,13 @@ Densenet-169 model from `Densely Connected Convolutional Networks <https://arxiv
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -420,13 +420,13 @@ Densenet-201 model from `Densely Connected Convolutional Networks <https://arxiv
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -468,13 +468,13 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -517,13 +517,13 @@ FCN model from `Fully Convolutional Networks for Semantic Segmentation <https://
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -566,13 +566,13 @@ FCN model from `Fully Convolutional Networks for Semantic Segmentation <https://
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -615,13 +615,13 @@ GoogLeNet (Inception v1) model from `Going Deeper with Convolutions <https://arx
 
 -   Packages: ``scipy, torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -663,13 +663,13 @@ Inception v3 model from `Rethinking the Inception Architecture for Computer Visi
 
 -   Packages: ``scipy, torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -711,13 +711,13 @@ Keypoint R-CNN model from `Keypoint Density-based Region Proposal for Fine-Grain
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -760,13 +760,13 @@ Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ with ResN
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -809,13 +809,13 @@ MNASNet model from from `MnasNet: Platform-Aware Neural Architecture Search for 
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -857,13 +857,13 @@ MNASNet model from `MnasNet: Platform-Aware Neural Architecture Search for Mobil
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -905,13 +905,13 @@ MobileNetV2 model from `MobileNetV2: Inverted Residuals and Linear Bottlenecks <
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -953,13 +953,13 @@ ResNet-101 model from `Deep Residual Learning for Image Recognition <https://arx
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -1001,13 +1001,13 @@ ResNet-152 model from `Deep Residual Learning for Image Recognition <https://arx
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -1049,13 +1049,13 @@ ResNet-18 model from `Deep Residual Learning for Image Recognition <https://arxi
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -1097,13 +1097,13 @@ ResNet-34 model from `Deep Residual Learning for Image Recognition <https://arxi
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -1145,13 +1145,13 @@ ResNet-50 model from `Deep Residual Learning for Image Recognition <https://arxi
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -1193,13 +1193,13 @@ ResNeXt-101 32x8d model from `Aggregated Residual Transformations for Deep Neura
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -1241,13 +1241,13 @@ ResNeXt-50 32x4d model from `Aggregated Residual Transformations for Deep Neural
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -1289,13 +1289,13 @@ RetinaNet model from `Focal Loss for Dense Object Detection <https://arxiv.org/a
 
 -   Packages: ``torch, torchvision>=0.8.0``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -1338,13 +1338,13 @@ ShuffleNetV2 model from `ShuffleNet V2: Practical Guidelines for Efficient CNN A
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -1386,13 +1386,13 @@ ShuffleNetV2 model from `ShuffleNet V2: Practical Guidelines for Efficient CNN A
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -1434,13 +1434,13 @@ SqueezeNet 1.1 model from `the official SqueezeNet repo <https://github.com/forr
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -1482,13 +1482,13 @@ SqueezeNet model from `SqueezeNet: AlexNet-level accuracy with 50x fewer paramet
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -1530,13 +1530,13 @@ VGG-11 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -1578,13 +1578,13 @@ VGG-11 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -1626,13 +1626,13 @@ VGG-13 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -1674,13 +1674,13 @@ VGG-13 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -1722,13 +1722,13 @@ VGG-16 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -1770,13 +1770,13 @@ VGG-16 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -1818,13 +1818,13 @@ VGG-19 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -1866,13 +1866,13 @@ VGG-19 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -1914,13 +1914,13 @@ Wide ResNet-101-2 model from `Wide Residual Networks <https://arxiv.org/abs/1605
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -1962,13 +1962,13 @@ Wide ResNet-50-2 model from `Wide Residual Networks <https://arxiv.org/abs/1605.
 
 -   Packages: ``torch, torchvision``
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
 
 **Example usage**
 
@@ -2092,14 +2092,14 @@ DeepLabv3+ semantic segmentation model from `Encoder-Decoder with Atrous Separab
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu``
 
 **Example usage**
@@ -2141,14 +2141,14 @@ DeepLabv3+ semantic segmentation model from `Encoder-Decoder with Atrous Separab
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu``
 
 **Example usage**
@@ -2190,14 +2190,14 @@ EfficientDet-D0 model from `EfficientDet: Scalable and Efficient Object Detectio
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow>=1.14,<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu>=1.14,<2``
 
 **Example usage**
@@ -2239,14 +2239,14 @@ EfficientDet-D1 model from `EfficientDet: Scalable and Efficient Object Detectio
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow>=1.14,<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu>=1.14,<2``
 
 **Example usage**
@@ -2288,14 +2288,14 @@ EfficientDet-D2 model from `EfficientDet: Scalable and Efficient Object Detectio
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow>=1.14,<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu>=1.14,<2``
 
 **Example usage**
@@ -2337,14 +2337,14 @@ EfficientDet-D3 model from `EfficientDet: Scalable and Efficient Object Detectio
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow>=1.14,<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu>=1.14,<2``
 
 **Example usage**
@@ -2386,14 +2386,14 @@ EfficientDet-D4 model from `EfficientDet: Scalable and Efficient Object Detectio
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow>=1.14,<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu>=1.14,<2``
 
 **Example usage**
@@ -2435,14 +2435,14 @@ EfficientDet-D5 model from `EfficientDet: Scalable and Efficient Object Detectio
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow>=1.14,<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu>=1.14,<2``
 
 **Example usage**
@@ -2484,14 +2484,14 @@ EfficientDet-D6 model from `EfficientDet: Scalable and Efficient Object Detectio
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow>=1.14,<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu>=1.14,<2``
 
 **Example usage**
@@ -2533,14 +2533,14 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu<2``
 
 **Example usage**
@@ -2582,14 +2582,14 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu<2``
 
 **Example usage**
@@ -2631,14 +2631,14 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu<2``
 
 **Example usage**
@@ -2680,14 +2680,14 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu<2``
 
 **Example usage**
@@ -2729,14 +2729,14 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu<2``
 
 **Example usage**
@@ -2778,14 +2778,14 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu<2``
 
 **Example usage**
@@ -2827,14 +2827,14 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu<2``
 
 **Example usage**
@@ -2876,14 +2876,14 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu<2``
 
 **Example usage**
@@ -2925,14 +2925,14 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu<2``
 
 **Example usage**
@@ -2974,14 +2974,14 @@ Inception v2 model from `Rethinking the Inception Architecture for Computer Visi
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu<2``
 
 **Example usage**
@@ -3022,14 +3022,14 @@ Inception v4 model from `Inception-v4, Inception-ResNet and the Impact of Residu
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu<2``
 
 **Example usage**
@@ -3070,14 +3070,14 @@ Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous ve
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu<2``
 
 **Example usage**
@@ -3119,14 +3119,14 @@ Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ with Ince
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu<2``
 
 **Example usage**
@@ -3168,14 +3168,14 @@ Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous ve
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu<2``
 
 **Example usage**
@@ -3217,14 +3217,14 @@ Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous ve
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu<2``
 
 **Example usage**
@@ -3266,14 +3266,14 @@ MobileNetV2 model from `MobileNetV2: Inverted Residuals and Linear Bottlenecks <
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu<2``
 
 **Example usage**
@@ -3314,14 +3314,14 @@ ResNet-50 v1 model from `Deep Residual Learning for Image Recognition <https://a
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu<2``
 
 **Example usage**
@@ -3362,14 +3362,14 @@ ResNet-50 v2 model from `Deep Residual Learning for Image Recognition <https://a
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu<2``
 
 **Example usage**
@@ -3410,14 +3410,14 @@ R-FCN object detection model from `R-FCN: Object Detection via Region-based Full
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu<2``
 
 **Example usage**
@@ -3459,14 +3459,14 @@ Inception Single Shot Detector model from `SSD: Single Shot MultiBox Detector <h
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu<2``
 
 **Example usage**
@@ -3508,14 +3508,14 @@ Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arx
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu<2``
 
 **Example usage**
@@ -3557,14 +3557,14 @@ FPN Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https:/
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu<2``
 
 **Example usage**
@@ -3606,14 +3606,14 @@ FPN Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https:/
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu<2``
 
 **Example usage**
@@ -3655,14 +3655,14 @@ VGG-16 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu``
 
 **Example usage**
@@ -3703,14 +3703,14 @@ YOLOv2 model from `YOLO9000: Better, Faster, Stronger <https://arxiv.org/abs/161
 
 **Requirements**
 
--   CPU
+-   CPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow<2``
 
--   GPU
+-   GPU support
 
-    -   Support? yes
+    -   yes
     -   Packages: ``tensorflow-gpu<2``
 
 **Example usage**

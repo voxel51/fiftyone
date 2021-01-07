@@ -62,16 +62,16 @@ _MODEL_TEMPLATE = """
 -   Packages: ``{{ base_packages }}``
 
 {% endif %}
--   CPU
+-   CPU support
 
-    -   Support? {{ supports_cpu }}
+    -   {{ supports_cpu }}
 {% if cpu_packages %}
     -   Packages: ``{{ cpu_packages }}``
 {% endif %}
 
--   GPU
+-   GPU support
 
-    -   Support? {{ supports_gpu }}
+    -   {{ supports_gpu }}
 {% if gpu_packages %}
     -   Packages: ``{{ gpu_packages }}``
 {% endif %}
