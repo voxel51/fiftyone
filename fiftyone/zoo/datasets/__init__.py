@@ -613,39 +613,15 @@ class ZooDatasetInfo(etas.Serializable):
         Returns:
             a :class:`ZooDatasetInfo`
         """
-        try:
-            # @legacy field name
-            zoo_dataset = d["zoo_dataset_cls"]
-        except KeyError:
-            zoo_dataset = d["zoo_dataset"]
-
-        try:
-            # @legacy field name
-            dataset_type = d["format_cls"]
-        except KeyError:
-            dataset_type = d["dataset_type"]
-
-        # @legacy pre-model zoo package name
-        old_pkg = "fiftyone.zoo."
-        new_pkg = "fiftyone.zoo.datasets."
-        if zoo_dataset.startswith(old_pkg) and not zoo_dataset.startswith(
-            new_pkg
-        ):
-            zoo_dataset = new_pkg + zoo_dataset[len(old_pkg) :]
-
-        # @legacy dataset types
-        _dt = "fiftyone.types.dataset_types"
-        if dataset_type.endswith(".ImageClassificationDataset"):
-            dataset_type = _dt + ".FiftyOneImageClassificationDataset"
-        if dataset_type.endswith(".ImageDetectionDataset"):
-            dataset_type = _dt + ".FiftyOneImageDetectionDataset"
+        # Handle any migrations from older `ZooDatasetInfo` instances
+        d, migrated = _migrate_zoo_dataset_info(d)
 
         parameters = d.get("parameters", None)
 
         kwargs = parameters or {}
-        zoo_dataset = etau.get_class(zoo_dataset)(**kwargs)
+        zoo_dataset = etau.get_class(d["zoo_dataset"])(**kwargs)
 
-        dataset_type = etau.get_class(dataset_type)()
+        dataset_type = etau.get_class(d["dataset_type"])()
 
         downloaded_splits = d.get("downloaded_splits", None)
         if downloaded_splits is not None:
@@ -654,7 +630,7 @@ class ZooDatasetInfo(etas.Serializable):
                 for k, v in downloaded_splits.items()
             }
 
-        return cls(
+        zoo_dataset_info = cls(
             zoo_dataset,
             dataset_type,
             d["num_samples"],
@@ -663,10 +639,62 @@ class ZooDatasetInfo(etas.Serializable):
             classes=d.get("classes", None),
         )
 
+        if migrated:
+            # @todo overwrite existing info
+            pass
+
+        return zoo_dataset_info
+
     def _compute_num_samples(self):
         self.num_samples = sum(
             si.num_samples for si in self.downloaded_splits.values()
         )
+
+
+def _migrate_zoo_dataset_info(d):
+    migrated = False
+
+    # @legacy field name
+    if "zoo_dataset_cls" in d:
+        d["zoo_dataset"] = d.pop("zoo_dataset_cls")
+        migrated = True
+
+    # @legacy field name
+    if "format_cls" in d:
+        d["dataset_type"] = d.pop("format_cls")
+        migrated = True
+
+    zoo_dataset = d["zoo_dataset"]
+    dataset_type = d["dataset_type"]
+
+    # @legacy pre-model zoo package namespaces
+    old_pkg = "fiftyone.zoo."
+    new_pkg = "fiftyone.zoo.datasets."
+    if zoo_dataset.startswith(old_pkg) and not zoo_dataset.startswith(new_pkg):
+        zoo_dataset = new_pkg + zoo_dataset[len(old_pkg) :]
+        migrated = True
+
+    # @legacy zoo dataset name
+    old_name = "VideoQuickstartDataset"
+    new_name = "QuickstartVideoDataset"
+    if zoo_dataset.endswith(old_name):
+        zoo_dataset = zoo_dataset[: -len(old_name)] + new_name
+        migrated = True
+
+    # @legacy dataset type names
+    _dt = "fiftyone.types.dataset_types"
+    if dataset_type.endswith(".ImageClassificationDataset"):
+        dataset_type = _dt + ".FiftyOneImageClassificationDataset"
+        migrated = True
+
+    if dataset_type.endswith(".ImageDetectionDataset"):
+        dataset_type = _dt + ".FiftyOneImageDetectionDataset"
+        migrated = True
+
+    d["zoo_dataset"] = zoo_dataset
+    d["dataset_type"] = dataset_type
+
+    return d, migrated
 
 
 class ZooDatasetSplitInfo(etas.Serializable):
