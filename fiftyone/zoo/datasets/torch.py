@@ -42,11 +42,20 @@ class TorchVisionDataset(fozd.ZooDataset):
 class MNISTDataset(TorchVisionDataset):
     """The MNIST database of handwritten digits.
 
-    The dataset consists of 70000 28 x 28 grayscale images in 10 classes.
-    There are 60000 training images and 10000 test images.
+    The dataset consists of 70,000 28 x 28 grayscale images in 10 classes.
+    There are 60,000 training images and 10,000 test images.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("mnist", split="test")
+
+        session = fo.launch_app(dataset)
 
     Dataset size
-        21.00 MiB
+        21.00 MB
 
     Source
         http://yann.lecun.com/exdb/mnist
@@ -62,7 +71,7 @@ class MNISTDataset(TorchVisionDataset):
 
     @property
     def supported_splits(self):
-        return ("test", "train")
+        return ("train", "test")
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         train = split == "train"
@@ -86,11 +95,20 @@ class MNISTDataset(TorchVisionDataset):
 class FashionMNISTDataset(TorchVisionDataset):
     """The Fashion-MNIST database of Zalando's fashion article images.
 
-    The dataset consists of 70000 28 x 28 grayscale images in 10 classes.
-    There are 60000 training images and 10000 test images.
+    The dataset consists of 70,000 28 x 28 grayscale images in 10 classes.
+    There are 60,000 training images and 10,000 test images.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("fashion-mnist", split="test")
+
+        session = fo.launch_app(dataset)
 
     Dataset size
-        36.42 MiB
+        36.42 MB
 
     Source
         https://github.com/zalandoresearch/fashion-mnist
@@ -106,7 +124,7 @@ class FashionMNISTDataset(TorchVisionDataset):
 
     @property
     def supported_splits(self):
-        return ("test", "train")
+        return ("train", "test")
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         train = split == "train"
@@ -128,12 +146,21 @@ class FashionMNISTDataset(TorchVisionDataset):
 
 
 class CIFAR10Dataset(TorchVisionDataset):
-    """The CIFAR-10 dataset consists of 60000 32 x 32 color images in 10
-    classes, with 6000 images per class. There are 50000 training images and
-    10000 test images.
+    """The CIFAR-10 dataset consists of 60,000 32 x 32 color images in 10
+    classes, with 6,000 images per class. There are 50,000 training images and
+    10,000 test images.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("cifar10", split="test")
+
+        session = fo.launch_app(dataset)
 
     Dataset size
-        132.40 MiB
+        132.40 MB
 
     Source
         https://www.cs.toronto.edu/~kriz/cifar.html
@@ -149,7 +176,7 @@ class CIFAR10Dataset(TorchVisionDataset):
 
     @property
     def supported_splits(self):
-        return ("test", "train")
+        return ("train", "test")
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         train = split == "train"
@@ -173,11 +200,21 @@ class CIFAR10Dataset(TorchVisionDataset):
 class CIFAR100Dataset(TorchVisionDataset):
     """The CIFAR-100 dataset of images.
 
-    The dataset consists of 60000 32 x 32 color images in 100 classes, with 600
-    images per class. There are 50000 training images and 10000 test images.
+    The dataset consists of 60,000 32 x 32 color images in 100 classes, with
+    600 images per class. There are 50,000 training images and 10,000 test
+    images.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("cifar100", split="test")
+
+        session = fo.launch_app(dataset)
 
     Dataset size
-        132.03 MiB
+        132.03 MB
 
     Source
         https://www.cs.toronto.edu/~kriz/cifar.html
@@ -193,7 +230,7 @@ class CIFAR100Dataset(TorchVisionDataset):
 
     @property
     def supported_splits(self):
-        return ("test", "train")
+        return ("train", "test")
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         train = split == "train"
@@ -221,8 +258,8 @@ class ImageNet2012Dataset(TorchVisionDataset):
     to the WordNet hierarchy. Each meaningful concept in WordNet, possibly
     described by multiple words or word phrases, is called a "synonym set" or
     "synset". There are more than 100,000 synsets in WordNet, majority of them
-    are nouns (80,000+). ImageNet provides on average 1000 images to illustrate
-    each synset. Images of each concept are quality-controlled and
+    are nouns (80,000+). ImageNet provides on average 1,000 images to
+    illustrate each synset. Images of each concept are quality-controlled and
     human-annotated. In its completion, we hope ImageNet will offer tens of
     millions of cleanly sorted images for most of the concepts in the WordNet
     hierarchy.
@@ -231,29 +268,34 @@ class ImageNet2012Dataset(TorchVisionDataset):
     training and validation sets are provided.
 
     In order to load the ImageNet dataset, you must download the source data
-    manually into ``source_dir`` as follows::
+    manually. The directory should be organized in the following format::
 
-            both splits: ILSVRC2012_devkit_t12.tar.gz
-            train split: ILSVRC2012_img_train.tar
-       validation split: ILSVRC2012_img_val.tar
+        source_dir/
+            ILSVRC2012_devkit_t12.tar.gz    # both splits
+            ILSVRC2012_img_train.tar        # train split
+            ILSVRC2012_img_val.tar          # validation split
 
     You can register at http://www.image-net.org/download-images in order to
     get links to download the data.
 
     Example usage::
 
+        import fiftyone as fo
         import fiftyone.zoo as foz
 
-        # First parse the manually downloaded files in `source_dir`
-        foz.download_zoo_dataset(
-            "imagenet-2012", source_dir="/path/to/dir-with-imagenet-files"
+        # The path to the source files that you manually downloaded
+        source_dir = "/path/to/dir-with-imagenet-files"
+
+        dataset = foz.load_zoo_dataset(
+            "imagenet-2012",
+            split="validation",
+            source_dir=source_dir,
         )
 
-        # Now load into FiftyOne
-        dataset = foz.load_zoo_dataset("imagenet-2012", split="validation")
+        session = fo.launch_app(dataset)
 
     Dataset size
-        144.02 GiB
+        144.02 GB
 
     Source
         http://image-net.org
@@ -278,9 +320,15 @@ class ImageNet2012Dataset(TorchVisionDataset):
     def supported_splits(self):
         return ("train", "validation")
 
+    @property
+    def requires_manual_download(self):
+        return True
+
     def _download_and_prepare(self, dataset_dir, _, split):
         # Ensure that the source files have been manually downloaded
-        foui.ensure_imagenet_manual_download(self.source_dir, split)
+        foui.ensure_imagenet_manual_download(
+            self.source_dir, split, devkit=True
+        )
 
         if split == "validation":
             _split = "val"
@@ -308,6 +356,15 @@ class COCO2014Dataset(TorchVisionDataset):
     This version contains images, bounding boxes and labels for the 2014
     version of the dataset.
 
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("coco-2014", split="validation")
+
+        session = fo.launch_app(dataset)
+
     Notes:
 
     -   COCO defines 91 classes but the data only uses 80 classes
@@ -317,7 +374,7 @@ class COCO2014Dataset(TorchVisionDataset):
         splits
 
     Dataset size
-        37.57 GiB
+        37.57 GB
 
     Source
         http://cocodataset.org/#home
@@ -333,7 +390,7 @@ class COCO2014Dataset(TorchVisionDataset):
 
     @property
     def supported_splits(self):
-        return ("test", "train", "validation")
+        return ("train", "validation", "test")
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
@@ -361,6 +418,15 @@ class COCO2017Dataset(TorchVisionDataset):
     This version contains images, bounding boxes and labels for the 2017
     version of the dataset.
 
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("coco-2017", split="validation")
+
+        session = fo.launch_app(dataset)
+
     Notes:
 
     -   COCO defines 91 classes but the data only uses 80 classes
@@ -370,7 +436,7 @@ class COCO2017Dataset(TorchVisionDataset):
         splits
 
     Dataset size
-        25.20 GiB
+        25.20 GB
 
     Source
         http://cocodataset.org/#home
@@ -386,7 +452,7 @@ class COCO2017Dataset(TorchVisionDataset):
 
     @property
     def supported_splits(self):
-        return ("test", "train", "validation")
+        return ("train", "validation", "test")
 
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
         def download_fcn(download_dir):
@@ -411,15 +477,24 @@ class VOC2007Dataset(TorchVisionDataset):
     """The dataset for the PASCAL Visual Object Classes Challenge 2007
     (VOC2007) for the classification and detection competitions.
 
-    A total of 9963 images are included in this dataset, where each image
+    A total of 9,963 images are included in this dataset, where each image
     contains a set of objects, out of 20 different classes, making a total of
-    24640 annotated objects. In the classification competition, the goal is to
+    24,640 annotated objects. In the classification competition, the goal is to
     predict the set of labels contained in the image, while in the detection
     competition the goal is to predict the bounding box and label of each
     individual object.
 
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("voc-2007", split="validation")
+
+        session = fo.launch_app(dataset)
+
     Dataset size
-        868.85 MiB
+        868.85 MB
 
     Source
         http://host.robots.ox.ac.uk/pascal/VOC/voc2007
@@ -463,15 +538,24 @@ class VOC2012Dataset(TorchVisionDataset):
     """The dataset for the PASCAL Visual Object Classes Challenge 2012
     (VOC2012) for the Classification and Detection competitions.
 
-    A total of 11540 images are included in this dataset, where each image
+    A total of 11,540 images are included in this dataset, where each image
     contains a set of objects, out of 20 different classes, making a total of
-    27450 annotated objects. In the classification competition, the goal is to
+    27,450 annotated objects. In the classification competition, the goal is to
     predict the set of labels contained in the image, while in the detection
     competition the goal is to predict the bounding box and label of each
     individual object.
 
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("voc-2012", split="validation")
+
+        session = fo.launch_app(dataset)
+
     Dataset size
-        3.59 GiB
+        3.59 GB
 
     Source
         http://host.robots.ox.ac.uk/pascal/VOC/voc2012
