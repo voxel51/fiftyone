@@ -749,6 +749,7 @@ _SCREENSHOT_STYLE = """
   margin-left: -80px;
   margin-top: -23px;
   background: hsla(210,11%,15%, 0.5);
+  border: none;
 }
 #foactivate-{{ handle }}:focus {
   outline: none;
