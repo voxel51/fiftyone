@@ -671,6 +671,15 @@ class KITTIDataset(FiftyOneDataset):
 
         etau.move_dir(split_dir, dataset_dir)
 
+        # Get metadata
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.KITTIDetectionDataset()
+        importer = fouk.KITTIDetectionDatasetImporter
+        num_samples = importer.get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, None
+
 
 class LabeledFacesInTheWildDataset(FiftyOneDataset):
     """Labeled Faces in the Wild is a public benchmark for face verification,

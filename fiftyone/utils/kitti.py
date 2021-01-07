@@ -167,6 +167,14 @@ class KITTIDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         self._uuids = self._preprocess_list(uuids)
         self._num_samples = len(self._uuids)
 
+    @staticmethod
+    def get_num_samples(dataset_dir):
+        data_dir = os.path.join(dataset_dir, "data")
+        if not os.path.isdir(data_dir):
+            return 0
+
+        return len(etau.list_files(data_dir))
+
 
 class KITTIDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
     """Exporter that writes KITTI detection datasets to disk.
@@ -306,8 +314,8 @@ def download_kitti_detection_dataset(
         dataset_dir/
             train/
                 data/
-                    000000.jpg
-                    000001.jpg
+                    000000.png
+                    000001.png
                     ...
                 labels/
                     000000.txt
@@ -315,8 +323,8 @@ def download_kitti_detection_dataset(
                     ...
             test/
                 data/
-                    000000.jpg
-                    000001.jpg
+                    000000.png
+                    000001.png
                     ...
 
     Args:
