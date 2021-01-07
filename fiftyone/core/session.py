@@ -582,7 +582,7 @@ class Session(foc.HasClient):
             self._show()
 
     def _capture(self, data):
-        from IPython.display import HTML, Javascript
+        from IPython.display import HTML
 
         for handle, image in data.items():
             if handle in self._handles:
@@ -683,26 +683,21 @@ def _display_colab(handle, uuid, port, height, update=False):
     from google.colab import output
 
     style_text = Template(_SCREENSHOT_STYLE).render(handle=uuid)
-    div_text = Template(_SCREENSHOT_DIV).render(image="", handle=uuid)
-    script_text = Template(_SCREENSHOT_SCRIPT).render(
-        url="${baseUrl}", handle=uuid
-    )
     html = _SCREENSHOT_COLAB
     replacements = [
         ("%PORT%", "%d" % port),
         ("%HANDLE%", uuid),
         ("%HEIGHT%", "%d" % height),
         ("%STYLE%", style_text),
-        ("%DIV%", div_text),
-        ("%SCRIPT%", script_text),
     ]
     for (k, v) in replacements:
         html = html.replace(k, v)
 
+    html = Template(html).render(handle=uuid)
     handle.display(IPython.display.HTML(html))
 
     def capture(img):
-        with output.redirect_to_element("#focontainer"):
+        with output.redirect_to_element("#focontainer-%s" % uuid):
             # pylint: disable=undefined-variable
             display(IPython.display.HTML("<img id='foimage' src='%s'/>" % img))
 
@@ -822,8 +817,7 @@ _SCREENSHOT_COLAB = """
         var overlay = document.getElementById(`fooverlay-${handleId}`);
         google.colab.kernel.invokeFunction(`fiftyone.${handleId.replaceAll('-', '_')}`, [event.data.src], {});
         overlay.addEventListener("click", () => {
-          const img = document.getElementById("foimage");
-          container.removeChild(img);
+          container.removeChild(container.children[1]);
           document.body.appendChild(iframe, div);
         });
         container.addEventListener("mouseenter", () => overlay.style.display = "block");

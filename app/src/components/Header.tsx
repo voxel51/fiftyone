@@ -608,21 +608,26 @@ const FeedbackButton = ({ addNotification }) => {
       style={{ marginRight: "0.5rem", position: "relative" }}
     >
       Want a free t-shirt?
-      <Close
+      <div
         style={{
           position: "absolute",
           top: "-0.8rem",
           right: "-0.8rem",
-          borderRadius: "1rem",
-          background: theme.brand,
         }}
-        onClick={(e) => {
-          e.stopPropagation();
-          setFeedbackSubmitted({ ...feedbackSubmitted, minimized: true });
-          fetch(`${http}/feedback`, { method: "post" });
-          closeFeedback && closeFeedback.close();
-        }}
-      />
+      >
+        <Close
+          style={{
+            borderRadius: "1rem",
+            background: theme.brand,
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setFeedbackSubmitted({ ...feedbackSubmitted, minimized: true });
+            fetch(`${http}/feedback`, { method: "post" });
+            closeFeedback && closeFeedback.close();
+          }}
+        />
+      </div>
     </Button>
   ) : showFeedbackButton === "minimized" ? (
     <img
