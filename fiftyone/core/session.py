@@ -248,6 +248,7 @@ class Session(foc.HasClient):
         self._auto = auto
         self._height = height
         self._handles = {}
+        self._colab_img_counter = defaultdict(int)
 
         global _server_services  # pylint: disable=global-statement
         if port not in _server_services:
@@ -638,14 +639,14 @@ class Session(foc.HasClient):
 
         self._handles[uuid] = {"target": handle, "height": height}
 
-        _display(handle, uuid, self._port, height=height)
+        _display(self, handle, uuid, self._port, height=height)
 
     def _update_state(self):
         # see fiftyone.core.client if you would like to understand this
         self.state = self.state
 
 
-def _display(handle, uuid, port=None, height=None, update=False):
+def _display(session, handle, uuid, port=None, height=None, update=False):
     """Displays a running FiftyOne instance.
 
     Args:
@@ -659,10 +660,10 @@ def _display(handle, uuid, port=None, height=None, update=False):
     funcs = {focx._COLAB: _display_colab, focx._IPYTHON: _display_ipython}
     fn = funcs[focx._get_context()]
 
-    return fn(handle, uuid, port, height, update)
+    return fn(session, handle, uuid, port, height, update)
 
 
-def _display_colab(handle, uuid, port, height, update=False):
+def _display_colab(session, handle, uuid, port, height, update=False):
     """Display a FiftyOne instance in a Colab output frame.
 
     The Colab VM is not directly exposed to the network, so the Colab runtime
@@ -683,28 +684,37 @@ def _display_colab(handle, uuid, port, height, update=False):
     from google.colab import output
 
     style_text = Template(_SCREENSHOT_STYLE).render(handle=uuid)
-    html = _SCREENSHOT_COLAB
-    replacements = [
-        ("%PORT%", "%d" % port),
-        ("%HANDLE%", uuid),
-        ("%HEIGHT%", "%d" % height),
-        ("%STYLE%", style_text),
-    ]
-    for (k, v) in replacements:
-        html = html.replace(k, v)
+    html = Template(_SCREENSHOT_COLAB).render(style=style_text, handle=uuid)
+    script = Template(_SCREENSHOT_COLAB_SCRIPT).render(
+        port=port, handle=uuid, height=height
+    )
 
-    html = Template(html).render(handle=uuid)
     handle.display(IPython.display.HTML(html))
+    output.eval_js(script)
 
     def capture(img):
+        idx = session._colab_img_counter[uuid]
+        session._colab_img_counter[uuid] = idx + 1
         with output.redirect_to_element("#focontainer-%s" % uuid):
             # pylint: disable=undefined-variable
-            display(IPython.display.HTML("<img id='foimage' src='%s'/>" % img))
+            display(
+                IPython.display.HTML(
+                    """
+                <img id="%s%s" class='foimage' src='%s'/>
+                <style>
+                #%s%s {
+                    display: none;
+                }
+                </style>
+                """
+                    % (uuid, idx, img, uuid, idx - i)
+                )
+            )
 
     output.register_callback("fiftyone.%s" % uuid.replace("-", "_"), capture)
 
 
-def _display_ipython(handle, uuid, port, height, update=False):
+def _display_ipython(session, handle, uuid, port, height, update=False):
     import IPython.display
 
     src = "http://localhost:%d/?notebook=true&handleId=%s" % (port, uuid)
@@ -788,26 +798,27 @@ _SCREENSHOT_HTML = Template(
 
 _SCREENSHOT_COLAB = """
 <style>
-%STYLE%
+{{ style }}
 </style>
 <div id="focontainer-{{ handle }}">
    <div id="fooverlay-{{ handle }}">
       <button id="foactivate-{{ handle }}" >Activate</button>
    </div>
 </div>
-<script>
+"""
+
+_SCREENSHOT_COLAB_SCRIPT = """
 (async () => {
-    if (document.getElementById("foimage")) return;
-    const baseURL = await google.colab.kernel.proxyPort(%PORT%, {'cache': true});
+    const baseURL = await google.colab.kernel.proxyPort({{ port }}, {'cache': true});
     const url = new URL(baseURL);
-    const handleId = "%HANDLE%";
+    const handleId = "{{ handle }}";
     url.searchParams.set('fiftyoneColab', 'true');
     url.searchParams.set('notebook', 'true');
     url.searchParams.set('handleId', handleId);
     const iframe = document.createElement('iframe');
     iframe.src = url;
     iframe.setAttribute('width', '100%');
-    iframe.setAttribute('height', '%HEIGHT%');
+    iframe.setAttribute('height', '{{ height }}');
     iframe.setAttribute('frameborder', 0);
     document.body.appendChild(iframe);
     window.addEventListener("message", (event) => {
@@ -818,11 +829,10 @@ _SCREENSHOT_COLAB = """
         google.colab.kernel.invokeFunction(`fiftyone.${handleId.replaceAll('-', '_')}`, [event.data.src], {});
         overlay.addEventListener("click", () => {
           container.removeChild(container.children[1]);
-          document.body.appendChild(iframe, div);
+          document.body.appendChild(iframe);
         });
         container.addEventListener("mouseenter", () => overlay.style.display = "block");
         container.addEventListener("mouseleave", () => overlay.style.display = "none");
     });
 })();
-</script>
 """
