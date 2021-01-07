@@ -23,6 +23,7 @@ import tornado.web
 import tornado.websocket
 
 import eta.core.labels as etal
+import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
 
@@ -90,10 +91,16 @@ class FiftyOneHandler(RequestHandler):
             dict
         """
         uid, first_import = _get_user_id()
+        isfile = os.path.isfile(foc.FEEDBACK_PATH)
+        if isfile:
+            submitted = etas.load_json(foc.FEEDBACK_PATH)["submitted"]
+        else:
+            submitted = False
         return {
             "version": foc.VERSION,
             "user_id": uid,
             "do_not_track": fo.config.do_not_track,
+            "feedback": {"submitted": submitted, "minimized": isfile},
             "dev_install": foc.DEV_INSTALL or foc.RC_INSTALL,
         }
 
@@ -134,6 +141,14 @@ class StagesHandler(RequestHandler):
                 for stage in _STAGES
             ]
         }
+
+
+class FeedbackHandler(RequestHandler):
+    """Returns whether the feedback button should be minimized"""
+
+    def post(self):
+        submitted = self.get_argument("submitted", False)
+        etas.write_json({"submitted": submitted}, foc.FEEDBACK_PATH)
 
 
 def _catch_errors(func):
@@ -252,14 +267,16 @@ class PollingHandler(tornado.web.RequestHandler):
             print("DEACTIVATE")
             self.write_message({"type": "deactivate"})
 
-        elif event == "statistics":
-            state = fos.StateDescription.from_dict(StateHandler.state)
-            view = state.view or state.dataset
+        state = fos.StateDescription.from_dict(StateHandler.state)
+        if state.view is not None:
+            view = state.view
+        else:
+            view = state.dataset
+
+        if event == "statistics":
             await StateHandler.send_statistics(view, only=self)
 
         elif event == "extended_statistics":
-            state = fos.StateDescription.from_dict(StateHandler.state)
-            view = state.view or state.dataset
             await StateHandler.send_statistics(
                 view, only=self, filters=state.filters
             )
@@ -459,7 +476,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         """
         state = fos.StateDescription.from_dict(StateHandler.state)
         state.filters = filters
-        view = state.view or state.dataset
+        if state.view is not None:
+            view = state.view
+        else:
+            view = state.dataset
         StateHandler.state = state.serialize()
         for clients in PollingHandler.clients.values():
             clients.update({"extended_statistics"})
@@ -702,7 +722,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         if StateHandler.state["dataset"] is None:
             return []
         state = fos.StateDescription.from_dict(StateHandler.state)
-        view = state.view or state.dataset
+        if state.view is not None:
+            view = state.view
+        else:
+            view = state.dataset
         awaitables = [cls.send_statistics(view, only=only)]
 
         awaitables.append(
@@ -1039,6 +1062,7 @@ class Application(tornado.web.Application):
         handlers = [
             (r"/fiftyone", FiftyOneHandler),
             (r"/polling", PollingHandler),
+            (r"/feedback", FeedbackHandler),
             (r"/filepath/(.*)", FileHandler, {"path": static_path},),
             (r"/stages", StagesHandler),
             (r"/state", StateHandler),
