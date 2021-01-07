@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import {
   useRecoilState,
   useRecoilValue,
@@ -10,17 +10,22 @@ import styled from "styled-components";
 import SamplesContainer from "./SamplesContainer";
 import HorizontalNav from "../components/HorizontalNav";
 import SampleModal from "../components/SampleModal";
-import { ModalWrapper, Overlay } from "../components/utils";
+import { ModalWrapper } from "../components/utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { VALID_LABEL_TYPES } from "../utils/labels";
-import { useMessageHandler, useSendMessage } from "../utils/hooks";
+import {
+  useMessageHandler,
+  useOutsideClick,
+  useSendMessage,
+  useScreenshot,
+} from "../utils/hooks";
 import Loading from "../components/Loading";
 
 const PLOTS = ["labels", "scalars", "tags"];
 
 const Container = styled.div`
-  height: 100%;
+  height: calc(100% - 74px);
   display: flex;
   flex-direction: column;
 `;
@@ -45,12 +50,7 @@ const applyActiveLabels = (tuples, current, setter) => {
 };
 
 function Dataset(props) {
-  const [modal, setModal] = useState({
-    visible: false,
-    sample: null,
-    metadata: null,
-    activeLabels: {},
-  });
+  const [modal, setModal] = useRecoilState(atoms.modal);
   const http = useRecoilValue(selectors.http);
   const hasDataset = useRecoilValue(selectors.hasDataset);
   const colorMap = useRecoilValue(atoms.colorMap);
@@ -72,18 +72,11 @@ function Dataset(props) {
   );
   const activeOther = useRecoilValue(atoms.activeOther("sample"));
   const activeFrameOther = useRecoilValue(atoms.activeOther("frame"));
-  const isNotebook = useRecoilValue(selectors.isNotebook);
-  const setDeactivated = useSetRecoilState(atoms.deactivated);
 
   useMessageHandler("statistics", ({ stats, view, filters }) => {
     filters && setExtendedDatasetStats({ stats, view, filters });
     !filters && setDatasetStats({ stats, view });
   });
-  useSendMessage("as_app", {
-    notebook: isNotebook,
-  });
-
-  useMessageHandler("deactivate", () => setDeactivated(true));
 
   // update color map
   useEffect(() => {
@@ -111,6 +104,8 @@ function Dataset(props) {
     resetSelectedObjects();
     resetHiddenObjects();
   };
+
+  useScreenshot();
 
   useEffect(() => {
     document.body.classList.toggle("noscroll", modal.visible);
@@ -176,12 +171,14 @@ function Dataset(props) {
       modalProps.onNext = () => setModal({ ...modal, ...nextSample });
     }
   }
+  const ref = useRef();
+
+  useOutsideClick(ref, handleHideModal);
 
   return (
     <>
       {modal.visible ? (
         <ModalWrapper>
-          <Overlay onClick={handleHideModal} />
           <SampleModal
             activeLabels={modal.activeLabels}
             activeFrameLabels={modal.activeFrameLabels}
@@ -191,6 +188,7 @@ function Dataset(props) {
             sampleUrl={src}
             onClose={handleHideModal}
             {...modalProps}
+            ref={ref}
           />
         </ModalWrapper>
       ) : null}

@@ -32,7 +32,7 @@ const ViewStageInput = styled(AuosizeInput)`
   & input {
     background-color: transparent;
     border: none;
-    padding: 0.5rem 0 0.5rem 0.5rem;
+    padding: 0.5rem;
     color: ${({ theme }) => theme.font};
     height: 1rem;
     border: none;
@@ -43,6 +43,7 @@ const ViewStageInput = styled(AuosizeInput)`
     border: none;
     outline: none;
     font-weight: bold;
+    padding-right: 0;
   }
 
   & ::placeholder {
@@ -81,13 +82,9 @@ const AddIcon = animated(styled(Add)`
   font-size: 14px;
 `);
 
-const addTransform = (y) => `translate3d(0, ${y}px, 0)`;
-
 const ArrowIcon = animated(styled(Arrow)`
   position: absolute;
 `);
-
-const arrowTransform = (y) => `scale(-1, 1) translate3d(0, ${y}px, 0)`;
 
 export const AddViewStage = React.memo(({ send, index, active }) => {
   const theme = useContext(ThemeContext);
@@ -114,23 +111,23 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
   }, [active]);
 
   const [addProps, setAdd] = useSpring(() => ({
-    y: active ? 0 : 40,
+    marginTop: active ? 0 : 31,
   }));
 
   const [arrowProps, setArrow] = useSpring(() => ({
-    y: active ? -40 : 0,
+    marginTop: active ? -31 : 0,
   }));
 
   const setEnterProps = () => {
     set({ background: theme.background });
-    setAdd({ y: 0 });
-    setArrow({ y: -40 });
+    setAdd({ marginTop: 0 });
+    setArrow({ marginTop: -31 });
   };
 
   const setLeaveProps = () => {
     set({ background: theme.backgroundDark });
-    setAdd({ y: 40 });
-    setArrow({ y: 0 });
+    setAdd({ marginTop: 31 });
+    setArrow({ marginTop: 0 });
   };
 
   useEffect(() => {
@@ -146,22 +143,26 @@ export const AddViewStage = React.memo(({ send, index, active }) => {
       onClick={() => send({ type: "STAGE.ADD", index })}
     >
       <ViewStageButton>
-        <ArrowIcon
+        <animated.div
           style={{
-            transform: arrowProps.y.interpolate(arrowTransform),
-            display: "block",
-            fontSize: "14px",
-            margin: "9px 0",
+            ...arrowProps,
+            textAlign: "center",
+            height: "100%",
+            lineHeight: "2rem",
           }}
-        />
-        <AddIcon
+        >
+          >
+        </animated.div>
+        <animated.div
           style={{
-            transform: addProps.y.interpolate(addTransform),
-            display: "block",
-            fontSize: "14px",
-            margin: "9px 0",
+            ...addProps,
+            textAlign: "center",
+            height: "100%",
+            lineHeight: "2rem",
           }}
-        />
+        >
+          +
+        </animated.div>
       </ViewStageButton>
     </ViewStageButtonContainer>
   );
@@ -326,24 +327,31 @@ const ViewStage = React.memo(({ barRef, stageRef }) => {
             style={{ fontSize: "1rem" }}
             ref={inputRef}
           />
-          {state.matches("input.editing") || stage === "" ? (
+          {state.matches("input.editing") ? (
             <BestMatchDiv>
               {bestMatch ? bestMatch.placeholder : ""}
             </BestMatchDiv>
           ) : null}
           {isCompleted && (
-            <ExternalLink
-              href={`https://voxel51.com/docs/fiftyone/api/fiftyone.core.stages.html#fiftyone.core.stages.${stage}`}
-              style={{ lineHeight: "0.8rem" }}
+            <div
+              style={{
+                width: "1rem",
+                height: "1rem",
+                margin: "0.4rem 0.5rem 0.5rem 0",
+              }}
             >
-              <Help
-                style={{
-                  width: "1rem",
-                  height: "1rem",
-                  margin: "0.5rem",
-                }}
-              />
-            </ExternalLink>
+              <ExternalLink
+                href={`https://voxel51.com/docs/fiftyone/api/fiftyone.core.stages.html#fiftyone.core.stages.${stage}`}
+                style={{ maxHeight: "1rem", width: "1rem", display: "block" }}
+              >
+                <Help
+                  style={{
+                    width: "1rem",
+                    height: "1rem",
+                  }}
+                />
+              </ExternalLink>
+            </div>
           )}
         </ViewStageDiv>
         {parameters

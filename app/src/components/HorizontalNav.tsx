@@ -74,8 +74,8 @@ const PlotButton = styled.div`
 `;
 
 const TogglePlotsButton = animated(styled.div`
-  line-height: 2rem;
-  padding: 0 0.5rem;
+  line-height: 1.5rem;
+  padding: 0.25rem 0.75rem;
   cursor: pointer;
   background-color: ${({ theme }) => theme.button};
   height: 2rem;
@@ -89,9 +89,9 @@ const TogglePlotsButton = animated(styled.div`
     background-color: ${({ theme }) => theme.brand};
   }
   & > svg {
-    padding: 0.25rem;
-    height: 2rem;
-    width: 2rem;
+    display: inline-block;
+    height: 1.5rem;
+    width: 1.5rem;
   }
 `);
 
