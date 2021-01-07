@@ -9,7 +9,10 @@ from collections import defaultdict
 from functools import wraps
 import logging
 import time
+from uuid import uuid4
 import webbrowser
+
+from jinja2 import Template
 
 import fiftyone as fo
 import fiftyone.constants as focn
@@ -17,6 +20,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.client as foc
 import fiftyone.core.context as focx
 import fiftyone.core.service as fos
+import fiftyone.utils.templates as fout
 from fiftyone.core.state import StateDescription
 
 
@@ -163,8 +167,8 @@ def _update_state(func):
     def wrapper(self, *args, **kwargs):
         result = func(self, *args, **kwargs)
         self.state.datasets = fod.list_datasets()
-        self._update_state()
         self._auto_show()
+        self._update_state()
         return result
 
     return wrapper
@@ -244,6 +248,8 @@ class Session(foc.HasClient):
         self._disable_wait_warning = False
         self._auto = auto
         self._height = height
+        self._handles = {}
+        self._colab_img_counter = defaultdict(int)
 
         global _server_services  # pylint: disable=global-statement
         if port not in _server_services:
@@ -355,7 +361,7 @@ class Session(foc.HasClient):
             )
             return "%s?fiftyoneColab=true" % url
 
-        return "http://localhost:%d" % self.server_port
+        return "http://localhost:%d/" % self.server_port
 
     @property
     def dataset(self):
@@ -531,19 +537,8 @@ class Session(foc.HasClient):
         Args:
             height (None): a height, in pixels, for the App
         """
-        if (self._context == focx._NONE) or self._desktop:
-            return
-
-        if self.dataset is not None:
-            self.dataset._reload()
-
-        self.state.datasets = fod.list_datasets()
+        self._show(height)
         self._update_state()
-
-        if height is None:
-            height = self._height
-
-        display(self._port, height=height)
 
     def wait(self):
         """Blocks execution until the session is closed by the user.
@@ -574,16 +569,87 @@ class Session(foc.HasClient):
         self.state.close = True
         self._update_state()
 
+    def freeze(self):
+        """Screenshots the active App cell.
+
+        Only applicable to notebook contexts.
+        """
+        if self._context == focx._NONE:
+            raise ValueError("Only notebook sessions can be frozen")
+
+        self.state.active_handle = None
+        self._update_state()
+
+    def _auto_show(self):
+        if self._auto and (self._context != focx._NONE):
+            self._show()
+
+    def _capture(self, data):
+        from IPython.display import HTML
+
+        for handle, image in data.items():
+            if handle in self._handles:
+                self._handles[handle]["target"].update(
+                    HTML(
+                        fout._SCREENSHOT_HTML.render(
+                            handle=handle, image=image, url=self._base_url(),
+                        )
+                    )
+                )
+
+    def _base_url(self):
+        if self._context == focx._COLAB:
+            # pylint: disable=no-name-in-module,import-error
+            from google.colab.output import eval_js
+
+            return eval_js(
+                "google.colab.kernel.proxyPort(%d)" % self.server_port
+            )
+
+        return "http://localhost:%d/" % self.server_port
+
+    def _reactivate(self, data):
+        handle = data["handle"]
+        if handle in self._handles:
+            source = self._handles[handle]
+            _display(
+                self,
+                source["target"],
+                handle,
+                self._port,
+                source["height"],
+                update=True,
+            )
+            self.state.active_handle = handle
+            self._update_state()
+
+    def _show(self, height=None):
+        if (self._context == focx._NONE) or self._desktop:
+            return
+
+        if self.dataset is not None:
+            self.dataset._reload()
+
+        import IPython.display
+
+        self.state.datasets = fod.list_datasets()
+        handle = IPython.display.display(display_id=True)
+        uuid = str(uuid4())
+        self.state.active_handle = uuid
+
+        if height is None:
+            height = self._height
+
+        self._handles[uuid] = {"target": handle, "height": height}
+
+        _display(self, handle, uuid, self._port, height=height)
+
     def _update_state(self):
         # see fiftyone.core.client if you would like to understand this
         self.state = self.state
 
-    def _auto_show(self):
-        if self._auto and (self._context != focx._NONE):
-            self.show()
 
-
-def display(port=None, height=None):
+def _display(session, handle, uuid, port=None, height=None, update=False):
     """Displays a running FiftyOne instance.
 
     Args:
@@ -597,10 +663,10 @@ def display(port=None, height=None):
     funcs = {focx._COLAB: _display_colab, focx._IPYTHON: _display_ipython}
     fn = funcs[focx._get_context()]
 
-    return fn(port, height)
+    return fn(session, handle, uuid, port, height, update)
 
 
-def _display_colab(port, height):
+def _display_colab(session, handle, uuid, port, height, update=False):
     """Display a FiftyOne instance in a Colab output frame.
 
     The Colab VM is not directly exposed to the network, so the Colab runtime
@@ -617,33 +683,48 @@ def _display_colab(port, height):
     """
     import IPython.display
 
-    shell = """
-        (async () => {
-            const url = new URL(await google.colab.kernel.proxyPort(%PORT%, {'cache': true}));
-            url.searchParams.set('fiftyoneColab', 'true');
-            url.searchParams.set('notebook', 'true');
-            const iframe = document.createElement('iframe');
-            iframe.src = url;
-            iframe.setAttribute('width', '100%');
-            iframe.setAttribute('height', '%HEIGHT%');
-            iframe.setAttribute('frameborder', 0);
-            document.body.appendChild(iframe);
-        })();
-    """
-    replacements = [
-        ("%PORT%", "%d" % port),
-        ("%HEIGHT%", "%d" % height),
-    ]
-    for (k, v) in replacements:
-        shell = shell.replace(k, v)
-    script = IPython.display.Javascript(shell)
+    # pylint: disable=no-name-in-module,import-error
+    from google.colab import output
 
-    IPython.display.display(script)
+    style_text = Template(fout._SCREENSHOT_STYLE).render(handle=uuid)
+    html = Template(fout._SCREENSHOT_COLAB).render(
+        style=style_text, handle=uuid
+    )
+    script = Template(fout._SCREENSHOT_COLAB_SCRIPT).render(
+        port=port, handle=uuid, height=height
+    )
+
+    handle.display(IPython.display.HTML(html))
+    output.eval_js(script)
+
+    def capture(img):
+        idx = session._colab_img_counter[uuid]
+        session._colab_img_counter[uuid] = idx + 1
+        with output.redirect_to_element("#focontainer-%s" % uuid):
+            # pylint: disable=undefined-variable,bad-format-character
+            display(
+                IPython.display.HTML(
+                    """
+                <img id='fo-%s%d' class='foimage' src='%s' style='width: 100%%;'/>
+                <style>
+                #fo-%s%d {
+                    display: none;
+                }
+                </style>
+                """
+                    % (uuid, idx, img, uuid, idx - 1)
+                )
+            )
+
+    output.register_callback("fiftyone.%s" % uuid.replace("-", "_"), capture)
 
 
-def _display_ipython(port, height):
+def _display_ipython(session, handle, uuid, port, height, update=False):
     import IPython.display
 
-    src = "http://localhost:%d/?notebook=true" % port
+    src = "http://localhost:%d/?notebook=true&handleId=%s" % (port, uuid)
     iframe = IPython.display.IFrame(src, height=height, width="100%")
-    IPython.display.display(iframe)
+    if update:
+        handle.update(iframe)
+    else:
+        handle.display(iframe)

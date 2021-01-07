@@ -2,9 +2,14 @@ import { atom, atomFamily } from "recoil";
 
 import { SelectedObjectMap } from "../utils/selection";
 
-export const deactivated = atom({
-  key: "deactivated",
-  default: false,
+export const modal = atom({
+  key: "modal",
+  default: {
+    visible: false,
+    sample: null,
+    metadata: null,
+    activeLabels: {},
+  },
 });
 
 export const connected = atom({
