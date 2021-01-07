@@ -155,14 +155,16 @@ window will be opened in the output of your current cell.
     # Creates a session and opens the App in the output of the cell
     session = fo.launch_app(dataset)
 
-This App window will remain connected to your ``session`` object, so if you
-modify your session and refresh/reactivate this App winodw, it will sync with
-the current state of the ``session``.
-
 Any time you update the state of your ``session`` object; e.g., by setting
 :meth:`session.dataset <fiftyone.core.session.Session.dataset>` or
 :meth:`session.view <fiftyone.core.session.Session.view>`, a new App window
-will be automatically opened in the output of the current cell.
+will be automatically opened in the output of the current cell. The previously
+active App will be replaced with a screenshot of itself.
+
+An App that was replaced with a screenshot can be reactivated by clicking on
+the screenshot if within the notebooj environment in which it was created. Note
+that the reactivated App will load the current state of the ``session`` object,
+not the state in which the screenshot was taken.
 
 .. code-block:: python
     :linenos:
@@ -170,14 +172,17 @@ will be automatically opened in the output of the current cell.
     # A new App window will be created in the output of this cell
     session.view = dataset.take(10)
 
-.. note::
+A screenshot of the active App can be taken with
+:meth:`session.freeze() <fiftyone.core.session.Session.freeze>`. This is
+useful when you are finished with your notebook and ready to share it with
+others.
 
-    Only the most recently opened App window will be active, i.e, synced with
-    the ``session`` object.
+.. code-block:: python
+    :linenos:
 
-    You can reactivate an older cell by clicking the link in the deactivated
-    App window, or by running the cell again. This will deactivate the
-    previously active cell.
+    # Ensure only screenshots of FiftyOne Apps exist, so the notebook can be
+    # shared
+    session.freeze()
 
 Manually controlling App instances
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
