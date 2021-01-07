@@ -569,8 +569,9 @@ class Session(foc.HasClient):
         self._update_state()
 
     def freeze(self):
-        """Screenshot the active App cell. Only applicable to notebook
-        contexts.
+        """Screenshots the active App cell.
+
+        Only applicable to notebook contexts.
         """
         if self._context == focx._NONE:
             raise ValueError("Only notebook sessions can be frozen")
