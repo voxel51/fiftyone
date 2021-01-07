@@ -144,7 +144,9 @@ class Caltech101Dataset(FiftyOneDataset):
     """The Caltech-101 dataset of images.
 
     The dataset consists of pictures of objects belonging to 101 classes, plus
-    one background clutter class. Each image is labelled with a single object.
+    one background clutter class (``BACKGROUND_Google``). Each image is
+    labelled with a single object.
+
     Each class contains roughly 40 to 800 images, totalling around 9,000
     images. Images are of variable sizes, with typical edge lengths of 200-300
     pixels. This version contains image-level labels only.
@@ -194,6 +196,105 @@ class Caltech101Dataset(FiftyOneDataset):
             dataset_dir,
             scratch_dir,
         )
+
+        # Must always delete `scratch_dir` because it would be confused as a
+        # class folder
+        etau.delete_dir(scratch_dir)
+
+        logger.info("Parsing dataset metadata")
+        dataset_type = fot.ImageClassificationDirectoryTree()
+        importer = foud.ImageClassificationDirectoryTreeImporter
+        classes = importer.get_classes(dataset_dir)
+        num_samples = importer.get_num_samples(dataset_dir)
+        logger.info("Found %d samples", num_samples)
+
+        return dataset_type, num_samples, classes
+
+
+class Caltech256Dataset(FiftyOneDataset):
+    """The Caltech-256 dataset of images.
+
+    The dataset consists of pictures of objects belonging to 256 classes, plus
+    one background clutter class (``clutter``). Each image is labelled with a
+    single object.
+
+    Each class contains between 80 and 827 images, totalling 30,607 images.
+    Images are of variable sizes, with typical edge lengths of 80-800 pixels.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("caltech256")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        1.16 GB
+
+    Source
+        http://www.vision.caltech.edu/Image_Datasets/Caltech256
+    """
+
+    #
+    # The source URL for the data is
+    # http://www.vision.caltech.edu/Image_Datasets/Caltech256/256_ObjectCategories.tar
+    # but this now redirects to the Google Drive file below
+    #
+    _GDRIVE_ID = "1r6o0pSROcV1_VwT4oSjA2FBUSCWGuxLK"
+    _ARCHIVE_NAME = "256_ObjectCategories.tar"
+    _DIR_IN_ARCHIVE = "256_ObjectCategories"
+
+    @property
+    def name(self):
+        return "caltech256"
+
+    @property
+    def tags(self):
+        return ("image", "classification")
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, _):
+        _download_and_extract_archive(
+            self._GDRIVE_ID,
+            self._ARCHIVE_NAME,
+            self._DIR_IN_ARCHIVE,
+            dataset_dir,
+            scratch_dir,
+        )
+
+        # There are two extraneous items in the raw download...
+        try:
+            etau.delete_dir(os.path.join(dataset_dir, "056.dog", "greg"))
+        except:
+            pass
+
+        try:
+            etau.delete_file(
+                os.path.join(dataset_dir, "198.spider", "RENAME2")
+            )
+        except:
+            pass
+
+        # Must always delete `scratch_dir` because it would be confused as a
+        # class folder
+        etau.delete_dir(scratch_dir)
+
+        # Normalize labels
+        logger.info("Normalizing labels")
+        for old_label in etau.list_subdirs(dataset_dir):
+            new_label = old_label.split(".", 1)[1]
+            if new_label.endswith("-101"):
+                new_label = new_label[:-4]
+
+            etau.move_dir(
+                os.path.join(dataset_dir, old_label),
+                os.path.join(dataset_dir, new_label),
+            )
 
         logger.info("Parsing dataset metadata")
         dataset_type = fot.ImageClassificationDirectoryTree()
@@ -944,6 +1045,7 @@ class UCF101Dataset(FiftyOneDataset):
 AVAILABLE_DATASETS = {
     "bdd100k": BDD100KDataset,
     "caltech101": Caltech101Dataset,
+    "caltech256": Caltech256Dataset,
     "cityscapes": CityscapesDataset,
     "coco-2014-segmentation": COCO2014Dataset,
     "coco-2017-segmentation": COCO2017Dataset,
@@ -960,9 +1062,12 @@ AVAILABLE_DATASETS = {
 def _download_and_extract_archive(
     fid, archive_name, dir_in_archive, dataset_dir, scratch_dir
 ):
-    logger.info("Downloading dataset...")
     archive_path = os.path.join(scratch_dir, archive_name)
-    etaw.download_google_drive_file(fid, path=archive_path)
+    if not os.path.exists(archive_path):
+        logger.info("Downloading dataset...")
+        etaw.download_google_drive_file(fid, path=archive_path)
+    else:
+        logger.info("Using existing archive '%s'", archive_path)
 
     logger.info("Extracting dataset...")
     etau.extract_archive(archive_path)

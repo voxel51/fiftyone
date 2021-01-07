@@ -26,6 +26,8 @@ Available datasets
     +--------------------------------------------------------------------+---------------------------------------------+
     | :ref:`Caltech-101 <dataset-zoo-caltech101>`                        | image, classification                       |
     +--------------------------------------------------------------------+---------------------------------------------+
+    | :ref:`Caltech-256 <dataset-zoo-caltech256>`                        | image, classification                       |
+    +--------------------------------------------------------------------+---------------------------------------------+
     | :ref:`CIFAR-10 <dataset-zoo-cifar10>`                              | image, classification                       |
     +--------------------------------------------------------------------+---------------------------------------------+
     | :ref:`CIFAR-100 <dataset-zoo-cifar100>`                            | image, classification                       |
@@ -161,7 +163,9 @@ Caltech-101
 The Caltech-101 dataset of images.
 
 The dataset consists of pictures of objects belonging to 101 classes, plus
-one background clutter class. Each image is labelled with a single object.
+one background clutter class (``BACKGROUND_Google``). Each image is labelled
+with a single object.
+
 Each class contains roughly 40 to 800 images, totalling around 9,000
 images. Images are of variable sizes, with typical edge lengths of 200-300
 pixels. This version contains image-level labels only.
@@ -206,6 +210,54 @@ pixels. This version contains image-level labels only.
         fiftyone zoo datasets load caltech101
 
         fiftyone app launch caltech101
+
+.. _dataset-zoo-caltech256:
+
+Caltech-256
+-----------
+
+The Caltech-256 dataset of images.
+
+The dataset consists of pictures of objects belonging to 256 classes, plus
+one background clutter class (``clutter``). Each image is labelled with a
+single object.
+
+Each class contains between 80 and 827 images, totalling 30,607 images.
+Images are of variable sizes, with typical edge lengths of 80-800 pixels.
+
+**Details**
+
+-   Dataset name: ``caltech256``
+-   Dataset source: http://www.vision.caltech.edu/Image_Datasets/Caltech256
+-   Dataset size: 1.16 GB
+-   Tags: ``image, classification``
+-   Supported splits: ``N/A``
+-   ZooDataset class:
+    :class:`Caltech101Dataset <fiftyone.zoo.datasets.base.Caltech256Dataset>`
+
+**Example usage**
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("caltech256")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load caltech256
+
+        fiftyone app launch caltech256
 
 .. _dataset-zoo-cifar10:
 
