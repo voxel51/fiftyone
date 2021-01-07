@@ -1224,15 +1224,27 @@ class DatasetZooListCommand(Command):
         # List available datasets
         fiftyone zoo datasets list
 
+        # List available datasets (names only)
+        fiftyone zoo datasets list --names-only
+
         # List downloaded datasets
         fiftyone zoo datasets list --downloaded-only
 
+        # List available datasets from the given source
+        fiftyone zoo datasets list --source <source>
+
         # List available datasets with the given tag
-        fiftyone zoo datasets list --tag <tag>
+        fiftyone zoo datasets list --tags <tag>
     """
 
     @staticmethod
     def setup(parser):
+        parser.add_argument(
+            "-n",
+            "--names-only",
+            action="store_true",
+            help="only show dataset names",
+        )
         parser.add_argument(
             "-d",
             "--downloaded-only",
@@ -1240,9 +1252,15 @@ class DatasetZooListCommand(Command):
             help="only show datasets that have been downloaded",
         )
         parser.add_argument(
+            "-s",
+            "--source",
+            metavar="SOURCE",
+            help="only show datasets available from the specified source",
+        )
+        parser.add_argument(
             "-t",
-            "--tag",
-            metavar="TAG",
+            "--tags",
+            metavar="TAGS",
             help="only show datasets with the specified tag or list,of,tags",
         )
         parser.add_argument(
@@ -1257,8 +1275,10 @@ class DatasetZooListCommand(Command):
 
     @staticmethod
     def execute(parser, args):
+        names_only = args.names_only
         downloaded_only = args.downloaded_only
-        match_tags = args.tag
+        match_source = args.source
+        match_tags = args.tags
 
         all_datasets = fozd._get_zoo_datasets()
         all_sources, default_source = fozd._get_zoo_dataset_sources()
@@ -1275,6 +1295,8 @@ class DatasetZooListCommand(Command):
             default_source,
             downloaded_only=downloaded_only,
             match_tags=match_tags,
+            match_source=match_source,
+            names_only=names_only,
         )
 
 
@@ -1285,6 +1307,8 @@ def _print_zoo_dataset_list(
     default_source,
     downloaded_only=False,
     match_tags=None,
+    match_source=None,
+    names_only=False,
 ):
     if match_tags is not None:
         match_tags = match_tags.split(",")
@@ -1303,6 +1327,9 @@ def _print_zoo_dataset_list(
 
         dataset_sources = available_datasets[name]
 
+        if match_source is not None and match_source not in dataset_sources:
+            continue
+
         tags = None
         for source, zoo_model in dataset_sources.items():
             if tags is None or source == default_source:
@@ -1318,6 +1345,10 @@ def _print_zoo_dataset_list(
             dataset_dir, info = downloaded_datasets[name]
         else:
             dataset_dir, info = None, None
+
+        if names_only:
+            records.append(name)
+            continue
 
         # Get available splits across all sources
         splits = set()
@@ -1361,6 +1392,12 @@ def _print_zoo_dataset_list(
             records.append(
                 (name, tags_str, split, is_downloaded, split_dir) + tuple(srcs)
             )
+
+    if names_only:
+        for name in records:
+            print(name)
+
+        return
 
     headers = ["name", "tags", "split", "downloaded", "dataset_dir"]
     for source in all_sources:
@@ -1475,6 +1512,10 @@ class DatasetZooDownloadCommand(Command):
 
         # Download the zoo dataset to a custom directory
         fiftyone zoo datasets download <name> --dataset-dir <dataset-dir>
+
+        # Download a zoo dataset that requires extra keyword arguments
+        fiftyone zoo datasets download <name> \\
+            --kwargs source_dir=/path/to/source/files
     """
 
     @staticmethod
@@ -1495,13 +1536,25 @@ class DatasetZooDownloadCommand(Command):
             metavar="DATASET_DIR",
             help="a custom directory to which to download the dataset",
         )
+        parser.add_argument(
+            "-k",
+            "--kwargs",
+            nargs="+",
+            metavar="KEY=VAL",
+            action=_StoreDictAction,
+            help="optional dataset-specific keyword argument(s)",
+        )
 
     @staticmethod
     def execute(parser, args):
         name = args.name
         splits = args.splits
         dataset_dir = args.dataset_dir
-        fozd.download_zoo_dataset(name, splits=splits, dataset_dir=dataset_dir)
+        kwargs = args.kwargs or {}
+
+        fozd.download_zoo_dataset(
+            name, splits=splits, dataset_dir=dataset_dir, **kwargs
+        )
 
 
 class DatasetZooLoadCommand(Command):
@@ -1523,6 +1576,10 @@ class DatasetZooLoadCommand(Command):
 
         # Load a random subset of the zoo dataset
         fiftyone zoo datasets load <name> --shuffle --max-samples <max-samples>
+
+        # Load a zoo dataset that requires custom keyword arguments
+        fiftyone zoo datasets load <name> \\
+            --kwargs source_dir=/path/to/source_files
     """
 
     @staticmethod
@@ -1572,6 +1629,14 @@ class DatasetZooLoadCommand(Command):
                 "samples are imported"
             ),
         )
+        parser.add_argument(
+            "-k",
+            "--kwargs",
+            nargs="+",
+            metavar="KEY=VAL",
+            action=_StoreDictAction,
+            help="optional dataset-specific keyword argument(s)",
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -1580,6 +1645,7 @@ class DatasetZooLoadCommand(Command):
         dataset_name = args.dataset_name
         dataset_dir = args.dataset_dir
         kwargs = _parse_dataset_import_kwargs(args)
+        kwargs.update(args.kwargs or {})
 
         dataset = fozd.load_zoo_dataset(
             name,
@@ -1588,9 +1654,7 @@ class DatasetZooLoadCommand(Command):
             dataset_dir=dataset_dir,
             **kwargs
         )
-
         dataset.persistent = True
-        print("Dataset '%s' created" % dataset.name)
 
 
 class DatasetZooDeleteCommand(Command):
@@ -1651,15 +1715,24 @@ class ModelZooListCommand(Command):
         # List available models
         fiftyone zoo models list
 
+        # List available models (names only)
+        fiftyone zoo models list --names-only
+
         # List downloaded models
         fiftyone zoo models list --downloaded-only
 
         # List available models with the given tag
-        fiftyone zoo models list --tag <tag>
+        fiftyone zoo models list --tags <tag>
     """
 
     @staticmethod
     def setup(parser):
+        parser.add_argument(
+            "-n",
+            "--names-only",
+            action="store_true",
+            help="only show model names",
+        )
         parser.add_argument(
             "-d",
             "--downloaded-only",
@@ -1668,15 +1741,16 @@ class ModelZooListCommand(Command):
         )
         parser.add_argument(
             "-t",
-            "--tag",
-            metavar="TAG",
+            "--tags",
+            metavar="TAGS",
             help="only show models with the specified tag or list,of,tags",
         )
 
     @staticmethod
     def execute(parser, args):
+        names_only = args.names_only
         downloaded_only = args.downloaded_only
-        match_tags = args.tag
+        match_tags = args.tags
 
         models_manifest = fozm._load_zoo_models_manifest()
         downloaded_models = fozm.list_downloaded_zoo_models()
@@ -1684,13 +1758,18 @@ class ModelZooListCommand(Command):
         _print_zoo_models_list(
             models_manifest,
             downloaded_models,
-            downloaded_only=downloaded_only,
+            downloaded_only=args.downloaded_only,
             match_tags=match_tags,
+            names_only=args.names_only,
         )
 
 
 def _print_zoo_models_list(
-    models_manifest, downloaded_models, downloaded_only=False, match_tags=None
+    models_manifest,
+    downloaded_models,
+    downloaded_only=False,
+    match_tags=None,
+    names_only=False,
 ):
     if match_tags is not None:
         match_tags = match_tags.split(",")
@@ -1707,6 +1786,10 @@ def _print_zoo_models_list(
         ):
             continue
 
+        if names_only:
+            records.append(name)
+            continue
+
         if name in downloaded_models:
             is_downloaded = "\u2713"
             model_path = downloaded_models[name][0]
@@ -1717,6 +1800,12 @@ def _print_zoo_models_list(
         tags = ",".join(model.tags or [])
 
         records.append((name, tags, is_downloaded, model_path))
+
+    if names_only:
+        for name in records:
+            print(name)
+
+        return
 
     headers = ["name", "tags", "downloaded", "model_path"]
     table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
@@ -2119,6 +2208,20 @@ def _iter_subparsers(parser):
                 yield subparser
 
 
+def _parse_value(val):
+    try:
+        return int(val)
+    except ValueError:
+        pass
+
+    try:
+        return float(val)
+    except ValueError:
+        pass
+
+    return val
+
+
 class _RecursiveHelpAction(argparse._HelpAction):
     def __call__(self, parser, *args, **kwargs):
         self._recurse(parser)
@@ -2129,6 +2232,19 @@ class _RecursiveHelpAction(argparse._HelpAction):
         print("\n%s\n%s" % ("*" * 79, parser.format_help()))
         for subparser in _iter_subparsers(parser):
             _RecursiveHelpAction._recurse(subparser)
+
+
+class _StoreDictAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        kwargs = {}
+        if not isinstance(values, list):
+            values = [values]
+
+        for value in values:
+            key, val = value.split("=")
+            kwargs[key.replace("-", "_")] = _parse_value(val)
+
+        setattr(namespace, self.dest, kwargs)
 
 
 def _register_main_command(command, version=None, recursive_help=True):

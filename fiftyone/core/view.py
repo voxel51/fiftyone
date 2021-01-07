@@ -241,14 +241,117 @@ class DatasetView(foc.SampleCollection):
         """
         return self.aggregate(foa.Distinct("tags")).values
 
-    def create_index(self, field):
-        """Creates a database index on the given field, enabling efficient
-        sorting on that field.
+    def list_indexes(self):
+        """Returns the fields of the dataset that are indexed.
+
+        Returns:
+            a list of field names
+        """
+        return self._dataset.list_indexes()
+
+    def create_index(self, field, unique=False):
+        """Creates an index on the given field.
+
+        If the given field already has a unique index, it will be retained
+        regardless of the ``unique`` value you specify.
+
+        If the given field already has a non-unique index but you requested a
+        unique index, the existing index will be dropped.
+
+        Indexes enable efficient sorting, merging, and other such operations.
 
         Args:
-            field: the name of the field to index
+            field: the field name
+            unique (False): whether to add a uniqueness constraint to the index
         """
-        self._dataset.create_index(field)
+        self._dataset.create_index(field, unique=unique)
+
+    def drop_index(self, field):
+        """Drops the index on the given field.
+
+        Args:
+            field: the field name
+        """
+        self._dataset.drop_index(field)
+
+    def clone_sample_field(self, field_name, new_field_name):
+        """Clones the given sample field of the view into a new field of the
+        dataset.
+
+        You can use dot notation (``embedded.field.name``) to clone embedded
+        fields.
+
+        Args:
+            field_name: the field name to clone
+            new_field_name: the new field name to populate
+        """
+        self._dataset._clone_sample_field(
+            field_name, new_field_name, view=self
+        )
+
+    def clone_frame_field(self, field_name, new_field_name):
+        """Clones the frame-level field of the view into a new field.
+
+        You can use dot notation (``embedded.field.name``) to clone embedded
+        frame fields.
+
+        Only applicable to video datasets.
+
+        Args:
+            field_name: the field name
+            new_field_name: the new field name
+        """
+        self._dataset._clone_frame_field(field_name, new_field_name, view=self)
+
+    def clear_sample_field(self, field_name):
+        """Clears the values of the field from all samples in the view.
+
+        The field will remain in the dataset's schema, and all samples in the
+        view will have the value ``None`` for the field.
+
+        You can use dot notation (``embedded.field.name``) to clear embedded
+        fields.
+
+        Args:
+            field_name: the field name
+        """
+        self._dataset._clear_sample_field(field_name, view=self)
+
+    def clear_frame_field(self, field_name):
+        """Clears the values of the frame field from all samples in the view.
+
+        The field will remain in the dataset's frame schema, and all frames in
+        the view will have the value ``None`` for the field.
+
+        You can use dot notation (``embedded.field.name``) to clear embedded
+        frame fields.
+
+        Only applicable to video datasets.
+
+        Args:
+            field_name: the field name
+        """
+        self._dataset._clear_frame_field(field_name, view=self)
+
+    def save(self):
+        """Overwrites the underlying dataset with the contents of the view.
+
+        **WARNING:** this will permanently delete any omitted, filtered, or
+        otherwise modified contents of the dataset.
+        """
+        self._dataset._save(view=self)
+
+    def clone(self, name=None):
+        """Creates a new dataset containing only the contents of the view.
+
+        Args:
+            name (None): a name for the cloned dataset. By default,
+                :func:`get_default_dataset_name` is used
+
+        Returns:
+            the new :class:`Dataset`
+        """
+        return self._dataset._clone(name=name, view=self)
 
     def to_dict(self, rel_dir=None, frame_labels_dir=None, pretty_print=False):
         """Returns a JSON dictionary representation of the view.
@@ -286,9 +389,9 @@ class DatasetView(foc.SampleCollection):
     def _pipeline(
         self,
         pipeline=None,
+        attach_frames=True,
         hide_frames=False,
         squash_frames=False,
-        attach_frames=True,
     ):
         _pipeline = []
 
@@ -300,37 +403,29 @@ class DatasetView(foc.SampleCollection):
 
         return self._dataset._pipeline(
             pipeline=_pipeline,
+            attach_frames=attach_frames,
             hide_frames=hide_frames,
             squash_frames=squash_frames,
-            attach_frames=attach_frames,
         )
 
     def _aggregate(
         self,
         pipeline=None,
+        attach_frames=True,
         hide_frames=False,
         squash_frames=False,
-        attach_frames=True,
     ):
         _pipeline = self._pipeline(
             pipeline=pipeline,
+            attach_frames=attach_frames,
             hide_frames=hide_frames,
             squash_frames=squash_frames,
-            attach_frames=attach_frames,
         )
         return self._dataset._sample_collection.aggregate(_pipeline)
 
     @property
     def _doc(self):
         return self._dataset._doc
-
-    def _get_pipeline(self):
-        pipeline = []
-
-        for s in self._stages:
-            pipeline.extend(s.to_mongo())
-
-        return pipeline
 
     def _serialize(self):
         return [s._serialize() for s in self._stages]
@@ -418,6 +513,16 @@ class DatasetView(foc.SampleCollection):
             excluded_fields = None
 
         return selected_fields, excluded_fields
+
+    def _get_missing_fields(self, frames=False):
+        if frames:
+            dataset_schema = self._dataset.get_frame_field_schema()
+            view_schema = self.get_frame_field_schema()
+        else:
+            dataset_schema = self._dataset.get_field_schema()
+            view_schema = self.get_field_schema()
+
+        return set(dataset_schema.keys()) - set(view_schema.keys())
 
     def _get_filtered_fields(self):
         filtered_fields = set()

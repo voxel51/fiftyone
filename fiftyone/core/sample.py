@@ -20,6 +20,20 @@ import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
 
 
+def get_default_sample_fields(include_private=False):
+    """Returns the default fields present on all samples.
+
+    Args:
+        include_private (False): whether to include fields that start with `_`
+
+    Returns:
+        a tuple of field names
+    """
+    return foo.default_sample_fields(
+        foo.DatasetSampleDocument, include_private=include_private
+    )
+
+
 class _DatasetSample(Document):
     def __getattr__(self, name):
         if name == "frames" and self.media_type == fomm.VIDEO:
@@ -191,13 +205,22 @@ class _DatasetSample(Document):
 
         self.save()
 
-    def merge(self, sample, overwrite=True):
+    def merge(
+        self,
+        sample,
+        omit_fields=None,
+        omit_frame_fields=None,
+        omit_none_fields=True,
+        overwrite=True,
+    ):
         """Merges the fields of the sample into this sample.
-
-        ``None``-valued fields are always omitted.
 
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
+            omit_fields (None): an optional list of fields to omit
+            omit_frame_fields (None): an optional lits of frame fields to omit
+            omit_none_fields (True): whether to omit ``None``-valued fields of
+                the provided sample
             overwrite (True): whether to overwrite existing fields. Note that
                 existing fields whose values are ``None`` are always
                 overwritten
@@ -208,10 +231,20 @@ class _DatasetSample(Document):
                 "media type '%s'" % (sample.media_type, self.media_type)
             )
 
-        super().merge(sample, overwrite=overwrite)
+        super().merge(
+            sample,
+            omit_fields=omit_fields,
+            omit_none_fields=omit_none_fields,
+            overwrite=overwrite,
+        )
 
         if self.media_type == fomm.VIDEO:
-            self.frames.merge(sample.frames, overwrite=overwrite)
+            self.frames.merge(
+                sample.frames,
+                omit_fields=omit_frame_fields,
+                omit_none_fields=omit_none_fields,
+                overwrite=overwrite,
+            )
 
     def copy(self):
         """Returns a deep copy of the sample that has not been added to the
@@ -411,36 +444,19 @@ class Sample(_DatasetSample):
         return cls.from_doc(doc)
 
     @classmethod
-    def _reload_dataset_sample(cls, collection_name, sample_id):
-        """Reloads the fields for the in-memory sample instance that belong to
-        the specified collection.
-
-        If the sample does not exist in-memory, nothing is done.
+    def _reload_sample(cls, collection_name, sample_id):
+        """Reloads the fields for the specified in-memory sample in the
+        collection, if necessary.
 
         Args:
             collection_name: the name of the MongoDB collection
             sample_id: the sample ID
-
-        Returns:
-            True/False whether the sample was reloaded
         """
-        dataset_instances = cls._instances[collection_name]
-        sample = dataset_instances.get(sample_id, None)
-        if sample:
-            sample.reload()
-            return True
+        if collection_name not in cls._instances:
+            return
 
-        return False
-
-    @classmethod
-    def _reload_dataset_samples(cls, collection_name):
-        """Reloads the fields for in-memory sample instances that belong to the
-        specified collection.
-
-        Args:
-            collection_name: the name of the MongoDB collection
-        """
-        for sample in cls._instances[collection_name].values():
+        sample = cls._instances[collection_name].get(sample_id, None)
+        if sample is not None:
             sample.reload()
 
     def _set_backing_doc(self, doc, dataset=None):
@@ -605,11 +621,7 @@ class SampleView(_DatasetSample):
         return d
 
     def save(self):
-        """Saves the sample to the database.
-
-        Any modified fields are updated, and any in-memory :class:`Sample`
-        instances of this sample are updated.
-        """
+        """Saves the sample to the database."""
         if self.media_type == fomm.VIDEO and self._in_db:
             try:
                 self.frames._save()
@@ -619,10 +631,8 @@ class SampleView(_DatasetSample):
 
         self._doc.save(filtered_fields=self._filtered_fields)
 
-        # Reload the sample singleton if it exists in memory
-        Sample._reload_dataset_sample(
-            self.dataset._sample_collection_name, self.id
-        )
+        # Reload the sample if it exists in memory
+        Sample._reload_sample(self.dataset._sample_collection_name, self.id)
 
 
 def _apply_confidence_thresh(label, confidence_thresh):

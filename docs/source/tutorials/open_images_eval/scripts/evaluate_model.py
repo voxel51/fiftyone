@@ -47,16 +47,16 @@ def main(
     tp_view = dataset.filter_detections(
         prediction_field_name, F("eval") == "true_positive"
     )
-    dataset.clone_field(
-        prediction_field_name, prediction_field_name + "_TP", tp_view
+    tp_view.clone_sample_field(
+        prediction_field_name, prediction_field_name + "_TP"
     )
 
     print("Cloning False Positives to a new field...")
     fp_view = dataset.filter_detections(
         prediction_field_name, F("eval") == "false_positive"
     )
-    dataset.clone_field(
-        prediction_field_name, prediction_field_name + "_FP", fp_view
+    fp_view.clone_sample_field(
+        prediction_field_name, prediction_field_name + "_FP"
     )
 
 

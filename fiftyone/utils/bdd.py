@@ -338,7 +338,7 @@ def load_bdd_annotations(json_path):
 def parse_bdd100k_dataset(
     source_dir, dataset_dir, copy_files=True, overwrite=False
 ):
-    """Parses the raw BDD100k download files in the specified directory into
+    """Parses the raw BDD100K download files in the specified directory into
     per-split directories in :class:`BDDDataset` format.
 
     This function assumes that the input ``source_dir`` contains the following
@@ -369,7 +369,7 @@ def parse_bdd100k_dataset(
 
     Args:
         source_dir: the source directory containing the manually dowloaded
-            BDD100k files
+            BDD100K files
         dataset_dir: the directory to construct the output split directories
         copy_files (True): whether to move (False) or create copies (True) of
             the source files when populating ``dataset_dir``
@@ -434,7 +434,7 @@ def parse_bdd100k_dataset(
 def _ensure_bdd100k_dir(source_dir):
     if source_dir is None:
         _raise_bdd100k_error(
-            "You must provide a `source_dir` in order to load the BDD100k "
+            "You must provide a `source_dir` in order to load the BDD100K "
             "dataset."
         )
 
@@ -465,7 +465,7 @@ def _raise_bdd100k_error(msg):
         "\n\n"
         + msg
         + "\n\n"
-        + "You must download the source files for BDD100k dataset manually."
+        + "You must download the source files for BDD100K dataset manually."
         + "\n\n"
         + "Run `fiftyone zoo datasets info bdd100k` for more information"
     )

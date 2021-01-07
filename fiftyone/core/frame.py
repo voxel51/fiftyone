@@ -11,18 +11,13 @@ import json
 import weakref
 import six
 
-from bson import ObjectId, json_util
+from bson import json_util
 from pymongo import ReplaceOne
 
 import fiftyone as fo
 from fiftyone.core.document import Document
-import fiftyone.core.fields as fof
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.labels as fol
-from fiftyone.core.odm.document import (
-    DynamicEmbeddedDocument,
-    EmbeddedDocument,
-)
 from fiftyone.core.odm.frame import (
     NoDatasetFrameSampleDocument,
     DatasetFrameSampleDocument,
@@ -264,7 +259,9 @@ class Frames(object):
 
                 self[frame_number] = frame
 
-    def merge(self, frames, overwrite=True):
+    def merge(
+        self, frames, omit_fields=None, omit_none_fields=True, overwrite=True
+    ):
         """Merges the frame labels into this instance.
 
         Args:
@@ -277,6 +274,9 @@ class Frames(object):
                     label fields to :class:`fiftyone.core.labels.Label`
                     instances
 
+            omit_fields (None): an optional list of fields to omit
+            omit_none_fields (True): whether to omit ``None``-valued fields of
+                the provided frames
             overwrite (True): whether to overwrite existing fields
         """
         for frame_number, frame in frames.items():
@@ -284,7 +284,12 @@ class Frames(object):
                 frame = Frame(frame_number=frame_number, **frame)
 
             if frame_number in self:
-                self[frame_number].merge(frame, overwrite=overwrite)
+                self[frame_number].merge(
+                    frame,
+                    omit_fields=omit_fields,
+                    omit_none_fields=omit_none_fields,
+                    overwrite=overwrite,
+                )
             else:
                 self[frame_number] = frame
 
@@ -488,6 +493,12 @@ class Frame(Document):
             for document in samples.values():
                 data = document._doc._data
                 data[new_field_name] = data.pop(field_name, None)
+
+    @classmethod
+    def _clear_field(cls, collection_name, field_name):
+        for samples in cls._instances[collection_name].values():
+            for document in samples.values():
+                document._doc._data[field_name] = None
 
     @classmethod
     def _purge_field(cls, collection_name, field_name):

@@ -61,7 +61,7 @@ class SerializableDocument(object):
 
             if f in kwargs:
                 d[f] = kwargs[f]
-            else:
+            elif not f.startswith("_"):
                 value = getattr(self, f)
                 if isinstance(value, ObjectId):
                     d[f] = str(value)

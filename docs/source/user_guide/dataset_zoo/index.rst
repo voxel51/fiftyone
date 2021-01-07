@@ -29,6 +29,12 @@ API reference
 Check out the :ref:`API reference <dataset-zoo-api>` for complete instructions
 for using the Dataset Zoo library.
 
+Available datasets
+------------------
+
+Check out the :ref:`available datasets <dataset-zoo-datasets>` to see all of
+the datasets in the zoo.
+
 .. _dataset-zoo-basic-recipe:
 
 Basic recipe
@@ -103,3 +109,4 @@ visualizing it in the App is shown below.
    :hidden:
 
    API reference <api>
+   Available datasets <datasets>
