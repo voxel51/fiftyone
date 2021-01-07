@@ -613,7 +613,34 @@ class ZooDatasetInfo(etas.Serializable):
         Returns:
             a :class:`ZooDatasetInfo`
         """
-        # Handle any migrations from older `ZooDatasetInfo` instances
+        info, _ = cls._from_dict(d)
+        return info
+
+    @classmethod
+    def from_json(cls, json_path, upgrade=False):
+        """Loads a :class:`ZooDatasetInfo` from a JSON file on disk.
+
+        Args:
+            json_path: path to JSON file
+            upgrade (False): whether to upgrade the JSON file on disk if any
+                migrations were necessary
+
+        Returns:
+            a :class:`ZooDatasetInfo`
+        """
+        d = etas.read_json(json_path)
+        info, migrated = cls._from_dict(d)
+
+        if upgrade and migrated:
+            logger.info("Migrating ZooDatasetInfo at '%s'", json_path)
+            etau.move_file(json_path, json_path + ".bak")
+            info.write_json(json_path, pretty_print=True)
+
+        return info
+
+    @classmethod
+    def _from_dict(cls, d):
+        # Handle any migrations from old `ZooDatasetInfo` instances
         d, migrated = _migrate_zoo_dataset_info(d)
 
         parameters = d.get("parameters", None)
@@ -630,7 +657,7 @@ class ZooDatasetInfo(etas.Serializable):
                 for k, v in downloaded_splits.items()
             }
 
-        zoo_dataset_info = cls(
+        info = cls(
             zoo_dataset,
             dataset_type,
             d["num_samples"],
@@ -639,62 +666,12 @@ class ZooDatasetInfo(etas.Serializable):
             classes=d.get("classes", None),
         )
 
-        if migrated:
-            # @todo overwrite existing info
-            pass
-
-        return zoo_dataset_info
+        return info, migrated
 
     def _compute_num_samples(self):
         self.num_samples = sum(
             si.num_samples for si in self.downloaded_splits.values()
         )
-
-
-def _migrate_zoo_dataset_info(d):
-    migrated = False
-
-    # @legacy field name
-    if "zoo_dataset_cls" in d:
-        d["zoo_dataset"] = d.pop("zoo_dataset_cls")
-        migrated = True
-
-    # @legacy field name
-    if "format_cls" in d:
-        d["dataset_type"] = d.pop("format_cls")
-        migrated = True
-
-    zoo_dataset = d["zoo_dataset"]
-    dataset_type = d["dataset_type"]
-
-    # @legacy pre-model zoo package namespaces
-    old_pkg = "fiftyone.zoo."
-    new_pkg = "fiftyone.zoo.datasets."
-    if zoo_dataset.startswith(old_pkg) and not zoo_dataset.startswith(new_pkg):
-        zoo_dataset = new_pkg + zoo_dataset[len(old_pkg) :]
-        migrated = True
-
-    # @legacy zoo dataset name
-    old_name = "VideoQuickstartDataset"
-    new_name = "QuickstartVideoDataset"
-    if zoo_dataset.endswith(old_name):
-        zoo_dataset = zoo_dataset[: -len(old_name)] + new_name
-        migrated = True
-
-    # @legacy dataset type names
-    _dt = "fiftyone.types.dataset_types"
-    if dataset_type.endswith(".ImageClassificationDataset"):
-        dataset_type = _dt + ".FiftyOneImageClassificationDataset"
-        migrated = True
-
-    if dataset_type.endswith(".ImageDetectionDataset"):
-        dataset_type = _dt + ".FiftyOneImageDetectionDataset"
-        migrated = True
-
-    d["zoo_dataset"] = zoo_dataset
-    d["dataset_type"] = dataset_type
-
-    return d, migrated
 
 
 class ZooDatasetSplitInfo(etas.Serializable):
@@ -807,7 +784,7 @@ class ZooDataset(object):
             the :class:`ZooDatasetInfo` for the dataset
         """
         info_path = ZooDataset.get_info_path(dataset_dir)
-        return ZooDatasetInfo.from_json(info_path)
+        return ZooDatasetInfo.from_json(info_path, upgrade=True)
 
     @staticmethod
     def get_split_dir(dataset_dir, split):
@@ -886,7 +863,7 @@ class ZooDataset(object):
         # Load existing ZooDatasetInfo, if available
         info_path = self.get_info_path(dataset_dir)
         if os.path.isfile(info_path):
-            info = ZooDatasetInfo.from_json(info_path)
+            info = ZooDatasetInfo.from_json(info_path, upgrade=True)
         else:
             info = None
 
@@ -1011,3 +988,78 @@ class ZooDataset(object):
         raise NotImplementedError(
             "subclasses must implement _download_and_prepare()"
         )
+
+
+class DeprecatedZooDataset(ZooDataset):
+    """Class representing a zoo dataset that no longer exists in the FiftyOne
+    Dataset Zoo.
+    """
+
+    @property
+    def name(self):
+        return "????????"
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, *args, **kwargs):
+        raise ValueError(
+            "The zoo dataset you are trying to download is no longer "
+            "available."
+        )
+
+
+def _migrate_zoo_dataset_info(d):
+    migrated = False
+
+    # @legacy field name
+    if "zoo_dataset_cls" in d:
+        d["zoo_dataset"] = d.pop("zoo_dataset_cls")
+        migrated = True
+
+    # @legacy field name
+    if "format_cls" in d:
+        d["dataset_type"] = d.pop("format_cls")
+        migrated = True
+
+    zoo_dataset = d["zoo_dataset"]
+    dataset_type = d["dataset_type"]
+
+    # @legacy pre-model zoo package namespaces
+    old_pkg = "fiftyone.zoo."
+    new_pkg = "fiftyone.zoo.datasets."
+    if zoo_dataset.startswith(old_pkg) and not zoo_dataset.startswith(new_pkg):
+        zoo_dataset = new_pkg + zoo_dataset[len(old_pkg) :]
+        migrated = True
+
+    # @legacy zoo dataset name
+    old_name = "VideoQuickstartDataset"
+    new_name = "QuickstartVideoDataset"
+    if zoo_dataset.endswith(old_name):
+        zoo_dataset = zoo_dataset[: -len(old_name)] + new_name
+        migrated = True
+
+    # @legacy dataset type names
+    _dt = "fiftyone.types.dataset_types"
+    if dataset_type.endswith(".ImageClassificationDataset"):
+        dataset_type = _dt + ".FiftyOneImageClassificationDataset"
+        migrated = True
+
+    if dataset_type.endswith(".ImageDetectionDataset"):
+        dataset_type = _dt + ".FiftyOneImageDetectionDataset"
+        migrated = True
+
+    # @legacy dataset implementations
+    if zoo_dataset.endswith("tf.Caltech101Dataset"):
+        zoo_dataset = etau.get_class_name(DeprecatedZooDataset)
+        migrated = True
+
+    if zoo_dataset.endswith("tf.KITTIDataset"):
+        zoo_dataset = etau.get_class_name(DeprecatedZooDataset)
+        migrated = True
+
+    d["zoo_dataset"] = zoo_dataset
+    d["dataset_type"] = dataset_type
+
+    return d, migrated
