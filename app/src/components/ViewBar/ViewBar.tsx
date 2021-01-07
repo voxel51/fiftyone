@@ -28,6 +28,7 @@ const ViewBarDiv = styled.div`
   padding: 0 0.25rem;
   display: flex;
   overflow-x: scroll;
+  scrollbar-width: none;
 
   &::-webkit-scrollbar {
     width: 0px;

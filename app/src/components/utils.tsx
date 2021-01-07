@@ -58,9 +58,13 @@ export const scrollbarStyles = ({ theme }) => `
 ::-webkit-scrollbar {
   width: 16px;
 }
+scrollbar-width: none;
+@-moz-document url-prefix() {
+  padding-right: 16px;
+}
 
 ::-webkit-scrollbar-track {
-  border: solid 4px transparent;
+  border: solid 4px transparent ${theme.fontDarkest};
 }
 
 ::-webkit-scrollbar-thumb {
