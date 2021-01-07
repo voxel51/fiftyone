@@ -1378,13 +1378,11 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
     def setup(self):
         samples = []
         classes = set()
-        glob_patt = os.path.join(self.dataset_dir, "*", "*")
-        for path in etau.get_glob_matches(glob_patt):
-            chunks = path.split(os.path.sep)
-            if any(s.startswith(".") for s in chunks[-2:]):
+        for class_dir in etau.list_subdirs(self.dataset_dir, abs_paths=True):
+            label = os.path.basename(class_dir)
+            if label.startswith("."):
                 continue
 
-            label = chunks[-2]
             if label == "_unlabeled":
                 if self.skip_unlabeled:
                     continue
@@ -1393,7 +1391,8 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
             else:
                 classes.add(label)
 
-            samples.append((path, label))
+            for path in etau.list_files(class_dir, abs_paths=True):
+                samples.append((path, label))
 
         self._samples = self._preprocess_list(samples)
         self._num_samples = len(self._samples)
