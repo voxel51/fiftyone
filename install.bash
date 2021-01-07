@@ -57,7 +57,6 @@ git submodule update --init
 echo "***** INSTALLING MONGODB *****"
 mkdir -p ~/.fiftyone/bin
 cd ~/.fiftyone
-mkdir -p var/log/mongodb
 mkdir -p var/lib/mongo
 INSTALL_MONGODB=true
 if [ -x bin/mongod ]; then
