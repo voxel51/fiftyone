@@ -48,10 +48,6 @@ class RouteTests(TestCase):
         response = self.fetch_and_parse("/fiftyone")
         self.assertEqual(response, fosm.FiftyOneHandler.get_response())
 
-    def test_stages(self):
-        response = self.fetch_and_parse("/stages")
-        self.assertEqual(response, fosm.StagesHandler.get_response())
-
     def test_filepath(self):
         data = {"hello": "world"}
         with etau.TempDir() as tmp:
@@ -63,6 +59,17 @@ class RouteTests(TestCase):
             )
 
         self.assertEqual(response, data)
+
+    def test_reactivate(self):
+        handle_id = "handle_id"
+        response = self.fetch_and_parse("/reactivate?handleId=%s" % handle_id)
+        self.assertEqual(
+            response, fosm.ReactivateHandler.get_response(handle_id)
+        )
+
+    def test_stages(self):
+        response = self.fetch_and_parse("/stages")
+        self.assertEqual(response, fosm.StagesHandler.get_response())
 
 
 class StateTests(TestCase):

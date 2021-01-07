@@ -28,6 +28,7 @@ type Props = {
 };
 
 const Container = styled.div`
+  position: relative;
   display: grid;
   grid-template-columns: auto 280px;
   width: 90vw;
@@ -219,15 +220,10 @@ const Row = ({ name, renderedName, value, children, ...rest }) => (
   </div>
 );
 
-const SampleModal = ({
-  sample,
-  sampleUrl,
-  metadata,
-  colorMap = {},
-  onClose,
-  port,
-  ...rest
-}: Props) => {
+const SampleModal = (
+  { sample, sampleUrl, metadata, colorMap = {}, onClose, port, ...rest }: Props,
+  ref
+) => {
   const playerContainerRef = useRef();
   const [playerStyle, setPlayerStyle] = useState({
     height: "100%",
@@ -471,7 +467,11 @@ const SampleModal = ({
 
   return (
     <SampleContext.Provider value={sample}>
-      <Container className={fullscreen ? "fullscreen" : ""}>
+      <Container
+        style={{ zIndex: 10001 }}
+        className={fullscreen ? "fullscreen" : ""}
+        ref={ref}
+      >
         <div className="player" ref={playerContainerRef}>
           {showJSON ? (
             <JSONView
@@ -620,4 +620,4 @@ const SampleModal = ({
   );
 };
 
-export default SampleModal;
+export default React.forwardRef(SampleModal);

@@ -8,7 +8,12 @@ import styled from "styled-components";
 import Header from "../components/Header";
 import Dataset from "./Dataset";
 
-import { useEventHandler, useMessageHandler, useGA } from "../utils/hooks";
+import {
+  useEventHandler,
+  useMessageHandler,
+  useGA,
+  useSendMessage,
+} from "../utils/hooks";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { convertSelectedObjectsListToMap } from "../utils/selection";
@@ -18,16 +23,6 @@ import { scrollbarStyles } from "../components/utils";
 import Setup from "./Setup";
 import "player51/src/css/player51.css";
 import "../app.global.css";
-import Deactivated from "./Deactivated";
-
-const Body = styled.div`
-  ${scrollbarStyles}
-  padding: 0;
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  padding-right: 0 !important;
-`;
 
 const GA = () => {
   useGA();
@@ -44,7 +39,8 @@ function App() {
   const setSelectedSamples = useSetRecoilState(atoms.selectedSamples);
   const [viewCounterValue, setViewCounter] = useRecoilState(atoms.viewCounter);
   const setSelectedObjects = useSetRecoilState(atoms.selectedObjects);
-  const deactivated = useRecoilValue(atoms.deactivated);
+  const handle = useRecoilValue(selectors.handleId);
+  const isNotebook = useRecoilValue(selectors.isNotebook);
   const handleStateUpdate = (state) => {
     setStateDescription(state);
     setSelectedSamples(new Set(state.selected));
@@ -70,6 +66,10 @@ function App() {
 
   useMessageHandler("notification", (data) => addNotification.current(data));
   const connected = useRecoilValue(atoms.connected);
+  useSendMessage("as_app", {
+    notebook: isNotebook,
+    handle,
+  });
 
   return (
     <ErrorBoundary
@@ -78,15 +78,13 @@ function App() {
       resetKeys={[reset]}
     >
       <Header addNotification={addNotification} />
-      <Body style={{ overflowY: connected ? "hidden" : "scroll" }}>
-        {connected && (
-          <Suspense fallback={Setup}>
-            <GA />
-            {deactivated ? <Deactivated /> : <Dataset />}
-          </Suspense>
-        )}
-        {!connected && <Setup />}
-      </Body>
+      {connected && (
+        <Suspense fallback={Setup}>
+          <GA />
+          <Dataset />
+        </Suspense>
+      )}
+      {!connected && <Setup />}
       <NotificationHub children={(add) => (addNotification.current = add)} />
     </ErrorBoundary>
   );

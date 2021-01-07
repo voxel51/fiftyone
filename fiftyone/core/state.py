@@ -46,6 +46,7 @@ class StateDescription(etas.Serializable):
 
     def __init__(
         self,
+        active_handle=None,
         close=False,
         connected=False,
         dataset=None,
@@ -63,6 +64,7 @@ class StateDescription(etas.Serializable):
         self.selected_objects = selected_objects or []
         self.filters = filters
         self.datasets = datasets or fod.list_datasets()
+        self.active_handle = active_handle
         super().__init__()
 
     def serialize(self, reflective=False):
@@ -102,6 +104,7 @@ class StateDescription(etas.Serializable):
         Returns:
             :class:`StateDescription`
         """
+        active_handle = d.get("active_handle", None)
         close = d.get("close", False)
         connected = d.get("connected", False)
         filters = d.get("filters", {})
@@ -120,6 +123,7 @@ class StateDescription(etas.Serializable):
         else:
             view = None
         return cls(
+            active_handle=active_handle,
             close=close,
             connected=connected,
             dataset=dataset,

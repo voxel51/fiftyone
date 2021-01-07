@@ -60,62 +60,57 @@ const Body = styled.div`
       align-items: center;
       padding-right: 3px;
       max-width: 100%;
-      font-family: "Palanquin", sans-serif;
     }
 
     .MuiTypography-body1.with-checkbox {
       max-width: calc(100% - 24px);
     }
-    overflow: "hidden",
-    .MuiCheckbox-root {
+    overflow: "hidden", .MuiCheckbox-root {
       padding: 0;
 
       .MuiIconButton-label {
         position: relative;
         svg {
-          z-index: 1;
-        }
-      }
-
-      &.Mui-checked .MuiIconButton-label::after {
-          /* fill checkmark with font color */
-          content: "";
-          position: absolute;
-          background: ${({ theme }) => theme.font};
-          top: 0.2em;
-          left: 0.2em;
-          width: 0.6em;
-          height: 0.6em;
-          z-index: 0;
+          z-index: 2;
         }
       }
     }
 
     .MuiFormControlLabel-label {
-      display: inline-flex;
+      display: flex;
       font-weight: bold;
       color: unset;
-
-      span {
-        display: inline-block;
-      }
+      line-height: 29px;
+      height: 29px;
 
       span.name {
+        display: block;
         padding: 0 4px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
         flex-grow: 1;
         max-width: 100%;
-        line-height: 24px;
+        line-height: 29px;
+        height: 29px;
+        align-items: center;
+        vertical-align: middle;
       }
       span.count {
+        display: block;
         white-space: nowrap;
+        height: 29px;
+        line-height: 29px;
+        vertical-align: middle;
       }
 
       span.data {
+        display: block;
         margin-left: 0.5em;
-        line-height: 24px;
+        line-height: 29px;
+        display: flex;
+        vertical-align: middle;
+        align-items: center;
       }
     }
   }
@@ -124,7 +119,8 @@ const Body = styled.div`
     cursor: not-allowed;
     color: ${({ theme }) => theme.fontDarkest};
 
-    svg, input[type=checkbox] {
+    svg,
+    input[type="checkbox"] {
       display: none;
     }
   }

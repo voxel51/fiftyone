@@ -53,6 +53,8 @@ const Slider = styled(SliderUnstyled)`
     padding: 0.2rem;
     border-radius: 6rem;
     color: transparent;
+    transform: none !important;
+    margin-top: -4px;
   }
 
   .valueLabel > span > span {
