@@ -611,6 +611,7 @@ class Session(foc.HasClient):
         if handle in self._handles:
             source = self._handles[handle]
             _display(
+                self,
                 source["target"],
                 handle,
                 self._port,
