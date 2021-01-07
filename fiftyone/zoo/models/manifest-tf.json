@@ -1242,7 +1242,7 @@
             "base_name": "centernet-hg105-512-coco-tf2",
             "base_filename": "centernet_hg104_512x512_coco17_tpu-8.tar.gz",
             "version": null,
-            "description": "CenterNet architecture from the Objects as Points paper [https://arxiv.org/abs/1904.07850] with the hourglass backbone trained on COCO",
+            "description": "CenterNet architecture from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the hourglass backbone trained on COCO",
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
@@ -1256,8 +1256,7 @@
                 "config": {
                     "type": "eta.detectors.TF2ModelsDetector",
                     "config": {
-                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
-                        "pipeline_path": "{{eta}}/tensorflow/models/research/object_detection/configs/tf2/centernet_hourglass104_512x512_coco17_tpu-8"
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
                     }
                 }
             },
