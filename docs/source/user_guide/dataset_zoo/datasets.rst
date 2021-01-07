@@ -176,6 +176,13 @@ pixels. This version contains image-level labels only.
 -   ZooDataset class:
     :class:`Caltech101Dataset <fiftyone.zoo.datasets.base.Caltech101Dataset>`
 
+.. note::
+
+    As of FiftyOne v0.7.1, this dataset is available directly without requiring
+    the TensorFlow backend. The splits have been removed, per
+    `the author's organization <http://www.vision.caltech.edu/Image_Datasets/Caltech101>`_
+    as well.
+
 **Example usage**
 
 .. tabs::
@@ -904,6 +911,13 @@ object development kit on the KITTI homepage.
 -   Supported splits: ``train, test``
 -   ZooDataset class:
     :class:`KITTIDataset <fiftyone.zoo.datasets.base.KITTIDataset>`
+
+.. note::
+
+    As of FiftyOne v0.7.1, this dataset is available directly without requiring
+    the TensorFlow backend. The splits have been updated to match
+    `the author's organization <http://www.cvlibs.net/datasets/kitti/eval_object.php?obj_benchmark=2d>`_
+    as well.
 
 **Example usage**
 
