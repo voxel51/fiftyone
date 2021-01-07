@@ -1263,13 +1263,12 @@
                 }
             },
             "requirements": {
+                "packages": ["tensorflow>=2"],
                 "cpu": {
-                    "support": true,
-                    "packages": ["tensorflow>=2"]
+                    "support": true
                 },
                 "gpu": {
-                    "support": true,
-                    "packages": ["tensorflow-gpu>=2"]
+                    "support": true
                 }
             },
             "tags": ["detection", "coco", "tf2"],
