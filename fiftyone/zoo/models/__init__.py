@@ -13,6 +13,7 @@ import os
 from eta.core.config import ConfigError
 import eta.core.learning as etal
 import eta.core.models as etam
+import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.models as fom
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-_MODELS_MANIFEST_PATH = os.path.join(_THIS_DIR, "manifest.json")
+_MODELS_MANIFEST_PATT = os.path.join(_THIS_DIR, "manifest-*.json")
 
 
 def list_zoo_models():
@@ -302,7 +303,9 @@ class ZooModel(etam.Model):
         manager: the :class:`fiftyone.core.models.ModelManager` instance that
             describes the remote storage location of the model
         version (None): the version of the model
-        description (None): a description of the model
+        description (None): the description of the model
+        source (None): the source of the model
+        size_bytes (None): the size of the model on disk
         default_deployment_config_dict (None): a
             :class:`fiftyone.core.models.ModelConfig` dict describing the
             recommended settings for deploying the model
@@ -326,10 +329,14 @@ class ZooModelsManifest(etam.ModelsManifest):
 
 
 def _load_zoo_models_manifest():
-    manifest = ZooModelsManifest.from_json(_MODELS_MANIFEST_PATH)
+    manifest = ZooModelsManifest()
+
+    manifest_paths = etau.get_glob_matches(_MODELS_MANIFEST_PATT)
     if fo.config.model_zoo_manifest_paths:
-        for manifest_path in fo.config.model_zoo_manifest_paths:
-            manifest.merge(ZooModelsManifest.from_json(manifest_path))
+        manifest_paths.extend(fo.config.model_zoo_manifest_paths)
+
+    for manifest_path in manifest_paths:
+        manifest.merge(ZooModelsManifest.from_json(manifest_path))
 
     return manifest
 

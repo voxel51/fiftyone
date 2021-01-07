@@ -904,7 +904,8 @@ List datasets in the FiftyOne Dataset Zoo.
 
 .. code-block:: text
 
-    fiftyone zoo datasets list [-h] [-d] [-t TAG] [-b BASE_DIR]
+    fiftyone zoo datasets list [-h] [-n] [-d] [-s SOURCE] [-t TAGS]
+                               [-b BASE_DIR]
 
 **Arguments**
 
@@ -912,9 +913,12 @@ List datasets in the FiftyOne Dataset Zoo.
 
     optional arguments:
       -h, --help            show this help message and exit
+      -n, --names-only      only show dataset names
       -d, --downloaded-only
                             only show datasets that have been downloaded
-      -t TAG, --tag TAG     only show datasets with the specified tag or list,of,tags
+      -s SOURCE, --source SOURCE
+                            only show datasets available from the specified source
+      -t TAGS, --tags TAGS  only show datasets with the specified tag or list,of,tags
       -b BASE_DIR, --base-dir BASE_DIR
                             a custom base directory in which to search for downloaded datasets
 
@@ -927,13 +931,23 @@ List datasets in the FiftyOne Dataset Zoo.
 
 .. code-block:: shell
 
+    # List available datasets (names only)
+    fiftyone zoo datasets list --names-only
+
+.. code-block:: shell
+
     # List downloaded datasets
     fiftyone zoo datasets list --downloaded-only
 
 .. code-block:: shell
 
+    # List available datasets from the given source
+    fiftyone zoo datasets list --source <source>
+
+.. code-block:: shell
+
     # List available datasets with the given tag
-    fiftyone zoo datasets list --tag <tag>
+    fiftyone zoo datasets list --tags <tag>
 
 .. _cli-fiftyone-zoo-datasets-find:
 
@@ -1010,6 +1024,7 @@ Download datasets from the FiftyOne Dataset Zoo.
 
     fiftyone zoo datasets download [-h] [-s SPLITS [SPLITS ...]]
                                    [-d DATASET_DIR]
+                                   [-k KEY=VAL [KEY=VAL ...]]
                                    NAME
 
 **Arguments**
@@ -1020,11 +1035,14 @@ Download datasets from the FiftyOne Dataset Zoo.
       NAME                  the name of the dataset
 
     optional arguments:
+
       -h, --help            show this help message and exit
       -s SPLITS [SPLITS ...], --splits SPLITS [SPLITS ...]
                             the dataset splits to download
       -d DATASET_DIR, --dataset-dir DATASET_DIR
                             a custom directory to which to download the dataset
+      -k KEY=VAL [KEY=VAL ...], --kwargs KEY=VAL [KEY=VAL ...]
+                            optional dataset-specific keyword argument(s)
 
 **Examples**
 
@@ -1043,6 +1061,12 @@ Download datasets from the FiftyOne Dataset Zoo.
     # Download the zoo dataset to a custom directory
     fiftyone zoo datasets download <name> --dataset-dir <dataset-dir>
 
+.. code-block:: shell
+
+    # Download a zoo dataset that requires extra keyword arguments
+    fiftyone zoo datasets download <name> \
+        --kwargs source_dir=/path/to/source/files
+
 .. _cli-fiftyone-zoo-datasets-load:
 
 Load zoo datasets
@@ -1056,6 +1080,7 @@ Load zoo datasets as persistent FiftyOne datasets.
                                [-n DATASET_NAME] [-d DATASET_DIR]
                                [--shuffle] [--seed SEED]
                                [--max-samples MAX_SAMPLES]
+                               [-k KEY=VAL [KEY=VAL ...]]
                                NAME
 
 **Arguments**
@@ -1070,13 +1095,15 @@ Load zoo datasets as persistent FiftyOne datasets.
       -s SPLITS [SPLITS ...], --splits SPLITS [SPLITS ...]
                             the dataset splits to load
       -n DATASET_NAME, --dataset-name DATASET_NAME
-                        a custom name to give the FiftyOne dataset
+                            a custom name to give the FiftyOne dataset
       -d DATASET_DIR, --dataset-dir DATASET_DIR
                             a custom directory in which the dataset is downloaded
       --shuffle             whether to randomly shuffle the order in which the samples are imported
       --seed SEED           a random seed to use when shuffling
       --max-samples MAX_SAMPLES
                             a maximum number of samples to import. By default, all samples are imported
+      -k KEY=VAL [KEY=VAL ...], --kwargs KEY=VAL [KEY=VAL ...]
+                            optional dataset-specific keyword argument(s)
 
 **Examples**
 
@@ -1104,6 +1131,12 @@ Load zoo datasets as persistent FiftyOne datasets.
 
     # Load a random subset of the zoo dataset
     fiftyone zoo datasets load <name> --shuffle --max-samples <max-samples>
+
+.. code-block:: shell
+
+    # Load a zoo dataset that requires custom keyword arguments
+    fiftyone zoo datasets load <name> \
+        --kwargs source_dir=/path/to/source_files
 
 .. _cli-fiftyone-zoo-datasets-delete:
 
@@ -1181,7 +1214,7 @@ List datasets in the FiftyOne Model Zoo.
 
 .. code-block:: text
 
-    fiftyone zoo models list [-h] [-d] [-t TAG]
+    fiftyone zoo models list [-h] [-n] [-d] [-t TAG]
 
 **Arguments**
 
@@ -1189,9 +1222,10 @@ List datasets in the FiftyOne Model Zoo.
 
     optional arguments:
       -h, --help            show this help message and exit
+      -n, --names-only      only show model names
       -d, --downloaded-only
                             only show models that have been downloaded
-      -t TAG, --tag TAG     only show models with the specified tag or list,of,tags
+      -t TAGS, --tags TAGS  only show models with the specified tag or list,of,tags
 
 **Examples**
 
@@ -1202,13 +1236,18 @@ List datasets in the FiftyOne Model Zoo.
 
 .. code-block:: shell
 
+    # List available models (names only)
+    fiftyone zoo models list --names-only
+
+.. code-block:: shell
+
     # List downloaded models
     fiftyone zoo models list --downloaded-only
 
 .. code-block:: shell
 
     # List available models with the given tag
-    fiftyone zoo models list --tag <tag>
+    fiftyone zoo models list --tags <tag>
 
 .. _cli-fiftyone-zoo-models-find:
 
@@ -1351,6 +1390,7 @@ Apply zoo models to datasets.
     fiftyone zoo models apply [-h] [-b BATCH_SIZE] [-t THRESH] [-i]
                               [--error-level LEVEL]
                               MODEL_NAME DATASET_NAME LABEL_FIELD
+
 **Arguments**
 
 .. code-block:: text

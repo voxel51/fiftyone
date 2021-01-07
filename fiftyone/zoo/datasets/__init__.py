@@ -9,6 +9,7 @@ download via FiftyOne.
 |
 """
 from collections import OrderedDict
+import inspect
 import logging
 import os
 
@@ -100,9 +101,7 @@ def download_zoo_dataset(
         overwrite (False): whether to overwrite any existing files
         cleanup (True): whether to cleanup any temporary files generated during
             download
-        **kwargs: optional keyword arguments to pass to the constructor of the
-            :class:`ZooDataset` for the dataset via the syntax
-            ``ZooDataset(**kwargs)`` before performing the download
+        **kwargs: optional arguments for the :class:`ZooDataset` constructor
 
     Returns:
         tuple of
@@ -120,6 +119,19 @@ def download_zoo_dataset(
         overwrite=overwrite,
         cleanup=cleanup,
     )
+
+
+def _extract_kwargs_for_class(cls, kwargs):
+    class_kwargs = {}
+    other_kwargs = {}
+    spec = inspect.getfullargspec(cls)
+    for k, v in kwargs.items():
+        if k in spec.args:
+            class_kwargs[k] = v
+        else:
+            other_kwargs[k] = v
+
+    return class_kwargs, other_kwargs
 
 
 def load_zoo_dataset(
@@ -165,9 +177,10 @@ def load_zoo_dataset(
             not found in the specified dataset directory
         drop_existing_dataset (False): whether to drop an existing dataset
             with the same name if it exists
-        **kwargs: optional keyword arguments to pass to the constructor of the
-            :class:`fiftyone.utils.data.importers.DatasetImporter` for the
-            dataset via the syntax ``DatasetImporter(dataset_dir, **kwargs)``
+        **kwargs: optional arguments to pass to the
+            :class:`fiftyone.utils.data.importers.DatasetImporter` constructor.
+            If ``download_if_necessary == True``, then ``kwargs`` can also
+            contain arguments for :func:`download_zoo_dataset`
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
@@ -175,8 +188,13 @@ def load_zoo_dataset(
     splits = _parse_splits(split, splits)
 
     if download_if_necessary:
+        zoo_dataset_cls = _get_zoo_dataset_cls(name)
+        download_kwargs, kwargs = _extract_kwargs_for_class(
+            zoo_dataset_cls, kwargs
+        )
+
         info, dataset_dir = download_zoo_dataset(
-            name, splits=splits, dataset_dir=dataset_dir
+            name, splits=splits, dataset_dir=dataset_dir, **download_kwargs
         )
         zoo_dataset = info.get_zoo_dataset()
     else:
@@ -198,6 +216,7 @@ def load_zoo_dataset(
             )
             return fo.load_dataset(dataset_name)
 
+        logger.info("Deleting existing dataset '%s'", dataset_name)
         fo.delete_dataset(dataset_name)
 
     if splits is None and zoo_dataset.has_splits:
@@ -220,6 +239,8 @@ def load_zoo_dataset(
     if info.classes is not None:
         dataset.info["classes"] = info.classes
         dataset.save()
+
+    logger.info("Dataset '%s' created", dataset.name)
 
     return dataset
 
@@ -299,11 +320,34 @@ def get_zoo_dataset(name, **kwargs):
 
     Args:
         name: the name of the zoo dataset
-        **kwargs: optional keyword arguments for ``ZooDataset(**kwargs)``
+        **kwargs: optional arguments for :class:`ZooDataset`
 
     Returns:
         the :class:`ZooDataset` instance
     """
+    zoo_dataset_cls = _get_zoo_dataset_cls(name)
+
+    try:
+        zoo_dataset = zoo_dataset_cls(**kwargs)
+    except Exception as e:
+        zoo_dataset_name = zoo_dataset_cls.__name__
+        kwargs_str = ", ".join("%s=%s" % (k, v) for k, v in kwargs.items())
+        raise ValueError(
+            "Failed to construct zoo dataset instance using syntax "
+            "%s(%s); you may need to supply mandatory arguments "
+            "to the constructor via `kwargs`. Please consult the "
+            "documentation of `%s` to learn more"
+            % (
+                zoo_dataset_name,
+                kwargs_str,
+                etau.get_class_name(zoo_dataset_cls),
+            )
+        ) from e
+
+    return zoo_dataset
+
+
+def _get_zoo_dataset_cls(name):
     all_datasets = _get_zoo_datasets()
     all_sources, _ = _get_zoo_dataset_sources()
     for source in all_sources:
@@ -312,21 +356,7 @@ def get_zoo_dataset(name, **kwargs):
 
         datasets = all_datasets[source]
         if name in datasets:
-            zoo_dataset_cls = datasets[name]
-
-            try:
-                zoo_dataset = zoo_dataset_cls(**kwargs)
-            except Exception as e:
-                zoo_dataset_name = zoo_dataset_cls.__name__
-                raise ValueError(
-                    "Failed to construct zoo dataset instance using syntax "
-                    "%s(**kwargs); you may need to supply mandatory arguments "
-                    "to the constructor via `kwargs`. Please consult the "
-                    "documentation of `%s` to learn more"
-                    % (zoo_dataset_name, etau.get_class_name(zoo_dataset_cls),)
-                ) from e
-
-            return zoo_dataset
+            return datasets[name]
 
     raise ValueError("Dataset '%s' not found in the zoo" % name)
 
@@ -583,35 +613,42 @@ class ZooDatasetInfo(etas.Serializable):
         Returns:
             a :class:`ZooDatasetInfo`
         """
-        try:
-            # @legacy field name
-            zoo_dataset = d["zoo_dataset_cls"]
-        except KeyError:
-            zoo_dataset = d["zoo_dataset"]
+        info, _ = cls._from_dict(d)
+        return info
 
-        try:
-            # @legacy field name
-            dataset_type = d["format_cls"]
-        except KeyError:
-            dataset_type = d["dataset_type"]
+    @classmethod
+    def from_json(cls, json_path, upgrade=False):
+        """Loads a :class:`ZooDatasetInfo` from a JSON file on disk.
 
-        # @legacy pre-model zoo package name
-        old_pkg = "fiftyone.zoo."
-        new_pkg = "fiftyone.zoo.datasets."
-        if zoo_dataset.startswith(old_pkg) and not zoo_dataset.startswith(
-            new_pkg
-        ):
-            zoo_dataset = new_pkg + zoo_dataset[len(old_pkg) :]
+        Args:
+            json_path: path to JSON file
+            upgrade (False): whether to upgrade the JSON file on disk if any
+                migrations were necessary
 
-        # @legacy dataset types
-        _dt = "fiftyone.types.dataset_types"
-        if dataset_type.endswith(".ImageClassificationDataset"):
-            dataset_type = _dt + ".FiftyOneImageClassificationDataset"
-        if dataset_type.endswith(".ImageDetectionDataset"):
-            dataset_type = _dt + ".FiftyOneImageDetectionDataset"
+        Returns:
+            a :class:`ZooDatasetInfo`
+        """
+        d = etas.read_json(json_path)
+        info, migrated = cls._from_dict(d)
 
-        zoo_dataset = etau.get_class(zoo_dataset)()
-        dataset_type = etau.get_class(dataset_type)()
+        if upgrade and migrated:
+            logger.info("Migrating ZooDatasetInfo at '%s'", json_path)
+            etau.move_file(json_path, json_path + ".bak")
+            info.write_json(json_path, pretty_print=True)
+
+        return info
+
+    @classmethod
+    def _from_dict(cls, d):
+        # Handle any migrations from old `ZooDatasetInfo` instances
+        d, migrated = _migrate_zoo_dataset_info(d)
+
+        parameters = d.get("parameters", None)
+
+        kwargs = parameters or {}
+        zoo_dataset = etau.get_class(d["zoo_dataset"])(**kwargs)
+
+        dataset_type = etau.get_class(d["dataset_type"])()
 
         downloaded_splits = d.get("downloaded_splits", None)
         if downloaded_splits is not None:
@@ -620,14 +657,16 @@ class ZooDatasetInfo(etas.Serializable):
                 for k, v in downloaded_splits.items()
             }
 
-        return cls(
+        info = cls(
             zoo_dataset,
             dataset_type,
             d["num_samples"],
             downloaded_splits=downloaded_splits,
-            parameters=d.get("parameters", None),
+            parameters=parameters,
             classes=d.get("classes", None),
         )
+
+        return info, migrated
 
     def _compute_num_samples(self):
         self.num_samples = sum(
@@ -706,6 +745,12 @@ class ZooDataset(object):
         """Whether the dataset has splits."""
         return self.supported_splits is not None
 
+    @property
+    def requires_manual_download(self):
+        """Whether this dataset requires some files to be manually downloaded.
+        """
+        return False
+
     def has_tag(self, tag):
         """Whether the dataset has the given tag.
 
@@ -739,7 +784,7 @@ class ZooDataset(object):
             the :class:`ZooDatasetInfo` for the dataset
         """
         info_path = ZooDataset.get_info_path(dataset_dir)
-        return ZooDatasetInfo.from_json(info_path)
+        return ZooDatasetInfo.from_json(info_path, upgrade=True)
 
     @staticmethod
     def get_split_dir(dataset_dir, split):
@@ -818,7 +863,7 @@ class ZooDataset(object):
         # Load existing ZooDatasetInfo, if available
         info_path = self.get_info_path(dataset_dir)
         if os.path.isfile(info_path):
-            info = ZooDatasetInfo.from_json(info_path)
+            info = ZooDatasetInfo.from_json(info_path, upgrade=True)
         else:
             info = None
 
@@ -841,7 +886,15 @@ class ZooDataset(object):
                             )
                             etau.delete_dir(split_dir)
                         elif split in info.downloaded_splits:
-                            logger.info("Split '%s' already downloaded", split)
+                            if self.requires_manual_download:
+                                logger.info(
+                                    "Split '%s' already prepared", split
+                                )
+                            else:
+                                logger.info(
+                                    "Split '%s' already downloaded", split
+                                )
+
                             continue
 
                     _splits.append(split)
@@ -850,7 +903,15 @@ class ZooDataset(object):
 
             for split in splits:
                 split_dir = self.get_split_dir(dataset_dir, split)
-                logger.info("Downloading split '%s' to '%s'", split, split_dir)
+                if self.requires_manual_download:
+                    logger.info(
+                        "Preparing split '%s' in '%s'", split, split_dir
+                    )
+                else:
+                    logger.info(
+                        "Downloading split '%s' to '%s'", split, split_dir
+                    )
+
                 (
                     dataset_type,
                     num_samples,
@@ -872,9 +933,16 @@ class ZooDataset(object):
                 write_info = True
         else:
             if info is not None:
-                logger.info("Dataset already downloaded")
+                if self.requires_manual_download:
+                    logger.info("Dataset already prepared")
+                else:
+                    logger.info("Dataset already downloaded")
             else:
-                logger.info("Downloading dataset to '%s'", dataset_dir)
+                if self.requires_manual_download:
+                    logger.info("Preparing dataset in '%s'", dataset_dir)
+                else:
+                    logger.info("Downloading dataset to '%s'", dataset_dir)
+
                 (
                     dataset_type,
                     num_samples,
@@ -920,3 +988,78 @@ class ZooDataset(object):
         raise NotImplementedError(
             "subclasses must implement _download_and_prepare()"
         )
+
+
+class DeprecatedZooDataset(ZooDataset):
+    """Class representing a zoo dataset that no longer exists in the FiftyOne
+    Dataset Zoo.
+    """
+
+    @property
+    def name(self):
+        return "????????"
+
+    @property
+    def supported_splits(self):
+        return None
+
+    def _download_and_prepare(self, *args, **kwargs):
+        raise ValueError(
+            "The zoo dataset you are trying to download is no longer "
+            "available."
+        )
+
+
+def _migrate_zoo_dataset_info(d):
+    migrated = False
+
+    # @legacy field name
+    if "zoo_dataset_cls" in d:
+        d["zoo_dataset"] = d.pop("zoo_dataset_cls")
+        migrated = True
+
+    # @legacy field name
+    if "format_cls" in d:
+        d["dataset_type"] = d.pop("format_cls")
+        migrated = True
+
+    zoo_dataset = d["zoo_dataset"]
+    dataset_type = d["dataset_type"]
+
+    # @legacy pre-model zoo package namespaces
+    old_pkg = "fiftyone.zoo."
+    new_pkg = "fiftyone.zoo.datasets."
+    if zoo_dataset.startswith(old_pkg) and not zoo_dataset.startswith(new_pkg):
+        zoo_dataset = new_pkg + zoo_dataset[len(old_pkg) :]
+        migrated = True
+
+    # @legacy zoo dataset name
+    old_name = "VideoQuickstartDataset"
+    new_name = "QuickstartVideoDataset"
+    if zoo_dataset.endswith(old_name):
+        zoo_dataset = zoo_dataset[: -len(old_name)] + new_name
+        migrated = True
+
+    # @legacy dataset type names
+    _dt = "fiftyone.types.dataset_types"
+    if dataset_type.endswith(".ImageClassificationDataset"):
+        dataset_type = _dt + ".FiftyOneImageClassificationDataset"
+        migrated = True
+
+    if dataset_type.endswith(".ImageDetectionDataset"):
+        dataset_type = _dt + ".FiftyOneImageDetectionDataset"
+        migrated = True
+
+    # @legacy dataset implementations
+    if zoo_dataset.endswith("tf.Caltech101Dataset"):
+        zoo_dataset = etau.get_class_name(DeprecatedZooDataset)
+        migrated = True
+
+    if zoo_dataset.endswith("tf.KITTIDataset"):
+        zoo_dataset = etau.get_class_name(DeprecatedZooDataset)
+        migrated = True
+
+    d["zoo_dataset"] = zoo_dataset
+    d["dataset_type"] = dataset_type
+
+    return d, migrated

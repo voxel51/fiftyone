@@ -172,6 +172,165 @@ class ViewFieldTests(unittest.TestCase):
             F.ground_truth.label.to_mongo(), F("ground_truth").label.to_mongo()
         )
 
+    @drop_datasets
+    def test_clone_fields(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="image1.jpg",
+            predictions=fo.Classification(label="friend", field=1),
+        )
+        sample2 = fo.Sample(
+            filepath="image2.jpg",
+            predictions=fo.Classification(label="enemy", field=2),
+        )
+
+        dataset.add_samples([sample1, sample2])
+
+        # Test `DatasetView.clone_sample_field` on embedded fields
+
+        dataset[1:].clone_sample_field(
+            "predictions.field", "predictions.new_field"
+        )
+
+        self.assertIsNotNone(sample2.predictions.new_field)
+
+        with self.assertRaises(AttributeError):
+            sample1.predictions.new_field
+
+        # Test `DatasetView.clear_sample_field` on embedded fields
+
+        dataset[:1].clear_sample_field("predictions.field")
+
+        self.assertIsNone(sample1.predictions.field)
+        self.assertIsNotNone(sample2.predictions.field)
+
+    @drop_datasets
+    def test_clone_fields_array(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(
+            filepath="image1.jpg",
+            predictions=fo.Detections(
+                detections=[
+                    fo.Detection(label="high", confidence=0.9, field=1),
+                    fo.Detection(label="high", confidence=0.6, field=2),
+                    fo.Detection(label="low", confidence=0.3, field=3),
+                    fo.Detection(label="low", confidence=0.1, field=4),
+                ]
+            ),
+        )
+
+        sample2 = fo.Sample(
+            filepath="image2.jpg",
+            predictions=fo.Detections(
+                detections=[
+                    fo.Detection(label="high", confidence=1.0, field=1),
+                    fo.Detection(label="high", confidence=0.8, field=2),
+                    fo.Detection(label="low", confidence=0.2, field=3),
+                ]
+            ),
+        )
+
+        dataset.add_samples([sample1, sample2])
+
+        # Test `DatasetView.clear_sample_field` on embedded fields
+
+        dataset[:1].clear_sample_field("predictions.detections.field")
+
+        self.assertIsNone(sample1.predictions.detections[0].field)
+        self.assertIsNotNone(sample2.predictions.detections[0].field)
+
+        # Test `DatasetView.clone_sample_field` on embedded fields
+
+        dataset[1:].clone_sample_field(
+            "predictions.detections.field", "predictions.detections.new_field"
+        )
+
+        with self.assertRaises(AttributeError):
+            sample1.predictions.detections[0].new_field
+
+        self.assertIsNotNone(sample2.predictions.detections[0].new_field)
+
+        # Cleanup
+
+        dataset.delete_sample_field("predictions.detections.field")
+        dataset.delete_sample_field("predictions.detections.new_field")
+
+        with self.assertRaises(AttributeError):
+            sample1.predictions.detections[0].field
+
+        # Test `DatasetView.clone_sample_field`
+
+        low_conf_view = dataset.filter_detections(
+            "predictions", F("confidence") < 0.5
+        )
+        low_conf_view.clone_sample_field("predictions", "low_conf")
+
+        high_conf_view = dataset.filter_detections(
+            "predictions", F("confidence") > 0.5
+        )
+        high_conf_view.clone_sample_field("predictions", "high_conf")
+
+        schema = dataset.get_field_schema()
+
+        self.assertIn("low_conf", schema)
+        self.assertIn("high_conf", schema)
+
+        self.assertTrue(sample1.has_field("low_conf"))
+        self.assertTrue(sample1.has_field("high_conf"))
+
+        self.assertEqual(len(sample1["low_conf"].detections), 2)
+        self.assertEqual(len(sample1["high_conf"].detections), 2)
+
+        # Test `DatasetView.clone`
+
+        dataset2 = (
+            high_conf_view.exclude_fields(["low_conf", "high_conf"])
+            .limit(1)
+            .clone()
+        )
+
+        sample21 = dataset2.first()
+        schema2 = dataset2.get_field_schema()
+
+        self.assertTrue(len(dataset2), 1)
+
+        self.assertNotIn("low_conf", schema2)
+        self.assertNotIn("high_conf", schema2)
+
+        self.assertFalse(sample21.has_field("low_conf"))
+        self.assertFalse(sample21.has_field("high_conf"))
+
+        self.assertEqual(len(sample21["predictions"].detections), 2)
+
+        # Test `DatasetView.clear_sample_field`
+
+        dataset[1:].clear_sample_field("low_conf")
+        dataset[1:].clear_sample_field("high_conf")
+
+        self.assertIsNotNone(sample1["low_conf"])
+        self.assertIsNotNone(sample1["high_conf"])
+
+        self.assertIsNone(sample2["low_conf"])
+        self.assertIsNone(sample2["high_conf"])
+
+        # Test `DatasetView.save`
+
+        save_view = high_conf_view.exclude_fields(
+            ["low_conf", "high_conf"]
+        ).limit(1)
+        save_view.save()
+
+        schema = dataset.get_field_schema()
+
+        self.assertTrue(len(dataset), 1)
+
+        self.assertNotIn("low_conf", schema)
+        self.assertNotIn("high_conf", schema)
+
+        self.assertEqual(len(sample1["predictions"].detections), 2)
+
 
 class ViewExpressionTests(unittest.TestCase):
     @drop_datasets

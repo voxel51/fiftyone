@@ -978,6 +978,12 @@ class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
         self._filepaths = self._preprocess_list(filepaths)
         self._num_samples = len(self._filepaths)
 
+    @staticmethod
+    def get_num_samples(dataset_dir, recursive=True):
+        filepaths = etau.list_files(dataset_dir, recursive=recursive)
+        filepaths = [p for p in filepaths if etai.is_image_mime_type(p)]
+        return len(filepaths)
+
 
 class VideoDirectoryImporter(UnlabeledVideoDatasetImporter):
     """Importer for a directory of videos stored on disk.
@@ -1049,6 +1055,12 @@ class VideoDirectoryImporter(UnlabeledVideoDatasetImporter):
 
         self._filepaths = self._preprocess_list(filepaths)
         self._num_samples = len(self._filepaths)
+
+    @staticmethod
+    def get_num_samples(dataset_dir, recursive=True):
+        filepaths = etau.list_files(dataset_dir, recursive=recursive)
+        filepaths = [p for p in filepaths if etav.is_video_mime_type(p)]
+        return len(filepaths)
 
 
 class FiftyOneImageClassificationDatasetImporter(LabeledImageDatasetImporter):
@@ -1163,6 +1175,18 @@ class FiftyOneImageClassificationDatasetImporter(LabeledImageDatasetImporter):
     def get_dataset_info(self):
         return {"classes": self._classes}
 
+    @staticmethod
+    def get_classes(dataset_dir):
+        labels_path = os.path.join(dataset_dir, "labels.json")
+        labels = etas.read_json(labels_path)
+        return labels.get("classes", None)
+
+    @staticmethod
+    def get_num_samples(dataset_dir):
+        labels_path = os.path.join(dataset_dir, "labels.json")
+        labels = etas.read_json(labels_path)
+        return len(labels.get("labels", {}))
+
 
 class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
     """Importer for an image classification directory tree stored on disk.
@@ -1239,13 +1263,11 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
     def setup(self):
         samples = []
         classes = set()
-        glob_patt = os.path.join(self.dataset_dir, "*", "*")
-        for path in etau.get_glob_matches(glob_patt):
-            chunks = path.split(os.path.sep)
-            if any(s.startswith(".") for s in chunks[-2:]):
+        for class_dir in etau.list_subdirs(self.dataset_dir, abs_paths=True):
+            label = os.path.basename(class_dir)
+            if label.startswith("."):
                 continue
 
-            label = chunks[-2]
             if label == "_unlabeled":
                 if self.skip_unlabeled:
                     continue
@@ -1254,7 +1276,8 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
             else:
                 classes.add(label)
 
-            samples.append((path, label))
+            for path in etau.list_files(class_dir, abs_paths=True):
+                samples.append((path, label))
 
         self._samples = self._preprocess_list(samples)
         self._num_samples = len(self._samples)
@@ -1355,13 +1378,11 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
     def setup(self):
         samples = []
         classes = set()
-        glob_patt = os.path.join(self.dataset_dir, "*", "*")
-        for path in etau.get_glob_matches(glob_patt):
-            chunks = path.split(os.path.sep)
-            if any(s.startswith(".") for s in chunks[-2:]):
+        for class_dir in etau.list_subdirs(self.dataset_dir, abs_paths=True):
+            label = os.path.basename(class_dir)
+            if label.startswith("."):
                 continue
 
-            label = chunks[-2]
             if label == "_unlabeled":
                 if self.skip_unlabeled:
                     continue
@@ -1370,7 +1391,8 @@ class VideoClassificationDirectoryTreeImporter(LabeledVideoDatasetImporter):
             else:
                 classes.add(label)
 
-            samples.append((path, label))
+            for path in etau.list_files(class_dir, abs_paths=True):
+                samples.append((path, label))
 
         self._samples = self._preprocess_list(samples)
         self._num_samples = len(self._samples)
@@ -1509,6 +1531,18 @@ class FiftyOneImageDetectionDatasetImporter(LabeledImageDatasetImporter):
     def get_dataset_info(self):
         return {"classes": self._classes}
 
+    @staticmethod
+    def get_classes(dataset_dir):
+        labels_path = os.path.join(dataset_dir, "labels.json")
+        labels = etas.read_json(labels_path)
+        return labels.get("classes", None)
+
+    @staticmethod
+    def get_num_samples(dataset_dir):
+        labels_path = os.path.join(dataset_dir, "labels.json")
+        labels = etas.read_json(labels_path)
+        return len(labels.get("labels", {}))
+
 
 class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
     """Importer for labeled image datasets whose labels are stored in
@@ -1639,6 +1673,10 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
 
     def get_dataset_info(self):
         return {"description": self._description}
+
+    @staticmethod
+    def get_num_samples(dataset_dir):
+        return len(etads.load_dataset(dataset_dir))
 
 
 class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):

@@ -10,10 +10,9 @@ import csv
 import logging
 import os
 
-import numpy as np
-
 import eta.core.image as etai
 import eta.core.utils as etau
+import eta.core.web as etaw
 
 import fiftyone as fo
 import fiftyone.core.labels as fol
@@ -168,6 +167,14 @@ class KITTIDetectionDatasetImporter(foud.LabeledImageDatasetImporter):
         self._uuids = self._preprocess_list(uuids)
         self._num_samples = len(self._uuids)
 
+    @staticmethod
+    def get_num_samples(dataset_dir):
+        data_dir = os.path.join(dataset_dir, "data")
+        if not os.path.isdir(data_dir):
+            return 0
+
+        return len(etau.list_files(data_dir))
+
 
 class KITTIDetectionDatasetExporter(foud.LabeledImageDatasetExporter):
     """Exporter that writes KITTI detection datasets to disk.
@@ -277,6 +284,85 @@ def load_kitti_detection_annotations(txt_path, frame_size):
             detections.append(detection)
 
     return fol.Detections(detections=detections)
+
+
+_LABELS_ZIP_URL = (
+    "https://s3.eu-central-1.amazonaws.com/avg-kitti/data_object_label_2.zip"
+)
+_IMAGES_ZIP_URL = (
+    "https://s3.eu-central-1.amazonaws.com/avg-kitti/data_object_image_2.zip"
+)
+
+# unused
+_DEVKIT_ZIP_URL = (
+    "https://s3.eu-central-1.amazonaws.com/avg-kitti/devkit_object.zip"
+)
+_CALIB_ZIP_URL = (
+    "https://s3.eu-central-1.amazonaws.com/avg-kitti/data_object_calib.zip"
+)
+
+
+def download_kitti_detection_dataset(
+    dataset_dir, overwrite=True, cleanup=True
+):
+    """Downloads the KITTI object detection dataset from the web.
+
+    The dataset will be organized on disk in
+    :class:`fiftyone.types.dataset_types.KITTIDetectionDataset` format as
+    follows::
+
+        dataset_dir/
+            train/
+                data/
+                    000000.png
+                    000001.png
+                    ...
+                labels/
+                    000000.txt
+                    000001.txt
+                    ...
+            test/
+                data/
+                    000000.png
+                    000001.png
+                    ...
+
+    Args:
+        dataset_dir: the directory in which to construct the dataset
+        overwrite (True): whether to redownload the zips if they already exist
+        cleanup (True): whether to delete the downloaded zips
+    """
+    labels_zip_path = os.path.join(dataset_dir, "data_object_label_2.zip")
+    if overwrite or not os.path.exists(labels_zip_path):
+        logger.info("Downloading labels to '%s'...", labels_zip_path)
+        etaw.download_file(_LABELS_ZIP_URL, path=labels_zip_path)
+    else:
+        logger.info("Using existing labels '%s'", labels_zip_path)
+
+    images_zip_path = os.path.join(dataset_dir, "data_object_image_2.zip")
+    if overwrite or not os.path.exists(images_zip_path):
+        logger.info("Downloading images to '%s'...", images_zip_path)
+        etaw.download_file(_IMAGES_ZIP_URL, path=images_zip_path)
+    else:
+        logger.info("Using existing images '%s'", images_zip_path)
+
+    logger.info("Extracting data")
+    scratch_dir = os.path.join(dataset_dir, "tmp-download")
+    etau.extract_zip(labels_zip_path, outdir=scratch_dir, delete_zip=cleanup)
+    etau.extract_zip(images_zip_path, outdir=scratch_dir, delete_zip=cleanup)
+    etau.move_dir(
+        os.path.join(scratch_dir, "training", "label_2"),
+        os.path.join(dataset_dir, "train", "labels"),
+    )
+    etau.move_dir(
+        os.path.join(scratch_dir, "training", "image_2"),
+        os.path.join(dataset_dir, "train", "data"),
+    )
+    etau.move_dir(
+        os.path.join(scratch_dir, "testing", "image_2"),
+        os.path.join(dataset_dir, "test", "data"),
+    )
+    etau.delete_dir(scratch_dir)
 
 
 def _parse_kitti_detection_row(row, frame_size):
