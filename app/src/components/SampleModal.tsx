@@ -122,7 +122,12 @@ const Container = styled.div`
       padding-bottom: 1em;
       flex-grow: 1;
       overflow-y: auto;
+      scrollbar-width: none;
+      @-moz-document url-prefix() {
+        padding-right: 16px;
+      }
     }
+
     .sidebar-content::-webkit-scrollbar {
       width: 0px;
       background: transparent;

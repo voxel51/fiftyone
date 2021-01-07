@@ -26,6 +26,7 @@ const Body = styled.div`
   flex-grow: 1;
   display: flex;
   flex-direction: column;
+  padding-right: 0 !important;
 `;
 
 const GA = () => {

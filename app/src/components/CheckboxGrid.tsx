@@ -66,7 +66,7 @@ const Body = styled.div`
     .MuiTypography-body1.with-checkbox {
       max-width: calc(100% - 24px);
     }
-
+    overflow: "hidden",
     .MuiCheckbox-root {
       padding: 0;
 
@@ -103,7 +103,7 @@ const Body = styled.div`
       span.name {
         padding: 0 4px;
         white-space: nowrap;
-        overflow-x: hidden;
+        overflow: hidden;
         text-overflow: ellipsis;
         flex-grow: 1;
         max-width: 100%;

@@ -74,6 +74,7 @@ const SearchResultsDiv = animated(styled.div`
   z-index: 801;
   max-height: 328px;
   overflow-y: scroll;
+  scrollbar-width: none;
 
   &::-webkit-scrollbar {
     width: 0px;
