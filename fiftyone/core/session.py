@@ -697,11 +697,11 @@ def _display_colab(session, handle, uuid, port, height, update=False):
         idx = session._colab_img_counter[uuid]
         session._colab_img_counter[uuid] = idx + 1
         with output.redirect_to_element("#focontainer-%s" % uuid):
-            # pylint: disable=undefined-variable
+            # pylint: disable=undefined-variable,bad-format-character
             display(
                 IPython.display.HTML(
                     """
-                <img id='fo-%s%d' class='foimage' src='%s'/>
+                <img id='fo-%s%d' class='foimage' src='%s' style='width: 100%%;'/>
                 <style>
                 #fo-%s%d {
                     display: none;
@@ -745,11 +745,10 @@ _SCREENSHOT_STYLE = """
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 120px;
-  margin-left: -60px;
+  width: 160px;
+  margin-left: -80px;
   margin-top: -23px;
-  background: hsl(210,11%,15%);
-  border: 1px solid hsl(27, 95%, 49%);
+  background: hsla(210,11%,15%, 0.5);
 }
 #foactivate-{{ handle }}:focus {
   outline: none;
