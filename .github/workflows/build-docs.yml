@@ -67,15 +67,6 @@ jobs:
           pip install --pre --extra-index-url https://test.pypi.org/simple/ fiftyone-brain
           pip install pycocotools tensorflow torch torchvision
           pip install -e .
-      - name: Set environment
-        env:
-          REF: ${{ github.ref }}
-        run: |
-          if [[ $REF =~ ^refs\/tags\/.*$ ]]; then
-             echo "FO_DOCS_VERSION_REF=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/v/")" >> $GITHUB_ENV
-          elif [[ $REF =~ ^refs\/head\/.*$ ]]; then
-             echo "FO_DOCS_VERSION_REF=$(echo "${{ github.ref }}" | sed "s/^refs\/head\//")" >> $GITHUB_ENV
-          fi
       - name: Build docs
         run: |
           ./docs/generate_docs.bash

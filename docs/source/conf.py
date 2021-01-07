@@ -101,7 +101,7 @@ rst_prolog = """
 nbsphinx_requirejs_path = ""
 
 # Adds helpful external links to the built HTML
-ref = os.environ.get("FO_DOCS_VERSION_REF", "develop")
+ref = "v%s" % foc.VERSION
 nbsphinx_prolog = """
 
 .. raw:: html
