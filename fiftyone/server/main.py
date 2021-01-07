@@ -264,7 +264,6 @@ class PollingHandler(tornado.web.RequestHandler):
             self.write_message({"type": "update", "state": StateHandler.state})
 
         elif event == "deactivate":
-            print("DEACTIVATE")
             self.write_message({"type": "deactivate"})
 
         state = fos.StateDescription.from_dict(StateHandler.state)
