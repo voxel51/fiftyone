@@ -679,12 +679,15 @@ def _display_colab(handle, uuid, port, height, update=False):
     """
     import IPython.display
 
+    # pylint: disable=no-name-in-module,import-error
+    from google.colab import output
+
     style_text = Template(_SCREENSHOT_STYLE).render(handle=uuid)
     div_text = Template(_SCREENSHOT_DIV).render(image="", handle=uuid)
     script_text = Template(_SCREENSHOT_SCRIPT).render(
         url="${baseUrl}", handle=uuid
     )
-    shell = _SCREENSHOT_COLAB
+    html = _SCREENSHOT_COLAB
     replacements = [
         ("%PORT%", "%d" % port),
         ("%HANDLE%", uuid),
@@ -694,11 +697,16 @@ def _display_colab(handle, uuid, port, height, update=False):
         ("%SCRIPT%", script_text),
     ]
     for (k, v) in replacements:
-        shell = shell.replace(k, v)
+        html = html.replace(k, v)
 
-    script = IPython.display.Javascript(shell)
+    handle.display(IPython.display.HTML(html))
 
-    handle.display(script)
+    def capture(img):
+        with output.redirect_to_element("#focontainer"):
+            # pylint: disable=undefined-variable
+            display(IPython.display.HTML("<img id='foimage' src='%s'/>" % img))
+
+    output.register_callback("fiftyone.%s" % uuid.replace("-", "_"), capture)
 
 
 def _display_ipython(handle, uuid, port, height, update=False):
@@ -784,9 +792,17 @@ _SCREENSHOT_HTML = Template(
 )
 
 _SCREENSHOT_COLAB = """
+<style>
+%STYLE%
+</style>
+<div id="focontainer-{{ handle }}">
+   <div id="fooverlay-{{ handle }}">
+      <button id="foactivate-{{ handle }}" >Activate</button>
+   </div>
+</div>
+<script>
 (async () => {
-    const styleText = `%STYLE%`;
-    const divText = `%DIV%`;
+    if (document.getElementById("foimage")) return;
     const baseURL = await google.colab.kernel.proxyPort(%PORT%, {'cache': true});
     const url = new URL(baseURL);
     const handleId = "%HANDLE%";
@@ -801,25 +817,18 @@ _SCREENSHOT_COLAB = """
     document.body.appendChild(iframe);
     window.addEventListener("message", (event) => {
         if (event.data.handleId !== handleId) return;
-        const style = document.createElement("style");
-        style.appendChild(document.createTextNode(styleText));
-        document.head.appendChild(style);
-        const img = new Image();
-        img.src = event.data.src;
-        img.style.height = '%HEIGHT%px';
-        img.style.width = '100%';
-        const tmp = document.createElement("div");
-        tmp.innerHTML = divText;
-        const div = tmp.children[0];
-        div.replaceChild(img, div.children[1]);
-        document.body.replaceChild(div, iframe);
+        document.body.removeChild(iframe);
         var container = document.getElementById(`focontainer-${handleId}`);
         var overlay = document.getElementById(`fooverlay-${handleId}`);
+        google.colab.kernel.invokeFunction(`fiftyone.${handleId.replaceAll('-', '_')}`, [event.data.src], {});
         overlay.addEventListener("click", () => {
-          document.body.replaceChild(iframe, div);
+          const img = document.getElementById("foimage");
+          container.removeChild(img);
+          document.body.appendChild(iframe, div);
         });
         container.addEventListener("mouseenter", () => overlay.style.display = "block");
         container.addEventListener("mouseleave", () => overlay.style.display = "none");
     });
 })();
+</script>
 """
