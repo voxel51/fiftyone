@@ -886,25 +886,24 @@ driving platform.
 
 The full benchmark contains many tasks such as stereo, optical flow, visual
 odometry, etc. This dataset contains the object detection dataset,
-including the monocular images and bounding boxes. The dataset contains
-7,481 training images annotated with 3D bounding boxes. A full description
-of the annotations can be found in the README of the object development kit
-on the KITTI homepage.
+including the monocular images and bounding boxes.
+
+The training split contains 7,481 images annotated with 2D and 3D bounding
+boxes (currently only the 2D detections are loaded), and the test split
+contains 7,518 unlabeled images.
+
+A full description of the annotations can be found in the README of the
+object development kit on the KITTI homepage.
 
 **Details**
 
 -   Dataset name: ``kitti``
 -   Dataset source: http://www.cvlibs.net/datasets/kitti
--   Dataset size: 5.27 GB
+-   Dataset size: 11.71 GB
 -   Tags: ``image, detection``
--   Supported splits: ``train, validation, test``
+-   Supported splits: ``train, test``
 -   ZooDataset class:
-    :class:`KITTIDataset <fiftyone.zoo.datasets.tf.KITTIDataset>` (TF backend)
-
-.. note::
-
-    You must have the :ref:`TensorFlow backend <dataset-zoo-ml-backend>`
-    installed to load this dataset.
+    :class:`KITTIDataset <fiftyone.zoo.datasets.base.KITTIDataset>`
 
 **Example usage**
 
@@ -918,7 +917,7 @@ on the KITTI homepage.
         import fiftyone as fo
         import fiftyone.zoo as foz
 
-        dataset = foz.load_zoo_dataset("kitti", split="validation")
+        dataset = foz.load_zoo_dataset("kitti", split="train")
 
         session = fo.launch_app(dataset)
 
@@ -926,9 +925,9 @@ on the KITTI homepage.
 
     .. code-block:: shell
 
-        fiftyone zoo datasets load kitti --split validation
+        fiftyone zoo datasets load kitti --split train
 
-        fiftyone app launch kitti-validation
+        fiftyone app launch kitti-train
 
 .. _dataset-zoo-lfw:
 

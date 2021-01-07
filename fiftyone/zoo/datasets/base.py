@@ -18,6 +18,7 @@ import fiftyone.utils.coco as fouc
 import fiftyone.utils.cityscapes as foucs
 import fiftyone.utils.data as foud
 import fiftyone.utils.hmdb51 as fouh
+import fiftyone.utils.kitti as fouk
 import fiftyone.utils.lfw as foul
 import fiftyone.utils.ucf101 as fouu
 import fiftyone.zoo.datasets as fozd
@@ -618,6 +619,59 @@ class ImageNetSampleDataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
 
+class KITTIDataset(FiftyOneDataset):
+    """KITTI contains a suite of vision tasks built using an autonomous
+    driving platform.
+
+    The full benchmark contains many tasks such as stereo, optical flow, visual
+    odometry, etc. This dataset contains the object detection dataset,
+    including the monocular images and bounding boxes.
+
+    The training split contains 7,481 images annotated with 2D and 3D bounding
+    boxes (currently only the 2D detections are loaded), and the test split
+    contains 7,518 unlabeled images.
+
+    A full description of the annotations can be found in the README of the
+    object development kit on the KITTI homepage.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("kitti", split="train")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        11.71 GB
+
+    Source
+        http://www.cvlibs.net/datasets/kitti
+    """
+
+    @property
+    def name(self):
+        return "kitti"
+
+    @property
+    def tags(self):
+        return ("image", "detection")
+
+    @property
+    def supported_splits(self):
+        return ("train", "test")
+
+    def _download_and_prepare(self, dataset_dir, scratch_dir, split):
+        split_dir = os.path.join(scratch_dir, split)
+        if not os.path.isdir(split_dir):
+            fouk.download_kitti_detection_dataset(
+                scratch_dir, overwrite=False, cleanup=False
+            )
+
+        etau.move_dir(split_dir, dataset_dir)
+
+
 class LabeledFacesInTheWildDataset(FiftyOneDataset):
     """Labeled Faces in the Wild is a public benchmark for face verification,
     also known as pair matching.
@@ -886,6 +940,7 @@ AVAILABLE_DATASETS = {
     "coco-2017-segmentation": COCO2017Dataset,
     "hmdb51": HMDB51Dataset,
     "imagenet-sample": ImageNetSampleDataset,
+    "kitti": KITTIDataset,
     "lfw": LabeledFacesInTheWildDataset,
     "quickstart": QuickstartDataset,
     "quickstart-video": QuickstartVideoDataset,
