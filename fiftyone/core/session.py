@@ -700,14 +700,14 @@ def _display_colab(session, handle, uuid, port, height, update=False):
             display(
                 IPython.display.HTML(
                     """
-                <img id="%s%s" class='foimage' src='%s'/>
+                <img id='fo-%s%d' class='foimage' src='%s'/>
                 <style>
-                #%s%s {
+                #fo-%s%d {
                     display: none;
                 }
                 </style>
                 """
-                    % (uuid, idx, img, uuid, idx - i)
+                    % (uuid, idx, img, uuid, idx - 1)
                 )
             )
 
@@ -730,6 +730,7 @@ _SCREENSHOT_STYLE = """
 
 #focontainer-{{ handle }} {
   position: relative;
+  display: block !important;
 }
 #foactivate-{{ handle }} {
   font-weight: bold;
@@ -779,7 +780,7 @@ _SCREENSHOT_SCRIPT = """
    })();
 """
 _SCREENSHOT_DIV = """
-<div id="focontainer-{{ handle }}">
+<div id="focontainer-{{ handle }}" style="display: none;">
    <div id="fooverlay-{{ handle }}">
       <button id="foactivate-{{ handle }}" >Activate</button>
    </div>
