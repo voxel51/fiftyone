@@ -402,6 +402,13 @@ the import behavior:
     permanently adjust this behavior by setting the ``requirement_error_level``
     parameter of your :ref:`FiftyOne config <configuring-fiftyone>`.
 
+    An ``error_level`` of ``0`` will raise an error if a requirement is not
+    satisfied, ``1`` will log a warning if the requirement is not satisfied, 
+    and ``2`` will ignore unsatisfied requirements.
+
+    If you are using a `conda` environment, it is recommended you use an
+    `error_level` of ``1``.
+
 .. _model-zoo-apply:
 
 Applying zoo models
@@ -620,7 +627,7 @@ accessible to you when you update your FiftyOne package.
     `the GitHub repository <https://github.com/voxel51/fiftyone>`_.
 
 You can also add your own models to your local model zoo, enabling you to work
-with these models via the :mod:`fiftyone.zoo.models`` package and the CLI using
+with these models via the :mod:`fiftyone.zoo.models` package and the CLI using
 the same syntax that you would with publicly available models.
 
 To add model(s) to your local zoo, you simply write a JSON manifest file in
