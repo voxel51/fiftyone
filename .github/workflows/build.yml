@@ -73,11 +73,11 @@ jobs:
           - ubuntu-18.04
           - windows-latest
         python-version:
-          - 3.6
+          - 3.7
           - 3.8
         exclude:
           - os: windows-latest
-            python-version: 3.6
+            python-version: 3.7
     defaults:
       run:
         shell: bash

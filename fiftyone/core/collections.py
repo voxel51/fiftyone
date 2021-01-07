@@ -108,99 +108,6 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement info")
 
-    def _build_aggregation(self, aggregations):
-        scalar_result = isinstance(aggregations, Aggregation)
-        if scalar_result:
-            aggregations = [aggregations]
-        elif not aggregations:
-            return False, [], None
-
-        # pylint: disable=no-member
-        schema = self.get_field_schema()
-        if self.media_type == fom.VIDEO:
-            frame_schema = self.get_frame_field_schema()
-        else:
-            frame_schema = None
-
-        pipelines = {}
-        for agg in aggregations:
-            if not isinstance(agg, Aggregation):
-                raise TypeError("'%s' is not a an Aggregation" % agg.__class__)
-
-            field = agg._get_output_field(self)
-            pipelines[field] = agg._to_mongo(
-                self._dataset, schema, frame_schema
-            )
-
-        result_d = {}
-
-        return scalar_result, aggregations, [{"$facet": pipelines}]
-
-    def _process_aggregations(self, aggregations, result, scalar_result):
-        results = []
-        for agg in aggregations:
-            try:
-                results.append(
-                    agg._get_result(result[agg._get_output_field(self)][0])
-                )
-            except:
-                results.append(agg._get_default_result())
-
-        return results[0] if scalar_result else results
-
-    def aggregate(self, aggregations, _attach_frames=True):
-        """Aggregates one or more
-        :class:`fiftyone.core.aggregations.Aggregation` instances.
-
-        Note that it is best practice to group aggregations into a single call
-        to :meth:`aggregate() <aggregate>`, as this will be more efficient than
-        performing multiple aggregations in series.
-
-        Args:
-            aggregations: an :class:`fiftyone.core.aggregations.Aggregation` or
-                iterable of :class:`<fiftyone.core.aggregations.Aggregation>`
-                instances
-
-        Returns:
-            an :class:`fiftyone.core.aggregations.AggregationResult` or list of
-            :class:`fiftyone.core.aggregations.AggregationResult` instances
-            corresponding to the input aggregations
-        """
-        scalar_result, aggregations, facets = self._build_aggregation(
-            aggregations
-        )
-        if len(aggregations) == 0:
-            return []
-        # pylint: disable=no-member
-        pipeline = self._pipeline(
-            pipeline=facets, attach_frames=_attach_frames
-        )
-        try:
-            # pylint: disable=no-member
-            result = next(self._dataset._sample_collection.aggregate(pipeline))
-        except StopIteration:
-            pass
-
-        return self._process_aggregations(aggregations, result, scalar_result)
-
-    async def _async_aggregate(self, coll, aggregations):
-        scalar_result, aggregations, facets = self._build_aggregation(
-            aggregations
-        )
-        if not aggregations:
-            return []
-
-        # pylint: disable=no-member
-        pipeline = self._pipeline(pipeline=facets)
-        try:
-            # pylint: disable=no-member
-            result = await coll.aggregate(pipeline).to_list(1)
-            result = result[0]
-        except StopIteration:
-            pass
-
-        return self._process_aggregations(aggregations, result, scalar_result)
-
     def summary(self):
         """Returns a string summary of the collection.
 
@@ -1868,14 +1775,38 @@ class SampleCollection(object):
             frame_labels_field_or_dict=frame_labels_field_or_dict,
         )
 
-    def create_index(self, field):
-        """Creates a database index on the given field, enabling efficient
-        sorting on that field.
+    def list_indexes(self):
+        """Returns the fields of the dataset that are indexed.
+
+        Returns:
+            a list of field names
+        """
+        raise NotImplementedError("Subclass must implement list_indexes()")
+
+    def create_index(self, field, unique=False):
+        """Creates an index on the given field.
+
+        If the given field already has a unique index, it will be retained
+        regardless of the ``unique`` value you specify.
+
+        If the given field already has a non-unique index but you requested a
+        unique index, the existing index will be dropped.
+
+        Indexes enable efficient sorting, merging, and other such operations.
 
         Args:
-            field: the name of the field to index
+            field: the field name
+            unique (False): whether to add a uniqueness constraint to the index
         """
-        raise NotImplementedError("Subclass must implement make_index()")
+        raise NotImplementedError("Subclass must implement create_index()")
+
+    def drop_index(self, field):
+        """Drops the index on the given field.
+
+        Args:
+            field: the field name
+        """
+        raise NotImplementedError("Subclass must implement drop_index()")
 
     def to_dict(self, rel_dir=None, frame_labels_dir=None, pretty_print=False):
         """Returns a JSON dictionary representation of the collection.
@@ -2031,16 +1962,85 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
 
+    def aggregate(self, aggregations, _attach_frames=True):
+        """Aggregates one or more
+        :class:`fiftyone.core.aggregations.Aggregation` instances.
+
+        Note that it is best practice to group aggregations into a single call
+        to :meth:`aggregate() <aggregate>`, as this will be more efficient than
+        performing multiple aggregations in series.
+
+        Args:
+            aggregations: an :class:`fiftyone.core.aggregations.Aggregation` or
+                iterable of :class:`<fiftyone.core.aggregations.Aggregation>`
+                instances
+
+        Returns:
+            an :class:`fiftyone.core.aggregations.AggregationResult` or list of
+            :class:`fiftyone.core.aggregations.AggregationResult` instances
+            corresponding to the input aggregations
+        """
+        scalar_result, aggregations, facets = self._build_aggregation(
+            aggregations
+        )
+        if len(aggregations) == 0:
+            return []
+
+        # pylint: disable=no-member
+        pipeline = self._pipeline(
+            pipeline=facets, attach_frames=_attach_frames
+        )
+        try:
+            # pylint: disable=no-member
+            result = next(self._dataset._sample_collection.aggregate(pipeline))
+        except StopIteration:
+            pass
+
+        return self._process_aggregations(aggregations, result, scalar_result)
+
+    def _pipeline(
+        self,
+        pipeline=None,
+        attach_frames=True,
+        hide_frames=False,
+        squash_frames=False,
+    ):
+        """Returns the MongoDB aggregation pipeline for the collection.
+
+        Args:
+            pipeline (None): a MongoDB aggregation pipeline (list of dicts) to
+                append to the current pipeline
+            attach_frames (True): whether to attach the frame documents to the
+                result. Only applicable to video datasets
+            hide_frames (False): whether to hide frames in the result. Only
+                applicable to video datasets
+            squash_frames (False): whether to squash frames in the result. Only
+                applicable to video datasets
+
+        Returns:
+            the aggregation pipeline
+        """
+        raise NotImplementedError("Subclass must implement _pipeline()")
+
     def _aggregate(
-        self, pipeline=None, hide_frames=False, squash_frames=False
+        self,
+        pipeline=None,
+        attach_frames=True,
+        hide_frames=False,
+        squash_frames=False,
     ):
         """Runs the MongoDB aggregation pipeline on the collection and returns
         the result.
 
         Args:
-            pipeline (None): a MongoDB aggregation pipeline (list of dicts)
-            hide_frames (False): whether to hide frames in the result
-            squash_frames (False): whether to squash frames in the result
+            pipeline (None): a MongoDB aggregation pipeline (list of dicts) to
+                append to the current pipeline
+            attach_frames (True): whether to attach the frame documents to the
+                result. Only applicable to video datasets
+            hide_frames (False): whether to hide frames in the result. Only
+                applicable to video datasets
+            squash_frames (False): whether to squash frames in the result. Only
+                applicable to video datasets
 
         Returns:
             the aggregation result dict
@@ -2061,6 +2061,64 @@ class SampleCollection(object):
                 }
             }
         ]
+
+    async def _async_aggregate(self, sample_collection, aggregations):
+        scalar_result, aggregations, facets = self._build_aggregation(
+            aggregations
+        )
+        if not aggregations:
+            return []
+
+        # pylint: disable=no-member
+        pipeline = self._pipeline(pipeline=facets)
+        try:
+            # pylint: disable=no-member
+            result = await sample_collection.aggregate(pipeline).to_list(1)
+            result = result[0]
+        except StopIteration:
+            pass
+
+        return self._process_aggregations(aggregations, result, scalar_result)
+
+    def _build_aggregation(self, aggregations):
+        scalar_result = isinstance(aggregations, Aggregation)
+        if scalar_result:
+            aggregations = [aggregations]
+        elif not aggregations:
+            return False, [], None
+
+        # pylint: disable=no-member
+        schema = self.get_field_schema()
+        if self.media_type == fom.VIDEO:
+            frame_schema = self.get_frame_field_schema()
+        else:
+            frame_schema = None
+
+        pipelines = {}
+        for agg in aggregations:
+            if not isinstance(agg, Aggregation):
+                raise TypeError("'%s' is not an Aggregation" % agg.__class__)
+
+            field = agg._get_output_field(self)
+            pipelines[field] = agg._to_mongo(
+                self._dataset, schema, frame_schema
+            )
+
+        result_d = {}
+
+        return scalar_result, aggregations, [{"$facet": pipelines}]
+
+    def _process_aggregations(self, aggregations, result, scalar_result):
+        results = []
+        for agg in aggregations:
+            try:
+                results.append(
+                    agg._get_result(result[agg._get_output_field(self)][0])
+                )
+            except:
+                results.append(agg._get_default_result())
+
+        return results[0] if scalar_result else results
 
     def _serialize(self):
         # pylint: disable=no-member

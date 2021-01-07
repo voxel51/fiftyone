@@ -25,7 +25,10 @@ from .frame import (
     DatasetFrameSampleDocument,
     NoDatasetFrameSampleDocument,
 )
-from .mixins import get_implied_field_kwargs
+from .mixins import (
+    default_sample_fields,
+    get_implied_field_kwargs,
+)
 from .sample import (
     DatasetSampleDocument,
     NoDatasetSampleDocument,

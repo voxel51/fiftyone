@@ -7,6 +7,7 @@ FiftyOne dataset-related unit tests.
 """
 import gc
 import unittest
+import os
 
 import fiftyone as fo
 from fiftyone import ViewField as F
@@ -114,13 +115,17 @@ class DatasetTests(unittest.TestCase):
         self.assertIs(dataset1c, dataset1)
 
     @drop_datasets
-    def test_merge_samples(self):
+    def test_merge_samples1(self):
+        # Windows compatibility
+        def expand_path(path):
+            return os.path.abspath(os.path.expanduser(path))
+
         dataset1 = fo.Dataset()
         dataset2 = fo.Dataset()
 
-        common_filepath = "/path/to/image.png"
-        filepath1 = "/path/to/image1.png"
-        filepath2 = "/path/to/image2.png"
+        common_filepath = expand_path("/path/to/image.png")
+        filepath1 = expand_path("/path/to/image1.png")
+        filepath2 = expand_path("/path/to/image2.png")
 
         common1 = fo.Sample(filepath=common_filepath, field=1)
         common2 = fo.Sample(filepath=common_filepath, field=2)
@@ -131,33 +136,93 @@ class DatasetTests(unittest.TestCase):
         dataset2.add_sample(fo.Sample(filepath=filepath2, field=2))
         dataset2.add_sample(common2)
 
-        #
-        # Non-overwriting
-        #
+        # Standard merge
 
         dataset12 = dataset1.clone()
-        dataset12.merge_samples(dataset2, overwrite=False)
+        dataset12.merge_samples(dataset2)
         self.assertEqual(len(dataset12), 3)
-
-        common12_view = dataset12.match(F("filepath") == common1.filepath)
+        common12_view = dataset12.match(F("filepath") == common_filepath)
         self.assertEqual(len(common12_view), 1)
 
         common12 = common12_view.first()
-        self.assertEqual(common12.field, common1.field)
+        self.assertEqual(common12.field, common2.field)
 
-        #
-        # Overwriting
-        #
+        # Merge a view with excluded fields
 
         dataset21 = dataset1.clone()
-        dataset21.merge_samples(dataset2, overwrite=True)
+        dataset21.merge_samples(dataset2.exclude_fields("field"))
         self.assertEqual(len(dataset21), 3)
 
-        common21_view = dataset21.match(F("filepath") == common1.filepath)
+        common21_view = dataset21.match(F("filepath") == common_filepath)
         self.assertEqual(len(common21_view), 1)
 
         common21 = common21_view.first()
-        self.assertEqual(common21.field, common2.field)
+        self.assertEqual(common21.field, common1.field)
+
+        # Merge with custom key
+
+        dataset22 = dataset1.clone()
+        key_fcn = lambda sample: os.path.basename(sample.filepath)
+        dataset22.merge_samples(dataset2, key_fcn=key_fcn)
+
+        self.assertEqual(len(dataset22), 3)
+
+        common22_view = dataset22.match(F("filepath") == common_filepath)
+        self.assertEqual(len(common22_view), 1)
+
+        common22 = common22_view.first()
+        self.assertEqual(common22.field, common2.field)
+
+    @drop_datasets
+    def test_merge_samples2(self):
+        dataset1 = fo.Dataset()
+        dataset2 = fo.Dataset()
+
+        sample11 = fo.Sample(filepath="image1.jpg", field=1)
+        sample12 = fo.Sample(
+            filepath="image2.jpg", field=1, gt=fo.Classification(label="cat"),
+        )
+
+        sample21 = fo.Sample(filepath="image1.jpg", field=2, new_field=3)
+        sample22 = fo.Sample(
+            filepath="image2.jpg",
+            gt=fo.Classification(label="dog"),
+            new_gt=fo.Classification(label="dog"),
+        )
+
+        dataset1.add_samples([sample11, sample12])
+        dataset2.add_samples([sample21, sample22])
+
+        sample1 = dataset2.first()
+        sample1.gt = None
+        sample1.save()
+
+        sample2 = dataset2.last()
+        sample2.field = None
+        sample2.save()
+
+        dataset1.merge_samples(dataset2.select_fields("field"))
+
+        self.assertEqual(sample11.field, 2)
+        self.assertEqual(sample12.field, 1)
+        self.assertIsNone(sample11.gt)
+        self.assertIsNotNone(sample12.gt)
+        with self.assertRaises(AttributeError):
+            sample11.new_field
+
+        with self.assertRaises(AttributeError):
+            sample12.new_gt
+
+        dataset1.merge_samples(dataset2)
+
+        self.assertEqual(sample11.field, 2)
+        self.assertEqual(sample11.new_field, 3)
+        self.assertEqual(sample12.field, 1)
+        self.assertIsNone(sample12.new_field)
+        self.assertIsNone(sample11.gt)
+        self.assertIsNone(sample11.new_gt)
+        self.assertIsNotNone(sample12.gt)
+        self.assertIsNotNone(sample12.new_gt)
 
     @drop_datasets
     def test_rename_sample_field(self):
@@ -177,6 +242,100 @@ class DatasetTests(unittest.TestCase):
             sample["field"]
 
         self.assertEqual(sample["new_field"], value)
+
+    @drop_datasets
+    def test_clone_fields(self):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(
+            filepath="image.jpg", predictions=fo.Classification(label="friend")
+        )
+
+        dataset.add_sample(sample)
+
+        # Test `Dataset.clone_sample_field`
+
+        dataset.clone_sample_field("predictions", "predictions_copy")
+
+        schema = dataset.get_field_schema()
+        self.assertIn("predictions", schema)
+        self.assertIn("predictions_copy", schema)
+
+        self.assertIsNotNone(sample.predictions)
+        self.assertIsNotNone(sample.predictions_copy)
+
+        # Test `Dataset.clear_sample_field`
+
+        dataset.clear_sample_field("predictions")
+
+        schema = dataset.get_field_schema()
+        self.assertIn("predictions", schema)
+
+        self.assertIsNone(sample.predictions)
+        self.assertIsNotNone(sample.predictions_copy)
+
+        # Test `Dataset.delete_sample_field`
+
+        dataset.delete_sample_field("predictions")
+
+        self.assertIsNotNone(sample.predictions_copy)
+
+        with self.assertRaises(AttributeError):
+            sample.predictions
+
+        # Test `Dataset.rename_sample_field`
+
+        dataset.rename_sample_field("predictions_copy", "predictions")
+
+        self.assertIsNotNone(sample.predictions)
+
+        with self.assertRaises(AttributeError):
+            sample.predictions_copy
+
+    @drop_datasets
+    def test_clone_embedded_fields(self):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(
+            filepath="image.jpg",
+            predictions=fo.Classification(label="friend", field=1),
+        )
+
+        dataset.add_sample(sample)
+
+        # Test `Dataset.clone_sample_field` on embedded fields
+
+        dataset.clone_sample_field(
+            "predictions.field", "predictions.new_field"
+        )
+
+        self.assertIsNotNone(sample.predictions.new_field)
+
+        # Test `Dataset.clear_sample_field` on embedded fields
+
+        dataset.clear_sample_field("predictions.field")
+
+        self.assertIsNone(sample.predictions.field)
+
+        # Test `Dataset.delete_sample_field` on embedded fields
+
+        dataset.delete_sample_field("predictions.field")
+
+        self.assertIsNotNone(sample.predictions.new_field)
+
+        with self.assertRaises(AttributeError):
+            sample.predictions.field
+
+        # Test `Dataset.rename_sample_field` on embedded fields
+
+        dataset.rename_sample_field(
+            "predictions.new_field", "predictions.field"
+        )
+
+        self.assertIsNotNone(sample.predictions.field)
+
+        with self.assertRaises(AttributeError):
+            sample.predictions.new_field
 
 
 if __name__ == "__main__":
