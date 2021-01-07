@@ -30,7 +30,7 @@ _SCREENSHOT_STYLE = """
   width: 160px;
   margin-left: -80px;
   margin-top: -23px;
-  background: hsla(210,11%,15%, 0.5);
+  background: hsla(210,11%,15%, 0.8);
   border: none;
 }
 #foactivate-{{ handle }}:focus {
