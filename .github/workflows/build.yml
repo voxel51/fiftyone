@@ -123,7 +123,7 @@ jobs:
       - name: Install test dependencies (non-Windows)
         if: ${{ !startsWith(matrix.os, 'windows') }}
         run: |
-          pip install pytest tensorflow tensorflow-datasets torch torchvision
+          pip install pytest==6.1.2 tensorflow tensorflow-datasets torch torchvision
       - name: Install fiftyone
         run: |
           pip install scikit-learn scikit-image
