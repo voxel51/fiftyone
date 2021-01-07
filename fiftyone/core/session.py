@@ -780,7 +780,7 @@ _SCREENSHOT_SCRIPT = """
    })();
 """
 _SCREENSHOT_DIV = """
-<div id="focontainer-{{ handle }}" style="display: none;">
+<div id="focontainer-{{ handle }}">
    <div id="fooverlay-{{ handle }}">
       <button id="foactivate-{{ handle }}" >Activate</button>
    </div>
@@ -801,7 +801,7 @@ _SCREENSHOT_COLAB = """
 <style>
 {{ style }}
 </style>
-<div id="focontainer-{{ handle }}">
+<div id="focontainer-{{ handle }}" style="display: none;">
    <div id="fooverlay-{{ handle }}">
       <button id="foactivate-{{ handle }}" >Activate</button>
    </div>
