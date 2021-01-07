@@ -367,11 +367,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu"]
                 }
             },
             "tags": ["detection", "coco", "tf1"],
@@ -402,11 +402,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu"]
                 }
             },
             "tags": ["detection", "coco", "tf1"],
@@ -437,11 +437,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu"]
                 }
             },
             "tags": ["detection", "coco", "tf1"],
@@ -472,11 +472,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu"]
                 }
             },
             "tags": ["detection", "coco", "tf1"],
@@ -507,11 +507,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu"]
                 }
             },
             "tags": ["detection", "coco", "tf1"],
@@ -542,11 +542,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu"]
                 }
             },
             "tags": ["detection", "coco", "tf1"],
@@ -577,11 +577,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu"]
                 }
             },
             "tags": ["detection", "coco", "tf1"],
@@ -612,11 +612,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu"]
                 }
             },
             "tags": ["detection", "coco", "tf1"],
@@ -647,11 +647,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu"]
                 }
             },
             "tags": ["detection", "coco", "tf1"],
@@ -759,11 +759,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu"]
                 }
             },
             "tags": ["instances", "coco", "tf1"],
@@ -795,11 +795,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu"]
                 }
             },
             "tags": ["instances", "coco", "tf1"],
@@ -831,11 +831,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu"]
                 }
             },
             "tags": ["instances", "coco", "tf1"],
@@ -867,11 +867,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu"]
                 }
             },
             "tags": ["instances", "coco", "tf1"],
@@ -1015,11 +1015,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu"]
                 }
             },
             "tags": ["detection", "coco", "tf1"],
@@ -1050,11 +1050,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu"]
                 }
             },
             "tags": ["detection", "coco", "tf1"],
@@ -1085,11 +1085,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu"]
                 }
             },
             "tags": ["detection", "coco", "tf1"],
@@ -1120,11 +1120,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu"]
                 }
             },
             "tags": ["detection", "coco", "tf1"],
@@ -1155,11 +1155,11 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu"]
                 }
             },
             "tags": ["detection", "coco", "tf1"],
