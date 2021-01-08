@@ -1367,7 +1367,7 @@ class MapLabels(ViewStage):
         if is_list_field:
             _in = {
                 "$map": {
-                    "input": self._labels_field,
+                    "input": "$%s" % self._labels_field,
                     "as": "obj",
                     "in": {"$mergeObjects": ["$$obj", {"label": cond}]},
                 }

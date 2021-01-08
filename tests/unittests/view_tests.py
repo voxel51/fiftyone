@@ -880,8 +880,34 @@ class ViewStageTests(unittest.TestCase):
             self.assertEqual(sv.test_clf.label, mapping[s.test_clf.label])
 
         self._setUp_classifications()
+        view = self.dataset.map_labels("test_clfs", mapping)
+        it = zip(view, self.dataset)
+        for sv, s in it:
+            clfs = zip(
+                sv.test_clfs.classifications, s.test_clfs.classifications
+            )
+            for cv, c in clfs:
+                if c.label in mapping:
+                    self.assertEqual(cv.label, mapping[c.label])
+                else:
+                    self.assertEqual(cv.label, c.label)
+
         self._setUp_detection()
+        view = self.dataset.map_labels("test_det", mapping)
+        it = zip(view, self.dataset)
+        for sv, s in it:
+            self.assertEqual(sv.test_det.label, mapping[s.test_det.label])
+
         self._setUp_detections()
+        view = self.dataset.map_labels("test_dets", mapping)
+        it = zip(view, self.dataset)
+        for sv, s in it:
+            dets = zip(sv.test_dets.detections, s.test_dets.detections)
+            for dv, d in dets:
+                if d.label in mapping:
+                    self.assertEqual(dv.label, mapping[d.label])
+                else:
+                    self.assertEqual(dv.label, d.label)
 
     def test_match(self):
         self.sample1["value"] = "value"
