@@ -1141,6 +1141,10 @@ class SampleCollection(object):
         return self._add_view_stage(fos.LimitLabels(field, limit))
 
     @view_stage
+    def map_labels(self, field, map):
+        return self._add_view_stage(fos.MapLabels(field, map))
+
+    @view_stage
     def match(self, filter):
         """Filters the samples in the collection by the given filter.
 

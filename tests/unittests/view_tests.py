@@ -688,6 +688,16 @@ class ViewStageTests(unittest.TestCase):
         self.dataset.add_sample(self.sample1)
         self.dataset.add_sample(self.sample2)
 
+    def _setUp_classification(self):
+        self.sample1["test_clf"] = fo.Classification(
+            label="friend", confidence=0.3
+        )
+        self.sample1.save()
+        self.sample2["test_clf"] = fo.Classification(
+            label="hex", confidence=0.8
+        )
+        self.sample2.save()
+
     def _setUp_classifications(self):
         self.sample1["test_clfs"] = fo.Classifications(
             classifications=[
@@ -704,6 +714,16 @@ class ViewStageTests(unittest.TestCase):
                 fo.Classification(label="tricam", confidence=0.2),
                 fo.Classification(label="hex", confidence=0.8),
             ]
+        )
+        self.sample2.save()
+
+    def _setUp_detection(self):
+        self.sample1["test_det"] = fo.Detection(
+            label="friend", confidence=0.9, bounding_box=[0, 0, 0.5, 0.5],
+        )
+        self.sample1.save()
+        self.sample2["test_det"] = fo.Detection(
+            label="hex", confidence=0.8, bounding_box=[0.35, 0, 0.2, 0.25],
         )
         self.sample2.save()
 
@@ -850,6 +870,18 @@ class ViewStageTests(unittest.TestCase):
 
         result = list(self.dataset.limit_labels("test_clfs", 1))
         self.assertIs(len(result[0]["test_clfs"].classifications), 1)
+
+    def test_map_labels(self):
+        self._setUp_classification()
+        mapping = {"friend": "enemy", "hex": "curse"}
+        view = self.dataset.map_labels("test_clf", mapping)
+        it = zip(view, self.dataset)
+        for sv, s in it:
+            self.assertEqual(sv.test_clf.label, mapping[s.test_clf.label])
+
+        self._setUp_classifications()
+        self._setUp_detection()
+        self._setUp_detections()
 
     def test_match(self):
         self.sample1["value"] = "value"
