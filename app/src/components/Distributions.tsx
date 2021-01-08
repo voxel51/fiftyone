@@ -115,6 +115,7 @@ const DistributionsContainer = styled.div`
 
 const Distributions = ({ group }) => {
   const view = useRecoilValue(selectors.view);
+  const filters = useRecoilValue(selectors.filterStages);
   const datasetName = useRecoilValue(selectors.datasetName);
   const [loading, setLoading] = useState(true);
   const refresh = useRecoilValue(atoms.refresh);
@@ -122,6 +123,7 @@ const Distributions = ({ group }) => {
 
   useSendMessage("distributions", { group }, null, [
     JSON.stringify(view),
+    JSON.stringify(filters),
     datasetName,
     refresh,
   ]);
@@ -134,7 +136,7 @@ const Distributions = ({ group }) => {
   useEffect(() => {
     setData([]);
     setLoading(true);
-  }, [JSON.stringify(view), datasetName, refresh]);
+  }, [JSON.stringify(view), JSON.stringify(filters), datasetName, refresh]);
 
   if (loading) {
     return <Loading />;
