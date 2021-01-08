@@ -3,6 +3,39 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.7.1:
+
+FiftyOne 0.7.1
+--------------
+*Released January 7, 2021*
+
+App
+^^^
+- Added automatic screenshotting for :ref:`notebook environments <notebooks>`
+- Fixed a bug where the Fields Sidebar statistics would not load for empty
+  views
+- Fixed style inconsistencies in Firefox
+
+Core
+^^^^
+- Added :meth:`Session.freeze() <fiftyone.core.session.Session.freeze>` for
+  screenshotting the active App in a notebook environment
+- Added the `overwrite` keyword argument to
+  :class:`Dataset() <fiftyone.core.dataset.Dataset>`
+- Added a `database_dir` option to the FiftyOne
+  :ref:`Config <configuring-fiftyone>`
+- Added a `default_app_port` option to the FiftyOne
+  :ref:`Config <configuring-fiftyone>`
+
+CLI
+^^^
+
+Docs
+^^^^
+- Added :ref:`Dataset Zoo <dataset-zoo-datasets>` and
+  :ref:`Model Zoo <model-zoo-models>` listing pages
+
+
 .. _release-notes-v0.7.0:
 
 FiftyOne 0.7.0
