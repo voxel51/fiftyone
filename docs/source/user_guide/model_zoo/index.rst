@@ -24,6 +24,17 @@ simple commands.
     may be erroneous. In such cases, you can
     :ref:`suppress error messages <model-zoo-load>`.
 
+API reference
+-------------
+
+Check out the :ref:`API reference <model-zoo-api>` for complete instructions
+for using the Model Zoo library.
+
+Available datasets
+------------------
+
+Check out the :ref:`available models <model-zoo-models>` to see all of the
+models in the zoo.
 
 .. Model zoo cards section -------------------------------------------------------
 
@@ -506,17 +517,7 @@ simple commands.
 
     </div>
 
-API reference
--------------
 
-Check out the :ref:`API reference <model-zoo-api>` for complete instructions
-for using the Model Zoo library.
-
-Available datasets
-------------------
-
-Check out the :ref:`available models <model-zoo-models>` to see all of the
-models in the zoo.
 
 .. _model-zoo-basic-recipe:
 
