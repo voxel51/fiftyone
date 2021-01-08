@@ -7,7 +7,7 @@ FiftyOne Release Notes
 
 FiftyOne 0.7.1
 --------------
-*Released January 7, 2021*
+*Released January 8, 2021*
 
 App
 ^^^
@@ -19,22 +19,61 @@ App
 Core
 ^^^^
 - Added :meth:`Session.freeze() <fiftyone.core.session.Session.freeze>` for
-  screenshotting the active App in a notebook environment
-- Added the `overwrite` keyword argument to
-  :class:`Dataset() <fiftyone.core.dataset.Dataset>`
-- Added a `database_dir` option to the FiftyOne
-  :ref:`Config <configuring-fiftyone>`
-- Added a `default_app_port` option to the FiftyOne
-  :ref:`Config <configuring-fiftyone>`
+  manually screenshotting the active App in a notebook environment
+- Renamed ``Dataset.clone_field()`` to
+  :meth:`Dataset.clone_sample_field() <fiftyone.core.dataset.Dataset.clone_sample_field>`
+  for consistency with other operations
+- Added a
+  :meth:`Dataset.clone_frame_field() <fiftyone.core.dataset.Dataset.clone_frame_field>`
+  method for cloning frame-level fields of video datasets
+- Added
+  :meth:`DatasetView.clone_sample_field() <fiftyone.core.view.DatasetView.clone_sample_field>`
+  and
+  :meth:`DatasetView.clone_frame_field() <fiftyone.core.view.DatasetView.clone_frame_field>`
+  methods that allow cloning views into sample fields (e.g., after filtering
+  the labels in a list field)
+- Added a :meth:`DatasetView.clone() <fiftyone.core.view.DatasetView.clone>`
+  method for cloning a view as a new dataset
+- Added a :meth:`DatasetView.save() <fiftyone.core.view.DatasetView.save>`
+  method for saving a view, overwriting the contents of the underlying dataset
+- Re-implemented
+  :meth:`Dataset.clone_sample_field() <fiftyone.core.dataset.Dataset.clone_sample_field>`
+  and
+  :meth:`Dataset.merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>`
+  via efficient DB-only operations
+- Added the `overwrite` keyword argument to the
+  :class:`Dataset() <fiftyone.core.dataset.Dataset>` constructor
+- Added a ``database_dir`` option to the
+  :ref:`FiftyOne Config <configuring-fiftyone>`
+- Added a ``default_app_port`` option to the
+  :ref:`FiftyOne Config <configuring-fiftyone>`
+
+Zoo
+^^^
+- Added a :ref:`CenterNet model <model-zoo-centernet-hg104-512-coco-tf2>` to
+  the model zoo
+- Upgraded the :ref:`Model Zoo <model-zoo>` so that many detection models that
+  previously required TensorFlow 1.X can now be used with TensorFlow 2.X
+- Added :ref:`Caltech-256 <dataset-zoo-caltech256>` to the dataset zoo
+- Added :ref:`ImageNet Sample <dataset-zoo-imagenet-sample>` to the dataset zoo
+- :ref:`Caltech-101 <dataset-zoo-caltech101>` is now available natively in the
+  dataset zoo without the TF backend
+- :ref:`KITTI <dataset-zoo-kitti>` is now available natively in the dataset zoo
+  without the TF backend
+- Fixed a bug that prevented :ref:`ImageNet 2012 <dataset-zoo-imagenet-2012>`
+  from loading properly when using the TF backend
 
 CLI
 ^^^
+- Added support for controlling the error level when
+  :ref:`applying zoo models <cli-fiftyone-zoo-models-apply>`
 
 Docs
 ^^^^
-- Added :ref:`Dataset Zoo <dataset-zoo-datasets>` and
-  :ref:`Model Zoo <model-zoo-models>` listing pages
-
+- Added a :ref:`Dataset Zoo listing <dataset-zoo-datasets>` that describes all
+  datasets in the zoo
+- Added a :ref:`Model Zoo listing <model-zoo-models>` that describes all models
+  in the zoo
 
 .. _release-notes-v0.7.0:
 
