@@ -2520,8 +2520,11 @@ def _create_dataset(name, persistent=False, media_type=None):
 
 def _create_indexes(sample_collection_name, frames_collection_name):
     conn = foo.get_db_conn()
+
     collection = conn[sample_collection_name]
     collection.create_index("filepath", unique=True)
+    collection.create_index("_rand")
+
     frames_collection = conn[frames_collection_name]
     frames_collection.create_index(
         [("sample_id", foo.ASC), ("frame_number", foo.ASC)]
