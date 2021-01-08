@@ -28,8 +28,8 @@ def reencode_videos(
     The ``filepath`` of the samples are updated to point to the re-encoded
     videos.
 
-    You can configure parameters of the re-encoding such as codec, compression,
-    resolution, and frame rate by passing keyword arguments for
+    You can configure parameters of the re-encoding such as codec and
+    compression by passing keyword arguments for
     ``eta.core.video.FFmpeg(**kwargs)`` to this function.
 
     By default, the re-encoding is performed via the following ``ffmpeg``
@@ -51,22 +51,22 @@ def reencode_videos(
         **kwargs: keyword arguments for ``eta.core.video.FFmpeg(**kwargs)``
     """
     with fou.ProgressBar() as pb:
-        with etav.FFmpeg(**kwargs) as ffmpeg:
-            for sample in pb(sample_collection.select_fields()):
-                inpath = sample.filepath
-                outpath = os.path.splitext(inpath)[0] + ext
+        for sample in pb(sample_collection.select_fields()):
+            inpath = sample.filepath
+            outpath = os.path.splitext(inpath)[0] + ext
 
-                # Must move original to avoid overwriting
-                if outpath == inpath:
-                    _inpath = inpath
-                    inpath = etau.make_unique_path(inpath, suffix="-original")
-                    etau.move_file(_inpath, inpath)
+            # Must move original to avoid overwriting
+            if outpath == inpath:
+                _inpath = inpath
+                inpath = etau.make_unique_path(inpath, suffix="-original")
+                etau.move_file(_inpath, inpath)
 
-                # Re-encode video
+            # Re-encode video
+            with etav.FFmpeg(**kwargs) as ffmpeg:
                 ffmpeg.run(inpath, outpath, verbose=verbose)
 
-                sample.filepath = outpath
-                sample.save()
+            sample.filepath = outpath
+            sample.save()
 
-                if delete_originals:
-                    etau.delete_file(inpath)
+            if delete_originals:
+                etau.delete_file(inpath)
