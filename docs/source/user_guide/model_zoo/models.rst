@@ -2002,78 +2002,129 @@ ________________
 .. table::
     :widths: 40 60
 
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | Model name                                                                                                                                   | Tags                                      |
-    +==============================================================================================================================================+===========================================+
-    | :ref:`deeplabv3-cityscapes-tf <model-zoo-deeplabv3-cityscapes-tf>`                                                                           | segmentation, cityscapes, tf              |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`deeplabv3-mnv2-cityscapes-tf <model-zoo-deeplabv3-mnv2-cityscapes-tf>`                                                                 | segmentation, cityscapes, tf              |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`efficientdet-d0-coco-tf1 <model-zoo-efficientdet-d0-coco-tf1>`                                                                         | detection, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`efficientdet-d1-coco-tf1 <model-zoo-efficientdet-d1-coco-tf1>`                                                                         | detection, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`efficientdet-d2-coco-tf1 <model-zoo-efficientdet-d2-coco-tf1>`                                                                         | detection, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`efficientdet-d3-coco-tf1 <model-zoo-efficientdet-d3-coco-tf1>`                                                                         | detection, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`efficientdet-d4-coco-tf1 <model-zoo-efficientdet-d4-coco-tf1>`                                                                         | detection, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`efficientdet-d5-coco-tf1 <model-zoo-efficientdet-d5-coco-tf1>`                                                                         | detection, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`efficientdet-d6-coco-tf1 <model-zoo-efficientdet-d6-coco-tf1>`                                                                         | detection, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`faster-rcnn-inception-resnet-atrous-v2-coco-tf1 <model-zoo-faster-rcnn-inception-resnet-atrous-v2-coco-tf1>`                           | detection, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco-tf1 <model-zoo-faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco-tf1>` | detection, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`faster-rcnn-inception-v2-coco-tf1 <model-zoo-faster-rcnn-inception-v2-coco-tf1>`                                                       | detection, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`faster-rcnn-nas-coco-tf1 <model-zoo-faster-rcnn-nas-coco-tf1>`                                                                         | detection, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`faster-rcnn-nas-lowproposals-coco-tf1 <model-zoo-faster-rcnn-nas-lowproposals-coco-tf1>`                                               | detection, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`faster-rcnn-resnet101-coco-tf1 <model-zoo-faster-rcnn-resnet101-coco-tf1>`                                                             | detection, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`faster-rcnn-resnet101-lowproposals-coco-tf1 <model-zoo-faster-rcnn-resnet101-lowproposals-coco-tf1>`                                   | detection, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`faster-rcnn-resnet50-coco-tf1 <model-zoo-faster-rcnn-resnet50-coco-tf1>`                                                               | detection, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`faster-rcnn-resnet50-lowproposals-coco-tf1 <model-zoo-faster-rcnn-resnet50-lowproposals-coco-tf1>`                                     | detection, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`inception-resnet-v2-imagenet-tf1 <model-zoo-inception-resnet-v2-imagenet-tf1>`                                                         | classification, embeddings, imagenet, tf1 |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`inception-v4-imagenet-tf1 <model-zoo-inception-v4-imagenet-tf1>`                                                                       | classification, embeddings, imagenet, tf1 |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`mask-rcnn-inception-resnet-v2-atrous-coco-tf1 <model-zoo-mask-rcnn-inception-resnet-v2-atrous-coco-tf1>`                               | instances, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`mask-rcnn-inception-v2-coco-tf1 <model-zoo-mask-rcnn-inception-v2-coco-tf1>`                                                           | instances, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`mask-rcnn-resnet101-atrous-coco-tf1 <model-zoo-mask-rcnn-resnet101-atrous-coco-tf1>`                                                   | instances, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`mask-rcnn-resnet50-atrous-coco-tf1 <model-zoo-mask-rcnn-resnet50-atrous-coco-tf1>`                                                     | instances, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`mobilenet-v2-imagenet-tf1 <model-zoo-mobilenet-v2-imagenet-tf1>`                                                                       | classification, embeddings, imagenet, tf1 |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`resnet-v1-50-imagenet-tf1 <model-zoo-resnet-v1-50-imagenet-tf1>`                                                                       | classification, embeddings, imagenet, tf1 |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`resnet-v2-50-imagenet-tf1 <model-zoo-resnet-v2-50-imagenet-tf1>`                                                                       | classification, embeddings, imagenet, tf1 |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`rfcn-resnet101-coco-tf1 <model-zoo-rfcn-resnet101-coco-tf1>`                                                                           | detection, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`ssd-inception-v2-coco-tf1 <model-zoo-ssd-inception-v2-coco-tf1>`                                                                       | detection, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`ssd-mobilenet-v1-coco-tf1 <model-zoo-ssd-mobilenet-v1-coco-tf1>`                                                                       | detection, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`ssd-mobilenet-v1-fpn-coco-tf1 <model-zoo-ssd-mobilenet-v1-fpn-coco-tf1>`                                                               | detection, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`ssd-resnet50-fpn-coco-tf1 <model-zoo-ssd-resnet50-fpn-coco-tf1>`                                                                       | detection, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`vgg16-imagenet-tf <model-zoo-vgg16-imagenet-tf>`                                                                                       | classification, embeddings, imagenet, tf  |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
-    | :ref:`yolo-v2-coco-tf1 <model-zoo-yolo-v2-coco-tf1>`                                                                                         | detection, coco, tf1                      |
-    +----------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | Model name                                                                                                                                 | Tags                                      |
+    +============================================================================================================================================+===========================================+
+    | :ref:`centernet-hg104-512-coco-tf2 <model-zoo-centernet-hg104-512-coco-tf2>`                                                               | detection, coco, tf2                      |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`deeplabv3-cityscapes-tf <model-zoo-deeplabv3-cityscapes-tf>`                                                                         | segmentation, cityscapes, tf              |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`deeplabv3-mnv2-cityscapes-tf <model-zoo-deeplabv3-mnv2-cityscapes-tf>`                                                               | segmentation, cityscapes, tf              |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`efficientdet-d0-coco-tf1 <model-zoo-efficientdet-d0-coco-tf1>`                                                                       | detection, coco, tf1                      |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`efficientdet-d1-coco-tf1 <model-zoo-efficientdet-d1-coco-tf1>`                                                                       | detection, coco, tf1                      |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`efficientdet-d2-coco-tf1 <model-zoo-efficientdet-d2-coco-tf1>`                                                                       | detection, coco, tf1                      |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`efficientdet-d3-coco-tf1 <model-zoo-efficientdet-d3-coco-tf1>`                                                                       | detection, coco, tf1                      |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`efficientdet-d4-coco-tf1 <model-zoo-efficientdet-d4-coco-tf1>`                                                                       | detection, coco, tf1                      |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`efficientdet-d5-coco-tf1 <model-zoo-efficientdet-d5-coco-tf1>`                                                                       | detection, coco, tf1                      |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`efficientdet-d6-coco-tf1 <model-zoo-efficientdet-d6-coco-tf1>`                                                                       | detection, coco, tf1                      |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`faster-rcnn-inception-resnet-atrous-v2-coco-tf <model-zoo-faster-rcnn-inception-resnet-atrous-v2-coco-tf>`                           | detection, coco, tf                       |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco-tf <model-zoo-faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco-tf>` | detection, coco, tf                       |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`faster-rcnn-inception-v2-coco-tf <model-zoo-faster-rcnn-inception-v2-coco-tf>`                                                       | detection, coco, tf                       |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`faster-rcnn-nas-coco-tf <model-zoo-faster-rcnn-nas-coco-tf>`                                                                         | detection, coco, tf                       |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`faster-rcnn-nas-lowproposals-coco-tf <model-zoo-faster-rcnn-nas-lowproposals-coco-tf>`                                               | detection, coco, tf                       |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`faster-rcnn-resnet101-coco-tf <model-zoo-faster-rcnn-resnet101-coco-tf>`                                                             | detection, coco, tf                       |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`faster-rcnn-resnet101-lowproposals-coco-tf <model-zoo-faster-rcnn-resnet101-lowproposals-coco-tf>`                                   | detection, coco, tf                       |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`faster-rcnn-resnet50-coco-tf <model-zoo-faster-rcnn-resnet50-coco-tf>`                                                               | detection, coco, tf                       |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`faster-rcnn-resnet50-lowproposals-coco-tf <model-zoo-faster-rcnn-resnet50-lowproposals-coco-tf>`                                     | detection, coco, tf                       |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`inception-resnet-v2-imagenet-tf1 <model-zoo-inception-resnet-v2-imagenet-tf1>`                                                       | classification, embeddings, imagenet, tf1 |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`inception-v4-imagenet-tf1 <model-zoo-inception-v4-imagenet-tf1>`                                                                     | classification, embeddings, imagenet, tf1 |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`mask-rcnn-inception-resnet-v2-atrous-coco-tf <model-zoo-mask-rcnn-inception-resnet-v2-atrous-coco-tf>`                               | instances, coco, tf                       |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`mask-rcnn-inception-v2-coco-tf <model-zoo-mask-rcnn-inception-v2-coco-tf>`                                                           | instances, coco, tf                       |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`mask-rcnn-resnet101-atrous-coco-tf <model-zoo-mask-rcnn-resnet101-atrous-coco-tf>`                                                   | instances, coco, tf                       |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`mask-rcnn-resnet50-atrous-coco-tf <model-zoo-mask-rcnn-resnet50-atrous-coco-tf>`                                                     | instances, coco, tf                       |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`mobilenet-v2-imagenet-tf1 <model-zoo-mobilenet-v2-imagenet-tf1>`                                                                     | classification, embeddings, imagenet, tf1 |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`resnet-v1-50-imagenet-tf1 <model-zoo-resnet-v1-50-imagenet-tf1>`                                                                     | classification, embeddings, imagenet, tf1 |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`resnet-v2-50-imagenet-tf1 <model-zoo-resnet-v2-50-imagenet-tf1>`                                                                     | classification, embeddings, imagenet, tf1 |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`rfcn-resnet101-coco-tf <model-zoo-rfcn-resnet101-coco-tf>`                                                                           | detection, coco, tf                       |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`ssd-inception-v2-coco-tf <model-zoo-ssd-inception-v2-coco-tf>`                                                                       | detection, coco, tf                       |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`ssd-mobilenet-v1-coco-tf <model-zoo-ssd-mobilenet-v1-coco-tf>`                                                                       | detection, coco, tf                       |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`ssd-mobilenet-v1-fpn-coco-tf <model-zoo-ssd-mobilenet-v1-fpn-coco-tf>`                                                               | detection, coco, tf                       |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`ssd-resnet50-fpn-coco-tf <model-zoo-ssd-resnet50-fpn-coco-tf>`                                                                       | detection, coco, tf                       |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`vgg16-imagenet-tf <model-zoo-vgg16-imagenet-tf>`                                                                                     | classification, embeddings, imagenet, tf  |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
+    | :ref:`yolo-v2-coco-tf1 <model-zoo-yolo-v2-coco-tf1>`                                                                                       | detection, coco, tf1                      |
+    +--------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------+
 
+
+.. _model-zoo-centernet-hg104-512-coco-tf2:
+
+centernet-hg104-512-coco-tf2
+____________________________
+
+CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the Hourglass-104 backbone trained on COCO resized to 512x512.
+
+**Details**
+
+-   Model name: ``centernet-hg104-512-coco-tf2``
+-   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md
+-   Model size: 1.49 GB
+-   Exposes embeddings? no
+-   Tags: ``detection, coco, tf2``
+
+**Requirements**
+
+-   CPU support
+
+    -   yes
+    -   Packages: ``tensorflow>=2``
+
+-   GPU support
+
+    -   yes
+    -   Packages: ``tensorflow-gpu>=2|tensorflow>=2``
+
+**Example usage**
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset(
+        "coco-2017",
+        split="validation",
+        dataset_name=fo.get_default_dataset_name(),
+        max_samples=50,
+        shuffle=True,
+    )
+
+    model = foz.load_zoo_model("centernet-hg104-512-coco-tf2")
+
+    dataset.apply_model(model, label_field="predictions")
+
+    session = fo.launch_app(dataset)
 
 .. _model-zoo-deeplabv3-cityscapes-tf:
 
@@ -2100,7 +2151,7 @@ DeepLabv3+ semantic segmentation model from `Encoder-Decoder with Atrous Separab
 -   GPU support
 
     -   yes
-    -   Packages: ``tensorflow-gpu``
+    -   Packages: ``tensorflow-gpu|tensorflow>=2``
 
 **Example usage**
 
@@ -2149,7 +2200,7 @@ DeepLabv3+ semantic segmentation model from `Encoder-Decoder with Atrous Separab
 -   GPU support
 
     -   yes
-    -   Packages: ``tensorflow-gpu``
+    -   Packages: ``tensorflow-gpu|tensorflow>=2``
 
 **Example usage**
 
@@ -2516,32 +2567,32 @@ EfficientDet-D6 model from `EfficientDet: Scalable and Efficient Object Detectio
 
     session = fo.launch_app(dataset)
 
-.. _model-zoo-faster-rcnn-inception-resnet-atrous-v2-coco-tf1:
+.. _model-zoo-faster-rcnn-inception-resnet-atrous-v2-coco-tf:
 
-faster-rcnn-inception-resnet-atrous-v2-coco-tf1
-_______________________________________________
+faster-rcnn-inception-resnet-atrous-v2-coco-tf
+______________________________________________
 
 Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ atrous version with Inception backbone trained on COCO.
 
 **Details**
 
--   Model name: ``faster-rcnn-inception-resnet-atrous-v2-coco-tf1``
+-   Model name: ``faster-rcnn-inception-resnet-atrous-v2-coco-tf``
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 234.46 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf1``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
 -   CPU support
 
     -   yes
-    -   Packages: ``tensorflow<2``
+    -   Packages: ``tensorflow``
 
 -   GPU support
 
     -   yes
-    -   Packages: ``tensorflow-gpu<2``
+    -   Packages: ``tensorflow-gpu|tensorflow>=2``
 
 **Example usage**
 
@@ -2559,38 +2610,38 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
         shuffle=True,
     )
 
-    model = foz.load_zoo_model("faster-rcnn-inception-resnet-atrous-v2-coco-tf1")
+    model = foz.load_zoo_model("faster-rcnn-inception-resnet-atrous-v2-coco-tf")
 
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
 
-.. _model-zoo-faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco-tf1:
+.. _model-zoo-faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco-tf:
 
-faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco-tf1
-____________________________________________________________
+faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco-tf
+___________________________________________________________
 
 Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ atrous version with low-proposals and Inception backbone trained on COCO.
 
 **Details**
 
--   Model name: ``faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco-tf1``
+-   Model name: ``faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco-tf``
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 234.46 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf1``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
 -   CPU support
 
     -   yes
-    -   Packages: ``tensorflow<2``
+    -   Packages: ``tensorflow``
 
 -   GPU support
 
     -   yes
-    -   Packages: ``tensorflow-gpu<2``
+    -   Packages: ``tensorflow-gpu|tensorflow>=2``
 
 **Example usage**
 
@@ -2608,38 +2659,38 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
         shuffle=True,
     )
 
-    model = foz.load_zoo_model("faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco-tf1")
+    model = foz.load_zoo_model("faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco-tf")
 
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
 
-.. _model-zoo-faster-rcnn-inception-v2-coco-tf1:
+.. _model-zoo-faster-rcnn-inception-v2-coco-tf:
 
-faster-rcnn-inception-v2-coco-tf1
-_________________________________
+faster-rcnn-inception-v2-coco-tf
+________________________________
 
 Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with Inception v2 backbone trained on COCO.
 
 **Details**
 
--   Model name: ``faster-rcnn-inception-v2-coco-tf1``
+-   Model name: ``faster-rcnn-inception-v2-coco-tf``
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 52.97 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf1``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
 -   CPU support
 
     -   yes
-    -   Packages: ``tensorflow<2``
+    -   Packages: ``tensorflow``
 
 -   GPU support
 
     -   yes
-    -   Packages: ``tensorflow-gpu<2``
+    -   Packages: ``tensorflow-gpu|tensorflow>=2``
 
 **Example usage**
 
@@ -2657,38 +2708,38 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
         shuffle=True,
     )
 
-    model = foz.load_zoo_model("faster-rcnn-inception-v2-coco-tf1")
+    model = foz.load_zoo_model("faster-rcnn-inception-v2-coco-tf")
 
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
 
-.. _model-zoo-faster-rcnn-nas-coco-tf1:
+.. _model-zoo-faster-rcnn-nas-coco-tf:
 
-faster-rcnn-nas-coco-tf1
-________________________
+faster-rcnn-nas-coco-tf
+_______________________
 
 Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with NAS-net backbone trained on COCO.
 
 **Details**
 
--   Model name: ``faster-rcnn-nas-coco-tf1``
+-   Model name: ``faster-rcnn-nas-coco-tf``
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 404.95 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf1``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
 -   CPU support
 
     -   yes
-    -   Packages: ``tensorflow<2``
+    -   Packages: ``tensorflow``
 
 -   GPU support
 
     -   yes
-    -   Packages: ``tensorflow-gpu<2``
+    -   Packages: ``tensorflow-gpu|tensorflow>=2``
 
 **Example usage**
 
@@ -2706,38 +2757,38 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
         shuffle=True,
     )
 
-    model = foz.load_zoo_model("faster-rcnn-nas-coco-tf1")
+    model = foz.load_zoo_model("faster-rcnn-nas-coco-tf")
 
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
 
-.. _model-zoo-faster-rcnn-nas-lowproposals-coco-tf1:
+.. _model-zoo-faster-rcnn-nas-lowproposals-coco-tf:
 
-faster-rcnn-nas-lowproposals-coco-tf1
-_____________________________________
+faster-rcnn-nas-lowproposals-coco-tf
+____________________________________
 
 Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with low-proposals and NAS-net backbone trained on COCO.
 
 **Details**
 
--   Model name: ``faster-rcnn-nas-lowproposals-coco-tf1``
+-   Model name: ``faster-rcnn-nas-lowproposals-coco-tf``
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 404.88 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf1``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
 -   CPU support
 
     -   yes
-    -   Packages: ``tensorflow<2``
+    -   Packages: ``tensorflow``
 
 -   GPU support
 
     -   yes
-    -   Packages: ``tensorflow-gpu<2``
+    -   Packages: ``tensorflow-gpu|tensorflow>=2``
 
 **Example usage**
 
@@ -2755,38 +2806,38 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
         shuffle=True,
     )
 
-    model = foz.load_zoo_model("faster-rcnn-nas-lowproposals-coco-tf1")
+    model = foz.load_zoo_model("faster-rcnn-nas-lowproposals-coco-tf")
 
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
 
-.. _model-zoo-faster-rcnn-resnet101-coco-tf1:
+.. _model-zoo-faster-rcnn-resnet101-coco-tf:
 
-faster-rcnn-resnet101-coco-tf1
-______________________________
+faster-rcnn-resnet101-coco-tf
+_____________________________
 
 Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with ResNet-101 backbone trained on COCO.
 
 **Details**
 
--   Model name: ``faster-rcnn-resnet101-coco-tf1``
+-   Model name: ``faster-rcnn-resnet101-coco-tf``
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 186.41 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf1``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
 -   CPU support
 
     -   yes
-    -   Packages: ``tensorflow<2``
+    -   Packages: ``tensorflow``
 
 -   GPU support
 
     -   yes
-    -   Packages: ``tensorflow-gpu<2``
+    -   Packages: ``tensorflow-gpu|tensorflow>=2``
 
 **Example usage**
 
@@ -2804,38 +2855,38 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
         shuffle=True,
     )
 
-    model = foz.load_zoo_model("faster-rcnn-resnet101-coco-tf1")
+    model = foz.load_zoo_model("faster-rcnn-resnet101-coco-tf")
 
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
 
-.. _model-zoo-faster-rcnn-resnet101-lowproposals-coco-tf1:
+.. _model-zoo-faster-rcnn-resnet101-lowproposals-coco-tf:
 
-faster-rcnn-resnet101-lowproposals-coco-tf1
-___________________________________________
+faster-rcnn-resnet101-lowproposals-coco-tf
+__________________________________________
 
 Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with low-proposals and ResNet-101 backbone trained on COCO.
 
 **Details**
 
--   Model name: ``faster-rcnn-resnet101-lowproposals-coco-tf1``
+-   Model name: ``faster-rcnn-resnet101-lowproposals-coco-tf``
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 186.41 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf1``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
 -   CPU support
 
     -   yes
-    -   Packages: ``tensorflow<2``
+    -   Packages: ``tensorflow``
 
 -   GPU support
 
     -   yes
-    -   Packages: ``tensorflow-gpu<2``
+    -   Packages: ``tensorflow-gpu|tensorflow>=2``
 
 **Example usage**
 
@@ -2853,38 +2904,38 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
         shuffle=True,
     )
 
-    model = foz.load_zoo_model("faster-rcnn-resnet101-lowproposals-coco-tf1")
+    model = foz.load_zoo_model("faster-rcnn-resnet101-lowproposals-coco-tf")
 
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
 
-.. _model-zoo-faster-rcnn-resnet50-coco-tf1:
+.. _model-zoo-faster-rcnn-resnet50-coco-tf:
 
-faster-rcnn-resnet50-coco-tf1
-_____________________________
+faster-rcnn-resnet50-coco-tf
+____________________________
 
 Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with ResNet-50 backbone trained on COCO.
 
 **Details**
 
--   Model name: ``faster-rcnn-resnet50-coco-tf1``
+-   Model name: ``faster-rcnn-resnet50-coco-tf``
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 113.57 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf1``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
 -   CPU support
 
     -   yes
-    -   Packages: ``tensorflow<2``
+    -   Packages: ``tensorflow``
 
 -   GPU support
 
     -   yes
-    -   Packages: ``tensorflow-gpu<2``
+    -   Packages: ``tensorflow-gpu|tensorflow>=2``
 
 **Example usage**
 
@@ -2902,38 +2953,38 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
         shuffle=True,
     )
 
-    model = foz.load_zoo_model("faster-rcnn-resnet50-coco-tf1")
+    model = foz.load_zoo_model("faster-rcnn-resnet50-coco-tf")
 
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
 
-.. _model-zoo-faster-rcnn-resnet50-lowproposals-coco-tf1:
+.. _model-zoo-faster-rcnn-resnet50-lowproposals-coco-tf:
 
-faster-rcnn-resnet50-lowproposals-coco-tf1
-__________________________________________
+faster-rcnn-resnet50-lowproposals-coco-tf
+_________________________________________
 
 Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with low-proposals and ResNet-50 backbone trained on COCO.
 
 **Details**
 
--   Model name: ``faster-rcnn-resnet50-lowproposals-coco-tf1``
+-   Model name: ``faster-rcnn-resnet50-lowproposals-coco-tf``
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 113.57 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf1``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
 -   CPU support
 
     -   yes
-    -   Packages: ``tensorflow<2``
+    -   Packages: ``tensorflow``
 
 -   GPU support
 
     -   yes
-    -   Packages: ``tensorflow-gpu<2``
+    -   Packages: ``tensorflow-gpu|tensorflow>=2``
 
 **Example usage**
 
@@ -2951,7 +3002,7 @@ Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with R
         shuffle=True,
     )
 
-    model = foz.load_zoo_model("faster-rcnn-resnet50-lowproposals-coco-tf1")
+    model = foz.load_zoo_model("faster-rcnn-resnet50-lowproposals-coco-tf")
 
     dataset.apply_model(model, label_field="predictions")
 
@@ -3053,32 +3104,32 @@ Inception v4 model from `Inception-v4, Inception-ResNet and the Impact of Residu
 
     session = fo.launch_app(dataset)
 
-.. _model-zoo-mask-rcnn-inception-resnet-v2-atrous-coco-tf1:
+.. _model-zoo-mask-rcnn-inception-resnet-v2-atrous-coco-tf:
 
-mask-rcnn-inception-resnet-v2-atrous-coco-tf1
-_____________________________________________
+mask-rcnn-inception-resnet-v2-atrous-coco-tf
+____________________________________________
 
 Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous version with Inception backbone trained on COCO.
 
 **Details**
 
--   Model name: ``mask-rcnn-inception-resnet-v2-atrous-coco-tf1``
+-   Model name: ``mask-rcnn-inception-resnet-v2-atrous-coco-tf``
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 254.51 MB
 -   Exposes embeddings? no
--   Tags: ``instances, coco, tf1``
+-   Tags: ``instances, coco, tf``
 
 **Requirements**
 
 -   CPU support
 
     -   yes
-    -   Packages: ``tensorflow<2``
+    -   Packages: ``tensorflow``
 
 -   GPU support
 
     -   yes
-    -   Packages: ``tensorflow-gpu<2``
+    -   Packages: ``tensorflow-gpu|tensorflow>=2``
 
 **Example usage**
 
@@ -3096,38 +3147,38 @@ Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous ve
         shuffle=True,
     )
 
-    model = foz.load_zoo_model("mask-rcnn-inception-resnet-v2-atrous-coco-tf1")
+    model = foz.load_zoo_model("mask-rcnn-inception-resnet-v2-atrous-coco-tf")
 
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
 
-.. _model-zoo-mask-rcnn-inception-v2-coco-tf1:
+.. _model-zoo-mask-rcnn-inception-v2-coco-tf:
 
-mask-rcnn-inception-v2-coco-tf1
-_______________________________
+mask-rcnn-inception-v2-coco-tf
+______________________________
 
 Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ with Inception backbone trained on COCO.
 
 **Details**
 
--   Model name: ``mask-rcnn-inception-v2-coco-tf1``
+-   Model name: ``mask-rcnn-inception-v2-coco-tf``
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 64.03 MB
 -   Exposes embeddings? no
--   Tags: ``instances, coco, tf1``
+-   Tags: ``instances, coco, tf``
 
 **Requirements**
 
 -   CPU support
 
     -   yes
-    -   Packages: ``tensorflow<2``
+    -   Packages: ``tensorflow``
 
 -   GPU support
 
     -   yes
-    -   Packages: ``tensorflow-gpu<2``
+    -   Packages: ``tensorflow-gpu|tensorflow>=2``
 
 **Example usage**
 
@@ -3145,38 +3196,38 @@ Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ with Ince
         shuffle=True,
     )
 
-    model = foz.load_zoo_model("mask-rcnn-inception-v2-coco-tf1")
+    model = foz.load_zoo_model("mask-rcnn-inception-v2-coco-tf")
 
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
 
-.. _model-zoo-mask-rcnn-resnet101-atrous-coco-tf1:
+.. _model-zoo-mask-rcnn-resnet101-atrous-coco-tf:
 
-mask-rcnn-resnet101-atrous-coco-tf1
-___________________________________
+mask-rcnn-resnet101-atrous-coco-tf
+__________________________________
 
 Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous version with ResNet-101 backbone trained on COCO.
 
 **Details**
 
--   Model name: ``mask-rcnn-resnet101-atrous-coco-tf1``
+-   Model name: ``mask-rcnn-resnet101-atrous-coco-tf``
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 211.56 MB
 -   Exposes embeddings? no
--   Tags: ``instances, coco, tf1``
+-   Tags: ``instances, coco, tf``
 
 **Requirements**
 
 -   CPU support
 
     -   yes
-    -   Packages: ``tensorflow<2``
+    -   Packages: ``tensorflow``
 
 -   GPU support
 
     -   yes
-    -   Packages: ``tensorflow-gpu<2``
+    -   Packages: ``tensorflow-gpu|tensorflow>=2``
 
 **Example usage**
 
@@ -3194,38 +3245,38 @@ Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous ve
         shuffle=True,
     )
 
-    model = foz.load_zoo_model("mask-rcnn-resnet101-atrous-coco-tf1")
+    model = foz.load_zoo_model("mask-rcnn-resnet101-atrous-coco-tf")
 
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
 
-.. _model-zoo-mask-rcnn-resnet50-atrous-coco-tf1:
+.. _model-zoo-mask-rcnn-resnet50-atrous-coco-tf:
 
-mask-rcnn-resnet50-atrous-coco-tf1
-__________________________________
+mask-rcnn-resnet50-atrous-coco-tf
+_________________________________
 
 Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous version with ResNet-50 backbone trained on COCO.
 
 **Details**
 
--   Model name: ``mask-rcnn-resnet50-atrous-coco-tf1``
+-   Model name: ``mask-rcnn-resnet50-atrous-coco-tf``
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 138.29 MB
 -   Exposes embeddings? no
--   Tags: ``instances, coco, tf1``
+-   Tags: ``instances, coco, tf``
 
 **Requirements**
 
 -   CPU support
 
     -   yes
-    -   Packages: ``tensorflow<2``
+    -   Packages: ``tensorflow``
 
 -   GPU support
 
     -   yes
-    -   Packages: ``tensorflow-gpu<2``
+    -   Packages: ``tensorflow-gpu|tensorflow>=2``
 
 **Example usage**
 
@@ -3243,7 +3294,7 @@ Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous ve
         shuffle=True,
     )
 
-    model = foz.load_zoo_model("mask-rcnn-resnet50-atrous-coco-tf1")
+    model = foz.load_zoo_model("mask-rcnn-resnet50-atrous-coco-tf")
 
     dataset.apply_model(model, label_field="predictions")
 
@@ -3393,32 +3444,32 @@ ResNet-50 v2 model from `Deep Residual Learning for Image Recognition <https://a
 
     session = fo.launch_app(dataset)
 
-.. _model-zoo-rfcn-resnet101-coco-tf1:
+.. _model-zoo-rfcn-resnet101-coco-tf:
 
-rfcn-resnet101-coco-tf1
-_______________________
+rfcn-resnet101-coco-tf
+______________________
 
 R-FCN object detection model from `R-FCN: Object Detection via Region-based Fully Convolutional Networks <https://arxiv.org/abs/1605.06409>`_ with ResNet-101 backbone trained on COCO.
 
 **Details**
 
--   Model name: ``rfcn-resnet101-coco-tf1``
+-   Model name: ``rfcn-resnet101-coco-tf``
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 208.16 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf1``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
 -   CPU support
 
     -   yes
-    -   Packages: ``tensorflow<2``
+    -   Packages: ``tensorflow``
 
 -   GPU support
 
     -   yes
-    -   Packages: ``tensorflow-gpu<2``
+    -   Packages: ``tensorflow-gpu|tensorflow>=2``
 
 **Example usage**
 
@@ -3436,38 +3487,38 @@ R-FCN object detection model from `R-FCN: Object Detection via Region-based Full
         shuffle=True,
     )
 
-    model = foz.load_zoo_model("rfcn-resnet101-coco-tf1")
+    model = foz.load_zoo_model("rfcn-resnet101-coco-tf")
 
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
 
-.. _model-zoo-ssd-inception-v2-coco-tf1:
+.. _model-zoo-ssd-inception-v2-coco-tf:
 
-ssd-inception-v2-coco-tf1
-_________________________
+ssd-inception-v2-coco-tf
+________________________
 
 Inception Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arxiv.org/abs/1512.02325>`_ trained on COCO.
 
 **Details**
 
--   Model name: ``ssd-inception-v2-coco-tf1``
+-   Model name: ``ssd-inception-v2-coco-tf``
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 97.50 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf1``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
 -   CPU support
 
     -   yes
-    -   Packages: ``tensorflow<2``
+    -   Packages: ``tensorflow``
 
 -   GPU support
 
     -   yes
-    -   Packages: ``tensorflow-gpu<2``
+    -   Packages: ``tensorflow-gpu|tensorflow>=2``
 
 **Example usage**
 
@@ -3485,38 +3536,38 @@ Inception Single Shot Detector model from `SSD: Single Shot MultiBox Detector <h
         shuffle=True,
     )
 
-    model = foz.load_zoo_model("ssd-inception-v2-coco-tf1")
+    model = foz.load_zoo_model("ssd-inception-v2-coco-tf")
 
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
 
-.. _model-zoo-ssd-mobilenet-v1-coco-tf1:
+.. _model-zoo-ssd-mobilenet-v1-coco-tf:
 
-ssd-mobilenet-v1-coco-tf1
-_________________________
+ssd-mobilenet-v1-coco-tf
+________________________
 
 Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arxiv.org/abs/1512.02325>`_ with MobileNet-v1 backbone trained on COCO.
 
 **Details**
 
--   Model name: ``ssd-mobilenet-v1-coco-tf1``
+-   Model name: ``ssd-mobilenet-v1-coco-tf``
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 27.83 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf1``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
 -   CPU support
 
     -   yes
-    -   Packages: ``tensorflow<2``
+    -   Packages: ``tensorflow``
 
 -   GPU support
 
     -   yes
-    -   Packages: ``tensorflow-gpu<2``
+    -   Packages: ``tensorflow-gpu|tensorflow>=2``
 
 **Example usage**
 
@@ -3534,38 +3585,38 @@ Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arx
         shuffle=True,
     )
 
-    model = foz.load_zoo_model("ssd-mobilenet-v1-coco-tf1")
+    model = foz.load_zoo_model("ssd-mobilenet-v1-coco-tf")
 
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
 
-.. _model-zoo-ssd-mobilenet-v1-fpn-coco-tf1:
+.. _model-zoo-ssd-mobilenet-v1-fpn-coco-tf:
 
-ssd-mobilenet-v1-fpn-coco-tf1
-_____________________________
+ssd-mobilenet-v1-fpn-coco-tf
+____________________________
 
 FPN Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arxiv.org/abs/1512.02325>`_ with MobileNet-v1 backbone trained on COCO.
 
 **Details**
 
--   Model name: ``ssd-mobilenet-v1-fpn-coco-tf1``
+-   Model name: ``ssd-mobilenet-v1-fpn-coco-tf``
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 48.97 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf1``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
 -   CPU support
 
     -   yes
-    -   Packages: ``tensorflow<2``
+    -   Packages: ``tensorflow``
 
 -   GPU support
 
     -   yes
-    -   Packages: ``tensorflow-gpu<2``
+    -   Packages: ``tensorflow-gpu|tensorflow>=2``
 
 **Example usage**
 
@@ -3583,38 +3634,38 @@ FPN Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https:/
         shuffle=True,
     )
 
-    model = foz.load_zoo_model("ssd-mobilenet-v1-fpn-coco-tf1")
+    model = foz.load_zoo_model("ssd-mobilenet-v1-fpn-coco-tf")
 
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
 
-.. _model-zoo-ssd-resnet50-fpn-coco-tf1:
+.. _model-zoo-ssd-resnet50-fpn-coco-tf:
 
-ssd-resnet50-fpn-coco-tf1
-_________________________
+ssd-resnet50-fpn-coco-tf
+________________________
 
 FPN Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arxiv.org/abs/1512.02325>`_ with ResNet-50 backbone trained on COCO.
 
 **Details**
 
--   Model name: ``ssd-resnet50-fpn-coco-tf1``
+-   Model name: ``ssd-resnet50-fpn-coco-tf``
 -   Model source: https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf1_detection_zoo.md
 -   Model size: 128.07 MB
 -   Exposes embeddings? no
--   Tags: ``detection, coco, tf1``
+-   Tags: ``detection, coco, tf``
 
 **Requirements**
 
 -   CPU support
 
     -   yes
-    -   Packages: ``tensorflow<2``
+    -   Packages: ``tensorflow``
 
 -   GPU support
 
     -   yes
-    -   Packages: ``tensorflow-gpu<2``
+    -   Packages: ``tensorflow-gpu|tensorflow>=2``
 
 **Example usage**
 
@@ -3632,7 +3683,7 @@ FPN Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https:/
         shuffle=True,
     )
 
-    model = foz.load_zoo_model("ssd-resnet50-fpn-coco-tf1")
+    model = foz.load_zoo_model("ssd-resnet50-fpn-coco-tf")
 
     dataset.apply_model(model, label_field="predictions")
 
@@ -3663,7 +3714,7 @@ VGG-16 model from `Very Deep Convolutional Networks for Large-Scale Image Recogn
 -   GPU support
 
     -   yes
-    -   Packages: ``tensorflow-gpu``
+    -   Packages: ``tensorflow-gpu|tensorflow>=2``
 
 **Example usage**
 

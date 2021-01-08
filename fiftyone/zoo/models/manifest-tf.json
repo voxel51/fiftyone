@@ -32,7 +32,7 @@
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
             "tags": ["segmentation", "cityscapes", "tf"],
@@ -70,7 +70,7 @@
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
             "tags": ["segmentation", "cityscapes", "tf"],
@@ -343,7 +343,7 @@
             "date_added": "2020-12-11 13:45:51"
         },
         {
-            "base_name": "faster-rcnn-inception-resnet-atrous-v2-coco-tf1",
+            "base_name": "faster-rcnn-inception-resnet-atrous-v2-coco-tf",
             "base_filename": "faster-rcnn-inception-resnet-atrous-v2-coco.pb",
             "version": null,
             "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ atrous version with Inception backbone trained on COCO",
@@ -367,18 +367,18 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1"],
+            "tags": ["detection", "coco", "tf"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
-            "base_name": "faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco-tf1",
+            "base_name": "faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco-tf",
             "base_filename": "faster-rcnn-inception-resnet-atrous-v2-lowproposals-coco.pb",
             "version": null,
             "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ atrous version with low-proposals and Inception backbone trained on COCO",
@@ -402,18 +402,18 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1"],
+            "tags": ["detection", "coco", "tf"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
-            "base_name": "faster-rcnn-inception-v2-coco-tf1",
+            "base_name": "faster-rcnn-inception-v2-coco-tf",
             "base_filename": "faster-rcnn-inception-v2-coco.pb",
             "version": null,
             "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with Inception v2 backbone trained on COCO",
@@ -437,18 +437,18 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1"],
+            "tags": ["detection", "coco", "tf"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
-            "base_name": "faster-rcnn-nas-coco-tf1",
+            "base_name": "faster-rcnn-nas-coco-tf",
             "base_filename": "faster-rcnn-nas-coco.pb",
             "version": null,
             "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with NAS-net backbone trained on COCO",
@@ -472,18 +472,18 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1"],
+            "tags": ["detection", "coco", "tf"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
-            "base_name": "faster-rcnn-nas-lowproposals-coco-tf1",
+            "base_name": "faster-rcnn-nas-lowproposals-coco-tf",
             "base_filename": "faster-rcnn-nas-lowproposals-coco.pb",
             "version": null,
             "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with low-proposals and NAS-net backbone trained on COCO",
@@ -507,18 +507,18 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1"],
+            "tags": ["detection", "coco", "tf"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
-            "base_name": "faster-rcnn-resnet101-coco-tf1",
+            "base_name": "faster-rcnn-resnet101-coco-tf",
             "base_filename": "faster-rcnn-resnet101-coco.pb",
             "version": null,
             "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with ResNet-101 backbone trained on COCO",
@@ -542,18 +542,18 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1"],
+            "tags": ["detection", "coco", "tf"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
-            "base_name": "faster-rcnn-resnet101-lowproposals-coco-tf1",
+            "base_name": "faster-rcnn-resnet101-lowproposals-coco-tf",
             "base_filename": "faster-rcnn-resnet101-lowproposals-coco.pb",
             "version": null,
             "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with low-proposals and ResNet-101 backbone trained on COCO",
@@ -577,18 +577,18 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1"],
+            "tags": ["detection", "coco", "tf"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
-            "base_name": "faster-rcnn-resnet50-coco-tf1",
+            "base_name": "faster-rcnn-resnet50-coco-tf",
             "base_filename": "faster-rcnn-resnet50-coco.pb",
             "version": null,
             "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with ResNet-50 backbone trained on COCO",
@@ -612,18 +612,18 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1"],
+            "tags": ["detection", "coco", "tf"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
-            "base_name": "faster-rcnn-resnet50-lowproposals-coco-tf1",
+            "base_name": "faster-rcnn-resnet50-lowproposals-coco-tf",
             "base_filename": "faster-rcnn-resnet50-lowproposals-coco.pb",
             "version": null,
             "description": "Faster R-CNN model from `Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks <https://arxiv.org/abs/1506.01497>`_ with low-proposals and ResNet-50 backbone trained on COCO",
@@ -647,14 +647,14 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1"],
+            "tags": ["detection", "coco", "tf"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -734,7 +734,7 @@
             "date_added": "2020-12-11 13:45:51"
         },
         {
-            "base_name": "mask-rcnn-inception-resnet-v2-atrous-coco-tf1",
+            "base_name": "mask-rcnn-inception-resnet-v2-atrous-coco-tf",
             "base_filename": "mask-rcnn-inception-resnet-v2-atrous-coco.pb",
             "version": null,
             "description": "Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous version with Inception backbone trained on COCO",
@@ -759,18 +759,18 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
-            "tags": ["instances", "coco", "tf1"],
+            "tags": ["instances", "coco", "tf"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
-            "base_name": "mask-rcnn-inception-v2-coco-tf1",
+            "base_name": "mask-rcnn-inception-v2-coco-tf",
             "base_filename": "mask-rcnn-inception-v2-coco.pb",
             "version": null,
             "description": "Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ with Inception backbone trained on COCO",
@@ -795,18 +795,18 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
-            "tags": ["instances", "coco", "tf1"],
+            "tags": ["instances", "coco", "tf"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
-            "base_name": "mask-rcnn-resnet101-atrous-coco-tf1",
+            "base_name": "mask-rcnn-resnet101-atrous-coco-tf",
             "base_filename": "mask-rcnn-resnet101-atrous-coco.pb",
             "version": null,
             "description": "Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous version with ResNet-101 backbone trained on COCO",
@@ -831,18 +831,18 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
-            "tags": ["instances", "coco", "tf1"],
+            "tags": ["instances", "coco", "tf"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
-            "base_name": "mask-rcnn-resnet50-atrous-coco-tf1",
+            "base_name": "mask-rcnn-resnet50-atrous-coco-tf",
             "base_filename": "mask-rcnn-resnet50-atrous-coco.pb",
             "version": null,
             "description": "Mask R-CNN model from `Mask R-CNN <https://arxiv.org/abs/1703.06870>`_ atrous version with ResNet-50 backbone trained on COCO",
@@ -867,14 +867,14 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
-            "tags": ["instances", "coco", "tf1"],
+            "tags": ["instances", "coco", "tf"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -991,7 +991,7 @@
             "date_added": "2020-12-11 13:45:51"
         },
         {
-            "base_name": "rfcn-resnet101-coco-tf1",
+            "base_name": "rfcn-resnet101-coco-tf",
             "base_filename": "rfcn-resnet101-coco.pb",
             "version": null,
             "description": "R-FCN object detection model from `R-FCN: Object Detection via Region-based Fully Convolutional Networks <https://arxiv.org/abs/1605.06409>`_ with ResNet-101 backbone trained on COCO",
@@ -1015,18 +1015,18 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1"],
+            "tags": ["detection", "coco", "tf"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
-            "base_name": "ssd-inception-v2-coco-tf1",
+            "base_name": "ssd-inception-v2-coco-tf",
             "base_filename": "ssd-inception-v2-coco.pb",
             "version": null,
             "description": "Inception Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arxiv.org/abs/1512.02325>`_ trained on COCO",
@@ -1050,18 +1050,18 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1"],
+            "tags": ["detection", "coco", "tf"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
-            "base_name": "ssd-mobilenet-v1-coco-tf1",
+            "base_name": "ssd-mobilenet-v1-coco-tf",
             "base_filename": "ssd-mobilenet-v1-coco.pb",
             "version": null,
             "description": "Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arxiv.org/abs/1512.02325>`_ with MobileNet-v1 backbone trained on COCO",
@@ -1085,18 +1085,18 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1"],
+            "tags": ["detection", "coco", "tf"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
-            "base_name": "ssd-mobilenet-v1-fpn-coco-tf1",
+            "base_name": "ssd-mobilenet-v1-fpn-coco-tf",
             "base_filename": "ssd-mobilenet-v1-fpn-coco.pb",
             "version": null,
             "description": "FPN Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arxiv.org/abs/1512.02325>`_ with MobileNet-v1 backbone trained on COCO",
@@ -1120,18 +1120,18 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1"],
+            "tags": ["detection", "coco", "tf"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
-            "base_name": "ssd-resnet50-fpn-coco-tf1",
+            "base_name": "ssd-resnet50-fpn-coco-tf",
             "base_filename": "ssd-resnet50-fpn-coco.pb",
             "version": null,
             "description": "FPN Single Shot Detector model from `SSD: Single Shot MultiBox Detector <https://arxiv.org/abs/1512.02325>`_ with ResNet-50 backbone trained on COCO",
@@ -1155,14 +1155,14 @@
             "requirements": {
                 "cpu": {
                     "support": true,
-                    "packages": ["tensorflow<2"]
+                    "packages": ["tensorflow"]
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu<2"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
-            "tags": ["detection", "coco", "tf1"],
+            "tags": ["detection", "coco", "tf"],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1196,7 +1196,7 @@
                 },
                 "gpu": {
                     "support": true,
-                    "packages": ["tensorflow-gpu"]
+                    "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
             "tags": ["classification", "embeddings", "imagenet", "tf"],
@@ -1237,6 +1237,43 @@
             },
             "tags": ["detection", "coco", "tf1"],
             "date_added": "2020-12-11 13:45:51"
+        },
+        {
+            "base_name": "centernet-hg104-512-coco-tf2",
+            "base_filename": "centernet_hg104_512x512_coco17_tpu-8.tar.gz",
+            "version": null,
+            "description": "CenterNet model from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the Hourglass-104 backbone trained on COCO resized to 512x512",
+            "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
+            "size_bytes": 1600851968,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "http://download.tensorflow.org/models/object_detection/tf2/20200713/centernet_hg104_512x512_coco17_tpu-8.tar.gz",
+                    "extract_archive": true,
+                    "delete_archive": true
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.core.eta_utils.ETAModel",
+                "config": {
+                    "type": "eta.detectors.TF2ModelsDetector",
+                    "config": {
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                    }
+                }
+            },
+            "requirements": {
+                "cpu": {
+                    "support": true,
+                    "packages": ["tensorflow>=2"]
+                },
+                "gpu": {
+                    "support": true,
+                    "packages": ["tensorflow-gpu>=2|tensorflow>=2"]
+                }
+            },
+            "tags": ["detection", "coco", "tf2"],
+            "date_added": "2021-01-6 11:01:34"
         }
     ]
 }
