@@ -39,16 +39,25 @@ class CustomCardItemDirective(Directive):
         header = self.options.get("header", "")
         description = self.options.get("description", "")
         link = self.options.get("link", "")
-        image = '<img src="%s">' % self.options.get("image", "")
+        image_option = self.options.get("image", "")
         tags = self.options.get("tags", "")
 
-        card_rst = _CUSTOM_CARD_TEMPLATE.format(
-            header=header,
-            description=description,
-            link=link,
-            image=image,
-            tags=tags,
-        )
+        if image_option == "image":
+            image = '<img src="%s">' % image_option
+            card_rst = _CUSTOM_CARD_TEMPLATE.format(
+                header=header,
+                description=description,
+                link=link,
+                image=image,
+                tags=tags,
+            )
+        else:
+            template = _CUSTOM_CARD_TEMPLATE.replace(
+                '<div class="tutorials-image">{image}</div>', ""
+            )
+            card_rst = template.format(
+                header=header, description=description, link=link, tags=tags,
+            )
 
         card_list = StringList(card_rst.split("\n"))
         card = nodes.paragraph()
