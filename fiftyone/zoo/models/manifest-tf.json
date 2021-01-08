@@ -1244,7 +1244,7 @@
             "version": null,
             "description": "CenterNet architecture from `Objects as Points <https://arxiv.org/abs/1904.07850>`_ with the hourglass backbone trained on COCO",
             "source": "https://github.com/tensorflow/models/blob/archive/research/object_detection/g3doc/tf2_detection_zoo.md",
-            "size_bytes": 1426099846,
+            "size_bytes": 1600851968,
             "manager": {
                 "type": "fiftyone.core.models.ModelManager",
                 "config": {
