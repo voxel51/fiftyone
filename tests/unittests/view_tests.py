@@ -873,41 +873,45 @@ class ViewStageTests(unittest.TestCase):
 
     def test_map_labels(self):
         self._setUp_classification()
+        self._setUp_detection()
         mapping = {"friend": "enemy", "hex": "curse"}
-        view = self.dataset.map_labels("test_clf", mapping)
+        view = self.dataset.map_labels("test_clf", mapping).map_labels(
+            "test_det", mapping
+        )
         it = zip(view, self.dataset)
         for sv, s in it:
             self.assertEqual(sv.test_clf.label, mapping[s.test_clf.label])
+            self.assertEqual(sv.test_det.label, mapping[s.test_det.label])
 
         self._setUp_classifications()
-        view = self.dataset.map_labels("test_clfs", mapping)
+        self._setUp_detections()
+        view = self.dataset.map_labels("test_clfs", mapping).map_labels(
+            "test_dets", mapping
+        )
         it = zip(view, self.dataset)
         for sv, s in it:
             clfs = zip(
                 sv.test_clfs.classifications, s.test_clfs.classifications
             )
-            for cv, c in clfs:
-                if c.label in mapping:
-                    self.assertEqual(cv.label, mapping[c.label])
-                else:
-                    self.assertEqual(cv.label, c.label)
-
-        self._setUp_detection()
-        view = self.dataset.map_labels("test_det", mapping)
-        it = zip(view, self.dataset)
-        for sv, s in it:
-            self.assertEqual(sv.test_det.label, mapping[s.test_det.label])
-
-        self._setUp_detections()
-        view = self.dataset.map_labels("test_dets", mapping)
-        it = zip(view, self.dataset)
-        for sv, s in it:
             dets = zip(sv.test_dets.detections, s.test_dets.detections)
-            for dv, d in dets:
-                if d.label in mapping:
-                    self.assertEqual(dv.label, mapping[d.label])
-                else:
-                    self.assertEqual(dv.label, d.label)
+            for f in (clfs, dets):
+                for lv, l in f:
+                    if l.label in mapping:
+                        self.assertEqual(lv.label, mapping[l.label])
+                    else:
+                        self.assertEqual(lv.label, l.label)
+
+        dataset = fo.Dataset()
+        video = fo.Sample("video.mp4")
+        video.frames[1]["test_det"] = fo.Detection(label="friend")
+        dataset.add_sample(video)
+        view = dataset.map_labels("frames.test_det", mapping)
+        vvideo = view.first()
+        # broken
+        self.assertEqual(
+            mapping[video.frames[1]["test_det"].label],
+            vvideo.frames[1]["test_det"].label,
+        )
 
     def test_match(self):
         self.sample1["value"] = "value"

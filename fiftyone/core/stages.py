@@ -1342,15 +1342,21 @@ class MapLabels(ViewStage):
         self._labels_field, is_list_field, is_frame_field = _get_labels_field(
             self._field, sample_collection
         )
+        if is_frame_field:
+            self._labels_field = self._labels_field[len("frames.") :]
 
         values = sorted(self._map.values())
         keys = sorted(self._map.keys(), key=lambda k: self._map[k])
 
-        label = (
-            "$$obj.label"
-            if is_list_field
-            else "$%s.label" % self._labels_field
-        )
+        if is_frame_field:
+            label = "$$frame.%s.label" % self._labels_field
+        else:
+            label = (
+                "$$obj.label"
+                if is_list_field
+                else "$%s.label" % self._labels_field
+            )
+
         cond = {
             "$cond": [
                 {"$in": [label, "$$keys"]},
@@ -1375,7 +1381,31 @@ class MapLabels(ViewStage):
         else:
             _in = cond
 
+        if is_frame_field:
+            _in = {
+                "$map": {
+                    "input": "$_frames",
+                    "as": "frame",
+                    "in": {
+                        "$mergeObjects": [
+                            "$$frame",
+                            {
+                                self._labels_field: {
+                                    "$mergeObjects": [
+                                        "$$frame.%s" % self._labels_field,
+                                        {"label": _in},
+                                    ]
+                                }
+                            },
+                        ]
+                    },
+                }
+            }
+
         let = {"$let": {"vars": {"keys": keys, "values": values}, "in": _in}}
+
+        if is_frame_field:
+            return [{"$set": {"_frames": let}}]
 
         if is_list_field:
             set_field = self._labels_field
