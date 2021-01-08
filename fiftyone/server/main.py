@@ -105,6 +105,30 @@ class FiftyOneHandler(RequestHandler):
         }
 
 
+class NotebookHandler(RequestHandler):
+    """Check that the requested handle exists on the server"""
+
+    async def get(self):
+        handle_id = self.get_argument("handleId")
+
+        response = self.get_response(handle_id)
+        if response is None:
+            raise tornado.web.HTTPError(status_code=404)
+
+        self.write(response)
+
+    @staticmethod
+    def get_response(handle):
+        """Returns if the notebook handle exists on the server.
+
+        Returns:
+            the handle ID
+        """
+        global _notebook_clients
+        if handle in set(_notebook_clients.values()):
+            return {"exists": True}
+
+
 class ReactivateHandler(RequestHandler):
     """Reactivates an IPython display handle"""
 
@@ -407,11 +431,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         """
         StateHandler.clients.remove(self)
         StateHandler.app_clients.discard(self)
-        global _notebook_clients
-        try:
-            del _notebook_clients[self]
-        except:
-            pass
 
     @_catch_errors
     async def on_message(self, message):
@@ -1063,6 +1082,7 @@ class Application(tornado.web.Application):
             (r"/polling", PollingHandler),
             (r"/feedback", FeedbackHandler),
             (r"/filepath/(.*)", FileHandler, {"path": static_path},),
+            (r"/notebook", NotebookHandler),
             (r"/stages", StagesHandler),
             (r"/state", StateHandler),
             (r"/reactivate", ReactivateHandler),

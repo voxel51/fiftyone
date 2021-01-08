@@ -71,7 +71,7 @@ cd "${THIS_DIR}/.."
 # Symlink to fiftyone-brain
 ln -sf $FIFTYONE_BRAIN_DIR fiftyone/brain
 
-# Generate API docs
+echo "Generating API docs"
 # sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, ...]
 sphinx-apidoc --force --no-toc --separate --follow-links \
     --templatedir=docs/templates/apidoc \
@@ -86,7 +86,10 @@ rm fiftyone/brain
 
 cd docs
 
-# Build docs
+echo "Generating model zoo listing page"
+python scripts/make_model_zoo_docs.py
+
+echo "Building docs"
 # sphinx-build [OPTIONS] SOURCEDIR OUTPUTDIR [FILENAMES...]
 sphinx-build -M html source build $SPHINXOPTS
 

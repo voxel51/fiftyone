@@ -30,7 +30,7 @@ _SCREENSHOT_STYLE = """
   width: 160px;
   margin-left: -80px;
   margin-top: -23px;
-  background: hsla(210,11%,15%, 0.5);
+  background: hsla(210,11%,15%, 0.8);
   border: none;
 }
 #foactivate-{{ handle }}:focus {
@@ -52,7 +52,8 @@ _SCREENSHOT_SCRIPT = """
    (function() {
      var container = document.getElementById("focontainer-{{ handle }}");
      var overlay = document.getElementById("fooverlay-{{ handle }}");
-     fetch(`{{ url }}fiftyone`)
+     fetch(`{{ url }}notebook?handleId={{ handle }}`)
+     .then((response) => response.json())
      .then(() => {
         overlay.addEventListener("click", () => {
           fetch(`{{ url }}reactivate?handleId={{ handle }}`)
@@ -67,7 +68,7 @@ _SCREENSHOT_DIV = """
    <div id="fooverlay-{{ handle }}">
       <button id="foactivate-{{ handle }}" >Activate</button>
    </div>
-   <img src='{{ image }}'/>
+   <img src='{{ image }}' style="width: 100%"/>
 </div>
 """
 

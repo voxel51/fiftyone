@@ -18,11 +18,11 @@ class BdistWheelCustom(bdist_wheel):
         # for a development installation
         self.distribution.install_requires += [
             "fiftyone-brain>=0.2,<0.3",
-            "fiftyone-db>=0.2.1,<0.3",
+            "fiftyone-db>=0.3.0,<0.4",
         ]
 
 
-VERSION = "0.7.1"
+VERSION = "0.7.1.1"
 
 
 def get_version():
@@ -38,7 +38,7 @@ def get_version():
     return VERSION
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.7.0,<0.8"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.8.1,<0.9"]}
 
 
 with open("README.md", "r") as fh:
@@ -87,7 +87,7 @@ setup(
         "xmltodict",
         "universal-analytics-python3>=1.0.1,<2",
         # internal packages
-        "voxel51-eta>=0.2.1,<0.3",
+        "voxel51-eta>=0.3,<0.4",
         # ETA dependency - restricted to a maximum version known to provide
         # wheels here because it tends to publish sdists several hours before
         # wheels. When users install FiftyOne in this window, they will need to

@@ -247,7 +247,7 @@ class DatabaseService(MultiClientService):
     if sys.platform.startswith("win"):
         MONGOD_EXE_NAME += ".exe"
 
-    MIN_MONGO_VERSION = "3.6"
+    MIN_MONGO_VERSION = "4.4"
 
     @property
     def database_dir(self):
