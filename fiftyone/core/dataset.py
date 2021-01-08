@@ -2107,10 +2107,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Indexes enable efficient sorting, merging, and other such operations.
 
         Args:
-            field: the field name
+            field: the field name or ``embedded.field.name``
             unique (False): whether to add a uniqueness constraint to the index
         """
-        if field not in self.get_field_schema():
+        if ("." not in field) and (field not in self.get_field_schema()):
             raise ValueError("Dataset has no field '%s'" % field)
 
         index_info = self._sample_collection.index_information()
@@ -2132,15 +2132,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """Drops the index on the given field.
 
         Args:
-            field: the field name
+            field: the field name or ``embedded.field.name``
         """
-        if field not in self.get_field_schema():
-            raise ValueError("Dataset has no field '%s'" % field)
-
         index_info = self._sample_collection.index_information()
         index_map = {v["key"][0][0]: k for k, v in index_info.items()}
 
         if field not in index_map:
+            if ("." not in field) and (field not in self.get_field_schema()):
+                raise ValueError("Dataset has no field '%s'" % field)
+
             raise ValueError("Dataset field '%s' is not indexed" % field)
 
         self._sample_collection.drop_index(index_map[field])

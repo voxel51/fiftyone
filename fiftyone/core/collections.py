@@ -1795,7 +1795,7 @@ class SampleCollection(object):
         Indexes enable efficient sorting, merging, and other such operations.
 
         Args:
-            field: the field name
+            field: the field name or ``embedded.field.name``
             unique (False): whether to add a uniqueness constraint to the index
         """
         raise NotImplementedError("Subclass must implement create_index()")
@@ -1804,7 +1804,7 @@ class SampleCollection(object):
         """Drops the index on the given field.
 
         Args:
-            field: the field name
+            field: the field name or ``embedded.field.name``
         """
         raise NotImplementedError("Subclass must implement drop_index()")
 
