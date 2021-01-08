@@ -63,7 +63,7 @@ const Body = styled.div`
     }
 
     .MuiTypography-body1.with-checkbox {
-      max-width: calc(100% - 24px);
+      max-width: calc(100% - 36px);
     }
     overflow: "hidden", .MuiCheckbox-root {
       padding: 0;
