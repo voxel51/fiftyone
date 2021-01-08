@@ -172,6 +172,7 @@ class ViewFieldTests(unittest.TestCase):
             F.ground_truth.label.to_mongo(), F("ground_truth").label.to_mongo()
         )
 
+    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
     @drop_datasets
     def test_clone_fields(self):
         dataset = fo.Dataset()
@@ -205,6 +206,7 @@ class ViewFieldTests(unittest.TestCase):
         self.assertIsNone(sample1.predictions.field)
         self.assertIsNotNone(sample2.predictions.field)
 
+    @unittest.skip("TODO: Fix workflow errors. Must be run manually")
     @drop_datasets
     def test_clone_fields_array(self):
         dataset = fo.Dataset()
