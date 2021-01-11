@@ -16,7 +16,7 @@ from wheel.bdist_wheel import bdist_wheel
 import os
 import shutil
 
-VERSION = "0.8.2"
+VERSION = "0.8.1"
 
 
 def get_version():
