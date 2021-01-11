@@ -72,7 +72,7 @@ your datasets and turn your good models into *great models*.
 
     Check out the
     `fiftyone-examples <https://github.com/voxel51/fiftyone-examples>`_
-    GitHub repository for more examples of using FiftyOne!
+    repository for more examples of using FiftyOne!
 
 .. toctree::
    :maxdepth: 1
