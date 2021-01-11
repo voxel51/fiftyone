@@ -9,7 +9,6 @@ import asyncio
 import argparse
 from collections import defaultdict
 from copy import deepcopy
-import json
 import os
 import posixpath
 import traceback
@@ -24,7 +23,6 @@ import tornado.websocket
 
 import eta.core.labels as etal
 import eta.core.serial as etas
-import eta.core.utils as etau
 import eta.core.video as etav
 
 os.environ["FIFTYONE_SERVER"] = "1"
@@ -50,7 +48,6 @@ from fiftyone.server.pipelines import (
     DISTRIBUTION_PIPELINES,
     TAGS,
     LABELS,
-    SCALARS,
 )
 
 
@@ -90,7 +87,7 @@ class FiftyOneHandler(RequestHandler):
         Returns:
             dict
         """
-        uid, first_import = _get_user_id()
+        uid, _ = _get_user_id()
         isfile = os.path.isfile(foc.FEEDBACK_PATH)
         if isfile:
             submitted = etas.load_json(foc.FEEDBACK_PATH)["submitted"]
@@ -181,7 +178,7 @@ def _catch_errors(func):
             StateHandler.prev_state = StateHandler.state
             result = await func(self, *args, **kwargs)
             return result
-        except Exception as error:
+        except Exception:
             StateHandler.state = StateHandler.prev_state
             clients = list(StateHandler.clients)
             if isinstance(self, PollingHandler):
@@ -324,8 +321,10 @@ def _get_label_object_ids(label):
     list_field_name = type(label).__name__.lower()
     if hasattr(label, "id"):
         return [label.id]
-    elif list_field_name in label:
+
+    if list_field_name in label:
         return [obj.id for obj in label[list_field_name]]
+
     raise TypeError("Cannot serialize label type: " + str(type(label)))
 
 
@@ -1096,11 +1095,6 @@ class Application(tornado.web.Application):
 
 
 if __name__ == "__main__":
-    log_path = os.path.join(
-        foc.FIFTYONE_CONFIG_DIR, "var", "log", "server.log"
-    )
-    etau.ensure_basedir(log_path)
-    # pylint: disable=no-member
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=fo.config.default_app_port)
     args = parser.parse_args()
