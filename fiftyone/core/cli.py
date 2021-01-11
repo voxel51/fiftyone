@@ -7,7 +7,6 @@ Definition of the `fiftyone` command-line interface (CLI).
 """
 import argparse
 from collections import defaultdict
-from enum import Enum
 import io
 import json
 import os
@@ -1819,9 +1818,9 @@ class ModelZooListCommand(Command):
         _print_zoo_models_list(
             models_manifest,
             downloaded_models,
-            downloaded_only=args.downloaded_only,
+            downloaded_only=downloaded_only,
             match_tags=match_tags,
-            names_only=args.names_only,
+            names_only=names_only,
         )
 
 
