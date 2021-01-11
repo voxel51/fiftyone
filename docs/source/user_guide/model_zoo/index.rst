@@ -24,17 +24,17 @@ simple commands.
     may be erroneous. In such cases, you can
     :ref:`suppress error messages <model-zoo-load>`.
 
-API reference
--------------
+Quick links
+-----------
+
+Click the link below to see all of the models in the zoo!
+
+.. custombutton::
+    :button_text: Explore the model zoo
+    :button_link: models.html
 
 Check out the :ref:`API reference <model-zoo-api>` for complete instructions
 for using the Model Zoo library.
-
-Available datasets
-------------------
-
-Check out the :ref:`available models <model-zoo-models>` to see all of the
-models in the zoo.
 
 .. _model-zoo-basic-recipe:
 

@@ -270,7 +270,7 @@ def _render_card_model_content(template, model_name):
     description = zoo_model.description
     description = description.replace("`_", '"')
     description = description.replace("`", '"')
-    description = re.sub("<.*>", "", description)
+    description = re.sub(" <.*>", "", description)
 
     content = template.render(
         header=zoo_model.name, description=description, link=link, tags=tags
