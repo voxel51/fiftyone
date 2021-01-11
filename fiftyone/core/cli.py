@@ -86,64 +86,6 @@ class FiftyOneCommand(Command):
         parser.print_help()
 
 
-class UtilsCommand(Command):
-    """FiftyOne utilities."""
-
-    @staticmethod
-    def setup(parser):
-        subparsers = parser.add_subparsers(title="available commands")
-        _register_command(subparsers, "reencode-images", ReencodeImagesCommand)
-        _register_command(subparsers, "reencode-videos", ReencodeVideosCommand)
-
-    @staticmethod
-    def execute(parser, args):
-        parser.print_help()
-
-
-class ReencodeImagesCommand(Command):
-    """Re-encodes the images in a dataset according to the specified
-    parameters.
-
-    Examples::
-
-        # Re-encode the images in the dataset
-        fiftyone utils reencode-images <dataset-name>
-    """
-
-    @staticmethod
-    def setup(parser):
-        parser.add_argument(
-            "name", metavar="DATASET_NAME", help="the name of the dataset"
-        )
-
-    @staticmethod
-    def execute(parser, args):
-        dataset = fod.load_dataset(args.name)
-        foui.reencode_images(dataset)
-
-
-class ReencodeVideosCommand(Command):
-    """Re-encodes the videos in a dataset as MP4s that can be visualized in the
-    FiftyOne App.
-
-    Examples::
-
-        # Re-encode the videos in the dataset
-        fiftyone utils reencode-videos <dataset-name>
-    """
-
-    @staticmethod
-    def setup(parser):
-        parser.add_argument(
-            "name", metavar="DATASET_NAME", help="the name of the dataset"
-        )
-
-    @staticmethod
-    def execute(parser, args):
-        dataset = fod.load_dataset(args.name)
-        fouv.reencode_videos(dataset)
-
-
 class QuickstartCommand(Command):
     """Launch a FiftyOne quickstart.
 
@@ -2224,6 +2166,97 @@ class ModelZooDeleteCommand(Command):
     def execute(parser, args):
         name = args.name
         fozm.delete_zoo_model(name)
+
+
+class UtilsCommand(Command):
+    """FiftyOne utilities."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(
+            subparsers, "compute-metadata", ComputeMetadataCommand
+        )
+        _register_command(subparsers, "reencode-images", ReencodeImagesCommand)
+        _register_command(subparsers, "reencode-videos", ReencodeVideosCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class ComputeMetadataCommand(Command):
+    """Populates the ``metadata`` field of all samples in the dataset.
+
+    Examples::
+
+        # Populate all missing ``metadata`` sample fields
+        fiftyone utils compute-metadata <dataset-name>
+
+        # (Re)-populate the ``metadata`` field for all samples
+        fiftyone utils compute-metadata <dataset-name> --overwrite
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="DATASET_NAME", help="the name of the dataset"
+        )
+        parser.add_argument(
+            "-o",
+            "--overwrite",
+            action="store_true",
+            help="whether to overwrite existing metadata",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        dataset = fod.load_dataset(args.name)
+        dataset.compute_metadata(overwrite=args.overwrite)
+
+
+class ReencodeImagesCommand(Command):
+    """Re-encodes the images in a dataset according to the specified
+    parameters.
+
+    Examples::
+
+        # Re-encode the images in the dataset
+        fiftyone utils reencode-images <dataset-name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="DATASET_NAME", help="the name of the dataset"
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        dataset = fod.load_dataset(args.name)
+        foui.reencode_images(dataset)
+
+
+class ReencodeVideosCommand(Command):
+    """Re-encodes the videos in a dataset as MP4s that can be visualized in the
+    FiftyOne App.
+
+    Examples::
+
+        # Re-encode the videos in the dataset
+        fiftyone utils reencode-videos <dataset-name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="DATASET_NAME", help="the name of the dataset"
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        dataset = fod.load_dataset(args.name)
+        fouv.reencode_videos(dataset)
 
 
 def _parse_dataset_import_kwargs(args):
