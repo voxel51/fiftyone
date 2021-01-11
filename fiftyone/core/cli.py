@@ -27,7 +27,9 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.session as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
+import fiftyone.utils.image as foui
 import fiftyone.utils.quickstart as fouq
+import fiftyone.utils.video as fouv
 import fiftyone.zoo.datasets as fozd
 import fiftyone.zoo.models as fozm
 
@@ -71,17 +73,76 @@ class FiftyOneCommand(Command):
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
-        _register_command(subparsers, "quickstart", QuickstartCommand)
+        _register_command(subparsers, "app", AppCommand)
         _register_command(subparsers, "config", ConfigCommand)
         _register_command(subparsers, "constants", ConstantsCommand)
         _register_command(subparsers, "convert", ConvertCommand)
         _register_command(subparsers, "datasets", DatasetsCommand)
-        _register_command(subparsers, "app", AppCommand)
+        _register_command(subparsers, "quickstart", QuickstartCommand)
+        _register_command(subparsers, "utils", UtilsCommand)
         _register_command(subparsers, "zoo", ZooCommand)
 
     @staticmethod
     def execute(parser, args):
         parser.print_help()
+
+
+class UtilsCommand(Command):
+    """FiftyOne utilities."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "reencode-images", ReencodeImagesCommand)
+        _register_command(subparsers, "reencode-videos", ReencodeVideosCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class ReencodeImagesCommand(Command):
+    """Re-encodes the images in a dataset according to the specified
+    parameters.
+
+    Examples::
+
+        # Re-encode the images in the dataset
+        fiftyone utils reencode-images <dataset-name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="DATASET_NAME", help="the name of the dataset"
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        dataset = fod.load_dataset(args.name)
+        foui.reencode_images(dataset)
+
+
+class ReencodeVideosCommand(Command):
+    """Re-encodes the videos in a dataset as MP4s that can be visualized in the
+    FiftyOne App.
+
+    Examples::
+
+        # Re-encode the videos in the dataset
+        fiftyone utils reencode-videos <dataset-name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="DATASET_NAME", help="the name of the dataset"
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        dataset = fod.load_dataset(args.name)
+        fouv.reencode_videos(dataset)
 
 
 class QuickstartCommand(Command):
