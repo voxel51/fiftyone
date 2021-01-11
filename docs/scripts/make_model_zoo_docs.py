@@ -8,6 +8,7 @@ Script for generating the model zoo docs page contents
 """
 import logging
 import os
+import re
 
 from jinja2 import Environment, BaseLoader
 
@@ -35,26 +36,14 @@ This page lists all of the models available in the Model Zoo.
     instructions for using the Model Zoo.
 """
 
+
 _SECTION_TEMPLATE = """
 .. _model-zoo-{{ link_name }}-models:
 
 {{ header_name }} models
 {{ '-' * (header_name|length + 7) }}
-
-Available models
-________________
-
-.. table::
-    :widths: 40 60
-
-    +{{ '-' * col1_width }}+{{ '-' * col2_width }}+
-    | Model name {{ ' ' * (col1_width - 12) }}| Tags {{ ' ' * (col2_width - 6) }}|
-    +{{ '=' * col1_width }}+{{ '=' * col2_width }}+
-{% for model in models %}
-    | :ref:`{{ model['name'] }} <model-zoo-{{ model['name'] }}>` {{ ' ' * (col1_width - 2 * model['name']|length - 22) }}| {{ model['tags_str'] }} {{ ' ' * (col2_width - model['tags_str']|length - 2) }}|
-    +{{ '-' * col1_width }}+{{ '-' * col2_width }}+
-{% endfor %}
 """
+
 
 _MODEL_TEMPLATE = """
 .. _model-zoo-{{ name }}:
@@ -122,6 +111,52 @@ _MODEL_TEMPLATE = """
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
+"""
+
+
+_CARD_SECTION_START = """
+.. raw:: html
+
+    <div id="tutorial-cards-container">
+
+    <nav class="navbar navbar-expand-lg navbar-light tutorials-nav col-12">
+        <div class="tutorial-tags-container">
+            <div id="dropdown-filter-tags">
+                <div class="tutorial-filter-menu">
+                    <div class="tutorial-filter filter-btn all-tag-selected" data-tag="all">All</div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <hr class="tutorials-hr">
+
+    <div class="row">
+
+    <div id="tutorial-cards">
+    <div class="list">
+"""
+
+
+_CARD_SECTION_END = """
+.. raw:: html
+
+    </div>
+
+    <div class="pagination d-flex justify-content-center"></div>
+
+    </div>
+
+    </div>
+"""
+
+
+_CARD_MODEL_TEMPLATE = """
+.. customcarditem::
+    :header: {{ header }}
+    :description: {{ description }}
+    :link: {{ link }}
+    :tags: {{ tags }}
 """
 
 
@@ -211,6 +246,41 @@ def _render_model_content(template, model_name):
     return source, content
 
 
+def _render_card_model_content(template, model_name):
+    zoo_model = foz.get_zoo_model(model_name)
+
+    tags = []
+
+    for tag in zoo_model.tags:
+        if tag == "tf1":
+            tags.append("TensorFlow-1")
+        elif tag == "tf2":
+            tags.append("TensorFlow-2")
+        elif tag == "tf":
+            tags.append("TensorFlow")
+        elif tag == "torch":
+            tags.append("PyTorch")
+        else:
+            tags.append(tag.capitalize().replace(" ", "-"))
+
+    tags = ",".join(tags)
+
+    link = "models.html#%s" % zoo_model.name
+
+    description = zoo_model.description
+
+    # remove paper links from descriptions
+    description = description.replace("`_", '"')
+    description = description.replace("`", '"')
+    description = re.sub(" <.*>", "", description)
+
+    content = template.render(
+        header=zoo_model.name, description=description, link=link, tags=tags
+    )
+
+    return content
+
+
 def _generate_section(template, all_models, print_source, header_name):
     content = [
         _render_section_content(
@@ -234,6 +304,7 @@ def main():
 
     section_template = environment.from_string(_SECTION_TEMPLATE)
     model_template = environment.from_string(_MODEL_TEMPLATE)
+    card_model_template = environment.from_string(_CARD_MODEL_TEMPLATE)
 
     models = []
     for model_name in foz.list_zoo_models():
@@ -243,6 +314,14 @@ def main():
     # Generate page content
 
     content = [_HEADER]
+    content.append(_CARD_SECTION_START)
+    for model_name in foz.list_zoo_models():
+        card_content = _render_card_model_content(
+            card_model_template, model_name
+        )
+        content.append(card_content)
+
+    content.append(_CARD_SECTION_END)
     content.extend(
         _generate_section(section_template, models, "torch", "Torch")
     )

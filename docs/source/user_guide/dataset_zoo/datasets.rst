@@ -13,9 +13,6 @@ This page lists all of the datasets available in the Dataset Zoo.
     Check out the :ref:`API reference <dataset-zoo-api>` for complete
     instructions for using the Dataset Zoo.
 
-Available datasets
-------------------
-
 .. table::
     :widths: 40 60
 
