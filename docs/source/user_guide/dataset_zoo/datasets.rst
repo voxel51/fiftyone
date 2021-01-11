@@ -152,6 +152,10 @@ detection, and segmentation labels.
 
         fiftyone app launch bdd100k-validation
 
+.. image:: ../../images/dataset_zoo/bdd100k-validation.png
+   :alt: bdd100k-validation
+   :align: center
+
 .. _dataset-zoo-caltech101:
 
 Caltech-101
@@ -208,6 +212,10 @@ pixels. This version contains image-level labels only.
 
         fiftyone app launch caltech101
 
+.. image:: ../../images/dataset_zoo/caltech101.png
+   :alt: caltech101
+   :align: center
+
 .. _dataset-zoo-caltech256:
 
 Caltech-256
@@ -255,6 +263,10 @@ Images are of variable sizes, with typical edge lengths of 80-800 pixels.
         fiftyone zoo datasets load caltech256
 
         fiftyone app launch caltech256
+
+.. image:: ../../images/dataset_zoo/caltech256.png
+   :alt: caltech256
+   :align: center
 
 .. _dataset-zoo-cifar10:
 
@@ -308,6 +320,10 @@ images per class. There are 50,000 training images and 10,000 test images.
 
         fiftyone app launch cifar10-test
 
+.. image:: ../../images/dataset_zoo/cifar10-test.png
+   :alt: cifar10-test
+   :align: center
+
 .. _dataset-zoo-cifar100:
 
 CIFAR-100
@@ -360,6 +376,10 @@ images.
         fiftyone zoo datasets load cifar100 --split test
 
         fiftyone app launch cifar100-test
+
+.. image:: ../../images/dataset_zoo/cifar100-test.png
+   :alt: cifar100-test
+   :align: center
 
 .. _dataset-zoo-cityscapes:
 
@@ -440,6 +460,10 @@ The dataset is intended for:
 
         fiftyone app launch cityscapes-validation
 
+.. image:: ../../images/dataset_zoo/cityscapes-validation.png
+   :alt: cityscapes-validation
+   :align: center
+
 .. _dataset-zoo-coco-2014:
 
 COCO-2014
@@ -501,6 +525,10 @@ Notes:
 
         fiftyone app launch coco-2014-validation
 
+.. image:: ../../images/dataset_zoo/coco-2014-validation.png
+   :alt: coco-2014-validation
+   :align: center
+
 .. _dataset-zoo-coco-2014-segmentation:
 
 COCO-2014 Segmentation
@@ -553,6 +581,10 @@ Notes:
         fiftyone zoo datasets load coco-2014-segmentation --split validation
 
         fiftyone app launch coco-2014-segmentation-validation
+
+.. image:: ../../images/dataset_zoo/coco-2014-segmentation-validation.png
+   :alt: coco-2014-segmentation-validation
+   :align: center
 
 .. _dataset-zoo-coco-2017:
 
@@ -615,6 +647,10 @@ Notes:
 
         fiftyone app launch coco-2017-validation
 
+.. image:: ../../images/dataset_zoo/coco-2017-validation.png
+   :alt: coco-2017-validation
+   :align: center
+
 .. _dataset-zoo-coco-2017-segmentation:
 
 COCO-2017 Segmentation
@@ -668,6 +704,10 @@ Notes:
 
         fiftyone app launch coco-2017-segmentation-validation
 
+.. image:: ../../images/dataset_zoo/coco-2017-segmentation-validation.png
+   :alt: coco-2017-segmentation-validation
+   :align: center
+
 .. _dataset-zoo-fashion-mnist:
 
 Fashion MNIST
@@ -720,6 +760,10 @@ There are 60,000 training images and 10,000 test images.
 
         fiftyone app launch fashion-mnist-test
 
+.. image:: ../../images/dataset_zoo/fashion-mnist-test.png
+   :alt: fashion-mnist-test
+   :align: center
+
 .. _dataset-zoo-hmdb51:
 
 HMBD51
@@ -749,8 +793,12 @@ clips distributed across 51 action classes.
 
         import fiftyone as fo
         import fiftyone.zoo as foz
+        import fiftyone.utils.video as fouv
 
         dataset = foz.load_zoo_dataset("hmdb51", split="test")
+
+        # Re-encode source videos as MP4 so they can be visualized in the App
+        fouv.reencode_videos(dataset)
 
         session = fo.launch_app(dataset)
 
@@ -761,6 +809,10 @@ clips distributed across 51 action classes.
         fiftyone zoo datasets load hmdb51 --split test
 
         fiftyone app launch hmdb51-test
+
+.. image:: ../../images/dataset_zoo/hmdb51-test.png
+   :alt: hmdb51-test
+   :align: center
 
 .. _dataset-zoo-imagenet-2012:
 
@@ -850,6 +902,10 @@ training and validation sets are provided.
 
         fiftyone app launch imagenet-2012-validation
 
+.. image:: ../../images/dataset_zoo/imagenet-2012-validation.png
+   :alt: imagenet-2012-validation
+   :align: center
+
 .. _dataset-zoo-imagenet-sample:
 
 ImageNet Sample
@@ -932,6 +988,10 @@ These images are provided according to the terms below.
 
         fiftyone app launch imagenet-sample
 
+.. image:: ../../images/dataset_zoo/imagenet-sample.png
+   :alt: imagenet-sample
+   :align: center
+
 .. _dataset-zoo-kitti:
 
 KITTI
@@ -992,6 +1052,10 @@ object development kit on the KITTI homepage.
 
         fiftyone app launch kitti-train
 
+.. image:: ../../images/dataset_zoo/kitti-train.png
+   :alt: kitti-train
+   :align: center
+
 .. _dataset-zoo-lfw:
 
 Labeled Faces in the Wild
@@ -1039,6 +1103,10 @@ Viola-Jones face detector.
         fiftyone zoo datasets load lfw --split test
 
         fiftyone app launch lfw-test
+
+.. image:: ../../images/dataset_zoo/lfw-test.png
+   :alt: lfw-test
+   :align: center
 
 .. _dataset-zoo-mnist:
 
@@ -1092,6 +1160,10 @@ There are 60,000 training images and 10,000 test images.
 
         fiftyone app launch mnist-test
 
+.. image:: ../../images/dataset_zoo/mnist-test.png
+   :alt: mnist-test
+   :align: center
+
 .. _dataset-zoo-quickstart:
 
 Quickstart
@@ -1137,6 +1209,10 @@ from
 
         fiftyone app launch quickstart
 
+.. image:: ../../images/dataset_zoo/quickstart.png
+   :alt: quickstart
+   :align: center
+
 .. _dataset-zoo-quickstart-video:
 
 Quickstart Video
@@ -1179,6 +1255,10 @@ generated by human annotators.
         fiftyone zoo datasets load quickstart-video
 
         fiftyone app launch quickstart-video
+
+.. image:: ../../images/dataset_zoo/quickstart-video.png
+   :alt: quickstart-video
+   :align: center
 
 .. _dataset-zoo-ucf101:
 
@@ -1224,8 +1304,12 @@ viewpoint, etc.
 
         import fiftyone as fo
         import fiftyone.zoo as foz
+        import fiftyone.utils.video as fouv
 
         dataset = foz.load_zoo_dataset("ucf101", split="test")
+
+        # Re-encode source videos as MP4 so they can be visualized in the App
+        fouv.reencode_videos(dataset)
 
         session = fo.launch_app(dataset)
 
@@ -1236,6 +1320,10 @@ viewpoint, etc.
         fiftyone zoo datasets load ucf101 --split test
 
         fiftyone app launch ucf101-test
+
+.. image:: ../../images/dataset_zoo/ucf101-test.png
+   :alt: ucf101-test
+   :align: center
 
 .. _dataset-zoo-voc-2007:
 
@@ -1299,6 +1387,10 @@ contain annotations.
 
         fiftyone app launch voc-2007-validation
 
+.. image:: ../../images/dataset_zoo/voc-2007-validation.png
+   :alt: voc-2007-validation
+   :align: center
+
 .. _dataset-zoo-voc-2012:
 
 VOC-2012
@@ -1359,3 +1451,7 @@ contain annotations.
         fiftyone zoo datasets load voc-2012 --split validation
 
         fiftyone app launch voc-2012-validation
+
+.. image:: ../../images/dataset_zoo/voc-2012-validation.png
+   :alt: voc-2012-validation
+   :align: center

@@ -65,7 +65,7 @@ _SCREENSHOT_SCRIPT = """
 """
 _SCREENSHOT_DIV = """
 <div id="focontainer-{{ handle }}">
-   <div id="fooverlay-{{ handle }}">
+   <div id="fooverlay-{{ handle }}" style="display: none;">
       <button id="foactivate-{{ handle }}" >Activate</button>
    </div>
    <img src='{{ image }}' style="width: 100%"/>
