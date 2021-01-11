@@ -36,12 +36,14 @@ This page lists all of the models available in the Model Zoo.
     instructions for using the Model Zoo.
 """
 
+
 _SECTION_TEMPLATE = """
 .. _model-zoo-{{ link_name }}-models:
 
 {{ header_name }} models
 {{ '-' * (header_name|length + 7) }}
 """
+
 
 _MODEL_TEMPLATE = """
 .. _model-zoo-{{ name }}:
@@ -111,6 +113,7 @@ _MODEL_TEMPLATE = """
     session = fo.launch_app(dataset)
 """
 
+
 _CARD_SECTION_START = """
 .. raw:: html
 
@@ -132,12 +135,10 @@ _CARD_SECTION_START = """
 
     <div id="tutorial-cards">
     <div class="list">
+"""
 
-.. Add model zoo cards below"""
 
 _CARD_SECTION_END = """
-.. End of model zoo cards
-
 .. raw:: html
 
     </div>
@@ -248,40 +249,34 @@ def _render_model_content(template, model_name):
 def _render_card_model_content(template, model_name):
     zoo_model = foz.get_zoo_model(model_name)
 
-    if "torch" in zoo_model.tags:
-        source = "torch"
-    elif any(t in zoo_model.tags for t in ("tf", "tf1", "tf2")):
-        source = "tensorflow"
-    else:
-        source = "other"
-
     tags = []
 
     for tag in zoo_model.tags:
-        if "tf1" in tag:
-            tags.append("TensorFlow 1")
-        elif "tf2" in tag:
-            tags.append("TensorFlow 2")
-        elif "tf" in tag:
+        if tag == "tf1":
+            tags.append("TensorFlow-1")
+        elif tag == "tf2":
+            tags.append("TensorFlow-2")
+        elif tag == "tf":
             tags.append("TensorFlow")
-        elif "torch" in tag:
+        elif tag == "torch":
             tags.append("PyTorch")
-        elif tag != "tf":
-            tags.append(tag.capitalize())
+        else:
+            tags.append(tag.capitalize().replace(" ", "-"))
 
     tags = ",".join(tags)
 
     link = "models.html#%s" % zoo_model.name
 
     description = zoo_model.description
-    description = description.replace("`_", "`")
+    description = description.replace("`_", '"')
+    description = description.replace("`", '"')
     description = re.sub("<.*>", "", description)
 
     content = template.render(
         header=zoo_model.name, description=description, link=link, tags=tags
     )
 
-    return source, content
+    return content
 
 
 def _generate_section(template, all_models, print_source, header_name):
@@ -319,7 +314,7 @@ def main():
     content = [_HEADER]
     content.append(_CARD_SECTION_START)
     for model_name in foz.list_zoo_models():
-        source, card_content = _render_card_model_content(
+        card_content = _render_card_model_content(
             card_model_template, model_name
         )
         content.append(card_content)
