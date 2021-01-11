@@ -41,13 +41,6 @@ your datasets and turn your good models into *great models*.
     :tags: Getting-Started,Model-Evaluation
 
 .. customcarditem::
-    :header: Evaluating detections on Open Images
-    :description: Like the Open Images Dataset? This tutorial uses FiftyOne to distinguish between model errors and ground truth errors on this popular dataset.
-    :link: open_images_evaluation.html
-    :image: ../_static/images/tutorials/missing_wheel.gif
-    :tags: Getting-Started,Model-Evaluation
-
-.. customcarditem::
     :header: Exploring image uniqueness
     :description: Your models need diverse data. This tutorial shows how FiftyOne can remove near-duplicate images and recommend unique samples for model training.
     :link: uniqueness.html
@@ -75,11 +68,16 @@ your datasets and turn your good models into *great models*.
 
 .. End tutorial cards section -------------------------------------------------
 
+.. note::
+
+    Check out the
+    `fiftyone-examples <https://github.com/voxel51/fiftyone-examples>`_
+    repository for more examples of using FiftyOne!
+
 .. toctree::
    :maxdepth: 1
    :hidden:
 
    Evaluating object detections<evaluate_detections.ipynb>
-   Evaluating Open Images<open_images_evaluation.ipynb>
    Exploring image uniqueness<uniqueness.ipynb>
    Finding label mistakes<label_mistakes.ipynb>

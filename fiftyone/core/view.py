@@ -261,7 +261,7 @@ class DatasetView(foc.SampleCollection):
         Indexes enable efficient sorting, merging, and other such operations.
 
         Args:
-            field: the field name
+            field: the field name or ``embedded.field.name``
             unique (False): whether to add a uniqueness constraint to the index
         """
         self._dataset.create_index(field, unique=unique)
@@ -270,7 +270,7 @@ class DatasetView(foc.SampleCollection):
         """Drops the index on the given field.
 
         Args:
-            field: the field name
+            field: the field name or ``embedded.field.name``
         """
         self._dataset.drop_index(field)
 
