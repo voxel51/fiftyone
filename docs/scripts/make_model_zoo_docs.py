@@ -1,6 +1,6 @@
 """
 Script for generating the model zoo docs page contents
-``docs/source/user_guide/model_zoo/models.rst ``.
+``docs/source/user_guide/model_zoo/models.rst``.
 
 | Copyright 2017-2020, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -20,14 +20,27 @@ import fiftyone.zoo as foz
 logger = logging.getLogger(__name__)
 
 
+_HEADER = """
+.. _model-zoo-models:
+
+Available Zoo Models
+====================
+
+.. default-role:: code
+
+This page lists all of the models available in the Model Zoo.
+
+.. note::
+
+    Check out the :ref:`API reference <model-zoo-api>` for complete
+    instructions for using the Model Zoo.
+"""
+
 _SECTION_TEMPLATE = """
 .. _model-zoo-{{ link_name }}-models:
 
 {{ header_name }} models
 {{ '-' * (header_name|length + 7) }}
-
-Available models
-________________
 """
 
 _MODEL_TEMPLATE = """
@@ -271,42 +284,62 @@ def _render_card_model_content(template, model_name):
     return source, content
 
 
-def _print_section(template, all_models, print_source, header_name):
-    section_content = _render_section_content(
-        template, all_models, print_source, header_name
-    )
-    print(section_content)
+def _generate_section(template, all_models, print_source, header_name):
+    content = [
+        _render_section_content(
+            template, all_models, print_source, header_name
+        )
+    ]
 
-    for _, source, content in all_models:
+    for _, source, model_content in all_models:
         if source == print_source:
-            print(content)
+            content.append(model_content)
+
+    return content
 
 
-environment = Environment(
-    loader=BaseLoader, trim_blocks=True, lstrip_blocks=True,
-)
+def main():
+    # Render model sections
 
-section_template = environment.from_string(_SECTION_TEMPLATE)
-model_template = environment.from_string(_MODEL_TEMPLATE)
-
-models = []
-for model_name in foz.list_zoo_models():
-    source, content = _render_model_content(model_template, model_name)
-    models.append((model_name, source, content))
-
-card_model_template = environment.from_string(_CARD_MODEL_TEMPLATE)
-
-print(_CARD_SECTION_START)
-for model_name in foz.list_zoo_models():
-    source, content = _render_card_model_content(
-        card_model_template, model_name
+    environment = Environment(
+        loader=BaseLoader, trim_blocks=True, lstrip_blocks=True,
     )
-    print(content)
 
-print(_CARD_SECTION_END)
+    section_template = environment.from_string(_SECTION_TEMPLATE)
+    model_template = environment.from_string(_MODEL_TEMPLATE)
+    card_model_template = environment.from_string(_CARD_MODEL_TEMPLATE)
 
-# Torch models
-_print_section(section_template, models, "torch", "Torch")
+    models = []
+    for model_name in foz.list_zoo_models():
+        source, content = _render_model_content(model_template, model_name)
+        models.append((model_name, source, content))
 
-# TensorFlow models
-_print_section(section_template, models, "tensorflow", "TensorFlow")
+    # Generate page content
+
+    content = [_HEADER]
+    content.append(_CARD_SECTION_START)
+    for model_name in foz.list_zoo_models():
+        source, card_content = _render_card_model_content(
+            card_model_template, model_name
+        )
+        content.append(card_content)
+
+    content.append(_CARD_SECTION_END)
+    content.extend(
+        _generate_section(section_template, models, "torch", "Torch")
+    )
+    content.extend(
+        _generate_section(section_template, models, "tensorflow", "TensorFlow")
+    )
+
+    # Write docs page
+
+    docs_dir = "/".join(os.path.realpath(__file__).split("/")[:-2])
+    outpath = os.path.join(docs_dir, "source/user_guide/model_zoo/models.rst")
+
+    print("Writing '%s'" % outpath)
+    etau.write_file("\n".join(content), outpath)
+
+
+if __name__ == "__main__":
+    main()

@@ -690,6 +690,16 @@ class ViewStageTests(unittest.TestCase):
         self.dataset.add_sample(self.sample1)
         self.dataset.add_sample(self.sample2)
 
+    def _setUp_classification(self):
+        self.sample1["test_clf"] = fo.Classification(
+            label="friend", confidence=0.9
+        )
+        self.sample1.save()
+        self.sample2["test_clf"] = fo.Classification(
+            label="enemy", confidence=0.99
+        )
+        self.sample2.save()
+
     def _setUp_classifications(self):
         self.sample1["test_clfs"] = fo.Classifications(
             classifications=[
@@ -929,6 +939,13 @@ class ViewStageTests(unittest.TestCase):
         result = list(self.dataset.sort_by("filepath", reverse=True))
         self.assertIs(len(result), 2)
         self.assertEqual(result[0].id, self.sample2.id)
+
+    def test_sort_by_embedded(self):
+        self._setUp_classification()
+
+        result = list(self.dataset.sort_by("test_clf.label"))
+        self.assertEqual(result[0]["test_clf"].label, "enemy")
+        self.assertEqual(result[1]["test_clf"].label, "friend")
 
     def test_take(self):
         result = list(self.dataset.take(1))
