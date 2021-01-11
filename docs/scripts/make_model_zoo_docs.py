@@ -268,6 +268,8 @@ def _render_card_model_content(template, model_name):
     link = "models.html#%s" % zoo_model.name
 
     description = zoo_model.description
+
+    # remove paper links from descriptions
     description = description.replace("`_", '"')
     description = description.replace("`", '"')
     description = re.sub(" <.*>", "", description)
