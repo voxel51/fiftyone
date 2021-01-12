@@ -18,11 +18,11 @@ class BdistWheelCustom(bdist_wheel):
         # for a development installation
         self.distribution.install_requires += [
             "fiftyone-brain>=0.2,<0.3",
-            "fiftyone-db>=0.3.0,<0.4",
+            "fiftyone-db>=0.2.1,<0.3",
         ]
 
 
-VERSION = "0.7.1.2"
+VERSION = "0.7.1.3"
 
 
 def get_version():
