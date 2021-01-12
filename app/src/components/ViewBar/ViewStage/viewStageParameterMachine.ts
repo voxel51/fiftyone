@@ -70,10 +70,13 @@ export const PARSER = {
     validate: (value) => /[0-9A-Fa-f]{24}/g.test(value),
   },
   int: {
-    castFrom: (value) => String(value),
-    castTo: (value) => +value,
+    castFrom: (value) => String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ","),
+    castTo: (value) => +value.replace(/[,\s]/g, ""),
     parse: (value) =>
-      value.replace(/[,\s]/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ","),
+      String(+value.replace(/[,\s]/g, "")).replace(
+        /\B(?=(\d{3})+(?!\d))/g,
+        ","
+      ),
     validate: (value) => /^\d+$/.test(convert(value).replace(/[,\s]/g, "")),
   },
   "list<str>": {

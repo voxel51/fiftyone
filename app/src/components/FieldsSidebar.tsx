@@ -116,7 +116,9 @@ const RefreshButton = () => {
         setClicked(true);
       }}
     >
-      <Autorenew style={{ marginTop: 4 }} />
+      <div style={{ marginTop: 4 }}>
+        <Autorenew />
+      </div>
       <ButtonText>Refresh field colors</ButtonText>
     </Button>
   );
@@ -305,7 +307,7 @@ const FieldsSidebar = React.forwardRef(
             {
               name: "Color by label",
               selected: colorByLabel,
-              icon: <Brush style={{ paddingTop: "0.4rem" }} />,
+              icon: <Brush />,
             },
           ]}
         />

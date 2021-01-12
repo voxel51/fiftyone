@@ -112,6 +112,12 @@ workflows.
 
 .. End Recipe cards section ---------------------------------------------------
 
+.. note::
+
+    Check out the
+    `fiftyone-examples <https://github.com/voxel51/fiftyone-examples>`_
+    repository for more examples of using FiftyOne!
+
 .. toctree::
    :maxdepth: 1
    :hidden:

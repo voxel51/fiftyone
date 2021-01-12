@@ -9,7 +9,6 @@ import asyncio
 import argparse
 from collections import defaultdict
 from copy import deepcopy
-import json
 import os
 import posixpath
 import traceback
@@ -24,7 +23,6 @@ import tornado.websocket
 
 import eta.core.labels as etal
 import eta.core.serial as etas
-import eta.core.utils as etau
 import eta.core.video as etav
 
 os.environ["FIFTYONE_SERVER"] = "1"
@@ -50,7 +48,6 @@ from fiftyone.server.pipelines import (
     DISTRIBUTION_PIPELINES,
     TAGS,
     LABELS,
-    SCALARS,
 )
 
 
@@ -90,7 +87,7 @@ class FiftyOneHandler(RequestHandler):
         Returns:
             dict
         """
-        uid, first_import = _get_user_id()
+        uid, _ = _get_user_id()
         isfile = os.path.isfile(foc.FEEDBACK_PATH)
         if isfile:
             submitted = etas.load_json(foc.FEEDBACK_PATH)["submitted"]
@@ -103,6 +100,50 @@ class FiftyOneHandler(RequestHandler):
             "feedback": {"submitted": submitted, "minimized": isfile},
             "dev_install": foc.DEV_INSTALL or foc.RC_INSTALL,
         }
+
+
+class NotebookHandler(RequestHandler):
+    """Check that the requested handle exists on the server"""
+
+    async def get(self):
+        handle_id = self.get_argument("handleId")
+
+        response = self.get_response(handle_id)
+        if response is None:
+            raise tornado.web.HTTPError(status_code=404)
+
+        self.write(response)
+
+    @staticmethod
+    def get_response(handle):
+        """Returns if the notebook handle exists on the server.
+
+        Returns:
+            the handle ID
+        """
+        global _notebook_clients
+        if handle in set(_notebook_clients.values()):
+            return {"exists": True}
+
+
+class ReactivateHandler(RequestHandler):
+    """Reactivates an IPython display handle"""
+
+    async def get(self):
+        handle_id = self.get_argument("handleId")
+        self.write(self.get_response(handle_id))
+
+    @staticmethod
+    def get_response(handle_id):
+        """Returns on success
+
+        Args:
+            handle_id: a handle uuid
+        """
+        for client in StateHandler.clients:
+            client.write_message({"type": "reactivate", "handle": handle_id})
+
+        return {}
 
 
 class StagesHandler(RequestHandler):
@@ -137,7 +178,7 @@ def _catch_errors(func):
             StateHandler.prev_state = StateHandler.state
             result = await func(self, *args, **kwargs)
             return result
-        except Exception as error:
+        except Exception:
             StateHandler.state = StateHandler.prev_state
             clients = list(StateHandler.clients)
             if isinstance(self, PollingHandler):
@@ -161,12 +202,14 @@ def _catch_errors(func):
     return wrapper
 
 
-_notebook_clients = set()
+_notebook_clients = {}
+_deactivated_clients = set()
 
 
 class PollingHandler(tornado.web.RequestHandler):
 
     clients = defaultdict(set)
+    screenshots = {}
 
     def set_default_headers(self, *args, **kwargs):
         self.set_header("Access-Control-Allow-Origin", "*")
@@ -201,22 +244,31 @@ class PollingHandler(tornado.web.RequestHandler):
         mode = self.get_argument("mode")
         message = StateHandler.loads(self.request.body)
         event = message.pop("type")
+        force_update = False
         if mode == "push":
             if event == "as_app":
                 if message["notebook"]:
                     message["ignore"] = client
                     global _notebook_clients
-                    _notebook_clients.add(client)
+                    global _deactivated_clients
+                    StateHandler.state["active_handle"] = message["handle"]
+                    _deactivated_clients.discard(message["handle"])
+                    _notebook_clients[client] = message["handle"]
+                    event = "update"
+                    force_update = True
+                    message = {"state": StateHandler.state}
 
             if event in {"distributions", "page", "get_video_data"}:
                 caller = self
+            elif event in {"capture", "update"}:
+                caller = client
             else:
                 caller = StateHandler
 
             if event == "refresh":
                 message["polling_client"] = client
 
-            if event == "update":
+            if event == "update" and not force_update:
                 message["ignore_polling_client"] = client
 
             handle = getattr(StateHandler, "on_%s" % event)
@@ -269,8 +321,10 @@ def _get_label_object_ids(label):
     list_field_name = type(label).__name__.lower()
     if hasattr(label, "id"):
         return [label.id]
-    elif list_field_name in label:
+
+    if list_field_name in label:
         return [obj.id for obj in label[list_field_name]]
+
     raise TypeError("Cannot serialize label type: " + str(type(label)))
 
 
@@ -376,8 +430,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         """
         StateHandler.clients.remove(self)
         StateHandler.app_clients.discard(self)
-        global _notebook_clients
-        _notebook_clients.discard(self)
 
     @_catch_errors
     async def on_message(self, message):
@@ -392,22 +444,22 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         await event(self, **message)
 
     @staticmethod
-    async def on_as_app(self, notebook, ignore=None):
+    async def on_capture(self, src):
+        global _notebook_clients
+        for client in StateHandler.clients:
+            client.write_message(
+                {"type": "capture", _notebook_clients[self]: src}
+            )
+
+    @staticmethod
+    async def on_as_app(self, notebook=False, handle=None, ignore=None):
         """Event for registering a client as an App."""
         if isinstance(self, StateHandler):
             StateHandler.app_clients.add(self)
         global _notebook_clients
         if isinstance(self, StateHandler) and notebook:
-            _notebook_clients.add(self)
+            _notebook_clients[self] = handle
             ignore = self
-
-        for client in _notebook_clients:
-            if client == ignore:
-                continue
-            if isinstance(client, StateHandler):
-                client.write_message({"type": "deactivate"})
-            else:
-                PollingHandler.clients[client].add("deactivate")
 
         if not isinstance(self, StateHandler):
             return
@@ -513,7 +565,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         self.write_message(message)
 
     @staticmethod
-    async def on_update(self, state, ignore_polling_client=None):
+    async def on_update(caller, state, ignore_polling_client=None):
         """Event for state updates. Sends an update message to all active
         clients, and statistics messages to active App clients.
 
@@ -521,14 +573,32 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             state: a serialized :class:`fiftyone.core.state.StateDescription`
         """
         StateHandler.state = state
+        active_handle = state["active_handle"]
+        global _notebook_clients
+        global _deactivated_clients
+        _deactivated_clients.discard(active_handle)
+        if (
+            active_handle
+            and caller in _notebook_clients
+            and _notebook_clients[caller] != active_handle
+        ):
+            return
         for client, events in PollingHandler.clients.items():
+            if client in _notebook_clients:
+                uuid = _notebook_clients[client]
+                if uuid != active_handle:
+                    events.clear()
+                    _deactivated_clients.add(uuid)
+                    events.add("deactivate")
+                    continue
+
             if client == ignore_polling_client:
                 events.update({"statistics", "extended_statistics"})
             events.update({"update", "statistics", "extended_statistics"})
         awaitables = [
-            self.send_updates(),
+            StateHandler.send_updates(),
         ]
-        awaitables += self.get_statistics_awaitables()
+        awaitables += StateHandler.get_statistics_awaitables()
         asyncio.gather(*awaitables)
 
     @staticmethod
@@ -694,7 +764,16 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             only.write_message(response)
             return
 
+        global _notebook_clients
+        global _deactivated_clients
+        active_handle = StateHandler.state["active_handle"]
         for client in cls.clients:
+            if client in _notebook_clients:
+                uuid = _notebook_clients[client]
+                if uuid != active_handle and uuid not in _deactivated_clients:
+                    _deactivated_clients.add(uuid)
+                    client.write_message({"type": "deactivate"})
+                    continue
             if client == ignore:
                 continue
             client.write_message(response)
@@ -736,7 +815,14 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         if only:
             only.write_message(message)
         else:
+            global _notebook_clients
+            active_handle = StateHandler.state["active_handle"]
             for client in StateHandler.app_clients:
+                if (
+                    active_handle
+                    and _notebook_clients.get(client, None) != active_handle
+                ):
+                    continue
                 client.write_message(message)
 
     @classmethod
@@ -979,7 +1065,6 @@ class FileHandler(tornado.web.StaticFileHandler):
         self.set_header("Access-Control-Allow-Origin", "*")
         self.set_header("Access-Control-Allow-Headers", "x-requested-with")
         self.set_header("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
-        self.set_header("x-colab-notebook-cache-control", "no-cache")
         self.set_header("content-length", self.get_content_size())
 
 
@@ -996,11 +1081,13 @@ class Application(tornado.web.Application):
             (r"/polling", PollingHandler),
             (r"/feedback", FeedbackHandler),
             (r"/filepath/(.*)", FileHandler, {"path": static_path},),
+            (r"/notebook", NotebookHandler),
             (r"/stages", StagesHandler),
             (r"/state", StateHandler),
+            (r"/reactivate", ReactivateHandler),
             (
                 r"/(.*)",
-                tornado.web.StaticFileHandler,
+                FileHandler,
                 {"path": web_path, "default_filename": "index.html"},
             ),
         ]
@@ -1008,11 +1095,6 @@ class Application(tornado.web.Application):
 
 
 if __name__ == "__main__":
-    log_path = os.path.join(
-        foc.FIFTYONE_CONFIG_DIR, "var", "log", "server.log"
-    )
-    etau.ensure_basedir(log_path)
-    # pylint: disable=no-member
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=fo.config.default_app_port)
     args = parser.parse_args()

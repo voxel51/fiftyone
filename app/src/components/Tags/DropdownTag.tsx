@@ -11,7 +11,6 @@ const Container = styled.div`
   cursor: ${({ disabled }) => (disabled ? "not-allowed" : undefined)};
 
   .dropdown-button {
-    font-family: unset;
     padding-left: 0;
     padding-right: 0;
 
