@@ -21,7 +21,7 @@ def reencode_videos(
     force_reencode=True,
     delete_originals=False,
     verbose=False,
-    **kwargs,
+    **kwargs
 ):
     """Re-encodes the videos in the sample collection as H.264 MP4s that can be
     visualized in the FiftyOne App.
@@ -64,7 +64,7 @@ def reencode_videos(
         force_reencode=force_reencode,
         delete_originals=delete_originals,
         verbose=verbose,
-        **kwargs,
+        **kwargs
     )
 
 
@@ -80,7 +80,7 @@ def transform_videos(
     force_reencode=False,
     delete_originals=False,
     verbose=False,
-    **kwargs,
+    **kwargs
 ):
     """Transforms the videos in the sample collection according to the provided
     parameters using ``ffmpeg``.
@@ -142,7 +142,7 @@ def transform_videos(
         force_reencode=force_reencode,
         delete_originals=delete_originals,
         verbose=verbose,
-        **kwargs,
+        **kwargs
     )
 
 
@@ -173,7 +173,7 @@ def reencode_video(input_path, output_path, verbose=False, **kwargs):
         reencode=True,
         force_reencode=True,
         verbose=verbose,
-        **kwargs,
+        **kwargs
     )
 
 
@@ -188,7 +188,7 @@ def transform_video(
     max_size=None,
     reencode=False,
     verbose=False,
-    **kwargs,
+    **kwargs
 ):
     """Transforms the video according to the provided parameters using
     ``ffmpeg``.
@@ -235,7 +235,7 @@ def transform_video(
         max_size=max_size,
         reencode=reencode,
         verbose=verbose,
-        **kwargs,
+        **kwargs
     )
 
 
@@ -251,7 +251,7 @@ def _transform_videos(
     force_reencode=False,
     delete_originals=False,
     verbose=False,
-    **kwargs,
+    **kwargs
 ):
     with fou.ProgressBar() as pb:
         for sample in pb(sample_collection.select_fields()):
@@ -275,7 +275,7 @@ def _transform_videos(
                 force_reencode=force_reencode,
                 delete_original=delete_originals,
                 verbose=verbose,
-                **kwargs,
+                **kwargs
             )
 
             sample.filepath = outpath
@@ -295,7 +295,7 @@ def _transform_video(
     force_reencode=False,
     delete_original=False,
     verbose=False,
-    **kwargs,
+    **kwargs
 ):
     inpath = os.path.abspath(os.path.expanduser(inpath))
     outpath = os.path.abspath(os.path.expanduser(outpath))
