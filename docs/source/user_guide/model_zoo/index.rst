@@ -24,14 +24,19 @@ simple commands.
     may be erroneous. In such cases, you can
     :ref:`suppress error messages <model-zoo-load>`.
 
-Quick links
------------
+Available models
+----------------
 
-Click the link below to see all of the models in the zoo!
+The Model Zoo contains over 70 pre-trained models that you can apply to your
+datasets with a few simple commands. Click the link below to see all of the
+models in the zoo!
 
 .. custombutton::
-    :button_text: Explore the model zoo
+    :button_text: Explore the models in the zoo
     :button_link: models.html
+
+API reference
+-------------
 
 Check out the :ref:`API reference <model-zoo-api>` for complete instructions
 for using the Model Zoo library.

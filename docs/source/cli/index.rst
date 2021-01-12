@@ -355,10 +355,12 @@ Tools for creating FiftyOne datasets.
       -j JSON_PATH, --json-path JSON_PATH
                             the path to a samples JSON file to load
       -t TYPE, --type TYPE  the fiftyone.types.Dataset type of the dataset
-      --shuffle             whether to randomly shuffle the order in which the samples are imported
+      --shuffle             whether to randomly shuffle the order in which the
+                            samples are imported
       --seed SEED           a random seed to use when shuffling
       --max-samples MAX_SAMPLES
-                            a maximum number of samples to import. By default, all samples are imported
+                            a maximum number of samples to import. By default,
+                            all samples are imported
 
 **Examples**
 
@@ -814,7 +816,8 @@ Tools for working with the FiftyOne App.
     available commands:
       {launch,view,connect}
         launch              Launch the FiftyOne App.
-        view                View datasets in the App without persisting them to the database
+        view                View datasets in the App without persisting them to
+                            the database
         connect             Connect to a remote FiftyOne App.
 
 .. _cli-fiftyone-app-launch:
@@ -899,10 +902,12 @@ View datasets in the FiftyOne App without persisting them to the database.
                             a glob pattern of images
       -j JSON_PATH, --json-path JSON_PATH
                             the path to a samples JSON file to view
-      --shuffle             whether to randomly shuffle the order in which the samples are imported
+      --shuffle             whether to randomly shuffle the order in which the
+                            samples are imported
       --seed SEED           a random seed to use when shuffling
       --max-samples MAX_SAMPLES
-                            a maximum number of samples to import. By default, all samples are imported
+                            a maximum number of samples to import. By default,
+                            all samples are imported
       -p PORT, --port PORT  the port number to use
       -r, --remote          whether to launch a remote App session
       -a, --desktop         whether to launch a desktop App instance
@@ -1088,7 +1093,8 @@ List datasets in the FiftyOne Dataset Zoo.
                             only show datasets available from the specified source
       -t TAGS, --tags TAGS  only show datasets with the specified tag or list,of,tags
       -b BASE_DIR, --base-dir BASE_DIR
-                            a custom base directory in which to search for downloaded datasets
+                            a custom base directory in which to search for
+                            downloaded datasets
 
 **Examples**
 
@@ -1172,7 +1178,8 @@ Print information about datasets in the FiftyOne Dataset Zoo.
     optional arguments:
       -h, --help            show this help message and exit
       -b BASE_DIR, --base-dir BASE_DIR
-                            a custom base directory in which to search for downloaded datasets
+                            a custom base directory in which to search for
+                            downloaded datasets
 
 **Examples**
 
@@ -1266,10 +1273,12 @@ Load zoo datasets as persistent FiftyOne datasets.
                             a custom name to give the FiftyOne dataset
       -d DATASET_DIR, --dataset-dir DATASET_DIR
                             a custom directory in which the dataset is downloaded
-      --shuffle             whether to randomly shuffle the order in which the samples are imported
+      --shuffle             whether to randomly shuffle the order in which the
+                            samples are imported
       --seed SEED           a random seed to use when shuffling
       --max-samples MAX_SAMPLES
-                            a maximum number of samples to import. By default, all samples are imported
+                            a maximum number of samples to import. By default,
+                            all samples are imported
       -k KEY=VAL [KEY=VAL ...], --kwargs KEY=VAL [KEY=VAL ...]
                             optional dataset-specific keyword argument(s)
 
@@ -1498,7 +1507,8 @@ Handles package requirements for zoo models.
       -p, --print          print the requirements for the zoo model
       -i, --install        install any requirements for the zoo model
       -e, --ensure         ensure the requirements for the zoo model are satisfied
-      --error-level LEVEL  the error level in {0, 1, 2} to use when installing or ensuring model requirements
+      --error-level LEVEL  the error level in {0, 1, 2} to use when installing
+                           or ensuring model requirements
 
 **Examples**
 
@@ -1537,7 +1547,8 @@ Download zoo models.
 
     optional arguments:
       -h, --help            show this help message and exit
-      -f, --force           whether to force download the model if it is already downloaded
+      -f, --force           whether to force download the model if it is already
+                            downloaded
 
 **Examples**
 
@@ -1566,16 +1577,19 @@ Apply zoo models to datasets.
     positional arguments:
       MODEL_NAME            the name of the zoo model
       DATASET_NAME          the name of the FiftyOne dataset to process
-      LABEL_FIELD           the name (or prefix) of the field in which to store the predictions
+      LABEL_FIELD           the name (or prefix) of the field in which to store
+                            the predictions
 
     optional arguments:
       -h, --help            show this help message and exit
       -b BATCH_SIZE, --batch-size BATCH_SIZE
                             an optional batch size to use during inference
       -t THRESH, --confidence-thresh THRESH
-                            an optional confidence threshold to apply to any applicable labels generated by the model
+                            an optional confidence threshold to apply to any
+                            applicable labels generated by the model
       -i, --install         install any requirements for the zoo model
-      --error-level LEVEL   the error level in {0, 1, 2} to use when installing or ensuring model requirements
+      --error-level LEVEL   the error level in {0, 1, 2} to use when installing
+                            or ensuring model requirements
 
 **Examples**
 
@@ -1611,7 +1625,8 @@ Generate embeddings for datasets with zoo models.
       -b BATCH_SIZE, --batch-size BATCH_SIZE
                             an optional batch size to use during inference
       -i, --install         install any requirements for the zoo model
-      --error-level LEVEL   the error level in {0, 1, 2} to use when installing or ensuring model requirements
+      --error-level LEVEL   the error level in {0, 1, 2} to use when installing
+                            or ensuring model requirements
 
 **Examples**
 

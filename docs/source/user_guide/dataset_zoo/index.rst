@@ -23,14 +23,19 @@ that you can download and load into FiftyOne via a few simple commands.
     See :ref:`customizing your ML backend <dataset-zoo-ml-backend>` for more
     information about configuring the backend behavior of the Dataset Zoo.
 
-Quick links
------------
+Available models
+----------------
 
-Click the link below to see all of the datasets in the zoo!
+The Dataset Zoo contains dozens of datasets that you can load into FiftyOne
+with a few simple commands. Click the link below to see all of the datasets in
+the zoo!
 
 .. custombutton::
-    :button_text: Explore the dataset zoo
+    :button_text: Explore the datasets in the zoo
     :button_link: datasets.html
+
+API reference
+-------------
 
 Check out the :ref:`API reference <dataset-zoo-api>` for complete instructions
 for using the Dataset Zoo library.
