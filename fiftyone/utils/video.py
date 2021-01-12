@@ -336,7 +336,7 @@ def _transform_video(
         or force_reencode
     )
 
-    if (inpath == outpath) and should_reencode and not delete_original:
+    if (inpath == outpath) and should_reencode:
         _inpath = inpath
         inpath = etau.make_unique_path(inpath, suffix="-original")
         etau.move_file(_inpath, inpath)
