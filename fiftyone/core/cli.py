@@ -72,12 +72,12 @@ class FiftyOneCommand(Command):
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "quickstart", QuickstartCommand)
         _register_command(subparsers, "app", AppCommand)
         _register_command(subparsers, "config", ConfigCommand)
         _register_command(subparsers, "constants", ConstantsCommand)
         _register_command(subparsers, "convert", ConvertCommand)
         _register_command(subparsers, "datasets", DatasetsCommand)
-        _register_command(subparsers, "quickstart", QuickstartCommand)
         _register_command(subparsers, "utils", UtilsCommand)
         _register_command(subparsers, "zoo", ZooCommand)
 
@@ -2190,14 +2190,14 @@ class UtilsCommand(Command):
 
 
 class ComputeMetadataCommand(Command):
-    """Populates the ``metadata`` field of all samples in the dataset.
+    """Populates the `metadata` field of all samples in the dataset.
 
     Examples::
 
-        # Populate all missing ``metadata`` sample fields
+        # Populate all missing `metadata` sample fields
         fiftyone utils compute-metadata <dataset-name>
 
-        # (Re)-populate the ``metadata`` field for all samples
+        # (Re)-populate the `metadata` field for all samples
         fiftyone utils compute-metadata <dataset-name> --overwrite
     """
 
@@ -2291,7 +2291,7 @@ class TransformImagesCommand(Command):
             type=int,
             help=(
                 "the number of worker processes to use. The default is "
-                "``multiprocessing.cpu_count()``"
+                "`multiprocessing.cpu_count()`"
             ),
         )
 
@@ -2407,7 +2407,7 @@ class TransformVideosCommand(Command):
             "-v",
             "--verbose",
             action="store_true",
-            help="whether to log the ``ffmpeg`` commands that are executed",
+            help="whether to log the `ffmpeg` commands that are executed",
         )
 
     @staticmethod
