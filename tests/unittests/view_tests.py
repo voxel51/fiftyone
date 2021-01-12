@@ -901,18 +901,6 @@ class ViewStageTests(unittest.TestCase):
                     else:
                         self.assertEqual(lv.label, l.label)
 
-        dataset = fo.Dataset()
-        video = fo.Sample("video.mp4")
-        video.frames[1]["test_det"] = fo.Detection(label="friend")
-        dataset.add_sample(video)
-        view = dataset.map_labels("frames.test_det", mapping)
-        vvideo = view.first()
-        # broken
-        self.assertEqual(
-            mapping[video.frames[1]["test_det"].label],
-            vvideo.frames[1]["test_det"].label,
-        )
-
     def test_match(self):
         self.sample1["value"] = "value"
         self.sample1.save()

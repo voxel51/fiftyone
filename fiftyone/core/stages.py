@@ -1247,8 +1247,8 @@ class LimitLabels(ViewStage):
 
     -   :class:`fiftyone.core.labels.Classifications`
     -   :class:`fiftyone.core.labels.Detections`
-    -   :class:`fiftyone.core.labels.Polylines`
     -   :class:`fiftyone.core.labels.Keypoints`
+    -   :class:`fiftyone.core.labels.Polylines`
 
     Examples::
 
@@ -1323,6 +1323,39 @@ class LimitLabels(ViewStage):
 
 
 class MapLabels(ViewStage):
+    """Map the ``label`` values of :class:`fiftyone.core.labels.Label` instances
+    of a field.
+
+    The specified ``field`` must be one of the following types:
+
+    -   :class:`fiftyone.core.labels.Classification`
+    -   :class:`fiftyone.core.labels.Classifications`
+    -   :class:`fiftyone.core.labels.Detection`
+    -   :class:`fiftyone.core.labels.Detections`
+    -   :class:`fiftyone.core.labels.Keypoint`
+    -   :class:`fiftyone.core.labels.Keypoints`
+    -   :class:`fiftyone.core.labels.Polyline`
+    -   :class:`fiftyone.core.labels.Polylines`
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone.core.stages import MapLabels
+
+        dataset = fo.load_dataset(...)
+
+        #
+        # Map "cat" and "dog" label values to "pet"
+        #
+
+        stage = MapLabels("ground_truth", {"cat": "pet", "dog":, "pet"})
+        view = dataset.add_stage(stage)
+
+    Args:
+        field: the labels field to map
+        map: a ``dict`` mapping label values to new label values
+    """
+
     def __init__(self, field, map):
         self._map = map
         self._field = field
@@ -1335,7 +1368,7 @@ class MapLabels(ViewStage):
 
     @property
     def map(self):
-        """The labels map"""
+        """The labels map dict."""
         return self._map
 
     def to_mongo(self, sample_collection):
@@ -1343,19 +1376,16 @@ class MapLabels(ViewStage):
             self._field, sample_collection
         )
         if is_frame_field:
-            self._labels_field = self._labels_field[len("frames.") :]
+            raise ValueError("Mapping frame labels is not yet supported")
 
         values = sorted(self._map.values())
         keys = sorted(self._map.keys(), key=lambda k: self._map[k])
 
-        if is_frame_field:
-            label = "$$frame.%s.label" % self._labels_field
-        else:
-            label = (
-                "$$obj.label"
-                if is_list_field
-                else "$%s.label" % self._labels_field
-            )
+        label = (
+            "$$obj.label"
+            if is_list_field
+            else "$%s.label" % self._labels_field
+        )
 
         cond = {
             "$cond": [
@@ -1378,39 +1408,12 @@ class MapLabels(ViewStage):
                     "in": {"$mergeObjects": ["$$obj", {"label": cond}]},
                 }
             }
-        else:
-            _in = cond
-
-        if is_frame_field:
-            _in = {
-                "$map": {
-                    "input": "$_frames",
-                    "as": "frame",
-                    "in": {
-                        "$mergeObjects": [
-                            "$$frame",
-                            {
-                                self._labels_field: {
-                                    "$mergeObjects": [
-                                        "$$frame.%s" % self._labels_field,
-                                        {"label": _in},
-                                    ]
-                                }
-                            },
-                        ]
-                    },
-                }
-            }
-
-        let = {"$let": {"vars": {"keys": keys, "values": values}, "in": _in}}
-
-        if is_frame_field:
-            return [{"$set": {"_frames": let}}]
-
-        if is_list_field:
             set_field = self._labels_field
         else:
+            _in = cond
             set_field = "%s.label" % self._labels_field
+
+        let = {"$let": {"vars": {"keys": keys, "values": values}, "in": _in}}
 
         return [{"$set": {set_field: let}}]
 

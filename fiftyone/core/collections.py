@@ -1142,6 +1142,38 @@ class SampleCollection(object):
 
     @view_stage
     def map_labels(self, field, map):
+        """Map the ``label`` values of :class:`fiftyone.core.labels.Label` instances
+        of a field.
+
+        The specified ``field`` must be one of the following types:
+
+        -   :class:`fiftyone.core.labels.Classification`
+        -   :class:`fiftyone.core.labels.Classifications`
+        -   :class:`fiftyone.core.labels.Detection`
+        -   :class:`fiftyone.core.labels.Detections`
+        -   :class:`fiftyone.core.labels.Keypoint`
+        -   :class:`fiftyone.core.labels.Keypoints`
+        -   :class:`fiftyone.core.labels.Polyline`
+        -   :class:`fiftyone.core.labels.Polylines`
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone.core.stages import MapLabels
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Map "cat" and "dog" label values to "pet"
+            #
+
+            mapping = {"cat": "pet", "dog": "pet"}
+            view = dataset.map_labels("ground_truth", mapping)
+
+        Args:
+            field: the labels field to map
+            map: a ``dict`` mapping label values to new label values
+        """
         return self._add_view_stage(fos.MapLabels(field, map))
 
     @view_stage
