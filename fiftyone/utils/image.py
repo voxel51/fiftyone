@@ -11,6 +11,7 @@ import os
 import eta.core.image as etai
 import eta.core.utils as etau
 
+import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
 
@@ -29,15 +30,20 @@ def reencode_images(
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
-        ext (".png"): the image format to use (e.g., ".png", ".jpg", ".tif",
-            ".bmp")
+        ext (".png"): the image format to use (e.g., ".png" or ".jpg")
         force_reencode (True): whether to re-encode images whose extension
             already matches ``ext``
         delete_originals (False): whether to delete the original images after
             re-encoding
-        num_workers (None): the number of processes to use. By default,
+        num_workers (None): the number of worker processes to use. By default,
             ``multiprocessing.cpu_count()`` is used
     """
+    if sample_collection.media_type != fom.IMAGE:
+        raise ValueError(
+            "Sample collection '%s' does not contain images (media_type = "
+            "'%s')" % (sample_collection.name, sample_collection.media_type)
+        )
+
     if num_workers is None:
         num_workers = multiprocessing.cpu_count()
 
@@ -88,14 +94,22 @@ def transform_images(
             The images are resized (aspect-preserving) if necessary to meet
             this constraint
         ext (None): an optional image format to re-encode the source images
-            into (e.g., ".png", ".jpg", ".tif", ".bmp")
-        force_reencode (False): whether to re-encode images whose size and
-            format already match the specified values
+            into (e.g., ".png" or ".jpg")
+        force_reencode (False): whether to re-encode images whose parameters
+            already match the specified values
         delete_originals (False): whether to delete the original images if any
             transformation was applied
-        num_workers (None): the number of processes to use. By default,
+        num_workers (None): the number of worker processes to use. By default,
             ``multiprocessing.cpu_count()`` is used
     """
+    if sample_collection.media_type != fom.IMAGE:
+        raise ValueError(
+            "Sample collection '%s' does not contain images (media_type = "
+            "'%s')" % (sample_collection.name, sample_collection.media_type)
+        )
+
+    ext = _parse_ext(ext)
+
     if num_workers is None:
         num_workers = multiprocessing.cpu_count()
 
@@ -156,6 +170,16 @@ def transform_image(
         min_size=min_size,
         max_size=max_size,
     )
+
+
+def _parse_ext(ext):
+    if ext is None:
+        return None
+
+    if not ext.startswith("."):
+        ext = "." + ext
+
+    return ext.lower()
 
 
 def _transform_images(

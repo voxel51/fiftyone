@@ -12,6 +12,7 @@ import eta.core.numutils as etan
 import eta.core.utils as etau
 import eta.core.video as etav
 
+import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
 
@@ -51,6 +52,12 @@ def reencode_videos(
             executed
         **kwargs: keyword arguments for ``eta.core.video.FFmpeg(**kwargs)``
     """
+    if sample_collection.media_type != fom.VIDEO:
+        raise ValueError(
+            "Sample collection '%s' does not contain videos (media_type = "
+            "'%s')" % (sample_collection.name, sample_collection.media_type)
+        )
+
     _transform_videos(
         sample_collection,
         reencode=True,
@@ -110,13 +117,19 @@ def transform_videos(
             this constraint
         reencode (False): whether to re-encode the videos as H.264 MP4s
         force_reencode (False): whether to re-encode videos whose parameters
-            already satisfy the specified requirements
+            already satisfy the specified values
         delete_originals (False): whether to delete the original videos after
             re-encoding
         verbose (False): whether to log the ``ffmpeg`` commands that are
             executed
         **kwargs: keyword arguments for ``eta.core.video.FFmpeg(**kwargs)``
     """
+    if sample_collection.media_type != fom.VIDEO:
+        raise ValueError(
+            "Sample collection '%s' does not contain videos (media_type = "
+            "'%s')" % (sample_collection.name, sample_collection.media_type)
+        )
+
     _transform_videos(
         sample_collection,
         fps=fps,
