@@ -2177,8 +2177,12 @@ class UtilsCommand(Command):
         _register_command(
             subparsers, "compute-metadata", ComputeMetadataCommand
         )
-        _register_command(subparsers, "reencode-images", ReencodeImagesCommand)
-        _register_command(subparsers, "reencode-videos", ReencodeVideosCommand)
+        _register_command(
+            subparsers, "transform-images", TransformImagesCommand
+        )
+        _register_command(
+            subparsers, "transform-videos", TransformVideosCommand
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -2215,14 +2219,16 @@ class ComputeMetadataCommand(Command):
         dataset.compute_metadata(overwrite=args.overwrite)
 
 
-class ReencodeImagesCommand(Command):
-    """Re-encodes the images in a dataset according to the specified
-    parameters.
+class TransformImagesCommand(Command):
+    """Transforms the images in a dataset per the specified parameters.
 
     Examples::
 
-        # Re-encode the images in the dataset
-        fiftyone utils reencode-images <dataset-name>
+        # Convert the images in the dataset to PNGs
+        fiftyone utils transform-images <dataset-name> --ext .png --delete-originals
+
+        # Ensure that no images in the dataset exceed 1920 x 1080
+        fiftyone utils transform-images <dataset-name> --max-size 1920,1080
     """
 
     @staticmethod
@@ -2230,21 +2236,91 @@ class ReencodeImagesCommand(Command):
         parser.add_argument(
             "name", metavar="DATASET_NAME", help="the name of the dataset"
         )
+        parser.add_argument(
+            "--size",
+            metavar="SIZE",
+            action=_StoreSizeTupleDictAction,
+            help=(
+                "a `width,height` for each image. A dimension can be -1 if "
+                "no constraint should be applied"
+            ),
+        )
+        parser.add_argument(
+            "--min-size",
+            metavar="MIN_SIZE",
+            action=_StoreSizeTupleDictAction,
+            help=(
+                "a minimum `width,height` for each image. A dimension can be "
+                "-1 if no constraint should be applied"
+            ),
+        )
+        parser.add_argument(
+            "--max-size",
+            metavar="MAX_SIZE",
+            action=_StoreSizeTupleDictAction,
+            help=(
+                "a maximum `width,height` for each image. A dimension can be "
+                "-1 if no constraint should be applied"
+            ),
+        )
+        parser.add_argument(
+            "-e",
+            "--ext",
+            metavar="EXT",
+            help="an image format to convert to (e.g., '.png' or '.jpg')",
+        )
+        parser.add_argument(
+            "-f",
+            "--force-reencode",
+            action="store_true",
+            help=(
+                "whether to re-encode images whose parameters already meet "
+                "the specified values"
+            ),
+        )
+        parser.add_argument(
+            "-d",
+            "--delete-originals",
+            action="store_true",
+            help="whether to delete the original images after transforming",
+        )
+        parser.add_argument(
+            "-n",
+            "--num-workers",
+            default=None,
+            type=int,
+            help=(
+                "the number of worker processes to use. The default is "
+                "``multiprocessing.cpu_count()``"
+            ),
+        )
 
     @staticmethod
     def execute(parser, args):
         dataset = fod.load_dataset(args.name)
-        foui.reencode_images(dataset)
+        foui.transform_images(
+            dataset,
+            size=args.size,
+            min_size=args.min_size,
+            max_size=args.max_size,
+            ext=args.ext,
+            force_reencode=args.force_reencode,
+            delete_originals=args.delete_originals,
+            num_workers=args.num_workers,
+        )
 
 
-class ReencodeVideosCommand(Command):
-    """Re-encodes the videos in a dataset as MP4s that can be visualized in the
-    FiftyOne App.
+class TransformVideosCommand(Command):
+    """Transforms the videos in a dataset per the specified parameters.
 
     Examples::
 
-        # Re-encode the videos in the dataset
-        fiftyone utils reencode-videos <dataset-name>
+        # Re-encode the videos in the dataset as H.264 MP4s
+        fiftyone utils transform-videos <dataset-name> --reencode
+
+        # Ensure that no videos in the dataset exceed 1920 x 1080 and 30fps
+        fiftyone utils transform-videos <dataset-name> \\
+            --max-size 1920,1080 --max-fps 30.0
     """
 
     @staticmethod
@@ -2252,11 +2328,104 @@ class ReencodeVideosCommand(Command):
         parser.add_argument(
             "name", metavar="DATASET_NAME", help="the name of the dataset"
         )
+        parser.add_argument(
+            "--fps",
+            metavar="FPS",
+            default=None,
+            type=float,
+            help="a frame rate at which to resample the videos",
+        )
+        parser.add_argument(
+            "--min-fps",
+            metavar="MIN_FPS",
+            default=None,
+            type=float,
+            help=(
+                "a minimum frame rate. Videos with frame rate below this "
+                "value are upsampled"
+            ),
+        )
+        parser.add_argument(
+            "--max-fps",
+            metavar="MAX_FPS",
+            default=None,
+            type=float,
+            help=(
+                "a maximum frame rate. Videos with frame rate exceeding this "
+                "value are downsampled"
+            ),
+        )
+        parser.add_argument(
+            "--size",
+            metavar="SIZE",
+            action=_StoreSizeTupleDictAction,
+            help=(
+                "a `width,height` for each frame. A dimension can be -1 if "
+                "no constraint should be applied"
+            ),
+        )
+        parser.add_argument(
+            "--min-size",
+            metavar="MIN_SIZE",
+            action=_StoreSizeTupleDictAction,
+            help=(
+                "a minimum `width,height` for each frame. A dimension can be "
+                "-1 if no constraint should be applied"
+            ),
+        )
+        parser.add_argument(
+            "--max-size",
+            metavar="MAX_SIZE",
+            action=_StoreSizeTupleDictAction,
+            help=(
+                "a maximum `width,height` for each frame. A dimension can be "
+                "-1 if no constraint should be applied"
+            ),
+        )
+        parser.add_argument(
+            "-r",
+            "--reencode",
+            action="store_true",
+            help="whether to re-encode the videos as H.264 MP4s",
+        )
+        parser.add_argument(
+            "-f",
+            "--force-reencode",
+            action="store_true",
+            help=(
+                "whether to re-encode videos whose parameters already meet "
+                "the specified values"
+            ),
+        )
+        parser.add_argument(
+            "-d",
+            "--delete-originals",
+            action="store_true",
+            help="whether to delete the original videos after transforming",
+        )
+        parser.add_argument(
+            "-v",
+            "--verbose",
+            action="store_true",
+            help="whether to log the ``ffmpeg`` commands that are executed",
+        )
 
     @staticmethod
     def execute(parser, args):
         dataset = fod.load_dataset(args.name)
-        fouv.reencode_videos(dataset)
+        fouv.transform_videos(
+            dataset,
+            fps=args.fps,
+            min_fps=args.min_fps,
+            max_fps=args.max_fps,
+            size=args.size,
+            min_size=args.min_size,
+            max_size=args.max_size,
+            reencode=args.reencode,
+            force_reencode=args.force_reencode,
+            delete_originals=args.delete_originals,
+            verbose=args.verbose,
+        )
 
 
 def _parse_dataset_import_kwargs(args):
@@ -2338,6 +2507,24 @@ class _StoreDictAction(argparse.Action):
             kwargs[key.replace("-", "_")] = _parse_value(val)
 
         setattr(namespace, self.dest, kwargs)
+
+
+class _StoreSizeTupleDictAction(argparse.Action):
+    def __call__(self, parser, namespace, value, option_string=None):
+        if value is not None:
+            try:
+                l, r = value.split(",")
+                size = (int(l), int(r))
+            except:
+                raise ValueError(
+                    "Invalid argument %s for parameter '%s'; expected "
+                    "`width,height`" % (value, self.dest)
+                )
+
+        else:
+            size = None
+
+        setattr(namespace, self.dest, size)
 
 
 def _register_main_command(command, version=None, recursive_help=True):
