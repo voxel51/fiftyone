@@ -824,29 +824,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._frame_doc_cls._delete_field(field_name, is_frame_field=True)
             fofr.Frame._purge_field(self._frame_collection_name, field_name)
 
-    def get_tags(self):
-        """Returns the list of unique tags of samples in the dataset.
-
-        Returns:
-            a list of tags
-        """
-        return self.aggregate(foa.Distinct("tags")).values
-
-    def distinct(self, field):
-        """Finds all distinct values of a sample field across the dataset.
-
-        If the field is a list, the distinct values will be distinct elements
-        across all sample field lists.
-
-        Args:
-            field: a sample field like ``"tags"`` or a subfield like
-                ``"ground_truth.label"``
-
-        Returns:
-            the set of distinct values
-        """
-        return set(self._sample_collection.distinct(field))
-
     def iter_samples(self):
         """Returns an iterator over the samples in the dataset.
 

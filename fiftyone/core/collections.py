@@ -378,14 +378,6 @@ class SampleCollection(object):
                     % (field_name, ftype, field)
                 )
 
-    def get_tags(self):
-        """Returns the list of unique tags of samples in the collection.
-
-        Returns:
-            a list of tags
-        """
-        raise NotImplementedError("Subclass must implement get_tags()")
-
     def compute_metadata(self, overwrite=False, num_workers=None):
         """Populates the ``metadata`` field of all samples in the collection.
 
