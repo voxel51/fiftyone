@@ -719,6 +719,16 @@ class ViewStageTests(unittest.TestCase):
         )
         self.sample2.save()
 
+    def _setUp_detection(self):
+        self.sample1["test_det"] = fo.Detection(
+            label="friend", confidence=0.9, bounding_box=[0, 0, 0.5, 0.5],
+        )
+        self.sample1.save()
+        self.sample2["test_det"] = fo.Detection(
+            label="hex", confidence=0.8, bounding_box=[0.35, 0, 0.2, 0.25],
+        )
+        self.sample2.save()
+
     def _setUp_detections(self):
         self.sample1["test_dets"] = fo.Detections(
             detections=[
@@ -862,6 +872,36 @@ class ViewStageTests(unittest.TestCase):
 
         result = list(self.dataset.limit_labels("test_clfs", 1))
         self.assertIs(len(result[0]["test_clfs"].classifications), 1)
+
+    def test_map_labels(self):
+        self._setUp_classification()
+        self._setUp_detection()
+        mapping = {"friend": "enemy", "hex": "curse", "enemy": "friend"}
+        view = self.dataset.map_labels("test_clf", mapping).map_labels(
+            "test_det", mapping
+        )
+        it = zip(view, self.dataset)
+        for sv, s in it:
+            self.assertEqual(sv.test_clf.label, mapping[s.test_clf.label])
+            self.assertEqual(sv.test_det.label, mapping[s.test_det.label])
+
+        self._setUp_classifications()
+        self._setUp_detections()
+        view = self.dataset.map_labels("test_clfs", mapping).map_labels(
+            "test_dets", mapping
+        )
+        it = zip(view, self.dataset)
+        for sv, s in it:
+            clfs = zip(
+                sv.test_clfs.classifications, s.test_clfs.classifications
+            )
+            dets = zip(sv.test_dets.detections, s.test_dets.detections)
+            for f in (clfs, dets):
+                for lv, l in f:
+                    if l.label in mapping:
+                        self.assertEqual(lv.label, mapping[l.label])
+                    else:
+                        self.assertEqual(lv.label, l.label)
 
     def test_match(self):
         self.sample1["value"] = "value"
