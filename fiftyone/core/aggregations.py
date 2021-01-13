@@ -411,8 +411,8 @@ class CountResult(AggregationResult):
 
 
 class CountLabels(Aggregation):
-    """Computes a histogram of ``label`` values in a
-    :class:`fiftyone.core.labels.Label` field of a collection.
+    """Counts the ``label`` values in a :class:`fiftyone.core.labels.Label`
+    field of a collection.
 
     Examples::
 
