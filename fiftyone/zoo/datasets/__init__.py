@@ -206,6 +206,9 @@ def load_zoo_dataset(
         if splits is not None:
             dataset_name += "-" + "-".join(splits)
 
+        if "max_samples" in kwargs:
+            dataset_name += "-%s" % kwargs["max_samples"]
+
     if fo.dataset_exists(dataset_name):
         if not drop_existing_dataset:
             logger.info(
