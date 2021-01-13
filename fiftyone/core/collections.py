@@ -638,6 +638,9 @@ class SampleCollection(object):
 
         Args:
             objects: a list of dicts specifying the objects to exclude
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.ExcludeObjects(objects))
 
@@ -1137,6 +1140,9 @@ class SampleCollection(object):
             field: the labels list field to filter
             limit: the maximum number of labels to include in each labels list.
                 If a non-positive number is provided, all lists will be empty
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.LimitLabels(field, limit))
 
@@ -1173,6 +1179,9 @@ class SampleCollection(object):
         Args:
             field: the labels field to map
             map: a ``dict`` mapping label values to new label values
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.MapLabels(field, map))
 
@@ -1448,6 +1457,9 @@ class SampleCollection(object):
 
         Args:
             objects: a list of dicts specifying the objects to select
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.SelectObjects(objects))
 
