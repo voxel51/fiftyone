@@ -106,6 +106,7 @@ class NotebookHandler(RequestHandler):
     """Check that the requested handle exists on the server"""
 
     async def get(self):
+        # pylint: disable=no-value-for-parameter
         handle_id = self.get_argument("handleId")
 
         response = self.get_response(handle_id)
@@ -130,6 +131,7 @@ class ReactivateHandler(RequestHandler):
     """Reactivates an IPython display handle"""
 
     async def get(self):
+        # pylint: disable=no-value-for-parameter
         handle_id = self.get_argument("handleId")
         self.write(self.get_response(handle_id))
 
@@ -444,11 +446,16 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         await event(self, **message)
 
     @staticmethod
-    async def on_capture(self, src):
+    async def on_capture(self, src, width):
         global _notebook_clients
         for client in StateHandler.clients:
             client.write_message(
-                {"type": "capture", _notebook_clients[self]: src}
+                {
+                    "type": "capture",
+                    "handle": _notebook_clients[self],
+                    "src": src,
+                    "width": width,
+                }
             )
 
     @staticmethod
