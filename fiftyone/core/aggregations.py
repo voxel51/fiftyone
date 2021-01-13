@@ -14,14 +14,16 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
-_LABELS = (fol.Classifications, fol.Detections, fol.Keypoints, fol.Polylines)
-_NUMBER_FIELDS = (fof.IntField, fof.FloatField)
-_VALUE_FIELDS = (fof.BooleanField, fof.StringField)
+
+_LABEL_LIST_FIELDS = (
+    fol.Classifications,
+    fol.Detections,
+    fol.Keypoints,
+    fol.Polylines,
+)
+_NUMERIC_FIELDS = (fof.IntField, fof.FloatField)
+_COUNTABLE_FIELDS = (fof.BooleanField, fof.IntField, fof.StringField)
 _FRAMES_PREFIX = "frames."
-
-
-def _unwind_frames(dataset):
-    return [{"$unwind": "$frames"}, {"$replaceRoot": {"newRoot": "$frames"}}]
 
 
 class Aggregation(object):
@@ -69,7 +71,7 @@ class Aggregation(object):
         ):
             schema = frame_schema
             field_name = self._field_name[len("frames.") :]
-            pipeline = _unwind_frames(dataset)
+            pipeline = _unwind_frames()
         else:
             field_name = self._field_name
             pipeline = []
@@ -82,7 +84,7 @@ class Aggregation(object):
                 self._field_name == "frames"
                 and dataset.media_type == fom.VIDEO
             ):
-                return "frames", "$frames", _unwind_frames(dataset)
+                return "frames", "$frames", _unwind_frames()
 
             raise AggregationError(
                 "field `%s` does not exist on this Dataset" % self._field_name
@@ -113,7 +115,6 @@ class AggregationResult(etas.Serializable):
                 d[f] = value
 
         class_name = self.__class__.__name__
-        out = fou.pformat(d)
         return "<%s: %s>" % (class_name, fou.pformat(d))
 
 
@@ -126,38 +127,53 @@ class AggregationError(RuntimeError):
 
 
 class Bounds(Aggregation):
-    """Computes the inclusive bounds of a numeric field or a list field of
-    a numeric field in a view.
-
-    Note that to compute bounds on a list field of numeric fields, the
-    numeric subfield must be explicitly defined.
+    """Computes the bounds of a numeric field or numeric list field.
 
     Examples::
 
         import fiftyone as fo
-        from fiftyone.core.aggregations import Bounds
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    numeric_field=1.0,
+                    numeric_list_field=[1.0, 2.0, 3.0],
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    numeric_field=4.0,
+                    numeric_list_field=[1.5, 2.5],
+                ),
+            ]
+        )
+
+        # Add a generic list field
+        dataset.add_sample_field("list_field", fo.ListField)
 
         #
         # Compute the bounds of a numeric field
         #
 
-        bounds = Bounds("uniqueness")
-        bounds_result = dataset.aggregate(bounds)
-        bounds_result.bounds # (min, max) inclusive bounds tuple
+        bounds = fo.Bounds("numeric_field")
+        r = dataset.aggregate(bounds)
+        r.bounds  # (min, max)
 
         #
-        # Compute the a bounds of a list field of a numeric field
-        #
-        # assume the list field was instantiated on the dataset with a call to
-        # dataset.add_sample_field()
+        # Compute the a bounds of a numeric list field
         #
 
-        dataset.add_sample_field(fo.ListField, subfield=fo.FloatField())
-        list_bounds = Bounds("uniqueness_trials")
-        list_bounds_result = dataset.aggregate(list_bounds)
-        list_bounds_result.bounds # (min, max) inclusive bounds tuple
+        bounds = fo.Bounds("numeric_list_field")
+        r = dataset.aggregate(bounds)
+        r.bounds  # (min, max)
+
+        #
+        # Cannot compute bounds of a generic list field
+        #
+
+        bounds = fo.Bounds("list_field")
+        dataset.aggregate(bounds)  # error
 
     Args:
         field_name: the name of the field to compute bounds for
@@ -166,7 +182,7 @@ class Bounds(Aggregation):
     def _get_default_result(self):
         return BoundsResult(self._field_name, (None, None))
 
-    def _get_output_field(self, view):
+    def _get_output_field(self, _):
         return "%s-bounds" % self._field_name_path
 
     def _get_result(self, d):
@@ -179,15 +195,20 @@ class Bounds(Aggregation):
             schema, frame_schema, dataset
         )
         if isinstance(field, fof.ListField) and isinstance(
-            field.field, _NUMBER_FIELDS
+            field.field, _NUMERIC_FIELDS
         ):
             unwind = True
-        elif isinstance(field, _NUMBER_FIELDS):
+        elif isinstance(field, _NUMERIC_FIELDS):
             unwind = False
+        elif isinstance(field, fof.ListField):
+            raise AggregationError(
+                "Unsupported field '%s' (%s). You can only compute bounds of "
+                "a ListField whose `field` type is explicitly declared as "
+                "numeric" % (self._field_name, field)
+            )
         else:
             raise AggregationError(
-                "unsupported field '%s' of type '%s'"
-                % (self._field_name, type(field))
+                "Unsupported field '%s' of type %s" % (self._field_name, field)
             )
 
         pipeline += [
@@ -210,12 +231,11 @@ class Bounds(Aggregation):
 
 
 class BoundsResult(AggregationResult):
-    """The result of the execution of a :class:`Bounds` instance by a dataset
-    or view.
+    """The result of the execution of a :class:`Bounds` instance.
 
     Attributes:
         name: the name of the field
-        bounds: the inclusive (min, max) bounds tuple
+        bounds: the ``(min, max)`` bounds
     """
 
     def __init__(self, name, bounds):
@@ -224,31 +244,30 @@ class BoundsResult(AggregationResult):
 
 
 class ConfidenceBounds(Aggregation):
-    """Computes the inclusive bounds of the confidences of a
-    :class:`fiftyone.core.labels.Label`
+    """Computes the bounds of the ``confidence`` of a
+    :class:`fiftyone.core.labels.Label` field.
 
     Examples::
 
         import fiftyone as fo
-        from fiftyone.core.aggregations import ConfidenceBounds
 
         dataset = fo.load_dataset(...)
 
         #
-        # Compute the confidence bounds of a fo.Classification label field
+        # Compute the confidence bounds of a `Classification` field
         #
 
-        bounds = ConfidenceBounds("predictions")
-        bounds_result = dataset.aggregate(bounds)
-        bounds_result.bounds # (min, max) inclusive confidence bounds tuple
+        bounds = fo.ConfidenceBounds("predictions")
+        r = dataset.aggregate(bounds)
+        r.bounds  # (min, max)
 
         #
-        # Compute the a confidence bounds a fo.Detections label field
+        # Compute the confidence bounds of a `Detections` field
         #
 
-        detections_bounds = ConfidenceBounds("detections")
-        detections_bounds_result = dataset.aggregate(detections_bounds)
-        detections_bounds_result.bounds # (min, max) inclusive bounds tuple
+        bounds = fo.ConfidenceBounds("detections")
+        r = dataset.aggregate(bounds)
+        r.bounds  # (min, max)
 
     Args:
         field_name: the name of the label field to compute confidence bounds
@@ -258,7 +277,7 @@ class ConfidenceBounds(Aggregation):
     def _get_default_result(self):
         return ConfidenceBoundsResult(self._field_name, (None, None))
 
-    def _get_output_field(self, view):
+    def _get_output_field(self, *args):
         return "%s-confidence-bounds" % self._field_name_path
 
     def _get_result(self, d):
@@ -275,7 +294,7 @@ class ConfidenceBounds(Aggregation):
         ):
             raise AggregationError("field '%s' is not a Label")
 
-        if field.document_type in _LABELS:
+        if field.document_type in _LABEL_LIST_FIELDS:
             path = "%s.%s" % (path, field.document_type.__name__.lower())
             pipeline.append(
                 {"$unwind": {"path": path, "preserveNullAndEmptyArrays": True}}
@@ -296,12 +315,11 @@ class ConfidenceBounds(Aggregation):
 
 
 class ConfidenceBoundsResult(AggregationResult):
-    """The result of the execution of a :class:`ConfidenceBounds` instance by a
-    dataset or view.
+    """The result of the execution of a :class:`ConfidenceBounds` instance.
 
     Attributes:
         name: the name of the field
-        bounds: the inclusive (min, max) confidence bounds tuple
+        bounds: the ``(min, max)`` bounds
     """
 
     def __init__(self, name, bounds):
@@ -310,13 +328,15 @@ class ConfidenceBoundsResult(AggregationResult):
 
 
 class Count(Aggregation):
-    """Counts the items with respect to a field, or the number of samples if
-    no field_name is provided.
+    """Counts the number of samples or number of items with respect to a field.
+
+    If a ``field`` is provided, it can be a
+    :class:`fiftyone.core.fields.ListField` or a
+    :class:`fiftyone.core.labels.Label` list field.
 
     Examples::
 
         import fiftyone as fo
-        from fiftyone.core.aggregations import Count
 
         dataset = fo.load_dataset(...)
 
@@ -324,21 +344,21 @@ class Count(Aggregation):
         # Compute the number of samples in a dataset
         #
 
-        count = Count()
-        count_result = dataset.aggregate(count)
-        count_result.count
+        count = fo.Count()
+        r = dataset.aggregate(count)
+        r.count
 
         #
-        # Compute the number of detections in a fo.Detections label field
+        # Compute the number of objects in a `Detections` field
         #
 
-        detections = Count("detections")
-        detections_result = dataset.aggregate(detections)
-        detections_result.count
+        detections = fo.Count("detections")
+        r = dataset.aggregate(detections)
+        r.count
 
     Args:
-        field_name: the name of the field to have its items counted. If no
-            field name is provided, samples themselves are counted
+        field_name (None): the field whose items to count. If no field name is
+            provided, the samples themselves are counted
     """
 
     def __init__(self, field_name=None):
@@ -347,7 +367,7 @@ class Count(Aggregation):
     def _get_default_result(self):
         return CountResult(self._field_name, 0)
 
-    def _get_output_field(self, view):
+    def _get_output_field(self, *args):
         if self._field_name is None:
             return "count"
 
@@ -366,8 +386,9 @@ class Count(Aggregation):
 
         if (
             isinstance(field, fof.EmbeddedDocumentField)
-            and field.document_type in _LABELS
+            and field.document_type in _LABEL_LIST_FIELDS
         ):
+            # @todo this assumes that `Detections` -> `detections`
             path = "%s.%s" % (path, field.document_type.__name__.lower())
             pipeline.append({"$unwind": path})
         elif isinstance(field, fof.ListField):
@@ -377,41 +398,43 @@ class Count(Aggregation):
 
 
 class CountResult(AggregationResult):
-    """The result of the execution of a :class:`Count` instance by a dataset or
-    view.
+    """The result of the execution of a :class:`Count` instance.
 
     Attributes:
-        name: the name of the field, or "count" if samples were counted
+        name: the name of the field, or ``None`` if the samples were counted
         count: the count
     """
 
     def __init__(self, name, count):
-        if name is None:
-            name = "count"
-
         self.name = name
         self.count = count
 
 
 class CountLabels(Aggregation):
-    """Counts the occurrences of label values for a
+    """Computes a histogram of ``label`` values in a
     :class:`fiftyone.core.labels.Label` field.
 
     Examples::
 
         import fiftyone as fo
-        from fiftyone.core.aggregations import CountLabels
 
         dataset = fo.load_dataset(...)
 
         #
-        # Compute the label counts for "ground_truth" fo.Classifications field
-        # in the dataset
+        # Compute label counts for a `Classification` field called "class"
         #
 
-        count_labels = CountLabels("ground_truth")
-        count_labels_result = dataset.aggregate(count_labels)
-        count_labels_result.labels
+        count_labels = fo.CountLabels("class")
+        r = dataset.aggregate(count_labels)
+        r.labels  # dict mapping labels to counts
+
+        #
+        # Compute label counts for a `Detections` field called "objects"
+        #
+
+        count_labels = fo.CountLabels("objects")
+        r = dataset.aggregate(count_labels)
+        r.labels  # dict mapping labels to counts
 
     Args:
         field_name: the name of the label field
@@ -420,7 +443,7 @@ class CountLabels(Aggregation):
     def _get_default_result(self):
         return CountLabelsResult(self._field_name, {})
 
-    def _get_output_field(self, view):
+    def _get_output_field(self, *args):
         return "%s-count-labels" % self._field_name_path
 
     def _get_result(self, d):
@@ -436,7 +459,7 @@ class CountLabels(Aggregation):
         ):
             raise AggregationError("field '%s' is not a Label")
 
-        if field.document_type in _LABELS:
+        if field.document_type in _LABEL_LIST_FIELDS:
             path = "%s.%s" % (path, field.document_type.__name__.lower())
             pipeline.append(
                 {"$unwind": {"path": path, "preserveNullAndEmptyArrays": True}}
@@ -456,12 +479,11 @@ class CountLabels(Aggregation):
 
 
 class CountLabelsResult(AggregationResult):
-    """The result of the execution of a :class:`CountLabels` instance by a
-    dataset or view.
+    """The result of the execution of a :class:`CountLabels` instance.
 
     Attributes:
         name: the name of the field whose values were counted
-        labels: a dict mapping the label to the number of occurrences
+        labels: a dict mapping labels to counts
     """
 
     def __init__(self, name, labels):
@@ -470,7 +492,8 @@ class CountLabelsResult(AggregationResult):
 
 
 class CountValues(Aggregation):
-    """Counts the occurrences of values or a countable field.
+    """Counts the occurrences of values in a countable field or list of
+    countable fields.
 
     Countable fields are:
 
@@ -481,7 +504,6 @@ class CountValues(Aggregation):
     Examples::
 
         import fiftyone as fo
-        from fiftyone.core.aggregations import CountValues
 
         dataset = fo.load_dataset(...)
 
@@ -489,9 +511,9 @@ class CountValues(Aggregation):
         # Compute the tag counts in the dataset
         #
 
-        count_values = CountValues("tags")
-        count_values_result = dataset.aggregate(count_values)
-        count_values_result.values
+        count_values = fo.CountValues("tags")
+        r = dataset.aggregate(count_values)
+        r.values  # dict mapping tags to counts
 
     Args:
         field_name: the name of the countable field
@@ -500,7 +522,7 @@ class CountValues(Aggregation):
     def _get_default_result(self):
         return CountValuesResult(self._field_name, {})
 
-    def _get_output_field(self, view):
+    def _get_output_field(self, *args):
         return "%s-count-values" % self._field_name_path
 
     def _get_result(self, d):
@@ -511,16 +533,22 @@ class CountValues(Aggregation):
         field, path, pipeline = self._get_field_path_pipeline(
             schema, frame_schema, dataset
         )
-        if isinstance(field, _VALUE_FIELDS):
+        if isinstance(field, _COUNTABLE_FIELDS):
             pass
         elif isinstance(field, fof.ListField) and isinstance(
-            field.field, _VALUE_FIELDS
+            field.field, _COUNTABLE_FIELDS
         ):
             pipeline.append({"$unwind": path})
+        elif isinstance(field, fof.ListField):
+            raise AggregationError(
+                "Unsupported field '%s' (%s). You can only count values of "
+                "a ListField whose `field` type is explicitly declared as a "
+                "countable type (%s)"
+                % (self._field_name, field, _COUNTABLE_FIELDS)
+            )
         else:
             raise AggregationError(
-                "unsupported field '%s' of type '%s'"
-                % (self._field_name, type(field))
+                "Unsupported field '%s' of type %s" % (self._field_name, field)
             )
 
         pipeline += [
@@ -536,12 +564,11 @@ class CountValues(Aggregation):
 
 
 class CountValuesResult(AggregationResult):
-    """The result of the execution of a :class:`CountValues` instance by a
-    dataset or view.
+    """The result of the execution of a :class:`CountValues` instance.
 
     Attributes:
         name: the name of the field whose values were counted
-        values: a dict mapping the value to the number of occurrences
+        values: a dict mapping values to counts
     """
 
     def __init__(self, name, values):
@@ -550,8 +577,8 @@ class CountValuesResult(AggregationResult):
 
 
 class Distinct(Aggregation):
-    """Computes the distinct values of a countable field or a list field of a
-    countable field.
+    """Computes the distinct values of a countable field or a list of countable
+    fields.
 
     Countable fields are:
 
@@ -559,31 +586,27 @@ class Distinct(Aggregation):
     -   :class:`fiftyone.core.fields.IntField`
     -   :class:`fiftyone.core.fields.StringField`
 
-    Note that to compute distinct values for a list field of countable fields,
-    the countable subfield must be explicitly defined.
-
     Examples::
 
         import fiftyone as fo
-        from fiftyone.core.aggregations import Distinct
 
         dataset = fo.load_dataset(...)
 
         #
-        # Compute the distinct values of string field
+        # Compute the distinct values of a StringField named `kind`
         #
 
-        distinct = Distinct("kind")
-        distinct_result = dataset.aggregate(distinct)
-        distinct_result.values
+        distinct = fo.Distinct("kind")
+        r = dataset.aggregate(distinct)
+        r.values  # list of distinct values
 
         #
-        # Compute the a bounds of a list field of string fields
+        # Compute the a bounds of the `tags field
         #
 
-        tags = Distinct("tags")
-        tags_result = dataset.aggregate(tags)
-        tags_result.values
+        tags = fo.Distinct("tags")
+        r = dataset.aggregate(tags)
+        r.values  # list of distinct values
 
     Args:
         field_name: the name of the field to compute distinct values for
@@ -592,7 +615,7 @@ class Distinct(Aggregation):
     def _get_default_result(self):
         return DistinctResult(self._field_name, [])
 
-    def _get_output_field(self, view):
+    def _get_output_field(self, *args):
         return "%s-distinct" % self._field_name_path
 
     def _get_result(self, d):
@@ -605,15 +628,21 @@ class Distinct(Aggregation):
             schema, frame_schema, dataset
         )
         if isinstance(field, fof.ListField) and isinstance(
-            field.field, _VALUE_FIELDS
+            field.field, _COUNTABLE_FIELDS
         ):
             unwind = True
-        elif isinstance(field, _VALUE_FIELDS):
+        elif isinstance(field, _COUNTABLE_FIELDS):
             unwind = False
+        elif isinstance(field, fof.ListField):
+            raise AggregationError(
+                "Unsupported field '%s' (%s). You can only compute distinct "
+                "values of a ListField whose `field` type is explicitly "
+                "declared as a countable type (%s)"
+                % (self._field_name, field, _COUNTABLE_FIELDS)
+            )
         else:
             raise AggregationError(
-                "unsupported field '%s' of type '%s'"
-                % (self._field_name, type(field))
+                "Unsupported field '%s' of type %s" % (self._field_name, field)
             )
 
         pipeline += [
@@ -636,8 +665,7 @@ class Distinct(Aggregation):
 
 
 class DistinctResult(AggregationResult):
-    """The result of the execution of a :class:`Distinct` instance by a dataset
-    or view.
+    """The result of the execution of a :class:`Distinct` instance.
 
     Attributes:
         name: the name of the field
@@ -651,30 +679,29 @@ class DistinctResult(AggregationResult):
 
 class DistinctLabels(Aggregation):
     """Computes the distinct label values of a
-    :class:`fiftyone.core.labels.Label`.
+    :class:`fiftyone.core.labels.Label` field.
 
     Examples::
 
         import fiftyone as fo
-        from fiftyone.core.aggregations import DistinctLabels
 
         dataset = fo.load_dataset(...)
 
         #
-        # Compute the distinct labels of a fo.Classification label field
+        # Compute the distinct labels of a `Classification` field
         #
 
-        distinct_labels = DistinctLabels("predictions")
-        distinct_labels_result = dataset.aggregate(distinct_labels)
-        distinct_labels_result.labels
+        distinct_labels = fo.DistinctLabels("predictions")
+        r = dataset.aggregate(distinct_labels)
+        r.labels  # list of distinct labels
 
         #
-        # Compute the distinct labels of a fo.Detections label field
+        # Compute the distinct labels of a `Detections` field
         #
 
-        detections_labels = DistinctLabels("detections")
-        detections_labels_result = dataset.aggregate(detections_labels)
-        detections_labels_result.labels
+        detections_labels = fo.DistinctLabels("detections")
+        r = dataset.aggregate(detections_labels)
+        r.labels  # list of distinct labels
 
     Args:
         field_name: the name of the label field to compute distinct labels for
@@ -686,7 +713,7 @@ class DistinctLabels(Aggregation):
     def _get_default_result(self):
         return DistinctLabelsResult(self._field_name, [])
 
-    def _get_output_field(self, view):
+    def _get_output_field(self, *args):
         return "%s-distinct-labels" % self._field_name_path
 
     def _get_result(self, d):
@@ -701,7 +728,7 @@ class DistinctLabels(Aggregation):
         ):
             raise AggregationError("field '%s' is not a Label")
 
-        if field.document_type in _LABELS:
+        if field.document_type in _LABEL_LIST_FIELDS:
             path = "%s.%s" % (path, field.document_type.__name__.lower())
             pipeline.append(
                 {"$unwind": {"path": path, "preserveNullAndEmptyArrays": True}}
@@ -716,8 +743,7 @@ class DistinctLabels(Aggregation):
 
 
 class DistinctLabelsResult(AggregationResult):
-    """The result of the execution of a :class:`DistinctLabels` instance by a
-    dataset or view.
+    """The result of the execution of a :class:`DistinctLabels` instance.
 
     Attributes:
         name: the name of the field
@@ -727,3 +753,7 @@ class DistinctLabelsResult(AggregationResult):
     def __init__(self, name, labels):
         self.name = name
         self.labels = labels
+
+
+def _unwind_frames():
+    return [{"$unwind": "$frames"}, {"$replaceRoot": {"newRoot": "$frames"}}]
