@@ -78,11 +78,12 @@ The FiftyOne command-line interface.
     available commands:
       {config,constants,convert,datasets,app,zoo}
         quickstart          Launch a FiftyOne quickstart.
+        app                 Tools for working with the FiftyOne App.
         config              Tools for working with your FiftyOne config.
         constants           Print constants from `fiftyone.constants`.
         convert             Convert datasets on disk between supported formats.
         datasets            Tools for working with FiftyOne datasets.
-        app                 Tools for working with the FiftyOne App.
+        utils               FiftyOne utilities.
         zoo                 Tools for working with the FiftyOne Dataset Zoo.
 
 .. _cli-fiftyone-quickstart:
@@ -625,6 +626,173 @@ Delete FiftyOne datasets.
 
     # Delete all non-persistent datasets
     fiftyone datasets delete --non-persistent
+
+.. _cli-fiftyone-utils:
+
+FiftyOne utilities
+------------------
+
+FiftyOne utilities.
+
+.. code-block:: text
+
+    fiftyone utils [-h] [--all-help]
+                   {compute-metadata,transform-images,transform-videos} ...
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --all-help            show help recursively and exit
+
+    available commands:
+      {compute-metadata,transform-images,transform-videos}
+        compute-metadata    Populates the `metadata` field of all samples in the dataset.
+        transform-images    Transforms the images in a dataset per the specified parameters.
+        transform-videos    Transforms the videos in a dataset per the specified parameters.
+
+.. _cli-fiftyone-utils-compute-metadata:
+
+Compute metadata
+~~~~~~~~~~~~~~~~
+
+Populates the `metadata` field of all samples in the dataset.
+
+.. code-block:: text
+
+    fiftyone utils compute-metadata [-h] [-o] DATASET_NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                  the name of the dataset
+
+    optional arguments:
+      -h, --help       show this help message and exit
+      -o, --overwrite  whether to overwrite existing metadata
+
+**Examples**
+
+.. code-block:: shell
+
+    # Populate all missing `metadata` sample fields
+    fiftyone utils compute-metadata <dataset-name>
+
+.. code-block:: shell
+
+    # (Re)-populate the `metadata` field for all samples
+    fiftyone utils compute-metadata <dataset-name> --overwrite
+
+.. _cli-fiftyone-utils-transform-images:
+
+Transform images
+~~~~~~~~~~~~~~~~
+
+Transforms the images in a dataset per the specified parameters.
+
+.. code-block:: text
+
+    fiftyone utils transform-images [-h] [--size SIZE]
+                                    [--min-size MIN_SIZE]
+                                    [--max-size MAX_SIZE] [-e EXT] [-f]
+                                    [-d] [-n NUM_WORKERS]
+                                    DATASET_NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      DATASET_NAME          the name of the dataset
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --size SIZE           a `width,height` for each image. A dimension can be
+                            -1 if no constraint should be applied
+      --min-size MIN_SIZE   a minimum `width,height` for each image. A dimension
+                            can be -1 if no constraint should be applied
+      --max-size MAX_SIZE   a maximum `width,height` for each image. A dimension
+                            can be -1 if no constraint should be applied
+      -e EXT, --ext EXT     an image format to convert to (e.g., '.png' or '.jpg')
+      -f, --force-reencode  whether to re-encode images whose parameters already
+                            meet the specified values
+      -d, --delete-originals
+                            whether to delete the original images after transforming
+      -n NUM_WORKERS, --num-workers NUM_WORKERS
+                            the number of worker processes to use. The default is
+                            `multiprocessing.cpu_count()`
+
+**Examples**
+
+.. code-block:: shell
+
+    # Convert the images in the dataset to PNGs
+    fiftyone utils transform-images <dataset-name> --ext .png --delete-originals
+
+.. code-block:: shell
+
+    # Ensure that no images in the dataset exceed 1920 x 1080
+    fiftyone utils transform-images <dataset-name> --max-size 1920,1080
+
+.. _cli-fiftyone-utils-transform-videos:
+
+Transform videos
+~~~~~~~~~~~~~~~~
+
+Transforms the videos in a dataset per the specified parameters.
+
+.. code-block:: text
+
+    fiftyone utils transform-videos [-h] [--fps FPS] [--min-fps MIN_FPS]
+                                    [--max-fps MAX_FPS] [--size SIZE]
+                                    [--min-size MIN_SIZE]
+                                    [--max-size MAX_SIZE] [-r] [-f] [-d]
+                                    [-v]
+                                    DATASET_NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      DATASET_NAME          the name of the dataset
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --fps FPS             a frame rate at which to resample the videos
+      --min-fps MIN_FPS     a minimum frame rate. Videos with frame rate below
+                            this value are upsampled
+      --max-fps MAX_FPS     a maximum frame rate. Videos with frame rate exceeding
+                            this value are downsampled
+      --size SIZE           a `width,height` for each frame. A dimension can be -1
+                            if no constraint should be applied
+      --min-size MIN_SIZE   a minimum `width,height` for each frame. A dimension
+                            can be -1 if no constraint should be applied
+      --max-size MAX_SIZE   a maximum `width,height` for each frame. A dimension
+                            can be -1 if no constraint should be applied
+      -r, --reencode        whether to re-encode the videos as H.264 MP4s
+      -f, --force-reencode  whether to re-encode videos whose parameters already
+                            meet the specified values
+      -d, --delete-originals
+                            whether to delete the original videos after transforming
+      -v, --verbose         whether to log the `ffmpeg` commands that are executed
+
+**Examples**
+
+.. code-block:: shell
+
+    # Re-encode the videos in the dataset as H.264 MP4s
+    fiftyone utils transform-videos <dataset-name> --reencode
+
+.. code-block:: shell
+
+    # Ensure that no videos in the dataset exceed 1920 x 1080 and 30fps
+    fiftyone utils transform-videos <dataset-name> \
+        --max-size 1920,1080 --max-fps 30.0
 
 .. _cli-fiftyone-app:
 

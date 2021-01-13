@@ -797,7 +797,7 @@ clips distributed across 51 action classes.
 
         dataset = foz.load_zoo_dataset("hmdb51", split="test")
 
-        # Re-encode source videos as MP4 so they can be visualized in the App
+        # Re-encode source videos as H.264 MP4s so they can be viewed in the App
         fouv.reencode_videos(dataset)
 
         session = fo.launch_app(dataset)
@@ -807,6 +807,9 @@ clips distributed across 51 action classes.
     .. code-block:: shell
 
         fiftyone zoo datasets load hmdb51 --split test
+
+        # Re-encode source videos as H.264 MP4s so they can be viewed in the App
+        fiftyone utils transform-videos hmdb51-test --reencode
 
         fiftyone app launch hmdb51-test
 
@@ -1308,7 +1311,7 @@ viewpoint, etc.
 
         dataset = foz.load_zoo_dataset("ucf101", split="test")
 
-        # Re-encode source videos as MP4 so they can be visualized in the App
+        # Re-encode source videos as H.264 MP4s so they can be viewed in the App
         fouv.reencode_videos(dataset)
 
         session = fo.launch_app(dataset)
@@ -1318,6 +1321,9 @@ viewpoint, etc.
     .. code-block:: shell
 
         fiftyone zoo datasets load ucf101 --split test
+
+        # Re-encode source videos as H.264 MP4s so they can be viewed in the App
+        fiftyone utils transform-videos ucf101-test --reencode
 
         fiftyone app launch ucf101-test
 
