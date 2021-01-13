@@ -623,8 +623,8 @@ dataset splits or mark low quality images:
         ]
     )
 
-    print(dataset.get_tags())
-    # {"test", "low_quality", "train"}
+    print(dataset.distinct("tags").values)
+    # ["test", "low_quality", "train"]
 
 The `tags` field can be treated like a standard Python `list`:
 
