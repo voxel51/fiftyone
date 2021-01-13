@@ -1156,17 +1156,6 @@ class SampleCollection(object):
         """Maps the ``label`` values of :class:`fiftyone.core.labels.Label`
         fields to new values.
 
-        The specified ``field`` must be one of the following types:
-
-        -   :class:`fiftyone.core.labels.Classification`
-        -   :class:`fiftyone.core.labels.Classifications`
-        -   :class:`fiftyone.core.labels.Detection`
-        -   :class:`fiftyone.core.labels.Detections`
-        -   :class:`fiftyone.core.labels.Keypoint`
-        -   :class:`fiftyone.core.labels.Keypoints`
-        -   :class:`fiftyone.core.labels.Polyline`
-        -   :class:`fiftyone.core.labels.Polylines`
-
         Examples::
 
             import fiftyone as fo

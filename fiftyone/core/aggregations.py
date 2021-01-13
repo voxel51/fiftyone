@@ -119,15 +119,14 @@ class AggregationResult(etas.Serializable):
 
 
 class AggregationError(RuntimeError):
-    """An error raised during the execution of an :class:`Aggregation` by a
-    dataset or view.
-    """
+    """An error raised during the execution of an :class:`Aggregation`."""
 
     pass
 
 
 class Bounds(Aggregation):
-    """Computes the bounds of a numeric field or numeric list field.
+    """Computes the bounds of a numeric field or numeric list field of a
+    collection.
 
     Examples::
 
@@ -245,7 +244,7 @@ class BoundsResult(AggregationResult):
 
 class ConfidenceBounds(Aggregation):
     """Computes the bounds of the ``confidence`` of a
-    :class:`fiftyone.core.labels.Label` field.
+    :class:`fiftyone.core.labels.Label` field of a collection.
 
     Examples::
 
@@ -328,7 +327,8 @@ class ConfidenceBoundsResult(AggregationResult):
 
 
 class Count(Aggregation):
-    """Counts the number of samples or number of items with respect to a field.
+    """Counts the number of samples or number of items with respect to a field
+    of a collection.
 
     If a ``field`` is provided, it can be a
     :class:`fiftyone.core.fields.ListField` or a
@@ -412,7 +412,7 @@ class CountResult(AggregationResult):
 
 class CountLabels(Aggregation):
     """Computes a histogram of ``label`` values in a
-    :class:`fiftyone.core.labels.Label` field.
+    :class:`fiftyone.core.labels.Label` field of a collection.
 
     Examples::
 
@@ -493,7 +493,7 @@ class CountLabelsResult(AggregationResult):
 
 class CountValues(Aggregation):
     """Counts the occurrences of values in a countable field or list of
-    countable fields.
+    countable fields of a collection.
 
     Countable fields are:
 
@@ -578,7 +578,7 @@ class CountValuesResult(AggregationResult):
 
 class Distinct(Aggregation):
     """Computes the distinct values of a countable field or a list of countable
-    fields.
+    fields of a collection.
 
     Countable fields are:
 
@@ -679,7 +679,7 @@ class DistinctResult(AggregationResult):
 
 class DistinctLabels(Aggregation):
     """Computes the distinct label values of a
-    :class:`fiftyone.core.labels.Label` field.
+    :class:`fiftyone.core.labels.Label` field of a collection.
 
     Examples::
 
@@ -704,7 +704,7 @@ class DistinctLabels(Aggregation):
         r.labels  # list of distinct labels
 
     Args:
-        field_name: the name of the label field to compute distinct labels for
+        field_name: the name of the label field
     """
 
     def __init__(self, field_name):
