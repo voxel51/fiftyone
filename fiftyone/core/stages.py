@@ -2331,7 +2331,7 @@ def _get_labels_field(field_path, sample_collection):
     allowed_types = single_fields + list_fields
 
     raise ValueError(
-        "Field '%s' must be a labels list type %s; found '%s'"
+        "Field '%s' must be a Label type %s; found '%s'"
         % (field_path, allowed_types, field)
     )
 
