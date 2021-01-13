@@ -1027,20 +1027,19 @@ def get_implied_field_kwargs(value, **kwargs):
             "embedded_doc_type": type(value),
         }
 
-    if isinstance(value, bool):
-        return {"ftype": fof.BooleanField}
-
-    if isinstance(value, six.integer_types):
-        return {"ftype": fof.IntField}
-
-    if isinstance(value, numbers.Number):
-        return {"ftype": fof.FloatField}
-
-    if isinstance(value, six.string_types):
-        return {"ftype": fof.StringField}
+    ftype = _get_scalar_field_type(value)
+    if ftype is not None:
+        return {"ftype": ftype}
 
     if isinstance(value, (list, tuple)):
-        return {"ftype": fof.ListField}
+        kwargs = {"ftype": fof.ListField}
+
+        if value:
+            subtype = _get_scalar_field_type(value[0])
+            if subtype is not None:
+                kwargs["subfield"] = subtype()
+
+        return kwargs
 
     if isinstance(value, np.ndarray):
         if value.ndim == 1:
@@ -1052,6 +1051,22 @@ def get_implied_field_kwargs(value, **kwargs):
         return {"ftype": fof.DictField}
 
     raise TypeError("Unsupported field value '%s'" % type(value))
+
+
+def _get_scalar_field_type(value):
+    if isinstance(value, bool):
+        return fof.BooleanField
+
+    if isinstance(value, six.integer_types):
+        return fof.IntField
+
+    if isinstance(value, numbers.Number):
+        return fof.FloatField
+
+    if isinstance(value, six.string_types):
+        return fof.StringField
+
+    return None
 
 
 def _create_field(
