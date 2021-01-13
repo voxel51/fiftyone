@@ -2239,7 +2239,7 @@ class TransformImagesCommand(Command):
         parser.add_argument(
             "--size",
             metavar="SIZE",
-            action=_StoreSizeTupleDictAction,
+            action=_StoreSizeTupleAction,
             help=(
                 "a `width,height` for each image. A dimension can be -1 if "
                 "no constraint should be applied"
@@ -2248,7 +2248,7 @@ class TransformImagesCommand(Command):
         parser.add_argument(
             "--min-size",
             metavar="MIN_SIZE",
-            action=_StoreSizeTupleDictAction,
+            action=_StoreSizeTupleAction,
             help=(
                 "a minimum `width,height` for each image. A dimension can be "
                 "-1 if no constraint should be applied"
@@ -2257,7 +2257,7 @@ class TransformImagesCommand(Command):
         parser.add_argument(
             "--max-size",
             metavar="MAX_SIZE",
-            action=_StoreSizeTupleDictAction,
+            action=_StoreSizeTupleAction,
             help=(
                 "a maximum `width,height` for each image. A dimension can be "
                 "-1 if no constraint should be applied"
@@ -2358,7 +2358,7 @@ class TransformVideosCommand(Command):
         parser.add_argument(
             "--size",
             metavar="SIZE",
-            action=_StoreSizeTupleDictAction,
+            action=_StoreSizeTupleAction,
             help=(
                 "a `width,height` for each frame. A dimension can be -1 if "
                 "no constraint should be applied"
@@ -2367,7 +2367,7 @@ class TransformVideosCommand(Command):
         parser.add_argument(
             "--min-size",
             metavar="MIN_SIZE",
-            action=_StoreSizeTupleDictAction,
+            action=_StoreSizeTupleAction,
             help=(
                 "a minimum `width,height` for each frame. A dimension can be "
                 "-1 if no constraint should be applied"
@@ -2376,7 +2376,7 @@ class TransformVideosCommand(Command):
         parser.add_argument(
             "--max-size",
             metavar="MAX_SIZE",
-            action=_StoreSizeTupleDictAction,
+            action=_StoreSizeTupleAction,
             help=(
                 "a maximum `width,height` for each frame. A dimension can be "
                 "-1 if no constraint should be applied"
@@ -2509,7 +2509,7 @@ class _StoreDictAction(argparse.Action):
         setattr(namespace, self.dest, kwargs)
 
 
-class _StoreSizeTupleDictAction(argparse.Action):
+class _StoreSizeTupleAction(argparse.Action):
     def __call__(self, parser, namespace, value, option_string=None):
         if value is not None:
             try:
