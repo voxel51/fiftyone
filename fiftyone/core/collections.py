@@ -1148,8 +1148,8 @@ class SampleCollection(object):
 
     @view_stage
     def map_labels(self, field, map):
-        """Map the ``label`` values of :class:`fiftyone.core.labels.Label` instances
-        of a field.
+        """Maps the ``label`` values of :class:`fiftyone.core.labels.Label`
+        fields to new values.
 
         The specified ``field`` must be one of the following types:
 
@@ -1165,7 +1165,6 @@ class SampleCollection(object):
         Examples::
 
             import fiftyone as fo
-            from fiftyone.core.stages import MapLabels
 
             dataset = fo.load_dataset(...)
 

@@ -1323,8 +1323,8 @@ class LimitLabels(ViewStage):
 
 
 class MapLabels(ViewStage):
-    """Map the ``label`` values of :class:`fiftyone.core.labels.Label` instances
-    of a field.
+    """Maps the ``label`` values of :class:`fiftyone.core.labels.Label` fields
+    to new values.
 
     The specified ``field`` must be one of the following types:
 
@@ -1353,7 +1353,7 @@ class MapLabels(ViewStage):
 
     Args:
         field: the labels field to map
-        map: a ``dict`` mapping label values to new label values
+        map: a dict mapping label values to new label values
     """
 
     def __init__(self, field, map):
