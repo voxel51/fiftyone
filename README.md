@@ -52,10 +52,12 @@ fiftyone quickstart
 ```
 
 This command will download a small dataset, launch the App, and print some
-suggestions for exploring the dataset.
+suggestions for exploring the dataset. Alternatively,
+[this Colab notebook](https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb)
+explores the quickstart dataset.
 
-Also check out
-[this Colab walkthrough](https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/walkthrough.ipynb)
+You can also check out
+[this Colab notebok](https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/walkthrough.ipynb)
 for a more detailed overview of using FiftyOne.
 
 ## Documentation
