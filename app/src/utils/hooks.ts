@@ -308,11 +308,14 @@ export const useScreenshot = () => {
           {
             src: imgData,
             handleId: handleId,
+            width: canvas.width,
           },
           "*"
         );
       }
-      socket.send(packageMessage("capture", { src: imgData }));
+      socket.send(
+        packageMessage("capture", { src: imgData, width: canvas.width })
+      );
     });
   }, []);
 
