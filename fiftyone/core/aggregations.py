@@ -7,7 +7,10 @@ Aggregations.
 """
 from bson import ObjectId
 
+import numpy as np
+
 import eta.core.serial as etas
+import eta.core.utils as etau
 
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -75,6 +78,7 @@ class Aggregation(object):
         else:
             field_name = self._field_name
             pipeline = []
+
         try:
             field = schema[field_name]
             path = "$%s" % field_name
@@ -87,7 +91,8 @@ class Aggregation(object):
                 return "frames", "$frames", _unwind_frames()
 
             raise AggregationError(
-                "field `%s` does not exist on this Dataset" % self._field_name
+                "Field '%s' does not exist on dataset '%s'"
+                % (self._field_name, dataset.name)
             )
 
 
@@ -193,6 +198,7 @@ class Bounds(Aggregation):
         field, path, pipeline = self._get_field_path_pipeline(
             schema, frame_schema, dataset
         )
+
         if isinstance(field, fof.ListField) and isinstance(
             field.field, _NUMERIC_FIELDS
         ):
@@ -202,29 +208,26 @@ class Bounds(Aggregation):
         elif isinstance(field, fof.ListField):
             raise AggregationError(
                 "Unsupported field '%s' (%s). You can only compute bounds of "
-                "a ListField whose `field` type is explicitly declared as "
-                "numeric" % (self._field_name, field)
+                "a ListField whose `field` type is explicitly declared as a "
+                "numeric type: %s" % (self._field_name, field, _NUMERIC_FIELDS)
             )
         else:
             raise AggregationError(
                 "Unsupported field '%s' of type %s" % (self._field_name, field)
             )
 
-        pipeline += [
+        if unwind:
+            pipeline.append({"$unwind": path})
+
+        pipeline.append(
             {
                 "$group": {
                     "_id": None,
                     "min": {"$min": path},
                     "max": {"$max": path},
                 }
-            },
-        ]
-        if unwind:
-            pipeline = (
-                pipeline[: len(pipeline) - 1]
-                + [{"$unwind": path}]
-                + pipeline[len(pipeline) - 1 :]
-            )
+            }
+        )
 
         return pipeline
 
@@ -291,7 +294,9 @@ class ConfidenceBounds(Aggregation):
         if not isinstance(field, fof.EmbeddedDocumentField) or not issubclass(
             field.document_type, fol.Label
         ):
-            raise AggregationError("field '%s' is not a Label")
+            raise AggregationError(
+                "Field '%s' is not a Label" % self._field_name
+            )
 
         if field.document_type in _LABEL_LIST_FIELDS:
             path = "%s.%s" % (path, field.document_type.__name__.lower())
@@ -457,7 +462,9 @@ class CountLabels(Aggregation):
         if not isinstance(field, fof.EmbeddedDocumentField) or not issubclass(
             field.document_type, fol.Label
         ):
-            raise AggregationError("field '%s' is not a Label")
+            raise AggregationError(
+                "Field '%s' is not a Label" % self._field_name
+            )
 
         if field.document_type in _LABEL_LIST_FIELDS:
             path = "%s.%s" % (path, field.document_type.__name__.lower())
@@ -489,6 +496,180 @@ class CountLabelsResult(AggregationResult):
     def __init__(self, name, labels):
         self.name = name
         self.labels = labels
+
+
+class HistogramValues(Aggregation):
+    """Computes a histogram of the numeric values in a field or list field of a
+    collection.
+
+    Examples::
+
+        import fiftyone as fo
+
+        dataset = fo.load_dataset(...)
+
+        #
+        # Compute a histogram of values in the float field "uniqueness"
+        #
+
+        histogram_values = fo.HistogramValues(
+            "uniqueness", bins=50, range=(0, 1)
+        )
+        r = dataset.aggregate(histogram_values)
+        r.counts  # list of counts
+        r.edges  # list of bin edges
+
+    Args:
+        field_name: the name of the field to histogram
+        bins (None): can be either an integer number of bins to generate or a
+            monotonically increasing sequence specifying the bin edges to use.
+            By default, 10 bins are created. If ``bins`` is an integer and no
+            ``range`` is specified, bin edges are automatically distributed in
+            an attempt to evenly distribute the counts in each bin
+        range (None): a ``(lower, upper)`` tuple specifying a range in which to
+            generate equal-width bins. Only applicable when ``bins`` is an
+            integer
+    """
+
+    def __init__(self, field_name, bins=None, range=None):
+        super().__init__(field_name)
+        self.bins = bins
+        self.range = range
+
+        self._bins = None
+        self._edges = None
+        self._parse_args()
+
+    def _parse_args(self):
+        if self.bins is None:
+            bins = 10
+        else:
+            bins = self.bins
+
+        if etau.is_numeric(bins):
+            if self.range is None:
+                # Automatic bins
+                self._bins = bins
+                return
+
+            # Linearly-spaced bins within `range`
+            self._edges = list(
+                np.linspace(self.range[0], self.range[1], bins + 1)
+            )
+            return
+
+        # User-provided bin edges
+        self._edges = list(bins)
+
+    def _get_default_result(self):
+        return HistogramValuesResult(self._field_name, [], [], 0)
+
+    def _get_output_field(self, *args):
+        return "%s-histogram-values" % self._field_name_path
+
+    def _get_result(self, d):
+        if self._edges is not None:
+            return self._get_result_edges(d)
+
+        return self._get_result_auto(d)
+
+    def _get_result_edges(self, d):
+        _edges_array = np.array(self._edges)
+        edges = list(_edges_array)
+        counts = [0] * (len(edges) - 1)
+        other = 0
+        for di in d["bins"]:
+            left = di["_id"]
+            if left == "other":
+                other = di["count"]
+            else:
+                idx = np.abs(_edges_array - left).argmin()
+                counts[idx] = di["count"]
+
+        return HistogramValuesResult(self._field_name, counts, edges, other)
+
+    def _get_result_auto(self, d):
+        counts = []
+        edges = []
+        for di in d["bins"]:
+            counts.append(di["count"])
+            edges.append(di["_id"]["min"])
+
+        edges.append(di["_id"]["max"])
+
+        return HistogramValuesResult(self._field_name, counts, edges, 0)
+
+    def _to_mongo(self, dataset, schema, frame_schema):
+        field, path, pipeline = self._get_field_path_pipeline(
+            schema, frame_schema, dataset
+        )
+
+        if isinstance(field, fof.ListField) and isinstance(
+            field.field, _NUMERIC_FIELDS
+        ):
+            unwind = True
+        elif isinstance(field, _NUMERIC_FIELDS):
+            unwind = False
+        elif isinstance(field, fof.ListField):
+            raise AggregationError(
+                "Unsupported field '%s' (%s). You can only compute histograms "
+                "of a ListField whose `field` type is explicitly declared as "
+                "a numeric type: %s"
+                % (self._field_name, field, _NUMERIC_FIELDS)
+            )
+        else:
+            raise AggregationError(
+                "Unsupported field '%s' of type %s" % (self._field_name, field)
+            )
+
+        if unwind:
+            pipeline.append({"$unwind": path})
+
+        if self._edges is not None:
+            pipeline.append(
+                {
+                    "$bucket": {
+                        "groupBy": path,
+                        "boundaries": self._edges,
+                        "default": "other",  # counts documents outside of bins
+                        "output": {"count": {"$sum": 1}},
+                    }
+                }
+            )
+        else:
+            pipeline.append(
+                {
+                    "$bucketAuto": {
+                        "groupBy": path,
+                        "buckets": self._bins,
+                        "output": {"count": {"$sum": 1}},
+                    }
+                }
+            )
+
+        pipeline.append({"$group": {"_id": None, "bins": {"$push": "$$ROOT"}}})
+
+        return pipeline
+
+
+class HistogramValuesResult(AggregationResult):
+    """The result of the execution of a :class:`HistogramValues` instance.
+
+    Attributes:
+        name: the name of the field that was histogramed
+        counts: a list of counts in each bin
+        edges: an increasing list of bin edges of length ``len(counts) + 1``.
+            Note that each bin is treated as having an inclusive lower boundary
+            and exclusive upper boundary, ``[lower, upper)``, including the
+            rightmost bin
+        other: the number of items outside the bins
+    """
+
+    def __init__(self, name, counts, edges, other):
+        self.name = name
+        self.counts = counts
+        self.edges = edges
+        self.other = other
 
 
 class CountValues(Aggregation):
@@ -543,7 +724,7 @@ class CountValues(Aggregation):
             raise AggregationError(
                 "Unsupported field '%s' (%s). You can only count values of "
                 "a ListField whose `field` type is explicitly declared as a "
-                "countable type (%s)"
+                "countable type: %s"
                 % (self._field_name, field, _COUNTABLE_FIELDS)
             )
         else:
@@ -627,6 +808,7 @@ class Distinct(Aggregation):
         field, path, pipeline = self._get_field_path_pipeline(
             schema, frame_schema, dataset
         )
+
         if isinstance(field, fof.ListField) and isinstance(
             field.field, _COUNTABLE_FIELDS
         ):
@@ -637,7 +819,7 @@ class Distinct(Aggregation):
             raise AggregationError(
                 "Unsupported field '%s' (%s). You can only compute distinct "
                 "values of a ListField whose `field` type is explicitly "
-                "declared as a countable type (%s)"
+                "declared as a countable type: %s"
                 % (self._field_name, field, _COUNTABLE_FIELDS)
             )
         else:
@@ -645,21 +827,17 @@ class Distinct(Aggregation):
                 "Unsupported field '%s' of type %s" % (self._field_name, field)
             )
 
-        pipeline += [
+        if unwind:
+            pipeline.append({"$unwind": path})
+
+        pipeline.append(
             {
                 "$group": {
-                    "_id": "None",
+                    "_id": None,
                     self._field_name_path: {"$addToSet": path},
                 }
-            },
-        ]
-
-        if unwind:
-            pipeline = (
-                pipeline[: len(pipeline) - 1]
-                + [{"$unwind": path}]
-                + pipeline[len(pipeline) - 1 :]
-            )
+            }
+        )
 
         return pipeline
 
@@ -726,7 +904,9 @@ class DistinctLabels(Aggregation):
         if not isinstance(field, fof.EmbeddedDocumentField) or not issubclass(
             field.document_type, fol.Label
         ):
-            raise AggregationError("field '%s' is not a Label")
+            raise AggregationError(
+                "Field '%s' is not a Label" % self._field_name
+            )
 
         if field.document_type in _LABEL_LIST_FIELDS:
             path = "%s.%s" % (path, field.document_type.__name__.lower())

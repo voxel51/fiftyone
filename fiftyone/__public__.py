@@ -19,6 +19,7 @@ from .core.aggregations import (
     CountValues,
     Distinct,
     DistinctLabels,
+    HistogramValues,
 )
 from .core.dataset import (
     Dataset,

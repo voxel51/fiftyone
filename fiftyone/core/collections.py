@@ -1848,6 +1848,41 @@ class SampleCollection(object):
         """
         return self.aggregate(foa.DistinctLabels(field_name))
 
+    @aggregation
+    def histogram_values(self, field_name, bins=None, range=None):
+        """Computes a histogram of the numeric values in a field or list field
+        of a collection.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Compute a histogram of values in the float field "uniqueness"
+            #
+
+            r = dataset.histogram_values("uniqueness", bins=50, range=(0, 1))
+            r.counts  # list of counts
+            r.edges  # list of bin edges
+
+        Args:
+            field_name: the name of the field to histogram
+            bins (None): can be either an integer number of bins to generate or
+                a monotonically increasing sequence specifying the bin edges to
+                use. By default, 10 bins are created. If ``bins`` is an integer
+                and no ``range`` is specified, bin edges are automatically
+                distributed in an attempt to evenly distribute the counts in
+                each bin
+            range (None): a ``(lower, upper)`` tuple specifying a range in
+                which to generate equal-width bins. Only applicable when
+                ``bins`` is an integer
+        """
+        return self.aggregate(
+            foa.HistogramValues(field_name, bins=bins, range=range)
+        )
+
     def draw_labels(
         self,
         anno_dir,
