@@ -149,14 +149,19 @@ described in the next section) at any time via the Python library and the CLI.
 Modifying your config
 ---------------------
 
-You can modify your FiftyOne config in any of the ways listed below.
+You can modify your FiftyOne config in a variety of ways. The following
+sections describe these options in detail.
 
-The order of precedence for config modifications is as follows:
+Order of precedence
+~~~~~~~~~~~~~~~~~~~
+
+The following order of precedence is used to assign values to your FiftyOne
+config settings at runtime:
 
 1. Config settings applied at runtime via
    :func:`fiftyone.core.config.set_config_settings`
 2. `FIFTYONE_XXX` environment variables
-3. Settings in your JSON config at `~/.fiftyone/config.json`
+3. Settings in your JSON config (`~/.fiftyone/config.json`)
 4. The default config values described in the table above
 
 Editing your JSON config
@@ -177,6 +182,11 @@ For example, a valid config JSON file is:
 
 When `fiftyone` is imported, any options from your JSON config are applied,
 as per the order of precedence described above.
+
+.. note::
+
+    You can customize the location from which your JSON config is read by
+    setting the `FIFTYONE_CONFIG_PATH` environment variable.
 
 Setting environment variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

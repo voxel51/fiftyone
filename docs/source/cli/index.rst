@@ -161,7 +161,7 @@ Tools for working with your FiftyOne config.
 
 .. code-block:: shell
 
-    # Print the location of your config
+    # Print the location of your config on disk (if one exists)
     fiftyone config --locate
 
 .. _cli-fiftyone-constants:

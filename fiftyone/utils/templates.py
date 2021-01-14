@@ -68,7 +68,7 @@ _SCREENSHOT_DIV = """
    <div id="fooverlay-{{ handle }}" style="display: none;">
       <button id="foactivate-{{ handle }}" >Activate</button>
    </div>
-   <img src='{{ image }}' style="width: 100%"/>
+   <img src='{{ image }}' style="width: 100%; max-width: {{ max_width }}px;"/>
 </div>
 """
 
@@ -94,7 +94,13 @@ _SCREENSHOT_COLAB = """
 
 _SCREENSHOT_COLAB_SCRIPT = """
 (async () => {
-    const baseURL = await google.colab.kernel.proxyPort({{ port }}, {'cache': true});
+    const baseURL = await google.colab.kernel.proxyPort({
+        {
+            port
+        }
+    }, {
+        'cache': true
+    });
     const url = new URL(baseURL);
     const handleId = "{{ handle }}";
     url.searchParams.set('fiftyoneColab', 'true');
@@ -111,13 +117,18 @@ _SCREENSHOT_COLAB_SCRIPT = """
         document.body.removeChild(iframe);
         var container = document.getElementById(`focontainer-${handleId}`);
         var overlay = document.getElementById(`fooverlay-${handleId}`);
-        google.colab.kernel.invokeFunction(`fiftyone.${handleId.replaceAll('-', '_')}`, [event.data.src], {});
+        google.colab.kernel.invokeFunction(
+            `fiftyone.${handleId.replaceAll('-', '_')}`,
+            [event.data.src, event.data.width], {}
+        );
         overlay.addEventListener("click", () => {
-          container.removeChild(container.children[1]);
-          document.body.appendChild(iframe);
+            container.removeChild(container.children[1]);
+            document.body.appendChild(iframe);
         });
-        container.addEventListener("mouseenter", () => overlay.style.display = "block");
-        container.addEventListener("mouseleave", () => overlay.style.display = "none");
+        container.addEventListener(
+            "mouseenter", () => overlay.style.display = "block");
+        container.addEventListener(
+            "mouseleave", () => overlay.style.display = "none");
     });
-})();
+})()
 """
