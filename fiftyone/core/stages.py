@@ -197,7 +197,6 @@ class Exclude(ViewStage):
     Examples::
 
         import fiftyone as fo
-        from fiftyone.core.stages import Exclude
 
         dataset = fo.load_dataset(...)
 
@@ -205,14 +204,14 @@ class Exclude(ViewStage):
         # Exclude a single sample from a dataset
         #
 
-        stage = Exclude("5f3c298768fd4d3baf422d2f")
+        stage = fo.Exclude("5f3c298768fd4d3baf422d2f")
         view = dataset.add_stage(stage)
 
         #
         # Exclude a list of samples from a dataset
         #
 
-        stage = Exclude([
+        stage = fo.Exclude([
             "5f3c298768fd4d3baf422d2f",
             "5f3c298768fd4d3baf422d30"
         ])
@@ -266,7 +265,6 @@ class ExcludeFields(ViewStage):
     Examples::
 
         import fiftyone as fo
-        from fiftyone.core.stages import ExcludeFields
 
         dataset = fo.load_dataset(...)
 
@@ -274,14 +272,14 @@ class ExcludeFields(ViewStage):
         # Exclude a field from all samples in a dataset
         #
 
-        stage = ExcludeFields("predictions")
+        stage = fo.ExcludeFields("predictions")
         view = dataset.add_stage(stage)
 
         #
         # Exclude a list of fields from all samples in a dataset
         #
 
-        stage = ExcludeFields(["ground_truth", "predictions"])
+        stage = fo.ExcludeFields(["ground_truth", "predictions"])
         view = dataset.add_stage(stage)
 
     Args:
@@ -396,7 +394,6 @@ class ExcludeObjects(ViewStage):
     Examples::
 
         import fiftyone as fo
-        from fiftyone.core.stages import ExcludeObjects
 
         dataset = fo.load_dataset(...)
 
@@ -408,7 +405,7 @@ class ExcludeObjects(ViewStage):
 
         # Select some objects in the App...
 
-        stage = ExcludeObjects(session.selected_objects)
+        stage = fo.ExcludeObjects(session.selected_objects)
         view = dataset.add_stage(stage)
 
     Args:
@@ -478,7 +475,6 @@ class Exists(ViewStage):
     Examples::
 
         import fiftyone as fo
-        from fiftyone.core.stages import Exists
 
         dataset = fo.load_dataset(...)
 
@@ -486,7 +482,7 @@ class Exists(ViewStage):
         # Only include samples that have a value in their `predictions` field
         #
 
-        stage = Exists("predictions")
+        stage = fo.Exists("predictions")
         view = dataset.add_stage(stage)
 
         #
@@ -494,7 +490,7 @@ class Exists(ViewStage):
         # field
         #
 
-        stage = Exists("predictions", False)
+        stage = fo.Exists("predictions", False)
         view = dataset.add_stage(stage)
 
     Args:
@@ -560,7 +556,6 @@ class FilterField(ViewStage):
 
         import fiftyone as fo
         from fiftyone import ViewField as F
-        from fiftyone.core.stages import FilterField
 
         dataset = fo.load_dataset(...)
 
@@ -569,7 +564,7 @@ class FilterField(ViewStage):
         # a `Classification` field) whose `label` is "cat"
         #
 
-        stage = FilterField("predictions", F("label") == "cat")
+        stage = fo.FilterField("predictions", F("label") == "cat")
         view = dataset.add_stage(stage)
 
         #
@@ -577,7 +572,7 @@ class FilterField(ViewStage):
         # a `Classification` field) whose `confidence` is greater than 0.8
         #
 
-        stage = FilterField("predictions", F("confidence") > 0.8)
+        stage = fo.FilterField("predictions", F("confidence") > 0.8)
         view = dataset.add_stage(stage)
 
     Args:
@@ -802,7 +797,6 @@ class FilterLabels(_FilterListField):
 
         import fiftyone as fo
         from fiftyone import ViewField as F
-        from fiftyone.core.stages import FilterLabels
 
         dataset = fo.load_dataset(...)
 
@@ -811,7 +805,7 @@ class FilterLabels(_FilterListField):
         # `confidence` greater than 0.8
         #
 
-        stage = FilterLabels("predictions", F("confidence") > 0.8)
+        stage = fo.FilterLabels("predictions", F("confidence") > 0.8)
         view = dataset.add_stage(stage)
 
         #
@@ -820,7 +814,7 @@ class FilterLabels(_FilterListField):
         # classification after filtering
         #
 
-        stage = FilterLabels(
+        stage = fo.FilterLabels(
             "predictions", F("label").is_in(["cat", "dog"]), only_matches=True
         )
         view = dataset.add_stage(stage)
@@ -829,7 +823,6 @@ class FilterLabels(_FilterListField):
 
         import fiftyone as fo
         from fiftyone import ViewField as F
-        from fiftyone.core.stages import FilterLabels
 
         dataset = fo.load_dataset(...)
 
@@ -838,7 +831,7 @@ class FilterLabels(_FilterListField):
         # is greater than 0.8
         #
 
-        stage = FilterLabels("predictions", F("confidence") > 0.8)
+        stage = fo.FilterLabels("predictions", F("confidence") > 0.8)
         view = dataset.add_stage(stage)
 
         #
@@ -847,7 +840,7 @@ class FilterLabels(_FilterListField):
         # after filtering
         #
 
-        stage = FilterLabels(
+        stage = fo.FilterLabels(
             "predictions", F("label").is_in(["cat", "dog"]), only_matches=True
         )
         view = dataset.add_stage(stage)
@@ -860,14 +853,13 @@ class FilterLabels(_FilterListField):
         # bbox is in [top-left-x, top-left-y, width, height] format
         bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
 
-        stage = FilterLabels("predictions", bbox_area < 0.2)
+        stage = fo.FilterLabels("predictions", bbox_area < 0.2)
         view = dataset.add_stage(stage)
 
     Polylines Examples::
 
         import fiftyone as fo
         from fiftyone import ViewField as F
-        from fiftyone.core.stages import FilterLabels
 
         dataset = fo.load_dataset(...)
 
@@ -875,7 +867,7 @@ class FilterLabels(_FilterListField):
         # Only include polylines in the `predictions` field that are filled
         #
 
-        stage = FilterLabels("predictions", F("filled"))
+        stage = fo.FilterLabels("predictions", F("filled"))
         view = dataset.add_stage(stage)
 
         #
@@ -884,7 +876,7 @@ class FilterLabels(_FilterListField):
         # filtering
         #
 
-        stage = FilterLabels(
+        stage = fo.FilterLabels(
             "predictions", F("label") == "lane", only_matches=True
         )
         view = dataset.add_stage(stage)
@@ -895,14 +887,13 @@ class FilterLabels(_FilterListField):
         #
 
         num_vertices = F("points").map(F().length()).sum()
-        stage = FilterLabels("predictions", num_vertices >= 10)
+        stage = fo.FilterLabels("predictions", num_vertices >= 10)
         view = dataset.add_stage(stage)
 
     Keypoints Examples::
 
         import fiftyone as fo
         from fiftyone import ViewField as F
-        from fiftyone.core.stages import FilterLabels
 
         dataset = fo.load_dataset(...)
 
@@ -912,7 +903,7 @@ class FilterLabels(_FilterListField):
         # filtering
         #
 
-        stage = FilterLabels(
+        stage = fo.FilterLabels(
             "predictions", F("label") == "face", only_matches=True
         )
         view = dataset.add_stage(stage)
@@ -922,7 +913,7 @@ class FilterLabels(_FilterListField):
         # 10 points
         #
 
-        stage = FilterLabels("predictions", F("points").length() >= 10)
+        stage = fo.FilterLabels("predictions", F("points").length() >= 10)
         view = dataset.add_stage(stage)
 
     Args:
@@ -963,6 +954,7 @@ class FilterLabels(_FilterListField):
         )
 
 
+# @todo remove; deprecated by FilterLabels
 class FilterClassifications(_FilterListField):
     """Filters the :class:`fiftyone.core.labels.Classification` elements in the
     specified :class:`fiftyone.core.labels.Classifications` field of each
@@ -972,7 +964,6 @@ class FilterClassifications(_FilterListField):
 
         import fiftyone as fo
         from fiftyone import ViewField as F
-        from fiftyone.core.stages import FilterClassifications
 
         dataset = fo.load_dataset(...)
 
@@ -981,7 +972,7 @@ class FilterClassifications(_FilterListField):
         # `confidence` greater than 0.8
         #
 
-        stage = FilterClassifications("predictions", F("confidence") > 0.8)
+        stage = fo.FilterClassifications("predictions", F("confidence") > 0.8)
         view = dataset.add_stage(stage)
 
         #
@@ -990,7 +981,7 @@ class FilterClassifications(_FilterListField):
         # classification after filtering
         #
 
-        stage = FilterClassifications(
+        stage = fo.FilterClassifications(
             "predictions", F("label").is_in(["cat", "dog"]), only_matches=True
         )
         view = dataset.add_stage(stage)
@@ -1017,6 +1008,7 @@ class FilterClassifications(_FilterListField):
         )
 
 
+# @todo remove; deprecated by FilterLabels
 class FilterDetections(_FilterListField):
     """Filters the :class:`fiftyone.core.labels.Detection` elements in the
     specified :class:`fiftyone.core.labels.Detections` field of each sample.
@@ -1025,7 +1017,6 @@ class FilterDetections(_FilterListField):
 
         import fiftyone as fo
         from fiftyone import ViewField as F
-        from fiftyone.core.stages import FilterDetections
 
         dataset = fo.load_dataset(...)
 
@@ -1034,7 +1025,7 @@ class FilterDetections(_FilterListField):
         # is greater than 0.8
         #
 
-        stage = FilterDetections("predictions", F("confidence") > 0.8)
+        stage = fo.FilterDetections("predictions", F("confidence") > 0.8)
         view = dataset.add_stage(stage)
 
         #
@@ -1043,7 +1034,7 @@ class FilterDetections(_FilterListField):
         # after filtering
         #
 
-        stage = FilterDetections(
+        stage = fo.FilterDetections(
             "predictions", F("label").is_in(["cat", "dog"]), only_matches=True
         )
         view = dataset.add_stage(stage)
@@ -1056,7 +1047,7 @@ class FilterDetections(_FilterListField):
         # bbox is in [top-left-x, top-left-y, width, height] format
         bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
 
-        stage = FilterDetections("predictions", bbox_area < 0.2)
+        stage = fo.FilterDetections("predictions", bbox_area < 0.2)
         view = dataset.add_stage(stage)
 
     Args:
@@ -1081,6 +1072,7 @@ class FilterDetections(_FilterListField):
         )
 
 
+# @todo remove; deprecated by FilterLabels
 class FilterPolylines(_FilterListField):
     """Filters the :class:`fiftyone.core.labels.Polyline` elements in the
     specified :class:`fiftyone.core.labels.Polylines` field of each sample.
@@ -1089,7 +1081,6 @@ class FilterPolylines(_FilterListField):
 
         import fiftyone as fo
         from fiftyone import ViewField as F
-        from fiftyone.core.stages import FilterPolylines
 
         dataset = fo.load_dataset(...)
 
@@ -1097,7 +1088,7 @@ class FilterPolylines(_FilterListField):
         # Only include polylines in the `predictions` field that are filled
         #
 
-        stage = FilterPolylines("predictions", F("filled"))
+        stage = fo.FilterPolylines("predictions", F("filled"))
         view = dataset.add_stage(stage)
 
         #
@@ -1106,7 +1097,7 @@ class FilterPolylines(_FilterListField):
         # filtering
         #
 
-        stage = FilterPolylines(
+        stage = fo.FilterPolylines(
             "predictions", F("label") == "lane", only_matches=True
         )
         view = dataset.add_stage(stage)
@@ -1117,7 +1108,7 @@ class FilterPolylines(_FilterListField):
         #
 
         num_vertices = F("points").map(F().length()).sum()
-        stage = FilterPolylines("predictions", num_vertices >= 10)
+        stage = fo.FilterPolylines("predictions", num_vertices >= 10)
         view = dataset.add_stage(stage)
 
     Args:
@@ -1142,6 +1133,7 @@ class FilterPolylines(_FilterListField):
         )
 
 
+# @todo remove; deprecated by FilterLabels
 class FilterKeypoints(_FilterListField):
     """Filters the :class:`fiftyone.core.labels.Keypoint` elements in the
     specified :class:`fiftyone.core.labels.Keypoints` field of each sample.
@@ -1150,7 +1142,6 @@ class FilterKeypoints(_FilterListField):
 
         import fiftyone as fo
         from fiftyone import ViewField as F
-        from fiftyone.core.stages import FilterKeypoints
 
         dataset = fo.load_dataset(...)
 
@@ -1160,7 +1151,7 @@ class FilterKeypoints(_FilterListField):
         # filtering
         #
 
-        stage = FilterKeypoints(
+        stage = fo.FilterKeypoints(
             "predictions", F("label") == "face", only_matches=True
         )
         view = dataset.add_stage(stage)
@@ -1170,7 +1161,7 @@ class FilterKeypoints(_FilterListField):
         # 10 points
         #
 
-        stage = FilterKeypoints("predictions", F("points").length() >= 10)
+        stage = fo.FilterKeypoints("predictions", F("points").length() >= 10)
         view = dataset.add_stage(stage)
 
     Args:
@@ -1201,7 +1192,6 @@ class Limit(ViewStage):
     Examples::
 
         import fiftyone as fo
-        from fiftyone.core.stages import Limit
 
         dataset = fo.load_dataset(...)
 
@@ -1209,7 +1199,7 @@ class Limit(ViewStage):
         # Only include the first 10 samples in the view
         #
 
-        stage = Limit(10)
+        stage = fo.Limit(10)
         view = dataset.add_stage(stage)
 
     Args:
@@ -1253,7 +1243,6 @@ class LimitLabels(ViewStage):
     Examples::
 
         import fiftyone as fo
-        from fiftyone.core.stages import LimitLabels
 
         dataset = fo.load_dataset(...)
 
@@ -1262,7 +1251,7 @@ class LimitLabels(ViewStage):
         # the view
         #
 
-        stage = LimitLabels("ground_truth", 5)
+        stage = fo.LimitLabels("ground_truth", 5)
         view = dataset.add_stage(stage)
 
     Args:
@@ -1326,21 +1315,9 @@ class MapLabels(ViewStage):
     """Maps the ``label`` values of :class:`fiftyone.core.labels.Label` fields
     to new values.
 
-    The specified ``field`` must be one of the following types:
-
-    -   :class:`fiftyone.core.labels.Classification`
-    -   :class:`fiftyone.core.labels.Classifications`
-    -   :class:`fiftyone.core.labels.Detection`
-    -   :class:`fiftyone.core.labels.Detections`
-    -   :class:`fiftyone.core.labels.Keypoint`
-    -   :class:`fiftyone.core.labels.Keypoints`
-    -   :class:`fiftyone.core.labels.Polyline`
-    -   :class:`fiftyone.core.labels.Polylines`
-
     Examples::
 
         import fiftyone as fo
-        from fiftyone.core.stages import MapLabels
 
         dataset = fo.load_dataset(...)
 
@@ -1348,7 +1325,7 @@ class MapLabels(ViewStage):
         # Map "cat" and "dog" label values to "pet"
         #
 
-        stage = MapLabels("ground_truth", {"cat": "pet", "dog":, "pet"})
+        stage = fo.MapLabels("ground_truth", {"cat": "pet", "dog":, "pet"})
         view = dataset.add_stage(stage)
 
     Args:
@@ -1441,7 +1418,6 @@ class Match(ViewStage):
 
         import fiftyone as fo
         from fiftyone import ViewField as F
-        from fiftyone.core.stages import Match
 
         dataset = fo.load_dataset(...)
 
@@ -1449,7 +1425,7 @@ class Match(ViewStage):
         # Only include samples whose `filepath` ends with ".jpg"
         #
 
-        stage = Match(F("filepath").ends_with(".jpg"))
+        stage = fo.Match(F("filepath").ends_with(".jpg"))
         view = dataset.add_stage(stage)
 
         #
@@ -1457,7 +1433,7 @@ class Match(ViewStage):
         # `Classification` field) has `label` of "cat"
         #
 
-        stage = Match(F("predictions").label == "cat"))
+        stage = fo.Match(F("predictions").label == "cat"))
         view = dataset.add_stage(stage)
 
         #
@@ -1465,7 +1441,7 @@ class Match(ViewStage):
         # `Detections` field) has at least 5 detections
         #
 
-        stage = Match(F("predictions").detections.length() >= 5)
+        stage = fo.Match(F("predictions").detections.length() >= 5)
         view = dataset.add_stage(stage)
 
         #
@@ -1478,7 +1454,7 @@ class Match(ViewStage):
         pred_bbox = F("predictions.detections.bounding_box")
         pred_bbox_area = pred_bbox[2] * pred_bbox[3]
 
-        stage = Match((pred_bbox_area < 0.2).length() > 0)
+        stage = fo.Match((pred_bbox_area < 0.2).length() > 0)
         view = dataset.add_stage(stage)
 
     Args:
@@ -1526,7 +1502,6 @@ class MatchTag(ViewStage):
     Examples::
 
         import fiftyone as fo
-        from fiftyone.core.stages import MatchTag
 
         dataset = fo.load_dataset(...)
 
@@ -1534,7 +1509,7 @@ class MatchTag(ViewStage):
         # Only include samples that have the "test" tag
         #
 
-        stage = MatchTag("test")
+        stage = fo.MatchTag("test")
         view = dataset.add_stage(stage)
 
     Args:
@@ -1569,7 +1544,6 @@ class MatchTags(ViewStage):
     Examples::
 
         import fiftyone as fo
-        from fiftyone.core.stages import MatchTags
 
         dataset = fo.load_dataset(...)
 
@@ -1577,7 +1551,7 @@ class MatchTags(ViewStage):
         # Only include samples that have either the "test" or "validation" tag
         #
 
-        stage = MatchTags(["test", "validation"])
+        stage = fo.MatchTags(["test", "validation"])
         view = dataset.add_stage(stage)
 
     Args:
@@ -1618,7 +1592,6 @@ class Mongo(ViewStage):
     Examples::
 
         import fiftyone as fo
-        from fiftyone.core.stages import Mongo
 
         dataset = fo.load_dataset(...)
 
@@ -1626,7 +1599,7 @@ class Mongo(ViewStage):
         # Extract a view containing the 6th through 15th samples in the dataset
         #
 
-        stage = Mongo([{"$skip": 5}, {"$limit": 10}])
+        stage = fo.Mongo([{"$skip": 5}, {"$limit": 10}])
         view = dataset.add_stage(stage)
 
         #
@@ -1634,7 +1607,7 @@ class Mongo(ViewStage):
         # samples (assume it is a `Detections` field)
         #
 
-        stage = Mongo([
+        stage = fo.Mongo([
             {
                 "$addFields": {
                     "_sort_field": {
@@ -1676,7 +1649,6 @@ class Select(ViewStage):
     Examples::
 
         import fiftyone as fo
-        from fiftyone.core.stages import Select
 
         dataset = fo.load_dataset(...)
 
@@ -1684,7 +1656,7 @@ class Select(ViewStage):
         # Select the samples with the given IDs from the dataset
         #
 
-        stage = Select([
+        stage = fo.Select([
             "5f3c298768fd4d3baf422d34",
             "5f3c298768fd4d3baf422d35",
             "5f3c298768fd4d3baf422d36",
@@ -1699,7 +1671,7 @@ class Select(ViewStage):
 
         # Select samples in the App...
 
-        stage = Select(session.selected)
+        stage = fo.Select(session.selected)
         view = dataset.add_stage(stage)
 
     Args:
@@ -1752,7 +1724,6 @@ class SelectFields(ViewStage):
     Examples::
 
         import fiftyone as fo
-        from fiftyone.core.stages import SelectFields
 
         dataset = fo.load_dataset(...)
 
@@ -1760,7 +1731,7 @@ class SelectFields(ViewStage):
         # Include only the default fields on each sample
         #
 
-        stage = SelectFields()
+        stage = fo.SelectFields()
         view = dataset.add_stage(stage)
 
         #
@@ -1768,7 +1739,7 @@ class SelectFields(ViewStage):
         # each sample
         #
 
-        stage = SelectFields("ground_truth")
+        stage = fo.SelectFields("ground_truth")
         view = dataset.add_stage(stage)
 
     Args:
@@ -1883,7 +1854,6 @@ class SelectObjects(ViewStage):
     Examples::
 
         import fiftyone as fo
-        from fiftyone.core.stages import SelectObjects
 
         dataset = fo.load_dataset(...)
 
@@ -1895,7 +1865,7 @@ class SelectObjects(ViewStage):
 
         # Select some objects in the App...
 
-        stage = SelectObjects(session.selected_objects)
+        stage = fo.SelectObjects(session.selected_objects)
         view = dataset.add_stage(stage)
 
     Args:
@@ -1973,7 +1943,6 @@ class Shuffle(ViewStage):
     Examples::
 
         import fiftyone as fo
-        from fiftyone.core.stages import Shuffle
 
         dataset = fo.load_dataset(...)
 
@@ -1982,14 +1951,14 @@ class Shuffle(ViewStage):
         # samples in the dataset
         #
 
-        stage = Shuffle()
+        stage = fo.Shuffle()
         view = dataset.add_stage(stage)
 
         #
         # Shuffle the samples with a set random seed
         #
 
-        stage = Shuffle(seed=51)
+        stage = fo.Shuffle(seed=51)
         view = dataset.add_stage(stage)
 
     Args:
@@ -2035,7 +2004,6 @@ class Skip(ViewStage):
     Examples::
 
         import fiftyone as fo
-        from fiftyone.core.stages import Skip
 
         dataset = fo.load_dataset(...)
 
@@ -2043,7 +2011,7 @@ class Skip(ViewStage):
         # Omit the first 10 samples from the dataset
         #
 
-        stage = Skip(10)
+        stage = fo.Skip(10)
         view = dataset.add_stage(stage)
 
     Args:
@@ -2085,7 +2053,6 @@ class SortBy(ViewStage):
 
         import fiftyone as fo
         from fiftyone import ViewField as F
-        from fiftyone.core.stages import SortBy
 
         dataset = fo.load_dataset(...)
 
@@ -2094,7 +2061,7 @@ class SortBy(ViewStage):
         # `predictions` field (assume it is a `Classification` field)
         #
 
-        stage = SortBy("predictions.confidence", reverse=True)
+        stage = fo.SortBy("predictions.confidence", reverse=True)
         view = dataset.add_stage(stage)
 
         #
@@ -2107,7 +2074,7 @@ class SortBy(ViewStage):
         pred_bbox = F("predictions.detections.bounding_box")
         pred_bbox_area = pred_bbox[2] * pred_bbox[3]
 
-        stage = SortBy((pred_bbox_area < 0.2).length())
+        stage = fo.SortBy((pred_bbox_area < 0.2).length())
         view = dataset.add_stage(stage)
 
     Args:
@@ -2189,7 +2156,6 @@ class Take(ViewStage):
     Examples::
 
         import fiftyone as fo
-        from fiftyone.core.stages import Take
 
         dataset = fo.load_dataset(...)
 
@@ -2197,14 +2163,14 @@ class Take(ViewStage):
         # Take 10 random samples from the dataset
         #
 
-        stage = Take(10)
+        stage = fo.Take(10)
         view = dataset.add_stage(stage)
 
         #
         # Take 10 random samples from the dataset with a set seed
         #
 
-        stage = Take(10, seed=51)
+        stage = fo.Take(10, seed=51)
         view = dataset.add_stage(stage)
 
     Args:

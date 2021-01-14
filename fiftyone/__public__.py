@@ -19,6 +19,7 @@ from .core.aggregations import (
     CountValues,
     Distinct,
     DistinctLabels,
+    HistogramValues,
 )
 from .core.dataset import (
     Dataset,
@@ -88,6 +89,32 @@ from .core.models import (
     ModelManager,
 )
 from .core.sample import Sample
+from .core.stages import (
+    Exclude,
+    ExcludeFields,
+    ExcludeObjects,
+    Exists,
+    FilterField,
+    FilterLabels,
+    FilterClassifications,
+    FilterDetections,
+    FilterPolylines,
+    FilterKeypoints,
+    Limit,
+    LimitLabels,
+    MapLabels,
+    Match,
+    MatchTag,
+    MatchTags,
+    Mongo,
+    Shuffle,
+    Select,
+    SelectFields,
+    SelectObjects,
+    Skip,
+    SortBy,
+    Take,
+)
 from .core.session import (
     close_app,
     launch_app,
