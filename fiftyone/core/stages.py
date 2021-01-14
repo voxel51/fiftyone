@@ -1247,8 +1247,8 @@ class LimitLabels(ViewStage):
 
     -   :class:`fiftyone.core.labels.Classifications`
     -   :class:`fiftyone.core.labels.Detections`
-    -   :class:`fiftyone.core.labels.Polylines`
     -   :class:`fiftyone.core.labels.Keypoints`
+    -   :class:`fiftyone.core.labels.Polylines`
 
     Examples::
 
@@ -1320,6 +1320,118 @@ class LimitLabels(ViewStage):
         self._labels_list_field = _get_labels_list_field(
             self._field, sample_collection
         )
+
+
+class MapLabels(ViewStage):
+    """Maps the ``label`` values of :class:`fiftyone.core.labels.Label` fields
+    to new values.
+
+    The specified ``field`` must be one of the following types:
+
+    -   :class:`fiftyone.core.labels.Classification`
+    -   :class:`fiftyone.core.labels.Classifications`
+    -   :class:`fiftyone.core.labels.Detection`
+    -   :class:`fiftyone.core.labels.Detections`
+    -   :class:`fiftyone.core.labels.Keypoint`
+    -   :class:`fiftyone.core.labels.Keypoints`
+    -   :class:`fiftyone.core.labels.Polyline`
+    -   :class:`fiftyone.core.labels.Polylines`
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone.core.stages import MapLabels
+
+        dataset = fo.load_dataset(...)
+
+        #
+        # Map "cat" and "dog" label values to "pet"
+        #
+
+        stage = MapLabels("ground_truth", {"cat": "pet", "dog":, "pet"})
+        view = dataset.add_stage(stage)
+
+    Args:
+        field: the labels field to map
+        map: a dict mapping label values to new label values
+    """
+
+    def __init__(self, field, map):
+        self._map = map
+        self._field = field
+        self._labels_field = None
+
+    @property
+    def field(self):
+        """The labels field to map."""
+        return self._field
+
+    @property
+    def map(self):
+        """The labels map dict."""
+        return self._map
+
+    def to_mongo(self, sample_collection):
+        self._labels_field, is_list_field, is_frame_field = _get_labels_field(
+            self._field, sample_collection
+        )
+        if is_frame_field:
+            raise ValueError("Mapping frame labels is not yet supported")
+
+        values = sorted(self._map.values())
+        keys = sorted(self._map.keys(), key=lambda k: self._map[k])
+
+        label = (
+            "$$obj.label"
+            if is_list_field
+            else "$%s.label" % self._labels_field
+        )
+
+        cond = {
+            "$cond": [
+                {"$in": [label, "$$keys"]},
+                {
+                    "$arrayElemAt": [
+                        "$$values",
+                        {"$indexOfArray": ["$$keys", label]},
+                    ]
+                },
+                label,
+            ]
+        }
+
+        if is_list_field:
+            _in = {
+                "$map": {
+                    "input": "$%s" % self._labels_field,
+                    "as": "obj",
+                    "in": {"$mergeObjects": ["$$obj", {"label": cond}]},
+                }
+            }
+            set_field = self._labels_field
+        else:
+            _in = cond
+            set_field = "%s.label" % self._labels_field
+
+        let = {"$let": {"vars": {"keys": keys, "values": values}, "in": _in}}
+
+        return [{"$set": {set_field: let}}]
+
+    def _kwargs(self):
+        return [
+            ["field", self._field],
+            ["map", self._map],
+        ]
+
+    @classmethod
+    def _params(self):
+        return [
+            {"name": "field", "type": "field"},
+            {"name": "map", "type": "dict", "placeholder": "map"},
+        ]
+
+    def validate(self, sample_collection):
+        _get_labels_field(self._field, sample_collection)
 
 
 class Match(ViewStage):
@@ -2158,6 +2270,72 @@ def _get_rng(seed):
     return _random
 
 
+def _get_labels_field(field_path, sample_collection):
+    if field_path.startswith("frames."):
+        if sample_collection.media_type != fom.VIDEO:
+            raise ValueError(
+                "Field '%s' is a frames field but '%s' is not a video dataset"
+                % (field_path, sample_collection.name)
+            )
+
+        field_name = field_path[len("frames.") :]
+        schema = sample_collection.get_frame_field_schema()
+        is_frame_field = True
+    else:
+        field_name = field_path
+        schema = sample_collection.get_field_schema()
+        is_frame_field = False
+
+    field = schema.get(field_name, None)
+
+    if field is None:
+        raise ValueError("Field '%s' does not exist" % field_path)
+
+    single_fields = (
+        fol.Classification,
+        fol.Detection,
+        fol.Polyline,
+        fol.Keypoint,
+    )
+
+    list_fields = (
+        fol.Classifications,
+        fol.Detections,
+        fol.Polylines,
+        fol.Keypoints,
+    )
+
+    if isinstance(field, fof.EmbeddedDocumentField):
+        document_type = field.document_type
+        is_list_field = issubclass(document_type, list_fields)
+        path = None
+
+        if document_type is fol.Classifications:
+            path = field_path + ".classifications"
+
+        elif document_type is fol.Detections:
+            path = field_path + ".detections"
+
+        elif document_type is fol.Polylines:
+            path = field_path + ".polylines"
+
+        elif document_type is fol.Keypoints:
+            path = field_path + ".keypoints"
+
+        elif issubclass(document_type, single_fields):
+            path = field_path
+
+        if path is not None:
+            return path, is_list_field, is_frame_field
+
+    allowed_types = single_fields + list_fields
+
+    raise ValueError(
+        "Field '%s' must be a Label type %s; found '%s'"
+        % (field_path, allowed_types, field)
+    )
+
+
 def _get_labels_list_field(field_path, sample_collection):
     if field_path.startswith("frames."):
         if sample_collection.media_type != fom.VIDEO:
@@ -2269,6 +2447,7 @@ _STAGES = [
     FilterKeypoints,
     Limit,
     LimitLabels,
+    MapLabels,
     Match,
     MatchTag,
     MatchTags,

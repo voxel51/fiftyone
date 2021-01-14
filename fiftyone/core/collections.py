@@ -29,6 +29,7 @@ import fiftyone.core.utils as fou
 
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
+foum = fou.lazy_import("fiftyone.utils.metadata")
 
 
 logger = logging.getLogger(__name__)
@@ -382,7 +383,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement get_tags()")
 
-    def compute_metadata(self, overwrite=False):
+    def compute_metadata(self, overwrite=False, num_workers=None):
         """Populates the ``metadata`` field of all samples in the collection.
 
         Any samples with existing metadata are skipped, unless
@@ -390,11 +391,12 @@ class SampleCollection(object):
 
         Args:
             overwrite (False): whether to overwrite existing metadata
+            num_workers (None): the number of processes to use. By default,
+                ``multiprocessing.cpu_count()`` is used
         """
-        with fou.ProgressBar() as pb:
-            for sample in pb(self):
-                if sample.metadata is None or overwrite:
-                    sample.compute_metadata()
+        foum.compute_metadata(
+            self, overwrite=overwrite, num_workers=num_workers
+        )
 
     def apply_model(
         self,
@@ -638,6 +640,9 @@ class SampleCollection(object):
 
         Args:
             objects: a list of dicts specifying the objects to exclude
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.ExcludeObjects(objects))
 
@@ -1137,8 +1142,49 @@ class SampleCollection(object):
             field: the labels list field to filter
             limit: the maximum number of labels to include in each labels list.
                 If a non-positive number is provided, all lists will be empty
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.LimitLabels(field, limit))
+
+    @view_stage
+    def map_labels(self, field, map):
+        """Maps the ``label`` values of :class:`fiftyone.core.labels.Label`
+        fields to new values.
+
+        The specified ``field`` must be one of the following types:
+
+        -   :class:`fiftyone.core.labels.Classification`
+        -   :class:`fiftyone.core.labels.Classifications`
+        -   :class:`fiftyone.core.labels.Detection`
+        -   :class:`fiftyone.core.labels.Detections`
+        -   :class:`fiftyone.core.labels.Keypoint`
+        -   :class:`fiftyone.core.labels.Keypoints`
+        -   :class:`fiftyone.core.labels.Polyline`
+        -   :class:`fiftyone.core.labels.Polylines`
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Map "cat" and "dog" label values to "pet"
+            #
+
+            mapping = {"cat": "pet", "dog": "pet"}
+            view = dataset.map_labels("ground_truth", mapping)
+
+        Args:
+            field: the labels field to map
+            map: a ``dict`` mapping label values to new label values
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.MapLabels(field, map))
 
     @view_stage
     def match(self, filter):
@@ -1412,6 +1458,9 @@ class SampleCollection(object):
 
         Args:
             objects: a list of dicts specifying the objects to select
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.SelectObjects(objects))
 
