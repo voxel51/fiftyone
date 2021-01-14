@@ -22,6 +22,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.constants as foc
+import fiftyone.core.config as focg
 import fiftyone.core.dataset as fod
 import fiftyone.core.session as fos
 import fiftyone.core.utils as fou
@@ -158,7 +159,7 @@ class ConfigCommand(Command):
         # Print a specific config field
         fiftyone config <field>
 
-        # Print the location of your config
+        # Print the location of your config on disk (if one exists)
         fiftyone config --locate
     """
 
@@ -177,13 +178,11 @@ class ConfigCommand(Command):
     @staticmethod
     def execute(parser, args):
         if args.locate:
-            if os.path.isfile(foc.FIFTYONE_CONFIG_PATH):
-                print(foc.FIFTYONE_CONFIG_PATH)
+            config_path = focg.locate_config()
+            if os.path.isfile(config_path):
+                print(config_path)
             else:
-                print(
-                    "No config file found at '%s'.\n"
-                    % foc.FIFTYONE_CONFIG_PATH
-                )
+                print("No config file found at '%s'" % config_path)
 
             return
 
