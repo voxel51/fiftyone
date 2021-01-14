@@ -404,8 +404,8 @@ CLI
   :ref:`fiftyone datasets delete <cli-fiftyone-datasets-delete>` to delete all
   datasets matching a pattern and all non-persistent datasets
 
-Documentation
-^^^^^^^^^^^^^
+Docs
+^^^^
 - Added a recipe for :doc:`merging datasets </recipes/merge_datasets>`
 - Fixed some table widths and other display issues
 
@@ -644,10 +644,9 @@ Core
   :meth:`contains_str() <fiftyone.core.expressions.ViewExpression.contains_str>` and
   :meth:`matches_str() <fiftyone.core.expressions.ViewExpression.matches_str>`
 
-Documentation
-^^^^^^^^^^^^^
-- Added :doc:`a tutorial </tutorials/open_images_evaluation>` demonstrating
-  performing error analysis on the
+Docs
+^^^^
+- Added a tutorial demonstrating performing error analysis on the
   `Open Images Dataset <https://storage.googleapis.com/openimages/web/index.html>`_
   powered by FiftyOne
 
@@ -707,8 +706,8 @@ Core
   :meth:`draw_labels() <fiftyone.core.collections.SampleCollection.draw_labels>`
   method
 
-Documentation
-^^^^^^^^^^^^^
+Docs
+^^^^
 - Added :doc:`a tutorial </tutorials/evaluate_detections>` demonstrating
   object detection evaluation workflows powered by FiftyOne
 - Added :doc:`full documentation </user_guide/using_views>` for constructing
@@ -748,8 +747,8 @@ App
 - Fixed an issue that could cause launching the App to fail on Windows under
   Python 3.6 and older
 
-Documentation
-^^^^^^^^^^^^^
+Docs
+^^^^
 - Added a recipe demonstrating how to
   :doc:`convert datasets </recipes/convert_datasets>` on disk between common
   formats
