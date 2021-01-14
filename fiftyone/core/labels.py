@@ -328,7 +328,7 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
     meta = {"allow_inheritance": True}
 
     label = fof.StringField()
-    bounding_box = fof.ListField()
+    bounding_box = fof.ListField(fof.FloatField())
     mask = fof.ArrayField()
     confidence = fof.FloatField()
     index = fof.IntField()
