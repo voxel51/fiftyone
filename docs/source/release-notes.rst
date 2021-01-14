@@ -601,9 +601,6 @@ Core
 
 Docs
 ^^^^
-- Added a
-  `getting started with FiftyOne <https://github.com/voxel51/fiftyone/blob/develop/WALKTHROUGH.md>`_
-  walkthrough to the GitHub repository
 - Updated the :doc:`evaluate object detections </tutorials/evaluate_detections>`
   tutorial to make it more friendly for execution on CPU-only machines
 - Added

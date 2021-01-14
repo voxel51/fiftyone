@@ -54,8 +54,9 @@ fiftyone quickstart
 This command will download a small dataset, launch the App, and print some
 suggestions for exploring the dataset.
 
-Next, check out [this walkthrough](WALKTHROUGH.md) for a more detailed overview
-of using FiftyOne.
+Also check out
+[this walkthrough](https://github.com/voxel51/fiftyone-examples/blob/master/examples/walkthrough.ipynb)
+for a more detailed overview of using FiftyOne.
 
 ## Documentation
 
