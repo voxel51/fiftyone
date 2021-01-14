@@ -22,7 +22,7 @@ FiftyOne
       <th>
         <a target="_blank" href="https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb">
           <img alt="Colab quickstart" src="_static/images/logo/colab-logo-32px.png" />
-          &nbsp Quickstart in Colab
+          &nbsp Try it in Colab
         </a>
       </th>
     </table>
