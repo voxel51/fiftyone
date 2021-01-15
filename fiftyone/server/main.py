@@ -854,26 +854,18 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = view.add_stage(stage)
 
         if group == LABELS and results is None:
-            aggregations = []
-            fields = []
-            for name, field in view.get_field_schema().items():
-                if isinstance(field, fof.EmbeddedDocumentField) and issubclass(
-                    field.document_type, fol.Label
-                ):
-                    aggregations.append(foa.CountLabels(name))
-                    fields.append(field)
+            aggs, fields = _count_labels(view.get_field_schema())
 
             if view.media_type == fom.VIDEO:
-                for name, field in view.get_frame_field_schema().items():
-                    if isinstance(
-                        field, fof.EmbeddedDocumentField
-                    ) and issubclass(field.document_type, fol.Label):
-                        aggregations.append(foa.CountLabels("frames." + name))
-                        fields.append(field)
+                frame_aggs, frame_fields = _count_labels(
+                    view.get_frame_field_schema(), prefix="frames"
+                )
 
+            aggs.extend(frame_aggs)
+            fields.extend(frame_fields)
             results = []
             response = await view._async_aggregate(
-                cls.sample_collection(), aggregations
+                cls.sample_collection(), aggs
             )
             for idx, result in enumerate(response):
                 results.append(
@@ -917,6 +909,24 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         self.write_message({"type": "distributions", "results": results})
 
 
+def _count_labels(schema, prefix=""):
+    aggregations = []
+    fields = []
+    for name, field in schema.items():
+        if isinstance(field, fof.EmbeddedDocumentField) and issubclass(
+            field.document_type, fol.Label
+        ):
+            path = name
+            if issubclass(field.document_type, fol._List):
+                path = "%s.%s" % (path, field.document_type._LIST_PATH)
+            paht = "%s.label" % path
+
+            aggregations.append(foa.CountValues(path))
+            fields.append(field)
+
+    return aggregations, fields
+
+
 def _make_range_expression(f, args):
     expr = None
     if "range" in args:
@@ -949,7 +959,7 @@ def _make_filter_stages(dataset, filters):
 
         if isinstance(field, fof.EmbeddedDocumentField):
             stage_cls = fosg.FilterField
-            if issubclass(field.document_type, foa._LABELS):
+            if issubclass(field.document_type, fol.Label):
                 stage_cls = fosg.FilterLabels
             expr = _make_range_expression(F("confidence"), args)
             if "labels" in args:
