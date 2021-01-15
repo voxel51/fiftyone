@@ -259,6 +259,7 @@ export const datasetName = selector({
   key: "datasetName",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
+    console.log(stateDescription);
     return stateDescription.dataset ? stateDescription.dataset.name : null;
   },
 });
@@ -571,22 +572,32 @@ export const scalarTypes = selectorFamily({
 });
 
 const COUNT_CLS = "fiftyone.core.aggregations.CountResult";
-const LABELS_CLS = "fiftyone.core.aggregations.DistinctLabelsResult";
+const LABELS_CLS = "fiftyone.core.aggregations.DistinctResult";
 const BOUNDS_CLS = "fiftyone.core.aggregations.BoundsResult";
-const CONFIDENCE_BOUNDS_CLS =
-  "fiftyone.core.aggregations.ConfidenceBoundsResult";
+const CONFIDENCE_BOUNDS_CLS = "fiftyone.core.aggregations.BoundsResult";
 
 export const labelClasses = selectorFamily({
   key: "labelClasses",
   get: (label) => ({ get }) => {
     return (get(datasetStats) ?? []).reduce((acc, cur) => {
-      if (cur.name === label && cur._CLS === LABELS_CLS) {
+      if (cur.name && cur.name.includes(label) && cur._CLS === LABELS_CLS) {
         return cur.labels;
       }
+      console.log(acc);
       return acc;
     }, []);
   },
 });
+
+const catchLabelCount = (names, prefix, cur, acc) => {
+  if (
+    cur.name &&
+    names.includes(cur.name.slice(prefix.length).split(".")[0]) &&
+    cur._CLS === COUNT_CLS
+  ) {
+    acc[cur.name.slice(prefix.length).split(".")[0]] = cur.count;
+  }
+};
 
 export const labelSampleCounts = selectorFamily({
   key: "labelSampleCounts",
@@ -600,12 +611,7 @@ export const labelSampleCounts = selectorFamily({
       return null;
     }
     return stats.reduce((acc, cur) => {
-      if (
-        names.includes(cur.name.slice(prefix.length)) &&
-        cur._CLS === COUNT_CLS
-      ) {
-        acc[cur.name.slice(prefix.length)] = cur.count;
-      }
+      catchLabelCount(names, prefix, cur, acc);
       return acc;
     }, {});
   },
@@ -623,12 +629,7 @@ export const filteredLabelSampleCounts = selectorFamily({
       return null;
     }
     return stats.reduce((acc, cur) => {
-      if (
-        names.includes(cur.name.slice(prefix.length)) &&
-        cur._CLS === COUNT_CLS
-      ) {
-        acc[cur.name.slice(prefix.length)] = cur.count;
-      }
+      catchLabelCount(names, prefix, cur, acc);
       return acc;
     }, {});
   },
@@ -855,7 +856,11 @@ export const labelConfidenceBounds = selectorFamily({
   get: (label) => ({ get }) => {
     return (get(datasetStats) ?? []).reduce(
       (acc, cur) => {
-        if (cur.name === label && cur._CLS === CONFIDENCE_BOUNDS_CLS) {
+        if (
+          cur.name &&
+          cur.name.includes(label) &&
+          cur._CLS === CONFIDENCE_BOUNDS_CLS
+        ) {
           let bounds = cur.bounds;
           bounds = [
             0 < bounds[0] ? 0 : bounds[0],
