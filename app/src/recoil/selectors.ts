@@ -259,7 +259,6 @@ export const datasetName = selector({
   key: "datasetName",
   get: ({ get }) => {
     const stateDescription = get(atoms.stateDescription);
-    console.log(stateDescription);
     return stateDescription.dataset ? stateDescription.dataset.name : null;
   },
 });
@@ -576,14 +575,28 @@ const LABELS_CLS = "fiftyone.core.aggregations.DistinctResult";
 const BOUNDS_CLS = "fiftyone.core.aggregations.BoundsResult";
 const CONFIDENCE_BOUNDS_CLS = "fiftyone.core.aggregations.BoundsResult";
 
+export const labelsPath = selectorFamily({
+  key: "labelsPath",
+  get: (label) => ({ get }) => {
+    const isVideo = get(isVideoDataset);
+    const dimension =
+      isVideo && label.startsWith("frames.") ? "frame" : "sample";
+    const type = get(labelMap(dimension))[label];
+    if (VALID_LIST_TYPES.includes(type)) {
+      return `${label}.${type.toLowerCase()}.label`;
+    }
+    return `${label}.${type.toLowerCase()}.label`;
+  },
+});
+
 export const labelClasses = selectorFamily({
   key: "labelClasses",
   get: (label) => ({ get }) => {
+    const path = get(labelsPath(label));
     return (get(datasetStats) ?? []).reduce((acc, cur) => {
-      if (cur.name && cur.name.includes(label) && cur._CLS === LABELS_CLS) {
-        return cur.labels;
+      if (cur.name === path && cur._CLS === LABELS_CLS) {
+        return cur.values;
       }
-      console.log(acc);
       return acc;
     }, []);
   },
@@ -729,6 +742,19 @@ export const labelTuples = selectorFamily({
   get: (dimension: string) => ({ get }) => {
     const types = get(labelTypes(dimension));
     return get(labelNames(dimension)).map((n, i) => [n, types[i]]);
+  },
+});
+
+export const labelMap = selectorFamily({
+  key: "labelMap",
+  get: (dimension: string) => ({ get }) => {
+    const tuples = get(labelTuples(dimension));
+    return tuples.reduce((acc, cur) => {
+      return {
+        [cur[0]]: cur[1],
+        ...acc,
+      };
+    }, {});
   },
 });
 
