@@ -5,7 +5,7 @@ Taken from https://github.com/scardine/image_size/blob/master/get_image_size.py
 
 TODO (BEN): clean up, document, and fit into fiftyone.core
 
-| Copyright 2017-2020, Voxel51, Inc.
+| Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
