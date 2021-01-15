@@ -1,7 +1,7 @@
 """
 Tests for the :mod:`fiftyone.utils.scale` module.
 
-| Copyright 2017-2020, Voxel51, Inc.
+| Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
