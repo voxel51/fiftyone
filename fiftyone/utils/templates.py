@@ -93,42 +93,34 @@ _SCREENSHOT_COLAB = """
 """
 
 _SCREENSHOT_COLAB_SCRIPT = """
-(async () => {
-    const baseURL = await google.colab.kernel.proxyPort({
-        {
-            port
-        }
-    }, {
+(() => {
+    google.colab.kernel.proxyPort({{ port }}, {
         'cache': true
-    });
-    const url = new URL(baseURL);
-    const handleId = "{{ handle }}";
-    url.searchParams.set('fiftyoneColab', 'true');
-    url.searchParams.set('notebook', 'true');
-    url.searchParams.set('handleId', handleId);
-    const iframe = document.createElement('iframe');
-    iframe.src = url;
-    iframe.setAttribute('width', '100%');
-    iframe.setAttribute('height', '{{ height }}');
-    iframe.setAttribute('frameborder', 0);
-    document.body.appendChild(iframe);
-    window.addEventListener("message", (event) => {
-        if (event.data.handleId !== handleId) return;
-        document.body.removeChild(iframe);
-        var container = document.getElementById(`focontainer-${handleId}`);
-        var overlay = document.getElementById(`fooverlay-${handleId}`);
-        google.colab.kernel.invokeFunction(
-            `fiftyone.${handleId.replaceAll('-', '_')}`,
-            [event.data.src, event.data.width], {}
-        );
-        overlay.addEventListener("click", () => {
-            container.removeChild(container.children[1]);
-            document.body.appendChild(iframe);
+    }).then((baseURL) => {
+        const url = new URL(baseURL);
+        const handleId = "{{ handle }}";
+        url.searchParams.set('fiftyoneColab', 'true');
+        url.searchParams.set('notebook', 'true');
+        url.searchParams.set('handleId', handleId);
+        const iframe = document.createElement('iframe');
+        iframe.src = url;
+        iframe.setAttribute('width', '100%');
+        iframe.setAttribute('height', '{{ height }}');
+        iframe.setAttribute('frameborder', 0);
+        document.body.appendChild(iframe);
+        window.addEventListener("message", (event) => {
+            if (event.data.handleId !== handleId) return;
+            document.body.removeChild(iframe);
+            var container = document.getElementById(`focontainer-${handleId}`);
+            var overlay = document.getElementById(`fooverlay-${handleId}`);
+            google.colab.kernel.invokeFunction(`fiftyone.${handleId.replaceAll('-', '_')}`, [event.data.src, event.data.width], {});
+            overlay.addEventListener("click", () => {
+                container.removeChild(container.children[1]);
+                document.body.appendChild(iframe);
+            });
+            container.addEventListener("mouseenter", () => overlay.style.display = "block");
+            container.addEventListener("mouseleave", () => overlay.style.display = "none");
         });
-        container.addEventListener(
-            "mouseenter", () => overlay.style.display = "block");
-        container.addEventListener(
-            "mouseleave", () => overlay.style.display = "none");
     });
 })()
 """
