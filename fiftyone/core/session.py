@@ -587,6 +587,9 @@ class Session(foc.HasClient):
     def _capture(self, data):
         from IPython.display import HTML
 
+        if self._context == focx._COLAB:
+            return
+
         handle = data["handle"]
         if data["handle"] in self._handles:
             self._handles[handle]["target"].update(
