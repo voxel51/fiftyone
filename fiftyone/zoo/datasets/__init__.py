@@ -4,7 +4,7 @@ The FiftyOne Dataset Zoo.
 This package defines a collection of open source datasets made available for
 download via FiftyOne.
 
-| Copyright 2017-2020, Voxel51, Inc.
+| Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -205,6 +205,9 @@ def load_zoo_dataset(
         dataset_name = zoo_dataset.name
         if splits is not None:
             dataset_name += "-" + "-".join(splits)
+
+        if "max_samples" in kwargs:
+            dataset_name += "-%s" % kwargs["max_samples"]
 
     if fo.dataset_exists(dataset_name):
         if not drop_existing_dataset:

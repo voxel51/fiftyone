@@ -1,7 +1,7 @@
 """
 FiftyOne config.
 
-| Copyright 2017-2020, Voxel51, Inc.
+| Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -162,15 +162,43 @@ class FiftyOneConfig(EnvConfig):
             self.default_ml_backend = self.default_ml_backend.lower()
 
 
+def locate_config():
+    """Returns the path to the FiftyOne config on disk.
+
+    The default location is ``~/.fiftyone/config.json``, but you can override
+    this path by setting the ``FIFTYONE_CONFIG_PATH`` environment variable.
+
+    Note that a config file may not actually exist on disk in the default
+    location, in which case the default config settings will be used.
+
+    Returns:
+        the path to the config
+
+    Raises:
+        OSError: if the FiftyOne config path has been customized but the file
+            does not exist on disk
+    """
+    if "FIFTYONE_CONFIG_PATH" not in os.environ:
+        return foc.FIFTYONE_CONFIG_PATH
+
+    config_path = os.environ["FIFTYONE_CONFIG_PATH"]
+    if not os.path.isfile(config_path):
+        raise OSError("Config file '%s' not found" % config_path)
+
+    return config_path
+
+
 def load_config():
     """Loads the FiftyOne config.
 
     Returns:
         a ``fiftyone.config.FiftyOneConfig`` instance
     """
-    # If a config file is not found on disk, the default config is created by
-    # calling `FiftyOneConfig()`
-    return FiftyOneConfig.from_json(foc.FIFTYONE_CONFIG_PATH)
+    config_path = locate_config()
+    if os.path.isfile(config_path):
+        return FiftyOneConfig.from_json(config_path)
+
+    return FiftyOneConfig({})
 
 
 def set_config_settings(**kwargs):

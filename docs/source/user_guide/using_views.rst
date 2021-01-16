@@ -53,8 +53,8 @@ You can access specific information about a view in the natural ways:
     len(view)
     # 10000
 
-    view.get_tags()
-    # ['test']
+    view.media_type
+    # "image"
 
 .. note::
 

@@ -1,7 +1,7 @@
 """
 Dataset views.
 
-| Copyright 2017-2020, Voxel51, Inc.
+| Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -232,14 +232,6 @@ class DatasetView(foc.SampleCollection):
         )
 
         return self._get_filtered_schema(field_schema, frames=True)
-
-    def get_tags(self):
-        """Returns the list of unique tags of samples in the view.
-
-        Returns:
-            a list of tags
-        """
-        return self.aggregate(foa.Distinct("tags")).values
 
     def list_indexes(self):
         """Returns the fields of the dataset that are indexed.

@@ -1,7 +1,7 @@
 """
 Session class for interacting with the FiftyOne App.
 
-| Copyright 2017-2020, Voxel51, Inc.
+| Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -590,15 +590,18 @@ class Session(foc.HasClient):
         if self._context == focx._COLAB:
             return
 
-        for handle, image in data.items():
-            if handle in self._handles:
-                self._handles[handle]["target"].update(
-                    HTML(
-                        fout._SCREENSHOT_HTML.render(
-                            handle=handle, image=image, url=self._base_url(),
-                        )
+        handle = data["handle"]
+        if data["handle"] in self._handles:
+            self._handles[handle]["target"].update(
+                HTML(
+                    fout._SCREENSHOT_HTML.render(
+                        handle=handle,
+                        image=data["src"],
+                        url=self._base_url(),
+                        max_width=data["width"],
                     )
                 )
+            )
 
     def _base_url(self):
         if self._context == focx._COLAB:
@@ -700,7 +703,7 @@ def _display_colab(session, handle, uuid, port, height, update=False):
     handle.display(IPython.display.HTML(html))
     output.eval_js(script)
 
-    def capture(img):
+    def capture(img, width):
         idx = session._colab_img_counter[uuid]
         session._colab_img_counter[uuid] = idx + 1
         with output.redirect_to_element("#focontainer-%s" % uuid):
@@ -708,14 +711,15 @@ def _display_colab(session, handle, uuid, port, height, update=False):
             display(
                 IPython.display.HTML(
                     """
-                <img id='fo-%s%d' class='foimage' src='%s' style='width: 100%%;'/>
+                <img id='fo-%s%d' class='foimage' src='%s'
+                    style='width: 100%%; max-width: %dpx'/>
                 <style>
                 #fo-%s%d {
                     display: none;
                 }
                 </style>
                 """
-                    % (uuid, idx, img, uuid, idx - 1)
+                    % (uuid, idx, img, width, uuid, idx - 1)
                 )
             )
 

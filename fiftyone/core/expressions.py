@@ -1,7 +1,7 @@
 """
 Expressions for :class:`fiftyone.core.stages.ViewStage` definitions.
 
-| Copyright 2017-2020, Voxel51, Inc.
+| Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -92,6 +92,9 @@ class ViewExpression(object):
         Returns:
             a :class:`ViewExpression`
         """
+        if other is None:
+            return ~self.exists()
+
         return ViewExpression({"$eq": [self, other]})
 
     def __ge__(self, other):
@@ -157,7 +160,20 @@ class ViewExpression(object):
         Returns:
             a :class:`ViewExpression`
         """
+        if other is None:
+            return self.exists()
+
         return ViewExpression({"$ne": [self, other]})
+
+    def exists(self):
+        """Creates an expression that returns a boolean indicating whether the
+        expression, which must resolve to a field, exists and is not None.
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        # https://stackoverflow.com/a/25515046
+        return ViewExpression({"$gt": [self, None]})
 
     # Logical expression operators ############################################
 

@@ -78,11 +78,12 @@ The FiftyOne command-line interface.
     available commands:
       {config,constants,convert,datasets,app,zoo}
         quickstart          Launch a FiftyOne quickstart.
+        app                 Tools for working with the FiftyOne App.
         config              Tools for working with your FiftyOne config.
         constants           Print constants from `fiftyone.constants`.
         convert             Convert datasets on disk between supported formats.
         datasets            Tools for working with FiftyOne datasets.
-        app                 Tools for working with the FiftyOne App.
+        utils               FiftyOne utilities.
         zoo                 Tools for working with the FiftyOne Dataset Zoo.
 
 .. _cli-fiftyone-quickstart:
@@ -160,7 +161,7 @@ Tools for working with your FiftyOne config.
 
 .. code-block:: shell
 
-    # Print the location of your config
+    # Print the location of your config on disk (if one exists)
     fiftyone config --locate
 
 .. _cli-fiftyone-constants:
@@ -354,10 +355,12 @@ Tools for creating FiftyOne datasets.
       -j JSON_PATH, --json-path JSON_PATH
                             the path to a samples JSON file to load
       -t TYPE, --type TYPE  the fiftyone.types.Dataset type of the dataset
-      --shuffle             whether to randomly shuffle the order in which the samples are imported
+      --shuffle             whether to randomly shuffle the order in which the
+                            samples are imported
       --seed SEED           a random seed to use when shuffling
       --max-samples MAX_SAMPLES
-                            a maximum number of samples to import. By default, all samples are imported
+                            a maximum number of samples to import. By default,
+                            all samples are imported
 
 **Examples**
 
@@ -624,6 +627,173 @@ Delete FiftyOne datasets.
     # Delete all non-persistent datasets
     fiftyone datasets delete --non-persistent
 
+.. _cli-fiftyone-utils:
+
+FiftyOne utilities
+------------------
+
+FiftyOne utilities.
+
+.. code-block:: text
+
+    fiftyone utils [-h] [--all-help]
+                   {compute-metadata,transform-images,transform-videos} ...
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --all-help            show help recursively and exit
+
+    available commands:
+      {compute-metadata,transform-images,transform-videos}
+        compute-metadata    Populates the `metadata` field of all samples in the dataset.
+        transform-images    Transforms the images in a dataset per the specified parameters.
+        transform-videos    Transforms the videos in a dataset per the specified parameters.
+
+.. _cli-fiftyone-utils-compute-metadata:
+
+Compute metadata
+~~~~~~~~~~~~~~~~
+
+Populates the `metadata` field of all samples in the dataset.
+
+.. code-block:: text
+
+    fiftyone utils compute-metadata [-h] [-o] DATASET_NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                  the name of the dataset
+
+    optional arguments:
+      -h, --help       show this help message and exit
+      -o, --overwrite  whether to overwrite existing metadata
+
+**Examples**
+
+.. code-block:: shell
+
+    # Populate all missing `metadata` sample fields
+    fiftyone utils compute-metadata <dataset-name>
+
+.. code-block:: shell
+
+    # (Re)-populate the `metadata` field for all samples
+    fiftyone utils compute-metadata <dataset-name> --overwrite
+
+.. _cli-fiftyone-utils-transform-images:
+
+Transform images
+~~~~~~~~~~~~~~~~
+
+Transforms the images in a dataset per the specified parameters.
+
+.. code-block:: text
+
+    fiftyone utils transform-images [-h] [--size SIZE]
+                                    [--min-size MIN_SIZE]
+                                    [--max-size MAX_SIZE] [-e EXT] [-f]
+                                    [-d] [-n NUM_WORKERS]
+                                    DATASET_NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      DATASET_NAME          the name of the dataset
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --size SIZE           a `width,height` for each image. A dimension can be
+                            -1 if no constraint should be applied
+      --min-size MIN_SIZE   a minimum `width,height` for each image. A dimension
+                            can be -1 if no constraint should be applied
+      --max-size MAX_SIZE   a maximum `width,height` for each image. A dimension
+                            can be -1 if no constraint should be applied
+      -e EXT, --ext EXT     an image format to convert to (e.g., '.png' or '.jpg')
+      -f, --force-reencode  whether to re-encode images whose parameters already
+                            meet the specified values
+      -d, --delete-originals
+                            whether to delete the original images after transforming
+      -n NUM_WORKERS, --num-workers NUM_WORKERS
+                            the number of worker processes to use. The default is
+                            `multiprocessing.cpu_count()`
+
+**Examples**
+
+.. code-block:: shell
+
+    # Convert the images in the dataset to PNGs
+    fiftyone utils transform-images <dataset-name> --ext .png --delete-originals
+
+.. code-block:: shell
+
+    # Ensure that no images in the dataset exceed 1920 x 1080
+    fiftyone utils transform-images <dataset-name> --max-size 1920,1080
+
+.. _cli-fiftyone-utils-transform-videos:
+
+Transform videos
+~~~~~~~~~~~~~~~~
+
+Transforms the videos in a dataset per the specified parameters.
+
+.. code-block:: text
+
+    fiftyone utils transform-videos [-h] [--fps FPS] [--min-fps MIN_FPS]
+                                    [--max-fps MAX_FPS] [--size SIZE]
+                                    [--min-size MIN_SIZE]
+                                    [--max-size MAX_SIZE] [-r] [-f] [-d]
+                                    [-v]
+                                    DATASET_NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      DATASET_NAME          the name of the dataset
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --fps FPS             a frame rate at which to resample the videos
+      --min-fps MIN_FPS     a minimum frame rate. Videos with frame rate below
+                            this value are upsampled
+      --max-fps MAX_FPS     a maximum frame rate. Videos with frame rate exceeding
+                            this value are downsampled
+      --size SIZE           a `width,height` for each frame. A dimension can be -1
+                            if no constraint should be applied
+      --min-size MIN_SIZE   a minimum `width,height` for each frame. A dimension
+                            can be -1 if no constraint should be applied
+      --max-size MAX_SIZE   a maximum `width,height` for each frame. A dimension
+                            can be -1 if no constraint should be applied
+      -r, --reencode        whether to re-encode the videos as H.264 MP4s
+      -f, --force-reencode  whether to re-encode videos whose parameters already
+                            meet the specified values
+      -d, --delete-originals
+                            whether to delete the original videos after transforming
+      -v, --verbose         whether to log the `ffmpeg` commands that are executed
+
+**Examples**
+
+.. code-block:: shell
+
+    # Re-encode the videos in the dataset as H.264 MP4s
+    fiftyone utils transform-videos <dataset-name> --reencode
+
+.. code-block:: shell
+
+    # Ensure that no videos in the dataset exceed 1920 x 1080 and 30fps
+    fiftyone utils transform-videos <dataset-name> \
+        --max-size 1920,1080 --max-fps 30.0
+
 .. _cli-fiftyone-app:
 
 FiftyOne App
@@ -646,7 +816,8 @@ Tools for working with the FiftyOne App.
     available commands:
       {launch,view,connect}
         launch              Launch the FiftyOne App.
-        view                View datasets in the App without persisting them to the database
+        view                View datasets in the App without persisting them to
+                            the database
         connect             Connect to a remote FiftyOne App.
 
 .. _cli-fiftyone-app-launch:
@@ -731,10 +902,12 @@ View datasets in the FiftyOne App without persisting them to the database.
                             a glob pattern of images
       -j JSON_PATH, --json-path JSON_PATH
                             the path to a samples JSON file to view
-      --shuffle             whether to randomly shuffle the order in which the samples are imported
+      --shuffle             whether to randomly shuffle the order in which the
+                            samples are imported
       --seed SEED           a random seed to use when shuffling
       --max-samples MAX_SAMPLES
-                            a maximum number of samples to import. By default, all samples are imported
+                            a maximum number of samples to import. By default,
+                            all samples are imported
       -p PORT, --port PORT  the port number to use
       -r, --remote          whether to launch a remote App session
       -a, --desktop         whether to launch a desktop App instance
@@ -920,7 +1093,8 @@ List datasets in the FiftyOne Dataset Zoo.
                             only show datasets available from the specified source
       -t TAGS, --tags TAGS  only show datasets with the specified tag or list,of,tags
       -b BASE_DIR, --base-dir BASE_DIR
-                            a custom base directory in which to search for downloaded datasets
+                            a custom base directory in which to search for
+                            downloaded datasets
 
 **Examples**
 
@@ -1004,7 +1178,8 @@ Print information about datasets in the FiftyOne Dataset Zoo.
     optional arguments:
       -h, --help            show this help message and exit
       -b BASE_DIR, --base-dir BASE_DIR
-                            a custom base directory in which to search for downloaded datasets
+                            a custom base directory in which to search for
+                            downloaded datasets
 
 **Examples**
 
@@ -1098,10 +1273,12 @@ Load zoo datasets as persistent FiftyOne datasets.
                             a custom name to give the FiftyOne dataset
       -d DATASET_DIR, --dataset-dir DATASET_DIR
                             a custom directory in which the dataset is downloaded
-      --shuffle             whether to randomly shuffle the order in which the samples are imported
+      --shuffle             whether to randomly shuffle the order in which the
+                            samples are imported
       --seed SEED           a random seed to use when shuffling
       --max-samples MAX_SAMPLES
-                            a maximum number of samples to import. By default, all samples are imported
+                            a maximum number of samples to import. By default,
+                            all samples are imported
       -k KEY=VAL [KEY=VAL ...], --kwargs KEY=VAL [KEY=VAL ...]
                             optional dataset-specific keyword argument(s)
 
@@ -1330,7 +1507,8 @@ Handles package requirements for zoo models.
       -p, --print          print the requirements for the zoo model
       -i, --install        install any requirements for the zoo model
       -e, --ensure         ensure the requirements for the zoo model are satisfied
-      --error-level LEVEL  the error level in {0, 1, 2} to use when installing or ensuring model requirements
+      --error-level LEVEL  the error level in {0, 1, 2} to use when installing
+                           or ensuring model requirements
 
 **Examples**
 
@@ -1369,7 +1547,8 @@ Download zoo models.
 
     optional arguments:
       -h, --help            show this help message and exit
-      -f, --force           whether to force download the model if it is already downloaded
+      -f, --force           whether to force download the model if it is already
+                            downloaded
 
 **Examples**
 
@@ -1398,16 +1577,19 @@ Apply zoo models to datasets.
     positional arguments:
       MODEL_NAME            the name of the zoo model
       DATASET_NAME          the name of the FiftyOne dataset to process
-      LABEL_FIELD           the name (or prefix) of the field in which to store the predictions
+      LABEL_FIELD           the name (or prefix) of the field in which to store
+                            the predictions
 
     optional arguments:
       -h, --help            show this help message and exit
       -b BATCH_SIZE, --batch-size BATCH_SIZE
                             an optional batch size to use during inference
       -t THRESH, --confidence-thresh THRESH
-                            an optional confidence threshold to apply to any applicable labels generated by the model
+                            an optional confidence threshold to apply to any
+                            applicable labels generated by the model
       -i, --install         install any requirements for the zoo model
-      --error-level LEVEL   the error level in {0, 1, 2} to use when installing or ensuring model requirements
+      --error-level LEVEL   the error level in {0, 1, 2} to use when installing
+                            or ensuring model requirements
 
 **Examples**
 
@@ -1443,7 +1625,8 @@ Generate embeddings for datasets with zoo models.
       -b BATCH_SIZE, --batch-size BATCH_SIZE
                             an optional batch size to use during inference
       -i, --install         install any requirements for the zoo model
-      --error-level LEVEL   the error level in {0, 1, 2} to use when installing or ensuring model requirements
+      --error-level LEVEL   the error level in {0, 1, 2} to use when installing
+                            or ensuring model requirements
 
 **Examples**
 

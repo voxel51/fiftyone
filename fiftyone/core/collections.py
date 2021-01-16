@@ -1,7 +1,7 @@
 """
 Base classes for collections of samples.
 
-| Copyright 2017-2020, Voxel51, Inc.
+| Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -14,7 +14,7 @@ import string
 import eta.core.serial as etas
 import eta.core.utils as etau
 
-from fiftyone.core.aggregations import Aggregation
+import fiftyone.core.aggregations as foa
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -29,6 +29,7 @@ import fiftyone.core.utils as fou
 
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
+foum = fou.lazy_import("fiftyone.utils.metadata")
 
 
 logger = logging.getLogger(__name__)
@@ -55,8 +56,11 @@ def _make_registrar():
     return registrar
 
 
-# Keeps track of all view stage methods
+# Keeps track of all `ViewStage` methods
 view_stage = _make_registrar()
+
+# Keeps track of all `Aggregation` methods
+aggregation = _make_registrar()
 
 
 class SampleCollection(object):
@@ -374,15 +378,7 @@ class SampleCollection(object):
                     % (field_name, ftype, field)
                 )
 
-    def get_tags(self):
-        """Returns the list of unique tags of samples in the collection.
-
-        Returns:
-            a list of tags
-        """
-        raise NotImplementedError("Subclass must implement get_tags()")
-
-    def compute_metadata(self, overwrite=False):
+    def compute_metadata(self, overwrite=False, num_workers=None):
         """Populates the ``metadata`` field of all samples in the collection.
 
         Any samples with existing metadata are skipped, unless
@@ -390,11 +386,12 @@ class SampleCollection(object):
 
         Args:
             overwrite (False): whether to overwrite existing metadata
+            num_workers (None): the number of processes to use. By default,
+                ``multiprocessing.cpu_count()`` is used
         """
-        with fou.ProgressBar() as pb:
-            for sample in pb(self):
-                if sample.metadata is None or overwrite:
-                    sample.compute_metadata()
+        foum.compute_metadata(
+            self, overwrite=overwrite, num_workers=num_workers
+        )
 
     def apply_model(
         self,
@@ -638,6 +635,9 @@ class SampleCollection(object):
 
         Args:
             objects: a list of dicts specifying the objects to exclude
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.ExcludeObjects(objects))
 
@@ -1137,8 +1137,38 @@ class SampleCollection(object):
             field: the labels list field to filter
             limit: the maximum number of labels to include in each labels list.
                 If a non-positive number is provided, all lists will be empty
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.LimitLabels(field, limit))
+
+    @view_stage
+    def map_labels(self, field, map):
+        """Maps the ``label`` values of :class:`fiftyone.core.labels.Label`
+        fields to new values.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Map "cat" and "dog" label values to "pet"
+            #
+
+            mapping = {"cat": "pet", "dog": "pet"}
+            view = dataset.map_labels("ground_truth", mapping)
+
+        Args:
+            field: the labels field to map
+            map: a ``dict`` mapping label values to new label values
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.MapLabels(field, map))
 
     @view_stage
     def match(self, filter):
@@ -1412,6 +1442,9 @@ class SampleCollection(object):
 
         Args:
             objects: a list of dicts specifying the objects to select
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.SelectObjects(objects))
 
@@ -1549,6 +1582,306 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.Take(size, seed=seed))
+
+    @aggregation
+    def bounds(self, field_name):
+        """Computes the bounds of a numeric field or numeric list field of a
+        collection.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        numeric_field=1.0,
+                        numeric_list_field=[1.0, 2.0, 3.0],
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        numeric_field=4.0,
+                        numeric_list_field=[1.5, 2.5],
+                    ),
+                ]
+            )
+
+            # Add a generic list field
+            dataset.add_sample_field("list_field", fo.ListField)
+
+            #
+            # Compute the bounds of a numeric field
+            #
+
+            r = dataset.bounds("numeric_field")
+            r.bounds  # (min, max)
+
+            #
+            # Compute the a bounds of a numeric list field
+            #
+
+            r = dataset.bounds("numeric_list_field")
+            r.bounds  # (min, max)
+
+            #
+            # Cannot compute bounds of a generic list field
+            #
+
+            dataset.bounds("list_field")  # error
+
+        Args:
+            field_name: the name of the field to compute bounds for
+
+        Returns:
+            :class:`fiftyone.core.aggregations.BoundsResult`
+        """
+        return self.aggregate(foa.Bounds(field_name))
+
+    @aggregation
+    def confidence_bounds(self, field_name):
+        """Computes the bounds of the ``confidence`` of a
+        :class:`fiftyone.core.labels.Label` field of a collection.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Compute the confidence bounds of a `Classification` field
+            #
+
+            r = dataset.confidence_bounds("predictions")
+            r.bounds  # (min, max)
+
+            #
+            # Compute the confidence bounds of a `Detections` field
+            #
+
+            r = dataset.confidence_bounds("detections")
+            r.bounds  # (min, max)
+
+        Args:
+            field_name: the name of the label field to compute confidence
+                bounds for
+
+        Returns:
+            :class:`fiftyone.core.aggregations.ConfidenceBoundsResult`
+        """
+        return self.aggregate(foa.ConfidenceBounds(field_name))
+
+    @aggregation
+    def count(self, field_name=None):
+        """Counts the number of samples or number of items with respect to a
+        field of a collection.
+
+        If a ``field`` is provided, it can be a
+        :class:`fiftyone.core.fields.ListField` or a
+        :class:`fiftyone.core.labels.Label` list field.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Compute the number of samples in a dataset
+            #
+
+            r = dataset.count()
+            r.count
+
+            #
+            # Compute the number of objects in a `Detections` field
+            #
+
+            r = dataset.count("detections")
+            r.count
+
+        Args:
+            field_name (None): the field whose items to count. If no field name
+                is provided, the samples themselves are counted
+
+        Returns:
+            :class:`fiftyone.core.aggregations.CountResult`
+        """
+        return self.aggregate(foa.Count(field_name=field_name))
+
+    @aggregation
+    def count_labels(self, field_name):
+        """Counts the ``label`` values in a :class:`fiftyone.core.labels.Label`
+        field of a collection.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Compute label counts for a `Classification` field called "class"
+            #
+
+            r = dataset.count_labels("class")
+            r.labels  # dict mapping labels to counts
+
+            #
+            # Compute label counts for a `Detections` field called "objects"
+            #
+
+            r = dataset.count_labels("objects")
+            r.labels  # dict mapping labels to counts
+
+        Args:
+            field_name: the name of the label field
+
+        Returns:
+            :class:`fiftyone.core.aggregations.CountLabelsResult`
+        """
+        return self.aggregate(foa.CountLabels(field_name))
+
+    @aggregation
+    def count_values(self, field_name):
+        """Counts the occurrences of values in a countable field or list of
+        countable fields of a collection.
+
+        Countable fields are:
+
+        -   :class:`fiftyone.core.fields.BooleanField`
+        -   :class:`fiftyone.core.fields.IntField`
+        -   :class:`fiftyone.core.fields.StringField`
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Compute the tag counts in the dataset
+            #
+
+            r = dataset.count_values("tags")
+            r.values  # dict mapping tags to counts
+
+        Args:
+            field_name: the name of the countable field
+
+        Returns:
+            :class:`fiftyone.core.aggregations.CountValuesResult`
+        """
+        return self.aggregate(foa.CountValues(field_name))
+
+    @aggregation
+    def distinct(self, field_name):
+        """Computes the distinct values of a countable field or a list of
+        countable fields of a collection.
+
+        Countable fields are:
+
+        -   :class:`fiftyone.core.fields.BooleanField`
+        -   :class:`fiftyone.core.fields.IntField`
+        -   :class:`fiftyone.core.fields.StringField`
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Compute the distinct values of a StringField named `kind`
+            #
+
+            r = dataset.distinct("kind")
+            r.values  # list of distinct values
+
+            #
+            # Compute the a bounds of the `tags field
+            #
+
+            r = dataset.distinct("tags")
+            r.values  # list of distinct values
+
+        Args:
+            field_name: the name of the field to compute distinct values for
+
+        Returns:
+            :class:`fiftyone.core.aggregations.DistinctResult`
+        """
+        return self.aggregate(foa.Distinct(field_name))
+
+    @aggregation
+    def distinct_labels(self, field_name):
+        """Computes the distinct label values of a
+        :class:`fiftyone.core.labels.Label` field of a collection.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Compute the distinct labels of a `Classification` field
+            #
+
+            r = dataset.distinct_labels("predictions")
+            r.labels  # list of distinct labels
+
+            #
+            # Compute the distinct labels of a `Detections` field
+            #
+
+            r = dataset.distinct_labels("detections")
+            r.labels  # list of distinct labels
+
+        Args:
+            field_name: the name of the label field
+
+        Returns:
+            :class:`fiftyone.core.aggregations.DistinctLabelsResult`
+        """
+        return self.aggregate(foa.DistinctLabels(field_name))
+
+    @aggregation
+    def histogram_values(self, field_name, bins=None, range=None):
+        """Computes a histogram of the numeric values in a field or list field
+        of a collection.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Compute a histogram of values in the float field "uniqueness"
+            #
+
+            r = dataset.histogram_values("uniqueness", bins=50, range=(0, 1))
+            r.counts  # list of counts
+            r.edges  # list of bin edges
+
+        Args:
+            field_name: the name of the field to histogram
+            bins (None): can be either an integer number of bins to generate or
+                a monotonically increasing sequence specifying the bin edges to
+                use. By default, 10 bins are created. If ``bins`` is an integer
+                and no ``range`` is specified, bin edges are automatically
+                distributed in an attempt to evenly distribute the counts in
+                each bin
+            range (None): a ``(lower, upper)`` tuple specifying a range in
+                which to generate equal-width bins. Only applicable when
+                ``bins`` is an integer
+        """
+        return self.aggregate(
+            foa.HistogramValues(field_name, bins=bins, range=range)
+        )
 
     def draw_labels(
         self,
@@ -2081,7 +2414,7 @@ class SampleCollection(object):
         return self._process_aggregations(aggregations, result, scalar_result)
 
     def _build_aggregation(self, aggregations):
-        scalar_result = isinstance(aggregations, Aggregation)
+        scalar_result = isinstance(aggregations, foa.Aggregation)
         if scalar_result:
             aggregations = [aggregations]
         elif not aggregations:
@@ -2096,7 +2429,7 @@ class SampleCollection(object):
 
         pipelines = {}
         for agg in aggregations:
-            if not isinstance(agg, Aggregation):
+            if not isinstance(agg, foa.Aggregation):
                 raise TypeError("'%s' is not an Aggregation" % agg.__class__)
 
             field = agg._get_output_field(self)
