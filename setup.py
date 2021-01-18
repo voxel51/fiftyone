@@ -49,8 +49,8 @@ setup(
     name="fiftyone",
     version=get_version(),
     description=(
-        "FiftyOne: a powerful package for dataset curation, analysis, and "
-        "visualization"
+        "FiftyOne: the open-source tool for building high-quality datasets "
+        "and computer vision models"
     ),
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
@@ -96,11 +96,23 @@ setup(
         "opencv-python-headless<=4.4.0.46",
     ],
     classifiers=[
+        "Development Status :: 4 - Beta",
+        "Intended Audience :: Developers",
+        "Intended Audience :: Science/Research",
+        "License :: OSI Approved :: Apache Software License",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "Topic :: Scientific/Engineering :: Image Processing",
+        "Topic :: Scientific/Engineering :: Image Recognition",
+        "Topic :: Scientific/Engineering :: Information Analysis",
+        "Topic :: Scientific/Engineering :: Visualization",
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",
         "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: Apache Software License",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
     python_requires=">=3.6",
