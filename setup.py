@@ -49,8 +49,8 @@ setup(
     name="fiftyone",
     version=get_version(),
     description=(
-        "FiftyOne: a powerful package for dataset curation, analysis, and "
-        "visualization"
+        "FiftyOne: the open-source tool for building high-quality datasets "
+        "and machine learning models"
     ),
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
