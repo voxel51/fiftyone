@@ -610,6 +610,13 @@ class FilterField(ViewStage):
     def _frame_filter_field(self):
         return self._field[len(_FRAMES_PREFIX) :]
 
+    @property
+    def _new_field(self):
+        if self._hide_result:
+            return "__%s" % self._field
+
+        return self._field
+
     def to_mongo(self, sample_collection):
         if (
             sample_collection.media_type == fom.VIDEO
@@ -618,14 +625,10 @@ class FilterField(ViewStage):
             pass
             # return self._get_frames_pipeline()
 
-        new_field = self._field
-        if self._hide_result:
-            new_field = "__%s" % new_field
-
         pipeline = [
             {
                 "$addFields": {
-                    new_field: {
+                    self._new_field: {
                         "$cond": {
                             "if": self._get_mongo_filter(),
                             "then": "$" + self._field,
@@ -638,11 +641,11 @@ class FilterField(ViewStage):
 
         if self._only_matches:
             pipeline.append(
-                {"$match": {new_field: {"$exists": True, "$ne": None}}}
+                {"$match": {self._new_field: {"$exists": True, "$ne": None}}}
             )
 
         if self._hide_result:
-            pipeline.append({"$unset": new_field})
+            pipeline.append({"$unset": self._new_field})
 
         return pipeline
 
@@ -695,6 +698,13 @@ class _FilterListField(FilterField):
     def _frame_filter_field(self):
         return self._filter_field[len(_FRAMES_PREFIX) :]
 
+    @property
+    def _new_field(self):
+        if self._hide_result:
+            return "__%s" % self._filter_field
+
+        return self._filter_field
+
     def get_filtered_list_fields(self):
         return [self._filter_field]
 
@@ -708,7 +718,7 @@ class _FilterListField(FilterField):
         pipeline = [
             {
                 "$addFields": {
-                    self._filter_field: {
+                    self._new_field: {
                         "$filter": {
                             "input": "$" + self._filter_field,
                             "cond": self._get_mongo_filter(),
@@ -722,7 +732,7 @@ class _FilterListField(FilterField):
             pipeline.append(
                 {
                     "$match": {
-                        self._filter_field: {
+                        self._new_field: {
                             "$gt": [
                                 {
                                     "$size": {
@@ -738,6 +748,9 @@ class _FilterListField(FilterField):
                     }
                 }
             )
+
+        if self._hide_result:
+            pipeline.append({"$unset": self._new_field})
 
         return pipeline
 
@@ -938,6 +951,7 @@ class FilterLabels(_FilterListField):
         self._filter = filter
         self._only_matches = only_matches
         self._labels_list_field = None
+        self._hide_result = False
         self._validate_params()
 
     @property
