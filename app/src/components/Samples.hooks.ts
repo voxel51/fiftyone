@@ -7,7 +7,6 @@ import { viewsAreEqual } from "../utils/view";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { filter } from "lodash";
 
 export default () => {
   const socket = useRecoilValue(selectors.socket);
@@ -47,7 +46,7 @@ export default () => {
 
   useEffect(() => {
     setState(empty);
-  }, [datasetName, refresh]);
+  }, [datasetName, refresh, filters]);
 
   useEffect(() => {
     if (!state.loadMore || state.isLoading || !state.hasMore) return;
