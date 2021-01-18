@@ -1017,7 +1017,7 @@ def _make_filter_stages(dataset, filters):
 
         if isinstance(field, fof.EmbeddedDocumentField):
             stage_cls = fosg.FilterField
-            if issubclass(field.document_type, fol.Label):
+            if issubclass(field.document_type, fol._List):
                 stage_cls = fosg.FilterLabels
             expr = _make_range_expression(F("confidence"), args)
             if "labels" in args:
