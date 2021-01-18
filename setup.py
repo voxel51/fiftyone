@@ -50,7 +50,7 @@ setup(
     version=get_version(),
     description=(
         "FiftyOne: the open-source tool for building high-quality datasets "
-        "and machine learning models"
+        "and computer vision models"
     ),
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",

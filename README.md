@@ -3,7 +3,7 @@
 <img src="docs/source/_static/images/voxel51_300dpi.png" height="55px"> &nbsp;
 <img src="docs/source/_static/images/fiftyone.png" height="50px">
 
-**The open-source tool for building high-quality datasets and machine learning
+**The open-source tool for building high-quality datasets and computer vision
 models.**
 
 ---
@@ -32,9 +32,9 @@ models.**
 
 ---
 
-[FiftyOne](http://www.voxel51.com/docs/fiftyone) is an open source machine
-learning tool created by [Voxel51](https://voxel51.com) that helps you build
-high-quality datasets and ML models.
+[FiftyOne](http://www.voxel51.com/docs/fiftyone) is an open source ML tool
+created by [Voxel51](https://voxel51.com) that helps you build high-quality
+datasets and computer vision models.
 
 With FiftyOne, you can search, sort, filter, visualize, analyze, and improve
 your datasets without excess wrangling or writing custom scripts. It also
