@@ -406,7 +406,7 @@ export const totalCount = selector({
   get: ({ get }): number => {
     const stats = get(datasetStats) || [];
     return stats.reduce(
-      (acc, cur) => (cur.name === "count" ? cur.count : acc),
+      (acc, cur) => (cur.name === null ? cur.count : acc),
       null
     );
   },
@@ -417,7 +417,7 @@ export const filteredCount = selector({
   get: ({ get }): number => {
     const stats = get(extendedDatasetStats) || [];
     return stats.reduce(
-      (acc, cur) => (cur.name === "count" ? cur.count : acc),
+      (acc, cur) => (cur.name === null ? cur.count : acc),
       null
     );
   },
