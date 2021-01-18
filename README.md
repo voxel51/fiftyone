@@ -209,3 +209,17 @@ You can uninstall FiftyOne as follows:
 ```shell
 pip uninstall fiftyone fiftyone-brain fiftyone-db fiftyone-desktop
 ```
+
+## Citation
+
+If you use FiftyOne in your research, feel free to cite the project (but only
+if you love it 😊):
+
+```bibtex
+@article{moore2020fiftyone,
+  title={FiftyOne},
+  author={Moore, B. E. and Corso, J. J.},
+  journal={GitHub. Note: https://github.com/voxel51/fiftyone},
+  year={2020}
+}
+```
