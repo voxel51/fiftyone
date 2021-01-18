@@ -16,6 +16,7 @@ from wheel.bdist_wheel import bdist_wheel
 import os
 import shutil
 
+
 VERSION = "0.8.1"
 
 
@@ -33,14 +34,6 @@ def get_version():
 
 
 def make_tar(dir_path, tar_path):
-    """Makes a tarfile containing the given directory.
-
-    Supported formats include `.tar`, `.tar.gz`, `.tgz`, `.tar.bz`, and `.tbz`.
-
-    Args:
-        dir_path: the directory to tar
-        tar_path: the path + filename of the .tar.gz file to create
-    """
     outpath, format = _get_tar_format(tar_path)
 
     rootdir, basedir = os.path.split(os.path.realpath(dir_path))
@@ -173,12 +166,24 @@ setup(
     packages=["fiftyone.desktop"],
     package_dir={"fiftyone.desktop": "src"},
     classifiers=[
+        "Development Status :: 4 - Beta",
+        "Intended Audience :: Developers",
+        "Intended Audience :: Science/Research",
+        "License :: OSI Approved :: Apache Software License",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "Topic :: Scientific/Engineering :: Image Processing",
+        "Topic :: Scientific/Engineering :: Image Recognition",
+        "Topic :: Scientific/Engineering :: Information Analysis",
+        "Topic :: Scientific/Engineering :: Visualization",
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX :: Linux",
         "Operating System :: Microsoft :: Windows",
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: Apache Software License",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
     ],
-    python_requires=">=3.5",
+    python_requires=">=3.6",
     cmdclass=cmdclass,
 )
