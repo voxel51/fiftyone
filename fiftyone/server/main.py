@@ -898,11 +898,14 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                 }
             ]
         elif results is None:
-            aggs, fields = _numeric_histograms(view.get_field_schema())
+            coll = cls.sample_collection()
+            aggs, fields = await _numeric_histograms(
+                coll, view, view.get_field_schema()
+            )
 
             if view.media_type == fom.VIDEO:
-                frame_aggs, frame_fields = _numeric_histograms(
-                    view.get_frame_field_schema(), prefix="frames"
+                frame_aggs, frame_fields = await _numeric_histograms(
+                    coll, view, view.get_frame_field_schema(), prefix="frames"
                 )
 
                 aggs.extend(frame_aggs)
@@ -915,14 +918,14 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             for idx, result in enumerate(response):
                 results.append(
                     {
-                        "type": fields[idx].document_type.__name__,
+                        "type": fields[idx].__class__.__name__,
                         "name": result.name,
                         "data": sorted(
                             [
                                 {"key": k, "count": v}
-                                for k, v in result.values.items()
+                                for k, v in zip(result.edges, result.counts)
                             ],
-                            key=lambda i: i["count"],
+                            key=lambda i: i["key"],
                             reverse=True,
                         ),
                     }
@@ -949,12 +952,30 @@ def _count_labels(schema, prefix=""):
     return aggregations, fields
 
 
-def _numeric_histograms(view, schema, prefix=""):
+def _numeric_bounds(fields, names, prefix=""):
     aggregations = []
+    for field, name in zip(fields, names):
+        aggregations.append(foa.Bounds(name))
+
+    return aggregations
+
+
+async def _numeric_histograms(coll, view, schema, prefix=""):
+    names = []
     fields = []
+    numerics = (fof.IntField, fof.FloatField, fof.BooleanField)
     for name, field in schema.items():
-        aggregations.append(foa.Bounds(path))
-        fields.append(field)
+        if fos._meets_type(field, numerics):
+            names.append(name)
+            fields.append(field)
+
+    aggs = _numeric_bounds(fields, names, prefix)
+    bounds = await view._async_aggregate(coll, aggs)
+    aggregations = []
+    for result, field, name in zip(bounds, fields, names):
+        aggregations.append(
+            fo.HistogramValues(name, bins=50, range=result.bounds)
+        )
 
     return aggregations, fields
 
