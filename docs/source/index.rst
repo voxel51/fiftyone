@@ -9,19 +9,19 @@ FiftyOne
     <table id="social-links-table">
       <th>
         <a target="_blank" href="https://github.com/voxel51/fiftyone">
-          <img alt="GitHub repository" src="_static/images/icons/github-mark.svg" />
+          <img alt="GitHub repository" src="_static/images/icons/github-logo-256px.png">
           &nbsp View on GitHub
         </a>
       </th>
       <th>
         <a target="_blank" href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg">
-          <img alt="Slack community" src="_static/images/icons/slack-mark.svg" />
+          <img alt="Slack community" src="_static/images/icons/slack-logo-256px.png">
           &nbsp Join us on Slack
         </a>
       </th>
       <th>
         <a target="_blank" href="https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb">
-          <img alt="Colab quickstart" src="_static/images/logo/colab-logo-32px.png" />
+          <img alt="Colab quickstart" src="_static/images/icons/colab-logo-256px.png">
           &nbsp Try it in Colab
         </a>
       </th>
