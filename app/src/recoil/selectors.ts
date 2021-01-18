@@ -588,7 +588,7 @@ export const labelsPath = selectorFamily({
     if (VALID_LIST_TYPES.includes(type)) {
       return `${label}.${type.toLowerCase()}.label`;
     }
-    return `${label}.${type.toLowerCase()}.label`;
+    return `${label}.label`;
   },
 });
 
