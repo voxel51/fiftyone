@@ -846,15 +846,16 @@ class AppLaunchCommand(Command):
             desktop=desktop,
         )
 
-        _watch_session(session, remote=args.remote)
+        _watch_session(session)
 
 
-def _watch_session(session, remote=False):
+def _watch_session(session):
     try:
-        if remote:
-            print("\nTo exit, press ctrl + c\n")
-        else:
+        if session.desktop:
             print("\nTo exit, close the App or press ctrl + c\n")
+        else:
+            print("\nTo exit, press ctrl + c\n")
+
         session.wait()
     except KeyboardInterrupt:
         pass
@@ -1059,7 +1060,7 @@ class AppViewCommand(Command):
             desktop=desktop,
         )
 
-        _watch_session(session, remote=args.remote)
+        _watch_session(session)
 
 
 class AppConnectCommand(Command):
