@@ -66,7 +66,11 @@ class Aggregation(object):
         raise NotImplementedError("Subclass must implement _to_mongo()")
 
     def _get_field_path_pipeline(self, schema, frame_schema, dataset):
-        if dataset.media_type == fom.VIDEO:
+        field_name = self._field_name
+        frames_query = (
+            field_name.startswith(_FRAMES_PREFIX) or field_name == "frames"
+        )
+        if dataset.media_type == fom.VIDEO and frames_query:
             if self._field_name == "frames":
                 return "frames", "frames", _unwind_frames(), None, None
 
