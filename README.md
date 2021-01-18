@@ -1,12 +1,40 @@
-# [FiftyOne](http://www.voxel51.com/fiftyone): Explore, Analyze and Curate Visual Datasets
+<div align="center">
+
+<img src="docs/source/_static/images/voxel51_300dpi.png" height="55px"> &nbsp;
+<img src="docs/source/_static/images/fiftyone.png" height="50px">
+
+**The open-source tool for building high-quality datasets and computer vision
+models.**
+
+---
+
+<p align="center">
+  <a href="https://voxel51.com/fiftyone">Website</a> •
+  <a href="https://voxel51.com/docs/fiftyone">Docs</a> •
+  <a href="https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb">Try it Now</a> •
+  <a href="https://voxel51.com/docs/fiftyone/tutorials/index.html">Tutorials</a> •
+  <a href="https://github.com/voxel51/fiftyone-examples">Examples</a> •
+  <a href="https://medium.com/voxel51">Blog</a> •
+  <a href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg">Community</a>
+</p>
+
+[![PyPI python](https://img.shields.io/pypi/pyversions/fiftyone)](https://pypi.org/project/fiftyone)
+[![PyPI version](https://badge.fury.io/py/fiftyone.svg)](https://pypi.org/project/fiftyone)
+[![Downloads](https://pepy.tech/badge/fiftyone)](https://pepy.tech/project/fiftyone)
+[![Build](https://github.com/voxel51/fiftyone/workflows/Build/badge.svg?branch=develop&event=push)](https://github.com/voxel51/fiftyone/actions?query=workflow%3ABuild)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Mailing list](http://bit.ly/2Md9rxM)](https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk)
+[![Twitter](https://img.shields.io/twitter/follow/Voxel51?style=social)](https://twitter.com/voxel51)
 
 <img alt="FiftyOne" src="https://user-images.githubusercontent.com/25985824/96070012-5c6fff80-0e6d-11eb-84d0-a88f8b026ee1.png">
 
-![Build](https://github.com/voxel51/fiftyone/workflows/Build/badge.svg?branch=develop&event=push)
+</div>
 
-[FiftyOne](http://www.voxel51.com/docs/fiftyone) is an open source machine
-learning tool created by [Voxel51](https://voxel51.com) that helps you rapidly
-experiment with your data and ML models.
+---
+
+[FiftyOne](http://www.voxel51.com/docs/fiftyone) is an open source ML tool
+created by [Voxel51](https://voxel51.com) that helps you build high-quality
+datasets and computer vision models.
 
 With FiftyOne, you can search, sort, filter, visualize, analyze, and improve
 your datasets without excess wrangling or writing custom scripts. It also
@@ -15,20 +43,14 @@ understand their strengths and weaknesses, visualize, diagnose, and correct
 their failure modes, and more. FiftyOne is designed to be lightweight and
 easily integrate into your existing CV/ML workflows.
 
-Join the
-[FiftyOne Slack Community](https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg)
-to collaborate with other users, get support, and stay up-to-date on all things
-FiftyOne.
+You can get involved by joining our Slack community, reading our blog on
+Medium, and following us on social media:
 
-Follow us [on Medium](https://medium.com/voxel51) for regular posts on computer
-vision, machine learning, and data science topics.
-
-You can also follow us on social media (
-<a href="http://www.twitter.com/voxel51" rel="twitter">
-<img src="docs/source/_static/images/icons/logo-twitter-dark.svg" width="16" height="16"/>
-</a> <a href="http://www.facebook.com/voxel51" rel="facebook">
-<img src="docs/source/_static/images/icons/logo-facebook-dark.svg" width="16" height="16" />
-</a> ).
+[![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=white)](https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg)
+[![Medium](https://img.shields.io/badge/Medium-12100E?logo=medium&logoColor=white)](https://medium.com/voxel51)
+[![Twitter](https://img.shields.io/badge/Twitter-1DA1F2?logo=twitter&logoColor=white)](https://twitter.com/voxel51)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?logo=linkedin&logoColor=white)](https://www.linkedin.com/company/voxel51)
+[![Facebook](https://img.shields.io/badge/Facebook-1877F2?logo=facebook&logoColor=white)](https://www.facebook.com/voxel51)
 
 ## Installation
 
@@ -52,13 +74,13 @@ fiftyone quickstart
 ```
 
 This command will download a small dataset, launch the App, and print some
-suggestions for exploring the dataset. Alternatively,
-[this Colab notebook](https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb)
-explores the quickstart dataset.
+suggestions for exploring the dataset.
 
 You can also check out
+[this Colab notebook](https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb)
+to try some common workflows with the quickstart dataset, or run through
 [this Colab notebok](https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/walkthrough.ipynb)
-for a more detailed overview of using FiftyOne.
+for a more detailed overview of FiftyOne.
 
 ## Documentation
 
@@ -186,4 +208,18 @@ You can uninstall FiftyOne as follows:
 
 ```shell
 pip uninstall fiftyone fiftyone-brain fiftyone-db fiftyone-desktop
+```
+
+## Citation
+
+If you use FiftyOne in your research, feel free to cite the project (but only
+if you love it 😊):
+
+```bibtex
+@article{moore2020fiftyone,
+  title={FiftyOne},
+  author={Moore, B. E. and Corso, J. J.},
+  journal={GitHub. Note: https://github.com/voxel51/fiftyone},
+  year={2020}
+}
 ```
