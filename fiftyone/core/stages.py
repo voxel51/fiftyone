@@ -589,6 +589,7 @@ class FilterField(ViewStage):
         self._filter = filter
         self._only_matches = only_matches
         self._validate_params()
+        self._hide_result = False
 
     @property
     def field(self):
@@ -617,10 +618,14 @@ class FilterField(ViewStage):
             pass
             # return self._get_frames_pipeline()
 
+        new_field = self._field
+        if self._hide_result:
+            new_field = "__%s" % new_field
+
         pipeline = [
             {
                 "$addFields": {
-                    self._field: {
+                    new_field: {
                         "$cond": {
                             "if": self._get_mongo_filter(),
                             "then": "$" + self._field,
@@ -633,8 +638,11 @@ class FilterField(ViewStage):
 
         if self._only_matches:
             pipeline.append(
-                {"$match": {self._field: {"$exists": True, "$ne": None}}}
+                {"$match": {new_field: {"$exists": True, "$ne": None}}}
             )
+
+        if self._hide_result:
+            pipeline.append({"$unset": new_field})
 
         return pipeline
 

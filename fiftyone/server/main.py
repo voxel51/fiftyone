@@ -526,7 +526,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         for stage in _make_filter_stages(state.dataset, state.filters):
             if type(stage) in _WITHOUT_PAGINATION_EXTENDED_STAGES:
-                continue
+                stage._hide_result = True
 
             view = view.add_stage(stage)
 
