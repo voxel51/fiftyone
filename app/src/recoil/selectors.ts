@@ -577,18 +577,16 @@ const CONFIDENCE_BOUNDS_CLS = "fiftyone.core.aggregations.BoundsResult";
 
 export const labelsPath = selectorFamily({
   key: "labelsPath",
-  get: (label: string) => ({ get }) => {
+  get: (path: string) => ({ get }) => {
     const isVideo = get(isVideoDataset);
     const dimension =
-      isVideo && label.startsWith("frames.") ? "frame" : "sample";
-    if (dimension === "frame") {
-      label = label.slice("frames.".length);
-    }
+      isVideo && path.startsWith("frames.") ? "frame" : "sample";
+    const label = dimension === "frame" ? path.slice("frames.".length) : path;
     const type = get(labelMap(dimension))[label];
     if (VALID_LIST_TYPES.includes(type)) {
-      return `${label}.${type.toLowerCase()}.label`;
+      return `${path}.${type.toLowerCase()}.label`;
     }
-    return `${label}.label`;
+    return `${path}.label`;
   },
 });
 

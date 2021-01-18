@@ -16,6 +16,7 @@ const SidebarColumn = styled.div`
   z-index: 400;
   max-height: 100%;
   overflow-y: scroll;
+  overflow-x: hidden;
   width 256px;
 `;
 
