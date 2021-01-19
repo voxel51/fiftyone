@@ -722,10 +722,21 @@ class SampleCollection(object):
 
     @view_stage
     def filter_labels(self, field, filter, only_matches=False):
-        """Filters the :class:`fiftyone.core.labels.Label` elements in a labels
-        list field of each sample.
+        """Filters the :class:`fiftyone.core.labels.Label` field of each
+        sample.
 
-        The specified ``field`` must be one of the following types:
+        If the specified ``field`` is a single
+        :class:`fiftyone.core.labels.Label` type, fields for which ``filter``
+        returns ``False`` are replaced with ``None``:
+
+        -   :class:`fiftyone.core.labels.Classification`
+        -   :class:`fiftyone.core.labels.Detection`
+        -   :class:`fiftyone.core.labels.Polyline`
+        -   :class:`fiftyone.core.labels.Keypoint`
+
+        If the specified ``field`` is a :class:`fiftyone.core.labels.Label`
+        list type, the label elements for which ``filter`` returns ``False``
+        are omitted from the view:
 
         -   :class:`fiftyone.core.labels.Classifications`
         -   :class:`fiftyone.core.labels.Detections`
@@ -867,6 +878,7 @@ class SampleCollection(object):
             fos.FilterLabels(field, filter, only_matches=only_matches)
         )
 
+    # @todo remove; deprecated by filter_labels()
     @view_stage
     def filter_classifications(self, field, filter, only_matches=False):
         """Filters the classifications of the given
@@ -916,6 +928,7 @@ class SampleCollection(object):
             fos.FilterClassifications(field, filter, only_matches=only_matches)
         )
 
+    # @todo remove; deprecated by filter_labels()
     @view_stage
     def filter_detections(self, field, filter, only_matches=False):
         """Filters the detections of the given
@@ -975,6 +988,7 @@ class SampleCollection(object):
             fos.FilterDetections(field, filter, only_matches=only_matches)
         )
 
+    # @todo remove; deprecated by filter_labels()
     @view_stage
     def filter_polylines(self, field, filter, only_matches=False):
         """Filters the polylines of the given
@@ -1033,6 +1047,7 @@ class SampleCollection(object):
             fos.FilterPolylines(field, filter, only_matches=only_matches)
         )
 
+    # @todo remove; deprecated by filter_labels()
     @view_stage
     def filter_keypoints(self, field, filter, only_matches=False):
         """Filters the keypoints of the given
