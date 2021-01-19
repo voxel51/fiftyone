@@ -132,6 +132,14 @@ class ViewStage(object):
         """
         pass
 
+    def _needs_frames(self, sample_collection):
+        """Whether the stage requires frame labels be attached.
+
+        Args:
+            sample_collection: the sample collection in question
+        """
+        return False
+
     def _serialize(self):
         """Returns a JSON dict representation of the :class:`ViewStage`.
 
@@ -681,16 +689,17 @@ def _get_filter_field_pipeline(filter_field, filter_arg, only_matches=False):
 
 
 def _get_filter_frames_field_pipeline(
-    filter_field, filter_arg, only_matches=False
+    filter_field, filter_arg, only_matches=False, hide_frames=False
 ):
     filter_field = filter_field.split(".", 1)[1]  # remove `frames`
     cond = _get_field_mongo_filter(filter_arg, prefix="$frame." + filter_field)
+    frames = "_frames" if hide_frames else "frames"
     pipeline = [
         {
             "$addFields": {
-                "frames": {
+                frames: {
                     "$map": {
-                        "input": "$frames",
+                        "input": "$%s" % frames,
                         "as": "frame",
                         "in": {
                             "$mergeObjects": [
@@ -720,7 +729,7 @@ def _get_filter_frames_field_pipeline(
                         "$gt": [
                             {
                                 "$reduce": {
-                                    "input": "$frames",
+                                    "input": "$%s" % frames,
                                     "initialValue": 0,
                                     "in": {
                                         "$sum": [
@@ -926,7 +935,7 @@ class FilterLabels(FilterField):
 
         return None
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, hide_frames=False):
         self._get_labels_field(sample_collection)
 
         if (
@@ -938,12 +947,14 @@ class FilterLabels(FilterField):
                     self._labels_field,
                     self._filter,
                     only_matches=self._only_matches,
+                    hide_frames=hide_frames,
                 )
 
             return _get_filter_frames_field_pipeline(
                 self._labels_field,
                 self._filter,
                 only_matches=self._only_matches,
+                hide_frames=hide_frames,
             )
 
         if self._is_labels_list_field:
@@ -955,6 +966,17 @@ class FilterLabels(FilterField):
 
         return _get_filter_field_pipeline(
             self._labels_field, self._filter, only_matches=self._only_matches,
+        )
+
+    def _needs_frames(self, sample_collection):
+        """Whether the stage requires frame labels be attached.
+
+        Args:
+            sample_collection: the sample collection in question
+        """
+        return (
+            sample_collection.media_type == fom.VIDEO
+            and self._labels_field.startswith(_FRAMES_PREFIX)
         )
 
     def _get_mongo_filter(self):
@@ -1009,7 +1031,7 @@ def _get_filter_list_field_pipeline(
 
 
 def _get_filter_frames_list_field_pipeline(
-    filter_field, filter_arg, only_matches=False
+    filter_field, filter_arg, only_matches=False, hide_frames=False
 ):
     filter_field = filter_field.split(".", 1)[1]  # remove `frames`
     cond = _get_list_field_mongo_filter(filter_arg)
