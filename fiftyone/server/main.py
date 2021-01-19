@@ -901,7 +901,8 @@ def _parse_histogram_values(result):
         key=lambda i: i["key"],
         reverse=True,
     )
-    data.append({"key": "other", "value": result.other})
+    if result.other > 0:
+        data.append({"key": "other", "count": result.other})
     return data
 
 
@@ -979,7 +980,7 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
     aggregations = []
     for result, field, path in zip(bounds, fields, paths):
         aggregations.append(
-            fo.HistogramValues(path, bins=50, range=result.bounds)
+            fo.HistogramValues(path, bins=25, range=result.bounds)
         )
 
     return aggregations, fields
