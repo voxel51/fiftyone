@@ -545,7 +545,14 @@ const DatasetSelector = () => {
           }}
         />
         {state.matches("editing") || value === "" ? (
-          <BestMatchDiv style={{ lineHeight: "40px", margin: 0 }}>
+          <BestMatchDiv
+            style={{
+              height: "40px",
+              margin: "-1px 0 0 -2px",
+              fontSize: "1.2rem",
+              alignItems: "center",
+            }}
+          >
             {bestMatch ? bestMatch.placeholder : ""}
           </BestMatchDiv>
         ) : null}
