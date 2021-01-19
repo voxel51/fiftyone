@@ -206,7 +206,7 @@ export const NamedRangeSlider = React.forwardRef(
           <FormControlLabel
             label={
               <div style={{ lineHeight: "20px", fontSize: 14 }}>
-                Show no {valueName}
+                Filter no {valueName}
               </div>
             }
             control={
