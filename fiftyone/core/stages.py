@@ -694,6 +694,7 @@ def _get_filter_frames_field_pipeline(
     filter_field = filter_field.split(".", 1)[1]  # remove `frames`
     cond = _get_field_mongo_filter(filter_arg, prefix="$frame." + filter_field)
     frames = "_frames" if hide_frames else "frames"
+
     pipeline = [
         {
             "$addFields": {
@@ -1035,27 +1036,29 @@ def _get_filter_frames_list_field_pipeline(
 ):
     filter_field = filter_field.split(".", 1)[1]  # remove `frames`
     cond = _get_list_field_mongo_filter(filter_arg)
+    frames = "_frames" if hide_frames else "frames"
+    label_field, labels_list = filter_field.split(".")
 
     pipeline = [
         {
             "$addFields": {
-                "frames": {
+                frames: {
                     "$map": {
-                        "input": "$frames",
+                        "input": "$%s" % frames,
                         "as": "frame",
                         "in": {
                             "$mergeObjects": [
                                 "$$frame",
                                 {
-                                    "frames": {
-                                        filter_field: {
+                                    label_field: {
+                                        labels_list: {
                                             "$filter": {
                                                 "input": "$$frame."
                                                 + filter_field,
                                                 "cond": cond,
                                             }
                                         }
-                                    }
+                                    },
                                 },
                             ]
                         },
@@ -1066,10 +1069,36 @@ def _get_filter_frames_list_field_pipeline(
     ]
 
     if only_matches:
-        # @todo
-        raise ValueError(
-            "Setting `only_matches=True` is not yet supported when "
-            "filtering frame labels"
+        pipeline.append(
+            {
+                "$match": {
+                    "$expr": {
+                        "$gt": [
+                            {
+                                "$reduce": {
+                                    "input": "$%s" % frames,
+                                    "initialValue": 0,
+                                    "in": {
+                                        "$sum": [
+                                            "$$value",
+                                            {
+                                                "$size": {
+                                                    "$filter": {
+                                                        "input": "$$this."
+                                                        + filter_field,
+                                                        "cond": cond,
+                                                    }
+                                                }
+                                            },
+                                        ]
+                                    },
+                                }
+                            },
+                            0,
+                        ]
+                    }
+                }
+            }
         )
 
     return pipeline
