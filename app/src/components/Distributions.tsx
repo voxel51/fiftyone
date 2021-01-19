@@ -59,7 +59,7 @@ const Distribution = ({ distribution }) => {
   const container = useRef(null);
   const stroke = "hsl(210, 20%, 90%)";
   const fill = stroke;
-  const isNumeric = _.indexOf(["int", "float"], type) >= 0;
+  const isNumeric = _.indexOf(["IntField", "FloatField"], type) >= 0;
 
   return (
     <Container ref={ref}>
