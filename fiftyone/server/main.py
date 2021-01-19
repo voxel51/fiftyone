@@ -303,9 +303,6 @@ class PollingHandler(tornado.web.RequestHandler):
         self.write(message)
 
 
-_WITHOUT_PAGINATION_EXTENDED_STAGES = {fosg.FilterLabels, fosg.FilterField}
-
-
 def _get_label_object_ids(label):
     """Returns a list of all object IDs contained in the label.
 
@@ -525,7 +522,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             return
 
         for stage in _make_filter_stages(state.dataset, state.filters):
-            if type(stage) in _WITHOUT_PAGINATION_EXTENDED_STAGES:
+            if type(stage) == fosg.FilterLabels:
                 stage._hide_result = True
 
             view = view.add_stage(stage)
@@ -1016,9 +1013,6 @@ def _make_filter_stages(dataset, filters):
             field = schema[path]
 
         if isinstance(field, fof.EmbeddedDocumentField):
-            stage_cls = fosg.FilterField
-            if issubclass(field.document_type, fol._List):
-                stage_cls = fosg.FilterLabels
             expr = _make_range_expression(F("confidence"), args)
             if "labels" in args:
                 labels_expr = F("label").is_in(args["labels"])
@@ -1027,7 +1021,7 @@ def _make_filter_stages(dataset, filters):
                 else:
                     expr = labels_expr
 
-            stages.append(stage_cls(path, expr, only_matches=True))
+            stages.append(fosg.FilterLabels(path, expr, only_matches=True))
         else:
             expr = _make_range_expression(F(path), args)
             stages.append(fosg.Match(expr))

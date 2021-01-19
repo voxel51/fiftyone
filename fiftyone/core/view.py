@@ -388,7 +388,9 @@ class DatasetView(foc.SampleCollection):
         _pipeline = []
 
         for s in self._stages:
-            _pipeline.extend(s.to_mongo(self))
+            _pipeline.extend(s.to_mongo(self, hide_frames=hide_frames))
+            if s._needs_frames(self):
+                attach_frames = True
 
         if pipeline is not None:
             _pipeline.extend(pipeline)
