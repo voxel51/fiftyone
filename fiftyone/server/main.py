@@ -926,12 +926,23 @@ async def _gather_results(col, aggs, fields, view):
         field = fields[idx]
         try:
             type_ = field.document_type.__name__
+            cls = field.document_type
         except:
             type_ = field.__class__.__name__
+            is_label = False
+            cls = None
+
+        name = result.name
+        if cls and issubclass(cls, fol.Label):
+            name = name[: -len(".label")]
+
+        if cls and issubclass(cls, fol._List):
+            name = name[: -(len(cls._LIST_PATH) + 1)]
+
         results.append(
             {
                 "type": type_,
-                "name": result.name,
+                "name": name,
                 "data": sorters[type(result)](result),
             }
         )

@@ -63,7 +63,7 @@ const Distribution = ({ distribution }) => {
 
   return (
     <Container ref={ref}>
-      <Title>{`${name}: ${type}`}</Title>
+      <Title>{`${name}`}</Title>
       <BarChart
         ref={container}
         height={height - 37}
