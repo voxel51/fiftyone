@@ -211,7 +211,7 @@ export const NamedRangeSlider = React.forwardRef(
             }
             control={
               <Checkbox
-                checked={includeNone}
+                checked={!includeNone}
                 onChange={() => setIncludeNone(!includeNone)}
                 style={{
                   padding: "0 5px",
