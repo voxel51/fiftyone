@@ -1640,40 +1640,6 @@ class SampleCollection(object):
         return self.aggregate(foa.Bounds(field_name))
 
     @aggregation
-    def confidence_bounds(self, field_name):
-        """Computes the bounds of the ``confidence`` of a
-        :class:`fiftyone.core.labels.Label` field of a collection.
-
-        Examples::
-
-            import fiftyone as fo
-
-            dataset = fo.load_dataset(...)
-
-            #
-            # Compute the confidence bounds of a `Classification` field
-            #
-
-            r = dataset.confidence_bounds("predictions")
-            r.bounds  # (min, max)
-
-            #
-            # Compute the confidence bounds of a `Detections` field
-            #
-
-            r = dataset.confidence_bounds("detections")
-            r.bounds  # (min, max)
-
-        Args:
-            field_name: the name of the label field to compute confidence
-                bounds for
-
-        Returns:
-            :class:`fiftyone.core.aggregations.ConfidenceBoundsResult`
-        """
-        return self.aggregate(foa.ConfidenceBounds(field_name))
-
-    @aggregation
     def count(self, field_name=None):
         """Counts the number of samples or number of items with respect to a
         field of a collection.
@@ -1710,39 +1676,6 @@ class SampleCollection(object):
             :class:`fiftyone.core.aggregations.CountResult`
         """
         return self.aggregate(foa.Count(field_name=field_name))
-
-    @aggregation
-    def count_labels(self, field_name):
-        """Counts the ``label`` values in a :class:`fiftyone.core.labels.Label`
-        field of a collection.
-
-        Examples::
-
-            import fiftyone as fo
-
-            dataset = fo.load_dataset(...)
-
-            #
-            # Compute label counts for a `Classification` field called "class"
-            #
-
-            r = dataset.count_labels("class")
-            r.labels  # dict mapping labels to counts
-
-            #
-            # Compute label counts for a `Detections` field called "objects"
-            #
-
-            r = dataset.count_labels("objects")
-            r.labels  # dict mapping labels to counts
-
-        Args:
-            field_name: the name of the label field
-
-        Returns:
-            :class:`fiftyone.core.aggregations.CountLabelsResult`
-        """
-        return self.aggregate(foa.CountLabels(field_name))
 
     @aggregation
     def count_values(self, field_name):
@@ -1814,39 +1747,6 @@ class SampleCollection(object):
             :class:`fiftyone.core.aggregations.DistinctResult`
         """
         return self.aggregate(foa.Distinct(field_name))
-
-    @aggregation
-    def distinct_labels(self, field_name):
-        """Computes the distinct label values of a
-        :class:`fiftyone.core.labels.Label` field of a collection.
-
-        Examples::
-
-            import fiftyone as fo
-
-            dataset = fo.load_dataset(...)
-
-            #
-            # Compute the distinct labels of a `Classification` field
-            #
-
-            r = dataset.distinct_labels("predictions")
-            r.labels  # list of distinct labels
-
-            #
-            # Compute the distinct labels of a `Detections` field
-            #
-
-            r = dataset.distinct_labels("detections")
-            r.labels  # list of distinct labels
-
-        Args:
-            field_name: the name of the label field
-
-        Returns:
-            :class:`fiftyone.core.aggregations.DistinctLabelsResult`
-        """
-        return self.aggregate(foa.DistinctLabels(field_name))
 
     @aggregation
     def histogram_values(self, field_name, bins=None, range=None):

@@ -45,6 +45,10 @@ export const CONFIDENCE_LABELS = [
   "Classifications",
   "Detection",
   "Detections",
+  "Keypoint",
+  "Keypoints",
+  "Polyline",
+  "Polylines",
 ];
 
 export const LABEL_LISTS = [

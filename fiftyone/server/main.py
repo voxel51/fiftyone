@@ -44,11 +44,6 @@ from fiftyone.utils.uid import _get_user_id
 
 from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
 from fiftyone.server.util import get_file_dimensions
-from fiftyone.server.pipelines import (
-    DISTRIBUTION_PIPELINES,
-    TAGS,
-    LABELS,
-)
 
 
 # connect to the existing DB service to initialize global port information
@@ -843,6 +838,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         """
         state = fos.StateDescription.from_dict(StateHandler.state)
         results = None
+        col = cls.sample_collection()
         if state.view is not None:
             view = state.view
         elif state.dataset is not None:
@@ -853,68 +849,154 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         for stage in _make_filter_stages(state.dataset, state.filters):
             view = view.add_stage(stage)
 
-        if group == LABELS and results is None:
-            aggregations = []
-            fields = []
-            for name, field in view.get_field_schema().items():
+        if group == "labels" and results is None:
+
+            def filter(field):
+                path = None
                 if isinstance(field, fof.EmbeddedDocumentField) and issubclass(
                     field.document_type, fol.Label
                 ):
-                    aggregations.append(foa.CountLabels(name))
-                    fields.append(field)
+                    path = field.name
+                    if issubclass(field.document_type, fol._List):
+                        path = "%s.%s" % (path, field.document_type._LIST_PATH)
+                    path = "%s.label" % path
 
-            if view.media_type == fom.VIDEO:
-                for name, field in view.get_frame_field_schema().items():
-                    if isinstance(
-                        field, fof.EmbeddedDocumentField
-                    ) and issubclass(field.document_type, fol.Label):
-                        aggregations.append(foa.CountLabels("frames." + name))
-                        fields.append(field)
+                return path
 
-            results = []
-            response = await view._async_aggregate(
-                cls.sample_collection(), aggregations
-            )
-            for idx, result in enumerate(response):
-                results.append(
-                    {
-                        "type": fields[idx].document_type.__name__,
-                        "name": result.name,
-                        "data": sorted(
-                            [
-                                {"key": k, "count": v}
-                                for k, v in result.labels.items()
-                            ],
-                            key=lambda i: i["count"],
-                            reverse=True,
-                        ),
-                    }
-                )
+            aggs, fields = _count_values(filter, view)
+            results = await _gather_results(col, aggs, fields, view)
 
-        elif group == TAGS and results is None:
-            result = await view._async_aggregate(
-                cls.sample_collection(), foa.CountValues("tags")
-            )
-            results = [
-                {
-                    "type": "list",
-                    "name": result.name,
-                    "data": sorted(
-                        [
-                            {"key": k, "count": v}
-                            for k, v in result.values.items()
-                        ],
-                        key=lambda i: i["count"],
-                        reverse=True,
-                    ),
-                }
-            ]
+        elif group == "tags" and results is None:
+            aggs = [foa.CountValues("tags")]
+            try:
+                fields = [view.get_field_schema()["tags"]]
+                results = await _gather_results(col, aggs, fields, view)
+            except:
+                results = []
+
         elif results is None:
-            results = await _get_distributions(
-                cls.sample_collection(), view, group
-            )
 
+            def filter(field):
+                if fos._meets_type(field, fof.BooleanField):
+                    return field.name
+
+                return None
+
+            aggs, fields = _count_values(filter, view)
+
+            hist_aggs, hist_fields = await _numeric_histograms(
+                col, view, view.get_field_schema()
+            )
+            aggs.extend(hist_aggs)
+            fields.extend(hist_fields)
+            results = await _gather_results(col, aggs, fields, view)
+
+        results = sorted(results, key=lambda i: i["name"])
         self.write_message({"type": "distributions", "results": results})
+
+
+def _parse_histogram_values(result):
+    data = sorted(
+        [{"key": k, "count": v} for k, v in zip(result.edges, result.counts)],
+        key=lambda i: i["key"],
+    )
+    if result.other > 0:
+        data.append({"key": "other", "count": result.other})
+    return data
+
+
+def _parse_count_values(result):
+    data = sorted(
+        [{"key": k, "count": v} for k, v in result.values.items()],
+        key=lambda i: i["count"],
+        reverse=True,
+    )
+    return data
+
+
+async def _gather_results(col, aggs, fields, view):
+    results = []
+    response = await view._async_aggregate(col, aggs)
+    sorters = {
+        foa.HistogramValuesResult: _parse_histogram_values,
+        foa.CountValuesResult: _parse_count_values,
+    }
+    for idx, result in enumerate(response):
+        field = fields[idx]
+        try:
+            type_ = field.document_type.__name__
+            cls = field.document_type
+        except:
+            type_ = field.__class__.__name__
+            is_label = False
+            cls = None
+
+        name = result.name
+        if cls and issubclass(cls, fol.Label):
+            name = name[: -len(".label")]
+
+        if cls and issubclass(cls, fol._List):
+            name = name[: -(len(cls._LIST_PATH) + 1)]
+
+        results.append(
+            {
+                "type": type_,
+                "name": name,
+                "data": sorters[type(result)](result),
+            }
+        )
+    return results
+
+
+def _count_values(f, view):
+    aggregations = []
+    fields = []
+    schemas = [(view.get_field_schema(), "")]
+    if view.media_type == fom.VIDEO:
+        schemas.append((view.get_frame_field_schema(), "frames."))
+
+    for schema, prefix in schemas:
+        for name, field in schema.items():
+            path = f(field)
+            if path is None:
+                continue
+            fields.append(field)
+            aggregations.append(fo.CountValues("%s%s" % (prefix, path)))
+
+    return aggregations, fields
+
+
+def _numeric_bounds(fields, paths):
+    aggregations = []
+    for field, path in zip(fields, paths):
+        aggregations.append(foa.Bounds(path))
+
+    return aggregations
+
+
+async def _numeric_histograms(coll, view, schema, prefix=""):
+    paths = []
+    fields = []
+    numerics = (fof.IntField, fof.FloatField)
+    for name, field in schema.items():
+        if prefix != "" and name == "frame_number":
+            continue
+        if fos._meets_type(field, numerics):
+            paths.append("%s%s" % (prefix, name))
+            fields.append(field)
+
+    aggs = _numeric_bounds(fields, paths)
+    bounds = await view._async_aggregate(coll, aggs)
+    aggregations = []
+    for result, field, path in zip(bounds, fields, paths):
+        range_ = result.bounds
+        if range_ == (None, None):
+            range_ = (0, 1)
+        else:
+            range_ = (range_[0], range_[1] + 0.01)
+        aggregations.append(fo.HistogramValues(path, bins=25, range=range_))
+
+    return aggregations, fields
 
 
 def _make_range_expression(f, args):
@@ -949,7 +1031,7 @@ def _make_filter_stages(dataset, filters):
 
         if isinstance(field, fof.EmbeddedDocumentField):
             stage_cls = fosg.FilterField
-            if issubclass(field.document_type, foa._LABELS):
+            if issubclass(field.document_type, fol._List):
                 stage_cls = fosg.FilterLabels
             expr = _make_range_expression(F("confidence"), args)
             if "labels" in args:
@@ -965,105 +1047,6 @@ def _make_filter_stages(dataset, filters):
             stages.append(fosg.Match(expr))
 
     return stages
-
-
-async def _get_distributions(coll, view, group):
-    pipeline = deepcopy(DISTRIBUTION_PIPELINES[group])
-    await _numeric_distribution_pipelines(coll, view, pipeline)
-    pipeline = view._pipeline(pipeline=pipeline)
-    response = await coll.aggregate(pipeline).to_list(1)
-
-    result = []
-    for f in response[0].values():
-        result += f
-
-    return sorted(result, key=lambda d: d["name"])
-
-
-async def _numeric_bounds(coll, view, numerics):
-    bounds_pipeline = [{"$facet": {}}]
-    if len(numerics) == 0:
-        return {}
-
-    for idx, (k, v) in enumerate(numerics.items()):
-        bounds_pipeline[0]["$facet"]["numeric-%d" % idx] = [
-            {
-                "$group": {
-                    "_id": k,
-                    "min": {"$min": "$%s" % k},
-                    "max": {"$max": "$%s" % k},
-                },
-            }
-        ]
-
-    pipeline = view._pipeline(pipeline=bounds_pipeline)
-    result = await coll.aggregate(pipeline).to_list(1)
-    return result[0]
-
-
-async def _numeric_distribution_pipelines(coll, view, pipeline, buckets=50):
-    numerics = view._dataset.get_field_schema(ftype=fof.IntField)
-    numerics.update(view._dataset.get_field_schema(ftype=fof.FloatField))
-    # here we query the min and max for each numeric field
-    # unfortunately, it looks like this has to be a separate query
-    bounds = await _numeric_bounds(coll, view, numerics)
-
-    # for each numeric field, build the boundaries array with the
-    # min/max results when adding the field's sub-pipeline
-    for idx, (k, v) in enumerate(numerics.items()):
-        sub_pipeline = "numeric-%d" % idx
-        if not bounds[sub_pipeline]:
-            continue
-        field_bounds = bounds[sub_pipeline][0]
-        mn = field_bounds["min"]
-        mx = field_bounds["max"]
-
-        # if min and max are equal, we artifically create a boundary
-        # @todo alternative approach to scalar fields with only one value
-        if mn == mx:
-            if mn is None:
-                mn = 0
-            mx = mn + 1
-
-        step = (mx - mn) / buckets
-        boundaries = [mn + step * s for s in range(0, buckets)]
-
-        pipeline[0]["$facet"][sub_pipeline] = [
-            {
-                "$bucket": {
-                    "groupBy": "$%s" % k,
-                    "boundaries": boundaries,
-                    "default": "null",
-                    "output": {"count": {"$sum": 1}},
-                }
-            },
-            {
-                "$group": {
-                    "_id": k,
-                    "data": {
-                        "$push": {
-                            "key": {
-                                "$cond": [
-                                    {"$ne": ["$_id", "null"]},
-                                    {"$add": ["$_id", step / 2]},
-                                    "null",
-                                ]
-                            },
-                            "count": "$count",
-                        }
-                    },
-                }
-            },
-            {
-                "$project": {
-                    "name": k,
-                    "type": v.__class__.__name__[
-                        : -len("Field")  # grab field type from the class
-                    ].lower(),
-                    "data": "$data",
-                }
-            },
-        ]
 
 
 class FileHandler(tornado.web.StaticFileHandler):

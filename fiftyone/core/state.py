@@ -162,18 +162,30 @@ class DatasetStatistics(object):
                     continue
 
                 field_name = prefix + field_name
-                aggregations.append(foa.Count(field_name))
                 if _is_label(field):
+                    path = field_name
+                    if issubclass(field.document_type, fol._List):
+                        path = "%s.%s" % (path, field.document_type._LIST_PATH)
+
+                    aggregations.append(foa.Count(path))
+                    label_path = "%s.label" % path
+                    confidence_path = "%s.confidence" % path
                     aggregations.extend(
                         [
-                            foa.DistinctLabels(field_name),
-                            foa.ConfidenceBounds(field_name),
+                            foa.Distinct(label_path),
+                            foa.Bounds(confidence_path),
                         ]
                     )
-                elif _meets_type(field, foa._VALUE_FIELDS):
-                    aggregations.append(foa.CountValues(field_name))
-                elif _meets_type(field, foa._NUMBER_FIELDS):
-                    aggregations.append(foa.Bounds(field_name))
+                else:
+                    aggregations.append(foa.Count(field_name))
+
+                    if _meets_type(
+                        field,
+                        (fof.BooleanField, fof.IntField, fof.StringField),
+                    ):
+                        aggregations.append(foa.CountValues(field_name))
+                    elif _meets_type(field, (fof.IntField, fof.FloatField)):
+                        aggregations.append(foa.Bounds(field_name))
 
         self._aggregations = aggregations
 
