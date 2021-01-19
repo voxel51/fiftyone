@@ -685,7 +685,6 @@ def _get_filter_frames_field_pipeline(
 ):
     filter_field = filter_field.split(".", 1)[1]  # remove `frames`
     cond = _get_field_mongo_filter(filter_arg, prefix="$frame." + filter_field)
-
     pipeline = [
         {
             "$addFields": {
@@ -697,14 +696,11 @@ def _get_filter_frames_field_pipeline(
                             "$mergeObjects": [
                                 "$$frame",
                                 {
-                                    "frames": {
-                                        filter_field: {
-                                            "$cond": {
-                                                "if": cond,
-                                                "then": "$$frame."
-                                                + filter_field,
-                                                "else": None,
-                                            }
+                                    filter_field: {
+                                        "$cond": {
+                                            "if": cond,
+                                            "then": "$$frame." + filter_field,
+                                            "else": None,
                                         }
                                     }
                                 },
@@ -717,10 +713,40 @@ def _get_filter_frames_field_pipeline(
     ]
 
     if only_matches:
-        # @todo
-        raise ValueError(
-            "Setting `only_matches=True` is not yet supported when "
-            "filtering frame labels"
+        pipeline.append(
+            {
+                "$match": {
+                    "$expr": {
+                        "$gt": [
+                            {
+                                "$reduce": {
+                                    "input": "$frames",
+                                    "initialValue": 0,
+                                    "in": {
+                                        "$sum": [
+                                            "$$value",
+                                            {
+                                                "$cond": [
+                                                    {
+                                                        "$ne": [
+                                                            "$$this.%s"
+                                                            % filter_field,
+                                                            None,
+                                                        ]
+                                                    },
+                                                    1,
+                                                    0,
+                                                ]
+                                            },
+                                        ]
+                                    },
+                                }
+                            },
+                            0,
+                        ]
+                    }
+                }
+            }
         )
 
     return pipeline
@@ -943,9 +969,6 @@ class FilterLabels(FilterField):
         field_name, is_list_field, is_frame_field = _get_labels_field(
             self._field, sample_collection
         )
-        if is_frame_field:
-            field_name = _FRAMES_PREFIX + field_name
-
         self._labels_field = field_name
         self._is_labels_list_field = is_list_field
 
