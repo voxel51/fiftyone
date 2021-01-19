@@ -989,9 +989,12 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
     bounds = await view._async_aggregate(coll, aggs)
     aggregations = []
     for result, field, path in zip(bounds, fields, paths):
-        aggregations.append(
-            fo.HistogramValues(path, bins=25, range=result.bounds)
-        )
+        range_ = result.bounds
+        if range_ == (None, None):
+            range_ = (0, 1)
+        else:
+            range_ = (range_[0], range_[1] + 0.01)
+        aggregations.append(fo.HistogramValues(path, bins=25, range=range_))
 
     return aggregations, fields
 
