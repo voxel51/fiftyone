@@ -899,7 +899,6 @@ def _parse_histogram_values(result):
     data = sorted(
         [{"key": k, "count": v} for k, v in zip(result.edges, result.counts)],
         key=lambda i: i["key"],
-        reverse=True,
     )
     if result.other > 0:
         data.append({"key": "other", "count": result.other})
