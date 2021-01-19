@@ -92,13 +92,15 @@ class ViewStage(object):
         """
         return None
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, hide_frames=False):
         """Returns the MongoDB version of the stage.
 
         Args:
             sample_collection: the
                 :class:`fiftyone.core.collections.SampleCollection` to which
                 the stage is being applied
+            hide_frames (False): whether the aggregation has requested the 
+                frames be hidden in the ``_frames`` field
 
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
@@ -242,7 +244,7 @@ class Exclude(ViewStage):
         """The list of sample IDs to exclude."""
         return self._sample_ids
 
-    def to_mongo(self, _):
+    def to_mongo(self, _, **__):
         sample_ids = [ObjectId(id) for id in self._sample_ids]
         return [{"$match": {"_id": {"$not": {"$in": sample_ids}}}}]
 
@@ -340,7 +342,7 @@ class ExcludeFields(ViewStage):
 
         return excluded_fields
 
-    def to_mongo(self, _):
+    def to_mongo(self, _, **__):
         fields = self.get_excluded_fields()
         if not fields:
             return []
@@ -431,7 +433,7 @@ class ExcludeObjects(ViewStage):
         """A list of dicts specifying the objects to exclude."""
         return self._objects
 
-    def to_mongo(self, _):
+    def to_mongo(self, _, **__):
         if self._pipeline is None:
             raise ValueError(
                 "`validate()` must be called before using a %s stage"
@@ -523,7 +525,7 @@ class Exists(ViewStage):
         """
         return self._bool
 
-    def to_mongo(self, _):
+    def to_mongo(self, _, **__):
         if self._bool:
             return [{"$match": {self._field: {"$exists": True, "$ne": None}}}]
 
@@ -613,13 +615,16 @@ class FilterField(ViewStage):
         """Whether to only include samples that match the filter."""
         return self._only_matches
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, hide_frames=False):
         if (
             sample_collection.media_type == fom.VIDEO
             and self._field.startswith(_FRAMES_PREFIX)
         ):
             return _get_filter_frames_field_pipeline(
-                self._field, self._filter, only_matches=self._only_matches
+                self._field,
+                self._filter,
+                only_matches=self._only_matches,
+                hide_frames=hide_frames,
             )
 
         return _get_filter_field_pipeline(
@@ -628,6 +633,17 @@ class FilterField(ViewStage):
 
     def _get_mongo_filter(self):
         return _get_field_mongo_filter(self._filter, prefix=self._field)
+
+    def _needs_frames(self, sample_collection):
+        """Whether the stage requires frame labels be attached.
+
+        Args:
+            sample_collection: the sample collection in question
+        """
+        return (
+            sample_collection.media_type == fom.VIDEO
+            and self._field.startswith(_FRAMES_PREFIX)
+        )
 
     def _kwargs(self):
         return [
@@ -1120,7 +1136,7 @@ class _FilterListField(FilterField):
     def get_filtered_list_fields(self):
         return [self._filter_field]
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, hide_frames=False):
         if (
             sample_collection.media_type == fom.VIDEO
             and self._filter_field.startswith(_FRAMES_PREFIX)
@@ -1129,6 +1145,7 @@ class _FilterListField(FilterField):
                 self._filter_field,
                 self._filter,
                 only_matches=self._only_matches,
+                hide_frames=hide_frames,
             )
 
         return _get_filter_list_field_pipeline(
@@ -1403,7 +1420,7 @@ class Limit(ViewStage):
         """The maximum number of samples to return."""
         return self._limit
 
-    def to_mongo(self, _):
+    def to_mongo(self, _, **__):
         if self._limit <= 0:
             return [{"$match": {"_id": None}}]
 
@@ -1463,7 +1480,7 @@ class LimitLabels(ViewStage):
         """The maximum number of labels to return in each sample."""
         return self._limit
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, **_):
         self._labels_list_field = _get_labels_list_field(
             self._field, sample_collection
         )
@@ -1536,7 +1553,7 @@ class MapLabels(ViewStage):
         """The labels map dict."""
         return self._map
 
-    def to_mongo(self, sample_collection):
+    def to_mongo(self, sample_collection, **_):
         self._labels_field, is_list_field, is_frame_field = _get_labels_field(
             self._field, sample_collection
         )
@@ -1660,7 +1677,7 @@ class Match(ViewStage):
         """The filter expression."""
         return self._filter
 
-    def to_mongo(self, _):
+    def to_mongo(self, _, **__):
         return [{"$match": self._get_mongo_filter()}]
 
     def _get_mongo_filter(self):
@@ -1712,7 +1729,7 @@ class MatchTag(ViewStage):
         """The tag to match."""
         return self._tag
 
-    def to_mongo(self, _):
+    def to_mongo(self, _, **__):
         return [{"$match": {"tags": self._tag}}]
 
     def _kwargs(self):
@@ -1754,7 +1771,7 @@ class MatchTags(ViewStage):
         """The list of tags to match."""
         return self._tags
 
-    def to_mongo(self, _):
+    def to_mongo(self, _, **__):
         return [{"$match": {"tags": {"$in": self._tags}}}]
 
     def _kwargs(self):
@@ -1820,7 +1837,7 @@ class Mongo(ViewStage):
         """The MongoDB aggregation pipeline."""
         return self._pipeline
 
-    def to_mongo(self, _):
+    def to_mongo(self, _, **__):
         return self._pipeline
 
     def _kwargs(self):
@@ -1879,7 +1896,7 @@ class Select(ViewStage):
         """The list of sample IDs to select."""
         return self._sample_ids
 
-    def to_mongo(self, _):
+    def to_mongo(self, _, **__):
         sample_ids = [ObjectId(id) for id in self._sample_ids]
         return [{"$match": {"_id": {"$in": sample_ids}}}]
 
@@ -1972,7 +1989,7 @@ class SelectFields(ViewStage):
 
         return list(set(selected_fields) | set(default_fields))
 
-    def to_mongo(self, _):
+    def to_mongo(self, _, **__):
         selected_fields = self.get_selected_fields()
         if not selected_fields:
             return []
@@ -2072,7 +2089,7 @@ class SelectObjects(ViewStage):
         """A list of dicts specifying the objects to select."""
         return self._objects
 
-    def to_mongo(self, _):
+    def to_mongo(self, _, **__):
         if self._pipeline is None:
             raise ValueError(
                 "`validate()` must be called before using a %s stage"
@@ -2162,7 +2179,7 @@ class Shuffle(ViewStage):
         """The random seed to use, or ``None``."""
         return self._seed
 
-    def to_mongo(self, _):
+    def to_mongo(self, _, **__):
         # @todo avoid creating new field here?
         return [
             {"$set": {"_rand_shuffle": {"$mod": [self._randint, "$_rand"]}}},
@@ -2215,7 +2232,7 @@ class Skip(ViewStage):
         """The number of samples to skip."""
         return self._skip
 
-    def to_mongo(self, _):
+    def to_mongo(self, _, **__):
         if self._skip <= 0:
             return []
 
@@ -2284,7 +2301,7 @@ class SortBy(ViewStage):
         """Whether to return the results in descending order."""
         return self._reverse
 
-    def to_mongo(self, _):
+    def to_mongo(self, _, **__):
         order = DESCENDING if self._reverse else ASCENDING
 
         field_or_expr = self._get_mongo_field_or_expr()
@@ -2382,7 +2399,7 @@ class Take(ViewStage):
         """The random seed to use, or ``None``."""
         return self._seed
 
-    def to_mongo(self, _):
+    def to_mongo(self, _, **__):
         if self._size <= 0:
             return [{"$match": {"_id": None}}]
 
