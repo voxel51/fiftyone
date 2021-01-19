@@ -896,9 +896,9 @@ def _parse_histogram_values(result):
     data = sorted(
         [{"key": k, "count": v} for k, v in zip(result.edges, result.counts)],
         key=lambda i: i["key"],
-        reverse=True,
     )
-    data.append({"key": "other", "value": result.other})
+    if result.other > 0:
+        data.append({"key": "other", "count": result.other})
     return data
 
 
@@ -922,12 +922,23 @@ async def _gather_results(col, aggs, fields, view):
         field = fields[idx]
         try:
             type_ = field.document_type.__name__
+            cls = field.document_type
         except:
             type_ = field.__class__.__name__
+            is_label = False
+            cls = None
+
+        name = result.name
+        if cls and issubclass(cls, fol.Label):
+            name = name[: -len(".label")]
+
+        if cls and issubclass(cls, fol._List):
+            name = name[: -(len(cls._LIST_PATH) + 1)]
+
         results.append(
             {
                 "type": type_,
-                "name": result.name,
+                "name": name,
                 "data": sorters[type(result)](result),
             }
         )
@@ -975,9 +986,12 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
     bounds = await view._async_aggregate(coll, aggs)
     aggregations = []
     for result, field, path in zip(bounds, fields, paths):
-        aggregations.append(
-            fo.HistogramValues(path, bins=50, range=result.bounds)
-        )
+        range_ = result.bounds
+        if range_ == (None, None):
+            range_ = (0, 1)
+        else:
+            range_ = (range_[0], range_[1] + 0.01)
+        aggregations.append(fo.HistogramValues(path, bins=25, range=range_))
 
     return aggregations, fields
 
