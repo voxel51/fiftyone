@@ -546,168 +546,6 @@ class Exists(ViewStage):
         ]
 
 
-def _get_filter_field_pipeline(filter_field, filter_arg, only_matches=False):
-    cond = _get_field_mongo_filter(filter_arg, prefix=filter_field)
-
-    pipeline = [
-        {
-            "$addFields": {
-                filter_field: {
-                    "$cond": {
-                        "if": cond,
-                        "then": "$" + filter_field,
-                        "else": None,
-                    }
-                }
-            }
-        }
-    ]
-
-    if only_matches:
-        pipeline.append(
-            {"$match": {filter_field: {"$exists": True, "$ne": None}}}
-        )
-
-    return pipeline
-
-
-def _get_filter_frames_field_pipeline(
-    filter_field, filter_arg, only_matches=False
-):
-    filter_field = filter_field.split(".", 1)[1]  # remove `frames`
-    cond = _get_field_mongo_filter(filter_arg, prefix="$frame." + filter_field)
-
-    pipeline = [
-        {
-            "$addFields": {
-                "frames": {
-                    "$map": {
-                        "input": "$frames",
-                        "as": "frame",
-                        "in": {
-                            "$mergeObjects": [
-                                "$$frame",
-                                {
-                                    "frames": {
-                                        filter_field: {
-                                            "$cond": {
-                                                "if": cond,
-                                                "then": "$$frame."
-                                                + filter_field,
-                                                "else": None,
-                                            }
-                                        }
-                                    }
-                                },
-                            ]
-                        },
-                    }
-                }
-            }
-        }
-    ]
-
-    if only_matches:
-        # @todo
-        raise ValueError(
-            "Setting `only_matches=True` is not yet supported when "
-            "filtering frame labels"
-        )
-
-    return pipeline
-
-
-def _get_field_mongo_filter(filter_arg, prefix="$this"):
-    if isinstance(filter_arg, foe.ViewExpression):
-        return filter_arg.to_mongo(prefix="$" + prefix)
-
-    return filter_arg
-
-
-def _get_filter_list_field_pipeline(
-    filter_field, filter_arg, only_matches=False
-):
-    cond = _get_list_field_mongo_filter(filter_arg)
-
-    pipeline = [
-        {
-            "$addFields": {
-                filter_field: {
-                    "$filter": {"input": "$" + filter_field, "cond": cond,}
-                }
-            }
-        }
-    ]
-
-    if only_matches:
-        pipeline.append(
-            {
-                "$match": {
-                    filter_field: {
-                        "$gt": [
-                            {"$size": {"$ifNull": ["$" + filter_field, [],]}},
-                            0,
-                        ]
-                    }
-                }
-            }
-        )
-
-    return pipeline
-
-
-def _get_filter_frames_list_field_pipeline(
-    filter_field, filter_arg, only_matches=False
-):
-    filter_field = filter_field.split(".", 1)[1]  # remove `frames`
-    cond = _get_list_field_mongo_filter(filter_arg)
-
-    pipeline = [
-        {
-            "$addFields": {
-                "frames": {
-                    "$map": {
-                        "input": "$frames",
-                        "as": "frame",
-                        "in": {
-                            "$mergeObjects": [
-                                "$$frame",
-                                {
-                                    "frames": {
-                                        filter_field: {
-                                            "$filter": {
-                                                "input": "$$frame."
-                                                + filter_field,
-                                                "cond": cond,
-                                            }
-                                        }
-                                    }
-                                },
-                            ]
-                        },
-                    }
-                }
-            }
-        }
-    ]
-
-    if only_matches:
-        # @todo
-        raise ValueError(
-            "Setting `only_matches=True` is not yet supported when "
-            "filtering frame labels"
-        )
-
-    return pipeline
-
-
-def _get_list_field_mongo_filter(filter_arg, prefix="$this"):
-    if isinstance(filter_arg, foe.ViewExpression):
-        return filter_arg.to_mongo(prefix="$" + prefix)
-
-    return filter_arg
-
-
 class FilterField(ViewStage):
     """Filters the values of a given sample (or embedded document) field.
 
@@ -815,6 +653,84 @@ class FilterField(ViewStage):
             raise ValueError("Cannot filter required field `filepath`")
 
         sample_collection.validate_fields_exist(self._field)
+
+
+def _get_filter_field_pipeline(filter_field, filter_arg, only_matches=False):
+    cond = _get_field_mongo_filter(filter_arg, prefix=filter_field)
+
+    pipeline = [
+        {
+            "$addFields": {
+                filter_field: {
+                    "$cond": {
+                        "if": cond,
+                        "then": "$" + filter_field,
+                        "else": None,
+                    }
+                }
+            }
+        }
+    ]
+
+    if only_matches:
+        pipeline.append(
+            {"$match": {filter_field: {"$exists": True, "$ne": None}}}
+        )
+
+    return pipeline
+
+
+def _get_filter_frames_field_pipeline(
+    filter_field, filter_arg, only_matches=False
+):
+    filter_field = filter_field.split(".", 1)[1]  # remove `frames`
+    cond = _get_field_mongo_filter(filter_arg, prefix="$frame." + filter_field)
+
+    pipeline = [
+        {
+            "$addFields": {
+                "frames": {
+                    "$map": {
+                        "input": "$frames",
+                        "as": "frame",
+                        "in": {
+                            "$mergeObjects": [
+                                "$$frame",
+                                {
+                                    "frames": {
+                                        filter_field: {
+                                            "$cond": {
+                                                "if": cond,
+                                                "then": "$$frame."
+                                                + filter_field,
+                                                "else": None,
+                                            }
+                                        }
+                                    }
+                                },
+                            ]
+                        },
+                    }
+                }
+            }
+        }
+    ]
+
+    if only_matches:
+        # @todo
+        raise ValueError(
+            "Setting `only_matches=True` is not yet supported when "
+            "filtering frame labels"
+        )
+
+    return pipeline
+
+
+def _get_field_mongo_filter(filter_arg, prefix="$this"):
+    if isinstance(filter_arg, foe.ViewExpression):
+        return filter_arg.to_mongo(prefix="$" + prefix)
+
+    return filter_arg
 
 
 class FilterLabels(FilterField):
@@ -1035,6 +951,90 @@ class FilterLabels(FilterField):
 
     def validate(self, sample_collection):
         self._get_labels_field(sample_collection)
+
+
+def _get_filter_list_field_pipeline(
+    filter_field, filter_arg, only_matches=False
+):
+    cond = _get_list_field_mongo_filter(filter_arg)
+
+    pipeline = [
+        {
+            "$addFields": {
+                filter_field: {
+                    "$filter": {"input": "$" + filter_field, "cond": cond,}
+                }
+            }
+        }
+    ]
+
+    if only_matches:
+        pipeline.append(
+            {
+                "$match": {
+                    filter_field: {
+                        "$gt": [
+                            {"$size": {"$ifNull": ["$" + filter_field, [],]}},
+                            0,
+                        ]
+                    }
+                }
+            }
+        )
+
+    return pipeline
+
+
+def _get_filter_frames_list_field_pipeline(
+    filter_field, filter_arg, only_matches=False
+):
+    filter_field = filter_field.split(".", 1)[1]  # remove `frames`
+    cond = _get_list_field_mongo_filter(filter_arg)
+
+    pipeline = [
+        {
+            "$addFields": {
+                "frames": {
+                    "$map": {
+                        "input": "$frames",
+                        "as": "frame",
+                        "in": {
+                            "$mergeObjects": [
+                                "$$frame",
+                                {
+                                    "frames": {
+                                        filter_field: {
+                                            "$filter": {
+                                                "input": "$$frame."
+                                                + filter_field,
+                                                "cond": cond,
+                                            }
+                                        }
+                                    }
+                                },
+                            ]
+                        },
+                    }
+                }
+            }
+        }
+    ]
+
+    if only_matches:
+        # @todo
+        raise ValueError(
+            "Setting `only_matches=True` is not yet supported when "
+            "filtering frame labels"
+        )
+
+    return pipeline
+
+
+def _get_list_field_mongo_filter(filter_arg, prefix="$this"):
+    if isinstance(filter_arg, foe.ViewExpression):
+        return filter_arg.to_mongo(prefix="$" + prefix)
+
+    return filter_arg
 
 
 # @todo remove; deprecated by FilterLabels
