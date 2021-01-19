@@ -992,10 +992,10 @@ def _make_range_expression(f, args):
         none = args["none"]
         expr = (f >= mn) & (f <= mx)
         if args.get("none", False):
-            expr |= ~f
+            expr |= ~(f.exists())
     elif "none" in args:
         if not args["none"]:
-            expr = f
+            expr = f.exists()
 
     return expr
 
