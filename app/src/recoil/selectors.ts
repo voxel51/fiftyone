@@ -406,7 +406,7 @@ export const totalCount = selector({
   get: ({ get }): number => {
     const stats = get(datasetStats) || [];
     return stats.reduce(
-      (acc, cur) => (cur.name === "count" ? cur.count : acc),
+      (acc, cur) => (cur.name === null ? cur.count : acc),
       null
     );
   },
@@ -417,7 +417,7 @@ export const filteredCount = selector({
   get: ({ get }): number => {
     const stats = get(extendedDatasetStats) || [];
     return stats.reduce(
-      (acc, cur) => (cur.name === "count" ? cur.count : acc),
+      (acc, cur) => (cur.name === null ? cur.count : acc),
       null
     );
   },
@@ -571,22 +571,47 @@ export const scalarTypes = selectorFamily({
 });
 
 const COUNT_CLS = "fiftyone.core.aggregations.CountResult";
-const LABELS_CLS = "fiftyone.core.aggregations.DistinctLabelsResult";
+const LABELS_CLS = "fiftyone.core.aggregations.DistinctResult";
 const BOUNDS_CLS = "fiftyone.core.aggregations.BoundsResult";
-const CONFIDENCE_BOUNDS_CLS =
-  "fiftyone.core.aggregations.ConfidenceBoundsResult";
+const CONFIDENCE_BOUNDS_CLS = "fiftyone.core.aggregations.BoundsResult";
+
+export const labelsPath = selectorFamily({
+  key: "labelsPath",
+  get: (path: string) => ({ get }) => {
+    const isVideo = get(isVideoDataset);
+    const dimension =
+      isVideo && path.startsWith("frames.") ? "frame" : "sample";
+    const label = dimension === "frame" ? path.slice("frames.".length) : path;
+    const type = get(labelMap(dimension))[label];
+    if (VALID_LIST_TYPES.includes(type)) {
+      return `${path}.${type.toLowerCase()}.label`;
+    }
+    return `${path}.label`;
+  },
+});
 
 export const labelClasses = selectorFamily({
   key: "labelClasses",
   get: (label) => ({ get }) => {
+    const path = get(labelsPath(label));
     return (get(datasetStats) ?? []).reduce((acc, cur) => {
-      if (cur.name === label && cur._CLS === LABELS_CLS) {
-        return cur.labels;
+      if (cur.name === path && cur._CLS === LABELS_CLS) {
+        return cur.values;
       }
       return acc;
     }, []);
   },
 });
+
+const catchLabelCount = (names, prefix, cur, acc) => {
+  if (
+    cur.name &&
+    names.includes(cur.name.slice(prefix.length).split(".")[0]) &&
+    cur._CLS === COUNT_CLS
+  ) {
+    acc[cur.name.slice(prefix.length).split(".")[0]] = cur.count;
+  }
+};
 
 export const labelSampleCounts = selectorFamily({
   key: "labelSampleCounts",
@@ -600,12 +625,7 @@ export const labelSampleCounts = selectorFamily({
       return null;
     }
     return stats.reduce((acc, cur) => {
-      if (
-        names.includes(cur.name.slice(prefix.length)) &&
-        cur._CLS === COUNT_CLS
-      ) {
-        acc[cur.name.slice(prefix.length)] = cur.count;
-      }
+      catchLabelCount(names, prefix, cur, acc);
       return acc;
     }, {});
   },
@@ -623,12 +643,7 @@ export const filteredLabelSampleCounts = selectorFamily({
       return null;
     }
     return stats.reduce((acc, cur) => {
-      if (
-        names.includes(cur.name.slice(prefix.length)) &&
-        cur._CLS === COUNT_CLS
-      ) {
-        acc[cur.name.slice(prefix.length)] = cur.count;
-      }
+      catchLabelCount(names, prefix, cur, acc);
       return acc;
     }, {});
   },
@@ -728,6 +743,19 @@ export const labelTuples = selectorFamily({
   get: (dimension: string) => ({ get }) => {
     const types = get(labelTypes(dimension));
     return get(labelNames(dimension)).map((n, i) => [n, types[i]]);
+  },
+});
+
+export const labelMap = selectorFamily({
+  key: "labelMap",
+  get: (dimension: string) => ({ get }) => {
+    const tuples = get(labelTuples(dimension));
+    return tuples.reduce((acc, cur) => {
+      return {
+        [cur[0]]: cur[1],
+        ...acc,
+      };
+    }, {});
   },
 });
 
@@ -855,7 +883,11 @@ export const labelConfidenceBounds = selectorFamily({
   get: (label) => ({ get }) => {
     return (get(datasetStats) ?? []).reduce(
       (acc, cur) => {
-        if (cur.name === label && cur._CLS === CONFIDENCE_BOUNDS_CLS) {
+        if (
+          cur.name &&
+          cur.name.includes(label) &&
+          cur._CLS === CONFIDENCE_BOUNDS_CLS
+        ) {
           let bounds = cur.bounds;
           bounds = [
             0 < bounds[0] ? 0 : bounds[0],

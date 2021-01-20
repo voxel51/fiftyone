@@ -42,6 +42,18 @@ tied to any dataset or view, merely a field name.
     my_field_count_result.count # number of samples where 'my_field' exists
 
 
+Every |Aggregation| is also available as a method on datasets and views. The
+following is equivalent to the above.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset("my_dataset_with_my_field")
+    my_field_count_result = dataset.count("my_field")
+    my_field_count_result.count # number of samples where 'my_field' exists
+
 Executing multiple aggregations
 -------------------------------
 
@@ -54,8 +66,8 @@ more than one thing about a dataset or view.
     import fiftyone as fo
 
     aggregations = [
-        fo.CountLabels("predictions"),
-        fo.ConfidenceBounds("predictions")
+        fo.CountValues("predictions.detections.label"),
+        fo.Bounds("predictions.detections.confidence")
     ]
     dataset = fo.load_dataset("my_dataset")
     view = datatset.sort_by("uniqueness", reverse=True).limit(10)
@@ -76,8 +88,8 @@ a "frames." prefix to the field name.
     import fiftyone as fo
 
     aggregations = [
-        fo.CountLabels("frames.predictions"),
-        fo.ConfidenceBounds("frames.predictions")
+        fo.CountValues("frames.predictions.detections.labels"),
+        fo.Bounds("frames.predictions.detections.labels")
     ]
     dataset = fo.load_dataset("my_dataset")
     for result in dataset.aggregate(aggregations):

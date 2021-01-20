@@ -15,7 +15,7 @@ science.
     The FiftyOne Brain is a separate Python package that is bundled with
     FiftyOne. Although it is closed-source, it is licensed as freeware, and you
     have permission to use it for commercial or non-commercial purposes. See
-    `the license <https://github.com/voxel51/fiftyone/blob/develop/LICENSE-BRAIN>`_
+    `the license <https://github.com/voxel51/fiftyone/blob/develop/package/brain/LICENSE>`_
     for more details.
 
 The FiftyOne Brain methods are useful across the stages of the machine learning

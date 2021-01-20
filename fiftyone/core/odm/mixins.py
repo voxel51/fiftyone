@@ -1032,14 +1032,7 @@ def get_implied_field_kwargs(value, **kwargs):
         return {"ftype": ftype}
 
     if isinstance(value, (list, tuple)):
-        kwargs = {"ftype": fof.ListField}
-
-        if value:
-            subtype = _get_scalar_field_type(value[0])
-            if subtype is not None:
-                kwargs["subfield"] = subtype()
-
-        return kwargs
+        return {"ftype": fof.ListField}
 
     if isinstance(value, np.ndarray):
         if value.ndim == 1:

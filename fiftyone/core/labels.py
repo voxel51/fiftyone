@@ -171,6 +171,15 @@ class _HasID(Label):
         return ("id",) + self._fields_ordered
 
 
+class _List(object):
+    """Mixin for :class:`Label` classes that contain a list :class:`Label`s.
+
+    ``_LIST_PATH`` must be defined, and is the subpath to list of :class:`Label`s.
+    """
+
+    _LIST_PATH = None
+
+
 class ImageLabel(Label):
     """Base class for labels associated with images."""
 
@@ -244,13 +253,15 @@ class Classification(ImageLabel, _HasID):
         return classification
 
 
-class Classifications(ImageLabel):
+class Classifications(ImageLabel, _List):
     """A list of classifications (typically from a multilabel model) in an
     image.
 
     Args:
         classifications (None): a list of :class:`Classification` instances
     """
+
+    _LIST_PATH = "classifications"
 
     meta = {"allow_inheritance": True}
 
@@ -429,12 +440,14 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
         )
 
 
-class Detections(ImageLabel):
+class Detections(ImageLabel, _List):
     """A list of object detections in an image.
 
     Args:
         detections (None): a list of :class:`Detection` instances
     """
+
+    _LIST_PATH = "detections"
 
     meta = {"allow_inheritance": True}
 
@@ -621,12 +634,14 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
         )
 
 
-class Polylines(ImageLabel):
+class Polylines(ImageLabel, _List):
     """A list of polylines or polygons in an image.
 
     Args:
         polylines (None): a list of :class:`Polyline` instances
     """
+
+    _LIST_PATH = "polylines"
 
     meta = {"allow_inheritance": True}
 
@@ -764,12 +779,14 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
         )
 
 
-class Keypoints(ImageLabel):
+class Keypoints(ImageLabel, _List):
     """A list of :class:`Keypoint` instances in an image.
 
     Args:
         keypoints (None): a list of :class:`Keypoint` instances
     """
+
+    _LIST_PATH = "keypoints"
 
     meta = {"allow_inheritance": True}
 

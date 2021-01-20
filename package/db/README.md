@@ -1,1 +1,1 @@
-Supporting package for [FiftyOne](https://pypi.org/project/fiftyone)
+Supporting package for [FiftyOne](https://pypi.org/project/fiftyone).
