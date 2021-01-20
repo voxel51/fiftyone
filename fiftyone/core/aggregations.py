@@ -320,7 +320,8 @@ class Count(Aggregation):
         if dataset.media_type == fom.VIDEO and path.startswith("frames."):
             path = path[len("frames.") :]
 
-        pipeline.append({"$match": {path: {"$exists": True, "$ne": None}}})
+        if dataset.media_type == fom.VIDEO and self._field_name != "frames":
+            pipeline.append({"$match": {path: {"$exists": True, "$ne": None}}})
 
         return pipeline + [{"$count": "count"}]
 
