@@ -139,13 +139,14 @@ class QuickstartCommand(Command):
         # If desktop wasn't explicitly requested, fallback to default
         desktop = args.desktop or None
 
-        fouq.quickstart(
-            interactive=False,
+        _, session = fouq.quickstart(
             video=args.video,
             port=args.port,
             remote=args.remote,
             desktop=desktop,
         )
+
+        _watch_session(session)
 
 
 class ConfigCommand(Command):
@@ -850,6 +851,10 @@ class AppLaunchCommand(Command):
 
 
 def _watch_session(session):
+    # Automated tests may set `FIFTYONE_EXIT` so they can immediately exit
+    if os.environ.get("FIFTYONE_EXIT", False):
+        return
+
     try:
         if session.desktop:
             print("\nTo exit, close the App or press ctrl + c\n")
