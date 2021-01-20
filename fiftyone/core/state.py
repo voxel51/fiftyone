@@ -5,10 +5,7 @@ Defines the shared state between the FiftyOne App and SDK.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import OrderedDict
 import logging
-
-from bson import json_util
 
 import eta.core.serial as etas
 
@@ -16,7 +13,6 @@ import fiftyone.core.aggregations as foa
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-import fiftyone.core.odm as foo
 import fiftyone.core.media as fom
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
@@ -114,6 +110,7 @@ class StateDescription(etas.Serializable):
         dataset = d.get("dataset", None)
         if dataset is not None:
             dataset = fod.load_dataset(dataset.get("name"))
+
         stages = d.get("view", [])
         if dataset is not None and stages:
             view = fov.DatasetView(dataset)
@@ -122,6 +119,7 @@ class StateDescription(etas.Serializable):
                 view = view.add_stage(stage)
         else:
             view = None
+
         return cls(
             active_handle=active_handle,
             close=close,
@@ -151,6 +149,7 @@ class DatasetStatistics(object):
             aggregations.extend(
                 [foa.Count("frames"),]
             )
+
         aggregations.append(foa.CountValues("tags"))
         for prefix, schema in schemas:
             for field_name, field in schema.items():
@@ -164,8 +163,11 @@ class DatasetStatistics(object):
                 field_name = prefix + field_name
                 if _is_label(field):
                     path = field_name
-                    if issubclass(field.document_type, fol._List):
-                        path = "%s.%s" % (path, field.document_type._LIST_PATH)
+                    if issubclass(field.document_type, fol._HasLabelList):
+                        path = "%s.%s" % (
+                            path,
+                            field.document_type._LABEL_LIST_FIELD,
+                        )
 
                     aggregations.append(foa.Count(path))
                     label_path = "%s.label" % path

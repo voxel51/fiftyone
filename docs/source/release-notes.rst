@@ -243,8 +243,8 @@ Core
 ^^^^
 - Added the
   :meth:`filter_labels() <fiftyone.core.collections.SampleCollection.filter_labels>`
-  view stage that is equivalent to using any
-  classifications/detections/keypoints/polylines filter
+  view stage, which supercedes the old dedicated per-label-type filtering
+  stages
 - Added
   :meth:`select_objects() <fiftyone.core.collections.SampleCollection.select_objects>`
   and
@@ -339,11 +339,6 @@ Core
 - Polylines and keypoints can now be :ref:`imported <CVATVideoDataset-import>` and
   :ref:`exported <CVATVideoDataset-export>` when using
   `CVAT video format <https://github.com/openvinotoolkit/cvat/blob/develop/cvat/apps/documentation/xml_format.md>`_
-- Added support for filtering polylines and keypoints via new
-  :meth:`filter_polylines() <fiftyone.core.collections.SampleCollection.filter_polylines>`
-  and
-  :meth:`filter_keypoints() <fiftyone.core.collections.SampleCollection.filter_keypoints>`
-  view stages
 - Added support for rendering annotated versions of video samples with their
   frame labels overlaid via
   :meth:`draw_labels() <fiftyone.core.collections.SampleCollection.draw_labels>`
@@ -603,9 +598,6 @@ Docs
 ^^^^
 - Updated the :doc:`evaluate object detections </tutorials/evaluate_detections>`
   tutorial to make it more friendly for execution on CPU-only machines
-- Added
-  :meth:`detailed examples <fiftyone.core.collections.SampleCollection.filter_detections>`
-  of using view stages to the docs
 - Refreshed all App-related media in the docs to reflect the new App design
   introduced in v0.5.0
 
@@ -695,9 +687,8 @@ Core
 ^^^^
 - Added a powerful :mod:`fiftyone.core.expressions` module for constructing
   complex DatasetView :meth:`match() <fiftyone.core.collections.SampleCollection.match>`,
-  :meth:`filter_classifications() <fiftyone.core.collections.SampleCollection.filter_classifications>`,
-  :meth:`filter_detections() <fiftyone.core.collections.SampleCollection.filter_detections>`, and
-  :meth:`sort_by() <fiftyone.core.collections.SampleCollection.sort_by>` stages
+  :meth:`sort_by() <fiftyone.core.collections.SampleCollection.sort_by>`, etc.
+  stages
 - Added an
   :meth:`evaluate_detections() <fiftyone.utils.eval.coco.evaluate_detections>`
   utility for evaluating object detections in FiftyOne datasets

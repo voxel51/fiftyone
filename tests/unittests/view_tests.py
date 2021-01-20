@@ -94,7 +94,7 @@ class DatasetViewTests(unittest.TestCase):
         view = (
             dataset.view()
             .exclude_fields(["another_field"])
-            .filter_detections("test_dets", F("confidence") > 0.5)
+            .filter_labels("test_dets", F("confidence") > 0.5)
         )
 
         # modify element
@@ -264,12 +264,12 @@ class ViewFieldTests(unittest.TestCase):
 
         # Test `DatasetView.clone_sample_field`
 
-        low_conf_view = dataset.filter_detections(
+        low_conf_view = dataset.filter_labels(
             "predictions", F("confidence") < 0.5
         )
         low_conf_view.clone_sample_field("predictions", "low_conf")
 
-        high_conf_view = dataset.filter_detections(
+        high_conf_view = dataset.filter_labels(
             "predictions", F("confidence") > 0.5
         )
         high_conf_view.clone_sample_field("predictions", "high_conf")
@@ -813,30 +813,6 @@ class ViewStageTests(unittest.TestCase):
         for sample in view:
             if sample.test_class is not None:
                 self.assertEqual(sample.test_class.label, "friend")
-
-    def test_filter_classifications(self):
-        self._setUp_classifications()
-
-        view = self.dataset.filter_classifications(
-            "test_clfs", (F("confidence") > 0.5) & (F("label") == "friend")
-        )
-
-        for sample in view:
-            for clf in sample.test_clfs.classifications:
-                self.assertGreater(clf.confidence, 0.5)
-                self.assertEqual(clf.label, "friend")
-
-    def test_filter_detections(self):
-        self._setUp_detections()
-
-        view = self.dataset.filter_detections(
-            "test_dets", (F("confidence") > 0.5) & (F("label") == "friend")
-        )
-
-        for sample in view:
-            for det in sample.test_dets.detections:
-                self.assertGreater(det.confidence, 0.5)
-                self.assertEqual(det.label, "friend")
 
     def test_filter_labels(self):
         # Classifications

@@ -168,9 +168,7 @@ _FILTER_DETECTIONS_IN_PYTHON = """
 
         # Create a view that only contains predictions whose confidence is at
         # least 0.8
-        high_conf_view = dataset.filter_detections(
-            "predictions", F("confidence") > 0.8
-        )
+        high_conf_view = dataset.filter_labels("predictions", F("confidence") > 0.8)
 
         # Open the view in the App!
         session.view = high_conf_view

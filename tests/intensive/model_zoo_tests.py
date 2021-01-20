@@ -136,7 +136,7 @@ def _apply_person_keypoint_models(model_names):
         max_samples=50,
     )
 
-    person_samples = dataset.filter_detections(
+    person_samples = dataset.filter_labels(
         "ground_truth", F("label") == "person", only_matches=True
     ).limit(5)
 
