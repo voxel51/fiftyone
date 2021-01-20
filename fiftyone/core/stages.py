@@ -599,6 +599,7 @@ class FilterField(ViewStage):
         self._filter = filter
         self._hide_result = False
         self._only_matches = only_matches
+        self._is_frame_field = None
         self._validate_params()
 
     @property
@@ -649,6 +650,12 @@ class FilterField(ViewStage):
         )
 
     def _get_mongo_filter(self):
+        if self._is_frame_field:
+            filter_field = filter_field.split(".", 1)[1]  # remove `frames`
+            return _get_field_mongo_filter(
+                self._filter, prefix="$frame." + filter_field
+            )
+
         return _get_field_mongo_filter(self._filter, prefix=self._field)
 
     def _needs_frames(self, sample_collection):
@@ -694,6 +701,7 @@ class FilterField(ViewStage):
             raise ValueError("Cannot filter required field `filepath`")
 
         sample_collection.validate_fields_exist(self._field)
+        self._is_frame_field = self._needs_frames(sample_collection)
 
 
 def _get_filter_field_pipeline(
@@ -975,6 +983,7 @@ class FilterLabels(FilterField):
         self._hide_result = False
         self._labels_field = None
         self._is_labels_list_field = None
+        self._is_frame_field = None
         self._validate_params()
 
     def get_filtered_list_fields(self):
@@ -1040,8 +1049,17 @@ class FilterLabels(FilterField):
 
     def _get_mongo_filter(self):
         if self._is_labels_list_field:
+            if self._is_frame_field:
+                return _get_list_field_mongo_filter(self._filter)
+
             return _get_list_field_mongo_filter(
                 self._filter, prefix=self._field
+            )
+
+        if self._is_frame_field:
+            filter_field = self._field.split(".", 1)[1]  # remove `frames`
+            return _get_field_mongo_filter(
+                self._filter, prefix="$frame." + filter_field
             )
 
         return _get_field_mongo_filter(self._filter, prefix=self._field)
@@ -1052,6 +1070,7 @@ class FilterLabels(FilterField):
         )
         self._labels_field = field_name
         self._is_labels_list_field = is_list_field
+        self._is_frame_field = is_frame_field
 
     def _get_new_field(self, sample_collection):
         field = self._labels_field

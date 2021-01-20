@@ -154,10 +154,8 @@ class DatasetStatistics(object):
         aggregations.append(foa.CountValues("tags"))
         for prefix, schema in schemas:
             for field_name, field in schema.items():
-                if (
-                    field_name in _IGNORE
-                    or prefix == "frames."
-                    and field_name == "frame_number"
+                if field_name in _IGNORE or (
+                    prefix == "frames." and field_name == "frame_number"
                 ):
                     continue
 
