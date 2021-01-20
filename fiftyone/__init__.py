@@ -21,8 +21,11 @@ import universal_analytics as _ua
 #
 __path__ = _extend_path(__path__, __name__)
 
-from fiftyone.__public__ import *
 import fiftyone.constants as _foc
+
+__version__ = _foc.VERSION
+
+from fiftyone.__public__ import *
 from fiftyone.utils.uid import _get_user_id
 from fiftyone.core.context import _get_context
 from fiftyone.migrations import migrate_database_if_necessary as _migrate
@@ -44,7 +47,7 @@ def _log_import_if_allowed():
                     "event",
                     "import",
                     kind,
-                    label="%s-%s" % (_foc.VERSION, _get_context()),
+                    label="%s-%s" % (__version__, _get_context()),
                 )
         except:
             pass

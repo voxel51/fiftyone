@@ -12,6 +12,7 @@ import uuid
 import warnings
 
 from bson import ObjectId
+from deprecated import deprecated
 from pymongo import ASCENDING, DESCENDING
 
 import eta.core.utils as etau
@@ -99,7 +100,7 @@ class ViewStage(object):
             sample_collection: the
                 :class:`fiftyone.core.collections.SampleCollection` to which
                 the stage is being applied
-            hide_frames (False): whether the aggregation has requested the 
+            hide_frames (False): whether the aggregation has requested the
                 frames be hidden in the ``_frames`` field
 
         Returns:
@@ -1127,7 +1128,6 @@ def _get_list_field_mongo_filter(filter_arg, prefix="$this"):
     return filter_arg
 
 
-# @todo remove; deprecated by FilterLabels
 class _FilterListField(FilterField):
     @property
     def _filter_field(self):
@@ -1159,9 +1159,16 @@ class _FilterListField(FilterField):
         raise NotImplementedError("subclasses must implement `validate()`")
 
 
-# @todo remove; deprecated by FilterLabels
+@deprecated(reason="Use FilterLabels instead")
 class FilterClassifications(_FilterListField):
-    """Filters the :class:`fiftyone.core.labels.Classification` elements in the
+    """
+
+    .. warning::
+
+        This class is deprecated and will be removed in a future release.
+        Use the drop-in replacement :class:`FilterLabels` instead.
+
+    Filters the :class:`fiftyone.core.labels.Classification` elements in the
     specified :class:`fiftyone.core.labels.Classifications` field of each
     sample.
 
@@ -1213,9 +1220,16 @@ class FilterClassifications(_FilterListField):
         )
 
 
-# @todo remove; deprecated by FilterLabels
+@deprecated(reason="Use FilterLabels instead")
 class FilterDetections(_FilterListField):
-    """Filters the :class:`fiftyone.core.labels.Detection` elements in the
+    """
+
+    .. warning::
+
+        This class is deprecated and will be removed in a future release.
+        Use the drop-in replacement :class:`FilterLabels` instead.
+
+    Filters the :class:`fiftyone.core.labels.Detection` elements in the
     specified :class:`fiftyone.core.labels.Detections` field of each sample.
 
     Examples::
@@ -1277,9 +1291,16 @@ class FilterDetections(_FilterListField):
         )
 
 
-# @todo remove; deprecated by FilterLabels
+@deprecated(reason="Use FilterLabels instead")
 class FilterPolylines(_FilterListField):
-    """Filters the :class:`fiftyone.core.labels.Polyline` elements in the
+    """
+
+    .. warning::
+
+        This class is deprecated and will be removed in a future release.
+        Use the drop-in replacement :class:`FilterLabels` instead.
+
+    Filters the :class:`fiftyone.core.labels.Polyline` elements in the
     specified :class:`fiftyone.core.labels.Polylines` field of each sample.
 
     Examples::
@@ -1338,9 +1359,16 @@ class FilterPolylines(_FilterListField):
         )
 
 
-# @todo remove; deprecated by FilterLabels
+@deprecated(reason="Use FilterLabels instead")
 class FilterKeypoints(_FilterListField):
-    """Filters the :class:`fiftyone.core.labels.Keypoint` elements in the
+    """
+
+    .. warning::
+
+        This class is deprecated and will be removed in a future release.
+        Use the drop-in replacement :class:`FilterLabels` instead.
+
+    Filters the :class:`fiftyone.core.labels.Keypoint` elements in the
     specified :class:`fiftyone.core.labels.Keypoints` field of each sample.
 
     Examples::
