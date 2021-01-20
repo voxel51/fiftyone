@@ -88,6 +88,7 @@ class FiftyOneHandler(RequestHandler):
             submitted = etas.load_json(foc.FEEDBACK_PATH)["submitted"]
         else:
             submitted = False
+
         return {
             "version": foc.VERSION,
             "user_id": uid,
@@ -180,6 +181,7 @@ def _catch_errors(func):
             clients = list(StateHandler.clients)
             if isinstance(self, PollingHandler):
                 clients.append(self)
+
             for client in clients:
                 client.write_message(
                     {
@@ -458,6 +460,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         """Event for registering a client as an App."""
         if isinstance(self, StateHandler):
             StateHandler.app_clients.add(self)
+
         global _notebook_clients
         if isinstance(self, StateHandler) and notebook:
             _notebook_clients[self] = handle
@@ -499,6 +502,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = state.view
         else:
             view = state.dataset
+
         StateHandler.state = state.serialize()
         for clients in PollingHandler.clients.values():
             clients.update({"extended_statistics"})
@@ -579,12 +583,14 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         global _notebook_clients
         global _deactivated_clients
         _deactivated_clients.discard(active_handle)
+
         if (
             active_handle
             and caller in _notebook_clients
             and _notebook_clients[caller] != active_handle
         ):
             return
+
         for client, events in PollingHandler.clients.items():
             if client in _notebook_clients:
                 uuid = _notebook_clients[client]
@@ -596,7 +602,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
             if client == ignore_polling_client:
                 events.update({"statistics", "extended_statistics"})
+
             events.update({"update", "statistics", "extended_statistics"})
+
         awaitables = [
             StateHandler.send_updates(),
         ]
@@ -740,11 +748,13 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         """
         if StateHandler.state["dataset"] is None:
             return []
+
         state = fos.StateDescription.from_dict(StateHandler.state)
         if state.view is not None:
             view = state.view
         else:
             view = state.dataset
+
         awaitables = [cls.send_statistics(view, only=only)]
 
         awaitables.append(
@@ -776,8 +786,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                     _deactivated_clients.add(uuid)
                     client.write_message({"type": "deactivate"})
                     continue
+
             if client == ignore:
                 continue
+
             client.write_message(response)
 
     @classmethod
@@ -825,6 +837,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                     and _notebook_clients.get(client, None) != active_handle
                 ):
                     continue
+
                 client.write_message(message)
 
     @classmethod
@@ -857,8 +870,12 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                     field.document_type, fol.Label
                 ):
                     path = field.name
-                    if issubclass(field.document_type, fol._List):
-                        path = "%s.%s" % (path, field.document_type._LIST_PATH)
+                    if issubclass(field.document_type, fol._HasLabelList):
+                        path = "%s.%s" % (
+                            path,
+                            field.document_type._LABEL_LIST_FIELD,
+                        )
+
                     path = "%s.label" % path
 
                 return path
@@ -902,6 +919,7 @@ def _parse_histogram_values(result):
     )
     if result.other > 0:
         data.append({"key": "other", "count": result.other})
+
     return data
 
 
@@ -935,8 +953,8 @@ async def _gather_results(col, aggs, fields, view):
         if cls and issubclass(cls, fol.Label):
             name = name[: -len(".label")]
 
-        if cls and issubclass(cls, fol._List):
-            name = name[: -(len(cls._LIST_PATH) + 1)]
+        if cls and issubclass(cls, fol._HasLabelList):
+            name = name[: -(len(cls._LABEL_LIST_FIELD) + 1)]
 
         results.append(
             {
@@ -945,6 +963,7 @@ async def _gather_results(col, aggs, fields, view):
                 "data": sorters[type(result)](result),
             }
         )
+
     return results
 
 
@@ -1031,8 +1050,9 @@ def _make_filter_stages(dataset, filters):
 
         if isinstance(field, fof.EmbeddedDocumentField):
             stage_cls = fosg.FilterField
-            if issubclass(field.document_type, fol._List):
+            if issubclass(field.document_type, fol._HasLabelList):
                 stage_cls = fosg.FilterLabels
+
             expr = _make_range_expression(F("confidence"), args)
             if "labels" in args:
                 labels_expr = F("label").is_in(args["labels"])

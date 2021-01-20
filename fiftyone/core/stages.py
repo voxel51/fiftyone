@@ -2490,48 +2490,22 @@ def _get_labels_field(field_path, sample_collection):
     if field is None:
         raise ValueError("Field '%s' does not exist" % field_path)
 
-    single_fields = (
-        fol.Classification,
-        fol.Detection,
-        fol.Polyline,
-        fol.Keypoint,
-    )
-
-    list_fields = (
-        fol.Classifications,
-        fol.Detections,
-        fol.Polylines,
-        fol.Keypoints,
-    )
-
     if isinstance(field, fof.EmbeddedDocumentField):
         document_type = field.document_type
-        is_list_field = issubclass(document_type, list_fields)
-        path = None
-
-        if document_type is fol.Classifications:
-            path = field_path + ".classifications"
-
-        elif document_type is fol.Detections:
-            path = field_path + ".detections"
-
-        elif document_type is fol.Polylines:
-            path = field_path + ".polylines"
-
-        elif document_type is fol.Keypoints:
-            path = field_path + ".keypoints"
-
-        elif issubclass(document_type, single_fields):
+        is_list_field = issubclass(document_type, fol._HasLabelList)
+        if is_list_field:
+            path = field_path + "." + document_type._LABEL_LIST_FIELD
+        elif issubclass(document_type, fol._SINGLE_LABEL_FIELDS):
             path = field_path
+        else:
+            path = None
 
         if path is not None:
             return path, is_list_field, is_frame_field
 
-    allowed_types = single_fields + list_fields
-
     raise ValueError(
         "Field '%s' must be a Label type %s; found '%s'"
-        % (field_path, allowed_types, field)
+        % (field_path, fol._LABEL_FIELDS, field)
     )
 
 
@@ -2556,28 +2530,12 @@ def _get_labels_list_field(field_path, sample_collection):
 
     if isinstance(field, fof.EmbeddedDocumentField):
         document_type = field.document_type
-        if document_type is fol.Classifications:
-            return field_path + ".classifications"
-
-        if document_type is fol.Detections:
-            return field_path + ".detections"
-
-        if document_type is fol.Polylines:
-            return field_path + ".polylines"
-
-        if document_type is fol.Keypoints:
-            return field_path + ".keypoints"
-
-    allowed_types = (
-        fol.Classifications,
-        fol.Detections,
-        fol.Polylines,
-        fol.Keypoints,
-    )
+        if issubclass(document_type, fol._HasLabelList):
+            return field_path + "." + document_type._LABEL_LIST_FIELD
 
     raise ValueError(
         "Field '%s' must be a labels list type %s; found '%s'"
-        % (field_path, allowed_types, field)
+        % (field_path, fol._LABEL_LIST_FIELDS, field)
     )
 
 
