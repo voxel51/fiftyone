@@ -130,9 +130,11 @@ The sections below discuss each view stage in more detail.
 Sorting
 _______
 
-You can use :meth:`sort_by() <fiftyone.core.view.DatasetView.sort_by>` to sort
-the samples in a |Dataset| or |DatasetView| by a field of interest. The samples
-in the returned |DatasetView| can be sorted in ascending or descending order:
+You can use
+:meth:`sort_by() <fiftyone.core.collections.SampleCollection.sort_by>`
+to sort the samples in a |Dataset| or |DatasetView| by a field of interest. The
+samples in the returned |DatasetView| can be sorted in ascending or descending
+order:
 
 .. code-block:: python
     :linenos:
@@ -154,7 +156,7 @@ Shuffling
 _________
 
 The samples in a |Dataset| or |DatasetView| can be randomly shuffled using
-:meth:`shuffle() <fiftyone.core.view.DatasetView.shuffle>`:
+:meth:`shuffle() <fiftyone.core.collections.SampleCollection.shuffle>`:
 
 .. code-block:: python
     :linenos:
@@ -184,9 +186,9 @@ Slicing
 _______
 
 You can extract a range of |Sample| instances from a |Dataset| using
-:meth:`skip() <fiftyone.core.view.DatasetView.skip>` and
-:meth:`limit() <fiftyone.core.view.DatasetView.limit>` or, equivalently, by
-using array slicing:
+:meth:`skip() <fiftyone.core.collections.SampleCollection.skip>` and
+:meth:`limit() <fiftyone.core.collections.SampleCollection.limit>` or,
+equivalently, by using array slicing:
 
 .. code-block:: python
     :linenos:
@@ -219,7 +221,7 @@ Random sampling
 _______________
 
 You can extract a random subset of the samples in a |Dataset| or |DatasetView|
-using :meth:`take() <fiftyone.core.view.DatasetView.take>`:
+using :meth:`take() <fiftyone.core.collections.SampleCollection.take>`:
 
 .. code-block:: python
     :linenos:
@@ -256,7 +258,8 @@ Querying samples
 ----------------
 
 You can query for a subset of the samples in a dataset via the
-:meth:`match() <fiftyone.core.view.DatasetView.match>` method. The syntax is:
+:meth:`match() <fiftyone.core.collections.SampleCollection.match>` method. The
+syntax is:
 
 .. code-block:: python
     :linenos:
@@ -301,9 +304,10 @@ Common filters
 
 Convenience functions for common queries are also available.
 
-Use the :meth:`match_tag() <fiftyone.core.view.DatasetView.match_tag>` and
-:meth:`match_tags() <fiftyone.core.view.DatasetView.match_tags>` methods to
-match samples that the specified tag(s) in their `tags` field:
+Use the
+:meth:`match_tag() <fiftyone.core.collections.SampleCollection.match_tag>` and
+:meth:`match_tags() <fiftyone.core.collections.SampleCollection.match_tags>`
+methods to match samples that the specified tag(s) in their `tags` field:
 
 .. code-block:: python
     :linenos:
@@ -314,8 +318,8 @@ match samples that the specified tag(s) in their `tags` field:
     # Union of the validation and test splits
     val_test_view = dataset.match_tags(["val", "test"])
 
-Use :meth:`exists() <fiftyone.core.view.DatasetView.exists>` to only include
-samples for which a given |Field| exists and is not ``None``:
+Use :meth:`exists() <fiftyone.core.collections.SampleCollection.exists>` to
+only include samples for which a given |Field| exists and is not ``None``:
 
 .. code-block:: python
     :linenos:
@@ -323,9 +327,9 @@ samples for which a given |Field| exists and is not ``None``:
     # The subset of samples where predictions have been computed
     predictions_view = dataset.exists("my_predictions")
 
-Use :meth:`select() <fiftyone.core.view.DatasetView.select>` and
-:meth:`exclude() <fiftyone.core.view.DatasetView.exclude>` to restriction
-attention to or exclude samples from a view by their IDs:
+Use :meth:`select() <fiftyone.core.collections.SampleCollection.select>` and
+:meth:`exclude() <fiftyone.core.collections.SampleCollection.exclude>` to
+restrict attention to or exclude samples from a view by their IDs:
 
 .. code-block:: python
     :linenos:
@@ -367,8 +371,9 @@ usual ways, with some important caveats:
   updated version of the sample's contents.
 
 You can use the
-:meth:`select_fields() <fiftyone.core.view.DatasetView.select_fields>` and
-:meth:`exclude_fields() <fiftyone.core.view.DatasetView.exclude_fields>`
+:meth:`select_fields() <fiftyone.core.collections.SampleCollection.select_fields>`
+and
+:meth:`exclude_fields() <fiftyone.core.collections.SampleCollection.exclude_fields>`
 stages to select or exclude fields from the returned |SampleView|:
 
 .. code-block:: python
@@ -385,11 +390,9 @@ stages to select or exclude fields from the returned |SampleView|:
         print(sample.tags)     # AttributeError: `tags` was excluded
     )
 
-The :meth:`filter_classifications() <fiftyone.core.view.DatasetView.filter_classifications>`,
-:meth:`filter_detections() <fiftyone.core.view.DatasetView.filter_detections>`,
-:meth:`filter_polylines() <fiftyone.core.view.DatasetView.filter_polylines>`, and
-:meth:`filter_keypoints() <fiftyone.core.view.DatasetView.filter_keypoints>`
-stages are powerful stages that allow you to filter the contents of
+The
+:meth:`filter_labels() <fiftyone.core.collections.SampleCollection.filter_labels>`
+stage is a powerful stage that allows you to filter the contents of
 |Detections|, |Classifications|, |Polylines|, and |Keypoints| fields,
 respectively.
 
@@ -404,13 +407,13 @@ Here are some examples for each task:
 
             # Only include labels in the `my_classifications` field of each sample with
             # label "friend" and confidence greater than 0.5
-            confident_friends_view = dataset.filter_classifications(
+            confident_friends_view = dataset.filter_labels(
                 "my_classifications", (F("confidence") > 0.5) & (F("label") == "friend")
             )
 
             # Same as above, but only include samples with at least one classification
             # after filtering
-            confident_friends_view = dataset.filter_classifications(
+            confident_friends_view = dataset.filter_labels(
                 "my_classifications",
                 (F("confidence") > 0.5) & (F("label") == "friend"),
                 only_matches=True,
@@ -423,13 +426,13 @@ Here are some examples for each task:
 
             # Only include detections in the `my_detections` field of each sample
             # whose bounding boxes have an area of at least 0.5
-            large_boxes_view = dataset.filter_detections(
+            large_boxes_view = dataset.filter_labels(
                 "my_detections", F("bounding_box")[2] * F("bounding_box")[3] >= 0.5
             )
 
             # Same as above, but only include samples with at least one detection
             # after filtering
-            large_boxes_view = dataset.filter_detections(
+            large_boxes_view = dataset.filter_labels(
                 "my_detections",
                 F("bounding_box")[2] * F("bounding_box")[3] >= 0.5,
                 only_matches=True,
@@ -442,13 +445,13 @@ Here are some examples for each task:
 
             # Only include polylines in the `my_polylines` field that are filled
             # (i.e., are polygons)
-            filled_polygons_view = dataset.filter_polylines(
+            filled_polygons_view = dataset.filter_labels(
                 "my_polylines", F("filled")
             )
 
             # Same as above, but only include samples with at least one polyline
             # after filtering
-            filled_polygons_view = dataset.filter_polylines(
+            filled_polygons_view = dataset.filter_labels(
                 "my_polylines", F("filled"), only_matches=True
             )
 
@@ -459,17 +462,18 @@ Here are some examples for each task:
 
             # Only include keypoints in the `my_keypoints`  field of each sample
             # that have at least 10 vertices
-            many_points_view = dataset.filter_keypoints(
+            many_points_view = dataset.filter_labels(
                 "my_keypoints", F("points").length() >= 10
             )
 
             # Same as above, but only include samples with at least one keypoint
             # after filtering
-            many_points_view = dataset.filter_keypoints(
+            many_points_view = dataset.filter_labels(
                 "my_keypoints", F("points").length() >= 10, only_matches=True
             )
 
-You can also use the :meth:`filter_field() <fiftyone.core.view.DatasetView.filter_field>`
+You can also use the
+:meth:`filter_field() <fiftyone.core.collections.SampleCollection.filter_field>`
 stage to filter the contents of arbitrarily-typed fields:
 
 .. code-block:: python
@@ -492,7 +496,7 @@ stage to filter the contents of arbitrarily-typed fields:
 
     .. code-block:: python
 
-        view = dataset.filter_detections("predictions", ...)
+        view = dataset.filter_labels("predictions", ...)
 
         for sample in view:
             predictions = sample.predictions
@@ -510,7 +514,7 @@ stage to filter the contents of arbitrarily-typed fields:
 
     .. code-block:: python
 
-        view = dataset.filter_detections("predictions", ...)
+        view = dataset.filter_labels("predictions", ...)
 
         for sample in view:
             sample.predictions = fo.Detections(...)
@@ -553,7 +557,7 @@ Need to filter your detections by bounding box area? Use this expression!
     # bbox format is [top-left-x, top-left-y, width, height]
     bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
 
-    medium_boxes_view = dataset.filter_detections(
+    medium_boxes_view = dataset.filter_labels(
         "my_detections", (0.05 <= bbox_area) & (bbox_area < 0.5)
     )
 
