@@ -598,6 +598,7 @@ class FilterField(ViewStage):
     def __init__(self, field, filter, only_matches=False):
         self._field = field
         self._filter = filter
+        self._is_frame_field = None
         self._only_matches = only_matches
         self._validate_params()
 
@@ -633,6 +634,12 @@ class FilterField(ViewStage):
         )
 
     def _get_mongo_filter(self):
+        if self._is_frame_field:
+            filter_field = self._field.split(".", 1)[1]  # remove `frames`
+            return _get_field_mongo_filter(
+                self._filter, prefix="$frame." + filter_field
+            )
+
         return _get_field_mongo_filter(self._filter, prefix=self._field)
 
     def _needs_frames(self, sample_collection):
@@ -678,6 +685,7 @@ class FilterField(ViewStage):
             raise ValueError("Cannot filter required field `filepath`")
 
         sample_collection.validate_fields_exist(self._field)
+        self._is_frame_field = self._needs_frames(sample_collection)
 
 
 def _get_filter_field_pipeline(filter_field, filter_arg, only_matches=False):
@@ -944,6 +952,7 @@ class FilterLabels(FilterField):
         self._filter = filter
         self._only_matches = only_matches
         self._labels_field = None
+        self._is_frame_field = None
         self._is_labels_list_field = None
         self._validate_params()
 
@@ -999,8 +1008,17 @@ class FilterLabels(FilterField):
 
     def _get_mongo_filter(self):
         if self._is_labels_list_field:
+            if self._is_frame_field:
+                return _get_list_field_mongo_filter(self._filter)
+
             return _get_list_field_mongo_filter(
                 self._filter, prefix=self._field
+            )
+
+        if self._is_frame_field:
+            filter_field = self._field.split(".", 1)[1]  # remove `frames`
+            return _get_field_mongo_filter(
+                self._filter, prefix="$frame." + filter_field
             )
 
         return _get_field_mongo_filter(self._filter, prefix=self._field)
@@ -1009,6 +1027,7 @@ class FilterLabels(FilterField):
         field_name, is_list_field, is_frame_field = _get_labels_field(
             self._field, sample_collection
         )
+        self._is_frame_field = is_frame_field
         self._labels_field = field_name
         self._is_labels_list_field = is_list_field
 
