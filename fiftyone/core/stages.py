@@ -1051,12 +1051,7 @@ class FilterLabels(FilterField):
 
     def _get_mongo_filter(self):
         if self._is_labels_list_field:
-            if self._is_frame_field:
-                return _get_list_field_mongo_filter(self._filter)
-
-            return _get_list_field_mongo_filter(
-                self._filter, prefix=self._field
-            )
+            return _get_list_field_mongo_filter(self._filter)
 
         if self._is_frame_field:
             filter_field = self._field.split(".", 1)[1]  # remove `frames`
@@ -1254,7 +1249,7 @@ class _FilterListField(FilterField):
         )
 
     def _get_mongo_filter(self):
-        return _get_list_field_mongo_filter(self._filter, prefix=self._field)
+        return _get_list_field_mongo_filter(self._filter)
 
     def validate(self, sample_collection):
         raise NotImplementedError("subclasses must implement `validate()`")
