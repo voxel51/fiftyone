@@ -68,6 +68,7 @@ setup(
     install_requires=[
         # third-party packages
         "argcomplete",
+        "Deprecated",
         "eventlet",
         "future",
         "Jinja2",

@@ -171,13 +171,15 @@ class _HasID(Label):
         return ("id",) + self._fields_ordered
 
 
-class _List(object):
-    """Mixin for :class:`Label` classes that contain a list :class:`Label`s.
+class _HasLabelList(object):
+    """Mixin for :class:`Label` classes that contain a list of :class:`Label`
+    instances.
 
-    ``_LIST_PATH`` must be defined, and is the subpath to list of :class:`Label`s.
+    The ``_LABEL_LIST_FIELD`` attribute must be defined to specify the name of
+    the field that contains the :class:`Label` elements.
     """
 
-    _LIST_PATH = None
+    _LABEL_LIST_FIELD = None
 
 
 class ImageLabel(Label):
@@ -253,7 +255,7 @@ class Classification(ImageLabel, _HasID):
         return classification
 
 
-class Classifications(ImageLabel, _List):
+class Classifications(ImageLabel, _HasLabelList):
     """A list of classifications (typically from a multilabel model) in an
     image.
 
@@ -261,7 +263,7 @@ class Classifications(ImageLabel, _List):
         classifications (None): a list of :class:`Classification` instances
     """
 
-    _LIST_PATH = "classifications"
+    _LABEL_LIST_FIELD = "classifications"
 
     meta = {"allow_inheritance": True}
 
@@ -440,14 +442,14 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
         )
 
 
-class Detections(ImageLabel, _List):
+class Detections(ImageLabel, _HasLabelList):
     """A list of object detections in an image.
 
     Args:
         detections (None): a list of :class:`Detection` instances
     """
 
-    _LIST_PATH = "detections"
+    _LABEL_LIST_FIELD = "detections"
 
     meta = {"allow_inheritance": True}
 
@@ -634,14 +636,14 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
         )
 
 
-class Polylines(ImageLabel, _List):
+class Polylines(ImageLabel, _HasLabelList):
     """A list of polylines or polygons in an image.
 
     Args:
         polylines (None): a list of :class:`Polyline` instances
     """
 
-    _LIST_PATH = "polylines"
+    _LABEL_LIST_FIELD = "polylines"
 
     meta = {"allow_inheritance": True}
 
@@ -779,14 +781,14 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
         )
 
 
-class Keypoints(ImageLabel, _List):
+class Keypoints(ImageLabel, _HasLabelList):
     """A list of :class:`Keypoint` instances in an image.
 
     Args:
         keypoints (None): a list of :class:`Keypoint` instances
     """
 
-    _LIST_PATH = "keypoints"
+    _LABEL_LIST_FIELD = "keypoints"
 
     meta = {"allow_inheritance": True}
 
@@ -878,6 +880,11 @@ class _Frames(Label):
 
     frame_count = fof.IntField(required=True, null=False, default=0)
     first_frame = fof.EmbeddedDocumentField(_FrameLabels, null=True)
+
+
+_SINGLE_LABEL_FIELDS = (Classification, Detection, Polyline, Keypoint)
+_LABEL_LIST_FIELDS = (Classifications, Detections, Polylines, Keypoints)
+_LABEL_FIELDS = _SINGLE_LABEL_FIELDS + _LABEL_LIST_FIELDS
 
 
 def _from_eta_attributes(attrs):

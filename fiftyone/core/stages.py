@@ -12,6 +12,7 @@ import uuid
 import warnings
 
 from bson import ObjectId
+from deprecated import deprecated
 from pymongo import ASCENDING, DESCENDING
 
 import eta.core.utils as etau
@@ -99,7 +100,7 @@ class ViewStage(object):
             sample_collection: the
                 :class:`fiftyone.core.collections.SampleCollection` to which
                 the stage is being applied
-            hide_frames (False): whether the aggregation has requested the 
+            hide_frames (False): whether the aggregation has requested the
                 frames be hidden in the ``_frames`` field
 
         Returns:
@@ -651,7 +652,7 @@ class FilterField(ViewStage):
 
     def _get_mongo_filter(self):
         if self._is_frame_field:
-            filter_field = filter_field.split(".", 1)[1]  # remove `frames`
+            filter_field = self._field.split(".", 1)[1]  # remove `frames`
             return _get_field_mongo_filter(
                 self._filter, prefix="$frame." + filter_field
             )
@@ -982,6 +983,7 @@ class FilterLabels(FilterField):
         self._only_matches = only_matches
         self._hide_result = False
         self._labels_field = None
+        self._is_frame_field = None
         self._is_labels_list_field = None
         self._is_frame_field = None
         self._validate_params()
@@ -1068,6 +1070,7 @@ class FilterLabels(FilterField):
         field_name, is_list_field, is_frame_field = _get_labels_field(
             self._field, sample_collection
         )
+        self._is_frame_field = is_frame_field
         self._labels_field = field_name
         self._is_labels_list_field = is_list_field
         self._is_frame_field = is_frame_field
@@ -1209,7 +1212,6 @@ def _get_list_field_mongo_filter(filter_arg, prefix="$this"):
     return filter_arg
 
 
-# @todo remove; deprecated by FilterLabels
 class _FilterListField(FilterField):
     def _get_new_field(self, sample_collection):
         field = self._filter_field
@@ -1258,9 +1260,16 @@ class _FilterListField(FilterField):
         raise NotImplementedError("subclasses must implement `validate()`")
 
 
-# @todo remove; deprecated by FilterLabels
+@deprecated(reason="Use FilterLabels instead")
 class FilterClassifications(_FilterListField):
-    """Filters the :class:`fiftyone.core.labels.Classification` elements in the
+    """
+
+    .. warning::
+
+        This class is deprecated and will be removed in a future release.
+        Use the drop-in replacement :class:`FilterLabels` instead.
+
+    Filters the :class:`fiftyone.core.labels.Classification` elements in the
     specified :class:`fiftyone.core.labels.Classifications` field of each
     sample.
 
@@ -1312,9 +1321,16 @@ class FilterClassifications(_FilterListField):
         )
 
 
-# @todo remove; deprecated by FilterLabels
+@deprecated(reason="Use FilterLabels instead")
 class FilterDetections(_FilterListField):
-    """Filters the :class:`fiftyone.core.labels.Detection` elements in the
+    """
+
+    .. warning::
+
+        This class is deprecated and will be removed in a future release.
+        Use the drop-in replacement :class:`FilterLabels` instead.
+
+    Filters the :class:`fiftyone.core.labels.Detection` elements in the
     specified :class:`fiftyone.core.labels.Detections` field of each sample.
 
     Examples::
@@ -1376,9 +1392,16 @@ class FilterDetections(_FilterListField):
         )
 
 
-# @todo remove; deprecated by FilterLabels
+@deprecated(reason="Use FilterLabels instead")
 class FilterPolylines(_FilterListField):
-    """Filters the :class:`fiftyone.core.labels.Polyline` elements in the
+    """
+
+    .. warning::
+
+        This class is deprecated and will be removed in a future release.
+        Use the drop-in replacement :class:`FilterLabels` instead.
+
+    Filters the :class:`fiftyone.core.labels.Polyline` elements in the
     specified :class:`fiftyone.core.labels.Polylines` field of each sample.
 
     Examples::
@@ -1437,9 +1460,16 @@ class FilterPolylines(_FilterListField):
         )
 
 
-# @todo remove; deprecated by FilterLabels
+@deprecated(reason="Use FilterLabels instead")
 class FilterKeypoints(_FilterListField):
-    """Filters the :class:`fiftyone.core.labels.Keypoint` elements in the
+    """
+
+    .. warning::
+
+        This class is deprecated and will be removed in a future release.
+        Use the drop-in replacement :class:`FilterLabels` instead.
+
+    Filters the :class:`fiftyone.core.labels.Keypoint` elements in the
     specified :class:`fiftyone.core.labels.Keypoints` field of each sample.
 
     Examples::
@@ -2561,48 +2591,22 @@ def _get_labels_field(field_path, sample_collection):
     if field is None:
         raise ValueError("Field '%s' does not exist" % field_path)
 
-    single_fields = (
-        fol.Classification,
-        fol.Detection,
-        fol.Polyline,
-        fol.Keypoint,
-    )
-
-    list_fields = (
-        fol.Classifications,
-        fol.Detections,
-        fol.Polylines,
-        fol.Keypoints,
-    )
-
     if isinstance(field, fof.EmbeddedDocumentField):
         document_type = field.document_type
-        is_list_field = issubclass(document_type, list_fields)
-        path = None
-
-        if document_type is fol.Classifications:
-            path = field_path + ".classifications"
-
-        elif document_type is fol.Detections:
-            path = field_path + ".detections"
-
-        elif document_type is fol.Polylines:
-            path = field_path + ".polylines"
-
-        elif document_type is fol.Keypoints:
-            path = field_path + ".keypoints"
-
-        elif issubclass(document_type, single_fields):
+        is_list_field = issubclass(document_type, fol._HasLabelList)
+        if is_list_field:
+            path = field_path + "." + document_type._LABEL_LIST_FIELD
+        elif issubclass(document_type, fol._SINGLE_LABEL_FIELDS):
             path = field_path
+        else:
+            path = None
 
         if path is not None:
             return path, is_list_field, is_frame_field
 
-    allowed_types = single_fields + list_fields
-
     raise ValueError(
         "Field '%s' must be a Label type %s; found '%s'"
-        % (field_path, allowed_types, field)
+        % (field_path, fol._LABEL_FIELDS, field)
     )
 
 
@@ -2627,28 +2631,12 @@ def _get_labels_list_field(field_path, sample_collection):
 
     if isinstance(field, fof.EmbeddedDocumentField):
         document_type = field.document_type
-        if document_type is fol.Classifications:
-            return field_path + ".classifications"
-
-        if document_type is fol.Detections:
-            return field_path + ".detections"
-
-        if document_type is fol.Polylines:
-            return field_path + ".polylines"
-
-        if document_type is fol.Keypoints:
-            return field_path + ".keypoints"
-
-    allowed_types = (
-        fol.Classifications,
-        fol.Detections,
-        fol.Polylines,
-        fol.Keypoints,
-    )
+        if issubclass(document_type, fol._HasLabelList):
+            return field_path + "." + document_type._LABEL_LIST_FIELD
 
     raise ValueError(
         "Field '%s' must be a labels list type %s; found '%s'"
-        % (field_path, allowed_types, field)
+        % (field_path, fol._LABEL_LIST_FIELDS, field)
     )
 
 

@@ -11,6 +11,8 @@ import os
 import random
 import string
 
+from deprecated import deprecated
+
 import eta.core.serial as etas
 import eta.core.utils as etau
 
@@ -878,10 +880,17 @@ class SampleCollection(object):
             fos.FilterLabels(field, filter, only_matches=only_matches)
         )
 
-    # @todo remove; deprecated by filter_labels()
+    @deprecated(reason="Use filter_labels() instead")
     @view_stage
     def filter_classifications(self, field, filter, only_matches=False):
-        """Filters the classifications of the given
+        """
+
+        .. warning::
+
+            This method is deprecated and will be removed in a future release.
+            Use the drop-in replacement :meth:`filter_labels` instead.
+
+        Filters the classifications of the given
         :class:`fiftyone.core.labels.Classifications` field.
 
         Elements of ``<field>.classifications`` for which ``filter`` returns
@@ -928,10 +937,17 @@ class SampleCollection(object):
             fos.FilterClassifications(field, filter, only_matches=only_matches)
         )
 
-    # @todo remove; deprecated by filter_labels()
+    @deprecated(reason="Use filter_labels() instead")
     @view_stage
     def filter_detections(self, field, filter, only_matches=False):
-        """Filters the detections of the given
+        """
+
+        .. warning::
+
+            This method is deprecated and will be removed in a future release.
+            Use the drop-in replacement :meth:`filter_labels` instead.
+
+        Filters the detections of the given
         :class:`fiftyone.core.labels.Detections` field.
 
         Elements of ``<field>.detections`` for which ``filter`` returns
@@ -988,10 +1004,17 @@ class SampleCollection(object):
             fos.FilterDetections(field, filter, only_matches=only_matches)
         )
 
-    # @todo remove; deprecated by filter_labels()
+    @deprecated(reason="Use filter_labels() instead")
     @view_stage
     def filter_polylines(self, field, filter, only_matches=False):
-        """Filters the polylines of the given
+        """
+
+        .. warning::
+
+            This method is deprecated and will be removed in a future release.
+            Use the drop-in replacement :meth:`filter_labels` instead.
+
+        Filters the polylines of the given
         :class:`fiftyone.core.labels.Polylines` field.
 
         Elements of ``<field>.polylines`` for which ``filter`` returns
@@ -1047,10 +1070,17 @@ class SampleCollection(object):
             fos.FilterPolylines(field, filter, only_matches=only_matches)
         )
 
-    # @todo remove; deprecated by filter_labels()
+    @deprecated(reason="Use filter_labels() instead")
     @view_stage
     def filter_keypoints(self, field, filter, only_matches=False):
-        """Filters the keypoints of the given
+        """
+
+        .. warning::
+
+            This method is deprecated and will be removed in a future release.
+            Use the drop-in replacement :meth:`filter_labels` instead.
+
+        Filters the keypoints of the given
         :class:`fiftyone.core.labels.Keypoints` field.
 
         Elements of ``<field>.keypoints`` for which ``filter`` returns
