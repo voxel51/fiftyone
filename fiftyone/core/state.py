@@ -5,10 +5,7 @@ Defines the shared state between the FiftyOne App and SDK.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import OrderedDict
 import logging
-
-from bson import json_util
 
 import eta.core.serial as etas
 
@@ -16,7 +13,6 @@ import fiftyone.core.aggregations as foa
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-import fiftyone.core.odm as foo
 import fiftyone.core.media as fom
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou

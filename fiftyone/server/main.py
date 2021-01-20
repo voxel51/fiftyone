@@ -8,7 +8,6 @@ FiftyOne Tornado server.
 import asyncio
 import argparse
 from collections import defaultdict
-from copy import deepcopy
 import os
 import posixpath
 import traceback
