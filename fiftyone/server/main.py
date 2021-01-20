@@ -914,8 +914,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 def _parse_histogram_values(result):
     data = sorted(
         [
-            {"key": (k + result.edges[idx + 1]) / 2, "count": v}
+            {"key": round((k + result.edges[idx + 1]) / 2, 4), "count": v}
             for idx, (k, v) in enumerate(zip(result.edges, result.counts))
+            if v > 0
         ],
         key=lambda i: i["key"],
     )
@@ -958,17 +959,25 @@ async def _gather_results(col, aggs, fields, view, ticks=None):
         if cls and issubclass(cls, fol._HasLabelList):
             name = name[: -(len(cls._LABEL_LIST_FIELD) + 1)]
 
-        num_ticks = 0
+        data = sorters[type(result)](result)
+        result_ticks = 0
         if type(result) == foa.HistogramValuesResult:
-            num_ticks = ticks.pop(0)
+            result_ticks = ticks.pop(0)
+            if result_ticks is None:
+                result_ticks = []
+                step = max(len(data) // 4, 1)
+                for i in range(0, len(data), step):
+                    result_ticks.append(data[i]["key"])
+
+                if (
+                    result.other > 0
+                    and len(data)
+                    and data[-1]["key"] != "None"
+                ):
+                    result_ticks.append("None")
 
         results.append(
-            {
-                "data": sorters[type(result)](result),
-                "name": name,
-                "ticks": num_ticks,
-                "type": type_,
-            }
+            {"data": data, "name": name, "ticks": result_ticks, "type": type_,}
         )
 
     return results
@@ -1018,7 +1027,7 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
     for result, field, path in zip(bounds, fields, paths):
         range_ = result.bounds
         bins = _DEFAULT_NUM_BINS
-        num_ticks = "preserveEnd"
+        num_ticks = None
         if range_ == (None, None):
             range_ = (0, 1)
         elif fos._meets_type(field, fof.IntField):

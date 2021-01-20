@@ -59,6 +59,12 @@ const Distribution = ({ distribution }) => {
   const container = useRef(null);
   const stroke = "hsl(210, 20%, 90%)";
   const fill = stroke;
+  const ticksSetting =
+    ticks === 0
+      ? { interval: ticks }
+      : {
+          ticks,
+        };
 
   return (
     <Container ref={ref}>
@@ -77,7 +83,7 @@ const Distribution = ({ distribution }) => {
           axisLine={false}
           tick={<CustomizedAxisTick {...{ fill }} />}
           tickLine={{ stroke }}
-          interval={ticks}
+          {...ticksSetting}
         />
         <YAxis
           dataKey="count"
