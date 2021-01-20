@@ -900,12 +900,12 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
             aggs, fields = _count_values(filter, view)
 
-            hist_aggs, hist_fields = await _numeric_histograms(
+            hist_aggs, hist_fields, ticks = await _numeric_histograms(
                 col, view, view.get_field_schema()
             )
             aggs.extend(hist_aggs)
             fields.extend(hist_fields)
-            results = await _gather_results(col, aggs, fields, view)
+            results = await _gather_results(col, aggs, fields, view, ticks)
 
         results = sorted(results, key=lambda i: i["name"])
         self.write_message({"type": "distributions", "results": results})
@@ -913,11 +913,14 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
 def _parse_histogram_values(result):
     data = sorted(
-        [{"key": k, "count": v} for k, v in zip(result.edges, result.counts)],
+        [
+            {"key": (k + result.edges[idx + 1]) / 2, "count": v}
+            for idx, (k, v) in enumerate(zip(result.edges, result.counts))
+        ],
         key=lambda i: i["key"],
     )
     if result.other > 0:
-        data.append({"key": "other", "count": result.other})
+        data.append({"key": "None", "count": result.other})
 
     return data
 
@@ -931,7 +934,7 @@ def _parse_count_values(result):
     return data
 
 
-async def _gather_results(col, aggs, fields, view):
+async def _gather_results(col, aggs, fields, view, ticks=None):
     results = []
     response = await view._async_aggregate(col, aggs)
     sorters = {
@@ -955,11 +958,16 @@ async def _gather_results(col, aggs, fields, view):
         if cls and issubclass(cls, fol._HasLabelList):
             name = name[: -(len(cls._LABEL_LIST_FIELD) + 1)]
 
+        num_ticks = 0
+        if type(result) == foa.HistogramValuesResult:
+            num_ticks = ticks.pop(0)
+
         results.append(
             {
-                "type": type_,
-                "name": name,
                 "data": sorters[type(result)](result),
+                "name": name,
+                "ticks": num_ticks,
+                "type": type_,
             }
         )
 
@@ -1006,15 +1014,25 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
     aggs = _numeric_bounds(fields, paths)
     bounds = await view._async_aggregate(coll, aggs)
     aggregations = []
+    ticks = []
     for result, field, path in zip(bounds, fields, paths):
         range_ = result.bounds
+        bins = _DEFAULT_NUM_BINS
+        num_ticks = "preserveEnd"
         if range_ == (None, None):
             range_ = (0, 1)
+        elif fos._meets_type(field, fof.IntField):
+            delta = range_[1] - range_[0]
+            range_ = (range_[0] - 0.5, range_[1] + 0.5)
+            if delta < _MAX_INT_BINS:
+                bins = delta + 1
+                num_ticks = 0
         else:
             range_ = (range_[0], range_[1] + 0.01)
-        aggregations.append(fo.HistogramValues(path, bins=25, range=range_))
+        ticks.append(num_ticks)
+        aggregations.append(fo.HistogramValues(path, bins=bins, range=range_))
 
-    return aggregations, fields
+    return aggregations, fields, ticks
 
 
 def _make_range_expression(f, args):
@@ -1066,6 +1084,10 @@ def _make_filter_stages(dataset, filters):
             stages.append(fosg.Match(expr))
 
     return stages
+
+
+_DEFAULT_NUM_BINS = 25
+_MAX_INT_BINS = 100
 
 
 class FileHandler(tornado.web.StaticFileHandler):

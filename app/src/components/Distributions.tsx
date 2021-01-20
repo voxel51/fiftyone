@@ -53,13 +53,12 @@ const Title = styled.div`
 `;
 
 const Distribution = ({ distribution }) => {
-  const { name, type, data } = distribution;
+  const { name, data, ticks } = distribution;
   const [ref, { height }] = useMeasure();
   const barWidth = 24;
   const container = useRef(null);
   const stroke = "hsl(210, 20%, 90%)";
   const fill = stroke;
-  const isNumeric = _.indexOf(["IntField", "FloatField"], type) >= 0;
 
   return (
     <Container ref={ref}>
@@ -74,12 +73,11 @@ const Distribution = ({ distribution }) => {
       >
         <XAxis
           dataKey="key"
-          type="category"
-          interval={isNumeric ? "preserveStartEnd" : 0}
           height={0.2 * height}
           axisLine={false}
           tick={<CustomizedAxisTick {...{ fill }} />}
           tickLine={{ stroke }}
+          interval={ticks}
         />
         <YAxis
           dataKey="count"
