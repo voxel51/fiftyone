@@ -303,7 +303,7 @@ class Count(Aggregation):
             return [{"$count": "count"}]
 
         (
-            _,
+            path,
             _,
             pipeline,
             list_field,
@@ -315,6 +315,12 @@ class Count(Aggregation):
 
         if labels_list_field:
             pipeline.append({"$unwind": "$" + labels_list_field})
+
+        path = self._field_name
+        if dataset.media_type == fom.VIDEO and path.startswith("frames."):
+            path = path[len("frames.") :]
+
+        pipeline.append({"$match": {path: {"$exists": True, "$ne": None}}})
 
         return pipeline + [{"$count": "count"}]
 
