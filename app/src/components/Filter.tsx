@@ -116,6 +116,7 @@ const classFilterMachine = Machine({
                   [...new Set([...selected, value])].sort(),
                 inputValue: "",
                 valid: true,
+                results: ({ classes }) => classes,
               }),
             ],
             cond: ({ classes }, { value }) => {

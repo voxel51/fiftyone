@@ -75,7 +75,7 @@ class Aggregation(object):
                 return "frames", "frames", _unwind_frames(), None, None
 
             schema = frame_schema
-            field_name = self._field_name[len("frames.") :]
+            field_name = self._field_name[len(_FRAMES_PREFIX) :]
             pipeline = _unwind_frames()
         else:
             field_name = self._field_name
@@ -303,7 +303,7 @@ class Count(Aggregation):
             return [{"$count": "count"}]
 
         (
-            _,
+            path,
             _,
             pipeline,
             list_field,
@@ -315,6 +315,13 @@ class Count(Aggregation):
 
         if labels_list_field:
             pipeline.append({"$unwind": "$" + labels_list_field})
+
+        path = self._field_name
+        if dataset.media_type == fom.VIDEO and path.startswith(_FRAMES_PREFIX):
+            path = path[len(_FRAMES_PREFIX) :]
+
+        if dataset.media_type == fom.VIDEO and self._field_name != "frames":
+            pipeline.append({"$match": {path: {"$exists": True, "$ne": None}}})
 
         return pipeline + [{"$count": "count"}]
 

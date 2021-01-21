@@ -51,6 +51,9 @@ dbs.start()
 db = foo.get_async_db_conn()
 
 
+_FRAMES_PREFIX = "frames."
+
+
 class RequestHandler(tornado.web.RequestHandler):
     """"Base class for HTTP request handlers"""
 
@@ -304,9 +307,6 @@ class PollingHandler(tornado.web.RequestHandler):
         self.write(message)
 
 
-_WITHOUT_PAGINATION_EXTENDED_STAGES = {fosg.FilterLabels, fosg.FilterField}
-
-
 def _get_label_object_ids(label):
     """Returns a list of all object IDs contained in the label.
 
@@ -528,8 +528,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             return
 
         for stage in _make_filter_stages(state.dataset, state.filters):
-            if type(stage) in _WITHOUT_PAGINATION_EXTENDED_STAGES:
-                continue
+            if type(stage) == fosg.FilterLabels:
+                stage._hide_result = True
 
             view = view.add_stage(stage)
 
@@ -694,7 +694,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             for k, v in frame_dict.items():
                 if isinstance(v, dict) and "_cls" in v:
                     field_labels = _make_frame_labels(
-                        k, v, frame_number, prefix="frames."
+                        k, v, frame_number, prefix=_FRAMES_PREFIX
                     )
                     frame_labels.merge_labels(field_labels)
 
@@ -971,7 +971,7 @@ def _count_values(f, view):
     fields = []
     schemas = [(view.get_field_schema(), "")]
     if view.media_type == fom.VIDEO:
-        schemas.append((view.get_frame_field_schema(), "frames."))
+        schemas.append((view.get_frame_field_schema(), _FRAMES_PREFIX))
 
     for schema, prefix in schemas:
         for name, field in schema.items():
@@ -1024,10 +1024,10 @@ def _make_range_expression(f, args):
         none = args["none"]
         expr = (f >= mn) & (f <= mx)
         if args.get("none", False):
-            expr |= ~f
+            expr |= ~(f.exists())
     elif "none" in args:
         if not args["none"]:
-            expr = f
+            expr = f.exists()
 
     return expr
 
@@ -1040,18 +1040,14 @@ def _make_filter_stages(dataset, filters):
         frame_field_schema = None
     stages = []
     for path, args in filters.items():
-        if path.startswith("frames."):
+        if path.startswith(_FRAMES_PREFIX):
             schema = frame_field_schema
-            field = schema[path[len("frames.") :]]
+            field = schema[path[len(_FRAMES_PREFIX) :]]
         else:
             schema = field_schema
             field = schema[path]
 
         if isinstance(field, fof.EmbeddedDocumentField):
-            stage_cls = fosg.FilterField
-            if issubclass(field.document_type, fol._HasLabelList):
-                stage_cls = fosg.FilterLabels
-
             expr = _make_range_expression(F("confidence"), args)
             if "labels" in args:
                 labels_expr = F("label").is_in(args["labels"])
@@ -1060,7 +1056,7 @@ def _make_filter_stages(dataset, filters):
                 else:
                     expr = labels_expr
 
-            stages.append(stage_cls(path, expr))
+            stages.append(fosg.FilterLabels(path, expr, only_matches=True))
         else:
             expr = _make_range_expression(F(path), args)
             stages.append(fosg.Match(expr))

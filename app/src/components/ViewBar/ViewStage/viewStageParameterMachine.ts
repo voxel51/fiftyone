@@ -186,8 +186,8 @@ export default Machine(
         entry: [
           sendParent("PARAMETER.EDIT"),
           assign({
-            bestMatch: ({ fieldNames, value }) =>
-              computeBestMatchString(fieldNames, value),
+            bestMatch: ({ fieldNames, value, type }) =>
+              type === "field" ? computeBestMatchString(fieldNames, value) : {},
             currentResult: null,
             prevValue: ({ value }) => value,
             focusOnInit: false,
@@ -217,8 +217,10 @@ export default Machine(
           CHANGE: {
             actions: [
               assign({
-                bestMatch: ({ fieldNames }, { value }) =>
-                  computeBestMatchString(fieldNames, value),
+                bestMatch: ({ fieldNames, type }, { value }) =>
+                  type === "field"
+                    ? computeBestMatchString(fieldNames, value)
+                    : {},
                 currentResult: null,
                 value: (_, { value }) => value,
                 errorId: undefined,

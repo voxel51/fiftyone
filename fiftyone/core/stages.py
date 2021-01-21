@@ -108,20 +108,6 @@ class ViewStage(object):
         """
         raise NotImplementedError("subclasses must implement `to_mongo()`")
 
-    def to_frames_mongo(self, sample_collection):
-        """Returns the MongoDB version of the stage for the frames pipeline, if
-        any.
-
-        Args:
-            sample_collection: the
-                :class:`fiftyone.core.collections.SampleCollection` to which
-                the stage is being applied
-
-        Returns:
-            a MongoDB aggregation pipeline (list of dicts)
-        """
-        return []
-
     def validate(self, sample_collection):
         """Validates that the stage can be applied to the given collection.
 
@@ -136,10 +122,16 @@ class ViewStage(object):
         pass
 
     def _needs_frames(self, sample_collection):
-        """Whether the stage requires frame labels be attached.
+        """Whether the stage requires frame labels of video samples to be
+        attached.
 
         Args:
-            sample_collection: the sample collection in question
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the stage is being applied
+
+        Returns:
+            True/False
         """
         return False
 
@@ -344,14 +336,9 @@ class ExcludeFields(ViewStage):
         return excluded_fields
 
     def to_mongo(self, _, **__):
-        fields = self.get_excluded_fields()
-        if not fields:
-            return []
-
-        return [{"$unset": fields}]
-
-    def to_frames_mongo(self, _):
-        fields = self.get_excluded_fields(frames=True)
+        fields = self.get_excluded_fields(
+            frames=False
+        ) + self.get_excluded_fields(frames=True)
         if not fields:
             return []
 
@@ -598,8 +585,9 @@ class FilterField(ViewStage):
     def __init__(self, field, filter, only_matches=False):
         self._field = field
         self._filter = filter
-        self._is_frame_field = None
+        self._hide_result = False
         self._only_matches = only_matches
+        self._is_frame_field = None
         self._validate_params()
 
     @property
@@ -617,20 +605,36 @@ class FilterField(ViewStage):
         """Whether to only include samples that match the filter."""
         return self._only_matches
 
+    def _get_new_field(self, sample_collection):
+        field = self._field
+        if self._needs_frames(sample_collection):
+            field = field.split(".", 1)[1]  # remove `frames`
+
+        if self._hide_result:
+            return "__%s" % field
+
+        return field
+
     def to_mongo(self, sample_collection, hide_frames=False):
+        new_field = self._get_new_field(sample_collection)
         if (
             sample_collection.media_type == fom.VIDEO
             and self._field.startswith(_FRAMES_PREFIX)
         ):
             return _get_filter_frames_field_pipeline(
                 self._field,
+                new_field,
                 self._filter,
                 only_matches=self._only_matches,
                 hide_frames=hide_frames,
             )
 
         return _get_filter_field_pipeline(
-            self._field, self._filter, only_matches=self._only_matches
+            self._field,
+            new_field,
+            self._filter,
+            only_matches=self._only_matches,
+            hide_result=self._hide_result,
         )
 
     def _get_mongo_filter(self):
@@ -643,11 +647,6 @@ class FilterField(ViewStage):
         return _get_field_mongo_filter(self._filter, prefix=self._field)
 
     def _needs_frames(self, sample_collection):
-        """Whether the stage requires frame labels be attached.
-
-        Args:
-            sample_collection: the sample collection in question
-        """
         return (
             sample_collection.media_type == fom.VIDEO
             and self._field.startswith(_FRAMES_PREFIX)
@@ -688,13 +687,15 @@ class FilterField(ViewStage):
         self._is_frame_field = self._needs_frames(sample_collection)
 
 
-def _get_filter_field_pipeline(filter_field, filter_arg, only_matches=False):
+def _get_filter_field_pipeline(
+    filter_field, new_field, filter_arg, only_matches=False, hide_result=False
+):
     cond = _get_field_mongo_filter(filter_arg, prefix=filter_field)
 
     pipeline = [
         {
             "$addFields": {
-                filter_field: {
+                new_field: {
                     "$cond": {
                         "if": cond,
                         "then": "$" + filter_field,
@@ -707,14 +708,22 @@ def _get_filter_field_pipeline(filter_field, filter_arg, only_matches=False):
 
     if only_matches:
         pipeline.append(
-            {"$match": {filter_field: {"$exists": True, "$ne": None}}}
+            {"$match": {new_field: {"$exists": True, "$ne": None}}}
         )
+
+    if hide_result:
+        pipeline.append({"$unset": new_field})
 
     return pipeline
 
 
 def _get_filter_frames_field_pipeline(
-    filter_field, filter_arg, only_matches=False, hide_frames=False
+    filter_field,
+    new_field,
+    filter_arg,
+    only_matches=False,
+    hide_frames=False,
+    hide_result=False,
 ):
     filter_field = filter_field.split(".", 1)[1]  # remove `frames`
     cond = _get_field_mongo_filter(filter_arg, prefix="$frame." + filter_field)
@@ -731,7 +740,7 @@ def _get_filter_frames_field_pipeline(
                             "$mergeObjects": [
                                 "$$frame",
                                 {
-                                    filter_field: {
+                                    new_field: {
                                         "$cond": {
                                             "if": cond,
                                             "then": "$$frame." + filter_field,
@@ -765,7 +774,7 @@ def _get_filter_frames_field_pipeline(
                                                     {
                                                         "$ne": [
                                                             "$$this.%s"
-                                                            % filter_field,
+                                                            % new_field,
                                                             None,
                                                         ]
                                                     },
@@ -783,6 +792,9 @@ def _get_filter_frames_field_pipeline(
                 }
             }
         )
+
+    if hide_result:
+        pipeline.append({"$unset": "%s.%s" % (frames, new_field)})
 
     return pipeline
 
@@ -951,9 +963,11 @@ class FilterLabels(FilterField):
         self._field = field
         self._filter = filter
         self._only_matches = only_matches
+        self._hide_result = False
         self._labels_field = None
         self._is_frame_field = None
         self._is_labels_list_field = None
+        self._is_frame_field = None
         self._validate_params()
 
     def get_filtered_list_fields(self):
@@ -964,6 +978,7 @@ class FilterLabels(FilterField):
 
     def to_mongo(self, sample_collection, hide_frames=False):
         self._get_labels_field(sample_collection)
+        new_field = self._get_new_field(sample_collection)
 
         if (
             sample_collection.media_type == fom.VIDEO
@@ -972,35 +987,40 @@ class FilterLabels(FilterField):
             if self._is_labels_list_field:
                 return _get_filter_frames_list_field_pipeline(
                     self._labels_field,
+                    new_field,
                     self._filter,
                     only_matches=self._only_matches,
                     hide_frames=hide_frames,
+                    hide_result=self._hide_result,
                 )
 
             return _get_filter_frames_field_pipeline(
                 self._labels_field,
+                new_field,
                 self._filter,
                 only_matches=self._only_matches,
                 hide_frames=hide_frames,
+                hide_result=self._hide_result,
             )
 
         if self._is_labels_list_field:
             return _get_filter_list_field_pipeline(
                 self._labels_field,
+                new_field,
                 self._filter,
                 only_matches=self._only_matches,
+                hide_result=self._hide_result,
             )
 
         return _get_filter_field_pipeline(
-            self._labels_field, self._filter, only_matches=self._only_matches,
+            self._labels_field,
+            new_field,
+            self._filter,
+            only_matches=self._only_matches,
+            hide_result=self._hide_result,
         )
 
     def _needs_frames(self, sample_collection):
-        """Whether the stage requires frame labels be attached.
-
-        Args:
-            sample_collection: the sample collection in question
-        """
         return (
             sample_collection.media_type == fom.VIDEO
             and self._labels_field.startswith(_FRAMES_PREFIX)
@@ -1008,12 +1028,7 @@ class FilterLabels(FilterField):
 
     def _get_mongo_filter(self):
         if self._is_labels_list_field:
-            if self._is_frame_field:
-                return _get_list_field_mongo_filter(self._filter)
-
-            return _get_list_field_mongo_filter(
-                self._filter, prefix=self._field
-            )
+            return _get_list_field_mongo_filter(self._filter)
 
         if self._is_frame_field:
             filter_field = self._field.split(".", 1)[1]  # remove `frames`
@@ -1030,13 +1045,24 @@ class FilterLabels(FilterField):
         self._is_frame_field = is_frame_field
         self._labels_field = field_name
         self._is_labels_list_field = is_list_field
+        self._is_frame_field = is_frame_field
+
+    def _get_new_field(self, sample_collection):
+        field = self._labels_field
+        if self._needs_frames(sample_collection):
+            field = field.split(".", 1)[1]  # remove `frames`
+
+        if self._hide_result:
+            return "__%s" % field
+
+        return field
 
     def validate(self, sample_collection):
         self._get_labels_field(sample_collection)
 
 
 def _get_filter_list_field_pipeline(
-    filter_field, filter_arg, only_matches=False
+    filter_field, new_field, filter_arg, only_matches=False, hide_result=False
 ):
     cond = _get_list_field_mongo_filter(filter_arg)
 
@@ -1064,16 +1090,24 @@ def _get_filter_list_field_pipeline(
             }
         )
 
+    if hide_result:
+        pipeline.append({"$unset": new_field})
+
     return pipeline
 
 
 def _get_filter_frames_list_field_pipeline(
-    filter_field, filter_arg, only_matches=False, hide_frames=False
+    filter_field,
+    new_field,
+    filter_arg,
+    only_matches=False,
+    hide_frames=False,
+    hide_result=False,
 ):
     filter_field = filter_field.split(".", 1)[1]  # remove `frames`
     cond = _get_list_field_mongo_filter(filter_arg)
     frames = "_frames" if hide_frames else "frames"
-    label_field, labels_list = filter_field.split(".")
+    label_field, labels_list = new_field.split(".")
 
     pipeline = [
         {
@@ -1121,7 +1155,7 @@ def _get_filter_frames_list_field_pipeline(
                                                 "$size": {
                                                     "$filter": {
                                                         "input": "$$this."
-                                                        + filter_field,
+                                                        + new_field,
                                                         "cond": cond,
                                                     }
                                                 }
@@ -1137,6 +1171,9 @@ def _get_filter_frames_list_field_pipeline(
             }
         )
 
+    if hide_result:
+        pipeline.append({"$unset": "%s.%s" % (frames, new_field)})
+
     return pipeline
 
 
@@ -1148,6 +1185,16 @@ def _get_list_field_mongo_filter(filter_arg, prefix="$this"):
 
 
 class _FilterListField(FilterField):
+    def _get_new_field(self, sample_collection):
+        field = self._filter_field
+        if self._needs_frames(sample_collection):
+            field = field.split(".", 1)[1]  # remove `frames`
+
+        if self._hide_result:
+            return "__%s" % field
+
+        return field
+
     @property
     def _filter_field(self):
         raise NotImplementedError("subclasses must implement `_filter_field`")
@@ -1156,23 +1203,30 @@ class _FilterListField(FilterField):
         return [self._filter_field]
 
     def to_mongo(self, sample_collection, hide_frames=False):
+        new_field = self._get_new_field(sample_collection)
         if (
             sample_collection.media_type == fom.VIDEO
             and self._filter_field.startswith(_FRAMES_PREFIX)
         ):
             return _get_filter_frames_list_field_pipeline(
                 self._filter_field,
+                new_field,
                 self._filter,
                 only_matches=self._only_matches,
                 hide_frames=hide_frames,
+                hide_result=self._hide_result,
             )
 
         return _get_filter_list_field_pipeline(
-            self._filter_field, self._filter, only_matches=self._only_matches
+            self._filter_field,
+            new_field,
+            self._filter,
+            only_matches=self._only_matches,
+            hide_result=self._hide_result,
         )
 
     def _get_mongo_filter(self):
-        return _get_list_field_mongo_filter(self._filter, prefix=self._field)
+        return _get_list_field_mongo_filter(self._filter)
 
     def validate(self, sample_collection):
         raise NotImplementedError("subclasses must implement `validate()`")
@@ -1605,6 +1659,7 @@ class MapLabels(ViewStage):
             self._field, sample_collection
         )
         if is_frame_field:
+            # @todo implement this
             raise ValueError("Mapping frame labels is not yet supported")
 
         values = sorted(self._map.values())
@@ -2037,14 +2092,9 @@ class SelectFields(ViewStage):
         return list(set(selected_fields) | set(default_fields))
 
     def to_mongo(self, _, **__):
-        selected_fields = self.get_selected_fields()
-        if not selected_fields:
-            return []
-
-        return [{"$project": {fn: True for fn in selected_fields}}]
-
-    def to_frames_mongo(self, _):
-        selected_fields = self.get_selected_fields(frames=True)
+        selected_fields = self.get_selected_fields(
+            frames=False
+        ) + self.get_selected_fields(frames=True)
         if not selected_fields:
             return []
 
