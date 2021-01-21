@@ -18,12 +18,6 @@ import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
 
-_LABEL_LIST_FIELDS = (
-    fol.Classifications,
-    fol.Detections,
-    fol.Keypoints,
-    fol.Polylines,
-)
 _FRAMES_PREFIX = "frames."
 
 
@@ -43,20 +37,11 @@ class Aggregation(object):
     @property
     def field_name(self):
         """The field name being computed on."""
-        return self.field_name
-
-    @property
-    def _field_name_path(self):
-        return self._field_name.replace(".", "__")
+        return self._field_name
 
     def _get_default_result(self):
         raise NotImplementedError(
             "Subclass must implement _get_default_result()"
-        )
-
-    def _get_output_field(self, schema, frame_schema):
-        raise NotImplementedError(
-            "Subclass must implement _get_output_field()"
         )
 
     def _get_result(self, d):
@@ -64,49 +49,6 @@ class Aggregation(object):
 
     def _to_mongo(self, dataset, schema, frame_schema):
         raise NotImplementedError("Subclass must implement _to_mongo()")
-
-    def _get_field_path_pipeline(self, schema, frame_schema, dataset):
-        field_name = self._field_name
-        frames_query = (
-            field_name.startswith(_FRAMES_PREFIX) or field_name == "frames"
-        )
-        if dataset.media_type == fom.VIDEO and frames_query:
-            if self._field_name == "frames":
-                return "frames", "frames", _unwind_frames(), None, None
-
-            schema = frame_schema
-            field_name = self._field_name[len(_FRAMES_PREFIX) :]
-            pipeline = _unwind_frames()
-        else:
-            field_name = self._field_name
-            pipeline = []
-
-        root_field_name = field_name.split(".", 1)[0]
-
-        try:
-            root_field = schema[root_field_name]
-        except KeyError:
-            raise AggregationError(
-                "Field '%s' does not exist on dataset '%s'"
-                % (self._field_name, dataset.name)
-            )
-
-        list_field = None
-        if isinstance(root_field, fof.ListField):
-            list_field = root_field_name
-
-        labels_list_field = None
-        if isinstance(root_field, fof.EmbeddedDocumentField):
-            if root_field.document_type in _LABEL_LIST_FIELDS:
-                prefix = (
-                    root_field_name
-                    + "."
-                    + root_field.document_type.__name__.lower()
-                )
-                if field_name.startswith(prefix):
-                    labels_list_field = prefix
-
-        return root_field, field_name, pipeline, list_field, labels_list_field
 
 
 class AggregationResult(etas.Serializable):
@@ -143,8 +85,13 @@ class AggregationError(RuntimeError):
 
 
 class Bounds(Aggregation):
-    """Computes the bounds of a numeric field or numeric list field of a
-    collection.
+    """Computes the bounds of a numeric field of a collection.
+
+    This aggregation is typically applied to *numeric* field types (or lists of
+    such types):
+
+    -   :class:`fiftyone.core.fields.IntField`
+    -   :class:`fiftyone.core.fields.FloatField`
 
     Examples::
 
@@ -156,18 +103,20 @@ class Bounds(Aggregation):
                 fo.Sample(
                     filepath="/path/to/image1.png",
                     numeric_field=1.0,
-                    numeric_list_field=[1.0, 2.0, 3.0],
+                    numeric_list_field=[1, 2, 3],
                 ),
                 fo.Sample(
                     filepath="/path/to/image2.png",
                     numeric_field=4.0,
-                    numeric_list_field=[1.5, 2.5],
+                    numeric_list_field=[1, 2],
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    numeric_field=None,
+                    numeric_list_field=None,
                 ),
             ]
         )
-
-        # Add a generic list field
-        dataset.add_sample_field("list_field", fo.ListField)
 
         #
         # Compute the bounds of a numeric field
@@ -181,16 +130,9 @@ class Bounds(Aggregation):
         # Compute the a bounds of a numeric list field
         #
 
-        bounds = fo.Bounds("numeric_list_field")
-        r = dataset.aggregate(bounds)
+        list_bounds = fo.Bounds("numeric_list_field")
+        r = dataset.aggregate(list_bounds)
         r.bounds  # (min, max)
-
-        #
-        # Cannot compute bounds of a generic list field
-        #
-
-        bounds = fo.Bounds("list_field")
-        dataset.aggregate(bounds)  # error
 
     Args:
         field_name: the name of the field to compute bounds for
@@ -199,28 +141,18 @@ class Bounds(Aggregation):
     def _get_default_result(self):
         return BoundsResult(self._field_name, (None, None))
 
-    def _get_output_field(self, _):
-        return "%s-bounds" % self._field_name_path
-
     def _get_result(self, d):
         mn = d["min"]
         mx = d["max"]
         return BoundsResult(self._field_name, (mn, mx))
 
     def _to_mongo(self, dataset, schema, frame_schema):
-        (
-            _,
-            path,
-            pipeline,
-            list_field,
-            labels_list_field,
-        ) = self._get_field_path_pipeline(schema, frame_schema, dataset)
+        path, pipeline, list_fields = _parse_field_path(
+            self._field_name, schema, frame_schema, dataset
+        )
 
-        if list_field:
+        for list_field in list_fields:
             pipeline.append({"$unwind": "$" + list_field})
-
-        if labels_list_field:
-            pipeline.append({"$unwind": "$" + labels_list_field})
 
         pipeline.append(
             {
@@ -239,7 +171,7 @@ class BoundsResult(AggregationResult):
     """The result of the execution of a :class:`Bounds` instance.
 
     Attributes:
-        name: the name of the field
+        name: the name of the field whose bounds were computed
         bounds: the ``(min, max)`` bounds
     """
 
@@ -249,38 +181,61 @@ class BoundsResult(AggregationResult):
 
 
 class Count(Aggregation):
-    """Counts the number of samples or number of items with respect to a field
-    of a collection.
+    """Counts the number of field values in a collection.
 
-    If a ``field`` is provided, it can be a
-    :class:`fiftyone.core.fields.ListField` or a
-    :class:`fiftyone.core.labels.Label` list field.
+    If no field is provided, the samples themselves are counted.
 
     Examples::
 
         import fiftyone as fo
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(label="cat"),
+                            fo.Detection(label="dog"),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(label="cat"),
+                            fo.Detection(label="rabbit"),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    predictions=None,
+                ),
+            ]
+        )
 
         #
-        # Compute the number of samples in a dataset
+        # Count the number of samples in the dataset
         #
 
-        count = fo.Count()
-        r = dataset.aggregate(count)
-        r.count
+        count_samples = fo.Count()
+        r = dataset.aggregate(count_samples)
+        r.count  # count
 
         #
-        # Compute the number of objects in a `Detections` field
+        # Count the number of objects in the `predictions` field
         #
 
-        detections = fo.Count("detections")
-        r = dataset.aggregate(detections)
-        r.count
+        count_objects = fo.Count("predictions.detections")
+        r = dataset.aggregate(count_objects)
+        r.count  # count
 
     Args:
-        field_name (None): the field whose items to count. If no field name is
-            provided, the samples themselves are counted
+        field_name (None): the name of the field whose values to count. If none
+            is provided, the samples themselves are counted
     """
 
     def __init__(self, field_name=None):
@@ -289,12 +244,6 @@ class Count(Aggregation):
     def _get_default_result(self):
         return CountResult(self._field_name, 0)
 
-    def _get_output_field(self, *args):
-        if self._field_name is None:
-            return "count"
-
-        return "%s-count" % self._field_name_path
-
     def _get_result(self, d):
         return CountResult(self._field_name, d["count"])
 
@@ -302,25 +251,14 @@ class Count(Aggregation):
         if self._field_name is None:
             return [{"$count": "count"}]
 
-        (
-            path,
-            _,
-            pipeline,
-            list_field,
-            labels_list_field,
-        ) = self._get_field_path_pipeline(schema, frame_schema, dataset)
+        path, pipeline, list_fields = _parse_field_path(
+            self._field_name, schema, frame_schema, dataset
+        )
 
-        if list_field:
+        for list_field in list_fields:
             pipeline.append({"$unwind": "$" + list_field})
 
-        if labels_list_field:
-            pipeline.append({"$unwind": "$" + labels_list_field})
-
-        path = self._field_name
-        if dataset.media_type == fom.VIDEO and path.startswith(_FRAMES_PREFIX):
-            path = path[len(_FRAMES_PREFIX) :]
-
-        if dataset.media_type == fom.VIDEO and self._field_name != "frames":
+        if dataset.media_type == fom.VIDEO and path != "frames":
             pipeline.append({"$match": {path: {"$exists": True, "$ne": None}}})
 
         return pipeline + [{"$count": "count"}]
@@ -330,7 +268,8 @@ class CountResult(AggregationResult):
     """The result of the execution of a :class:`Count` instance.
 
     Attributes:
-        name: the name of the field, or ``None`` if the samples were counted
+        name: the name of the field, or ``None`` if the samples themselves were
+            counted
         count: the count
     """
 
@@ -340,10 +279,10 @@ class CountResult(AggregationResult):
 
 
 class CountValues(Aggregation):
-    """Counts the occurrences of values in a countable field or list of
-    countable fields of a collection.
+    """Counts the occurrences of field values in a collection.
 
-    Countable fields are:
+    This aggregation is typically applied to *countable* field types (or lists
+    of such types):
 
     -   :class:`fiftyone.core.fields.BooleanField`
     -   :class:`fiftyone.core.fields.IntField`
@@ -353,7 +292,35 @@ class CountValues(Aggregation):
 
         import fiftyone as fo
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    tags=["sunny"],
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(label="cat"),
+                            fo.Detection(label="dog"),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    tags=["cloudy"],
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(label="cat"),
+                            fo.Detection(label="rabbit"),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    predictions=None,
+                ),
+            ]
+        )
 
         #
         # Compute the tag counts in the dataset
@@ -363,34 +330,32 @@ class CountValues(Aggregation):
         r = dataset.aggregate(count_values)
         r.values  # dict mapping tags to counts
 
+        #
+        # Compute the predicted label counts in the dataset
+        #
+
+        count_values = fo.CountValues("predictions.detections.label")
+        r = dataset.aggregate(count_values)
+        r.values  # dict mapping tags to counts
+
     Args:
-        field_name: the name of the countable field
+        field_name: the name of the field to count
     """
 
     def _get_default_result(self):
         return CountValuesResult(self._field_name, {})
-
-    def _get_output_field(self, *args):
-        return "%s-count-values" % self._field_name_path
 
     def _get_result(self, d):
         d = {i["k"]: i["count"] for i in d["result"] if i["k"] is not None}
         return CountValuesResult(self._field_name, d)
 
     def _to_mongo(self, dataset, schema, frame_schema):
-        (
-            _,
-            path,
-            pipeline,
-            list_field,
-            labels_list_field,
-        ) = self._get_field_path_pipeline(schema, frame_schema, dataset)
+        path, pipeline, list_fields = _parse_field_path(
+            self._field_name, schema, frame_schema, dataset
+        )
 
-        if list_field:
+        for list_field in list_fields:
             pipeline.append({"$unwind": "$" + list_field})
-
-        if labels_list_field:
-            pipeline.append({"$unwind": "$" + labels_list_field})
 
         pipeline += [
             {"$group": {"_id": "$" + path, "count": {"$sum": 1}}},
@@ -419,10 +384,10 @@ class CountValuesResult(AggregationResult):
 
 
 class Distinct(Aggregation):
-    """Computes the distinct values of a countable field or a list of countable
-    fields of a collection.
+    """Computes the distinct values of a field in a collection.
 
-    Countable fields are:
+    This aggregation is typically applied to *countable* field types (or lists
+    of such types):
 
     -   :class:`fiftyone.core.fields.BooleanField`
     -   :class:`fiftyone.core.fields.IntField`
@@ -432,22 +397,50 @@ class Distinct(Aggregation):
 
         import fiftyone as fo
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    tags=["sunny"],
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(label="cat"),
+                            fo.Detection(label="dog"),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    tags=["sunny", "cloudy"],
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(label="cat"),
+                            fo.Detection(label="rabbit"),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    predictions=None,
+                ),
+            ]
+        )
 
         #
-        # Compute the distinct values of a StringField named `kind`
+        # Get the distinct tags in a dataset
         #
 
-        distinct = fo.Distinct("kind")
-        r = dataset.aggregate(distinct)
+        distinct_tags = fo.Distinct("tags")
+        r = dataset.aggregate(distinct_tags)
         r.values  # list of distinct values
 
         #
-        # Compute the a bounds of the `tags field
+        # Get the distint predicted labels in a dataset
         #
 
-        tags = fo.Distinct("tags")
-        r = dataset.aggregate(tags)
+        distinct_labels = fo.Distinct("predictions.detections.label")
+        r = dataset.aggregate(distinct_labels)
         r.values  # list of distinct values
 
     Args:
@@ -457,36 +450,19 @@ class Distinct(Aggregation):
     def _get_default_result(self):
         return DistinctResult(self._field_name, [])
 
-    def _get_output_field(self, *args):
-        return "%s-distinct" % self._field_name_path
-
     def _get_result(self, d):
-        return DistinctResult(
-            self._field_name, sorted(d[self._field_name_path])
-        )
+        return DistinctResult(self._field_name, sorted(d["values"]))
 
     def _to_mongo(self, dataset, schema, frame_schema):
-        (
-            _,
-            path,
-            pipeline,
-            list_field,
-            labels_list_field,
-        ) = self._get_field_path_pipeline(schema, frame_schema, dataset)
+        path, pipeline, list_fields = _parse_field_path(
+            self._field_name, schema, frame_schema, dataset
+        )
 
-        if list_field:
+        for list_field in list_fields:
             pipeline.append({"$unwind": "$" + list_field})
 
-        if labels_list_field:
-            pipeline.append({"$unwind": "$" + labels_list_field})
-
         pipeline.append(
-            {
-                "$group": {
-                    "_id": None,
-                    self._field_name_path: {"$addToSet": "$" + path},
-                }
-            }
+            {"$group": {"_id": None, "values": {"$addToSet": "$" + path},}}
         )
 
         return pipeline
@@ -496,7 +472,7 @@ class DistinctResult(AggregationResult):
     """The result of the execution of a :class:`Distinct` instance.
 
     Attributes:
-        name: the name of the field
+        name: the name of the field that was computed on
         values: a sorted list of distinct values
     """
 
@@ -506,21 +482,54 @@ class DistinctResult(AggregationResult):
 
 
 class HistogramValues(Aggregation):
-    """Computes a histogram of the numeric values in a field or list field of a
-    collection.
+    """Computes a histogram of the field values in a collection.
+
+    This aggregation is typically applied to *numeric* field types (or lists of
+    such types):
+
+    -   :class:`fiftyone.core.fields.IntField`
+    -   :class:`fiftyone.core.fields.FloatField`
 
     Examples::
 
+        import numpy as np
         import fiftyone as fo
 
-        dataset = fo.load_dataset(...)
+        samples = []
+        for idx in range(100):
+            samples.append(
+                fo.Sample(
+                    filepath="/path/to/image%d.png" % idx,
+                    numeric_field=np.random.randn(),
+                    numeric_list_field=list(np.random.randn(10)),
+                )
+            )
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
 
         #
-        # Compute a histogram of values in the float field "uniqueness"
+        # Compute a histogram of a numeric field
         #
 
         histogram_values = fo.HistogramValues(
-            "uniqueness", bins=50, range=(0, 1)
+            "numeric_field", bins=50, range=(-4, 4)
+        )
+        r = dataset.aggregate(histogram_values)
+        r.counts  # list of counts
+        r.edges  # list of bin edges
+
+        #
+        # Compute the histogram of a numeric list field
+        #
+
+        # Compute bounds automatically
+        bounds = fo.Bounds("numeric_list_field")
+        r = dataset.aggregate(bounds)
+        limits = (r.bounds[0], r.bounds[1] + 1e-6)  # right interval is open
+
+        histogram_values = fo.HistogramValues(
+            "numeric_list_field", bins=50, range=limits
         )
         r = dataset.aggregate(histogram_values)
         r.counts  # list of counts
@@ -571,9 +580,6 @@ class HistogramValues(Aggregation):
     def _get_default_result(self):
         return HistogramValuesResult(self._field_name, [], [], 0)
 
-    def _get_output_field(self, *args):
-        return "%s-histogram-values" % self._field_name_path
-
     def _get_result(self, d):
         if self._edges is not None:
             return self._get_result_edges(d)
@@ -607,19 +613,12 @@ class HistogramValues(Aggregation):
         return HistogramValuesResult(self._field_name, counts, edges, 0)
 
     def _to_mongo(self, dataset, schema, frame_schema):
-        (
-            _,
-            path,
-            pipeline,
-            list_field,
-            labels_list_field,
-        ) = self._get_field_path_pipeline(schema, frame_schema, dataset)
+        path, pipeline, list_fields = _parse_field_path(
+            self._field_name, schema, frame_schema, dataset
+        )
 
-        if list_field:
+        for list_field in list_fields:
             pipeline.append({"$unwind": "$" + list_field})
-
-        if labels_list_field:
-            pipeline.append({"$unwind": "$" + labels_list_field})
 
         if self._edges is not None:
             pipeline.append(
@@ -670,3 +669,59 @@ class HistogramValuesResult(AggregationResult):
 
 def _unwind_frames():
     return [{"$unwind": "$frames"}, {"$replaceRoot": {"newRoot": "$frames"}}]
+
+
+def _parse_field_path(field_name, schema, frame_schema, dataset):
+    pipeline = []
+    list_fields = set()
+
+    # Handle video queries
+    is_frames_query = (
+        field_name.startswith(_FRAMES_PREFIX) or field_name == "frames"
+    )
+    if is_frames_query and (dataset.media_type == fom.VIDEO):
+        if field_name == "frames":
+            return field_name, _unwind_frames(), []
+
+        schema = frame_schema
+        field_name = field_name[len(_FRAMES_PREFIX) :]
+        pipeline = _unwind_frames()
+
+    # Parse explicit array references
+    chunks = field_name.split("[]")
+    for idx in range(len(chunks) - 1):
+        list_fields.add("".join(chunks[: (idx + 1)]))
+
+    field_name = "".join(chunks)
+
+    # Ensure root field exists
+    root_field_name = field_name.split(".", 1)[0]
+
+    try:
+        root_field = schema[root_field_name]
+    except KeyError:
+        raise AggregationError(
+            "Field '%s' does not exist on dataset '%s'"
+            % (root_field_name, dataset.name)
+        )
+
+    # Detect certain list fields automatically
+
+    if isinstance(root_field, fof.ListField):
+        list_fields.add(root_field_name)
+
+    if isinstance(root_field, fof.EmbeddedDocumentField):
+        if root_field.document_type in fol._LABEL_LIST_FIELDS:
+            prefix = (
+                root_field_name
+                + "."
+                + root_field.document_type._LABEL_LIST_FIELD
+            )
+            if field_name.startswith(prefix):
+                list_fields.add(prefix)
+
+    # sorting is important here because one must unwind field `x` before
+    # embedded field `x.y`
+    list_fields = sorted(list_fields)
+
+    return field_name, pipeline, list_fields

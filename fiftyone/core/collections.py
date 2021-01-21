@@ -2383,14 +2383,13 @@ class SampleCollection(object):
             frame_schema = None
 
         pipelines = {}
-        for agg in aggregations:
+        for idx, agg in enumerate(aggregations):
             if not isinstance(agg, foa.Aggregation):
                 raise TypeError(
                     "'%s' is not an %s" % (agg.__class__, foa.Aggregation)
                 )
 
-            field = agg._get_output_field(self)
-            pipelines[field] = agg._to_mongo(
+            pipelines[str(idx)] = agg._to_mongo(
                 self._dataset, schema, frame_schema
             )
 
@@ -2400,11 +2399,9 @@ class SampleCollection(object):
 
     def _process_aggregations(self, aggregations, result, scalar_result):
         results = []
-        for agg in aggregations:
+        for idx, agg in enumerate(aggregations):
             try:
-                results.append(
-                    agg._get_result(result[agg._get_output_field(self)][0])
-                )
+                results.append(agg._get_result(result[str(idx)][0]))
             except:
                 results.append(agg._get_default_result())
 

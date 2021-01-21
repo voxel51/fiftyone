@@ -2624,20 +2624,10 @@ def _make_label_filter_stage(label_schema, field, label_filter):
 
     label_type = label_schema[field].document_type
 
-    if label_type in (
-        fol.Classification,
-        fol.Detection,
-        fol.Polyline,
-        fol.Keypoint,
-    ):
+    if label_type in fol._SINGLE_LABEL_FIELDS:
         return FilterField(field, label_filter)
 
-    if label_type in (
-        fol.Classifications,
-        fol.Detections,
-        fol.Polylines,
-        fol.Keypoints,
-    ):
+    if label_type in fol._LABEL_LIST_FIELDS:
         return FilterLabels(field, label_filter)
 
     msg = "Ignoring unsupported field '%s' (%s)" % (field, label_type)
