@@ -65,6 +65,14 @@ const Distribution = ({ distribution }) => {
       : {
           ticks,
         };
+  const map = data.reduce(
+    (acc, cur) => ({
+      [cur.key]: cur.edges,
+      ...acc,
+    }),
+    {}
+  );
+  console.log(map);
 
   return (
     <Container ref={ref}>
@@ -93,6 +101,14 @@ const Distribution = ({ distribution }) => {
         />
         <Tooltip
           cursor={false}
+          content={(point) => {
+            const key = point?.payload[0]?.payload?.key;
+            console.log(key);
+            if (map[key]) {
+              return `[${map[key].map((e) => e.toFixed(3)).join(", ")})`;
+            }
+            return "hello";
+          }}
           contentStyle={{
             background: "hsl(210, 20%, 23%)",
             borderColor: "rgb(255, 109, 4)",

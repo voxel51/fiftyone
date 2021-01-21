@@ -8,6 +8,7 @@ FiftyOne Tornado server.
 import asyncio
 import argparse
 from collections import defaultdict
+import math
 import os
 import posixpath
 import traceback
@@ -911,22 +912,36 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         self.write_message({"type": "distributions", "results": results})
 
 
-def _parse_histogram_values(result):
+def _parse_histogram_values(result, field):
     data = sorted(
         [
-            {"key": round((k + result.edges[idx + 1]) / 2, 4), "count": v}
+            {
+                "key": round((k + result.edges[idx + 1]) / 2, 4),
+                "count": v,
+                "edges": (result.edges[0], result.edges[1]),
+            }
             for idx, (k, v) in enumerate(zip(result.edges, result.counts))
-            if v > 0
         ],
         key=lambda i: i["key"],
     )
+    if (
+        fos._meets_type(field, fof.IntField)
+        and len(data) == _DEFAULT_NUM_HISTOGRAM_BINS
+    ):
+        for bin_ in data:
+            bin_["edges"] = [math.ceil(e) for e in bin_["edges"]]
+            bin_["key"] = math.ceil(bin_["key"])
+    elif fos._meets_type(field, fof.IntField):
+        for bin_ in data:
+            del bin_["edges"]
+
     if result.other > 0:
         data.append({"key": "None", "count": result.other})
 
     return data
 
 
-def _parse_count_values(result):
+def _parse_count_values(result, field):
     data = sorted(
         [{"key": k, "count": v} for k, v in result.values.items()],
         key=lambda i: i["count"],
@@ -959,7 +974,7 @@ async def _gather_results(col, aggs, fields, view, ticks=None):
         if cls and issubclass(cls, fol._HasLabelList):
             name = name[: -(len(cls._LABEL_LIST_FIELD) + 1)]
 
-        data = sorters[type(result)](result)
+        data = sorters[type(result)](result, field)
         result_ticks = 0
         if type(result) == foa.HistogramValuesResult:
             result_ticks = ticks.pop(0)
@@ -1026,14 +1041,14 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
     ticks = []
     for result, field, path in zip(bounds, fields, paths):
         range_ = result.bounds
-        bins = _DEFAULT_NUM_BINS
+        bins = _DEFAULT_NUM_HISTOGRAM_BINS
         num_ticks = None
         if range_ == (None, None):
             range_ = (0, 1)
         elif fos._meets_type(field, fof.IntField):
             delta = range_[1] - range_[0]
             range_ = (range_[0] - 0.5, range_[1] + 0.5)
-            if delta < _MAX_INT_BINS:
+            if delta < _DEFAULT_NUM_HISTOGRAM_BINS:
                 bins = delta + 1
                 num_ticks = 0
         else:
@@ -1095,8 +1110,7 @@ def _make_filter_stages(dataset, filters):
     return stages
 
 
-_DEFAULT_NUM_BINS = 25
-_MAX_INT_BINS = 100
+_DEFAULT_NUM_HISTOGRAM_BINS = 25
 
 
 class FileHandler(tornado.web.StaticFileHandler):
