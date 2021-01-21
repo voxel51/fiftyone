@@ -1837,6 +1837,38 @@ class SampleCollection(object):
             foa.HistogramValues(field_name, bins=bins, range=range)
         )
 
+    @aggregation
+    def sum(self, field_name):
+        """Computers the sum of the field values of a collection.
+
+        If the field is a :class:`fiftyone.core.fields.ListField`, the list
+        elements are summed.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.load_dataset(...)
+
+            #
+            # Compute the sum of a numeric field
+            #
+
+            r = dataset.sum("numeric_field")
+            r.sum
+
+            #
+            # Compute the sum of the values in a numeric list field
+            #
+
+            r = dataset.sum("numeric_list_field")
+            r.sum
+
+        Args:
+            field_name: the field to sum
+        """
+        return self.aggregate(foa.Sum(field_name))
+
     def draw_labels(
         self,
         anno_dir,

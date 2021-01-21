@@ -667,6 +667,95 @@ class HistogramValuesResult(AggregationResult):
         self.other = other
 
 
+class Sum(Aggregation):
+    """Computes the sum of the field values of a collection.
+
+    This aggregation is typically applied to *numeric* field types (or lists of
+    such types):
+
+    -   :class:`fiftyone.core.fields.IntField`
+    -   :class:`fiftyone.core.fields.FloatField`
+
+    Examples::
+
+        import fiftyone as fo
+
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    numeric_field=1.0,
+                    numeric_list_field=[1, 2, 3],
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    numeric_field=4.0,
+                    numeric_list_field=[1, 2],
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    numeric_field=None,
+                    numeric_list_field=None,
+                ),
+            ]
+        )
+
+        #
+        # Compute the sum of a numeric field
+        #
+
+        sum = fo.Sum("numeric_field")
+        r = dataset.aggregate(sum)
+        r.sum  # the sum
+
+        #
+        # Compute the sum of a numeric list field
+        #
+
+        sum = fo.Sum("numeric_list_field")
+        r = dataset.aggregate(sum)
+        r.sum  # the sum
+
+    Args:
+        field_name: the name of the field to sum
+    """
+
+    def __init__(self, field_name):
+        super().__init__(field_name)
+
+    def _get_default_result(self):
+        return SumResult(self._field_name, 0)
+
+    def _get_result(self, d):
+        return SumResult(self._field_name, d["sum"])
+
+    def _to_mongo(self, dataset, schema, frame_schema):
+        path, pipeline, list_fields = _parse_field_path(
+            self._field_name, schema, frame_schema, dataset
+        )
+
+        for list_field in list_fields:
+            pipeline.append({"$unwind": "$" + list_field})
+
+        pipeline.append({"$group": {"_id": None, "sum": {"$sum": "$" + path}}})
+
+        return pipeline
+
+
+class SumResult(AggregationResult):
+    """The result of the execution of a :class:`Sum` instance.
+
+    Attributes:
+        name: the name of the field that was summed
+        sum: the sum
+    """
+
+    def __init__(self, name, sum):
+        self.name = name
+        self.sum = sum
+
+
 def _unwind_frames():
     return [{"$unwind": "$frames"}, {"$replaceRoot": {"newRoot": "$frames"}}]
 
