@@ -42,6 +42,7 @@ const SelectionMenu = () => {
       </span>
     );
   }
+
   return (
     <DropdownTag
       name={`${size} sample${size == 1 ? "" : "s"} selected`}
@@ -54,7 +55,7 @@ const SelectionMenu = () => {
         },
         {
           name: "Only show selected",
-          action: () => addStage("Select"),
+          action: () => addStage("Select", clearSelection),
         },
         {
           name: "Hide selected",
