@@ -918,7 +918,7 @@ def _parse_histogram_values(result, field):
             {
                 "key": round((k + result.edges[idx + 1]) / 2, 4),
                 "count": v,
-                "edges": (result.edges[0], result.edges[1]),
+                "edges": (k, result.edges[idx + 1]),
             }
             for idx, (k, v) in enumerate(zip(result.edges, result.counts))
         ],
@@ -1043,6 +1043,9 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
         range_ = result.bounds
         bins = _DEFAULT_NUM_HISTOGRAM_BINS
         num_ticks = None
+        if range_[0] == range_[1]:
+            bins = 1
+
         if range_ == (None, None):
             range_ = (0, 1)
         elif fos._meets_type(field, fof.IntField):

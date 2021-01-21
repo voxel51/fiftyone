@@ -21,6 +21,36 @@ const Container = styled.div`
   padding-left: 1rem;
 `;
 
+const TooltipDiv = styled.div`
+  box-sizing: border-box;
+  border-radius: 3px;
+  background-color: ${({ theme }) => theme.backgroundDarker};
+  box-shadow: 0 2px 25px 0 ${({ theme }) => theme.darkShadow};
+  color: ${({ theme }) => theme.fontDark};
+  border-radius: 2px;
+  padding: 0.5rem;
+  line-height: 1rem;
+  margin-top: 2.5rem;
+  font-weight: bold;
+  width: auto;
+  z-index: 802;
+`;
+
+const TooltipHeader = styled.div`
+  color: ${({ theme }) => theme.font};
+  display: flex;
+  padding-bottom: 0.5rem;
+`;
+
+const PlotTooltip = ({ title, count }) => {
+  return (
+    <TooltipDiv>
+      <TooltipHeader>{title}</TooltipHeader>
+      Count: {count}
+    </TooltipDiv>
+  );
+};
+
 class CustomizedAxisTick extends PureComponent {
   render() {
     const { x, y, payload, fill } = this.props;
@@ -53,7 +83,7 @@ const Title = styled.div`
 `;
 
 const Distribution = ({ distribution }) => {
-  const { name, data, ticks } = distribution;
+  const { name, data, ticks, type } = distribution;
   const [ref, { height }] = useMeasure();
   const barWidth = 24;
   const container = useRef(null);
@@ -65,14 +95,14 @@ const Distribution = ({ distribution }) => {
       : {
           ticks,
         };
+
   const map = data.reduce(
     (acc, cur) => ({
-      [cur.key]: cur.edges,
       ...acc,
+      [cur.key]: cur.edges,
     }),
     {}
   );
-  console.log(map);
 
   return (
     <Container ref={ref}>
@@ -103,11 +133,15 @@ const Distribution = ({ distribution }) => {
           cursor={false}
           content={(point) => {
             const key = point?.payload[0]?.payload?.key;
-            console.log(key);
+            const count = point?.payload[0]?.payload?.count;
+            if (typeof count !== "number") return;
+            let title = key;
             if (map[key]) {
-              return `[${map[key].map((e) => e.toFixed(3)).join(", ")})`;
+              title = `Range: [${map[key]
+                .map((e) => (type === "IntField" ? e : e.toFixed(3)))
+                .join(", ")})`;
             }
-            return "hello";
+            return <PlotTooltip title={title} count={count} />;
           }}
           contentStyle={{
             background: "hsl(210, 20%, 23%)",
