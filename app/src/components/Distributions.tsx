@@ -135,7 +135,7 @@ const Distribution = ({ distribution }) => {
             const key = point?.payload[0]?.payload?.key;
             const count = point?.payload[0]?.payload?.count;
             if (typeof count !== "number") return;
-            let title = key;
+            let title = `Value: ${key}`;
             if (map[key]) {
               title = `Range: [${map[key]
                 .map((e) => (type === "IntField" ? e : e.toFixed(3)))
