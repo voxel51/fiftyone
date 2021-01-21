@@ -108,20 +108,6 @@ class ViewStage(object):
         """
         raise NotImplementedError("subclasses must implement `to_mongo()`")
 
-    def to_frames_mongo(self, sample_collection):
-        """Returns the MongoDB version of the stage for the frames pipeline, if
-        any.
-
-        Args:
-            sample_collection: the
-                :class:`fiftyone.core.collections.SampleCollection` to which
-                the stage is being applied
-
-        Returns:
-            a MongoDB aggregation pipeline (list of dicts)
-        """
-        return []
-
     def validate(self, sample_collection):
         """Validates that the stage can be applied to the given collection.
 
@@ -136,10 +122,16 @@ class ViewStage(object):
         pass
 
     def _needs_frames(self, sample_collection):
-        """Whether the stage requires frame labels be attached.
+        """Whether the stage requires frame labels of video samples to be
+        attached.
 
         Args:
-            sample_collection: the sample collection in question
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the stage is being applied
+
+        Returns:
+            True/False
         """
         return False
 
@@ -344,14 +336,9 @@ class ExcludeFields(ViewStage):
         return excluded_fields
 
     def to_mongo(self, _, **__):
-        fields = self.get_excluded_fields()
-        if not fields:
-            return []
-
-        return [{"$unset": fields}]
-
-    def to_frames_mongo(self, _):
-        fields = self.get_excluded_fields(frames=True)
+        fields = self.get_excluded_fields(
+            frames=False
+        ) + self.get_excluded_fields(frames=True)
         if not fields:
             return []
 
@@ -660,11 +647,6 @@ class FilterField(ViewStage):
         return _get_field_mongo_filter(self._filter, prefix=self._field)
 
     def _needs_frames(self, sample_collection):
-        """Whether the stage requires frame labels be attached.
-
-        Args:
-            sample_collection: the sample collection in question
-        """
         return (
             sample_collection.media_type == fom.VIDEO
             and self._field.startswith(_FRAMES_PREFIX)
@@ -1039,11 +1021,6 @@ class FilterLabels(FilterField):
         )
 
     def _needs_frames(self, sample_collection):
-        """Whether the stage requires frame labels be attached.
-
-        Args:
-            sample_collection: the sample collection in question
-        """
         return (
             sample_collection.media_type == fom.VIDEO
             and self._labels_field.startswith(_FRAMES_PREFIX)
@@ -1682,6 +1659,7 @@ class MapLabels(ViewStage):
             self._field, sample_collection
         )
         if is_frame_field:
+            # @todo implement this
             raise ValueError("Mapping frame labels is not yet supported")
 
         values = sorted(self._map.values())
@@ -2114,14 +2092,9 @@ class SelectFields(ViewStage):
         return list(set(selected_fields) | set(default_fields))
 
     def to_mongo(self, _, **__):
-        selected_fields = self.get_selected_fields()
-        if not selected_fields:
-            return []
-
-        return [{"$project": {fn: True for fn in selected_fields}}]
-
-    def to_frames_mongo(self, _):
-        selected_fields = self.get_selected_fields(frames=True)
+        selected_fields = self.get_selected_fields(
+            frames=False
+        ) + self.get_selected_fields(frames=True)
         if not selected_fields:
             return []
 

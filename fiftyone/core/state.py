@@ -1,5 +1,5 @@
 """
-Defines the shared state between the FiftyOne App and SDK.
+Defines the shared state between the FiftyOne App and backend.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -134,6 +134,7 @@ class StateDescription(etas.Serializable):
 
 
 _IGNORE = ("filepath", "media_type", "metadata", "tags")
+_FRAMES_PREFIX = "frames."
 
 
 class DatasetStatistics(object):
@@ -145,16 +146,14 @@ class DatasetStatistics(object):
         schemas = [("", view.get_field_schema())]
         aggregations = [foa.Count()]
         if view.media_type == fom.VIDEO:
-            schemas.append(("frames.", view.get_frame_field_schema()))
-            aggregations.extend(
-                [foa.Count("frames"),]
-            )
+            schemas.append((_FRAMES_PREFIX, view.get_frame_field_schema()))
+            aggregations.extend([foa.Count("frames")])
 
         aggregations.append(foa.CountValues("tags"))
         for prefix, schema in schemas:
             for field_name, field in schema.items():
                 if field_name in _IGNORE or (
-                    prefix == "frames." and field_name == "frame_number"
+                    prefix == _FRAMES_PREFIX and field_name == "frame_number"
                 ):
                     continue
 
