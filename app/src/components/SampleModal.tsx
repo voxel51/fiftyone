@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 
 import { Check, Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 
 import FieldsSidebar from "./FieldsSidebar";
 import JSONView from "./JSONView";
@@ -229,6 +229,7 @@ const SampleModal = (
     height: "100%",
     width: "100%",
   });
+  const setModalFilters = useSetRecoilState(selectors.modalLabelFilters);
   const [showJSON, setShowJSON] = useState(false);
   const [enableJSONFilter, setEnableJSONFilter] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
@@ -263,6 +264,9 @@ const SampleModal = (
   useEffect(() => {
     setActiveFrameLabels(rest.activeFrameLabels);
   }, [rest.activeFrameLabels]);
+  useEffect(() => {
+    setModalFilters(null);
+  }, []);
 
   const toggleSelectedObject = useToggleSelectionObject(atoms.selectedObjects);
   const selectedObjectIDs = Object.keys(useRecoilValue(atoms.selectedObjects));

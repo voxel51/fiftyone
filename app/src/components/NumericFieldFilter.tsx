@@ -6,33 +6,6 @@ import * as selectors from "../recoil/selectors";
 import { NamedRangeSlider } from "./RangeSlider";
 import { animated, useSpring } from "react-spring";
 import useMeasure from "react-use-measure";
-import { packageMessage } from "../utils/socket";
-
-const makeFilter = (fieldName, range, includeNone, isDefaultRange) => {
-  let expr,
-    rangeExpr = null;
-  let fieldStr = `$${fieldName}`;
-  if (!isDefaultRange) {
-    rangeExpr = {
-      $and: [{ $gte: [fieldStr, range[0]] }, { $lte: [fieldStr, range[1]] }],
-    };
-  }
-  if (!includeNone && isDefaultRange) {
-    expr = { [fieldName]: { $exists: true, $ne: null } };
-  } else if (includeNone && !isDefaultRange) {
-    expr = {
-      $expr: {
-        $or: [rangeExpr, { $eq: [{ $ifNull: [fieldStr, null] }, null] }],
-      },
-    };
-  } else {
-    expr = { $expr: rangeExpr };
-  }
-  return {
-    kwargs: [["filter", expr]],
-    _cls: "fiftyone.core.stages.Match",
-  };
-};
 
 const NumericFieldFilter = ({ expanded, entry }) => {
   const boundsAtom = selectors.numericFieldBounds(entry.path);

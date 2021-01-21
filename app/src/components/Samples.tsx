@@ -1,9 +1,7 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useEffect } from "react";
 import InfiniteScroll from "react-infinite-scroller";
 import useMeasure from "react-use-measure";
-import { useSetRecoilState, useRecoilValue } from "recoil";
-import { ThemeContext } from "styled-components";
-import CircularProgress from "@material-ui/core/CircularProgress";
+import { useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import Loading from "./Loading";
 
@@ -20,7 +18,6 @@ const Container = styled.div`
 `;
 
 function Samples({ setView }) {
-  const theme = useContext(ThemeContext);
   const setCurrentSamples = useSetRecoilState(atoms.currentSamples);
   const [containerRef, bounds] = useMeasure();
 

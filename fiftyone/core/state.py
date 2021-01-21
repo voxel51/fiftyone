@@ -1,5 +1,5 @@
 """
-Defines the shared state between the FiftyOne App and SDK.
+Defines the shared state between the FiftyOne App and backend.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -14,12 +14,16 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
-import fiftyone.core.stages as fos
+import fiftyone.core.sample as fosa
+import fiftyone.core.stages as fost
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
 
 logger = logging.getLogger(__name__)
+
+
+_FRAMES_PREFIX = "frames."
 
 
 class StateDescription(etas.Serializable):
@@ -115,7 +119,7 @@ class StateDescription(etas.Serializable):
         if dataset is not None and stages:
             view = fov.DatasetView(dataset)
             for stage_dict in stages:
-                stage = fos.ViewStage._from_dict(stage_dict)
+                stage = fost.ViewStage._from_dict(stage_dict)
                 view = view.add_stage(stage)
         else:
             view = None
@@ -133,9 +137,6 @@ class StateDescription(etas.Serializable):
         )
 
 
-_IGNORE = ("filepath", "media_type", "metadata", "tags")
-
-
 class DatasetStatistics(object):
     """Encapsulates the aggregation statistics required by the App's dataset
     view.
@@ -145,18 +146,15 @@ class DatasetStatistics(object):
         schemas = [("", view.get_field_schema())]
         aggregations = [foa.Count()]
         if view.media_type == fom.VIDEO:
-            schemas.append(("frames.", view.get_frame_field_schema()))
-            aggregations.extend(
-                [foa.Count("frames"),]
-            )
+            schemas.append((_FRAMES_PREFIX, view.get_frame_field_schema()))
+            aggregations.extend([foa.Count("frames")])
 
+        default_fields = fosa.get_default_sample_fields()
         aggregations.append(foa.CountValues("tags"))
         for prefix, schema in schemas:
             for field_name, field in schema.items():
-                if (
-                    field_name in _IGNORE
-                    or prefix == "frames."
-                    and field_name == "frame_number"
+                if field_name in default_fields or (
+                    prefix == _FRAMES_PREFIX and field_name == "frame_number"
                 ):
                     continue
 

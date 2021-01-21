@@ -65,6 +65,9 @@ view_stage = _make_registrar()
 aggregation = _make_registrar()
 
 
+_FRAMES_PREFIX = "frames."
+
+
 class SampleCollection(object):
     """Abstract class representing an ordered collection of
     :class:`fiftyone.core.sample.Sample` instances in a
@@ -271,49 +274,55 @@ class SampleCollection(object):
             ValueError: if one or more of the fields do not exist
         """
         if etau.is_str(field_or_fields):
-            field_or_fields = [field_or_fields]
+            fields = [field_or_fields]
+        else:
+            fields = field_or_fields
 
         if self.media_type == fom.VIDEO:
             frame_fields = list(
-                filter(lambda n: n.startswith("frames."), field_or_fields)
+                filter(lambda n: n.startswith(_FRAMES_PREFIX), fields)
             )
-            field_or_fields = list(
-                filter(lambda n: not n.startswith("frames."), field_or_fields)
+            fields = list(
+                filter(lambda n: not n.startswith(_FRAMES_PREFIX), fields)
             )
         else:
             frame_fields = []
 
-        schema = self.get_field_schema(include_private=True)
-        default_fields = set(
-            default_sample_fields(
-                DatasetSampleDocument, include_private=True, include_id=True
+        if fields:
+            schema = self.get_field_schema(include_private=True)
+            default_fields = set(
+                default_sample_fields(
+                    DatasetSampleDocument,
+                    include_private=True,
+                    include_id=True,
+                )
             )
-        )
-        for field in field_or_fields:
-            # We only validate that the root field exists
-            field_name = field.split(".", 1)[0]
-            if field_name not in schema and field_name not in default_fields:
-                raise ValueError("Field '%s' does not exist" % field_name)
+            for field in fields:
+                # We only validate that the root field exists
+                field_name = field.split(".", 1)[0]
+                if (
+                    field_name not in schema
+                    and field_name not in default_fields
+                ):
+                    raise ValueError("Field '%s' does not exist" % field_name)
 
-        if self.media_type != fom.VIDEO:
-            return
-
-        frame_schema = self.get_frame_field_schema(include_private=True)
-        default_frame_fields = set(
-            default_sample_fields(
-                DatasetFrameSampleDocument,
-                include_private=True,
-                include_id=True,
+        if frame_fields:
+            frame_schema = self.get_frame_field_schema(include_private=True)
+            default_frame_fields = set(
+                default_sample_fields(
+                    DatasetFrameSampleDocument,
+                    include_private=True,
+                    include_id=True,
+                )
             )
-        )
-        for field in frame_fields:
-            # We only validate that the root field exists
-            field_name = field.split(".", 2)[1]
-            if (
-                field_name not in frame_schema
-                and field_name not in default_frame_fields
-            ):
-                raise ValueError("Field '%s' does not exist" % field_name)
+            for field in frame_fields:
+                # We only validate that the root field exists
+                field_name = field.split(".", 2)[1]  # removes "frames."
+                if (
+                    field_name not in frame_schema
+                    and field_name not in default_frame_fields
+                ):
+                    raise ValueError("Field '%s' does not exist" % field_name)
 
     def validate_field_type(
         self, field_name, ftype, embedded_doc_type=None, subfield=None
@@ -338,10 +347,10 @@ class SampleCollection(object):
         """
         schema = self.get_field_schema()
         frames = self.media_type == fom.VIDEO and field_name.startswith(
-            "frames."
+            _FRAMES_PREFIX
         )
         if frames:
-            field_name = field_name[len("frames.") :]
+            field_name = field_name[len(_FRAMES_PREFIX) :]
 
         if frames:
             frame_schema = self.get_frame_field_schema()
@@ -2349,6 +2358,7 @@ class SampleCollection(object):
 
         # pylint: disable=no-member
         pipeline = self._pipeline(pipeline=facets)
+
         try:
             # pylint: disable=no-member
             result = await sample_collection.aggregate(pipeline).to_list(1)
@@ -2375,7 +2385,9 @@ class SampleCollection(object):
         pipelines = {}
         for agg in aggregations:
             if not isinstance(agg, foa.Aggregation):
-                raise TypeError("'%s' is not an Aggregation" % agg.__class__)
+                raise TypeError(
+                    "'%s' is not an %s" % (agg.__class__, foa.Aggregation)
+                )
 
             field = agg._get_output_field(self)
             pipelines[field] = agg._to_mongo(

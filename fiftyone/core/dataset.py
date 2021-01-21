@@ -2265,6 +2265,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             hide_frames=hide_frames,
             squash_frames=squash_frames,
         )
+
         return self._sample_collection.aggregate(_pipeline)
 
     @property
