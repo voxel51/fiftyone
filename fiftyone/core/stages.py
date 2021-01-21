@@ -1070,7 +1070,7 @@ def _get_filter_list_field_pipeline(
         {
             "$addFields": {
                 filter_field: {
-                    "$filter": {"input": "$" + filter_field, "cond": cond,}
+                    "$filter": {"input": "$" + filter_field, "cond": cond}
                 }
             }
         }
@@ -1716,6 +1716,70 @@ class MapLabels(ViewStage):
 
     def validate(self, sample_collection):
         _get_labels_field(self._field, sample_collection)
+
+
+class MapValues(ViewStage):
+    """Applies an expression to the values of a field.
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone import ViewField as F
+
+        dataset = fo.load_dataset(...)
+
+        stage = fo.MapValues("numeric_field", F().abs())
+        view = dataset.add_stage(stage)
+
+    Args:
+        field: the field to operate on
+        expr: a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that defines the operation to apply to the field
+    """
+
+    def __init__(self, field, expr):
+        self._field = field
+        self._expr = expr
+
+    @property
+    def field(self):
+        """The field to map."""
+        return self._field
+
+    @property
+    def expr(self):
+        """The expression to apply."""
+        return self._expr
+
+    def to_mongo(self, sample_collection, **_):
+        if (
+            sample_collection.media_type == fom.VIDEO
+            and self._field.startswith(_FRAMES_PREFIX)
+        ):
+            # @todo implement this
+            raise ValueError("Mapping frame labels is not yet supported")
+
+        return [{"$addFields": {self._field: self._get_mongo_filter()}}]
+
+    def _get_mongo_filter(self):
+        return _get_field_mongo_filter(self._expr, prefix=self._field)
+
+    def _kwargs(self):
+        return [
+            ["field", self._field],
+            ["expr", self._get_mongo_filter()],
+        ]
+
+    @classmethod
+    def _params(self):
+        return [
+            {"name": "field", "type": "field"},
+            {"name": "expr", "type": "dict", "placeholder": ""},
+        ]
+
+    def validate(self, sample_collection):
+        sample_collection.validate_fields_exist(self._field)
 
 
 class Match(ViewStage):
@@ -2665,6 +2729,7 @@ _STAGES = [
     Limit,
     LimitLabels,
     MapLabels,
+    MapValues,
     Match,
     MatchTag,
     MatchTags,

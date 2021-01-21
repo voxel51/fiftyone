@@ -1225,6 +1225,27 @@ class SampleCollection(object):
         return self._add_view_stage(fos.MapLabels(field, map))
 
     @view_stage
+    def map_values(self, field, expr):
+        """Applies an expression to the values of a field.
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.load_dataset(...)
+
+            view = dataset.map_values("numeric_field", F().abs())
+
+        Args:
+            field: the field to operate on
+            expr: a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that defines the operation to apply to the field
+        """
+        return self._add_view_stage(fos.MapValues(field, expr))
+
+    @view_stage
     def match(self, filter):
         """Filters the samples in the collection by the given filter.
 

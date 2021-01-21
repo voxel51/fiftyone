@@ -597,28 +597,6 @@ class ViewExpression(object):
             {"$map": {"input": self, "in": expr.to_mongo(prefix="$$this")}}
         )
 
-    def min(self):
-        """Returns the minimum value in this expression, which must resolve to
-        a numeric array.
-
-        Missing or ``None``-valued elements are ignored.
-
-        Returns:
-            a :class:`ViewExpression`
-        """
-        return ViewExpression({"$min": self})
-
-    def max(self):
-        """Returns the maximum value in this expression, which must resolve to
-        a numeric array.
-
-        Missing or ``None``-valued elements are ignored.
-
-        Returns:
-            a :class:`ViewExpression`
-        """
-        return ViewExpression({"$max": self})
-
     def sum(self):
         """Returns the sum of the values in this expression, which must resolve
         to a numeric array.
@@ -653,6 +631,46 @@ class ViewExpression(object):
             a :class:`ViewExpression`
         """
         return ViewExpression({"$avg": self})
+
+    # Hybrid expression operators #############################################
+
+    def min(self, value=None):
+        """Returns the minimum value of the expression, which can be an array.
+
+        If ``val != None``, the minimum of this expression and ``val`` is
+        returned.
+
+        Missing or ``None`` values are ignored.
+
+        Args:
+            value (None): an optional value to compare to
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        if value is not None:
+            return ViewExpression({"$min": [self, value]})
+
+        return ViewExpression({"$min": self})
+
+    def max(self, value=None):
+        """Returns the maximum value of the expression, which can be an array.
+
+        If ``val != None``, the maximum of this expression and ``val`` is
+        returned.
+
+        Missing or ``None`` values are ignored.
+
+        Args:
+            value (None): an optional value to compare to
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        if value is not None:
+            return ViewExpression({"$max": [self, value]})
+
+        return ViewExpression({"$max": self})
 
     # String expression operators #############################################
 
@@ -777,6 +795,25 @@ class ViewExpression(object):
         options = None if case_sensitive else "i"
         return self.re_match(regex, options=options)
 
+    # Static operators ########################################################
+
+    @staticmethod
+    def if_else(cond_expr, true_expr, false_expr):
+        """Returns either ``true_expr`` or ``false_expr`` depending on the
+        value of the boolean ``cond_expr``.
+
+        Args:
+            cond_expr: a :class:`ViewExpression` or MongoDB expression dict
+            true_expr: a :class:`ViewExpression` or MongoDB expression dict
+            false_expr: a :class:`ViewExpression` or MongoDB expression dict
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression(
+            {"$cond": {"if": cond_expr, "then": true_expr, "else": false_expr}}
+        )
+
     # Private methods #########################################################
 
     @staticmethod
@@ -889,6 +926,10 @@ class ViewField(ViewExpression, metaclass=_MetaViewField):
             return prefix + "." + self._expr if self._expr else prefix
 
         return "$" + self._expr if self._expr else "$this"
+
+
+# A singleton representing the root of a document/field
+root_field = ViewField()
 
 
 class ObjectId(ViewExpression, metaclass=_MetaViewField):
