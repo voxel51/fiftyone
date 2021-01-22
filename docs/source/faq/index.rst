@@ -54,9 +54,9 @@ information about running FiftyOne in notebooks.
 Can I use FiftyOne in a remote notebook?
 ----------------------------------------
 
-Yes! A common notebook workflow is to `launch jupyter on a remote system and
-connect to it from a local browser 
+Yes! A common notebook workflow is to `launch jupyter remotely
 <https://ljvmiranda921.github.io/notebook/2018/01/31/running-a-jupyter-notebook>`_.
+and connect to it from a local browser 
 
 If you want to use the FiftyOne App in this notebook, you will also need to
 port forward FiftyOne from the remote machine to your local machine with the
