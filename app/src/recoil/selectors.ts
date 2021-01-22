@@ -292,7 +292,7 @@ export const isVideoDataset = selector({
   },
 });
 
-export const view = selector({
+export const view = selector<[]>({
   key: "view",
   get: ({ get }) => {
     return get(atoms.stateDescription).view || [];
@@ -488,17 +488,54 @@ const fields = selectorFamily({
   },
 });
 
+const selectedFields = selectorFamily({
+  key: "selectedFields",
+  get: (dimension: string) => ({ get }) => {
+    const view_ = get(view);
+    const fields_ = { ...get(fields(dimension)) };
+    const video = get(isVideoDataset);
+    view_.forEach(({ _cls, kwargs }) => {
+      if (_cls === "fiftyone.core.stages.SelectFields") {
+        let names = new Set([...kwargs[0][1], ...RESERVED_FIELDS]);
+        if (video && dimension === "frame") {
+          names = new Set(
+            Array.from(names).map((n) => n.slice("frames.".length))
+          );
+        }
+        Object.keys(fields_).forEach((f) => {
+          if (!names.has(f)) {
+            delete fields_[f];
+          }
+        });
+      } else if (_cls === "fiftyone.core.stages.ExcludeFields") {
+        let names = Array.from(kwargs[0][1]);
+
+        if (video && dimension === "frame") {
+          names = names.map((n) => n.slice("frames.".length));
+        } else if (video) {
+          names = names.filter((n) => n.startsWith("frames."));
+        }
+        console.log(video, dimension, names, fields_);
+        names.forEach((n) => {
+          delete fields_[n];
+        });
+      }
+    });
+    return fields_;
+  },
+});
+
 export const fieldPaths = selector({
   key: "fieldPaths",
   get: ({ get }) => {
     const excludePrivateFilter = (f) => !f.startsWith("_");
-    const fieldsNames = Object.keys(get(fields("sample"))).filter(
+    const fieldsNames = Object.keys(get(selectedFields("sample"))).filter(
       excludePrivateFilter
     );
     if (get(mediaType) === "video") {
       return fieldsNames
         .concat(
-          Object.keys(get(fields("frame")))
+          Object.keys(get(selectedFields("frame")))
             .filter(excludePrivateFilter)
             .map((f) => "frames." + f)
         )
@@ -511,7 +548,7 @@ export const fieldPaths = selector({
 const labels = selectorFamily({
   key: "labels",
   get: (dimension: string) => ({ get }) => {
-    const fieldsValue = get(fields(dimension));
+    const fieldsValue = get(selectedFields(dimension));
     return Object.keys(fieldsValue)
       .map((k) => fieldsValue[k])
       .filter(labelFilter);
@@ -547,7 +584,7 @@ export const labelTypes = selectorFamily({
 const scalars = selectorFamily({
   key: "scalars",
   get: (dimension: string) => ({ get }) => {
-    const fieldsValue = get(fields(dimension));
+    const fieldsValue = get(selectedFields(dimension));
     return Object.keys(fieldsValue)
       .map((k) => fieldsValue[k])
       .filter(scalarFilter);
@@ -943,7 +980,7 @@ export const labelNameGroups = selectorFamily({
   key: "labelNameGroups",
   get: (dimension: string) => ({ get }) =>
     makeLabelNameGroups(
-      get(fields(dimension)),
+      get(selectedFields(dimension)),
       get(labelNames(dimension)),
       get(labelTypes(dimension))
     ),
