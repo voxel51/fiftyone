@@ -364,6 +364,18 @@ class Session(foc.HasClient):
         return "http://localhost:%d/" % self.server_port
 
     @property
+    def color_pool(self):
+        """A set of browser support color strings from which the App should
+        draw from.
+        """
+        return self.state.color_pool
+
+    @color_pool.setter
+    @_update_state
+    def color_pool(self, color_pool):
+        self.state.color_pool = color_pool
+
+    @property
     def dataset(self):
         """The :class:`fiftyone.core.dataset.Dataset` connected to the session.
         """
