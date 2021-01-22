@@ -132,7 +132,7 @@ to compute the number of non-``None`` field values in a collection:
     print(result.count)
     # 5620
 
-.. _aggregations-count_values:
+.. _aggregations-count-values:
 
 Count values
 ____________
@@ -184,7 +184,7 @@ aggregation to compute the distinct values of a field in a collection:
     print(result.values)
     # ['airplane', 'apple', 'backpack', ..., 'wine glass', 'zebra']
 
-.. _aggregations-histogram_values:
+.. _aggregations-histogram-values:
 
 Histogram values
 ________________
@@ -431,7 +431,7 @@ Aggregating frame labels
 ------------------------
 
 You can compute aggregations on the frame labels of a video dataset by adding
-the ``frames.`` prefix to the relevant frame field name:
+the ``frames`` prefix to the relevant frame field name:
 
 .. code-block:: python
     :linenos:
