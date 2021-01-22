@@ -29,6 +29,7 @@ const SelectionMenu = () => {
       kwargs: [["sample_ids", Array.from(selectedSamples)]],
     });
     newState.view = newView;
+    newState.selected = [];
     socket.send(packageMessage("update", { state: newState }));
     setStateDescription(newState);
     callback();

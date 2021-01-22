@@ -43,9 +43,6 @@ class FiftyOneConfig(EnvConfig):
     """FiftyOne configuration settings."""
 
     def __init__(self, d):
-        self.color_pool = self.parse_string_array(
-            d, "color_pool", env_var="FIFTYONE_COLOR_POOL", default=_COLOR_POOL
-        )
         self.database_dir = self.parse_string(
             d,
             "database_dir",
@@ -108,6 +105,24 @@ class FiftyOneConfig(EnvConfig):
             "default_video_ext",
             env_var="FIFTYONE_DEFAULT_VIDEO_EXT",
             default=".mp4",
+        )
+        self.default_app_color_pool = self.parse_string_array(
+            d,
+            "default_app_color_pool",
+            env_var="FIFTYONE_DEFAULT_APP_COLOR_POOL",
+            default=_COLOR_POOL,
+        )
+        self.default_app_show_confidence = self.parse_bool(
+            d,
+            "default_app_show_confidence",
+            env_var="FIFTYONE_DEFAULT_APP_SHOW_CONFIDENCE",
+            default=True,
+        )
+        self.default_app_show_attrs = self.parse_bool(
+            d,
+            "default_app_show_attrs",
+            env_var="FIFTYONE_DEFAULT_APP_SHOW_ATTRS",
+            default=True,
         )
         self.default_app_port = self.parse_int(
             d,

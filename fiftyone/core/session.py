@@ -235,9 +235,26 @@ class Session(foc.HasClient):
         desktop=None,
         auto=True,
         height=800,
+        color_pool=None,
+        show_attrs=None,
+        show_confidence=None,
     ):
         if port is None:
             port = fo.config.default_app_port
+
+        if color_pool is None:
+            color_pool = fo.config.default_app_color_pool
+
+        if show_attrs is None:
+            show_attrs = fo.config.default_app_show_attrs
+
+        if show_confidence is None:
+            show_confidence = fo.config.default_app_show_confidence
+
+        state = self._HC_ATTR_TYPE()
+        state.color_pool = color_pool
+        state.show_attrs = show_attrs
+        state.show_confidence = show_confidence
 
         self._context = focx._get_context()
         self._port = port
@@ -271,9 +288,14 @@ class Session(foc.HasClient):
         self._start_time = self._get_time()
 
         if view is not None:
-            self.view = view
+            state.view = view
+            state.dataset = view._dataset
         elif dataset is not None:
-            self.dataset = dataset
+            state.dataset = dataset
+
+        state.datasets = fod.list_datasets()
+        self._auto_show()
+        self._update_state(state)
 
         if self._remote:
             if self._context != focx._NONE:
@@ -374,6 +396,24 @@ class Session(foc.HasClient):
     @_update_state
     def color_pool(self, color_pool):
         self.state.color_pool = color_pool
+
+    @property
+    def show_attrs(self):
+        return self.state.show_attrs
+
+    @show_attrs.setter
+    @_update_state
+    def show_attrs(self, show_attrs):
+        self.state.show_attrs = show_attrs
+
+    @property
+    def show_confidence(self):
+        return self.state.show_confidence
+
+    @show_confidence.setter
+    @_update_state
+    def show_confidence(self, show_confidence):
+        self.state.show_confidence = show_confidence
 
     @property
     def dataset(self):
@@ -662,9 +702,13 @@ class Session(foc.HasClient):
 
         _display(self, handle, uuid, self._port, height=height)
 
-    def _update_state(self):
+    def _update_state(self, state=None):
+        if state is None:
+            # pylint: disable=access-member-before-definition
+            state = self.state
+
         # see fiftyone.core.client if you would like to understand this
-        self.state = self.state
+        self.state = state
 
 
 def _display(session, handle, uuid, port=None, height=None, update=False):

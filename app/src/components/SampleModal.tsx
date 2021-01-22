@@ -274,13 +274,9 @@ const SampleModal = (
   // save overlay options when navigating - these are restored by passing them
   // in defaultOverlayOptions when the new player is created
   const playerRef = useRef();
-  const [savedOverlayOptions, setSavedOverlayOptions] = useState({});
   const wrapNavigationFunc = (callback) => {
     if (callback) {
       return () => {
-        if (playerRef.current) {
-          setSavedOverlayOptions(playerRef.current.getOverlayOptions());
-        }
         callback();
       };
     }
@@ -503,7 +499,6 @@ const SampleModal = (
               fieldSchema={fieldSchema}
               filterSelector={selectors.modalLabelFilters}
               playerRef={playerRef}
-              defaultOverlayOptions={savedOverlayOptions}
               selectedObjects={selectedObjectIDs}
               onSelectObject={({ id, name }) => {
                 toggleSelectedObject(id, {

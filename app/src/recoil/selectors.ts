@@ -515,13 +515,24 @@ const selectedFields = selectorFamily({
         } else if (video) {
           names = names.filter((n) => n.startsWith("frames."));
         }
-        console.log(video, dimension, names, fields_);
         names.forEach((n) => {
           delete fields_[n];
         });
       }
     });
     return fields_;
+  },
+});
+
+export const defaultPlayerOverlayOptions = selector({
+  key: "defaultPlayerOverlayOptions",
+  get: ({ get }) => {
+    const showAttrs = get(atoms.stateDescription).show_attrs;
+    const showConfidence = get(atoms.stateDescription).show_confidence;
+    return {
+      showAttrs,
+      showConfidence,
+    };
   },
 });
 

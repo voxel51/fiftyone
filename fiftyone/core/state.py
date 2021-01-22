@@ -49,7 +49,7 @@ class StateDescription(etas.Serializable):
         self,
         active_handle=None,
         close=False,
-        color_pool=None,
+        color_pool=[],
         connected=False,
         dataset=None,
         datasets=None,
@@ -57,9 +57,11 @@ class StateDescription(etas.Serializable):
         selected_objects=None,
         view=None,
         filters={},
+        show_attrs=True,
+        show_confidence=True,
     ):
         self.close = close
-        self.color_pool = set(color_pool or fo.config.color_pool)
+        self.color_pool = color_pool
         self.connect = connected
         self.dataset = dataset
         self.view = view
@@ -109,11 +111,13 @@ class StateDescription(etas.Serializable):
         """
         active_handle = d.get("active_handle", None)
         close = d.get("close", False)
-        color_pool = d.get("color_pool", None)
+        color_pool = d.get("color_pool", [])
         connected = d.get("connected", False)
         filters = d.get("filters", {})
         selected = d.get("selected", [])
         selected_objects = d.get("selected_objects", [])
+        show_attrs = d.get("show_attrs", True)
+        show_confidence = d.get("show_attrs", True)
 
         dataset = d.get("dataset", None)
         if dataset is not None:
@@ -138,6 +142,8 @@ class StateDescription(etas.Serializable):
             selected_objects=selected_objects,
             view=view,
             filters=filters,
+            show_attrs=show_attrs,
+            show_confidence=show_confidence,
             **kwargs
         )
 
