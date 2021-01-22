@@ -886,13 +886,6 @@ class ViewStageTests(unittest.TestCase):
         self.assertIs(len(result), 1)
         self.assertEqual(result[0].id, self.sample1.id)
 
-    def test_match_tag(self):
-        self.sample1.tags.append("test")
-        self.sample1.save()
-        result = list(self.dataset.match_tag("test"))
-        self.assertIs(len(result), 1)
-        self.assertEqual(result[0].id, self.sample1.id)
-
     def test_match_tags(self):
         self.sample1.tags.append("test")
         self.sample1.save()

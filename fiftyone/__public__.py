@@ -104,7 +104,6 @@ from .core.stages import (
     MapLabels,
     MapValues,
     Match,
-    MatchTag,
     MatchTags,
     Mongo,
     Shuffle,

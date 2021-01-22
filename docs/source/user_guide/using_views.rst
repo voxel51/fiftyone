@@ -305,15 +305,14 @@ Common filters
 Convenience functions for common queries are also available.
 
 Use the
-:meth:`match_tag() <fiftyone.core.collections.SampleCollection.match_tag>` and
 :meth:`match_tags() <fiftyone.core.collections.SampleCollection.match_tags>`
-methods to match samples that the specified tag(s) in their `tags` field:
+method to match samples that have the specified tag(s) in their `tags` field:
 
 .. code-block:: python
     :linenos:
 
     # The training split of the dataset
-    train_view = dataset.match_tag("train")
+    train_view = dataset.match_tags("train")
 
     # Union of the validation and test splits
     val_test_view = dataset.match_tags(["val", "test"])
@@ -537,7 +536,7 @@ View stages can be chained together to perform arbitrarily complex operations:
     from fiftyone import ViewField as F
 
     complex_view = (
-        dataset.match_tag("test")
+        dataset.match_tags("test")
         .exists("metadata")
         .match(F("metadata.size_bytes") >= 64 * 1024)  # >= 64 kB
         .sort_by("filepath")
