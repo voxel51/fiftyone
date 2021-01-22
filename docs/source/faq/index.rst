@@ -49,6 +49,33 @@ App will launch/update in the output of your notebook cells!
 Check out the :ref:`notebook environment guide <notebooks>` for more
 information about running FiftyOne in notebooks.
 
+.. _faq-remote-notebook-support:
+
+Can I use FiftyOne in a remote notebook?
+----------------------------------------
+
+Yes! A common notebook workflow is to `launch jupyter on a remote system and
+connect to it from a local browser 
+<https://ljvmiranda921.github.io/notebook/2018/01/31/running-a-jupyter-notebook>`_.
+
+If you want to use the FiftyOne App in this notebook, you will also need to
+port forward FiftyOne from the remote machine to your local machine with the
+following.
+
+**You need to use the same port for FiftyOne on your remote and local machine.**
+
+On your remote machine:
+
+.. code:: shell
+
+    fiftyone app launch -r -p XXXX
+
+On your local machine:
+
+.. code:: shell
+
+   ssh -N -L XXXX:127.0.0.1:XXXX user@remote_machine 
+
 .. _faq-remote-server-data:
 
 Can I access data stored on a remote server?
