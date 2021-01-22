@@ -489,8 +489,7 @@ class ScopedObjectsSynchronizationTests(unittest.TestCase):
             sample = dataset[sample_id]
 
             self.assertIs(sample.bool_field, None)
-            self.assertIsInstance(sample.list_field, list)
-            self.assertListEqual(sample.list_field, [])
+            self.assertEqual(sample.list_field, None)
 
         check_field_defaults(sample_id)
 
@@ -545,31 +544,30 @@ class ScopedObjectsSynchronizationTests(unittest.TestCase):
         def clear_complex_field(sample_id):
             dataset = fo.load_dataset(dataset_name)
             sample = dataset[sample_id]
-            del sample.list_field
+            sample.list_field = None
             sample.save()
 
         def check_clear_complex_field(sample_id):
             dataset = fo.load_dataset(dataset_name)
             sample = dataset[sample_id]
-            self.assertIsInstance(sample.list_field, list)
-            self.assertListEqual(sample.list_field, [])
+            self.assertEqual(sample.list_field, None)
 
         clear_complex_field(sample_id)
         check_clear_complex_field(sample_id)
 
-        def modify_list_append(sample_id):
+        def modify_list_set_again(sample_id):
             dataset = fo.load_dataset(dataset_name)
             sample = dataset[sample_id]
-            sample.list_field.append(51)
+            sample.list_field = [51]
             sample.save()
 
-        def check_modify_list_append(sample_id):
+        def check_modify_list_set_agin(sample_id):
             dataset = fo.load_dataset(dataset_name)
             sample = dataset[sample_id]
             self.assertListEqual(sample.list_field, [51])
 
-        modify_list_append(sample_id)
-        check_modify_list_append(sample_id)
+        modify_list_set_again(sample_id)
+        check_modify_list_set_agin(sample_id)
 
         def modify_list_extend(sample_id):
             dataset = fo.load_dataset(dataset_name)
