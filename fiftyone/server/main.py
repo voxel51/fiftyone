@@ -8,6 +8,7 @@ FiftyOne Tornado server.
 import asyncio
 import argparse
 from collections import defaultdict
+import math
 import os
 import posixpath
 import traceback
@@ -901,29 +902,47 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
             aggs, fields = _count_values(filter, view)
 
-            hist_aggs, hist_fields = await _numeric_histograms(
+            hist_aggs, hist_fields, ticks = await _numeric_histograms(
                 col, view, view.get_field_schema()
             )
             aggs.extend(hist_aggs)
             fields.extend(hist_fields)
-            results = await _gather_results(col, aggs, fields, view)
+            results = await _gather_results(col, aggs, fields, view, ticks)
 
         results = sorted(results, key=lambda i: i["name"])
         self.write_message({"type": "distributions", "results": results})
 
 
-def _parse_histogram_values(result):
+def _parse_histogram_values(result, field):
     data = sorted(
-        [{"key": k, "count": v} for k, v in zip(result.edges, result.counts)],
+        [
+            {
+                "key": round((k + result.edges[idx + 1]) / 2, 4),
+                "count": v,
+                "edges": (k, result.edges[idx + 1]),
+            }
+            for idx, (k, v) in enumerate(zip(result.edges, result.counts))
+        ],
         key=lambda i: i["key"],
     )
+    if (
+        fos._meets_type(field, fof.IntField)
+        and len(data) == _DEFAULT_NUM_HISTOGRAM_BINS
+    ):
+        for bin_ in data:
+            bin_["edges"] = [math.ceil(e) for e in bin_["edges"]]
+            bin_["key"] = math.ceil(bin_["key"])
+    elif fos._meets_type(field, fof.IntField):
+        for bin_ in data:
+            del bin_["edges"]
+
     if result.other > 0:
-        data.append({"key": "other", "count": result.other})
+        data.append({"key": "None", "count": result.other})
 
     return data
 
 
-def _parse_count_values(result):
+def _parse_count_values(result, field):
     data = sorted(
         [{"key": k, "count": v} for k, v in result.values.items()],
         key=lambda i: i["count"],
@@ -932,7 +951,7 @@ def _parse_count_values(result):
     return data
 
 
-async def _gather_results(col, aggs, fields, view):
+async def _gather_results(col, aggs, fields, view, ticks=None):
     results = []
     response = await view._async_aggregate(col, aggs)
     sorters = {
@@ -956,12 +975,25 @@ async def _gather_results(col, aggs, fields, view):
         if cls and issubclass(cls, fol._HasLabelList):
             name = name[: -(len(cls._LABEL_LIST_FIELD) + 1)]
 
+        data = sorters[type(result)](result, field)
+        result_ticks = 0
+        if type(result) == foa.HistogramValuesResult:
+            result_ticks = ticks.pop(0)
+            if result_ticks is None:
+                result_ticks = []
+                step = max(len(data) // 4, 1)
+                for i in range(0, len(data), step):
+                    result_ticks.append(data[i]["key"])
+
+                if (
+                    result.other > 0
+                    and len(data)
+                    and data[-1]["key"] != "None"
+                ):
+                    result_ticks.append("None")
+
         results.append(
-            {
-                "type": type_,
-                "name": name,
-                "data": sorters[type(result)](result),
-            }
+            {"data": data, "name": name, "ticks": result_ticks, "type": type_,}
         )
 
     return results
@@ -1007,15 +1039,28 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
     aggs = _numeric_bounds(fields, paths)
     bounds = await view._async_aggregate(coll, aggs)
     aggregations = []
+    ticks = []
     for result, field, path in zip(bounds, fields, paths):
         range_ = result.bounds
+        bins = _DEFAULT_NUM_HISTOGRAM_BINS
+        num_ticks = None
+        if range_[0] == range_[1]:
+            bins = 1
+
         if range_ == (None, None):
             range_ = (0, 1)
+        elif fos._meets_type(field, fof.IntField):
+            delta = range_[1] - range_[0]
+            range_ = (range_[0] - 0.5, range_[1] + 0.5)
+            if delta < _DEFAULT_NUM_HISTOGRAM_BINS:
+                bins = delta + 1
+                num_ticks = 0
         else:
             range_ = (range_[0], range_[1] + 0.01)
-        aggregations.append(fo.HistogramValues(path, bins=25, range=range_))
+        ticks.append(num_ticks)
+        aggregations.append(fo.HistogramValues(path, bins=bins, range=range_))
 
-    return aggregations, fields
+    return aggregations, fields, ticks
 
 
 def _make_range_expression(f, args):
@@ -1063,6 +1108,9 @@ def _make_filter_stages(dataset, filters):
             stages.append(fosg.Match(expr))
 
     return stages
+
+
+_DEFAULT_NUM_HISTOGRAM_BINS = 25
 
 
 class FileHandler(tornado.web.StaticFileHandler):
