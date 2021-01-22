@@ -200,6 +200,18 @@ class DatasetTests(unittest.TestCase):
             ["label"],
         )
 
+    @drop_datasets
+    def test_sum(self):
+        d = fo.Dataset()
+        d.add_sample_field("numeric_field", fo.IntField)
+        self.assertEqual(d.aggregate(fo.Sum("numeric_field")).sum, 0)
+        s = fo.Sample(filepath="image.jpeg", numeric_field=1)
+        d.add_sample(s)
+        self.assertEqual(d.aggregate(fo.Sum("numeric_field")).sum, 1)
+        s = fo.Sample(filepath="image2.jpeg", numeric_field=2)
+        d.add_sample(s)
+        self.assertEqual(d.aggregate(fo.Sum("numeric_field")).sum, 3)
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False

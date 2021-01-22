@@ -48,6 +48,7 @@ class DatasetViewTests(unittest.TestCase):
         # tags
         for sample in view.match({"tags": "train"}):
             self.assertIn("train", sample.tags)
+
         for sample in view.match({"tags": "test"}):
             self.assertIn("test", sample.tags)
 
@@ -111,6 +112,7 @@ class DatasetViewTests(unittest.TestCase):
         sample_view.test_dets.detections[0].label = "COMPLEX"
         sample_view.test_dets.detections[1].confidence = 0.51
         sample_view.save()
+
         # check that correct elements are modified
         detections = dataset[sample_view.id].test_dets.detections
         self.assertEqual(detections[0].label, "COMPLEX")
@@ -774,6 +776,14 @@ class ViewStageTests(unittest.TestCase):
         )
         self.sample2.save()
 
+    def _setUp_numeric(self):
+        self.sample1["numeric_field"] = 1.0
+        self.sample1["numeric_list_field"] = [-1, 0, 1]
+        self.sample1.save()
+        self.sample2["numeric_field"] = -1.0
+        self.sample2["numeric_list_field"] = [-2, -1, 0, 1]
+        self.sample2.save()
+
     def test_exclude(self):
         result = list(self.dataset.exclude([self.sample1.id]))
         self.assertIs(len(result), 1)
@@ -878,6 +888,44 @@ class ViewStageTests(unittest.TestCase):
                         self.assertEqual(lv.label, mapping[l.label])
                     else:
                         self.assertEqual(lv.label, l.label)
+
+    def test_map_values(self):
+        self._setUp_numeric()
+
+        IF = fo.ViewExpression.if_else
+        ROOT = fo.root_field
+
+        # Clip all negative values of `numeric_field` to zero
+        view = self.dataset.map_values("numeric_field", ROOT.max(0))
+        it = zip(view, self.dataset)
+        for sv, s in it:
+            if s.numeric_field < 0:
+                self.assertTrue(sv.numeric_field == 0)
+            else:
+                self.assertTrue(sv.numeric_field >= 0)
+
+        # Replace all negative values of `numeric_field` with `None`
+        view = self.dataset.map_values(
+            "numeric_field", IF(ROOT >= 0, ROOT, None)
+        )
+        it = zip(view, self.dataset)
+        for sv, s in it:
+            if s.numeric_field < 0:
+                self.assertIsNone(sv.numeric_field)
+            else:
+                self.assertIsNotNone(sv.numeric_field)
+
+        # Clip all negative values of `numeric_list_field` to zero
+        view = self.dataset.map_values(
+            "numeric_list_field", ROOT.map(ROOT.max(0))
+        )
+        it = zip(view, self.dataset)
+        for sv, s in it:
+            for fv, f in zip(sv.numeric_list_field, s.numeric_list_field):
+                if f < 0:
+                    self.assertTrue(fv == 0)
+                else:
+                    self.assertTrue(fv >= 0)
 
     def test_match(self):
         self.sample1["value"] = "value"
