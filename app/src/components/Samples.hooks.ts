@@ -8,7 +8,7 @@ import { filterView } from "../utils/view";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 
-const flattenObj = (obj) => {
+const stringifyObj = (obj) => {
   if (typeof obj !== "object" || Array.isArray(obj)) return obj;
   return JSON.stringify(
     Object.keys(obj)
@@ -43,7 +43,7 @@ export default () => {
 
   useEffect(() => {
     setState(empty);
-  }, [filterView(view), datasetName, refresh, flattenObj(filters)]);
+  }, [filterView(view), datasetName, refresh, stringifyObj(filters)]);
 
   useEffect(() => {
     if (!state.loadMore || state.isLoading || !state.hasMore) return;
