@@ -54,27 +54,40 @@ information about running FiftyOne in notebooks.
 Can I use FiftyOne in a remote notebook?
 ----------------------------------------
 
-Yes! A common notebook workflow is to `launch jupyter remotely
-<https://ljvmiranda921.github.io/notebook/2018/01/31/running-a-jupyter-notebook>`_.
-and connect to it from a local browser 
+Yes! A common notebook workflow is to `launch Jupyter remotely
+<https://ljvmiranda921.github.io/notebook/2018/01/31/running-a-jupyter-notebook>`_
+and connect to it from a local browser. 
 
 If you want to use the FiftyOne App in this notebook, you will also need to
 port forward FiftyOne from the remote machine to your local machine with the
 following.
 
-**You need to use the same port for FiftyOne on your remote and local machine.**
+To launch Jupyter remotely:
+
+.. code:: shell
+
+    jupyter notebook --no-browser --port=XXXX
+
+To connect to Jupyter on your local machine:
+
+.. code:: shell
+
+    ssh -N -L XXXX:localhost:XXXX user@remote_machine
+
+
+**You need to use port 5151 for FiftyOne on your remote and local machine.**
 
 On your remote machine:
 
 .. code:: shell
 
-    fiftyone app launch -r -p XXXX
+    fiftyone app launch -r -p 5151
 
 On your local machine:
 
 .. code:: shell
 
-   ssh -N -L XXXX:127.0.0.1:XXXX user@remote_machine 
+   ssh -N -L 5151:127.0.0.1:5151 user@remote_machine 
 
 .. _faq-remote-server-data:
 
