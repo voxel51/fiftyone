@@ -517,8 +517,8 @@ class SampleCollection(object):
     @classmethod
     def list_view_stages(cls):
         """Returns a list of all available methods on this collection that
-        apply :class:`fiftyone.core.stages.ViewStage` operations that return
-        :class:`fiftyone.core.view.DatasetView` instances.
+        apply :class:`fiftyone.core.stages.ViewStage` operations to this
+        collection.
 
         Returns:
             a list of :class:`SampleCollection` method names
@@ -2032,6 +2032,17 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.Take(size, seed=seed))
+
+    @classmethod
+    def list_aggregations(cls):
+        """Returns a list of all available methods on this collection that
+        apply :class:`fiftyone.core.aggregations.Aggregation` operations to
+        this collection.
+
+        Returns:
+            a list of :class:`SampleCollection` method names
+        """
+        return list(aggregation.all)
 
     @aggregation
     def bounds(self, field_name):
