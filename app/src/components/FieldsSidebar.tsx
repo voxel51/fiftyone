@@ -111,7 +111,7 @@ const RefreshButton = () => {
     <Button
       style={props}
       onClick={() => {
-        setColorSeed(colorSeed++);
+        setColorSeed(colorSeed + 1);
         setClicked(true);
       }}
     >

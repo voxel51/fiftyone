@@ -1,17 +1,17 @@
 import _ from "lodash";
 import randomColor from "randomcolor";
 
-function shuffle(array, seed) {
-  var m = array.length,
+let seedCache = 0;
+let mapCache = {};
+
+function shuffle(array: string[], seed: number) {
+  let m = array.length,
     t,
     i;
 
-  // While there remain elements to shuffle…
   while (m) {
-    // Pick a remaining element…
     i = Math.floor(random(seed) * m--);
 
-    // And swap it with the current element.
     t = array[m];
     array[m] = array[i];
     array[i] = t;
@@ -21,8 +21,8 @@ function shuffle(array, seed) {
   return array;
 }
 
-function random(seed) {
-  var x = Math.sin(seed++) * 10000;
+function random(seed: number) {
+  const x = Math.sin(seed + 1) * 10000;
   return x - Math.floor(x);
 }
 
@@ -34,16 +34,23 @@ export function generateColorMap(
   keys: string[],
   seed: number
 ): ColorMap {
-  const newMap = {};
+  const newMap = seed == seedCache ? Object.assign({}, mapCache) : {};
+  seedCache = seed;
   let colors = Array.from(colorPool);
+
+  const iMap = _.invert(newMap);
+  colors = colors.filter((color) => !iMap[color]);
+
   if (seed > 0) {
     colors = shuffle(colors, seed);
   }
-  for (const key of keys) {
+  keys.forEach((key, i) => {
     if (!newMap[key]) {
-      newMap[key] = keys.pop() || randomColor({ luminosity: "dark", seed });
+      newMap[key] =
+        colors.pop() || randomColor({ luminosity: "dark", seed: seed + i });
     }
-  }
+  });
 
+  mapCache = newMap;
   return newMap;
 }
