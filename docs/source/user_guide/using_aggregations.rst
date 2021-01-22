@@ -224,6 +224,10 @@ aggregation to compute the histograms of numeric fields of a collection:
     plot_hist(result.counts, result.edges)
     plt.show(block=False)
 
+.. image:: ../images/histogram_values_uniqueness.png
+   :alt: histogram-values
+   :align: center
+
 .. _aggregations-sum:
 
 Sum values
