@@ -51,7 +51,11 @@ export function generateColorMap(
   keys.forEach((key, i) => {
     if (!newMap[key]) {
       newMap[key] =
-        colors.pop() || randomColor({ luminosity: "dark", seed: seed + i });
+        colors.pop() ||
+        randomColor({
+          luminosity: "dark",
+          seed: (seed + i) * Object.keys(newMap).length,
+        });
     }
   });
 
