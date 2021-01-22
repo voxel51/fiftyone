@@ -484,8 +484,8 @@ class DistinctResult(AggregationResult):
 class HistogramValues(Aggregation):
     """Computes a histogram of the field values in a collection.
 
-    This aggregation is typically applied to *numeric* field types (or lists of
-    such types):
+    This aggregation is typically applied to *numeric* field types (or
+    lists of such types):
 
     -   :class:`fiftyone.core.fields.IntField`
     -   :class:`fiftyone.core.fields.FloatField`
@@ -493,6 +493,8 @@ class HistogramValues(Aggregation):
     Examples::
 
         import numpy as np
+        import matplotlib.pyplot as plt
+
         import fiftyone as fo
 
         samples = []
@@ -508,6 +510,13 @@ class HistogramValues(Aggregation):
         dataset = fo.Dataset()
         dataset.add_samples(samples)
 
+        def plot_hist(counts, edges):
+            counts = np.asarray(counts)
+            edges = np.asarray(edges)
+            left_edges = edges[:-1]
+            widths = edges[1:] - edges[:-1]
+            plt.bar(left_edges, counts, width=widths, align="edge")
+
         #
         # Compute a histogram of a numeric field
         #
@@ -516,8 +525,9 @@ class HistogramValues(Aggregation):
             "numeric_field", bins=50, range=(-4, 4)
         )
         r = dataset.aggregate(histogram_values)
-        r.counts  # list of counts
-        r.edges  # list of bin edges
+
+        plot_hist(r.counts, r.edges)
+        plt.show(block=False)
 
         #
         # Compute the histogram of a numeric list field
@@ -532,8 +542,9 @@ class HistogramValues(Aggregation):
             "numeric_list_field", bins=50, range=limits
         )
         r = dataset.aggregate(histogram_values)
-        r.counts  # list of counts
-        r.edges  # list of bin edges
+
+        plot_hist(r.counts, r.edges)
+        plt.show(block=False)
 
     Args:
         field_name: the name of the field to histogram
