@@ -549,22 +549,28 @@ class SampleCollection(object):
 
             import fiftyone as fo
 
-            dataset = fo.load_dataset(...)
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(filepath="/path/to/image1.png"),
+                    fo.Sample(filepath="/path/to/image2.png"),
+                    fo.Sample(filepath="/path/to/image3.png"),
+                ]
+            )
 
             #
-            # Exclude a single sample from a dataset
+            # Exclude the first sample from the dataset
             #
 
-            view = dataset.exclude("5f3c298768fd4d3baf422d2f")
+            sample_id = dataset.first().id
+            view = dataset.exclude(sample_id)
 
             #
-            # Exclude a list of samples from a dataset
+            # Exclude the first and last samples from the dataset
             #
 
-            view = dataset.exclude([
-                "5f3c298768fd4d3baf422d2f",
-                "5f3c298768fd4d3baf422d30"
-            ])
+            sample_ids = [dataset.first().id, dataset.last().id]
+            view = dataset.exclude(sample_ids)
 
         Args:
             sample_ids: a sample ID or iterable of sample IDs
@@ -576,8 +582,8 @@ class SampleCollection(object):
 
     @view_stage
     def exclude_fields(self, field_names):
-        """Excludes the fields with the given names from the returned
-        :class:`fiftyone.core.sample.SampleView` instances.
+        """Excludes the fields with the given names from the samples in the
+        collection.
 
         Note that default fields cannot be excluded.
 
@@ -585,19 +591,32 @@ class SampleCollection(object):
 
             import fiftyone as fo
 
-            dataset = fo.load_dataset(...)
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        ground_truth=fo.Classification(label="cat"),
+                        predictions=fo.Classification(label="cat", confidence=0.9),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        ground_truth=fo.Classification(label="dog"),
+                        predictions=fo.Classification(label="dog", confidence=0.8),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        ground_truth=None,
+                        predictions=None,
+                    ),
+                ]
+            )
 
             #
-            # Exclude a field from all samples in a dataset
+            # Exclude the `predictions` field from all samples
             #
 
             view = dataset.exclude_fields("predictions")
-
-            #
-            # Exclude a list of fields from all samples in a dataset
-            #
-
-            view = dataset.exclude_fields(["ground_truth", "predictions"])
 
         Args:
             field_names: a field name or iterable of field names to exclude
@@ -609,7 +628,7 @@ class SampleCollection(object):
 
     @view_stage
     def exclude_objects(self, objects):
-        """Excludes the specified objects from the view.
+        """Excludes the specified objects from the collection.
 
         The returned view will omit the objects specified in the provided
         ``objects`` argument, which should have the following format::
@@ -631,8 +650,9 @@ class SampleCollection(object):
         Examples::
 
             import fiftyone as fo
+            import fiftyone.zoo as foz
 
-            dataset = fo.load_dataset(...)
+            dataset = foz.load_zoo_dataset("quickstart")
 
             #
             # Exclude the objects currently selected in the App
@@ -654,14 +674,33 @@ class SampleCollection(object):
 
     @view_stage
     def exists(self, field, bool=True):
-        """Returns a view containing the samples that have (or do not have) a
-        non-``None`` value for the given field.
+        """Returns a view containing the samples in the collection that have
+        (or do not have) a non-``None`` value for the given field.
 
         Examples::
 
             import fiftyone as fo
 
-            dataset = fo.load_dataset(...)
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        ground_truth=fo.Classification(label="cat"),
+                        predictions=fo.Classification(label="cat", confidence=0.9),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        ground_truth=fo.Classification(label="dog"),
+                        predictions=fo.Classification(label="dog", confidence=0.8),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        ground_truth=None,
+                        predictions=None,
+                    ),
+                ]
+            )
 
             #
             # Only include samples that have a value in their `predictions`
@@ -678,7 +717,7 @@ class SampleCollection(object):
             view = dataset.exists("predictions", False)
 
         Args:
-            field: the field
+            field: the field name
             bool (True): whether to check if the field exists (True) or does
                 not exist (False)
 
@@ -689,7 +728,8 @@ class SampleCollection(object):
 
     @view_stage
     def filter_field(self, field, filter, only_matches=False):
-        """Filters the values of a given sample (or embedded document) field.
+        """Filters the values of a given sample (or embedded document) field
+        of each sample in the collection.
 
         Values of ``field`` for which ``filter`` returns ``False`` are
         replaced with ``None``.
@@ -699,25 +739,47 @@ class SampleCollection(object):
             import fiftyone as fo
             from fiftyone import ViewField as F
 
-            dataset = fo.load_dataset(...)
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        ground_truth=fo.Classification(label="cat"),
+                        predictions=fo.Classification(label="cat", confidence=0.9),
+                        numeric_field=1.0,
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        ground_truth=fo.Classification(label="dog"),
+                        predictions=fo.Classification(label="dog", confidence=0.8),
+                        numeric_field=-1.0,
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        ground_truth=None,
+                        predictions=None,
+                        numeric_field=None,
+                    ),
+                ]
+            )
 
             #
-            # Only include classifications in the `predictions` field (assume
-            # it is a `Classification` field) whose `label` is "cat"
+            # Only include classifications in the `predictions` field
+            # whose `label` is "cat"
             #
 
             view = dataset.filter_field("predictions", F("label") == "cat")
 
             #
-            # Only include classifications in the `predictions` field (assume
-            # it is a `Classification` field) whose `confidence` is greater
-            # than 0.8
+            # Only include samples whose `numeric_field` value is positive
             #
 
-            view = dataset.filter_field("predictions", F("confidence") > 0.8)
+            view = dataset.filter_field(
+                "numeric_field", F() > 0, only_matches=True
+            )
 
         Args:
-            field: the field to filter
+            field: the name of the field to filter
             filter: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that returns a boolean describing the filter to apply
@@ -734,7 +796,7 @@ class SampleCollection(object):
     @view_stage
     def filter_labels(self, field, filter, only_matches=False):
         """Filters the :class:`fiftyone.core.labels.Label` field of each
-        sample.
+        sample in the collection.
 
         If the specified ``field`` is a single
         :class:`fiftyone.core.labels.Label` type, fields for which ``filter``
@@ -759,11 +821,31 @@ class SampleCollection(object):
             import fiftyone as fo
             from fiftyone import ViewField as F
 
-            dataset = fo.load_dataset(...)
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        predictions=fo.Classification(label="cat", confidence=0.9),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        predictions=fo.Classification(label="dog", confidence=0.8),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        predictions=fo.Classification(label="rabbit"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image4.png",
+                        predictions=None,
+                    ),
+                ]
+            )
 
             #
             # Only include classifications in the `predictions` field whose
-            # `confidence` greater than 0.8
+            # `confidence` is greater than 0.8
             #
 
             view = dataset.filter_labels("predictions", F("confidence") > 0.8)
@@ -785,15 +867,64 @@ class SampleCollection(object):
             import fiftyone as fo
             from fiftyone import ViewField as F
 
-            dataset = fo.load_dataset(...)
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        predictions=fo.Detections(
+                            detections=[
+                                fo.Detection(
+                                    label="cat",
+                                    bounding_box=[0.1, 0.1, 0.5, 0.5],
+                                    confidence=0.9,
+                                ),
+                                fo.Detection(
+                                    label="dog",
+                                    bounding_box=[0.2, 0.2, 0.3, 0.3],
+                                    confidence=0.8,
+                                ),
+                            ]
+                        ),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        predictions=fo.Detections(
+                            detections=[
+                                fo.Detection(
+                                    label="cat",
+                                    bounding_box=[0.5, 0.5, 0.4, 0.4],
+                                    confidence=0.95,
+                                ),
+                                fo.Detection(label="rabbit"),
+                            ]
+                        ),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        predictions=fo.Detections(
+                            detections=[
+                                fo.Detection(
+                                    label="squirrel",
+                                    bounding_box=[0.25, 0.25, 0.5, 0.5],
+                                    confidence=0.5,
+                                ),
+                            ]
+                        ),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image4.png",
+                        predictions=None,
+                    ),
+                ]
+            )
 
             #
             # Only include detections in the `predictions` field whose
             # `confidence` is greater than 0.8
             #
 
-            stage = filter_labels("predictions", F("confidence") > 0.8)
-            view = dataset.add_stage(stage)
+            view = dataset.filter_labels("predictions", F("confidence") > 0.8)
 
             #
             # Only include detections in the `predictions` field whose `label`
@@ -812,7 +943,7 @@ class SampleCollection(object):
             # box area is smaller than 0.2
             #
 
-            # bbox is in [top-left-x, top-left-y, width, height] format
+            # Bboxes are in [top-left-x, top-left-y, width, height] format
             bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
 
             view = dataset.filter_labels("predictions", bbox_area < 0.2)
@@ -822,13 +953,55 @@ class SampleCollection(object):
             import fiftyone as fo
             from fiftyone import ViewField as F
 
-            dataset = fo.load_dataset(...)
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        predictions=fo.Polylines(
+                            polylines=[
+                                fo.Polyline(
+                                    label="lane",
+                                    points=[[(0.1, 0.1), (0.1, 0.6)]],
+                                    filled=False,
+                                ),
+                                fo.Polyline(
+                                    label="road",
+                                    points=[[(0.2, 0.2), (0.5, 0.5), (0.2, 0.5)]],
+                                    filled=True,
+                                ),
+                            ]
+                        ),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        predictions=fo.Polylines(
+                            polylines=[
+                                fo.Polyline(
+                                    label="lane",
+                                    points=[[(0.4, 0.4), (0.9, 0.4)]],
+                                    filled=False,
+                                ),
+                                fo.Polyline(
+                                    label="road",
+                                    points=[[(0.6, 0.6), (0.9, 0.9), (0.6, 0.9)]],
+                                    filled=True,
+                                ),
+                            ]
+                        ),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        predictions=None,
+                    ),
+                ]
+            )
 
             #
             # Only include polylines in the `predictions` field that are filled
             #
 
-            view = dataset.filter_labels("predictions", F("filled"))
+            view = dataset.filter_labels("predictions", F("filled") == True)
 
             #
             # Only include polylines in the `predictions` field whose `label`
@@ -842,40 +1015,64 @@ class SampleCollection(object):
 
             #
             # Only include polylines in the `predictions` field with at least
-            # 10 vertices
+            # 3 vertices
             #
 
             num_vertices = F("points").map(F().length()).sum()
-            view = dataset.filter_labels("predictions", num_vertices >= 10)
+            view = dataset.filter_labels(
+                "predictions", num_vertices >= 3, only_matches=True
+            )
 
         Keypoints Examples::
 
             import fiftyone as fo
             from fiftyone import ViewField as F
 
-            dataset = fo.load_dataset(...)
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        predictions=fo.Keypoint(
+                            label="house",
+                            points=[(0.1, 0.1), (0.1, 0.9), (0.9, 0.9), (0.9, 0.1)],
+                        ),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        predictions=fo.Keypoint(
+                            label="window",
+                            points=[(0.4, 0.4), (0.5, 0.5), (0.6, 0.6)],
+                        ),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        predictions=None,
+                    ),
+                ]
+            )
 
             #
             # Only include keypoints in the `predictions` field whose `label`
-            # is "face", and only show samples with at least one keypoint after
-            # filtering
+            # is "house", and only show samples with at least one keypoint
+            # after filtering
             #
 
             view = dataset.filter_labels(
-                "predictions", F("label") == "face", only_matches=True
+                "predictions", F("label") == "house", only_matches=True
             )
 
             #
-            # Only include keypoints in the `predictions` field with at least
-            # 10 points
+            # Only include keypoints in the `predictions` field with less than
+            # four points
             #
 
             view = dataset.filter_labels(
-                "predictions", F("points").length() >= 10
+                "predictions", F("points").length() < 4
             )
 
         Args:
-            field: the labels list field to filter
+            field: the labels field to filter
             filter: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that returns a boolean describing the filter to apply
@@ -892,47 +1089,18 @@ class SampleCollection(object):
     @deprecated(reason="Use filter_labels() instead")
     @view_stage
     def filter_classifications(self, field, filter, only_matches=False):
-        """
+        """Filters the :class:`fiftyone.core.labels.Classification` elements in
+        the specified :class:`fiftyone.core.labels.Classifications` field of
+        each sample in the collection.
 
         .. warning::
 
             This method is deprecated and will be removed in a future release.
             Use the drop-in replacement :meth:`filter_labels` instead.
 
-        Filters the classifications of the given
-        :class:`fiftyone.core.labels.Classifications` field.
-
-        Elements of ``<field>.classifications`` for which ``filter`` returns
-        ``False`` are omitted from the field.
-
-        Examples::
-
-            import fiftyone as fo
-            from fiftyone import ViewField as F
-
-            dataset = fo.load_dataset(...)
-
-            #
-            # Only include classifications in the `predictions` field whose
-            # `confidence` greater than 0.8
-            #
-
-            view = dataset.filter_classifications(
-                "predictions", F("confidence") > 0.8
-            )
-
-            #
-            # Only include classifications in the `predictions` field whose
-            # `label` is "cat" or "dog", and only show samples with at least
-            # one classification after filtering
-            #
-
-            view = dataset.filter_classifications(
-                "predictions", F("label").is_in(["cat", "dog"]), only_matches=True
-            )
-
         Args:
-            field: the :class:`fiftyone.core.labels.Classifications` field
+            field: the field to filter, which must be a
+                :class:`fiftyone.core.labels.Classifications`
             filter: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that returns a boolean describing the filter to apply
@@ -949,54 +1117,14 @@ class SampleCollection(object):
     @deprecated(reason="Use filter_labels() instead")
     @view_stage
     def filter_detections(self, field, filter, only_matches=False):
-        """
+        """Filters the :class:`fiftyone.core.labels.Detection` elements in the
+        specified :class:`fiftyone.core.labels.Detections` field of each sample
+        in the collection.
 
         .. warning::
 
             This method is deprecated and will be removed in a future release.
             Use the drop-in replacement :meth:`filter_labels` instead.
-
-        Filters the detections of the given
-        :class:`fiftyone.core.labels.Detections` field.
-
-        Elements of ``<field>.detections`` for which ``filter`` returns
-        ``False`` are omitted from the field.
-
-        Examples::
-
-            import fiftyone as fo
-            from fiftyone import ViewField as F
-
-            dataset = fo.load_dataset(...)
-
-            #
-            # Only include detections in the `predictions` field whose
-            # `confidence` is greater than 0.8
-            #
-
-            view = dataset.filter_detections(
-                "predictions", F("confidence") > 0.8
-            )
-
-            #
-            # Only include detections in the `predictions` field whose `label`
-            # is "cat" or "dog", and only show samples with at least one
-            # detection after filtering
-            #
-
-            view = dataset.filter_detections(
-                "predictions", F("label").is_in(["cat", "dog"]), only_matches=True
-            )
-
-            #
-            # Only include detections in the `predictions` field whose bounding
-            # box area is smaller than 0.2
-            #
-
-            # bbox is in [top-left-x, top-left-y, width, height] format
-            bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
-
-            view = dataset.filter_detections("predictions", bbox_area < 0.2)
 
         Args:
             field: the :class:`fiftyone.core.labels.Detections` field
@@ -1016,53 +1144,14 @@ class SampleCollection(object):
     @deprecated(reason="Use filter_labels() instead")
     @view_stage
     def filter_polylines(self, field, filter, only_matches=False):
-        """
+        """Filters the :class:`fiftyone.core.labels.Polyline` elements in the
+        specified :class:`fiftyone.core.labels.Polylines` field of each sample
+        in the collection.
 
         .. warning::
 
             This method is deprecated and will be removed in a future release.
             Use the drop-in replacement :meth:`filter_labels` instead.
-
-        Filters the polylines of the given
-        :class:`fiftyone.core.labels.Polylines` field.
-
-        Elements of ``<field>.polylines`` for which ``filter`` returns
-        ``False`` are omitted from the field.
-
-        Examples::
-
-            import fiftyone as fo
-            from fiftyone import ViewField as F
-            from fiftyone.core.stages import FilterPolylines
-
-            dataset = fo.load_dataset(...)
-
-            #
-            # Only include polylines in the `predictions` field that are filled
-            #
-
-            stage = FilterPolylines("predictions", F("filled"))
-            view = dataset.add_stage(stage)
-
-            #
-            # Only include polylines in the `predictions` field whose `label`
-            # is "lane", and only show samples with at least one polyline after
-            # filtering
-            #
-
-            stage = FilterPolylines(
-                "predictions", F("label") == "lane", only_matches=True
-            )
-            view = dataset.add_stage(stage)
-
-            #
-            # Only include polylines in the `predictions` field with at least
-            # 10 vertices
-            #
-
-            num_vertices = F("points").map(F().length()).sum()
-            stage = FilterPolylines("predictions", num_vertices >= 10)
-            view = dataset.add_stage(stage)
 
         Args:
             field: the :class:`fiftyone.core.labels.Polylines` field
@@ -1082,45 +1171,14 @@ class SampleCollection(object):
     @deprecated(reason="Use filter_labels() instead")
     @view_stage
     def filter_keypoints(self, field, filter, only_matches=False):
-        """
+        """Filters the :class:`fiftyone.core.labels.Keypoint` elements in the
+        specified :class:`fiftyone.core.labels.Keypoints` field of each sample
+        in the collection.
 
         .. warning::
 
             This method is deprecated and will be removed in a future release.
             Use the drop-in replacement :meth:`filter_labels` instead.
-
-        Filters the keypoints of the given
-        :class:`fiftyone.core.labels.Keypoints` field.
-
-        Elements of ``<field>.keypoints`` for which ``filter`` returns
-        ``False`` are omitted from the field.
-
-        Examples::
-
-            import fiftyone as fo
-            from fiftyone import ViewField as F
-            from fiftyone.core.stages import FilterKeypoints
-
-            dataset = fo.load_dataset(...)
-
-            #
-            # Only include keypoints in the `predictions` field whose `label`
-            # is "face", and only show samples with at least one keypoint after
-            # filtering
-            #
-
-            stage = FilterKeypoints(
-                "predictions", F("label") == "face", only_matches=True
-            )
-            view = dataset.add_stage(stage)
-
-            #
-            # Only include keypoints in the `predictions` field with at least
-            # 10 points
-            #
-
-            stage = FilterKeypoints("predictions", F("points").length() >= 10)
-            view = dataset.add_stage(stage)
 
         Args:
             field: the :class:`fiftyone.core.labels.Keypoints` field
@@ -1145,13 +1203,29 @@ class SampleCollection(object):
 
             import fiftyone as fo
 
-            dataset = fo.load_dataset(...)
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        ground_truth=fo.Classification(label="cat"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        ground_truth=fo.Classification(label="dog"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        ground_truth=None,
+                    ),
+                ]
+            )
 
             #
-            # Only include the first 10 samples in the view
+            # Only include the first 2 samples in the view
             #
 
-            view = dataset.limit(10)
+            view = dataset.limit(2)
 
         Args:
             limit: the maximum number of samples to return. If a non-positive
@@ -1165,27 +1239,66 @@ class SampleCollection(object):
     @view_stage
     def limit_labels(self, field, limit):
         """Limits the number of :class:`fiftyone.core.labels.Label` instances
-        in the specified labels list field of each sample.
+        in the specified labels list field of each sample in the collection.
 
         The specified ``field`` must be one of the following types:
 
         -   :class:`fiftyone.core.labels.Classifications`
         -   :class:`fiftyone.core.labels.Detections`
-        -   :class:`fiftyone.core.labels.Polylines`
         -   :class:`fiftyone.core.labels.Keypoints`
+        -   :class:`fiftyone.core.labels.Polylines`
 
         Examples::
 
             import fiftyone as fo
+            from fiftyone import ViewField as F
 
-            dataset = fo.load_dataset(...)
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        predictions=fo.Detections(
+                            detections=[
+                                fo.Detection(
+                                    label="cat",
+                                    bounding_box=[0.1, 0.1, 0.5, 0.5],
+                                    confidence=0.9,
+                                ),
+                                fo.Detection(
+                                    label="dog",
+                                    bounding_box=[0.2, 0.2, 0.3, 0.3],
+                                    confidence=0.8,
+                                ),
+                            ]
+                        ),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        predictions=fo.Detections(
+                            detections=[
+                                fo.Detection(
+                                    label="cat",
+                                    bounding_box=[0.5, 0.5, 0.4, 0.4],
+                                    confidence=0.95,
+                                ),
+                                fo.Detection(label="rabbit"),
+                            ]
+                        ),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image4.png",
+                        predictions=None,
+                    ),
+                ]
+            )
 
             #
-            # Only include the first 5 detections in the `ground_truth` field of
-            # the view
+            # Only include the first detection in the `predictions` field of
+            # each sample
             #
 
-            view = dataset.limit_labels("ground_truth", 5)
+            view = dataset.limit_labels("predictions", 1)
 
         Args:
             field: the labels list field to filter
@@ -1199,25 +1312,86 @@ class SampleCollection(object):
 
     @view_stage
     def map_labels(self, field, map):
-        """Maps the ``label`` values of :class:`fiftyone.core.labels.Label`
-        fields to new values.
+        """Maps the ``label`` values of a :class:`fiftyone.core.labels.Label`
+        field to new values for each sample in the collection.
 
         Examples::
 
             import fiftyone as fo
+            from fiftyone import ViewField as F
 
-            dataset = fo.load_dataset(...)
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        weather=fo.Classification(label="sunny"),
+                        predictions=fo.Detections(
+                            detections=[
+                                fo.Detection(
+                                    label="cat",
+                                    bounding_box=[0.1, 0.1, 0.5, 0.5],
+                                    confidence=0.9,
+                                ),
+                                fo.Detection(
+                                    label="dog",
+                                    bounding_box=[0.2, 0.2, 0.3, 0.3],
+                                    confidence=0.8,
+                                ),
+                            ]
+                        ),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        weather=fo.Classification(label="cloudy"),
+                        predictions=fo.Detections(
+                            detections=[
+                                fo.Detection(
+                                    label="cat",
+                                    bounding_box=[0.5, 0.5, 0.4, 0.4],
+                                    confidence=0.95,
+                                ),
+                                fo.Detection(label="rabbit"),
+                            ]
+                        ),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        weather=fo.Classification(label="partly cloudy"),
+                        predictions=fo.Detections(
+                            detections=[
+                                fo.Detection(
+                                    label="squirrel",
+                                    bounding_box=[0.25, 0.25, 0.5, 0.5],
+                                    confidence=0.5,
+                                ),
+                            ]
+                        ),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image4.png",
+                        predictions=None,
+                    ),
+                ]
+            )
 
             #
-            # Map "cat" and "dog" label values to "pet"
+            # Map the "partly cloudy" weather label to "cloudy"
             #
 
-            mapping = {"cat": "pet", "dog": "pet"}
-            view = dataset.map_labels("ground_truth", mapping)
+            view = dataset.map_labels("weather", {"partly cloudy": "cloudy"})
+
+            #
+            # Map "rabbit" and "squirrel" predictions to "other"
+            #
+
+            view = dataset.map_labels(
+                "predictions", {"rabbit": "other", "squirrel": "other"}
+            )
 
         Args:
             field: the labels field to map
-            map: a ``dict`` mapping label values to new label values
+            map: a dict mapping label values to new label values
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -1226,22 +1400,67 @@ class SampleCollection(object):
 
     @view_stage
     def map_values(self, field, expr):
-        """Applies an expression to the values of a field.
+        """Applies an expression to the values of a field for each sample in
+        the collection.
 
         Examples::
 
             import fiftyone as fo
-            from fiftyone import ViewField as F
 
-            dataset = fo.load_dataset(...)
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        numeric_field=1.0,
+                        numeric_list_field=[-1, 0, 1],
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        numeric_field=-1.0,
+                        numeric_list_field=[-2, -1, 0, 1],
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        numeric_field=-1.0,
+                    ),
+                ]
+            )
 
-            view = dataset.map_values("numeric_field", F().abs())
+            # For readability
+            IF = fo.ViewExpression.if_else
+            ROOT = fo.root_field
+
+            #
+            # Clip all negative values of `numeric_field` to zero
+            #
+
+            view = dataset.map_values("numeric_field", ROOT.max(0))
+
+            #
+            # Clip all negative values of `numeric_list_field` to zero
+            #
+
+            view = dataset.map_values(
+                "numeric_list_field", ROOT.map(ROOT.max(0))
+            )
+
+            #
+            # Replace all negative values of `numeric_field` with `None`
+            #
+
+            view = dataset.map_values(
+                "numeric_field", IF(ROOT >= 0, ROOT, None)
+            )
 
         Args:
             field: the field to operate on
             expr: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that defines the operation to apply to the field
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.MapValues(field, expr))
 
@@ -1249,14 +1468,65 @@ class SampleCollection(object):
     def match(self, filter):
         """Filters the samples in the collection by the given filter.
 
-        Samples for which ``filter`` returns ``False`` are omitted.
-
         Examples::
 
             import fiftyone as fo
             from fiftyone import ViewField as F
 
-            dataset = fo.load_dataset(...)
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        weather=fo.Classification(label="sunny"),
+                        predictions=fo.Detections(
+                            detections=[
+                                fo.Detection(
+                                    label="cat",
+                                    bounding_box=[0.1, 0.1, 0.5, 0.5],
+                                    confidence=0.9,
+                                ),
+                                fo.Detection(
+                                    label="dog",
+                                    bounding_box=[0.2, 0.2, 0.3, 0.3],
+                                    confidence=0.8,
+                                ),
+                            ]
+                        ),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.jpg",
+                        weather=fo.Classification(label="cloudy"),
+                        predictions=fo.Detections(
+                            detections=[
+                                fo.Detection(
+                                    label="cat",
+                                    bounding_box=[0.5, 0.5, 0.4, 0.4],
+                                    confidence=0.95,
+                                ),
+                                fo.Detection(label="rabbit"),
+                            ]
+                        ),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        weather=fo.Classification(label="partly cloudy"),
+                        predictions=fo.Detections(
+                            detections=[
+                                fo.Detection(
+                                    label="squirrel",
+                                    bounding_box=[0.25, 0.25, 0.5, 0.5],
+                                    confidence=0.5,
+                                ),
+                            ]
+                        ),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image4.jpg",
+                        predictions=None,
+                    ),
+                ]
+            )
 
             #
             # Only include samples whose `filepath` ends with ".jpg"
@@ -1265,30 +1535,29 @@ class SampleCollection(object):
             view = dataset.match(F("filepath").ends_with(".jpg"))
 
             #
-            # Only include samples whose `predictions` field (assume it is a
-            # `Classification` field) has `label` of "cat"
+            # Only include samples whose `weather` field is "sunny"
             #
 
-            view = dataset.match(F("predictions").label == "cat"))
+            view = dataset.match(F("weather").label == "sunny")
 
             #
-            # Only include samples whose `predictions` field (assume it is a
-            # `Detections` field) has at least 5 detections
+            # Only include samples with at least 2 objects in their
+            # `predictions` field
             #
 
-            view = dataset.match(F("predictions").detections.length() >= 5)
+            view = dataset.match(F("predictions").detections.length() >= 2)
 
             #
-            # Only include samples whose `predictions` field (assume it is a
-            # `Detections` field) has at least one detection with area smaller
-            # than 0.2
+            # Only include samples whose `predictions` field contains at least
+            # one object with area smaller than 0.2
             #
 
-            # bbox is in [top-left-x, top-left-y, width, height] format
-            pred_bbox = F("predictions.detections.bounding_box")
-            pred_bbox_area = pred_bbox[2] * pred_bbox[3]
+            # Bboxes are in [top-left-x, top-left-y, width, height] format
+            bbox = F("bounding_box")
+            bbox_area = bbox[2] * bbox[3]
 
-            view = dataset.match((pred_bbox_area < 0.2).length() > 0)
+            small_boxes = F("predictions.detections").filter(bbox_area < 0.2)
+            view = dataset.match(small_boxes.length() > 0)
 
         Args:
             filter: a :class:`fiftyone.core.expressions.ViewExpression` or
@@ -1301,52 +1570,51 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Match(filter))
 
     @view_stage
-    def match_tag(self, tag):
-        """Returns a view containing the samples that have the given tag.
+    def match_tags(self, tags):
+        """Returns a view containing the samples in the collection that have
+        any of the given tag(s).
+
+        To match samples that must contain multiple tags, chain multiple
+        :meth:`match_tags` calls together.
 
         Examples::
 
             import fiftyone as fo
 
-            dataset = fo.load_dataset(...)
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        tags=["train"],
+                        ground_truth=fo.Classification(label="cat"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        tags=["test"],
+                        ground_truth=fo.Classification(label="cat"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        ground_truth=None,
+                    ),
+                ]
+            )
 
             #
             # Only include samples that have the "test" tag
             #
 
-            view = dataset.match_tag("test")
-
-        Args:
-            tag: a tag
-
-        Returns:
-            a :class:`fiftyone.core.view.DatasetView`
-        """
-        return self._add_view_stage(fos.MatchTag(tag))
-
-    @view_stage
-    def match_tags(self, tags):
-        """Returns a view containing the samples that have any of the given
-        tags.
-
-        To match samples that must contain multiple tags, chain multiple
-        :meth:`match_tag` or :meth:`match_tags` calls together.
-
-        Examples::
-
-            import fiftyone as fo
-
-            dataset = fo.load_dataset(...)
+            view = dataset.match_tags("test")
 
             #
-            # Only include samples that have either the "test" or "validation"
-            # tag
+            # Only include samples that have either the "test" or "train" tag
             #
 
-            view = dataset.match_tags(["test", "validation"])
+            view = dataset.match_tags(["test", "train"])
 
         Args:
-            tags: an iterable of tags
+            tag: the tag or iterable of tags to match
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -1364,27 +1632,74 @@ class SampleCollection(object):
 
             import fiftyone as fo
 
-            dataset = fo.load_dataset(...)
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        predictions=fo.Detections(
+                            detections=[
+                                fo.Detection(
+                                    label="cat",
+                                    bounding_box=[0.1, 0.1, 0.5, 0.5],
+                                    confidence=0.9,
+                                ),
+                                fo.Detection(
+                                    label="dog",
+                                    bounding_box=[0.2, 0.2, 0.3, 0.3],
+                                    confidence=0.8,
+                                ),
+                            ]
+                        ),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        predictions=fo.Detections(
+                            detections=[
+                                fo.Detection(
+                                    label="cat",
+                                    bounding_box=[0.5, 0.5, 0.4, 0.4],
+                                    confidence=0.95,
+                                ),
+                                fo.Detection(label="rabbit"),
+                            ]
+                        ),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        predictions=fo.Detections(
+                            detections=[
+                                fo.Detection(
+                                    label="squirrel",
+                                    bounding_box=[0.25, 0.25, 0.5, 0.5],
+                                    confidence=0.5,
+                                ),
+                            ]
+                        ),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image4.png",
+                        predictions=None,
+                    ),
+                ]
+            )
 
             #
-            # Extract a view containing the 6th through 15th samples in the
+            # Extract a view containing the second and third samples in the
             # dataset
             #
 
-            view = dataset.mongo([{"$skip": 5}, {"$limit": 10}])
+            view = dataset.mongo([{"$skip": 1}, {"$limit": 2}])
 
             #
-            # Sort by the number of detections in the `precictions` field of
-            # the samples (assume it is a `Detections` field)
+            # Sort by the number of objects in the `precictions` field
             #
 
             view = dataset.mongo([
                 {
                     "$addFields": {
                         "_sort_field": {
-                            "$size": {
-                                "$ifNull": ["$predictions.detections", []]
-                            }
+                            "$size": {"$ifNull": ["$predictions.detections", []]}
                         }
                     }
                 },
@@ -1402,30 +1717,20 @@ class SampleCollection(object):
 
     @view_stage
     def select(self, sample_ids):
-        """Returns a view containing only the samples with the given IDs.
+        """Selects the samples with the given IDs from the collection.
 
         Examples::
 
             import fiftyone as fo
+            import fiftyone.zoo as foz
 
-            dataset = fo.load_dataset(...)
-
-            #
-            # Select the samples with the given IDs from the dataset
-            #
-
-            view = dataset.select([
-                "5f3c298768fd4d3baf422d34",
-                "5f3c298768fd4d3baf422d35",
-                "5f3c298768fd4d3baf422d36",
-            ])
+            dataset = foz.load_zoo_dataset("quickstart")
 
             #
-            # Create a view containing the currently selected samples in the
-            # App
+            # Create a view containing the currently selected samples in the App
             #
 
-            session = fo.launch_app(dataset=dataset)
+            session = fo.launch_app(dataset)
 
             # Select samples in the App...
 
@@ -1441,18 +1746,34 @@ class SampleCollection(object):
 
     @view_stage
     def select_fields(self, field_names=None):
-        """Selects the fields with the given names as the *only* fields
-        present in the returned :class:`fiftyone.core.sample.SampleView`
-        instances. All other fields are excluded.
+        """Selects only the fields with the given names from the samples in the
+        collection. All other fields are excluded.
 
-        Note that default sample fields are always selected and will be added
-        if not included in ``field_names``.
+        Note that default sample fields are always selected.
 
         Examples::
 
             import fiftyone as fo
 
-            dataset = fo.load_dataset(...)
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        numeric_field=1.0,
+                        numeric_list_field=[-1, 0, 1],
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        numeric_field=-1.0,
+                        numeric_list_field=[-2, -1, 0, 1],
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        numeric_field=None,
+                    ),
+                ]
+            )
 
             #
             # Include only the default fields on each sample
@@ -1461,25 +1782,24 @@ class SampleCollection(object):
             view = dataset.select_fields()
 
             #
-            # Include only the `ground_truth` field (and the default fields) on
-            # each sample
+            # Include only the `numeric_field` field (and the default fields)
+            # on each sample
             #
 
-            view = dataset.select_fields("ground_truth")
+            view = dataset.select_fields("numeric_field")
 
         Args:
             field_names (None): a field name or iterable of field names to
-                select. If not specified, just the default fields will be
-                selected
+                select
 
         Returns:
-            a :class:`DatasetView`
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.SelectFields(field_names))
 
     @view_stage
     def select_objects(self, objects):
-        """Selects only the specified objects from the view.
+        """Selects only the specified objects from the collection.
 
         The returned view will omit samples, sample fields, and individual
         objects that do not appear in the provided ``objects`` argument, which
@@ -1502,8 +1822,9 @@ class SampleCollection(object):
         Examples::
 
             import fiftyone as fo
+            import fiftyone.zoo as foz
 
-            dataset = fo.load_dataset(...)
+            dataset = foz.load_zoo_dataset("quickstart")
 
             #
             # Only include the objects currently selected in the App
@@ -1514,9 +1835,6 @@ class SampleCollection(object):
             # Select some objects in the App...
 
             view = dataset.select_objects(session.selected_objects)
-
-        Args:
-            objects: a list of dicts specifying the objects to select
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -1531,7 +1849,23 @@ class SampleCollection(object):
 
             import fiftyone as fo
 
-            dataset = fo.load_dataset(...)
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        ground_truth=fo.Classification(label="cat"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        ground_truth=fo.Classification(label="dog"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        ground_truth=None,
+                    ),
+                ]
+            )
 
             #
             # Return a view that contains a randomly shuffled version of the
@@ -1541,7 +1875,7 @@ class SampleCollection(object):
             view = dataset.shuffle()
 
             #
-            # Shuffle the samples with a set random seed
+            # Shuffle the samples with a fixed random seed
             #
 
             view = dataset.shuffle(seed=51)
@@ -1563,13 +1897,33 @@ class SampleCollection(object):
 
             import fiftyone as fo
 
-            dataset = fo.load_dataset(...)
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        ground_truth=fo.Classification(label="cat"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        ground_truth=fo.Classification(label="dog"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        ground_truth=fo.Classification(label="rabbit"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image4.png",
+                        ground_truth=None,
+                    ),
+                ]
+            )
 
             #
-            # Omit the first 10 samples from the dataset
+            # Omit the first two samples from the dataset
             #
 
-            view = dataset.skip(10)
+            view = dataset.skip(2)
 
         Args:
             skip: the number of samples to skip. If a non-positive number is
@@ -1593,28 +1947,29 @@ class SampleCollection(object):
         Examples::
 
             import fiftyone as fo
+            import fiftyone.zoo as foz
             from fiftyone import ViewField as F
 
-            dataset = fo.load_dataset(...)
+            dataset = foz.load_zoo_dataset("quickstart")
 
             #
-            # Sorts the samples in descending order by the `confidence` of
-            # their `predictions` field (assume it is a `Classification` field)
+            # Sort the samples by their `uniqueness` field in ascending order
             #
 
-            view = dataset.sort_by("predictions.confidence", reverse=True)
+            view = dataset.sort_by("uniqueness", reverse=False)
 
             #
-            # Sorts the samples in ascending order by the number of detections
-            # in their `predictions` field (assume it is a `Detections` field)
-            # whose bounding box area is at most 0.2
+            # Sorts the samples in descending order by the number of detections
+            # in their `predictions` field whose bounding box area is less than
+            # 0.2
             #
 
-            # bbox is in [top-left-x, top-left-y, width, height] format
-            pred_bbox = F("predictions.detections.bounding_box")
-            pred_bbox_area = pred_bbox[2] * pred_bbox[3]
+            # Bboxes are in [top-left-x, top-left-y, width, height] format
+            bbox = F("bounding_box")
+            bbox_area = bbox[2] * bbox[3]
 
-            view = dataset.sort_by((pred_bbox_area < 0.2).length())
+            small_boxes = F("predictions.detections").filter(bbox_area < 0.2)
+            view = dataset.sort_by(small_boxes.length(), reverse=True)
 
         Args:
             field_or_expr: the field or expression to sort by
@@ -1633,19 +1988,39 @@ class SampleCollection(object):
 
             import fiftyone as fo
 
-            dataset = fo.load_dataset(...)
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        ground_truth=fo.Classification(label="cat"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        ground_truth=fo.Classification(label="dog"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        ground_truth=fo.Classification(label="rabbit"),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image4.png",
+                        ground_truth=None,
+                    ),
+                ]
+            )
 
             #
-            # Take 10 random samples from the dataset
+            # Take two random samples from the dataset
             #
 
-            view = dataset.take(10)
+            view = dataset.take(2)
 
             #
-            # Take 10 random samples from the dataset with a set seed
+            # Take two random samples from the dataset with a fixed seed
             #
 
-            view = dataset.take(10, seed=51)
+            view = dataset.take(2, seed=51)
 
         Args:
             size: the number of samples to return. If a non-positive number is
@@ -1660,8 +2035,13 @@ class SampleCollection(object):
 
     @aggregation
     def bounds(self, field_name):
-        """Computes the bounds of a numeric field or numeric list field of a
-        collection.
+        """Computes the bounds of a numeric field of the collection.
+
+        This aggregation is typically applied to *numeric* field types (or
+        lists of such types):
+
+        -   :class:`fiftyone.core.fields.IntField`
+        -   :class:`fiftyone.core.fields.FloatField`
 
         Examples::
 
@@ -1673,18 +2053,20 @@ class SampleCollection(object):
                     fo.Sample(
                         filepath="/path/to/image1.png",
                         numeric_field=1.0,
-                        numeric_list_field=[1.0, 2.0, 3.0],
+                        numeric_list_field=[1, 2, 3],
                     ),
                     fo.Sample(
                         filepath="/path/to/image2.png",
                         numeric_field=4.0,
-                        numeric_list_field=[1.5, 2.5],
+                        numeric_list_field=[1, 2],
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        numeric_field=None,
+                        numeric_list_field=None,
                     ),
                 ]
             )
-
-            # Add a generic list field
-            dataset.add_sample_field("list_field", fo.ListField)
 
             #
             # Compute the bounds of a numeric field
@@ -1700,12 +2082,6 @@ class SampleCollection(object):
             r = dataset.bounds("numeric_list_field")
             r.bounds  # (min, max)
 
-            #
-            # Cannot compute bounds of a generic list field
-            #
-
-            dataset.bounds("list_field")  # error
-
         Args:
             field_name: the name of the field to compute bounds for
 
@@ -1716,36 +2092,59 @@ class SampleCollection(object):
 
     @aggregation
     def count(self, field_name=None):
-        """Counts the number of samples or number of items with respect to a
-        field of a collection.
+        """Counts the number of field values in the collection.
 
-        If a ``field`` is provided, it can be a
-        :class:`fiftyone.core.fields.ListField` or a
-        :class:`fiftyone.core.labels.Label` list field.
+        If no field is provided, the samples themselves are counted.
 
         Examples::
 
             import fiftyone as fo
 
-            dataset = fo.load_dataset(...)
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        predictions=fo.Detections(
+                            detections=[
+                                fo.Detection(label="cat"),
+                                fo.Detection(label="dog"),
+                            ]
+                        ),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        predictions=fo.Detections(
+                            detections=[
+                                fo.Detection(label="cat"),
+                                fo.Detection(label="rabbit"),
+                            ]
+                        ),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        predictions=None,
+                    ),
+                ]
+            )
 
             #
-            # Compute the number of samples in a dataset
+            # Count the number of samples in the dataset
             #
 
             r = dataset.count()
-            r.count
+            r.count  # count
 
             #
-            # Compute the number of objects in a `Detections` field
+            # Count the number of objects in the `predictions` field
             #
 
-            r = dataset.count("detections")
-            r.count
+            r = dataset.count("predictions.detections")
+            r.count  # count
 
         Args:
-            field_name (None): the field whose items to count. If no field name
-                is provided, the samples themselves are counted
+            field_name (None): the name of the field whose values to count. If
+                none is provided, the samples themselves are counted
 
         Returns:
             :class:`fiftyone.core.aggregations.CountResult`
@@ -1754,10 +2153,10 @@ class SampleCollection(object):
 
     @aggregation
     def count_values(self, field_name):
-        """Counts the occurrences of values in a countable field or list of
-        countable fields of a collection.
+        """Counts the occurrences of field values in the collection.
 
-        Countable fields are:
+        This aggregation is typically applied to *countable* field types (or
+        lists of such types):
 
         -   :class:`fiftyone.core.fields.BooleanField`
         -   :class:`fiftyone.core.fields.IntField`
@@ -1767,7 +2166,35 @@ class SampleCollection(object):
 
             import fiftyone as fo
 
-            dataset = fo.load_dataset(...)
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        tags=["sunny"],
+                        predictions=fo.Detections(
+                            detections=[
+                                fo.Detection(label="cat"),
+                                fo.Detection(label="dog"),
+                            ]
+                        ),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        tags=["cloudy"],
+                        predictions=fo.Detections(
+                            detections=[
+                                fo.Detection(label="cat"),
+                                fo.Detection(label="rabbit"),
+                            ]
+                        ),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        predictions=None,
+                    ),
+                ]
+            )
 
             #
             # Compute the tag counts in the dataset
@@ -1776,8 +2203,15 @@ class SampleCollection(object):
             r = dataset.count_values("tags")
             r.values  # dict mapping tags to counts
 
+            #
+            # Compute the predicted label counts in the dataset
+            #
+
+            r = dataset.count_values("predictions.detections.label")
+            r.values  # dict mapping tags to counts
+
         Args:
-            field_name: the name of the countable field
+            field_name: the name of the field to count
 
         Returns:
             :class:`fiftyone.core.aggregations.CountValuesResult`
@@ -1786,10 +2220,10 @@ class SampleCollection(object):
 
     @aggregation
     def distinct(self, field_name):
-        """Computes the distinct values of a countable field or a list of
-        countable fields of a collection.
+        """Computes the distinct values of a field in the collection.
 
-        Countable fields are:
+        This aggregation is typically applied to *countable* field types (or
+        lists of such types):
 
         -   :class:`fiftyone.core.fields.BooleanField`
         -   :class:`fiftyone.core.fields.IntField`
@@ -1799,20 +2233,48 @@ class SampleCollection(object):
 
             import fiftyone as fo
 
-            dataset = fo.load_dataset(...)
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        tags=["sunny"],
+                        predictions=fo.Detections(
+                            detections=[
+                                fo.Detection(label="cat"),
+                                fo.Detection(label="dog"),
+                            ]
+                        ),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        tags=["sunny", "cloudy"],
+                        predictions=fo.Detections(
+                            detections=[
+                                fo.Detection(label="cat"),
+                                fo.Detection(label="rabbit"),
+                            ]
+                        ),
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        predictions=None,
+                    ),
+                ]
+            )
 
             #
-            # Compute the distinct values of a StringField named `kind`
-            #
-
-            r = dataset.distinct("kind")
-            r.values  # list of distinct values
-
-            #
-            # Compute the a bounds of the `tags field
+            # Get the distinct tags in a dataset
             #
 
             r = dataset.distinct("tags")
+            r.values  # list of distinct values
+
+            #
+            # Get the distint predicted labels in a dataset
+            #
+
+            r = dataset.distinct("predictions.detections.label")
             r.values  # list of distinct values
 
         Args:
@@ -1825,22 +2287,66 @@ class SampleCollection(object):
 
     @aggregation
     def histogram_values(self, field_name, bins=None, range=None):
-        """Computes a histogram of the numeric values in a field or list field
-        of a collection.
+        """Computes a histogram of the field values in the collection.
+
+        This aggregation is typically applied to *numeric* field types (or
+        lists of such types):
+
+        -   :class:`fiftyone.core.fields.IntField`
+        -   :class:`fiftyone.core.fields.FloatField`
 
         Examples::
 
+            import numpy as np
+            import matplotlib.pyplot as plt
+
             import fiftyone as fo
 
-            dataset = fo.load_dataset(...)
+            samples = []
+            for idx in range(100):
+                samples.append(
+                    fo.Sample(
+                        filepath="/path/to/image%d.png" % idx,
+                        numeric_field=np.random.randn(),
+                        numeric_list_field=list(np.random.randn(10)),
+                    )
+                )
+
+            dataset = fo.Dataset()
+            dataset.add_samples(samples)
+
+            def plot_hist(counts, edges):
+                counts = np.asarray(counts)
+                edges = np.asarray(edges)
+                left_edges = edges[:-1]
+                widths = edges[1:] - edges[:-1]
+                plt.bar(left_edges, counts, width=widths, align="edge")
 
             #
-            # Compute a histogram of values in the float field "uniqueness"
+            # Compute a histogram of a numeric field
             #
 
-            r = dataset.histogram_values("uniqueness", bins=50, range=(0, 1))
-            r.counts  # list of counts
-            r.edges  # list of bin edges
+            r = dataset.histogram_values(
+                "numeric_field", bins=50, range=(-4, 4)
+            )
+
+            plot_hist(r.counts, r.edges)
+            plt.show(block=False)
+
+            #
+            # Compute the histogram of a numeric list field
+            #
+
+            # Compute bounds automatically
+            r = dataset.bounds("numeric_list_field")
+            limits = (r.bounds[0], r.bounds[1] + 1e-6)  # right interval is open
+
+            r = dataset.histogram_values(
+                "numeric_list_field", bins=50, range=limits
+            )
+
+            plot_hist(r.counts, r.edges)
+            plt.show(block=False)
 
         Args:
             field_name: the name of the field to histogram
@@ -1853,6 +2359,9 @@ class SampleCollection(object):
             range (None): a ``(lower, upper)`` tuple specifying a range in
                 which to generate equal-width bins. Only applicable when
                 ``bins`` is an integer
+
+        Returns:
+            :class:`fiftyone.core.aggregations.HistogramResult`
         """
         return self.aggregate(
             foa.HistogramValues(field_name, bins=bins, range=range)
@@ -1860,33 +2369,58 @@ class SampleCollection(object):
 
     @aggregation
     def sum(self, field_name):
-        """Computers the sum of the field values of a collection.
+        """Computes the sum of the field values of the collection.
 
-        If the field is a :class:`fiftyone.core.fields.ListField`, the list
-        elements are summed.
+        This aggregation is typically applied to *numeric* field types (or
+        lists of such types):
+
+        -   :class:`fiftyone.core.fields.IntField`
+        -   :class:`fiftyone.core.fields.FloatField`
 
         Examples::
 
             import fiftyone as fo
 
-            dataset = fo.load_dataset(...)
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        numeric_field=1.0,
+                        numeric_list_field=[1, 2, 3],
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        numeric_field=4.0,
+                        numeric_list_field=[1, 2],
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        numeric_field=None,
+                        numeric_list_field=None,
+                    ),
+                ]
+            )
 
             #
             # Compute the sum of a numeric field
             #
 
             r = dataset.sum("numeric_field")
-            r.sum
+            r.sum  # the sum
 
             #
-            # Compute the sum of the values in a numeric list field
+            # Compute the sum of a numeric list field
             #
 
             r = dataset.sum("numeric_list_field")
-            r.sum
+            r.sum  # the sum
 
         Args:
-            field_name: the field to sum
+            field_name: the name of the field to sum
+
+        Returns:
+            :class:`fiftyone.core.aggregations.SumResult`
         """
         return self.aggregate(foa.Sum(field_name))
 
