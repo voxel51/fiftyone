@@ -2103,7 +2103,7 @@ class SampleCollection(object):
 
     @aggregation
     def count(self, field_name=None):
-        """Counts the number of field values in the collection.
+        """Counts the number of non-``None`` field values in the collection.
 
         If no field is provided, the samples themselves are counted.
 
@@ -2144,6 +2144,13 @@ class SampleCollection(object):
             #
 
             r = dataset.count()
+            r.count  # count
+
+            #
+            # Count the number of samples with `predictions`
+            #
+
+            r = dataset.count("predictions")
             r.count  # count
 
             #
@@ -2380,7 +2387,8 @@ class SampleCollection(object):
 
     @aggregation
     def sum(self, field_name):
-        """Computes the sum of the field values of the collection.
+        """Computes the sum of the (non-``None``) field values of the
+        collection.
 
         This aggregation is typically applied to *numeric* field types (or
         lists of such types):

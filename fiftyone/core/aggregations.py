@@ -181,7 +181,7 @@ class BoundsResult(AggregationResult):
 
 
 class Count(Aggregation):
-    """Counts the number of field values in a collection.
+    """Counts the number of non-``None`` field values in a collection.
 
     If no field is provided, the samples themselves are counted.
 
@@ -226,6 +226,14 @@ class Count(Aggregation):
         r.count  # count
 
         #
+        # Count the number of samples with `predictions`
+        #
+
+        count_predictions = fo.Count("predictions")
+        r = dataset.aggregate(count_predictions)
+        r.count  # count
+
+        #
         # Count the number of objects in the `predictions` field
         #
 
@@ -258,8 +266,8 @@ class Count(Aggregation):
         for list_field in list_fields:
             pipeline.append({"$unwind": "$" + list_field})
 
-        if dataset.media_type == fom.VIDEO and path != "frames":
-            pipeline.append({"$match": {path: {"$exists": True, "$ne": None}}})
+        if dataset.media_type != fom.VIDEO or path != "frames":
+            pipeline.append({"$match": {"$expr": {"$gt": ["$" + path, None]}}})
 
         return pipeline + [{"$count": "count"}]
 
@@ -679,7 +687,7 @@ class HistogramValuesResult(AggregationResult):
 
 
 class Sum(Aggregation):
-    """Computes the sum of the field values of a collection.
+    """Computes the sum of the (non-``None``) field values of a collection.
 
     This aggregation is typically applied to *numeric* field types (or lists of
     such types):
