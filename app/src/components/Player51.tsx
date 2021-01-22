@@ -57,13 +57,14 @@ export default ({
   playerRef,
   selectedObjects,
   onSelectObject,
+  savedOverlayOptions,
 }) => {
   const filter = useRecoilValue(filterSelector);
   const fps = useRecoilValue(atoms.sampleFrameRate(sample._id));
   const defaultOverlayOptions = useRecoilValue(
     selectors.defaultPlayerOverlayOptions
   );
-  console.log(defaultOverlayOptions);
+
   const colorMap = useRecoilValue(selectors.colorMap);
   if (overlay === null) {
     overlay = convertSampleToETA(sample, fieldSchema);
@@ -104,6 +105,7 @@ export default ({
         },
         defaultOverlayOptions: {
           ...defaultOverlayOptions,
+          ...savedOverlayOptions,
           action: "hover",
           attrRenderMode: "attr-value",
           smoothMasks: false,

@@ -9,7 +9,6 @@ import logging
 
 import eta.core.serial as etas
 
-import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
@@ -43,6 +42,10 @@ class StateDescription(etas.Serializable):
         selected (None): the list of currently selected samples
         selected_objects (None): the list of currently selected objects
         view (None): the current :class:`fiftyone.core.view.DatasetView`
+        show_attributes (True): whether to show attributes by default in
+            player51
+        show_confidence (True): whether to show confidences by default in
+            player51
     """
 
     def __init__(
@@ -57,7 +60,7 @@ class StateDescription(etas.Serializable):
         selected_objects=None,
         view=None,
         filters={},
-        show_attrs=True,
+        show_attributes=True,
         show_confidence=True,
     ):
         self.close = close
@@ -70,6 +73,8 @@ class StateDescription(etas.Serializable):
         self.filters = filters
         self.datasets = datasets or fod.list_datasets()
         self.active_handle = active_handle
+        self.show_attributes = show_attributes
+        self.show_confidence = show_confidence
         super().__init__()
 
     def serialize(self, reflective=False):
@@ -111,13 +116,13 @@ class StateDescription(etas.Serializable):
         """
         active_handle = d.get("active_handle", None)
         close = d.get("close", False)
-        color_pool = d.get("color_pool", [])
         connected = d.get("connected", False)
         filters = d.get("filters", {})
         selected = d.get("selected", [])
         selected_objects = d.get("selected_objects", [])
-        show_attrs = d.get("show_attrs", True)
-        show_confidence = d.get("show_attrs", True)
+        color_pool = d.get("color_pool", [])
+        show_attributes = d.get("show_attributes", True)
+        show_confidence = d.get("show_confidence", True)
 
         dataset = d.get("dataset", None)
         if dataset is not None:
@@ -135,14 +140,14 @@ class StateDescription(etas.Serializable):
         return cls(
             active_handle=active_handle,
             close=close,
-            color_pool=color_pool,
             connected=connected,
             dataset=dataset,
             selected=selected,
             selected_objects=selected_objects,
             view=view,
             filters=filters,
-            show_attrs=show_attrs,
+            color_pool=color_pool,
+            show_attributes=show_attributes,
             show_confidence=show_confidence,
             **kwargs
         )

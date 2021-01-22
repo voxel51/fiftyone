@@ -527,7 +527,7 @@ const selectedFields = selectorFamily({
 export const defaultPlayerOverlayOptions = selector({
   key: "defaultPlayerOverlayOptions",
   get: ({ get }) => {
-    const showAttrs = get(atoms.stateDescription).show_attrs;
+    const showAttrs = get(atoms.stateDescription).show_attributes;
     const showConfidence = get(atoms.stateDescription).show_confidence;
     return {
       showAttrs,

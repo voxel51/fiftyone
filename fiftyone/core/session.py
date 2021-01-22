@@ -162,16 +162,20 @@ def close_app():
         _session = None
 
 
-def _update_state(func):
-    @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        result = func(self, *args, **kwargs)
-        self.state.datasets = fod.list_datasets()
-        self._auto_show()
-        self._update_state()
-        return result
+def _update_state(auto_show=False):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            result = func(self, *args, **kwargs)
+            self.state.datasets = fod.list_datasets()
+            if auto_show:
+                self._auto_show()
+            self._update_state()
+            return result
 
-    return wrapper
+        return wrapper
+
+    return decorator
 
 
 class Session(foc.HasClient):
@@ -204,6 +208,9 @@ class Session(foc.HasClient):
         terminate the session.
 
     Args:
+        color_pool (None): a list of browser supported color strings from
+            which the App should draw from for coloring fields. If None,
+            ``fiftyone.config.default_app_color_pool`` is used
         dataset (None): an optional :class:`fiftyone.core.dataset.Dataset` to
             load
         view (None): an optional :class:`fiftyone.core.view.DatasetView` to
@@ -220,6 +227,12 @@ class Session(foc.HasClient):
             in notebook contexts
         height (800): a height, in pixels, for the App. Only applicable in
             notebook contexts
+        show_attributes (None): whether to show attributes of labels in
+            expanded sample view images and videos. If None,
+            ``fiftyone.config.default_app_show_attributes`` is used
+        show_confidence (None): whether to show the confidence of labels in
+            expanded sample view images and videos. If None,
+            ``fiftyone.config.default_app_show_confidence`` is used
     """
 
     _HC_NAMESPACE = "state"
@@ -228,6 +241,7 @@ class Session(foc.HasClient):
 
     def __init__(
         self,
+        color_pool=None,
         dataset=None,
         view=None,
         port=None,
@@ -235,8 +249,7 @@ class Session(foc.HasClient):
         desktop=None,
         auto=True,
         height=800,
-        color_pool=None,
-        show_attrs=None,
+        show_attributes=None,
         show_confidence=None,
     ):
         if port is None:
@@ -245,15 +258,15 @@ class Session(foc.HasClient):
         if color_pool is None:
             color_pool = fo.config.default_app_color_pool
 
-        if show_attrs is None:
-            show_attrs = fo.config.default_app_show_attrs
+        if show_attributes is None:
+            show_attributes = fo.config.default_app_show_attributes
 
         if show_confidence is None:
             show_confidence = fo.config.default_app_show_confidence
 
         state = self._HC_ATTR_TYPE()
         state.color_pool = color_pool
-        state.show_attrs = show_attrs
+        state.show_attributes = show_attributes
         state.show_confidence = show_confidence
 
         self._context = focx._get_context()
@@ -387,8 +400,8 @@ class Session(foc.HasClient):
 
     @property
     def color_pool(self):
-        """A set of browser support color strings from which the App should
-        draw from.
+        """A list of browser supported color strings from which the App should
+        draw from for coloring fields.
         """
         return self.state.color_pool
 
@@ -403,11 +416,17 @@ class Session(foc.HasClient):
 
     @show_attrs.setter
     @_update_state
-    def show_attrs(self, show_attrs):
-        self.state.show_attrs = show_attrs
+    def show_attributes(self, show_attributes):
+        """Whether to show attributes of labels in expanded sample view images
+        and videos.
+        """
+        self.state.show_attributes = show_attributes
 
     @property
     def show_confidence(self):
+        """Whether to show the confidence of labels in expanded sample view
+        images and videos.
+        """
         return self.state.show_confidence
 
     @show_confidence.setter
@@ -425,7 +444,7 @@ class Session(foc.HasClient):
         return self.state.dataset
 
     @dataset.setter
-    @_update_state
+    @_update_state(auto_show=True)
     def dataset(self, dataset):
         if dataset is not None:
             dataset._reload()
@@ -451,7 +470,7 @@ class Session(foc.HasClient):
         return self.state.view
 
     @view.setter
-    @_update_state
+    @_update_state(auto_show=True)
     def view(self, view):
         self.state.view = view
         if view is not None:
@@ -469,7 +488,7 @@ class Session(foc.HasClient):
         """
         self.state.view = None
 
-    @_update_state
+    @_update_state(auto_show=True)
     def refresh(self):
         """Refreshes the App, reloading the current dataset/view."""
         pass
@@ -703,12 +722,8 @@ class Session(foc.HasClient):
         _display(self, handle, uuid, self._port, height=height)
 
     def _update_state(self, state=None):
-        if state is None:
-            # pylint: disable=access-member-before-definition
-            state = self.state
-
         # see fiftyone.core.client if you would like to understand this
-        self.state = state
+        self.state = state or self.state
 
 
 def _display(session, handle, uuid, port=None, height=None, update=False):

@@ -22,7 +22,7 @@ import fiftyone.constants as foc
 logger = logging.getLogger(__name__)
 
 
-_COLOR_POOL = [
+_COLOR_POOL = {
     "#ee0000",
     "#ee6600",
     "#993300",
@@ -36,7 +36,7 @@ _COLOR_POOL = [
     "#6600ff",
     "#cc33cc",
     "#777799",
-]
+}
 
 
 class FiftyOneConfig(EnvConfig):
@@ -118,10 +118,10 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DEFAULT_APP_SHOW_CONFIDENCE",
             default=True,
         )
-        self.default_app_show_attrs = self.parse_bool(
+        self.default_app_show_attributes = self.parse_bool(
             d,
-            "default_app_show_attrs",
-            env_var="FIFTYONE_DEFAULT_APP_SHOW_ATTRS",
+            "default_app_show_attributes",
+            env_var="FIFTYONE_DEFAULT_APP_SHOW_ATTRIBUTES",
             default=True,
         )
         self.default_app_port = self.parse_int(

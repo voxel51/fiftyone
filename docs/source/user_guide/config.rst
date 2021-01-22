@@ -75,30 +75,7 @@ FiftyOne supports the configuration options described below:
 | `show_progress_bars`          | `FIFTYONE_SHOW_PROGRESS_BARS`       | `True`                      | Controls whether progress bars are printed to the terminal when performing             |
 |                               |                                     |                             | operations such reading/writing large datasets or activiating FiftyOne                 |
 |                               |                                     |                             | Brain methods on datasets.                                                             |
-+------------------------------+-------------------------------------+-----------------------------+----------------------------------------------------------------------------------------+
-
-.. _colors:
-
-Color pool
-----------
-
-.. code-block:: python
-    {
-        "#ee0000",
-        "#ee6600",
-        "#993300",
-        "#996633",
-        "#999900",
-        "#009900",
-        "#003300",
-        "#009999",
-        "#000099",
-        "#0066ff",
-        "#6600ff",
-        "#cc33cc",
-        "#777799",
-    }
-
++-------------------------------+-------------------------------------+-----------------------------+----------------------------------------------------------------------------------------+
 
 Viewing your config
 -------------------
@@ -258,3 +235,28 @@ For example, you can customize your FiftyOne config at runtime as follows:
         default_ml_backend="tensorflow",
         show_progress_bars=True,
     )
+
+.. _colors:
+
+Color pool
+----------
+
+.. code-block:: python
+
+    [
+        "#ee0000",
+        "#ee6600",
+        "#993300",
+        "#996633",
+        "#999900",
+        "#009900",
+        "#003300",
+        "#009999",
+        "#000099",
+        "#0066ff",
+        "#6600ff",
+        "#cc33cc",
+        "#777799",
+    ]
+
+
