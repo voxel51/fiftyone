@@ -1634,8 +1634,6 @@ class LimitLabels(ViewStage):
 
     Examples::
 
-    Examples::
-
         import fiftyone as fo
         from fiftyone import ViewField as F
 

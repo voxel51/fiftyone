@@ -928,7 +928,7 @@ class ViewField(ViewExpression, metaclass=_MetaViewField):
         return "$" + self._expr if self._expr else "$this"
 
 
-# A singleton representing the root of a document/field
+#: A singleton representing the root of a document/field.
 root_field = ViewField()
 
 
