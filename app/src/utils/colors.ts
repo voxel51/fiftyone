@@ -1,6 +1,8 @@
 import _ from "lodash";
 import randomColor from "randomcolor";
 
+import { RESERVED_FIELDS } from "./labels";
+
 let seedCache = 0;
 let mapCache = {};
 
@@ -37,6 +39,8 @@ export function generateColorMap(
   const newMap = seed == seedCache ? Object.assign({}, mapCache) : {};
   seedCache = seed;
   let colors = Array.from(colorPool);
+
+  keys = keys.filter((k) => !RESERVED_FIELDS.includes(k));
 
   const iMap = _.invert(newMap);
   colors = colors.filter((color) => !iMap[color]);
