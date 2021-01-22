@@ -892,7 +892,6 @@ class ViewStageTests(unittest.TestCase):
     def test_map_values(self):
         self._setUp_numeric()
 
-        IF = fo.ViewExpression.if_else
         ROOT = fo.root_field
 
         # Clip all negative values of `numeric_field` to zero
@@ -906,7 +905,7 @@ class ViewStageTests(unittest.TestCase):
 
         # Replace all negative values of `numeric_field` with `None`
         view = self.dataset.map_values(
-            "numeric_field", IF(ROOT >= 0, ROOT, None)
+            "numeric_field", (ROOT >= 0).if_else(ROOT, None)
         )
         it = zip(view, self.dataset)
         for sv, s in it:

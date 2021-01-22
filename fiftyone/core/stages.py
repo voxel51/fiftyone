@@ -1935,7 +1935,6 @@ class MapValues(ViewStage):
         )
 
         # For readability
-        IF = fo.ViewExpression.if_else
         ROOT = fo.root_field
 
         #
@@ -1956,7 +1955,7 @@ class MapValues(ViewStage):
         # Replace all negative values of `numeric_field` with `None`
         #
 
-        stage = fo.MapValues("numeric_field", IF(ROOT >= 0, ROOT, None))
+        stage = fo.MapValues("numeric_field", (ROOT >= 0).if_else(ROOT, None))
         view = dataset.add_stage(stage)
 
     Args:

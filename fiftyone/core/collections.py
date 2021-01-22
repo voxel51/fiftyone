@@ -1428,7 +1428,6 @@ class SampleCollection(object):
             )
 
             # For readability
-            IF = fo.ViewExpression.if_else
             ROOT = fo.root_field
 
             #
@@ -1450,7 +1449,7 @@ class SampleCollection(object):
             #
 
             view = dataset.map_values(
-                "numeric_field", IF(ROOT >= 0, ROOT, None)
+                "numeric_field", (ROOT >= 0).if_else(ROOT, None)
             )
 
         Args:

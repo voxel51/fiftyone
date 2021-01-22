@@ -795,15 +795,13 @@ class ViewExpression(object):
         options = None if case_sensitive else "i"
         return self.re_match(regex, options=options)
 
-    # Static operators ########################################################
+    # Conditional operators ###################################################
 
-    @staticmethod
-    def if_else(cond_expr, true_expr, false_expr):
+    def if_else(self, true_expr, false_expr):
         """Returns either ``true_expr`` or ``false_expr`` depending on the
-        value of the boolean ``cond_expr``.
+        value of this expression, which must resolve to a boolean.
 
         Args:
-            cond_expr: a :class:`ViewExpression` or MongoDB expression dict
             true_expr: a :class:`ViewExpression` or MongoDB expression dict
             false_expr: a :class:`ViewExpression` or MongoDB expression dict
 
@@ -811,7 +809,7 @@ class ViewExpression(object):
             a :class:`ViewExpression`
         """
         return ViewExpression(
-            {"$cond": {"if": cond_expr, "then": true_expr, "else": false_expr}}
+            {"$cond": {"if": self, "then": true_expr, "else": false_expr}}
         )
 
     # Private methods #########################################################
