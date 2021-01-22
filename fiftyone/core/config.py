@@ -22,10 +22,30 @@ import fiftyone.constants as foc
 logger = logging.getLogger(__name__)
 
 
+_COLOR_POOL = [
+    "#ee0000",
+    "#ee6600",
+    "#993300",
+    "#996633",
+    "#999900",
+    "#009900",
+    "#003300",
+    "#009999",
+    "#000099",
+    "#0066ff",
+    "#6600ff",
+    "#cc33cc",
+    "#777799",
+]
+
+
 class FiftyOneConfig(EnvConfig):
     """FiftyOne configuration settings."""
 
     def __init__(self, d):
+        self.color_pool = self.parse_string_array(
+            d, "color_pool", env_var="FIFTYONE_COLOR_POOL", default=_COLOR_POOL
+        )
         self.database_dir = self.parse_string(
             d,
             "database_dir",

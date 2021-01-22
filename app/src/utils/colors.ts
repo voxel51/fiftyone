@@ -1,44 +1,47 @@
 import _ from "lodash";
 import randomColor from "randomcolor";
 
-const FIXED_COLORS = [
-  "#ee0000",
-  "#ee6600",
-  "#993300",
-  "#996633",
-  "#999900",
-  "#009900",
-  "#003300",
-  "#009999",
-  "#000099",
-  "#0066ff",
-  "#6600ff",
-  "#cc33cc",
-  "#777799",
-];
+function shuffle(array, seed) {
+  var m = array.length,
+    t,
+    i;
+
+  // While there remain elements to shuffle…
+  while (m) {
+    // Pick a remaining element…
+    i = Math.floor(random(seed) * m--);
+
+    // And swap it with the current element.
+    t = array[m];
+    array[m] = array[i];
+    array[i] = t;
+    ++seed;
+  }
+
+  return array;
+}
+
+function random(seed) {
+  var x = Math.sin(seed++) * 10000;
+  return x - Math.floor(x);
+}
 
 type Color = string;
 type ColorMap = { [name: string]: Color };
 
 export function generateColorMap(
-  names: string[],
-  existingMap: ColorMap = {}
+  colorPool: Color[],
+  keys: string[],
+  seed: number
 ): ColorMap {
-  let newMap = {};
-
-  const availableColors = new Set(FIXED_COLORS);
-  for (const [name, color] of Object.entries(existingMap || {})) {
-    if (names.includes(name)) {
-      availableColors.delete(color);
-      newMap[name] = color;
-    }
+  const newMap = {};
+  let colors = Array.from(colorPool);
+  if (seed > 0) {
+    colors = shuffle(colors, seed);
   }
-
-  const remainingColors = _.shuffle(Array.from(availableColors));
-  for (const name of names) {
-    if (!newMap[name]) {
-      newMap[name] =
-        remainingColors.pop() || randomColor({ luminosity: "dark" });
+  for (const key of keys) {
+    if (!newMap[key]) {
+      newMap[key] = keys.pop() || randomColor({ luminosity: "dark", seed });
     }
   }
 

@@ -9,6 +9,7 @@ import logging
 
 import eta.core.serial as etas
 
+import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
@@ -48,6 +49,7 @@ class StateDescription(etas.Serializable):
         self,
         active_handle=None,
         close=False,
+        color_pool=None,
         connected=False,
         dataset=None,
         datasets=None,
@@ -57,6 +59,7 @@ class StateDescription(etas.Serializable):
         filters={},
     ):
         self.close = close
+        self.color_pool = set(color_pool or fo.config.color_pool)
         self.connect = connected
         self.dataset = dataset
         self.view = view
@@ -106,6 +109,7 @@ class StateDescription(etas.Serializable):
         """
         active_handle = d.get("active_handle", None)
         close = d.get("close", False)
+        color_pool = d.get("color_pool", None)
         connected = d.get("connected", False)
         filters = d.get("filters", {})
         selected = d.get("selected", [])
@@ -127,6 +131,7 @@ class StateDescription(etas.Serializable):
         return cls(
             active_handle=active_handle,
             close=close,
+            color_pool=color_pool,
             connected=connected,
             dataset=dataset,
             selected=selected,

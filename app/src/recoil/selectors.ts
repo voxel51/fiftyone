@@ -773,10 +773,18 @@ const scalarsMap = selectorFamily({
   },
 });
 
-export const refreshColorMap = selector({
-  key: "refreshColorMap",
-  get: ({ get }) => get(atoms.colorMap),
-  set: ({ get, set }, colorMap) => {
+export const colorPool = selector({
+  key: "colorPool",
+  get: ({ get }) => {
+    return get(atoms.stateDescription).color_pool || [];
+  },
+});
+
+export const colorMap = selector({
+  key: "colorMap",
+  get: ({ get }) => {
+    const pool = get(colorPool);
+    const seed = get(atoms.colorSeed);
     const colorLabelNames = get(labelTuples("sample"))
       .filter(([name, type]) => labelTypeHasColor(type))
       .map(([name]) => name);
@@ -787,17 +795,16 @@ export const refreshColorMap = selector({
       ...get(scalarNames("sample")),
       ...get(scalarNames("frame")),
     ];
-    set(
-      atoms.colorMap,
-      generateColorMap(
-        [
-          ...get(tagNames),
-          ...scalarsList,
-          ...colorLabelNames,
-          ...colorFrameLabelNames,
-        ],
-        colorMap
-      )
+
+    return generateColorMap(
+      pool,
+      [
+        ...get(tagNames),
+        ...scalarsList,
+        ...colorLabelNames,
+        ...colorFrameLabelNames,
+      ],
+      seed
     );
   },
 });
