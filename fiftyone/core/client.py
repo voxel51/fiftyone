@@ -157,6 +157,7 @@ class HasClient(object):
                 raise RuntimeError("Session is not connected")
             while self._data is None:
                 time.sleep(0.2)
+
             self._data = value
             self._client.write_message(
                 json_util.dumps({"type": "update", "state": value.serialize()})

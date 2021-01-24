@@ -170,6 +170,7 @@ def _update_state(auto_show=False):
             self.state.datasets = fod.list_datasets()
             if auto_show:
                 self._auto_show()
+
             self._update_state()
             return result
 
@@ -307,7 +308,7 @@ class Session(foc.HasClient):
             state.dataset = dataset
 
         state.datasets = fod.list_datasets()
-        self._auto_show()
+        state.active_handle = self._auto_show()
         self._update_state(state)
 
         if self._remote:
@@ -653,7 +654,7 @@ class Session(foc.HasClient):
 
     def _auto_show(self):
         if self._auto and (self._context != focx._NONE):
-            self._show()
+            return self._show()
 
     def _capture(self, data):
         from IPython.display import HTML
@@ -720,6 +721,7 @@ class Session(foc.HasClient):
         self._handles[uuid] = {"target": handle, "height": height}
 
         _display(self, handle, uuid, self._port, height=height)
+        return uuid
 
     def _update_state(self, state=None):
         # see fiftyone.core.client if you would like to understand this
