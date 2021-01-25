@@ -3,6 +3,68 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.7.2:
+
+FiftyOne 0.7.2
+--------------
+*Release January 25, 2021*
+
+App
+^^^
+- Changed Fields Sidebar label filters to only return matched samples,
+  i.e. samples with at least one matching label with respect to a filter
+- Fixed a bug in Colab notebooks that allowed for the `.ipynb` file to grow
+  unnecessarily large
+- Improved plotting of numeric fields in the `scalars` tab which includes added
+  ranges for tooltips (`[min, max)`) and integer binning when possible
+- Fixed a bug that prevented
+  `select_fields() <fiftyone.core.collections.SampleCollection.select_fields>`,
+  and 
+  `exclude_fields() <fiftyone.core.collections.SampleCollection.exclude_fields>`
+  from properyly filtering the Fields Sidebar
+- Fixed a bug that prevented selected samples from being cleared when choosing
+  to `Only show` or `Hide` the selected samples from the select samples
+  dropdown
+- Added a `color_pool` keyword argument to
+  :class:`Session <fiftyone.core.session.Session>` and a `default_app_color_pool`
+  :ref:`config variable <configuring-fiftyone>` for overriding the colors
+  used for rendering fields in the App, e.g. detection bounding boxes
+
+Core
+^^^^
+- Exposed all :class:`Aggregtaions <fiftyone.core.aggregations.Aggregation>` as
+  single execution methods on
+  :class:`SampleCollections <fiftyone.core.collections.SampleCollection>`
+- Added the
+  :class:`HistogramValues <fiftyone.core.aggregagtions.HistogramValues>`
+  aggregation.
+- Added support for all label types in
+  :meth:`filter_labels() <fiftyone.core.collections.SampleCollection.filter_labels>`
+- Generalized field path support for
+  :class:`Bounds <fiftyone.core.aggregations.Bounds>`,
+  :class:`Count <fiftyone.core.aggregations.Count>`, 
+  :class:`CountValues <fiftyone.core.aggregations.CountValues>`, 
+  :class:`Distinct <fiftyone.core.aggregations.Distinct>`, and removed
+  :class:`ConfidenceBounds <fiftyone.core.aggregations.ConfidenceBounds>`, 
+  :class:`CountLabels <fiftyone.core.aggregations.CountLabels>`, 
+  :class:`DistinctLabels <fiftyone.core.aggregations.DistinctLabels>`
+- Added support for querying for fields that exist and are not `None` with
+  :meth:`ViewExpression.__eq__() <fiftyone.core.expressions.ViewExpression.__eq__>`,
+  :meth:`ViewExpression__ne__() <fiftyone.core.expressions.ViewExpression.__ne__>`,
+  and
+  :meth:`ViewExpression.exists() <fiftyone.core.expressions.ViewExpression.exists>`
+
+
+Docs
+^^^^
+- Added an FAQ section providing instructions configuring
+  :ref:`remote Jupyter notebooks <faq-remote-notebook-support>`
+
+
+CLI
+^^^
+- Improved `ctrl + c` exit handling for CLI commands
+
 .. _release-notes-v0.7.1:
 
 FiftyOne 0.7.1
