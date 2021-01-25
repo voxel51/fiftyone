@@ -407,7 +407,7 @@ class Session(foc.HasClient):
         return self.state.color_pool
 
     @color_pool.setter
-    @_update_state
+    @_update_state()
     def color_pool(self, color_pool):
         self.state.color_pool = color_pool
 
@@ -416,7 +416,7 @@ class Session(foc.HasClient):
         return self.state.show_attrs
 
     @show_attrs.setter
-    @_update_state
+    @_update_state()
     def show_attributes(self, show_attributes):
         """Whether to show attributes of labels in expanded sample view images
         and videos.
@@ -431,7 +431,7 @@ class Session(foc.HasClient):
         return self.state.show_confidence
 
     @show_confidence.setter
-    @_update_state
+    @_update_state()
     def show_confidence(self, show_confidence):
         self.state.show_confidence = show_confidence
 
