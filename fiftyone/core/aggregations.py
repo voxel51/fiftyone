@@ -147,8 +147,8 @@ class Bounds(Aggregation):
         return BoundsResult(self._field_name, (mn, mx))
 
     def _to_mongo(self, dataset, schema, frame_schema):
-        path, pipeline, list_fields = _parse_field_path(
-            self._field_name, schema, frame_schema, dataset
+        path, pipeline, list_fields = _parse_field_name(
+            self._field_name, dataset, schema=schema, frame_schema=frame_schema
         )
 
         for list_field in list_fields:
@@ -259,8 +259,8 @@ class Count(Aggregation):
         if self._field_name is None:
             return [{"$count": "count"}]
 
-        path, pipeline, list_fields = _parse_field_path(
-            self._field_name, schema, frame_schema, dataset
+        path, pipeline, list_fields = _parse_field_name(
+            self._field_name, dataset, schema=schema, frame_schema=frame_schema
         )
 
         for list_field in list_fields:
@@ -358,8 +358,8 @@ class CountValues(Aggregation):
         return CountValuesResult(self._field_name, d)
 
     def _to_mongo(self, dataset, schema, frame_schema):
-        path, pipeline, list_fields = _parse_field_path(
-            self._field_name, schema, frame_schema, dataset
+        path, pipeline, list_fields = _parse_field_name(
+            self._field_name, dataset, schema=schema, frame_schema=frame_schema
         )
 
         for list_field in list_fields:
@@ -462,8 +462,8 @@ class Distinct(Aggregation):
         return DistinctResult(self._field_name, sorted(d["values"]))
 
     def _to_mongo(self, dataset, schema, frame_schema):
-        path, pipeline, list_fields = _parse_field_path(
-            self._field_name, schema, frame_schema, dataset
+        path, pipeline, list_fields = _parse_field_name(
+            self._field_name, dataset, schema=schema, frame_schema=frame_schema
         )
 
         for list_field in list_fields:
@@ -632,8 +632,8 @@ class HistogramValues(Aggregation):
         return HistogramValuesResult(self._field_name, counts, edges, 0)
 
     def _to_mongo(self, dataset, schema, frame_schema):
-        path, pipeline, list_fields = _parse_field_path(
-            self._field_name, schema, frame_schema, dataset
+        path, pipeline, list_fields = _parse_field_name(
+            self._field_name, dataset, schema=schema, frame_schema=frame_schema
         )
 
         for list_field in list_fields:
@@ -750,8 +750,8 @@ class Sum(Aggregation):
         return SumResult(self._field_name, d["sum"])
 
     def _to_mongo(self, dataset, schema, frame_schema):
-        path, pipeline, list_fields = _parse_field_path(
-            self._field_name, schema, frame_schema, dataset
+        path, pipeline, list_fields = _parse_field_name(
+            self._field_name, dataset, schema=schema, frame_schema=frame_schema
         )
 
         for list_field in list_fields:
@@ -779,19 +779,25 @@ def _unwind_frames():
     return [{"$unwind": "$frames"}, {"$replaceRoot": {"newRoot": "$frames"}}]
 
 
-def _parse_field_path(field_name, schema, frame_schema, dataset):
+def _parse_field_name(
+    field_name, sample_collection, schema=None, frame_schema=None
+):
     pipeline = []
     list_fields = set()
 
-    # Handle video queries
+    # Handle video fields
     is_frames_query = (
         field_name.startswith(_FRAMES_PREFIX) or field_name == "frames"
     )
-    if is_frames_query and (dataset.media_type == fom.VIDEO):
+    if is_frames_query and (sample_collection.media_type == fom.VIDEO):
         if field_name == "frames":
             return field_name, _unwind_frames(), []
 
-        schema = frame_schema
+        if frame_schema is not None:
+            schema = frame_schema
+        else:
+            schema = sample_collection.get_frame_field_schema()
+
         field_name = field_name[len(_FRAMES_PREFIX) :]
         pipeline = _unwind_frames()
 
@@ -805,12 +811,15 @@ def _parse_field_path(field_name, schema, frame_schema, dataset):
     # Ensure root field exists
     root_field_name = field_name.split(".", 1)[0]
 
+    if schema is None:
+        schema = sample_collection.get_field_schema()
+
     try:
         root_field = schema[root_field_name]
     except KeyError:
         raise AggregationError(
-            "Field '%s' does not exist on dataset '%s'"
-            % (root_field_name, dataset.name)
+            "Field '%s' does not exist on collection '%s'"
+            % (root_field_name, sample_collection.name)
         )
 
     # Detect certain list fields automatically
