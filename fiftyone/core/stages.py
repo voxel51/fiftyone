@@ -94,7 +94,7 @@ class ViewStage(object):
         return None
 
     def to_mongo(self, sample_collection, hide_frames=False):
-        """Returns the MongoDB version of the stage.
+        """Returns the MongoDB aggregation pipeline for the stage.
 
         Args:
             sample_collection: the
@@ -1913,6 +1913,7 @@ class MapValues(ViewStage):
     Examples::
 
         import fiftyone as fo
+        from fiftyone import ViewField as F
 
         dataset = fo.Dataset()
         dataset.add_samples(
@@ -1934,28 +1935,25 @@ class MapValues(ViewStage):
             ]
         )
 
-        # For readability
-        ROOT = fo.root_field
-
         #
         # Clip all negative values of `numeric_field` to zero
         #
 
-        stage = fo.MapValues("numeric_field", ROOT.max(0))
+        stage = fo.MapValues("numeric_field", F().max(0))
         view = dataset.add_stage(stage)
 
         #
         # Clip all negative values of `numeric_list_field` to zero
         #
 
-        stage = fo.MapValues("numeric_list_field", ROOT.map(ROOT.max(0)))
+        stage = fo.MapValues("numeric_list_field", F().map(F().max(0)))
         view = dataset.add_stage(stage)
 
         #
         # Replace all negative values of `numeric_field` with `None`
         #
 
-        stage = fo.MapValues("numeric_field", (ROOT >= 0).if_else(ROOT, None))
+        stage = fo.MapValues("numeric_field", (F() >= 0).if_else(F(), None))
         view = dataset.add_stage(stage)
 
     Args:

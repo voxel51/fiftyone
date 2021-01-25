@@ -39,16 +39,38 @@ class Aggregation(object):
         """The field name being computed on."""
         return self._field_name
 
-    def _get_default_result(self):
-        raise NotImplementedError(
-            "Subclass must implement _get_default_result()"
-        )
+    def to_mongo(self, sample_collection):
+        """Returns the MongoDB aggregation pipeline for this aggregation.
 
-    def _get_result(self, d):
-        raise NotImplementedError("Subclass must implement _get_result()")
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the aggregation is being applied
 
-    def _to_mongo(self, dataset, schema, frame_schema):
-        raise NotImplementedError("Subclass must implement _to_mongo()")
+        Returns:
+            a MongoDB aggregation pipeline (list of dicts)
+        """
+        raise NotImplementedError("subclasses must implement to_mongo()")
+
+    def parse_result(self, d):
+        """Parses the raw MongoDB aggregation result produced by running
+        :meth:`to_mongo`.
+
+        Args:
+            d: the result dict
+
+        Returns:
+            an :class:`AggregationResult`
+        """
+        raise NotImplementedError("subclasses must implement parse_result()")
+
+    def default_result(self):
+        """Returns a default result for this aggregation.
+
+        Returns:
+            an :class:`AggregationResult`
+        """
+        raise NotImplementedError("subclasses must implement default_result()")
 
 
 class AggregationResult(etas.Serializable):
@@ -60,7 +82,7 @@ class AggregationResult(etas.Serializable):
     """
 
     def __init__(self, *args, **kwargs):
-        raise NotImplementedError("Subclass must implement __init__()")
+        raise NotImplementedError("subclasses must implement __init__()")
 
     def __str__(self):
         return repr(self)
@@ -138,17 +160,17 @@ class Bounds(Aggregation):
         field_name: the name of the field to compute bounds for
     """
 
-    def _get_default_result(self):
+    def default_result(self):
         return BoundsResult(self._field_name, (None, None))
 
-    def _get_result(self, d):
+    def parse_result(self, d):
         mn = d["min"]
         mx = d["max"]
         return BoundsResult(self._field_name, (mn, mx))
 
-    def _to_mongo(self, dataset, schema, frame_schema):
-        path, pipeline, list_fields = _parse_field_name(
-            self._field_name, dataset, schema=schema, frame_schema=frame_schema
+    def to_mongo(self, sample_collection):
+        path, pipeline, list_fields = sample_collection._parse_field_name(
+            self._field_name
         )
 
         for list_field in list_fields:
@@ -249,24 +271,24 @@ class Count(Aggregation):
     def __init__(self, field_name=None):
         super().__init__(field_name)
 
-    def _get_default_result(self):
+    def default_result(self):
         return CountResult(self._field_name, 0)
 
-    def _get_result(self, d):
+    def parse_result(self, d):
         return CountResult(self._field_name, d["count"])
 
-    def _to_mongo(self, dataset, schema, frame_schema):
+    def to_mongo(self, sample_collection):
         if self._field_name is None:
             return [{"$count": "count"}]
 
-        path, pipeline, list_fields = _parse_field_name(
-            self._field_name, dataset, schema=schema, frame_schema=frame_schema
+        path, pipeline, list_fields = sample_collection._parse_field_name(
+            self._field_name
         )
 
         for list_field in list_fields:
             pipeline.append({"$unwind": "$" + list_field})
 
-        if dataset.media_type != fom.VIDEO or path != "frames":
+        if sample_collection.media_type != fom.VIDEO or path != "frames":
             pipeline.append({"$match": {"$expr": {"$gt": ["$" + path, None]}}})
 
         return pipeline + [{"$count": "count"}]
@@ -350,16 +372,16 @@ class CountValues(Aggregation):
         field_name: the name of the field to count
     """
 
-    def _get_default_result(self):
+    def default_result(self):
         return CountValuesResult(self._field_name, {})
 
-    def _get_result(self, d):
+    def parse_result(self, d):
         d = {i["k"]: i["count"] for i in d["result"] if i["k"] is not None}
         return CountValuesResult(self._field_name, d)
 
-    def _to_mongo(self, dataset, schema, frame_schema):
-        path, pipeline, list_fields = _parse_field_name(
-            self._field_name, dataset, schema=schema, frame_schema=frame_schema
+    def to_mongo(self, sample_collection):
+        path, pipeline, list_fields = sample_collection._parse_field_name(
+            self._field_name
         )
 
         for list_field in list_fields:
@@ -455,22 +477,22 @@ class Distinct(Aggregation):
         field_name: the name of the field to compute distinct values for
     """
 
-    def _get_default_result(self):
+    def default_result(self):
         return DistinctResult(self._field_name, [])
 
-    def _get_result(self, d):
+    def parse_result(self, d):
         return DistinctResult(self._field_name, sorted(d["values"]))
 
-    def _to_mongo(self, dataset, schema, frame_schema):
-        path, pipeline, list_fields = _parse_field_name(
-            self._field_name, dataset, schema=schema, frame_schema=frame_schema
+    def to_mongo(self, sample_collection):
+        path, pipeline, list_fields = sample_collection._parse_field_name(
+            self._field_name
         )
 
         for list_field in list_fields:
             pipeline.append({"$unwind": "$" + list_field})
 
         pipeline.append(
-            {"$group": {"_id": None, "values": {"$addToSet": "$" + path},}}
+            {"$group": {"_id": None, "values": {"$addToSet": "$" + path}}}
         )
 
         return pipeline
@@ -596,16 +618,16 @@ class HistogramValues(Aggregation):
         # User-provided bin edges
         self._edges = list(bins)
 
-    def _get_default_result(self):
+    def default_result(self):
         return HistogramValuesResult(self._field_name, [], [], 0)
 
-    def _get_result(self, d):
+    def parse_result(self, d):
         if self._edges is not None:
-            return self._get_result_edges(d)
+            return self._parse_result_edges(d)
 
-        return self._get_result_auto(d)
+        return self._parse_result_auto(d)
 
-    def _get_result_edges(self, d):
+    def _parse_result_edges(self, d):
         _edges_array = np.array(self._edges)
         edges = list(_edges_array)
         counts = [0] * (len(edges) - 1)
@@ -620,7 +642,7 @@ class HistogramValues(Aggregation):
 
         return HistogramValuesResult(self._field_name, counts, edges, other)
 
-    def _get_result_auto(self, d):
+    def _parse_result_auto(self, d):
         counts = []
         edges = []
         for di in d["bins"]:
@@ -631,9 +653,9 @@ class HistogramValues(Aggregation):
 
         return HistogramValuesResult(self._field_name, counts, edges, 0)
 
-    def _to_mongo(self, dataset, schema, frame_schema):
-        path, pipeline, list_fields = _parse_field_name(
-            self._field_name, dataset, schema=schema, frame_schema=frame_schema
+    def to_mongo(self, sample_collection):
+        path, pipeline, list_fields = sample_collection._parse_field_name(
+            self._field_name
         )
 
         for list_field in list_fields:
@@ -743,15 +765,15 @@ class Sum(Aggregation):
     def __init__(self, field_name):
         super().__init__(field_name)
 
-    def _get_default_result(self):
+    def default_result(self):
         return SumResult(self._field_name, 0)
 
-    def _get_result(self, d):
+    def parse_result(self, d):
         return SumResult(self._field_name, d["sum"])
 
-    def _to_mongo(self, dataset, schema, frame_schema):
-        path, pipeline, list_fields = _parse_field_name(
-            self._field_name, dataset, schema=schema, frame_schema=frame_schema
+    def to_mongo(self, sample_collection):
+        path, pipeline, list_fields = sample_collection._parse_field_name(
+            self._field_name
         )
 
         for list_field in list_fields:
@@ -773,72 +795,3 @@ class SumResult(AggregationResult):
     def __init__(self, name, sum):
         self.name = name
         self.sum = sum
-
-
-def _unwind_frames():
-    return [{"$unwind": "$frames"}, {"$replaceRoot": {"newRoot": "$frames"}}]
-
-
-def _parse_field_name(
-    field_name, sample_collection, schema=None, frame_schema=None
-):
-    pipeline = []
-    list_fields = set()
-
-    # Handle video fields
-    is_frames_query = (
-        field_name.startswith(_FRAMES_PREFIX) or field_name == "frames"
-    )
-    if is_frames_query and (sample_collection.media_type == fom.VIDEO):
-        if field_name == "frames":
-            return field_name, _unwind_frames(), []
-
-        if frame_schema is not None:
-            schema = frame_schema
-        else:
-            schema = sample_collection.get_frame_field_schema()
-
-        field_name = field_name[len(_FRAMES_PREFIX) :]
-        pipeline = _unwind_frames()
-
-    # Parse explicit array references
-    chunks = field_name.split("[]")
-    for idx in range(len(chunks) - 1):
-        list_fields.add("".join(chunks[: (idx + 1)]))
-
-    field_name = "".join(chunks)
-
-    # Ensure root field exists
-    root_field_name = field_name.split(".", 1)[0]
-
-    if schema is None:
-        schema = sample_collection.get_field_schema()
-
-    try:
-        root_field = schema[root_field_name]
-    except KeyError:
-        raise AggregationError(
-            "Field '%s' does not exist on collection '%s'"
-            % (root_field_name, sample_collection.name)
-        )
-
-    # Detect certain list fields automatically
-
-    if isinstance(root_field, fof.ListField):
-        list_fields.add(root_field_name)
-
-    if isinstance(root_field, fof.EmbeddedDocumentField):
-        if root_field.document_type in fol._LABEL_LIST_FIELDS:
-            prefix = (
-                root_field_name
-                + "."
-                + root_field.document_type._LABEL_LIST_FIELD
-            )
-            if field_name.startswith(prefix):
-                list_fields.add(prefix)
-
-    # sorting is important here because one must unwind field `x` before
-    # embedded field `x.y`
-    list_fields = sorted(list_fields)
-
-    return field_name, pipeline, list_fields

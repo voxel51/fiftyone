@@ -1406,6 +1406,7 @@ class SampleCollection(object):
         Examples::
 
             import fiftyone as fo
+            from fiftyone import ViewField as F
 
             dataset = fo.Dataset()
             dataset.add_samples(
@@ -1427,21 +1428,18 @@ class SampleCollection(object):
                 ]
             )
 
-            # For readability
-            ROOT = fo.root_field
-
             #
             # Clip all negative values of `numeric_field` to zero
             #
 
-            view = dataset.map_values("numeric_field", ROOT.max(0))
+            view = dataset.map_values("numeric_field", F().max(0))
 
             #
             # Clip all negative values of `numeric_list_field` to zero
             #
 
             view = dataset.map_values(
-                "numeric_list_field", ROOT.map(ROOT.max(0))
+                "numeric_list_field", F().map(F().max(0))
             )
 
             #
@@ -1449,7 +1447,7 @@ class SampleCollection(object):
             #
 
             view = dataset.map_values(
-                "numeric_field", (ROOT >= 0).if_else(ROOT, None)
+                "numeric_field", (F() >= 0).if_else(F(), None)
             )
 
         Args:
@@ -2980,13 +2978,6 @@ class SampleCollection(object):
         elif not aggregations:
             return False, [], None
 
-        # pylint: disable=no-member
-        schema = self.get_field_schema()
-        if self.media_type == fom.VIDEO:
-            frame_schema = self.get_frame_field_schema()
-        else:
-            frame_schema = None
-
         pipelines = {}
         for idx, agg in enumerate(aggregations):
             if not isinstance(agg, foa.Aggregation):
@@ -2994,11 +2985,7 @@ class SampleCollection(object):
                     "'%s' is not an %s" % (agg.__class__, foa.Aggregation)
                 )
 
-            pipelines[str(idx)] = agg._to_mongo(
-                self._dataset, schema, frame_schema
-            )
-
-        result_d = {}
+            pipelines[str(idx)] = agg.to_mongo(self)
 
         return scalar_result, aggregations, [{"$facet": pipelines}]
 
@@ -3006,9 +2993,9 @@ class SampleCollection(object):
         results = []
         for idx, agg in enumerate(aggregations):
             try:
-                results.append(agg._get_result(result[str(idx)][0]))
+                results.append(agg.parse_result(result[str(idx)][0]))
             except:
-                results.append(agg._get_default_result())
+                results.append(agg.default_result())
 
         return results[0] if scalar_result else results
 
@@ -3025,11 +3012,8 @@ class SampleCollection(object):
     def _serialize_schema(self, schema):
         return {field_name: str(field) for field_name, field in schema.items()}
 
-
-def _get_random_characters(n):
-    return "".join(
-        random.choice(string.ascii_lowercase + string.digits) for _ in range(n)
-    )
+    def _parse_field_name(self, field_name):
+        return _parse_field_name(self, field_name)
 
 
 def get_label_fields(
@@ -3290,3 +3274,72 @@ def _get_field_with_type(label_fields, label_cls):
             return field
 
     return None
+
+
+def _parse_field_name(sample_collection, field_name):
+    if sample_collection.media_type == fom.VIDEO and (
+        field_name.startswith(_FRAMES_PREFIX) or field_name == "frames"
+    ):
+        pipeline = _unwind_frames()
+
+        if field_name == "frames":
+            return field_name, pipeline, []
+
+        schema = sample_collection.get_frame_field_schema()
+
+        field_name = field_name[len(_FRAMES_PREFIX) :]
+    else:
+        pipeline = []
+        schema = sample_collection.get_field_schema()
+
+    list_fields = set()
+
+    # Parse explicit array references
+    chunks = field_name.split("[]")
+    for idx in range(len(chunks) - 1):
+        list_fields.add("".join(chunks[: (idx + 1)]))
+
+    # Array references [] have been stripped
+    field_name = "".join(chunks)
+
+    # Ensure root field exists
+    root_field_name = field_name.split(".", 1)[0]
+
+    try:
+        root_field = schema[root_field_name]
+    except KeyError:
+        raise ValueError(
+            "Field '%s' does not exist on collection '%s'"
+            % (root_field_name, sample_collection.name)
+        )
+
+    # Detect certain list fields automatically
+
+    if isinstance(root_field, fof.ListField):
+        list_fields.add(root_field_name)
+
+    if isinstance(root_field, fof.EmbeddedDocumentField):
+        if root_field.document_type in fol._LABEL_LIST_FIELDS:
+            prefix = (
+                root_field_name
+                + "."
+                + root_field.document_type._LABEL_LIST_FIELD
+            )
+            if field_name.startswith(prefix):
+                list_fields.add(prefix)
+
+    # sorting is important here because one must unwind field `x` before
+    # embedded field `x.y`
+    list_fields = sorted(list_fields)
+
+    return field_name, pipeline, list_fields
+
+
+def _unwind_frames():
+    return [{"$unwind": "$frames"}, {"$replaceRoot": {"newRoot": "$frames"}}]
+
+
+def _get_random_characters(n):
+    return "".join(
+        random.choice(string.ascii_lowercase + string.digits) for _ in range(n)
+    )
