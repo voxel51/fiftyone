@@ -21,7 +21,7 @@ App
   :meth:`select_fields() <fiftyone.core.collections.SampleCollection.select_fields>`,
   and 
   :meth:`exclude_fields() <fiftyone.core.collections.SampleCollection.exclude_fields>`
-  from properyly filtering the Fields Sidebar
+  from properly filtering the Fields Sidebar
 - Fixed a bug that prevented selected samples from being cleared when choosing
   to `Only show` or `Hide` the selected samples from the select samples
   dropdown
