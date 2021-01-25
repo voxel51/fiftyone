@@ -307,6 +307,9 @@ class Session(foc.HasClient):
         elif dataset is not None:
             state.dataset = dataset
 
+        if state.dataset is not None:
+            state.dataset._reload()
+
         state.datasets = fod.list_datasets()
         state.active_handle = self._auto_show()
         self._update_state(state)
