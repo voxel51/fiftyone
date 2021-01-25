@@ -66,6 +66,22 @@ Core
 
 Docs
 ^^^^
+- Added copy-paste-able code examples to all
+  :class:`ViewStage <fiftyone.core.stages.ViewStage>` class docs and their
+  corresponding :meth:`SampleCollection <fiftyone.core.collections.view_stage>`
+  methods
+- Added copy-paste-able code examples to all
+  :class:`Aggregation <fiftyone.core.aggregations.Aggregation>` class docs and their
+  corresponding :meth:`SampleCollection <fiftyone.core.collections.aggregation>`
+  methods
+- Added documentation for
+  :meth:`map_labels() <fiftyone.core.collections.SampleCollection.map_labels>`
+  and
+  :meth:`map_values() <fiftyone.core.collections.SampleCollection.map_values>`
+  to the :ref:`Dataset views <using-views>` user guide
+- Updated the :ref:`Using aggregations <using-aggregations>` user guide to
+  provide a thorough overview and examples of the various aggregation
+  functionality, including advanced usage tips
 - Added an FAQ section providing instructions configuring
   :ref:`remote Jupyter notebooks <faq-remote-notebook-support>`
 
