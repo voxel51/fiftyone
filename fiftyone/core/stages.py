@@ -755,7 +755,7 @@ def _get_filter_field_pipeline(
 
     pipeline = [
         {
-            "$addFields": {
+            "$set": {
                 new_field: {
                     "$cond": {
                         "if": cond,
@@ -792,7 +792,7 @@ def _get_filter_frames_field_pipeline(
 
     pipeline = [
         {
-            "$addFields": {
+            "$set": {
                 frames: {
                     "$map": {
                         "input": "$%s" % frames,
@@ -1266,7 +1266,7 @@ def _get_filter_list_field_pipeline(
 
     pipeline = [
         {
-            "$addFields": {
+            "$set": {
                 filter_field: {
                     "$filter": {"input": "$" + filter_field, "cond": cond}
                 }
@@ -1309,7 +1309,7 @@ def _get_filter_frames_list_field_pipeline(
 
     pipeline = [
         {
-            "$addFields": {
+            "$set": {
                 frames: {
                     "$map": {
                         "input": "$%s" % frames,
@@ -1715,7 +1715,7 @@ class LimitLabels(ViewStage):
 
         return [
             {
-                "$addFields": {
+                "$set": {
                     self._labels_list_field: {
                         "$slice": ["$" + self._labels_list_field, limit]
                     }
@@ -1828,8 +1828,8 @@ class MapLabels(ViewStage):
     """
 
     def __init__(self, field, map):
-        self._map = map
         self._field = field
+        self._map = map
         self._labels_field = None
 
     @property
@@ -1985,9 +1985,9 @@ class MapValues(ViewStage):
             and self._field.startswith(_FRAMES_PREFIX)
         ):
             # @todo implement this
-            raise ValueError("Mapping frame labels is not yet supported")
+            raise ValueError("Mapping frame values is not yet supported")
 
-        return [{"$addFields": {self._field: self._get_mongo_filter()}}]
+        return [{"$set": {self._field: self._get_mongo_filter()}}]
 
     def _get_mongo_filter(self):
         return _get_field_mongo_filter(self._expr, prefix=self._field)
@@ -2301,7 +2301,7 @@ class Mongo(ViewStage):
 
         stage = fo.Mongo([
             {
-                "$addFields": {
+                "$set": {
                     "_sort_field": {
                         "$size": {"$ifNull": ["$predictions.detections", []]}
                     }
@@ -2836,7 +2836,7 @@ class SortBy(ViewStage):
             return [{"$sort": {field_or_expr: order}}]
 
         return [
-            {"$addFields": {"_sort_field": field_or_expr}},
+            {"$set": {"_sort_field": field_or_expr}},
             {"$sort": {"_sort_field": order}},
             {"$unset": "_sort_field"},
         ]
