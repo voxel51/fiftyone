@@ -1843,51 +1843,17 @@ class MapLabels(ViewStage):
         return self._map
 
     def to_mongo(self, sample_collection, **_):
-        self._labels_field, is_list_field, is_frame_field = _get_labels_field(
+        labels_field, _, is_frame_field = _get_labels_field(
             self._field, sample_collection
         )
+
         if is_frame_field:
-            # @todo implement this
-            raise ValueError("Mapping frame labels is not yet supported")
+            labels_field = _FRAMES_PREFIX + labels_field
 
-        values = sorted(self._map.values())
-        keys = sorted(self._map.keys(), key=lambda k: self._map[k])
+        label_path = labels_field + ".label"
 
-        label = (
-            "$$obj.label"
-            if is_list_field
-            else "$%s.label" % self._labels_field
-        )
-
-        cond = {
-            "$cond": [
-                {"$in": [label, "$$keys"]},
-                {
-                    "$arrayElemAt": [
-                        "$$values",
-                        {"$indexOfArray": ["$$keys", label]},
-                    ]
-                },
-                label,
-            ]
-        }
-
-        if is_list_field:
-            _in = {
-                "$map": {
-                    "input": "$%s" % self._labels_field,
-                    "as": "obj",
-                    "in": {"$mergeObjects": ["$$obj", {"label": cond}]},
-                }
-            }
-            set_field = self._labels_field
-        else:
-            _in = cond
-            set_field = "%s.label" % self._labels_field
-
-        let = {"$let": {"vars": {"keys": keys, "values": values}, "in": _in}}
-
-        return [{"$set": {set_field: let}}]
+        expr = foe.ViewField().map_values(self._map)
+        return _get_set_field_pipeline(sample_collection, label_path, expr)
 
     def _kwargs(self):
         return [
@@ -1978,22 +1944,15 @@ class MapValues(ViewStage):
         return self._expr
 
     def to_mongo(self, sample_collection, **_):
-        if (
-            sample_collection.media_type == fom.VIDEO
-            and self._field.startswith(_FRAMES_PREFIX)
-        ):
-            # @todo implement this
-            raise ValueError("Mapping frame values is not yet supported")
-
-        return [{"$set": {self._field: self._get_mongo_filter()}}]
-
-    def _get_mongo_filter(self):
-        return _get_field_mongo_filter(self._expr, prefix=self._field)
+        return _get_set_field_pipeline(
+            sample_collection, self._field, self._expr
+        )
 
     def _kwargs(self):
+        # @todo `expr` doesn't handle list fields
         return [
             ["field", self._field],
-            ["expr", self._get_mongo_filter()],
+            ["expr", _get_mongo_expr(self._expr, prefix="$" + self._field)],
         ]
 
     @classmethod
@@ -2001,6 +1960,203 @@ class MapValues(ViewStage):
         return [
             {"name": "field", "type": "field"},
             {"name": "expr", "type": "dict", "placeholder": ""},
+        ]
+
+    def validate(self, sample_collection):
+        sample_collection.validate_fields_exist(self._field)
+
+
+def _get_set_field_pipeline(
+    sample_collection, field, expr, embedded_root=False, root=False
+):
+    if sample_collection.media_type == fom.VIDEO and field.startswith(
+        _FRAMES_PREFIX
+    ):
+        # @todo implement this
+        raise ValueError("Processing frame fields is not yet supported")
+
+    path, pipeline, list_fields = sample_collection._parse_field_name(field)
+
+    # Don't unroll terminal lists unless explicitly requested
+    list_fields = [lf for lf in list_fields if lf != path]
+
+    if not list_fields:
+        if root:
+            prefix = None
+        elif embedded_root:
+            if "." in path:
+                prefix = "$" + path.rsplit(".", 1)[0]
+            else:
+                prefix = None
+        else:
+            prefix = "$" + path
+
+        path_expr = _get_mongo_expr(expr, prefix=prefix)
+
+        return pipeline + [{"$set": {path: path_expr}}]
+
+    if len(list_fields) > 1:
+        # @todo can this restriction be lifted?
+        raise ValueError(
+            "Field '%s' contains more than one list field" % field
+        )
+
+    list_field = list_fields[0]
+
+    map_path = "$$element" + path[len(list_field) :]
+    map_root, map_field = map_path.rsplit(".", 1)
+
+    if "." in map_root:
+        # @todo can this restriction be lifted?
+        raise ValueError(
+            "Processing embedded fields of lists is not supported"
+        )
+
+    if root:
+        prefix = None
+    elif embedded_root:
+        prefix = map_root
+    else:
+        prefix = map_path
+
+    map_expr = _get_mongo_expr(expr, prefix=prefix)
+
+    return pipeline + [
+        {
+            "$set": {
+                list_field: {
+                    "$map": {
+                        "input": "$" + list_field,
+                        "as": "element",
+                        "in": {
+                            "$mergeObjects": [map_root, {map_field: map_expr}]
+                        },
+                    }
+                }
+            }
+        }
+    ]
+
+
+def _get_mongo_expr(expr, prefix=None):
+    if isinstance(expr, foe.ViewExpression):
+        return expr.to_mongo(prefix=prefix)
+
+    return expr
+
+
+class SetField(ViewStage):
+    """Sets a field or embedded field on each sample in a collection by
+    evaluating the given expression.
+
+    .. note::
+
+        Note that you cannot set a non-existing top-level field using this
+        stage, since doing so would violate the dataset's schema. You can,
+        however, first declare a new field via
+        :meth:`fiftyone.core.dataset.Dataset.add_sample_field` and then
+        populate it in a view via this stage.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        #
+        # Add a `num_predictions` property to the `predictions` field that
+        # contains the number of objects in the field
+        #
+
+        set_field = fo.SetField(
+            "predictions.num_predictions", F("detections").length()
+        )
+        view = dataset.add_stage(stage)
+        print(view.bounds("predictions.num_predictions"))
+
+        #
+        # Set an `is_animal` field on each object in the `predictions` field
+        # that indicates whether the object is an animal
+        #
+
+        ANIMALS = [
+            "bear", "bird", "cat", "cow", "dog", "elephant", "giraffe",
+            "horse", "sheep", "zebra"
+        ]
+
+        set_field = fo.SetField(
+            "predictions.detections.is_animal", F("label").is_in(ANIMALS)
+        )
+        view = dataset.add_stage(stage)
+        print(view.count_values("predictions.detections.is_animal"))
+
+    Args:
+        field: the field or embedded field to set
+        expr: a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that defines the field value to set
+        root (False): whether the provided expression should be interpreted
+            relative to the nested document on which the embedded field will be
+            set (False), or the root sample (True)
+    """
+
+    def __init__(self, field, expr, root=False):
+        self._field = field
+        self._expr = expr
+        self._root = root
+
+    @property
+    def field(self):
+        """The field to set."""
+        return self._field
+
+    @property
+    def expr(self):
+        """The expression to apply."""
+        return self._expr
+
+    @property
+    def root(self):
+        """Whether the provided expression should be interpreted relative to
+        the root sample.
+        """
+        return self._root
+
+    def to_mongo(self, sample_collection, **_):
+        return _get_set_field_pipeline(
+            sample_collection,
+            self._field,
+            self._expr,
+            embedded_root=(not self._root),
+            root=self._root,
+        )
+
+    def _kwargs(self):
+        # #@todo doesn't handle list fields
+        if self._root or "." not in self._field:
+            prefix = None
+        else:
+            prefix = "$" + self._field.rsplit(".")[0]
+
+        return [
+            ["field", self._field],
+            ["expr", _get_mongo_expr(self._expr, prefix=prefix)],
+            ["root", self._root],
+        ]
+
+    @classmethod
+    def _params(self):
+        return [
+            {"name": "field", "type": "field"},
+            {"name": "expr", "type": "dict", "placeholder": ""},
+            {
+                "name": "root",
+                "type": "bool",
+                "default": "False",
+                "placeholder": "root (default=False)",
+            },
         ]
 
     def validate(self, sample_collection):
@@ -2121,16 +2277,16 @@ class Match(ViewStage):
         return self._filter
 
     def to_mongo(self, _, **__):
-        return [{"$match": self._get_mongo_filter()}]
+        return [{"$match": self._get_mongo_expr()}]
 
-    def _get_mongo_filter(self):
+    def _get_mongo_expr(self):
         if isinstance(self._filter, foe.ViewExpression):
             return {"$expr": self._filter.to_mongo()}
 
         return self._filter
 
     def _kwargs(self):
-        return [["filter", self._get_mongo_filter()]]
+        return [["filter", self._get_mongo_expr()]]
 
     def _validate_params(self):
         if not isinstance(self._filter, (foe.ViewExpression, dict)):
@@ -3120,6 +3276,7 @@ _STAGES = [
     Select,
     SelectFields,
     SelectObjects,
+    SetField,
     Skip,
     SortBy,
     Take,

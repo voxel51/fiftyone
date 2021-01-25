@@ -110,6 +110,7 @@ from .core.stages import (
     Select,
     SelectFields,
     SelectObjects,
+    SetField,
     Skip,
     SortBy,
     Take,

@@ -1462,6 +1462,63 @@ class SampleCollection(object):
         return self._add_view_stage(fos.MapValues(field, expr))
 
     @view_stage
+    def set_field(self, field, expr, root=False):
+        """Sets a field or embedded field on each sample in the collection by
+        evaluating the given expression.
+
+        .. note::
+
+            Note that you cannot set a non-existing top-level field using this
+            stage, since doing so would violate the dataset's schema. You can,
+            however, first declare a new field via
+            :meth:`fiftyone.core.dataset.Dataset.add_sample_field` and then
+            populate it in a view via this stage.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            #
+            # Add a `num_predictions` property to the `predictions` field that
+            # contains the number of objects in the field
+            #
+
+            view = dataset.set_field(
+                "predictions.num_predictions", F("detections").length()
+            )
+            print(view.bounds("predictions.num_predictions"))
+
+            #
+            # Set an `is_animal` field on each object in the `predictions` field
+            # that indicates whether the object is an animal
+            #
+
+            ANIMALS = [
+                "bear", "bird", "cat", "cow", "dog", "elephant", "giraffe",
+                "horse", "sheep", "zebra"
+            ]
+
+            view = dataset.set_field(
+                "predictions.detections.is_animal", F("label").is_in(ANIMALS)
+            )
+            print(view.count_values("predictions.detections.is_animal"))
+
+        Args:
+            field: the field or embedded field to set
+            expr: a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that defines the field value to set
+            root (False): whether the provided expression should be interpreted
+                relative to the nested document on which the embedded field
+                will be set (False) or the root sample (True)
+        """
+        return self._add_view_stage(fos.SetField(field, expr, root=root))
+
+    @view_stage
     def match(self, filter):
         """Filters the samples in the collection by the given filter.
 
