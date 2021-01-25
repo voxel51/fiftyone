@@ -18,9 +18,9 @@ App
 - Improved plotting of numeric fields in the `scalars` tab which includes added
   ranges for tooltips (`[min, max)`) and integer binning when possible
 - Fixed a bug that prevented
-  `select_fields() <fiftyone.core.collections.SampleCollection.select_fields>`,
+  :meth:`select_fields() <fiftyone.core.collections.SampleCollection.select_fields>`,
   and 
-  `exclude_fields() <fiftyone.core.collections.SampleCollection.exclude_fields>`
+  :meth:`exclude_fields() <fiftyone.core.collections.SampleCollection.exclude_fields>`
   from properyly filtering the Fields Sidebar
 - Fixed a bug that prevented selected samples from being cleared when choosing
   to `Only show` or `Hide` the selected samples from the select samples
@@ -34,10 +34,14 @@ Core
 ^^^^
 - Exposed all :class:`Aggregtaions <fiftyone.core.aggregations.Aggregation>` as
   single execution methods on
-  :class:`SampleCollections <fiftyone.core.collections.SampleCollection>`
+  :class:`SampleCollections <fiftyone.core.collections.SampleCollection>`,
+  e.g.
+  :meth:`Dataset.distinct() <fiftyone.core.collections.SampleCollection.distinct>`
 - Added the
-  :class:`HistogramValues <fiftyone.core.aggregagtions.HistogramValues>`
-  aggregation.
+  :class:`HistogramValues <fiftyone.core.aggregations.HistogramValues>`
+  :class:`MapValues <fiftyone.core.aggregations.MapValues>`,
+  and :class:`Sum <fiftyone.core.aggregations.Sum>`
+  aggregations
 - Added support for all label types in
   :meth:`filter_labels() <fiftyone.core.collections.SampleCollection.filter_labels>`
 - Generalized field path support for
@@ -50,9 +54,14 @@ Core
   :class:`DistinctLabels <fiftyone.core.aggregations.DistinctLabels>`
 - Added support for querying for fields that exist and are not `None` with
   :meth:`ViewExpression.__eq__() <fiftyone.core.expressions.ViewExpression.__eq__>`,
-  :meth:`ViewExpression__ne__() <fiftyone.core.expressions.ViewExpression.__ne__>`,
+  :meth:`ViewExpression.__ne__() <fiftyone.core.expressions.ViewExpression.__ne__>`,
   and
   :meth:`ViewExpression.exists() <fiftyone.core.expressions.ViewExpression.exists>`
+- Removed the redundant
+  :meth:`match_tag() <fiftyone.core.collections.SampleCollection.match_tag>`
+  stage, use 
+  :meth:`match_tags() <fiftyone.core.collections.SampleCollection.match_tags>`
+  instead
 
 
 Docs
