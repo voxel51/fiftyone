@@ -32,7 +32,6 @@ from .core.dataset import (
     get_default_dataset_dir,
 )
 from .core.expressions import (
-    root_field,
     ViewField,
     ViewExpression,
 )
