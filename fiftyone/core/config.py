@@ -181,7 +181,7 @@ class AppConfig(EnvConfig):
         self.notebook_height = self.parse_int(
             d,
             "notebook_height",
-            env_var="FIFTYONE_DEFAULT_APP_HEIGHT",
+            env_var="FIFTYONE_DEFAULT_APP_NOTEBOOK_HEIGHT",
             default=800,
         )
         self.show_confidence = self.parse_bool(
