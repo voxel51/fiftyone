@@ -101,7 +101,6 @@ from .core.stages import (
     Limit,
     LimitLabels,
     MapLabels,
-    MapValues,
     Match,
     MatchTags,
     Mongo,

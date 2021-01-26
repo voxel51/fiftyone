@@ -1399,72 +1399,39 @@ class SampleCollection(object):
         return self._add_view_stage(fos.MapLabels(field, map))
 
     @view_stage
-    def map_values(self, field, expr):
-        """Applies an expression to the values of a field for each sample in
-        the collection.
-
-        Examples::
-
-            import fiftyone as fo
-            from fiftyone import ViewField as F
-
-            dataset = fo.Dataset()
-            dataset.add_samples(
-                [
-                    fo.Sample(
-                        filepath="/path/to/image1.png",
-                        numeric_field=1.0,
-                        numeric_list_field=[-1, 0, 1],
-                    ),
-                    fo.Sample(
-                        filepath="/path/to/image2.png",
-                        numeric_field=-1.0,
-                        numeric_list_field=[-2, -1, 0, 1],
-                    ),
-                    fo.Sample(
-                        filepath="/path/to/image3.png",
-                        numeric_field=-1.0,
-                    ),
-                ]
-            )
-
-            #
-            # Clip all negative values of `numeric_field` to zero
-            #
-
-            view = dataset.map_values("numeric_field", F().max(0))
-
-            #
-            # Clip all negative values of `numeric_list_field` to zero
-            #
-
-            view = dataset.map_values(
-                "numeric_list_field", F().map(F().max(0))
-            )
-
-            #
-            # Replace all negative values of `numeric_field` with `None`
-            #
-
-            view = dataset.map_values(
-                "numeric_field", (F() >= 0).if_else(F(), None)
-            )
-
-        Args:
-            field: the field to operate on
-            expr: a :class:`fiftyone.core.expressions.ViewExpression` or
-                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-                that defines the operation to apply to the field
-
-        Returns:
-            a :class:`fiftyone.core.view.DatasetView`
-        """
-        return self._add_view_stage(fos.MapValues(field, expr))
-
-    @view_stage
     def set_field(self, field, expr, root=False):
-        """Sets a field or embedded field on each sample in the collection by
+        """Sets a field or embedded field on each sample in a collection by
         evaluating the given expression.
+
+        This method can process embedded list fields. To do so, simply append
+        ``[]`` to any list component(s) of the field path.
+
+        .. note::
+
+            There are two cases where FiftyOne will automatically unwind array
+            fields without requiring you to explicitly specify this via the
+            ``[]`` syntax:
+
+            **Top-level lists:** when you specify a ``field`` path that refers
+            to a top-level list field of a dataset; i.e., ``list_field`` is
+            automatically coerced to ``list_field[]``, if necessary.
+
+            **List fields:** When you specify a ``field`` path that refers to
+            the list field of a |Label| class, such as the
+            :attr:`Detections.detections <fiftyone.core.labels.Detections.detections>`
+            attribute; i.e., ``ground_truth.detections.label`` is automatically
+            coerced to ``ground_truth.detections[].label``, if necessary.
+
+            See the examples below for demonstrations of this behavior.
+
+        By default, the provided ``expr`` is interpreted relative to the
+        document on which the embedded field is being set. For example, if you
+        are setting a nested field ``field="embedded.document.field"``, then
+        the expression ``expr`` you provide will be applied to the
+        ``embedded.document`` document. Alternatively, if you would like
+        ``expr`` to be interpreted relative to the root sample document, then
+        you can set the ``root=True`` parameter. See the examples below for
+        demonstrations of this behavior.
 
         .. note::
 
@@ -1483,12 +1450,35 @@ class SampleCollection(object):
             dataset = foz.load_zoo_dataset("quickstart")
 
             #
+            # Replace all values of the `uniqueness` field that are less than
+            # 0.5 with `None`
+            #
+
+            view = dataset.set_field(
+                "uniqueness",
+                (F("uniqueness") >= 0.5).if_else(F("uniqueness"), None)
+            )
+            print(view.bounds("uniqueness"))
+
+            #
+            # Lower bound all object confidences in the `predictions` field at
+            # 0.5
+            #
+
+            view = dataset.set_field(
+                "predictions.detections.confidence", F("confidence").max(0.5)
+            )
+            print(view.bounds("predictions.detections.confidence"))
+
+            #
             # Add a `num_predictions` property to the `predictions` field that
             # contains the number of objects in the field
             #
 
             view = dataset.set_field(
-                "predictions.num_predictions", F("detections").length()
+                "predictions.num_predictions",
+                F("predictions.detections").length(),
+                root=True,
             )
             print(view.bounds("predictions.num_predictions"))
 
@@ -1513,8 +1503,11 @@ class SampleCollection(object):
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that defines the field value to set
             root (False): whether the provided expression should be interpreted
-                relative to the nested document on which the embedded field
-                will be set (False) or the root sample (True)
+                relative to the document on which the embedded field will be set
+                (False), or the root sample (True)
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.SetField(field, expr, root=root))
 

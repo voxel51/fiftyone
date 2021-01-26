@@ -1877,100 +1877,6 @@ class MapLabels(ViewStage):
         _get_labels_field(self._field, sample_collection)
 
 
-class MapValues(ViewStage):
-    """Applies an expression to the values of a field for each sample in a
-    collection.
-
-    Examples::
-
-        import fiftyone as fo
-        from fiftyone import ViewField as F
-
-        dataset = fo.Dataset()
-        dataset.add_samples(
-            [
-                fo.Sample(
-                    filepath="/path/to/image1.png",
-                    numeric_field=1.0,
-                    numeric_list_field=[-1, 0, 1],
-                ),
-                fo.Sample(
-                    filepath="/path/to/image2.png",
-                    numeric_field=-1.0,
-                    numeric_list_field=[-2, -1, 0, 1],
-                ),
-                fo.Sample(
-                    filepath="/path/to/image3.png",
-                    numeric_field=-1.0,
-                ),
-            ]
-        )
-
-        #
-        # Clip all negative values of `numeric_field` to zero
-        #
-
-        stage = fo.MapValues("numeric_field", F().max(0))
-        view = dataset.add_stage(stage)
-
-        #
-        # Clip all negative values of `numeric_list_field` to zero
-        #
-
-        stage = fo.MapValues("numeric_list_field", F().map(F().max(0)))
-        view = dataset.add_stage(stage)
-
-        #
-        # Replace all negative values of `numeric_field` with `None`
-        #
-
-        stage = fo.MapValues("numeric_field", (F() >= 0).if_else(F(), None))
-        view = dataset.add_stage(stage)
-
-    Args:
-        field: the field to operate on
-        expr: a :class:`fiftyone.core.expressions.ViewExpression` or
-            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            that defines the operation to apply to the field
-    """
-
-    def __init__(self, field, expr):
-        self._field = field
-        self._expr = expr
-
-    @property
-    def field(self):
-        """The field to map."""
-        return self._field
-
-    @property
-    def expr(self):
-        """The expression to apply."""
-        return self._expr
-
-    def to_mongo(self, sample_collection, **_):
-        return _get_set_field_pipeline(
-            sample_collection, self._field, self._expr
-        )
-
-    def _kwargs(self):
-        # @todo `expr` doesn't handle list fields
-        return [
-            ["field", self._field],
-            ["expr", _get_mongo_expr(self._expr, prefix="$" + self._field)],
-        ]
-
-    @classmethod
-    def _params(self):
-        return [
-            {"name": "field", "type": "field"},
-            {"name": "expr", "type": "dict", "placeholder": ""},
-        ]
-
-    def validate(self, sample_collection):
-        sample_collection.validate_fields_exist(self._field)
-
-
 def _get_set_field_pipeline(
     sample_collection, field, expr, root=False, embedded_root=False
 ):
@@ -2082,6 +1988,35 @@ class SetField(ViewStage):
     """Sets a field or embedded field on each sample in a collection by
     evaluating the given expression.
 
+    This method can process embedded list fields. To do so, simply append
+    ``[]`` to any list component(s) of the field path.
+
+    .. note::
+
+        There are two cases where FiftyOne will automatically unwind array
+        fields without requiring you to explicitly specify this via the ``[]``
+        syntax:
+
+        **Top-level lists:** when you specify a ``field`` path that refers to a
+        top-level list field of a dataset; i.e., ``list_field`` is
+        automatically coerced to ``list_field[]``, if necessary.
+
+        **List fields:** When you specify a ``field`` path that refers to the
+        list field of a |Label| class, such as the
+        :attr:`Detections.detections <fiftyone.core.labels.Detections.detections>`
+        attribute; i.e., ``ground_truth.detections.label`` is automatically
+        coerced to ``ground_truth.detections[].label``, if necessary.
+
+        See the examples below for demonstrations of this behavior.
+
+    By default, the provided ``expr`` is interpreted relative to the document
+    on which the embedded field is being set. For example, if you are setting
+    a nested field ``field="embedded.document.field"``, then the expression
+    ``expr`` you provide will be applied to the ``embedded.document`` document.
+    Alternatively, if you would like ``expr`` to be interpreted relative to the
+    root sample document, then you can set the ``root=True`` parameter. See the
+    examples below for demonstrations of this behavior.
+
     .. note::
 
         Note that you cannot set a non-existing top-level field using this
@@ -2099,12 +2034,35 @@ class SetField(ViewStage):
         dataset = foz.load_zoo_dataset("quickstart")
 
         #
+        # Replace all values of uniqueness that are less than 0.5 with `None`
+        #
+
+        stage = fo.SetField(
+            "uniqueness",
+            (F("uniqueness") >= 0.5).if_else(F("uniqueness"), None)
+        )
+        view = dataset.add_stage(stage)
+        print(view.bounds("uniqueness"))
+
+        #
+        # Lower bound all object confidences in the `predictions` field by 0.5
+        #
+
+        stage = fo.SetField(
+            "predictions.detections.confidence", F("confidence").max(0.5)
+        )
+        view = dataset.add_stage(stage)
+        print(view.bounds("predictions.detections.confidence"))
+
+        #
         # Add a `num_predictions` property to the `predictions` field that
         # contains the number of objects in the field
         #
 
-        set_field = fo.SetField(
-            "predictions.num_predictions", F("detections").length()
+        stage = fo.SetField(
+            "predictions.num_predictions",
+            F("predictions.detections").length(),
+            root=True,
         )
         view = dataset.add_stage(stage)
         print(view.bounds("predictions.num_predictions"))
@@ -2119,7 +2077,7 @@ class SetField(ViewStage):
             "horse", "sheep", "zebra"
         ]
 
-        set_field = fo.SetField(
+        stage = fo.SetField(
             "predictions.detections.is_animal", F("label").is_in(ANIMALS)
         )
         view = dataset.add_stage(stage)
@@ -2131,8 +2089,8 @@ class SetField(ViewStage):
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that defines the field value to set
         root (False): whether the provided expression should be interpreted
-            relative to the nested document on which the embedded field will be
-            set (False), or the root sample (True)
+            relative to the document on which the embedded field will be set
+            (False), or the root sample (True)
     """
 
     def __init__(self, field, expr, root=False):
@@ -3301,7 +3259,6 @@ _STAGES = [
     Limit,
     LimitLabels,
     MapLabels,
-    MapValues,
     Match,
     MatchTags,
     Mongo,

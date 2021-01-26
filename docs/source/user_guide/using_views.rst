@@ -524,13 +524,13 @@ stage to filter the contents of arbitrarily-typed fields:
             # are deleted
             sample.save()
 
-Mapping
-_______
+Modifying fields
+________________
 
 In certain situations, you may wish to temporarily modify the values of sample
 fields in the context of a |DatasetView| without modifying the underlying
 dataset. FiftyOne provides the
-:meth:`map_values() <fiftyone.core.collections.SampleCollection.map_values>`
+:meth:`set_field() <fiftyone.core.collections.SampleCollection.set_field>`
 and
 :meth:`map_labels() <fiftyone.core.collections.SampleCollection.map_labels>`
 methods for this purpose.
@@ -543,22 +543,25 @@ to do this:
 .. code-block:: python
     :linenos:
 
-    # Replace all "cat" and "dog" labels in the `predictions` field with "other"
+    # Replace all "cat" and "dog" labels in the `predictions` field with "animal"
 
     view = dataset.map_labels(
-        "predictions", {"cat": "other", "dog": "other"}
+        "predictions", {"cat": "animal", "dog": "animal"}
     )
 
-Or, suppose you would like to set all negative values of a numeric field to
-zero. You can use
-:meth:`map_values() <fiftyone.core.collections.SampleCollection.map_values>`
+Or, suppose you would like to lower bound all confidences of objects in the
+`predictions` field of a dataset. You can use
+:meth:`set_field() <fiftyone.core.collections.SampleCollection.set_field>`
 to do this:
 
 .. code-block:: python
     :linenos:
 
-    # Clip all negative values of `numeric_field` to zero
-    view = dataset.map_values("numeric_field", F().max(0))
+    # Lower bound all confidences in the `predictions` field to 0.5
+    view = dataset.set_field(
+        "predictions.detections.confidence",
+        F("confidence").max(0.5),
+    )
 
 Saving and cloning
 __________________
