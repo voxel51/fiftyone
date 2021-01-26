@@ -264,7 +264,7 @@ Viewing your config
 -------------------
 
 You can print your App config (including any customizations as described in
-the next section) at any time via the Python library.
+the next section) at any time via the Python library and the CLI.
 
 .. tabs::
 
@@ -279,6 +279,41 @@ the next section) at any time via the Python library.
 
         # Print a specific config field
         print(fo.app_config.show_attributes)
+
+    .. code-block:: text
+
+        {
+            "color_pool": [
+                "#ee0000",
+                "#999900",
+                "#009900",
+                "#003300",
+                "#009999",
+                "#000099",
+                "#6600ff",
+                "#ee6600",
+                "#993300",
+                "#996633",
+                "#0066ff",
+                "#cc33cc",
+                "#777799"
+            ],
+            "notebook_height": 800,
+            "show_confidence": true,
+            "show_attributes": true
+        }
+
+        True
+
+  .. tab:: CLI
+
+    .. code-block:: shell
+
+        # Print your current App config
+        fiftyone app config
+
+        # Print a specific App config field
+        fiftyone app config show_attributes
 
     .. code-block:: text
 
@@ -321,7 +356,7 @@ settings at runtime:
    :class:`Session <fiftyone.core.session.Session>` instance in question
 2. App config settings applied at runtime via
    :func:`fiftyone.core.config.set_app_config_settings`
-3. `FIFTYONE_XXX` environment variables
+3. `FIFTYONE_DEFAULT_APP_XXX` environment variables
 4. Settings in your JSON config (`~/.fiftyone/app_config.json`)
 5. The default config values described in the table above
 
@@ -341,13 +376,13 @@ For example, a valid App config JSON file is:
       "show_attributes": false
     }
 
-When `fiftyone` is imported, any options from your JSON config are applied,
+When `fiftyone` is imported, any options from your JSON App config are applied,
 as per the order of precedence described above.
 
 .. note::
 
-    You can customize the location from which your JSON config is read by
-    setting the `FIFTYONE_CONFIG_PATH` environment variable.
+    You can customize the location from which your JSON App config is read by
+    setting the `FIFTYONE_DEFAULT_APP_CONFIG_PATH` environment variable.
 
 Setting App environment variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
