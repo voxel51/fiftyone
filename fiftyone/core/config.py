@@ -224,6 +224,21 @@ def locate_config():
     return config_path
 
 
+def load_app_config(path):
+    """Loads an App config.
+
+    Args:
+        path: the path to where an AppConfig may exist
+
+    Returns:
+        a ``fiftyone.core.config.AppConfig`` instance
+    """
+    if os.path.isfile(path):
+        return AppConfig.from_json(path)
+
+    return AppConfig({})
+
+
 def load_config():
     """Loads the FiftyOne config.
 
@@ -237,19 +252,22 @@ def load_config():
     return FiftyOneConfig({})
 
 
-def load_app_config(path):
-    """Loads the App config.
+def set_app_config_settings(**kwargs):
+    """Sets the given FiftyOne App config setting(s).
 
     Args:
-        path: the path to where an app config may exist
+        **kwargs: keyword arguments defining valid AppConfig attributes and
+            values
 
-    Returns:
-        a ``fiftyone.core.config.AppConfig`` instance
+    Raises:
+        EnvConfigError: if the settings were invalid
     """
-    if os.path.isfile(path):
-        return AppConfig.from_json(path)
+    import fiftyone as fo
 
-    return AppConfig({})
+    # Validiate settings
+    _config = AppConfig.from_dict(kwargs)
+
+    _set_settings(fo.app_config, _config, kwargs)
 
 
 def set_config_settings(**kwargs):
@@ -257,7 +275,7 @@ def set_config_settings(**kwargs):
 
     Args:
         **kwargs: keyword arguments defining valid FiftyOneConfig attributes
-            and and values
+            and values
 
     Raises:
         EnvConfigError: if the settings were invalid
@@ -267,14 +285,18 @@ def set_config_settings(**kwargs):
     # Validiate settings
     _config = FiftyOneConfig.from_dict(kwargs)
 
+    _set_settings(fo.config, _config, kwargs)
+
+
+def _set_settings(config, new_config, kwargs):
     # Apply settings
     for field in kwargs:
-        if not hasattr(_config, field):
+        if not hasattr(new_config, field):
             logger.warning("Skipping unknown config setting '%s'", field)
             continue
 
-        val = getattr(_config, field)
-        setattr(fo.config, field, val)
+        val = getattr(new_config, field)
+        setattr(config, field, val)
 
 
 def _get_installed_packages():
