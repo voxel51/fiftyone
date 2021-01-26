@@ -5,15 +5,7 @@ Configuring FiftyOne
 
 FiftyOne can be configured in various ways. This guide covers the various
 options that exist, how to view your current config, and how to customize your
-config as desired.
-
-
-        self.default_app_config_path = self.parse_string(
-            d,
-            "default_app_config_path",
-            env_var="FIFTYONE_DEFAULT_APP_CONFIG_PATH",
-            default=foc.FIFTYONE_APP_CONFIG_PATH,
-        )
+config as desired. 
 
 .. _configuring-fiftyone:
 
@@ -242,11 +234,18 @@ For example, you can customize your FiftyOne config at runtime as follows:
 
 .. _configuring-fiftyone-app:
 
-The FiftyOne App can also be configured in various ways.
-
-
 App configuration options
--------------------------
+=========================
+
+The FiftyOne App can also be configured in various ways. A new App config is
+applied to each :class:`Session <fiftyone.core.session.Session>` which manages
+an associated App window. A session's current config can be inspected and
+modified via the :meth:`session.config <fiftyone.core.session.Session.config>`
+property. For changes to a session's config to take affect in the App,
+a call to :meth:`session.refresh() <fiftyone.core.session.Session.refresh>`
+or another state updating action such as `session.view = my_view` needs to
+occur.
+
 
 +-------------------+-----------------------------------------+-----------------------------+----------------------------------------------------------------------------------------+
 | Config field      | Environment variable                    | Default value               | Description                                                                            |
@@ -254,17 +253,148 @@ App configuration options
 | `color_pool`      | `FIFTYONE_DEFAULT_APP_COLOR_POOL`       | :ref:`Color pool <colors>`  | A list of browser supported color strings from which the App should draw from for      |
 |                   |                                         |                             | coloring fields.                                                                       |
 +-------------------------------+-----------------------------+-----------------------------+----------------------------------------------------------------------------------------+
-| `notebook_height` | `FIFTYONE_DEFAULT_NOTEBOOK_HEIGHT`      | `800`                       | The default height a App's displayed in notebook cells.                                |
+| `notebook_height` | `FIFTYONE_DEFAULT_APP_NOTEBOOK_HEIGHT`  | `800`                       | The default height a App's displayed in notebook cells.                                |
 +-------------------------------+-----------------------------+-----------------------------+----------------------------------------------------------------------------------------+
 | `show_attributes` | `FIFTYONE_DEFAULT_APP_SHOW_ATTRIBTUTES` | `True`                      | Whether to show attributes of labels in expanded sample view images and videos.        |
 +-------------------------------+-----------------------------+-----------------------------+----------------------------------------------------------------------------------------+
 | `show_confidence` | `FIFTYONE_DEFAULT_APP_SHOW_CONFIDENCE`  | `True`                      | Whether to show the confidence of labels in expanded sample view images and videos.    |
 +-------------------+-----------------------------------------+-----------------------------+----------------------------------------------------------------------------------------+
 
+Viewing your config
+-------------------
+
+You can print your App config (including any customizations as described in
+the next section) at any time via the Python library.
+
+.. tabs::
+
+  .. tab:: Python
+
+    .. code-block:: python
+
+        import fiftyone as fo
+
+        # Print your current config
+        print(fo.app_config)
+
+        # Print a specific config field
+        print(fo.app_config.show_attributes)
+
+    .. code-block:: text
+
+        {
+            "color_pool": [
+                "#ee0000",
+                "#999900",
+                "#009900",
+                "#003300",
+                "#009999",
+                "#000099",
+                "#6600ff",
+                "#ee6600",
+                "#993300",
+                "#996633",
+                "#0066ff",
+                "#cc33cc",
+                "#777799"
+            ],
+            "notebook_height": 800,
+            "show_confidence": true,
+            "show_attributes": true
+        }
+
+        True
+
+Modifying your App config
+-------------------------
+
+You can modify your App config in a variety of ways. The following sections
+describe these options in detail.
+
+Order of precedence
+~~~~~~~~~~~~~~~~~~~
+
+The following order of precedence is used to assign values to your App config
+settings at runtime:
+
+1. Config settings of a
+   :class:`Session <fiftyone.core.session.Session>` instance in question
+2. App config settings applied at runtime via
+   :func:`fiftyone.core.config.set_app_config_settings`
+3. `FIFTYONE_XXX` environment variables
+4. Settings in your JSON config (`~/.fiftyone/app_config.json`)
+5. The default config values described in the table above
+
+Editing your JSON App config
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can permanently customize your App config by creating a
+`~/.fiftyone/app_config.json` file on your machine. The JSON file may contain
+any desired subset of config fields that you wish to customize.
+
+For example, a valid App config JSON file is:
+
+.. code-block:: json
+
+    {
+      "notebook_height": 1200,
+      "show_attributes": false
+    }
+
+When `fiftyone` is imported, any options from your JSON config are applied,
+as per the order of precedence described above.
+
+.. note::
+
+    You can customize the location from which your JSON config is read by
+    setting the `FIFTYONE_CONFIG_PATH` environment variable.
+
+Setting App environment variables
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+FiftyOne config settings may be customized on a per-session basis by setting
+the `FIFTYONE_DEFAULT_APP_XXX` environment variable(s) for the desired App
+config settings.
+
+When `fiftyone` is imported, all App config environment variables are applied, as
+per the order of precedence described above.
+
+For example, you can customize your App config in a Terminal session by
+issuing the following commands prior to launching your Python interpreter:
+
+.. code-block:: shell
+
+    export FIFTYONE_DEFAULT_APP_NOTEBOOK_HEIGHT=1200
+    export FIFTYONE_DEFAULT_APP_SHOW_ATTRIBUTES=false
+
+Modifying your App config in code
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can dynamically modify your App config at runtime via the
+:func:`fiftyone.core.config.set_app_config_settings` method, which accepts
+keyword arguments of the form `(field name, field value)` for all available
+config fields.
+
+Any changes to your App config applied via this manner will immediately take
+effect in all subsequent calls to `fiftyone.app_config` during your current
+session.
+
+For example, you can customize your App config at runtime as follows:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.core.config as foc
+
+    foc.set_app_config_settings(
+        notebook_height=1200,
+        show_attributes=False,
+    )
+
 .. _colors:
 
-Color pool
-----------
+Default color pool
+~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
