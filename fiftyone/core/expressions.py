@@ -83,7 +83,7 @@ class ViewExpression(object):
         Returns:
             a MongoDB expression
         """
-        if self._prefix:
+        if self._prefix is not None:
             prefix = self._prefix
 
         return _do_to_mongo(self._expr, prefix)
@@ -582,7 +582,7 @@ class ViewExpression(object):
         Returns:
             a :class:`ViewExpression`
         """
-        mapping = {root_field == k: v for k, v in mapping.items()}
+        mapping = {ViewField() == k: v for k, v in mapping.items()}
         return self.switch(mapping, default=default)
 
     def switch(self, mapping, default=None):
@@ -661,8 +661,8 @@ class ViewExpression(object):
         )
 
     def set_field(self, field, value_or_expr, root=False):
-        """Sets the specified field of this expression, which must evaluate
-        to a document, to the given value or expression.
+        """Sets the specified field or embedded field of this expression, which
+        must evaluate to a document, to the given value or expression.
 
         If ``value_or_expr`` is an expression and ``root == False``, it is
         applied to this expression via ``self.apply(value_or_expr)``.
@@ -688,22 +688,30 @@ class ViewExpression(object):
             )
 
         Args:
-            field: the name of the field to set
+            field: the "field" or "embedded.field.name" to set
             value_or_expr: a :class:`ViewExpression`
-            root (False): whether ``value_or_expr`` should be treated as an
-                expression with respect to the root document rather than being
-                applied to this expression
+            root (False): whether ``value_or_expr`` should be treated as a
+                rooted expression rather than being applied to this expression
 
         Returns:
             a :class:`ViewExpression`
         """
-        if isinstance(value_or_expr, ViewExpression) and not root:
-            value = self.apply(value_or_expr)
+        if isinstance(value_or_expr, ViewExpression):
+            if root:
+                value = value_or_expr
+                value._freeze_prefix("")
+            else:
+                value = self.apply(value_or_expr)
         else:
             value = value_or_expr
 
-        expr = ViewExpression({"$mergeObjects": [self, {field: value}]})
-        return self.let_in(expr)
+        field = "$$expr." + field
+        expr = value
+        chunks = field.split(".")
+        for idx, chunk in enumerate(reversed(chunks[1:]), 1):
+            expr = {"$mergeObjects": [".".join(chunks[:-idx]), {chunk: expr}]}
+
+        return self._let_in(ViewExpression(expr), var="expr")
 
     def let_in(self, expr):
         """Returns an equivalent expression where this expression is defined as
@@ -725,14 +733,15 @@ class ViewExpression(object):
         if isinstance(self, (ViewField, ObjectId)):
             return expr
 
+        return self._let_in(expr)
+
+    def _let_in(self, expr, var="expr"):
         self_expr = ViewField()
-        self_expr._freeze_prefix("$$expr")
+        self_expr._freeze_prefix("$$" + var)
 
         in_expr = _do_apply_memo(expr, self, self_expr)
 
-        return ViewExpression(
-            {"$let": {"vars": {"expr": self}, "in": in_expr}}
-        )
+        return ViewExpression({"$let": {"vars": {var: self}, "in": in_expr}})
 
     # Array expression operators ##############################################
 
@@ -849,7 +858,7 @@ class ViewExpression(object):
 
     def map(self, expr):
         """Applies the given expression to the elements of this expression,
-        which must resolve to an array.
+        which must be an array.
 
         The output will be an array with the applied results.
 
@@ -865,8 +874,8 @@ class ViewExpression(object):
         )
 
     def sum(self):
-        """Returns the sum of the values in this expression, which must resolve
-        to a numeric array.
+        """Returns the sum of the values in this expression, which must be a
+        numeric array.
 
         Missing, non-numeric, or ``None``-valued elements are ignored.
 
@@ -885,6 +894,84 @@ class ViewExpression(object):
             a :class:`ViewExpression`
         """
         return ViewExpression({"$avg": self})
+
+    def reduce(self, expr, init_val=0):
+        """Applies the given reduction to this expression, which be an array,
+        and returns the single value computed by
+
+        The reduction expression must include the :var:`
+
+        Examples::
+
+            #
+            # Compute the number of keypoints in a `Keypoints` field of a
+            # dataset
+            #
+
+            dataset = fo.Dataset()
+            dataset.add_sample(
+                fo.Sample(
+                    filepath="image.jpg",
+                    keypoints=fo.Keypoints(
+                        keypoints=[
+                            fo.Keypoint(points=[(0, 0), (1, 1)]),
+                            fo.Keypoint(points=[(0, 0), (1, 0), (1, 1), (0, 1)]),
+                        ]
+                    )
+                )
+            )
+
+            view = dataset.set_field(
+                "keypoints.count",
+                F("keypoints.keypoints").reduce(VALUE + F("points").length()),
+                root=True,
+            )
+            print(view.first().keypoints.count)
+
+            #
+            # Generate a `list,of,labels` for each sample in a `Detections`
+            # field of a dataset
+            #
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+            from fiftyone.core.expressions import VALUE
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            view = dataset.set_field(
+                "predictions.labels",
+                F("detections").reduce(VALUE.concat(",", F("label")), init_val="").lstrip(",")
+            )
+            print(view.first().predictions.labels)
+
+        Args:
+            expr: a :class:`ViewExpression` defining the reduction expression
+                to apply. Must contain the :var:`VALUE` expression
+            init_val (0): an initial value for the reduction
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        expr._freeze_prefix("$$this")
+        return ViewExpression(
+            {"$reduce": {"input": self, "initialValue": init_val, "in": expr}}
+        )
+
+    def join(self, delimiter):
+        """Joins the element of this expression, which must be a string array,
+        by the given delimiter.
+
+        Args:
+            delimiter: the delimiter string
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return self.reduce(
+            VALUE.concat(delimiter, ViewField()), init_val=""
+        ).substr(start=len(delimiter))
 
     # String expression operators #############################################
 
@@ -952,16 +1039,17 @@ class ViewExpression(object):
         """
         return ViewExpression({"$toUpper": self})
 
-    def concat(self, str_or_expr):
-        """Concatenates the given string to this string expression.
+    def concat(self, *args):
+        """Concatenates the given string(s) to this string expression.
 
         Args:
-            str_or_expr: a string or :class:`ViewExpression`
+            *args: one or more strings or string :class:`ViewExpression`
+                instances
 
         Returns:
             a :class:`ViewExpression`
         """
-        return ViewExpression({"$concat": [self, str_or_expr]})
+        return ViewExpression({"$concat": [self] + list(args)})
 
     def strip(self, chars=None):
         """Removes whitespace characters from the beginning and end of the
@@ -1338,13 +1426,19 @@ class ViewField(ViewExpression, metaclass=_MetaViewField):
         Returns:
             a string
         """
-        if self._prefix:
+        if self._prefix is not None:
             prefix = self._prefix
 
         if prefix:
             return prefix + "." + self._expr if self._expr else prefix
 
         return "$" + self._expr if self._expr else "$this"
+
+
+#: A :class:`ViewExpression` that refers to the current `$$value` in a MongoDB
+# reduction expression. See :meth:`ViewExpression.reduce`.
+VALUE = ViewField()
+VALUE._freeze_prefix("$$value")
 
 
 class ObjectId(ViewExpression, metaclass=_MetaViewField):
