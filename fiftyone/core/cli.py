@@ -789,26 +789,29 @@ class AppConfigCommand(Command):
 
     Examples::
 
-        # Print your entire config
+        # Print your entire App config
         fiftyone app config
 
-        # Print a specific config field
+        # Print a specific App config field
         fiftyone app config <field>
 
-        # Print the location of your config on disk (if one exists)
+        # Print the location of your App config on disk (if one exists)
         fiftyone app config --locate
     """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "field", nargs="?", metavar="FIELD", help="a config field to print"
+            "field",
+            nargs="?",
+            metavar="FIELD",
+            help="an App config field to print",
         )
         parser.add_argument(
             "-l",
             "--locate",
             action="store_true",
-            help="print the location of your config on disk",
+            help="print the location of your App config on disk",
         )
 
     @staticmethod
@@ -818,7 +821,7 @@ class AppConfigCommand(Command):
             if os.path.isfile(config_path):
                 print(config_path)
             else:
-                print("No config file found at '%s'" % config_path)
+                print("No App config file found at '%s'" % config_path)
 
             return
 
