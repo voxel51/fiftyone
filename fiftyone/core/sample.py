@@ -605,15 +605,19 @@ class SampleView(_DatasetSample):
         """
         return self._excluded_fields
 
-    def to_dict(self):
+    def to_dict(self, include_frames=False):
         """Serializes the sample to a JSON dictionary.
 
         Sample IDs and private fields are excluded in this representation.
 
+        Args:
+            include_frames (False): whether to include the frame labels for
+                video samples
+
         Returns:
             a JSON dict
         """
-        d = super().to_dict()
+        d = super().to_dict(include_frames=include_frames)
 
         if self.selected_field_names or self.excluded_field_names:
             d = {k: v for k, v in d.items() if k in self.field_names}

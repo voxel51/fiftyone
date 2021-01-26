@@ -136,7 +136,7 @@ adding custom tags, model predictions and more.
 
     dataset.add_sample(sample)
 
-    view = dataset.match_tag("train").sort_by("custom_field").limit(10)
+    view = dataset.match_tags("train").sort_by("custom_field").limit(10)
 
     for sample in view:
         print(sample)

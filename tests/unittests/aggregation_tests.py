@@ -16,7 +16,7 @@ class DatasetTests(unittest.TestCase):
     @drop_datasets
     def test_order(self):
         d = fo.Dataset()
-        s = fo.Sample("image.jpeg")
+        s = fo.Sample(filepath="image.jpeg")
         s["number"] = 0
         s["numbers"] = [0, 1]
         d.add_sample(s)
@@ -28,7 +28,7 @@ class DatasetTests(unittest.TestCase):
     def test_bounds(self):
         d = fo.Dataset()
         d.add_sample_field("numbers", fo.ListField, subfield=fo.IntField())
-        s = fo.Sample("image.jpeg")
+        s = fo.Sample(filepath="image.jpeg")
         s["number"] = 0
         s["numbers"] = [0, 1]
         d.add_sample(s)
@@ -36,7 +36,7 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(d.aggregate(fo.Bounds("numbers")).bounds, (0, 1))
 
         d = fo.Dataset()
-        s = fo.Sample("video.mp4")
+        s = fo.Sample(filepath="video.mp4")
         d.add_sample(s)
         d.add_frame_field("numbers", fo.ListField, subfield=fo.IntField())
         s[1]["number"] = 0
@@ -50,7 +50,7 @@ class DatasetTests(unittest.TestCase):
         )
 
         d = fo.Dataset()
-        s = fo.Sample("image.jpeg")
+        s = fo.Sample(filepath="image.jpeg")
         s["detection"] = fo.Detection(label="label", confidence=1)
         d.add_sample(s)
         self.assertEqual(
@@ -69,7 +69,7 @@ class DatasetTests(unittest.TestCase):
         )
 
         d = fo.Dataset()
-        s = fo.Sample("video.mp4")
+        s = fo.Sample(filepath="video.mp4")
         s[1]["detection"] = fo.Detection(label="label", confidence=1)
         d.add_sample(s)
         self.assertEqual(
@@ -80,7 +80,7 @@ class DatasetTests(unittest.TestCase):
     @drop_datasets
     def test_count(self):
         d = fo.Dataset()
-        s = fo.Sample("image.jpeg")
+        s = fo.Sample(filepath="image.jpeg")
         v = d.view()
         self.assertEqual(d.aggregate(fo.Count()).count, 0)
         self.assertEqual(d.aggregate(fo.Count()).count, 0)
@@ -102,7 +102,7 @@ class DatasetTests(unittest.TestCase):
         )
 
         d = fo.Dataset()
-        s = fo.Sample("video.mp4")
+        s = fo.Sample(filepath="video.mp4")
         s[1]["value"] = "value"
         s[2]["value"] = "value"
         d.add_sample(s)
@@ -111,7 +111,7 @@ class DatasetTests(unittest.TestCase):
     @drop_datasets
     def test_count_values(self):
         d = fo.Dataset()
-        s = fo.Sample("image.jpeg")
+        s = fo.Sample(filepath="image.jpeg")
         # pylint: disable=no-member
         s.tags += ["one", "two"]
         d.add_sample(s)
@@ -120,7 +120,7 @@ class DatasetTests(unittest.TestCase):
         )
 
         d = fo.Dataset()
-        s = fo.Sample("video.mp4")
+        s = fo.Sample(filepath="video.mp4")
         s["classifications"] = fo.Classifications(
             classifications=[
                 fo.Classification(label="one"),
@@ -158,7 +158,7 @@ class DatasetTests(unittest.TestCase):
     def test_distinct(self):
         d = fo.Dataset()
         d.add_sample_field("strings", fo.ListField, subfield=fo.StringField())
-        s = fo.Sample("image.jpeg")
+        s = fo.Sample(filepath="image.jpeg")
         s["string"] = "string"
         s["strings"] = ["one", "two"]
         d.add_sample(s)
@@ -168,9 +168,9 @@ class DatasetTests(unittest.TestCase):
         )
 
         d = fo.Dataset()
-        s = fo.Sample("video.mp4")
+        s = fo.Sample(filepath="video.mp4")
 
-        s = fo.Sample("image.jpeg")
+        s = fo.Sample(filepath="image.jpeg")
         d.add_sample(s)
         s["classification"] = fo.Classification(label="label", confidence=1)
         s.save()
@@ -192,13 +192,25 @@ class DatasetTests(unittest.TestCase):
         )
 
         d = fo.Dataset()
-        s = fo.Sample("video.mp4")
+        s = fo.Sample(filepath="video.mp4")
         s[1]["classification"] = fo.Classification(label="label", confidence=1)
         d.add_sample(s)
         self.assertEqual(
             d.aggregate(fo.Distinct("frames.classification.label")).values,
             ["label"],
         )
+
+    @drop_datasets
+    def test_sum(self):
+        d = fo.Dataset()
+        d.add_sample_field("numeric_field", fo.IntField)
+        self.assertEqual(d.aggregate(fo.Sum("numeric_field")).sum, 0)
+        s = fo.Sample(filepath="image.jpeg", numeric_field=1)
+        d.add_sample(s)
+        self.assertEqual(d.aggregate(fo.Sum("numeric_field")).sum, 1)
+        s = fo.Sample(filepath="image2.jpeg", numeric_field=2)
+        d.add_sample(s)
+        self.assertEqual(d.aggregate(fo.Sum("numeric_field")).sum, 3)
 
 
 if __name__ == "__main__":
