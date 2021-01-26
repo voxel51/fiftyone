@@ -892,10 +892,8 @@ class ViewStageTests(unittest.TestCase):
     def test_map_values(self):
         self._setUp_numeric()
 
-        ROOT = fo.root_field
-
         # Clip all negative values of `numeric_field` to zero
-        view = self.dataset.map_values("numeric_field", ROOT.max(0))
+        view = self.dataset.map_values("numeric_field", F().max(0))
         it = zip(view, self.dataset)
         for sv, s in it:
             if s.numeric_field < 0:
@@ -905,7 +903,7 @@ class ViewStageTests(unittest.TestCase):
 
         # Replace all negative values of `numeric_field` with `None`
         view = self.dataset.map_values(
-            "numeric_field", (ROOT >= 0).if_else(ROOT, None)
+            "numeric_field", (F() >= 0).if_else(F(), None)
         )
         it = zip(view, self.dataset)
         for sv, s in it:
@@ -916,7 +914,7 @@ class ViewStageTests(unittest.TestCase):
 
         # Clip all negative values of `numeric_list_field` to zero
         view = self.dataset.map_values(
-            "numeric_list_field", ROOT.map(ROOT.max(0))
+            "numeric_list_field", F().map(F().max(0))
         )
         it = zip(view, self.dataset)
         for sv, s in it:

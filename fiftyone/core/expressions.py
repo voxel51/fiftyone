@@ -926,10 +926,6 @@ class ViewField(ViewExpression, metaclass=_MetaViewField):
         return "$" + self._expr if self._expr else "$this"
 
 
-#: A singleton representing the root of a document/field.
-root_field = ViewField()
-
-
 class ObjectId(ViewExpression, metaclass=_MetaViewField):
     """A :class:`ViewExpression` that refers to an
     `ObjectId <https://docs.mongodb.com/manual/reference/method/ObjectId>`_ of
