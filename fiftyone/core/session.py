@@ -381,14 +381,14 @@ class Session(foc.HasClient):
 
         return "http://localhost:%d/" % self.server_port
 
-    @_update_state(auto_show=True)
-    def update_config(self, config):
-        """Updates the current :class:`fiftyone.core.config.AppConfig`.
+    @property
+    def config(self):
+        """The current :class:`fiftyone.core.config.AppConfig`.
 
-        Args:
-            config: a :class:`fiftyone.core.config.AppConfig`
+        :meth:`Session.refresh` or another state updating action for any
+        changes to be sent to the App.
         """
-        self.state.config = config.copy()
+        return self.state.config
 
     @property
     def dataset(self):
