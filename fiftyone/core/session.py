@@ -385,8 +385,19 @@ class Session(foc.HasClient):
     def config(self):
         """The current :class:`fiftyone.core.config.AppConfig`.
 
-        :meth:`Session.refresh` or another state updating action for any
-        changes to be sent to the App.
+        For changes to a session's config to take affect in the App,
+        a call to :meth:`Session.refresh` or another state-updating action
+        such as `session.view = my_view` must occur.
+
+        Usage::
+
+            import fiftyone as fo
+
+            dataset, session = fo.quickstart()
+
+            # change the show confidence setting and push the change to the App
+            session.config.show_confidence = False
+            session.refresh()
         """
         return self.state.config
 
