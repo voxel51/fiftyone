@@ -48,7 +48,7 @@ on your data quickly and easily.
 
 .. customcalloutitem::
     :header: Using aggregations
-    :description: Learn about your FiftyOne datasets and views in the aggregate.
+    :description: Efficiently compute aggregate statistics about your FiftyOne datasets and views.
     :button_text: Learn more about using aggregations
     :button_link: using_aggregations.html
 
