@@ -2403,16 +2403,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _validate_sample(self, sample):
         fields = self.get_field_schema(include_private=True)
 
-        non_existest_fields = {
+        non_existent_fields = {
             fn for fn in sample.field_names if fn not in fields
         }
 
         if self.media_type == fom.VIDEO:
-            non_existest_fields.discard("frames")
+            non_existent_fields.discard("frames")
 
-        if non_existest_fields:
+        if non_existent_fields:
             msg = "The fields %s do not exist on the dataset '%s'" % (
-                non_existest_fields,
+                non_existent_fields,
                 self.name,
             )
             raise moe.FieldDoesNotExist(msg)

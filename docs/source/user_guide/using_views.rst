@@ -103,8 +103,8 @@ Each view operation is captured by a |ViewStage|:
     print(dataset.list_view_stages())
     # ['exclude', 'exclude_fields', 'exists', ..., 'skip', 'sort_by', 'take']
 
-These operations are conveniently exposed as methods on both |Dataset|, in
-which case they create an initial |DatasetView|:
+These operations are conveniently exposed as methods on |Dataset| instances,
+in which case they create an initial |DatasetView|:
 
 .. code-block:: python
     :linenos:
@@ -115,9 +115,9 @@ which case they create an initial |DatasetView|:
     len(random_view)
     # 100
 
-They are also exposed on |DatasetView|, in which case they return another
-|DatasetView| with the operation appended to its internal pipeline so that
-multiple operations can be chained together.
+They are also exposed on |DatasetView| instances, in which case they return
+another |DatasetView| with the operation appended to its internal pipeline so
+that multiple operations can be chained together:
 
 .. code-block:: python
     :linenos:
@@ -125,7 +125,9 @@ multiple operations can be chained together.
     # Sort `random_view` by filepath
     sorted_random_view = random_view.sort_by("filepath")
 
-The sections below discuss each view stage in more detail.
+The sections below discuss some interesting view stages in more detail. You can
+also refer to the :mod:`fiftyone.core.stages` module documentation for examples
+of using each stage.
 
 Sorting
 _______
@@ -305,15 +307,14 @@ Common filters
 Convenience functions for common queries are also available.
 
 Use the
-:meth:`match_tag() <fiftyone.core.collections.SampleCollection.match_tag>` and
 :meth:`match_tags() <fiftyone.core.collections.SampleCollection.match_tags>`
-methods to match samples that the specified tag(s) in their `tags` field:
+method to match samples that have the specified tag(s) in their `tags` field:
 
 .. code-block:: python
     :linenos:
 
     # The training split of the dataset
-    train_view = dataset.match_tag("train")
+    train_view = dataset.match_tags("train")
 
     # Union of the validation and test splits
     val_test_view = dataset.match_tags(["val", "test"])
@@ -523,6 +524,72 @@ stage to filter the contents of arbitrarily-typed fields:
             # are deleted
             sample.save()
 
+Mapping
+_______
+
+In certain situations, you may wish to temporarily modify the values of sample
+fields in the context of a |DatasetView| without modifying the underlying
+dataset. FiftyOne provides the
+:meth:`map_values() <fiftyone.core.collections.SampleCollection.map_values>`
+and
+:meth:`map_labels() <fiftyone.core.collections.SampleCollection.map_labels>`
+methods for this purpose.
+
+For example, suppose you would like to rename a group of labels to a single
+category in order to run your evaluation routine. You can use
+:meth:`map_labels() <fiftyone.core.collections.SampleCollection.map_labels>`
+to do this:
+
+.. code-block:: python
+    :linenos:
+
+    # Replace all "cat" and "dog" labels in the `predictions` field with "other"
+
+    view = dataset.map_labels(
+        "predictions", {"cat": "other", "dog": "other"}
+    )
+
+Or, suppose you would like to set all negative values of a numeric field to
+zero. You can use
+:meth:`map_values() <fiftyone.core.collections.SampleCollection.map_values>`
+to do this:
+
+.. code-block:: python
+    :linenos:
+
+    # Clip all negative values of `numeric_field` to zero
+    view = dataset.map_values("numeric_field", F().max(0))
+
+Saving and cloning
+__________________
+
+Ordinarily, when you define a |DatasetView| that extracts a specific subset of
+a dataset and its fields, the underlying |Dataset| is not modified. However,
+you can use :meth:`save() <fiftyone.core.view.DatasetView.save>` to overwrite
+the underlying dataset with the contents of a view you've created:
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone import ViewField as F
+
+    # Discard all predictions with confidence below 0.3
+    high_conf_view = dataset.filter_labels("predictions", F("confidence") >= 0.3)
+    high_conf_view.save()
+
+Alternatively, you can create a new |Dataset| that contains only the contents
+of a |DatasetView| using
+:meth:`clone() <fiftyone.core.view.DatasetView.clone>`:
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone import ViewField as F
+
+    # Create a new dataset that contains only the high confidence predictions
+    high_conf_view = dataset.filter_labels("predictions", F("confidence") >= 0.3)
+    high_conf_dataset = high_conf_view.clone()
+
 Tips & Tricks
 _____________
 
@@ -537,7 +604,7 @@ View stages can be chained together to perform arbitrarily complex operations:
     from fiftyone import ViewField as F
 
     complex_view = (
-        dataset.match_tag("test")
+        dataset.match_tags("test")
         .exists("metadata")
         .match(F("metadata.size_bytes") >= 64 * 1024)  # >= 64 kB
         .sort_by("filepath")

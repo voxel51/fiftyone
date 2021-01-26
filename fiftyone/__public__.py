@@ -17,6 +17,7 @@ from .core.aggregations import (
     CountValues,
     Distinct,
     HistogramValues,
+    Sum,
 )
 from .core.dataset import (
     Dataset,
@@ -100,8 +101,8 @@ from .core.stages import (
     Limit,
     LimitLabels,
     MapLabels,
+    MapValues,
     Match,
-    MatchTag,
     MatchTags,
     Mongo,
     Shuffle,

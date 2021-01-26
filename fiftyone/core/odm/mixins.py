@@ -1072,15 +1072,13 @@ def _create_field(
         )
 
     kwargs["db_field"] = field_name
+    kwargs["null"] = True
 
     if issubclass(ftype, fof.EmbeddedDocumentField):
         kwargs.update({"document_type": embedded_doc_type})
-        kwargs["null"] = True
     elif issubclass(ftype, (fof.ListField, fof.DictField)):
         if subfield is not None:
             kwargs["field"] = subfield
-    else:
-        kwargs["null"] = True
 
     field = ftype(**kwargs)
     field.name = field_name
