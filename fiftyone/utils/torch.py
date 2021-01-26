@@ -5,6 +5,7 @@ PyTorch utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import contextlib
 import logging
 import itertools
 import multiprocessing
@@ -74,26 +75,30 @@ def apply_torch_image_model(
     samples_loader = fou.iter_batches(samples, batch_size)
     data_loader = _make_data_loader(samples, model, batch_size, num_workers)
 
-    if confidence_thresh is not None:
-        cthresh = confidence_thresh
-    else:
-        cthresh = model.config.confidence_thresh
+    with contextlib.ExitStack() as context:
+        # pylint: disable=no-member
+        if confidence_thresh is not None:
+            context.enter_context(
+                fou.SetAttributes(
+                    model.config, confidence_thresh=confidence_thresh
+                )
+            )
 
-    with fou.ProgressBar(samples) as pb:
-        with fou.SetAttributes(model, preprocess=False):
-            with fou.SetAttributes(model.config, confidence_thresh=cthresh):
-                with model:
-                    for sample_batch, imgs in zip(samples_loader, data_loader):
-                        labels_batch = model.predict_all(imgs)
+        context.enter_context(fou.SetAttributes(model, preprocess=False))
+        context.enter_context(model)
 
-                        for sample, labels in zip(sample_batch, labels_batch):
-                            sample.add_labels(
-                                labels,
-                                label_field,
-                                confidence_thresh=confidence_thresh,
-                            )
+        with fou.ProgressBar(samples) as pb:
+            for sample_batch, imgs in zip(samples_loader, data_loader):
+                labels_batch = model.predict_all(imgs)
 
-                        pb.set_iteration(pb.iteration + len(imgs))
+                for sample, labels in zip(sample_batch, labels_batch):
+                    sample.add_labels(
+                        labels,
+                        label_field,
+                        confidence_thresh=confidence_thresh,
+                    )
+
+                pb.set_iteration(pb.iteration + len(imgs))
 
 
 def compute_torch_image_embeddings(
