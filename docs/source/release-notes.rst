@@ -7,7 +7,7 @@ FiftyOne Release Notes
 
 FiftyOne 0.7.2
 --------------
-*Release January 25, 2021*
+*Release January 27, 2021*
 
 App
 ^^^
@@ -23,25 +23,32 @@ App
   :meth:`exclude_fields() <fiftyone.core.collections.SampleCollection.exclude_fields>`
   from properly filtering the Fields Sidebar
 - Fixed a bug that prevented selected samples from being cleared when choosing
-  to `Only show` or `Hide` the selected samples from the select samples
-  dropdown
-- Added a `color_pool` keyword argument to
-  :class:`Session <fiftyone.core.session.Session>` and a `default_app_color_pool`
-  :ref:`config variable <configuring-fiftyone>` for overriding the colors
-  used for rendering fields in the App, e.g. detection bounding boxes
+  to `Only show`, `Hide`, or `Clear selection` the selected samples from the
+  select samples dropdown
+- Added an :class:`AppConfig <fiftyone.core.config.AppConfig>` for configuring
+  App options like the :ref:`color pool <color-pool>` to draw from for coloring
+  field data like detections
 
 Core
 ^^^^
+- Added the :class:`MapLabels <fiftyone.core.stages.MapLabels>`,
+  :class:`MapValues <fiftyone.core.stages.MapValues>`, and
+  :class:`SetField <fiftyone.core.stages.SetField>` stages
+- Added the
+  :class:`HistogramValues <fiftyone.core.aggregations.HistogramValues>` and
+  :class:`Sum <fiftyone.core.aggregations.Sum>`
+  aggregations
+- Added over a dozen new
+  :class:`ViewExpression <fiftyone.core.expressions.ViewExpression>` methods
+  including powerful transformations like
+  :meth:`map_values() <fiftyone.core.expressions.ViewExpression.map_values>`,
+  :meth:`reduce() <fiftyone.core.expressions.ViewExpression.reduce>`, and
+  :meth:`switch() <fiftyone.core.expressions.ViewExpression.switch>`
 - Exposed all :class:`Aggregtaions <fiftyone.core.aggregations.Aggregation>` as
   single execution methods on
   :class:`SampleCollections <fiftyone.core.collections.SampleCollection>`,
   e.g.
   :meth:`Dataset.distinct() <fiftyone.core.collections.SampleCollection.distinct>`
-- Added the
-  :class:`HistogramValues <fiftyone.core.aggregations.HistogramValues>`
-  :class:`MapValues <fiftyone.core.aggregations.MapValues>`,
-  and :class:`Sum <fiftyone.core.aggregations.Sum>`
-  aggregations
 - Added support for all label types in
   :meth:`filter_labels() <fiftyone.core.collections.SampleCollection.filter_labels>`
 - Generalized field path support for
@@ -52,20 +59,33 @@ Core
   :class:`ConfidenceBounds <fiftyone.core.aggregations.ConfidenceBounds>`, 
   :class:`CountLabels <fiftyone.core.aggregations.CountLabels>`, 
   :class:`DistinctLabels <fiftyone.core.aggregations.DistinctLabels>`
-- Added support for querying for fields that exist and are not `None` with
-  :meth:`ViewExpression.__eq__() <fiftyone.core.expressions.ViewExpression.__eq__>`,
-  :meth:`ViewExpression.__ne__() <fiftyone.core.expressions.ViewExpression.__ne__>`,
-  and
-  :meth:`ViewExpression.exists() <fiftyone.core.expressions.ViewExpression.exists>`
 - Removed the redundant
   :meth:`match_tag() <fiftyone.core.collections.SampleCollection.match_tag>`
   stage, use 
   :meth:`match_tags() <fiftyone.core.collections.SampleCollection.match_tags>`
   instead
+- Removed `AggregationResult` classes in favor of returning
+  :class:`Aggregation <fiftyone.core.aggregations.Aggregation>` results as
+  dicts
+- Added the optional `config` keyword argument to
+  :meth:`launch_app() <fiftyone.core.session.launch_app>` and
+  :class:`Session <fiftyone.core.session.Session>` for overriding the default
+  :ref:`AppConfig <configuring-fiftyone-app>`.
 
 
 Docs
 ^^^^
+- Added an :ref:`App configuration options <configuring-fiftyone-app>` section
+  to the :ref:`Configuring FiftyOne <configuring-fiftyone>` user guide
+- Updated the :ref:`Dataset views <using-views>` user guide to
+  provide a thorough overview of new functionality provided by stages like
+  :class:`SetField <fiftyone.core.stages.SetField>`
+- Added an FAQ section providing instructions configuring
+- Updated the :ref:`Using aggregations <using-aggregations>` user guide to
+  provide a thorough overview and examples of the various aggregation
+  functionality, including advanced usage tips
+- Added an FAQ section providing instructions configuring
+  :ref:`remote Jupyter notebooks <faq-remote-notebook-support>`
 - Added copy-paste-able code examples to all
   :class:`ViewStage <fiftyone.core.stages.ViewStage>` class docs and their
   corresponding :meth:`SampleCollection <fiftyone.core.collections.view_stage>`
@@ -79,15 +99,12 @@ Docs
   and
   :meth:`map_values() <fiftyone.core.collections.SampleCollection.map_values>`
   to the :ref:`Dataset views <using-views>` user guide
-- Updated the :ref:`Using aggregations <using-aggregations>` user guide to
-  provide a thorough overview and examples of the various aggregation
-  functionality, including advanced usage tips
-- Added an FAQ section providing instructions configuring
-  :ref:`remote Jupyter notebooks <faq-remote-notebook-support>`
 
 
 CLI
 ^^^
+- Added a `fiftyone app config` command for inspecting the default
+  :class:`AppConfig <fiftyone.core.config.AppConfig>`
 - Improved `ctrl + c` exit handling for CLI commands
 
 .. _release-notes-v0.7.1:
