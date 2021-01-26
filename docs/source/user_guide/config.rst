@@ -24,7 +24,7 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `dataset_zoo_manifest_paths`  | `FIFTYONE_ZOO_MANIFEST_PATHS`       | `None`                        | A list of manifest JSON files specifying additional zoo datasets. See                  |
 |                               |                                     |                               | :ref:`adding datasets to the zoo <dataset-zoo-add>` for more information.              |
-+-------------------------------+-------------------------------------+------------------------------+-----------------------------------------------------------------------------------------+
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_app_config_path`     | `FIFTYONE_DEFAULT_APP_CONFIG_PATH`  | `~/.fiftyone/app_config.json` | The default path to an :ref:`AppConfig <configuring-fiftyone-app>`.                    |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_dataset_dir`         | `FIFTYONE_DEFAULT_DATASET_DIR`      | `~/fiftyone`                  | The default directory to use when performing FiftyOne operations that                  |
@@ -98,12 +98,13 @@ described in the next section) at any time via the Python library and the CLI.
             "database_dir": "~/.fiftyone/var/lib/mongo",
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
+            "default_app_config_path": "~/.fiftyone/app_config.json",
             "default_app_port": 5151,
             "default_batch_size": null,
             "default_dataset_dir": "~/fiftyone",
-            "default_ml_backend": "torch",
-            "default_sequence_idx": "%08d",
             "default_image_ext": ".jpg",
+            "default_ml_backend": "torch",
+            "default_sequence_idx": "%06d",
             "default_video_ext": ".mp4",
             "desktop_app": false,
             "do_not_track": false,
@@ -131,12 +132,13 @@ described in the next section) at any time via the Python library and the CLI.
             "database_dir": "~/.fiftyone/var/lib/mongo",
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
+            "default_app_config_path": "~/.fiftyone/app_config.json",
             "default_app_port": 5151,
             "default_batch_size": null,
             "default_dataset_dir": "~/fiftyone",
-            "default_ml_backend": "torch",
-            "default_sequence_idx": "%08d",
             "default_image_ext": ".jpg",
+            "default_ml_backend": "torch",
+            "default_sequence_idx": "%06d",
             "default_video_ext": ".mp4",
             "desktop_app": false,
             "do_not_track": false,
