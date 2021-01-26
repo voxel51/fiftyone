@@ -53,17 +53,17 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_MODEL_ZOO_MANIFEST_PATHS",
             default=None,
         )
-        self.default_dataset_dir = self.parse_string(
-            d,
-            "default_dataset_dir",
-            env_var="FIFTYONE_DEFAULT_DATASET_DIR",
-            default=None,
-        )
         self.default_app_config_path = self.parse_string(
             d,
             "default_app_config_path",
             env_var="FIFTYONE_DEFAULT_APP_CONFIG_PATH",
             default=foc.FIFTYONE_APP_CONFIG_PATH,
+        )
+        self.default_dataset_dir = self.parse_string(
+            d,
+            "default_dataset_dir",
+            env_var="FIFTYONE_DEFAULT_DATASET_DIR",
+            default=None,
         )
         self.default_ml_backend = self.parse_string(
             d,
