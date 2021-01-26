@@ -87,7 +87,7 @@ def launch_app(
     remote=False,
     desktop=None,
     auto=True,
-    height=800,
+    config=None,
 ):
     """Launches the FiftyOne App.
 
@@ -109,8 +109,8 @@ def launch_app(
         auto (True): whether to automatically show a new App window
             whenever the state of the session is updated. Only applicable
             in notebook contexts
-        height (800): a height, in pixels, for the App. Only applicable in
-            notebook contexts
+        config (None): an optional :class:`fiftyone.core.config.AppConfig` to
+            control fine-grained default App settings.
 
     Returns:
         a :class:`Session`
@@ -135,7 +135,7 @@ def launch_app(
         remote=remote,
         desktop=desktop,
         auto=auto,
-        height=height,
+        config=config,
     )
 
     if _session.remote:
@@ -209,9 +209,6 @@ class Session(foc.HasClient):
         terminate the session.
 
     Args:
-        color_pool (None): a list of browser supported color strings from
-            which the App should draw from for coloring fields. If None,
-            ``fiftyone.config.default_app_color_pool`` is used
         dataset (None): an optional :class:`fiftyone.core.dataset.Dataset` to
             load
         view (None): an optional :class:`fiftyone.core.view.DatasetView` to
@@ -226,14 +223,8 @@ class Session(foc.HasClient):
         auto (True): whether to automatically show a new App window
             whenever the state of the session is updated. Only applicable
             in notebook contexts
-        height (800): a height, in pixels, for the App. Only applicable in
-            notebook contexts
-        show_attributes (None): whether to show attributes of labels in
-            expanded sample view images and videos. If None,
-            ``fiftyone.config.default_app_show_attributes`` is used
-        show_confidence (None): whether to show the confidence of labels in
-            expanded sample view images and videos. If None,
-            ``fiftyone.config.default_app_show_confidence`` is used
+        config (None): an optional :class:`fiftyone.core.config.AppConfig` to
+            control fine-grained default App settings.
     """
 
     _HC_NAMESPACE = "state"
@@ -242,33 +233,22 @@ class Session(foc.HasClient):
 
     def __init__(
         self,
-        color_pool=None,
         dataset=None,
         view=None,
         port=None,
         remote=False,
         desktop=None,
         auto=True,
-        height=800,
-        show_attributes=None,
-        show_confidence=None,
+        config=None,
     ):
         if port is None:
             port = fo.config.default_app_port
 
-        if color_pool is None:
-            color_pool = fo.config.default_app_color_pool
-
-        if show_attributes is None:
-            show_attributes = fo.config.default_app_show_attributes
-
-        if show_confidence is None:
-            show_confidence = fo.config.default_app_show_confidence
+        if config is None:
+            config = fo.app_config.copy()
 
         state = self._HC_ATTR_TYPE()
-        state.color_pool = color_pool
-        state.show_attributes = show_attributes
-        state.show_confidence = show_confidence
+        state.config = config
 
         self._context = focx._get_context()
         self._port = port
@@ -278,7 +258,6 @@ class Session(foc.HasClient):
         self._WAIT_INSTRUCTIONS = _WAIT_INSTRUCTIONS
         self._disable_wait_warning = False
         self._auto = auto
-        self._height = height
         self._handles = {}
         self._colab_img_counter = defaultdict(int)
 
@@ -402,41 +381,14 @@ class Session(foc.HasClient):
 
         return "http://localhost:%d/" % self.server_port
 
-    @property
-    def color_pool(self):
-        """A list of browser supported color strings from which the App should
-        draw from for coloring fields.
+    @_update_state(auto_show=True)
+    def update_config(self, config):
+        """Updates the current :class:`fiftyone.core.config.AppConfig`.
+
+        Args:
+            config: a :class:`fiftyone.core.config.AppConfig`
         """
-        return self.state.color_pool
-
-    @color_pool.setter
-    @_update_state()
-    def color_pool(self, color_pool):
-        self.state.color_pool = color_pool
-
-    @property
-    def show_attrs(self):
-        return self.state.show_attrs
-
-    @show_attrs.setter
-    @_update_state()
-    def show_attributes(self, show_attributes):
-        """Whether to show attributes of labels in expanded sample view images
-        and videos.
-        """
-        self.state.show_attributes = show_attributes
-
-    @property
-    def show_confidence(self):
-        """Whether to show the confidence of labels in expanded sample view
-        images and videos.
-        """
-        return self.state.show_confidence
-
-    @show_confidence.setter
-    @_update_state()
-    def show_confidence(self, show_confidence):
-        self.state.show_confidence = show_confidence
+        self.state.config = config.copy()
 
     @property
     def dataset(self):
@@ -719,7 +671,7 @@ class Session(foc.HasClient):
         self.state.active_handle = uuid
 
         if height is None:
-            height = self._height
+            height = self.config.notebook_height
 
         self._handles[uuid] = {"target": handle, "height": height}
 
@@ -740,7 +692,7 @@ def _display(session, handle, uuid, port=None, height=None, update=False):
             FiftyOne UI, in pixels. If None, a default value is used
     """
     if height is None:
-        height = 800
+        height = session.config.notebook_height
 
     funcs = {focx._COLAB: _display_colab, focx._IPYTHON: _display_ipython}
     fn = funcs[focx._get_context()]

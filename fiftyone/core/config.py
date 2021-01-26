@@ -22,23 +22,6 @@ import fiftyone.constants as foc
 logger = logging.getLogger(__name__)
 
 
-_COLOR_POOL = {
-    "#ee0000",
-    "#ee6600",
-    "#993300",
-    "#996633",
-    "#999900",
-    "#009900",
-    "#003300",
-    "#009999",
-    "#000099",
-    "#0066ff",
-    "#6600ff",
-    "#cc33cc",
-    "#777799",
-}
-
-
 class FiftyOneConfig(EnvConfig):
     """FiftyOne configuration settings."""
 
@@ -76,6 +59,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DEFAULT_DATASET_DIR",
             default=None,
         )
+        self.default_app_config_path = self.parse_string(
+            d,
+            "default_app_config_path",
+            env_var="FIFTYONE_DEFAULT_APP_CONFIG_PATH",
+            default=foc.FIFTYONE_APP_CONFIG_PATH,
+        )
         self.default_ml_backend = self.parse_string(
             d,
             "default_ml_backend",
@@ -105,24 +94,6 @@ class FiftyOneConfig(EnvConfig):
             "default_video_ext",
             env_var="FIFTYONE_DEFAULT_VIDEO_EXT",
             default=".mp4",
-        )
-        self.default_app_color_pool = self.parse_string_array(
-            d,
-            "default_app_color_pool",
-            env_var="FIFTYONE_DEFAULT_APP_COLOR_POOL",
-            default=_COLOR_POOL,
-        )
-        self.default_app_show_confidence = self.parse_bool(
-            d,
-            "default_app_show_confidence",
-            env_var="FIFTYONE_DEFAULT_APP_SHOW_CONFIDENCE",
-            default=True,
-        )
-        self.default_app_show_attributes = self.parse_bool(
-            d,
-            "default_app_show_attributes",
-            env_var="FIFTYONE_DEFAULT_APP_SHOW_ATTRIBUTES",
-            default=True,
         )
         self.default_app_port = self.parse_int(
             d,
@@ -197,6 +168,36 @@ class FiftyOneConfig(EnvConfig):
             self.default_ml_backend = self.default_ml_backend.lower()
 
 
+class AppConfig(EnvConfig):
+    """FiftyOne App configuration settings."""
+
+    def __init__(self, d):
+        self.color_pool = self.parse_string_array(
+            d,
+            "color_pool",
+            env_var="FIFTYONE_DEFAULT_APP_COLOR_POOL",
+            default=foc.DEFAULT_APP_COLOR_POOL,
+        )
+        self.notebook_height = self.parse_int(
+            d,
+            "notebook_height",
+            env_var="FIFTYONE_DEFAULT_APP_HEIGHT",
+            default=800,
+        )
+        self.show_confidence = self.parse_bool(
+            d,
+            "show_confidence",
+            env_var="FIFTYONE_DEFAULT_APP_SHOW_CONFIDENCE",
+            default=True,
+        )
+        self.show_attributes = self.parse_bool(
+            d,
+            "show_attributes",
+            env_var="FIFTYONE_DEFAULT_APP_SHOW_ATTRIBUTES",
+            default=True,
+        )
+
+
 def locate_config():
     """Returns the path to the FiftyOne config on disk.
 
@@ -234,6 +235,21 @@ def load_config():
         return FiftyOneConfig.from_json(config_path)
 
     return FiftyOneConfig({})
+
+
+def load_app_config(path):
+    """Loads the App config.
+
+    Args:
+        path: the path to where an app config may exist
+
+    Returns:
+        a ``fiftyone.core.config.AppConfig`` instance
+    """
+    if os.path.isfile(path):
+        return AppConfig.from_json(path)
+
+    return AppConfig({})
 
 
 def set_config_settings(**kwargs):

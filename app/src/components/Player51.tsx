@@ -138,6 +138,7 @@ export default ({
         colorMap,
         fps,
       });
+      player.updateOverlayOptions({ ...defaultOverlayOptions });
       if (!thumbnail) {
         player.updateOverlay(overlay);
       }
@@ -150,6 +151,7 @@ export default ({
     colorMap,
     colorByLabel,
     fps,
+    defaultOverlayOptions,
   ]);
 
   useEffect(() => {

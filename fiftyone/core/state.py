@@ -9,7 +9,9 @@ import logging
 
 import eta.core.serial as etas
 
+import fiftyone as fo
 import fiftyone.core.aggregations as foa
+import fiftyone.core.config as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -30,11 +32,6 @@ class StateDescription(etas.Serializable):
     """Class that describes the shared state between the FiftyOne App and
     a corresponding :class:`fiftyone.core.session.Session`.
 
-    Attributes:
-        dataset: the current :class:`fiftyone.core.session.Session`
-        selected: the list of currently selected samples
-        view: the current :class:`fiftyone.core.view.DatasetView`
-
     Args:
         close (False): whether to close the app
         connected (False): whether the session is connected to an app
@@ -42,17 +39,13 @@ class StateDescription(etas.Serializable):
         selected (None): the list of currently selected samples
         selected_objects (None): the list of currently selected objects
         view (None): the current :class:`fiftyone.core.view.DatasetView`
-        show_attributes (True): whether to show attributes by default in
-            player51
-        show_confidence (True): whether to show confidences by default in
-            player51
+        config (None): an optional :class:`fiftyone.core.config.AppConfig`
     """
 
     def __init__(
         self,
         active_handle=None,
         close=False,
-        color_pool=[],
         connected=False,
         dataset=None,
         datasets=None,
@@ -60,11 +53,10 @@ class StateDescription(etas.Serializable):
         selected_objects=None,
         view=None,
         filters={},
-        show_attributes=True,
-        show_confidence=True,
+        config=None,
     ):
+        self.config = config or fo.app_config
         self.close = close
-        self.color_pool = color_pool
         self.connect = connected
         self.dataset = dataset
         self.view = view
@@ -73,8 +65,6 @@ class StateDescription(etas.Serializable):
         self.filters = filters
         self.datasets = datasets or fod.list_datasets()
         self.active_handle = active_handle
-        self.show_attributes = show_attributes
-        self.show_confidence = show_confidence
         super().__init__()
 
     def serialize(self, reflective=False):
@@ -114,15 +104,17 @@ class StateDescription(etas.Serializable):
         Returns:
             :class:`StateDescription`
         """
+        if "config" in d:
+            config = foc.AppConfig.from_dict(d["config"])
+        else:
+            config = fo.app_config
+
         active_handle = d.get("active_handle", None)
         close = d.get("close", False)
         connected = d.get("connected", False)
         filters = d.get("filters", {})
         selected = d.get("selected", [])
         selected_objects = d.get("selected_objects", [])
-        color_pool = d.get("color_pool", [])
-        show_attributes = d.get("show_attributes", True)
-        show_confidence = d.get("show_confidence", True)
 
         dataset = d.get("dataset", None)
         if dataset is not None:
@@ -139,6 +131,7 @@ class StateDescription(etas.Serializable):
 
         return cls(
             active_handle=active_handle,
+            config=config,
             close=close,
             connected=connected,
             dataset=dataset,
@@ -146,9 +139,6 @@ class StateDescription(etas.Serializable):
             selected_objects=selected_objects,
             view=view,
             filters=filters,
-            color_pool=color_pool,
-            show_attributes=show_attributes,
-            show_confidence=show_confidence,
             **kwargs
         )
 

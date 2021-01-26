@@ -18,6 +18,9 @@ const SelectionMenu = () => {
 
   const clearSelection = () => {
     setSelectedSamples(new Set());
+    const newState = JSON.parse(JSON.stringify(stateDescription));
+    newState.selected = [];
+    setStateDescription(newState);
     socket.send(packageMessage("clear_selection", {}));
   };
 

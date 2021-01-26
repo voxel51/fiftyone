@@ -496,7 +496,8 @@ const selectedFields = selectorFamily({
     const video = get(isVideoDataset);
     view_.forEach(({ _cls, kwargs }) => {
       if (_cls === "fiftyone.core.stages.SelectFields") {
-        let names = new Set([...kwargs[0][1], ...RESERVED_FIELDS]);
+        const supplied = kwargs[0][1] ? kwargs[0][1] : [];
+        let names = new Set([...supplied, ...RESERVED_FIELDS]);
         if (video && dimension === "frame") {
           names = new Set(
             Array.from(names).map((n) => n.slice("frames.".length))
@@ -508,7 +509,8 @@ const selectedFields = selectorFamily({
           }
         });
       } else if (_cls === "fiftyone.core.stages.ExcludeFields") {
-        let names = Array.from(kwargs[0][1]);
+        const supplied = kwargs[0][1] ? kwargs[0][1] : [];
+        let names = Array.from(supplied);
 
         if (video && dimension === "frame") {
           names = names.map((n) => n.slice("frames.".length));
@@ -527,8 +529,9 @@ const selectedFields = selectorFamily({
 export const defaultPlayerOverlayOptions = selector({
   key: "defaultPlayerOverlayOptions",
   get: ({ get }) => {
-    const showAttrs = get(atoms.stateDescription).show_attributes;
-    const showConfidence = get(atoms.stateDescription).show_confidence;
+    const showAttrs = get(appConfig).show_attributes;
+    const showConfidence = get(appConfig).show_confidence;
+    console.log(showConfidence);
     return {
       showAttrs,
       showConfidence,
@@ -821,10 +824,17 @@ const scalarsMap = selectorFamily({
   },
 });
 
+export const appConfig = selector({
+  key: "appConfig",
+  get: ({ get }) => {
+    return get(atoms.stateDescription).config || {};
+  },
+});
+
 export const colorPool = selector({
   key: "colorPool",
   get: ({ get }) => {
-    return get(atoms.stateDescription).color_pool || [];
+    return get(appConfig).color_pool || [];
   },
 });
 

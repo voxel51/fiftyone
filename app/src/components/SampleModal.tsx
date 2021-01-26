@@ -254,6 +254,9 @@ const SampleModal = (
   const [requested, requestLabels] = useVideoData(socket, sample);
   const frameData = useRecoilValue(atoms.sampleFrameData(sample._id));
   const videoLabels = useRecoilValue(atoms.sampleVideoLabels(sample._id));
+  const defaultOverlayOptions = useRecoilValue(
+    selectors.defaultPlayerOverlayOptions
+  );
   useEffect(() => {
     mediaType === "video" && requested !== viewCounter && requestLabels();
   }, [requested]);
@@ -285,6 +288,9 @@ const SampleModal = (
       };
     }
   };
+  useEffect(() => {
+    setSavedOverlayOptions({});
+  }, [defaultOverlayOptions.showAttrs]);
   const onPrevious = wrapNavigationFunc(rest.onPrevious);
   const onNext = wrapNavigationFunc(rest.onNext);
 

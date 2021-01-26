@@ -10,6 +10,7 @@ import fiftyone.core.service as fos
 
 _database_service = fos.DatabaseService()
 config = foc.load_config()
+app_config = foc.load_app_config(config.default_app_config_path)
 
 from .core.aggregations import (
     Bounds,
@@ -18,6 +19,7 @@ from .core.aggregations import (
     Distinct,
     HistogramValues,
 )
+from .core.config import AppConfig
 from .core.dataset import (
     Dataset,
     list_datasets,
