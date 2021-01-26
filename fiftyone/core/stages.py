@@ -795,7 +795,7 @@ def _get_filter_frames_field_pipeline(
             "$set": {
                 frames: {
                     "$map": {
-                        "input": "$%s" % frames,
+                        "input": "$" + frames,
                         "as": "frame",
                         "in": {
                             "$mergeObjects": [
@@ -825,7 +825,7 @@ def _get_filter_frames_field_pipeline(
                         "$gt": [
                             {
                                 "$reduce": {
-                                    "input": "$%s" % frames,
+                                    "input": "$" + frames,
                                     "initialValue": 0,
                                     "in": {
                                         "$sum": [
@@ -834,8 +834,8 @@ def _get_filter_frames_field_pipeline(
                                                 "$cond": [
                                                     {
                                                         "$ne": [
-                                                            "$$this.%s"
-                                                            % new_field,
+                                                            "$$this."
+                                                            + new_field,
                                                             None,
                                                         ]
                                                     },
@@ -1319,14 +1319,19 @@ def _get_filter_frames_list_field_pipeline(
                                 "$$frame",
                                 {
                                     label_field: {
-                                        labels_list: {
-                                            "$filter": {
-                                                "input": "$$frame."
-                                                + filter_field,
-                                                "cond": cond,
-                                            }
-                                        }
-                                    },
+                                        "$mergeObjects": [
+                                            "$$frame." + label_field,
+                                            {
+                                                labels_list: {
+                                                    "$filter": {
+                                                        "input": "$$frame."
+                                                        + filter_field,
+                                                        "cond": cond,
+                                                    }
+                                                }
+                                            },
+                                        ]
+                                    }
                                 },
                             ]
                         },
@@ -1344,7 +1349,7 @@ def _get_filter_frames_list_field_pipeline(
                         "$gt": [
                             {
                                 "$reduce": {
-                                    "input": "$%s" % frames,
+                                    "input": "$" + frames,
                                     "initialValue": 0,
                                     "in": {
                                         "$sum": [
@@ -1967,18 +1972,19 @@ class MapValues(ViewStage):
 
 
 def _get_set_field_pipeline(
-    sample_collection, field, expr, embedded_root=False, root=False
+    sample_collection, field, expr, root=False, embedded_root=False
 ):
-    if sample_collection.media_type == fom.VIDEO and field.startswith(
-        _FRAMES_PREFIX
-    ):
-        # @todo implement this
-        raise ValueError("Processing frame fields is not yet supported")
-
     path, pipeline, list_fields = sample_collection._parse_field_name(field)
 
     # Don't unroll terminal lists unless explicitly requested
-    list_fields = [lf for lf in list_fields if lf != path]
+    list_fields = [lf for lf in list_fields if lf != field]
+
+    if sample_collection.media_type == fom.VIDEO and field.startswith(
+        _FRAMES_PREFIX
+    ):
+        return _get_set_frames_field_pipeline(
+            path, pipeline, list_fields, expr, root=False, embedded_root=False
+        )
 
     if not list_fields:
         if root:
@@ -1995,22 +2001,58 @@ def _get_set_field_pipeline(
 
         return pipeline + [{"$set": {path: path_expr}}]
 
-    if len(list_fields) > 1:
-        # @todo can this restriction be lifted?
-        raise ValueError(
-            "Field '%s' contains more than one list field" % field
+    if len(list_fields) == 1:
+        list_field = list_fields[0]
+        subfield = path[len(list_field) + 1 :]
+        expr = _set_terminal_list_field(
+            list_field, subfield, expr, root, embedded_root
+        )
+        return pipeline + [{"$set": {list_field: expr.to_mongo()}}]
+
+    # Handle last list field
+    last_list_field = list_fields[-1]
+    terminal_prefix = last_list_field[len(list_fields[-2]) + 1 :]
+    subfield = path[len(last_list_field) + 1 :]
+    expr = _set_terminal_list_field(
+        terminal_prefix, subfield, expr, root, embedded_root
+    )
+
+    for list_field1, list_field2 in zip(
+        reversed(list_fields[:-1]), reversed(list_fields[1:])
+    ):
+        inner_list_field = list_field2[len(list_field1) + 1 :]
+        expr = foe.ViewField().map(
+            foe.ViewField().set_field(inner_list_field, expr)
         )
 
-    list_field = list_fields[0]
+    expr = expr.to_mongo(prefix="$" + list_fields[0])
 
-    map_path = "$$element" + path[len(list_field) :]
-    map_root, map_field = map_path.rsplit(".", 1)
+    return pipeline + [{"$set": {list_fields[0]: expr}}]
 
-    if "." in map_root:
-        # @todo can this restriction be lifted?
-        raise ValueError(
-            "Processing embedded fields of lists is not supported"
-        )
+
+def _get_set_frames_field_pipeline(
+    path, pipeline, list_fields, expr, root=False, embedded_root=False
+):
+    raise ValueError("Setting frame fields is not yet supported")
+
+    # @todo finish this
+    return pipeline + [
+        {
+            "$set": {
+                "frames": {
+                    "$map": {"input": "$frames", "as": "frame", "in": {}}
+                }
+            }
+        }
+    ]
+
+
+def _set_terminal_list_field(list_field, subfield, expr, root, embedded_root):
+    map_path = "$$this"
+    if subfield:
+        map_path += "." + subfield
+
+    map_root = map_path.rsplit(".", 1)[0]
 
     if root:
         prefix = None
@@ -2021,21 +2063,12 @@ def _get_set_field_pipeline(
 
     map_expr = _get_mongo_expr(expr, prefix=prefix)
 
-    return pipeline + [
-        {
-            "$set": {
-                list_field: {
-                    "$map": {
-                        "input": "$" + list_field,
-                        "as": "element",
-                        "in": {
-                            "$mergeObjects": [map_root, {map_field: map_expr}]
-                        },
-                    }
-                }
-            }
-        }
-    ]
+    if subfield:
+        map_expr = foe.ViewField().set_field(subfield, map_expr)
+    else:
+        map_expr = foe.ViewExpression(map_expr)
+
+    return foe.ViewField(list_field).map(map_expr)
 
 
 def _get_mongo_expr(expr, prefix=None):
@@ -2129,8 +2162,8 @@ class SetField(ViewStage):
             sample_collection,
             self._field,
             self._expr,
-            embedded_root=(not self._root),
             root=self._root,
+            embedded_root=(not self._root),
         )
 
     def _kwargs(self):
