@@ -251,7 +251,7 @@ occur.
 | Config field      | Environment variable                    | Default value               | Description                                                                            |
 +===================+=========================================+=============================+========================================================================================+
 | `color_pool`      | `FIFTYONE_DEFAULT_APP_COLOR_POOL`       | :ref:`Color pool <colors>`  | A list of browser supported color strings from which the App should draw from for      |
-|                   |                                         |                             | coloring fields.                                                                       |
+|                   |                                         |                             | coloring fields, e.g. detection bounding boxes.                                        |
 +-------------------------------+-----------------------------+-----------------------------+----------------------------------------------------------------------------------------+
 | `notebook_height` | `FIFTYONE_DEFAULT_APP_NOTEBOOK_HEIGHT`  | `800`                       | The default height a App's displayed in notebook cells.                                |
 +-------------------------------+-----------------------------+-----------------------------+----------------------------------------------------------------------------------------+
