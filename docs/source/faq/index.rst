@@ -54,40 +54,49 @@ information about running FiftyOne in notebooks.
 Can I use FiftyOne in a remote notebook?
 ----------------------------------------
 
-Yes! A common notebook workflow is to `launch Jupyter remotely
-<https://ljvmiranda921.github.io/notebook/2018/01/31/running-a-jupyter-notebook>`_
-and connect to it from a local browser. 
+Yes! It is possible to work with a Jupyter notebook in your local browser that
+is
+`served from a remote machine <https://ljvmiranda921.github.io/notebook/2018/01/31/running-a-jupyter-notebook>`_
+where your data is located. Follow the instructions below to achieve this.
 
-If you want to use the FiftyOne App in this notebook, you will also need to
-port forward FiftyOne from the remote machine to your local machine with the
-following.
+**On the remote machine:**
 
-To launch Jupyter remotely:
-
-.. code:: shell
-
-    jupyter notebook --no-browser --port=XXXX
-
-To connect to Jupyter on your local machine:
+Start the Jupyter server on a port of your choice:
 
 .. code:: shell
 
+    # On remote machine
+    jupyter notebook --no-browser --port=XXXX /path/to/notebook.ipynb
+
+**On your local machine:**
+
+Back on your local machine, you will need to forward the remote port `XXXX` to
+a local port (we'll also use `XXXX` here, for consistency):
+
+.. code:: shell
+
+    # On local machine
     ssh -N -L XXXX:localhost:XXXX user@remote_machine
 
+Now open ``localhost:XXXX`` in your browser and you should find your notebook!
 
-**You need to use port 5151 for FiftyOne on your remote and local machine.**
-
-On your remote machine:
-
-.. code:: shell
-
-    fiftyone app launch -r -p 5151
-
-On your local machine:
+If your notebook launches the :ref:`FiftyOne App <fiftyone-app>`, you will also
+need to forward the App's port on the remote machine to your local machine in
+order to view the App in your notebook:
 
 .. code:: shell
 
-   ssh -N -L 5151:127.0.0.1:5151 user@remote_machine 
+    # On local machine
+    ssh -N -L 5151:localhost:5151 user@remote_machine
+
+.. note::
+
+    By default, the FiftyOne App uses port 5151. If your notebook specifies a
+    different port via the
+    :func:`launch_app(..., port=YYYY) <fiftyone.core.session.launch_app>`
+    syntax or you customized the App port in your
+    :ref:`FiftyOne config <configuring-fiftyone>`, then substitute the
+    appropriate port value in the command above.
 
 .. _faq-remote-server-data:
 
