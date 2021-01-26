@@ -385,7 +385,7 @@ class Session(foc.HasClient):
     def config(self):
         """The current :class:`fiftyone.core.config.AppConfig`.
 
-        For changes to a session's config to take affect in the App,
+        For changes to a session's config to take effect in the App,
         a call to :meth:`Session.refresh` or another state-updating action
         such as `session.view = my_view` must occur.
 
