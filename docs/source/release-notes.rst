@@ -26,8 +26,9 @@ App
   to `Only show`, `Hide`, or `Clear selection` the selected samples from the
   select samples dropdown
 - Added an :class:`AppConfig <fiftyone.core.config.AppConfig>` for configuring
-  App options like the :ref:`color pool <color-pool>` to draw from for coloring
-  field data like detections
+  App options like the :ref:`color pool <colors>` to draw from for coloring
+  field data like detections. See
+  :ref:`App configuration options <configuring-fiftyone-app>` for more info
 
 Core
 ^^^^
@@ -82,9 +83,9 @@ Docs
   :class:`SetField <fiftyone.core.stages.SetField>`
 - Added an FAQ section providing instructions configuring
 - Updated the :ref:`Using aggregations <using-aggregations>` user guide to
-  provide a thorough overview and examples of the various aggregation
+  provide a thorough overview and examples of various aggregation
   functionality, including advanced usage tips
-- Added an FAQ section providing instructions configuring
+- Added an FAQ section providing instructions for configuring
   :ref:`remote Jupyter notebooks <faq-remote-notebook-support>`
 - Added copy-paste-able code examples to all
   :class:`ViewStage <fiftyone.core.stages.ViewStage>` class docs and their
@@ -94,11 +95,6 @@ Docs
   :class:`Aggregation <fiftyone.core.aggregations.Aggregation>` class docs and their
   corresponding :meth:`SampleCollection <fiftyone.core.collections.aggregation>`
   methods
-- Added documentation for
-  :meth:`map_labels() <fiftyone.core.collections.SampleCollection.map_labels>`
-  and
-  :meth:`map_values() <fiftyone.core.collections.SampleCollection.map_values>`
-  to the :ref:`Dataset views <using-views>` user guide
 
 
 CLI
