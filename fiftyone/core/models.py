@@ -5,6 +5,7 @@ FiftyOne models.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import contextlib
 import logging
 import numpy as np
 
@@ -43,11 +44,6 @@ def apply_model(
         batch_size (None): an optional batch size to use. Only applicable for
             image samples
     """
-    if samples.media_type == fom.VIDEO:
-        return _apply_video_model(
-            samples, model, label_field, confidence_thresh
-        )
-
     # Use data loaders for Torch models, if possible
     if isinstance(model, TorchModelMixin):
         return fout.apply_torch_image_model(
@@ -58,29 +54,49 @@ def apply_model(
             batch_size=batch_size,
         )
 
-    batch_size = _parse_batch_size(batch_size, model)
+    with contextlib.ExitStack() as context:
+        try:
+            if confidence_thresh is not None:
+                cthresh = confidence_thresh
+            else:
+                cthresh = model.config.confidence_thresh
 
-    if batch_size is not None:
-        return _apply_image_model_batch(
-            samples, model, label_field, confidence_thresh, batch_size
+            context.enter_context(
+                fou.SetAttributes(model.config, confidence_thresh=cthresh)
+            )
+        except:
+            pass
+
+        # pylint: disable=no-member
+        context.enter_context(model)
+
+        if samples.media_type == fom.VIDEO:
+            return _apply_video_model(
+                samples, model, label_field, confidence_thresh
+            )
+
+        batch_size = _parse_batch_size(batch_size, model)
+
+        if batch_size is not None:
+            return _apply_image_model_batch(
+                samples, model, label_field, confidence_thresh, batch_size
+            )
+
+        return _apply_image_model_single(
+            samples, model, label_field, confidence_thresh
         )
-
-    return _apply_image_model_single(
-        samples, model, label_field, confidence_thresh
-    )
 
 
 def _apply_image_model_single(samples, model, label_field, confidence_thresh):
-    with model:
-        with fou.ProgressBar() as pb:
-            for sample in pb(samples):
-                # @todo use DataLoader-like strategy to improve performance?
-                img = etai.read(sample.filepath)
-                labels = model.predict(img)
+    with fou.ProgressBar() as pb:
+        for sample in pb(samples):
+            # @todo use DataLoader-like strategy to improve performance?
+            img = etai.read(sample.filepath)
+            labels = model.predict(img)
 
-                sample.add_labels(
-                    labels, label_field, confidence_thresh=confidence_thresh
-                )
+            sample.add_labels(
+                labels, label_field, confidence_thresh=confidence_thresh
+            )
 
 
 def _apply_image_model_batch(
@@ -88,34 +104,30 @@ def _apply_image_model_batch(
 ):
     samples_loader = fou.iter_batches(samples, batch_size)
 
-    with model:
-        with fou.ProgressBar(samples) as pb:
-            for sample_batch in samples_loader:
-                # @todo use DataLoader-like strategy to improve performance?
-                imgs = [etai.read(sample.filepath) for sample in sample_batch]
-                labels_batch = model.predict_all(imgs)
+    with fou.ProgressBar(samples) as pb:
+        for sample_batch in samples_loader:
+            # @todo use DataLoader-like strategy to improve performance?
+            imgs = [etai.read(sample.filepath) for sample in sample_batch]
+            labels_batch = model.predict_all(imgs)
 
-                for sample, labels in zip(sample_batch, labels_batch):
-                    sample.add_labels(
-                        labels,
-                        label_field,
-                        confidence_thresh=confidence_thresh,
-                    )
+            for sample, labels in zip(sample_batch, labels_batch):
+                sample.add_labels(
+                    labels, label_field, confidence_thresh=confidence_thresh,
+                )
 
-                pb.set_iteration(pb.iteration + len(imgs))
+            pb.set_iteration(pb.iteration + len(imgs))
 
 
 def _apply_video_model(samples, model, label_field, confidence_thresh):
-    with model:
-        with fou.ProgressBar() as pb:
-            for sample in pb(samples):
-                with etav.FFmpegVideoReader(sample.filepath) as video_reader:
-                    labels = model.predict(video_reader)
+    with fou.ProgressBar() as pb:
+        for sample in pb(samples):
+            with etav.FFmpegVideoReader(sample.filepath) as video_reader:
+                labels = model.predict(video_reader)
 
-                # Save labels
-                sample.add_labels(
-                    labels, label_field, confidence_thresh=confidence_thresh
-                )
+            # Save labels
+            sample.add_labels(
+                labels, label_field, confidence_thresh=confidence_thresh
+            )
 
 
 def compute_embeddings(samples, model, embeddings_field=None, batch_size=None):
@@ -147,9 +159,6 @@ def compute_embeddings(samples, model, embeddings_field=None, batch_size=None):
             % model.has_embeddings
         )
 
-    if samples.media_type == fom.VIDEO:
-        return _compute_video_embeddings(samples, model, embeddings_field)
-
     # Use data loaders for Torch models, if possible
     if isinstance(model, TorchModelMixin):
         return fout.compute_torch_image_embeddings(
@@ -159,30 +168,35 @@ def compute_embeddings(samples, model, embeddings_field=None, batch_size=None):
             batch_size=batch_size,
         )
 
-    batch_size = _parse_batch_size(batch_size, model)
+    with model:
+        if samples.media_type == fom.VIDEO:
+            return _compute_video_embeddings(samples, model, embeddings_field)
 
-    if batch_size is not None:
-        return _compute_image_embeddings_batch(
-            samples, model, embeddings_field, batch_size
+        batch_size = _parse_batch_size(batch_size, model)
+
+        if batch_size is not None:
+            return _compute_image_embeddings_batch(
+                samples, model, embeddings_field, batch_size
+            )
+
+        return _compute_image_embeddings_single(
+            samples, model, embeddings_field
         )
-
-    return _compute_image_embeddings_single(samples, model, embeddings_field)
 
 
 def _compute_image_embeddings_single(samples, model, embeddings_field):
     embeddings = []
 
-    with model:
-        with fou.ProgressBar() as pb:
-            for sample in pb(samples):
-                img = etai.read(sample.filepath)
-                embedding = model.embed(img)
+    with fou.ProgressBar() as pb:
+        for sample in pb(samples):
+            img = etai.read(sample.filepath)
+            embedding = model.embed(img)
 
-                if embeddings_field:
-                    sample[embeddings_field] = embedding[0]
-                    sample.save()
-                else:
-                    embeddings.append(embedding)
+            if embeddings_field:
+                sample[embeddings_field] = embedding[0]
+                sample.save()
+            else:
+                embeddings.append(embedding)
 
     if embeddings_field:
         return None
@@ -197,22 +211,19 @@ def _compute_image_embeddings_batch(
 
     embeddings = []
 
-    with model:
-        with fou.ProgressBar(samples) as pb:
-            for sample_batch in samples_loader:
-                imgs = [etai.read(sample.filepath) for sample in sample_batch]
-                embeddings_batch = model.embed_all(imgs)
+    with fou.ProgressBar(samples) as pb:
+        for sample_batch in samples_loader:
+            imgs = [etai.read(sample.filepath) for sample in sample_batch]
+            embeddings_batch = model.embed_all(imgs)
 
-                if embeddings_field:
-                    for sample, embedding in zip(
-                        sample_batch, embeddings_batch
-                    ):
-                        sample[embeddings_field] = embedding
-                        sample.save()
-                else:
-                    embeddings.append(embeddings_batch)
+            if embeddings_field:
+                for sample, embedding in zip(sample_batch, embeddings_batch):
+                    sample[embeddings_field] = embedding
+                    sample.save()
+            else:
+                embeddings.append(embeddings_batch)
 
-                pb.set_iteration(pb.iteration + len(imgs))
+            pb.set_iteration(pb.iteration + len(imgs))
 
     if embeddings_field:
         return None
@@ -223,17 +234,16 @@ def _compute_image_embeddings_batch(
 def _compute_video_embeddings(samples, model, embeddings_field):
     embeddings = []
 
-    with model:
-        with fou.ProgressBar() as pb:
-            for sample in pb(samples):
-                with etav.FFmpegVideoReader(sample.filepath) as video_reader:
-                    embedding = model.embed(video_reader)
+    with fou.ProgressBar() as pb:
+        for sample in pb(samples):
+            with etav.FFmpegVideoReader(sample.filepath) as video_reader:
+                embedding = model.embed(video_reader)
 
-                if embeddings_field:
-                    sample[embeddings_field] = embedding[0]
-                    sample.save()
-                else:
-                    embeddings.append(embedding)
+            if embeddings_field:
+                sample[embeddings_field] = embedding[0]
+                sample.save()
+            else:
+                embeddings.append(embedding)
 
     if embeddings_field:
         return None

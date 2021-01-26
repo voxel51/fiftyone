@@ -652,24 +652,16 @@ def _apply_confidence_thresh(label, confidence_thresh):
             k: _apply_confidence_thresh(v, confidence_thresh)
             for k, v in label.items()
         }
-    elif isinstance(label, (fol.Classification, fol.Detection)):
+    elif isinstance(label, fol._SINGLE_LABEL_FIELDS):
         if label.confidence is None or label.confidence < confidence_thresh:
             label = None
-    elif isinstance(label, fol.Classifications):
-        label.classifications = [
-            c
-            for c in label.classifications
-            if c.confidence is not None and c.confidence >= confidence_thresh
+    elif isinstance(label, fol._LABEL_LIST_FIELDS):
+        labels = [
+            l
+            for l in getattr(label, label._LABEL_LIST_FIELD)
+            if l.confidence is not None and l.confidence >= confidence_thresh
         ]
-    elif isinstance(label, fol.Detections):
-        label.detections = [
-            d
-            for d in label.detections
-            if d.confidence is not None and d.confidence >= confidence_thresh
-        ]
-    elif label is not None:
-        msg = "Ignoring unsupported label type '%s'" % label.__class__
-        warnings.warn(msg)
+        setattr(label, label._LABEL_LIST_FIELD, labels)
 
     return label
 
