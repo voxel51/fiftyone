@@ -186,3 +186,8 @@ export const appFeedbackIsOpen = atom({
   key: "appFeedbackIsOpen",
   default: false,
 });
+
+export const savedPlayerOverlayOptions = atom({
+  key: "savedPlayerOverlayOptions",
+  default: {},
+});

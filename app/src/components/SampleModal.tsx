@@ -277,7 +277,9 @@ const SampleModal = (
   // save overlay options when navigating - these are restored by passing them
   // in defaultOverlayOptions when the new player is created
   const playerRef = useRef();
-  const [savedOverlayOptions, setSavedOverlayOptions] = useState({});
+  const [savedOverlayOptions, setSavedOverlayOptions] = useRecoilState(
+    atoms.savedPlayerOverlayOptions
+  );
   const wrapNavigationFunc = (callback) => {
     if (callback) {
       return () => {
@@ -289,8 +291,17 @@ const SampleModal = (
     }
   };
   useEffect(() => {
-    setSavedOverlayOptions({});
+    setSavedOverlayOptions({
+      ...savedOverlayOptions,
+      showAttrs: defaultOverlayOptions.showAttrs,
+    });
   }, [defaultOverlayOptions.showAttrs]);
+  useEffect(() => {
+    setSavedOverlayOptions({
+      ...savedOverlayOptions,
+      showConfidence: defaultOverlayOptions.showConfidence,
+    });
+  }, [defaultOverlayOptions.showConfidence]);
   const onPrevious = wrapNavigationFunc(rest.onPrevious);
   const onNext = wrapNavigationFunc(rest.onNext);
 

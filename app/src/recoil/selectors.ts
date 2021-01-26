@@ -531,10 +531,19 @@ export const defaultPlayerOverlayOptions = selector({
   get: ({ get }) => {
     const showAttrs = get(appConfig).show_attributes;
     const showConfidence = get(appConfig).show_confidence;
-    console.log(showConfidence);
     return {
       showAttrs,
       showConfidence,
+    };
+  },
+});
+
+export const playerOverlayOptions = selector({
+  key: "playerOverlayOptions",
+  get: ({ get }) => {
+    return {
+      ...get(defaultPlayerOverlayOptions),
+      ...get(atoms.savedPlayerOverlayOptions),
     };
   },
 });
