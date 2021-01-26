@@ -774,6 +774,7 @@ class AppCommand(Command):
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "config", AppConfigCommand)
         _register_command(subparsers, "launch", AppLaunchCommand)
         _register_command(subparsers, "view", AppViewCommand)
         _register_command(subparsers, "connect", AppConnectCommand)
@@ -781,6 +782,54 @@ class AppCommand(Command):
     @staticmethod
     def execute(parser, args):
         parser.print_help()
+
+
+class AppConfigCommand(Command):
+    """Tools for working with your App config.
+
+    Examples::
+
+        # Print your entire config
+        fiftyone app config
+
+        # Print a specific config field
+        fiftyone app config <field>
+
+        # Print the location of your config on disk (if one exists)
+        fiftyone app config --locate
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "field", nargs="?", metavar="FIELD", help="a config field to print"
+        )
+        parser.add_argument(
+            "-l",
+            "--locate",
+            action="store_true",
+            help="print the location of your config on disk",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if args.locate:
+            config_path = fo.config.default_app_config_path
+            if os.path.isfile(config_path):
+                print(config_path)
+            else:
+                print("No config file found at '%s'" % config_path)
+
+            return
+
+        if args.field:
+            field = getattr(fo.app_config, args.field)
+            if etau.is_str(field):
+                print(field)
+            else:
+                print(etas.json_to_str(field))
+        else:
+            print(fo.app_config)
 
 
 class AppLaunchCommand(Command):
