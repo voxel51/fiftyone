@@ -295,9 +295,9 @@ def set_config_settings(**kwargs):
     import fiftyone as fo
 
     # Validiate settings
-    _config = FiftyOneConfig.from_dict(kwargs)
+    FiftyOneConfig.from_dict(kwargs)
 
-    _set_settings(fo.config, _config, kwargs)
+    _set_settings(fo.config, kwargs)
 
 
 def set_app_config_settings(**kwargs):
@@ -313,19 +313,18 @@ def set_app_config_settings(**kwargs):
     import fiftyone as fo
 
     # Validiate settings
-    _config = AppConfig.from_dict(kwargs)
+    AppConfig.from_dict(kwargs)
 
-    _set_settings(fo.app_config, _config, kwargs)
+    _set_settings(fo.app_config, kwargs)
 
 
-def _set_settings(config, new_config, kwargs):
+def _set_settings(config, kwargs):
     # Apply settings
-    for field in kwargs:
-        if not hasattr(new_config, field):
+    for field, val in kwargs.items():
+        if not hasattr(config, field):
             logger.warning("Skipping unknown config setting '%s'", field)
             continue
 
-        val = getattr(new_config, field)
         setattr(config, field, val)
 
 

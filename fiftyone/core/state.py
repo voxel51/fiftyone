@@ -104,10 +104,8 @@ class StateDescription(etas.Serializable):
         Returns:
             :class:`StateDescription`
         """
-        if "config" in d:
-            config = foc.AppConfig.from_dict(d["config"])
-        else:
-            config = fo.app_config
+        config = fo.app_config
+        foc._set_settings(config, d.get("config", {}))
 
         active_handle = d.get("active_handle", None)
         close = d.get("close", False)
