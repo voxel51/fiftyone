@@ -373,7 +373,7 @@ via the following pattern:
     :linenos:
 
     import fiftyone as fo
-    import fityone.zoo as foz
+    import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart")
 
