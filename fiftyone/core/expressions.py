@@ -5,7 +5,6 @@ Expressions for :class:`fiftyone.core.stages.ViewStage` definitions.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from collections import defaultdict
 from copy import deepcopy
 import re
 import warnings
@@ -477,7 +476,7 @@ class ViewExpression(object):
         """
         return ViewExpression({"$sqrt": self})
 
-    # Field operators #########################################################
+    # Generic field operators #################################################
 
     def type(self):
         """Returns the type string of this expression.
@@ -566,6 +565,21 @@ class ViewExpression(object):
         """
         expr._freeze_prefix("$$expr")
         return ViewExpression({"$let": {"vars": {"expr": self}, "in": expr}})
+
+    def if_else(self, true_expr, false_expr):
+        """Returns either ``true_expr`` or ``false_expr`` depending on the
+        value of this expression, which must resolve to a boolean.
+
+        Args:
+            true_expr: a :class:`ViewExpression` or MongoDB expression dict
+            false_expr: a :class:`ViewExpression` or MongoDB expression dict
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression(
+            {"$cond": {"if": self, "then": true_expr, "else": false_expr}}
+        )
 
     def cases(self, mapping, default=None):
         """Applies a case statement to this expression, which effectively
@@ -742,6 +756,40 @@ class ViewExpression(object):
         self_expr = ViewField("$$" + var)
         in_expr = _do_apply_memo(expr, self, self_expr)
         return ViewExpression({"$let": {"vars": {var: self}, "in": in_expr}})
+
+    def min(self, value=None):
+        """Returns the minimum value of either this array expression, or the
+        minimum of this expression and the given value.
+
+        Missing or ``None`` values are ignored.
+
+        Args:
+            value (None): an optional value to compare to
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        if value is not None:
+            return ViewExpression({"$min": [self, value]})
+
+        return ViewExpression({"$min": self})
+
+    def max(self, value=None):
+        """Returns the maximum value of either this array expression, or the
+        maximum of this expression and the given value.
+
+        Missing or ``None`` values are ignored.
+
+        Args:
+            value (None): an optional value to compare to
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        if value is not None:
+            return ViewExpression({"$max": [self, value]})
+
+        return ViewExpression({"$max": self})
 
     # Array expression operators ##############################################
 
@@ -1244,58 +1292,104 @@ class ViewExpression(object):
         options = None if case_sensitive else "i"
         return self.re_match(regex, options=options)
 
-    # Hybrid expression operators #############################################
 
-    def min(self, value=None):
-        """Returns the minimum value of either this array expression, or the
-        minimum of this expression and the given value.
+class ViewField(ViewExpression):
+    """A :class:`ViewExpression` that refers to a field or embedded field of a
+    document.
 
-        Missing or ``None`` values are ignored.
+    You can use `dot notation <https://docs.mongodb.com/manual/core/document/#dot-notation>`_
+    to refer to subfields of embedded objects within fields.
+
+    When you create a :class:`ViewField` using a string field like
+    ``ViewField("embedded.field.name")``, the meaning of this field is
+    interpreted relative to the context in which the :class:`ViewField` object
+    is used. For example, when passed to the :meth:`ViewExpression.map` method,
+    this object will refer to the ``embedded.field.name`` object of the array
+    element being processed.
+
+    In other cases, you may wish to create a :class:`ViewField` that always
+    refers to the root document. You can do this by prepending ``"$"`` to the
+    name of the field, as in ``ViewField("$embedded.field.name")``.
+
+    Examples::
+
+        from fiftyone import ViewField as F
+
+        # Reference the root of the current context
+        F()
+
+        # Reference the `ground_truth` field in the current context
+        F("ground_truth")
+
+        # Reference the `label` field of the `ground_truth` object in the
+        # current context
+        F("ground_truth.label")
+
+        # Reference the root document in any context
+        F("$")
+
+        # Reference the `label` field of the root document in any context
+        F("$label")
+
+        # Reference the `label` field of the `ground_truth` object in the root
+        # document in any context
+        F("$ground_truth.label")
+
+    .. automethod:: __eq__
+    .. automethod:: __ge__
+    .. automethod:: __gt__
+    .. automethod:: __le__
+    .. automethod:: __lt__
+    .. automethod:: __ne__
+    .. automethod:: __and__
+    .. automethod:: __invert__
+    .. automethod:: __or__
+    .. automethod:: __abs__
+    .. automethod:: __add__
+    .. automethod:: __ceil__
+    .. automethod:: __floor__
+    .. automethod:: __round__
+    .. automethod:: __mod__
+    .. automethod:: __mul__
+    .. automethod:: __pow__
+    .. automethod:: __sub__
+    .. automethod:: __truediv__
+    .. automethod:: __getitem__
+
+    Args:
+        name (None): the name of the field, with an optional "$" preprended if
+            you wish to freeze this field to the root document
+    """
+
+    def __init__(self, name=None):
+        if name is None:
+            name = ""
+
+        should_freeze = name.startswith("$")
+        if should_freeze:
+            name = name[1:]
+
+        super().__init__(name)
+
+        if should_freeze:
+            self._freeze_prefix("")
+
+    def to_mongo(self, prefix=None):
+        """Returns a MongoDB representation of the field.
 
         Args:
-            value (None): an optional value to compare to
+            prefix (None): an optional prefix to prepend to the field name
 
         Returns:
-            a :class:`ViewExpression`
+            a string
         """
-        if value is not None:
-            return ViewExpression({"$min": [self, value]})
+        if self.is_frozen:
+            prefix = self._prefix
 
-        return ViewExpression({"$min": self})
+        if prefix:
+            return prefix + "." + self._expr if self._expr else prefix
 
-    def max(self, value=None):
-        """Returns the maximum value of either this array expression, or the
-        maximum of this expression and the given value.
-
-        Missing or ``None`` values are ignored.
-
-        Args:
-            value (None): an optional value to compare to
-
-        Returns:
-            a :class:`ViewExpression`
-        """
-        if value is not None:
-            return ViewExpression({"$max": [self, value]})
-
-        return ViewExpression({"$max": self})
-
-    # Conditional operators ###################################################
-
-    def if_else(self, true_expr, false_expr):
-        """Returns either ``true_expr`` or ``false_expr`` depending on the
-        value of this expression, which must resolve to a boolean.
-
-        Args:
-            true_expr: a :class:`ViewExpression` or MongoDB expression dict
-            false_expr: a :class:`ViewExpression` or MongoDB expression dict
-
-        Returns:
-            a :class:`ViewExpression`
-        """
-        return ViewExpression(
-            {"$cond": {"if": self, "then": true_expr, "else": false_expr}}
-        )
+        return "$" + self._expr if self._expr else "$this"
 
 
 def _do_recurse(val, fcn):
@@ -1339,126 +1433,12 @@ def _do_apply_memo(val, old, new):
     return _do_recurse(val, fcn)
 
 
-class _MetaViewField(type):
-
-    # pylint: disable=no-member
-    def __getattr__(cls, name):
-        # This is here to prevent Sphinx from getting confused...
-        # https://github.com/sphinx-doc/sphinx/issues/6859
-        if not etau.is_str(name) or name.startswith("_"):
-            return super().__getattr__(name)
-
-        return ViewField(name)
-
-
-class ViewField(ViewExpression, metaclass=_MetaViewField):
-    """A :class:`ViewExpression` that refers to a field or embedded field of a
-    document.
-
-    You can use `dot notation <https://docs.mongodb.com/manual/core/document/#dot-notation>`_
-    to refer to subfields of embedded objects within fields.
-
-    When you create a :class:`ViewField` using a string field like
-    ``ViewField("embedded.field.name")``, the meaning of this field is
-    interpreted relative to the context in which the :class:`ViewField` object
-    is used. For example, when passed to the :meth:`ViewExpression.map` method,
-    this object will refer to the ``embedded.field.name`` object of the array
-    element being processed.
-
-    In other cases, you may wish to create a :class:`ViewField` that always
-    refers to the root document. You can do this by prepending ``"$"`` to the
-    name of the field, as in ``ViewField("$embedded.field.name")``.
-
-    Examples::
-
-        from fiftyone import ViewField as F
-
-        # Reference the root of the current context
-        F()
-
-        # Reference a `ground_truth` field in the current context
-        F("ground_truth")
-        F.ground_truth           # equivalent
-
-        # Reference the `label` field of a `ground_truth` object in the
-        # current context
-        F("ground_truth.label")
-        F("ground_truth").label  # equivalent
-        F.ground_truth.label     # equivalent
-
-        # Reference the root document in any context
-        F("$")
-
-        # Reference the `label` field of the root document in any context
-        F("$label")
-
-    .. automethod:: __eq__
-    .. automethod:: __ge__
-    .. automethod:: __gt__
-    .. automethod:: __le__
-    .. automethod:: __lt__
-    .. automethod:: __ne__
-    .. automethod:: __and__
-    .. automethod:: __invert__
-    .. automethod:: __or__
-    .. automethod:: __abs__
-    .. automethod:: __add__
-    .. automethod:: __ceil__
-    .. automethod:: __floor__
-    .. automethod:: __round__
-    .. automethod:: __mod__
-    .. automethod:: __mul__
-    .. automethod:: __pow__
-    .. automethod:: __sub__
-    .. automethod:: __truediv__
-    .. automethod:: __getitem__
-
-    Args:
-        name (None): the name of the field, with an optional "$" preprended if
-            you wish to freeze this field to the root document
-    """
-
-    def __init__(self, name=None):
-        if name is None:
-            name = ""
-
-        should_freeze = name.startswith("$")
-        if should_freeze:
-            name = name[1:]
-
-        super().__init__(name)
-
-        if should_freeze:
-            self._freeze_prefix("")
-
-    def __getattr__(self, name):
-        sub_name = self._expr + "." + name if self._expr else name
-        return ViewField(sub_name)
-
-    def to_mongo(self, prefix=None):
-        """Returns a MongoDB representation of the field.
-
-        Args:
-            prefix (None): an optional prefix to prepend to the field name
-
-        Returns:
-            a string
-        """
-        if self.is_frozen:
-            prefix = self._prefix
-
-        if prefix:
-            return prefix + "." + self._expr if self._expr else prefix
-
-        return "$" + self._expr if self._expr else "$this"
-
-
 #: A :class:`ViewExpression` that refers to the current `$$value` in a MongoDB
 # reduction expression. See :meth:`ViewExpression.reduce`.
 VALUE = ViewField("$$value")
 
 
-class ObjectId(ViewExpression, metaclass=_MetaViewField):
+class ObjectId(ViewExpression):
     """A :class:`ViewExpression` that refers to an
     `ObjectId <https://docs.mongodb.com/manual/reference/method/ObjectId>`_ of
     a document.

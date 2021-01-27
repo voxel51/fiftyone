@@ -1857,7 +1857,7 @@ class MapLabels(ViewStage):
 
         label_path = labels_field + ".label"
 
-        expr = foe.ViewField().map_values(self._map)
+        expr = foe.ViewField("label").map_values(self._map)
         return _get_set_field_pipeline(sample_collection, label_path, expr)
 
     def _kwargs(self):
