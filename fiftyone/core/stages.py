@@ -1238,7 +1238,7 @@ class FilterLabels(FilterField):
 
     def _get_labels_field(self, sample_collection):
         field_name, is_list_field, is_frame_field = _get_labels_field(
-            self._field, sample_collection
+            sample_collection, self._field
         )
         self._is_frame_field = is_frame_field
         self._labels_field = field_name
@@ -1280,7 +1280,7 @@ def _get_filter_list_field_pipeline(
                 "$match": {
                     filter_field: {
                         "$gt": [
-                            {"$size": {"$ifNull": ["$" + filter_field, [],]}},
+                            {"$size": {"$ifNull": ["$" + filter_field, []]}},
                             0,
                         ]
                     }
@@ -1713,7 +1713,7 @@ class LimitLabels(ViewStage):
 
     def to_mongo(self, sample_collection, **_):
         self._labels_list_field = _get_labels_list_field(
-            self._field, sample_collection
+            sample_collection, self._field
         )
 
         limit = max(self._limit, 0)
@@ -1743,7 +1743,7 @@ class LimitLabels(ViewStage):
 
     def validate(self, sample_collection):
         self._labels_list_field = _get_labels_list_field(
-            self._field, sample_collection
+            sample_collection, self._field
         )
 
 
@@ -1849,7 +1849,7 @@ class MapLabels(ViewStage):
 
     def to_mongo(self, sample_collection, **_):
         labels_field, _, is_frame_field = _get_labels_field(
-            self._field, sample_collection
+            sample_collection, self._field
         )
 
         if is_frame_field:
@@ -1858,7 +1858,7 @@ class MapLabels(ViewStage):
         label_path = labels_field + ".label"
 
         expr = foe.ViewField("label").map_values(self._map)
-        return _get_set_field_pipeline(sample_collection, label_path, expr)
+        return _make_set_field_pipeline(sample_collection, label_path, expr)
 
     def _kwargs(self):
         return [
@@ -1874,10 +1874,10 @@ class MapLabels(ViewStage):
         ]
 
     def validate(self, sample_collection):
-        _get_labels_field(self._field, sample_collection)
+        _get_labels_field(sample_collection, self._field)
 
 
-def _get_set_field_pipeline(sample_collection, field, expr):
+def _make_set_field_pipeline(sample_collection, field, expr):
     path, list_fields = _parse_field_name(sample_collection, field)
 
     # Don't unroll terminal lists unless explicitly requested
@@ -2079,7 +2079,7 @@ class SetField(ViewStage):
         return self._expr
 
     def to_mongo(self, sample_collection, **_):
-        return _get_set_field_pipeline(
+        return _make_set_field_pipeline(
             sample_collection, self._field, self._expr
         )
 
@@ -3084,7 +3084,7 @@ def _get_rng(seed):
     return _random
 
 
-def _get_labels_field(field_path, sample_collection):
+def _get_labels_field(sample_collection, field_path):
     if field_path.startswith(_FRAMES_PREFIX):
         if sample_collection.media_type != fom.VIDEO:
             raise ValueError(
@@ -3124,7 +3124,7 @@ def _get_labels_field(field_path, sample_collection):
     )
 
 
-def _get_labels_list_field(field_path, sample_collection):
+def _get_labels_list_field(sample_collection, field_path):
     if field_path.startswith(_FRAMES_PREFIX):
         if sample_collection.media_type != fom.VIDEO:
             raise ValueError(
