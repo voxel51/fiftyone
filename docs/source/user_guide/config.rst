@@ -233,8 +233,8 @@ For example, you can customize your FiftyOne config at runtime as follows:
 
 .. _configuring-fiftyone-app:
 
-Configuring the FiftyOne App
-============================
+Configuring the App
+===================
 
 The :ref:`FiftyOne App <fiftyone-app>` can also be configured in various ways.
 A new copy of your App config is applied to each |Session| object that is

@@ -113,3 +113,4 @@ on your data quickly and easily.
     FiftyOne Model Zoo <model_zoo/index>
     FiftyOne Brain <brain>
     Configuring FiftyOne <config>
+    Configuring the App <config#configuring-the-app>
