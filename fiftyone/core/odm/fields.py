@@ -9,6 +9,8 @@ import mongoengine
 import mongoengine.fields
 import six
 
+import fiftyone.core.frame_utils as fofu
+
 import eta.core.utils as etau
 
 
@@ -19,8 +21,8 @@ class Field(mongoengine.fields.BaseField):
         return etau.get_class_name(self)
 
 
-class StringField(mongoengine.StringField, Field):
-    """A unicode string field."""
+class IntField(mongoengine.IntField, Field):
+    """A 32 bit integer field."""
 
     pass
 
@@ -55,6 +57,16 @@ class DictField(mongoengine.DictField, Field):
         return etau.get_class_name(self)
 
 
+class FrameNumberField(IntField):
+    """A video frame number field."""
+
+    def validate(self, value):
+        try:
+            fofu.validate_frame_number(value)
+        except fofu.FrameError as e:
+            self.error(str(e))
+
+
 class IntDictField(DictField):
     def to_mongo(self, value):
         if value is None:
@@ -73,8 +85,20 @@ class IntDictField(DictField):
         if not len(value):
             return
 
-        if any(map(lambda k: isinstance(k, six.integer_types), value)):
+        if not all(map(lambda k: isinstance(k, six.integer_types), value)):
             self.error("Not all keys are integers")
+
+
+class ObjectIdField(mongoengine.ObjectIdField, Field):
+    """An Object ID field."""
+
+    pass
+
+
+class StringField(mongoengine.StringField, Field):
+    """A unicode string field."""
+
+    pass
 
 
 class TargetsField(IntDictField):

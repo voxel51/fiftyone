@@ -6,18 +6,18 @@ Backing document classes for :class:`fiftyone.core.frame.Frame` instances.
 |
 """
 from collections import OrderedDict
-import fiftyone.core.fields as fof
 
 from .document import Document, SampleDocument
 from .mixins import DatasetMixin, default_sample_fields, NoDatasetMixin
+from .fields import FrameNumberField, ObjectIdField
 
 
 class DatasetFrameSampleDocument(DatasetMixin, Document, SampleDocument):
 
     meta = {"abstract": True}
 
-    _sample_id = fof.ObjectIdField(default=None, required=True)
-    frame_number = fof.FrameNumberField(required=True)
+    _sample_id = ObjectIdField(default=None, required=True)
+    frame_number = FrameNumberField(required=True)
 
     @classmethod
     def _sample_collection_name(cls):

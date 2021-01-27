@@ -49,12 +49,6 @@ def parse_field_str(field_str):
     return ftype, embedded_doc_type, subfield
 
 
-class ObjectIdField(mongoengine.ObjectIdField, Field):
-    """An Object ID field."""
-
-    pass
-
-
 class UUIDField(mongoengine.UUIDField, Field):
     """A UUID field."""
 
@@ -65,22 +59,6 @@ class BooleanField(mongoengine.BooleanField, Field):
     """A boolean field."""
 
     pass
-
-
-class IntField(mongoengine.IntField, Field):
-    """A 32 bit integer field."""
-
-    pass
-
-
-class FrameNumberField(IntField):
-    """A video frame number field."""
-
-    def validate(self, value):
-        try:
-            fofu.validate_frame_number(value)
-        except fofu.FrameError as e:
-            self.error(str(e))
 
 
 class FloatField(mongoengine.FloatField, Field):

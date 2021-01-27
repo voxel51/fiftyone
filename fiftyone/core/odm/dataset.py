@@ -105,7 +105,7 @@ class DatasetDocument(Document):
     sample_fields = EmbeddedDocumentListField(
         document_type=SampleFieldDocument
     )
-    global_targets = TargetsField(null=True)
-    label_targets = DictField(default=dict, field=TargetsField(default=dict))
+    default_targets = TargetsField(null=True)
+    field_targets = DictField(default=dict, field=TargetsField(default=dict))
     frame_fields = EmbeddedDocumentListField(document_type=SampleFieldDocument)
     version = StringField(required=True, null=True)
