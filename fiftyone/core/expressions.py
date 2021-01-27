@@ -684,9 +684,9 @@ class ViewExpression(object):
             #   If the `label` starts with `b`, replace it with `b`. Otherwise,
             #   replace it with "other"
             #
-            view = dataset.map_values(
+            view = dataset.set_field(
                 "predictions",
-                F().set_field(
+                F("predictions").set_field(
                     "label",
                     F("label").re_match("^b").if_else("b", "other"),
                 )
