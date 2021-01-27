@@ -2916,9 +2916,8 @@ class SampleCollection(object):
                 instances
 
         Returns:
-            an :class:`fiftyone.core.aggregations.AggregationResult` or list of
-            :class:`fiftyone.core.aggregations.AggregationResult` instances
-            corresponding to the input aggregations
+            an aggregation result or list of aggregation results corresponding
+            to the input aggregations
         """
         scalar_result, aggregations, facets = self._build_aggregation(
             aggregations
