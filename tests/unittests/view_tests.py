@@ -160,20 +160,6 @@ class DatasetViewTests(unittest.TestCase):
 
 
 class ViewFieldTests(unittest.TestCase):
-    def test_field_names(self):
-        self.assertEqual(
-            F.ground_truth.to_mongo(), F("ground_truth").to_mongo()
-        )
-        self.assertEqual(
-            F.ground_truth.label.to_mongo(), F("ground_truth.label").to_mongo()
-        )
-        self.assertEqual(
-            F.ground_truth.label.to_mongo(), F("ground_truth.label").to_mongo()
-        )
-        self.assertEqual(
-            F.ground_truth.label.to_mongo(), F("ground_truth").label.to_mongo()
-        )
-
     @unittest.skip("TODO: Fix workflow errors. Must be run manually")
     @drop_datasets
     def test_clone_fields(self):
