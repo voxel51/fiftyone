@@ -3330,19 +3330,17 @@ def _get_field_with_type(label_fields, label_cls):
 
 
 def _parse_field_name(sample_collection, field_name):
-    if sample_collection.media_type == fom.VIDEO and (
+    is_frames_field = (sample_collection.media_type == fom.VIDEO) and (
         field_name.startswith(_FRAMES_PREFIX) or field_name == "frames"
-    ):
-        pipeline = _unwind_frames()
+    )
 
+    if is_frames_field:
         if field_name == "frames":
-            return field_name, pipeline, []
+            return field_name, is_frames_field, []
 
         schema = sample_collection.get_frame_field_schema()
-
         field_name = field_name[len(_FRAMES_PREFIX) :]
     else:
-        pipeline = []
         schema = sample_collection.get_field_schema()
 
     list_fields = set()
@@ -3385,11 +3383,7 @@ def _parse_field_name(sample_collection, field_name):
     # embedded field `x.y`
     list_fields = sorted(list_fields)
 
-    return field_name, pipeline, list_fields
-
-
-def _unwind_frames():
-    return [{"$unwind": "$frames"}, {"$replaceRoot": {"newRoot": "$frames"}}]
+    return field_name, is_frames_field, list_fields
 
 
 def _get_random_characters(n):

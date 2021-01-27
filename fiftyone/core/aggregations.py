@@ -146,8 +146,8 @@ class Bounds(Aggregation):
         return d["min"], d["max"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline, list_fields = sample_collection._parse_field_name(
-            self._field_name
+        path, pipeline, list_fields = _parse_field_name(
+            sample_collection, self._field_name
         )
 
         for list_field in list_fields:
@@ -258,8 +258,8 @@ class Count(Aggregation):
         if self._field_name is None:
             return [{"$count": "count"}]
 
-        path, pipeline, list_fields = sample_collection._parse_field_name(
-            self._field_name
+        path, pipeline, list_fields = _parse_field_name(
+            sample_collection, self._field_name
         )
 
         for list_field in list_fields:
@@ -355,8 +355,8 @@ class CountValues(Aggregation):
         return {i["k"]: i["count"] for i in d["result"] if i["k"] is not None}
 
     def to_mongo(self, sample_collection):
-        path, pipeline, list_fields = sample_collection._parse_field_name(
-            self._field_name
+        path, pipeline, list_fields = _parse_field_name(
+            sample_collection, self._field_name
         )
 
         for list_field in list_fields:
@@ -459,8 +459,8 @@ class Distinct(Aggregation):
         return sorted(d["values"])
 
     def to_mongo(self, sample_collection):
-        path, pipeline, list_fields = sample_collection._parse_field_name(
-            self._field_name
+        path, pipeline, list_fields = _parse_field_name(
+            sample_collection, self._field_name
         )
 
         for list_field in list_fields:
@@ -593,8 +593,8 @@ class HistogramValues(Aggregation):
         return self._parse_result_auto(d)
 
     def to_mongo(self, sample_collection):
-        path, pipeline, list_fields = sample_collection._parse_field_name(
-            self._field_name
+        path, pipeline, list_fields = _parse_field_name(
+            sample_collection, self._field_name
         )
 
         for list_field in list_fields:
@@ -751,8 +751,8 @@ class Sum(Aggregation):
         return d["sum"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline, list_fields = sample_collection._parse_field_name(
-            self._field_name
+        path, pipeline, list_fields = _parse_field_name(
+            sample_collection, self._field_name
         )
 
         for list_field in list_fields:
@@ -761,3 +761,19 @@ class Sum(Aggregation):
         pipeline.append({"$group": {"_id": None, "sum": {"$sum": "$" + path}}})
 
         return pipeline
+
+
+def _parse_field_name(sample_collection, field_name):
+    path, is_frame_field, list_fields = sample_collection._parse_field_name(
+        field_name
+    )
+
+    if is_frame_field:
+        pipeline = [
+            {"$unwind": "$frames"},
+            {"$replaceRoot": {"newRoot": "$frames"}},
+        ]
+    else:
+        pipeline = []
+
+    return path, pipeline, list_fields

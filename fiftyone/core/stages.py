@@ -1878,18 +1878,12 @@ class MapLabels(ViewStage):
 
 
 def _get_set_field_pipeline(sample_collection, field, expr):
-    path, pipeline, list_fields = sample_collection._parse_field_name(field)
+    path, list_fields = _parse_field_name(sample_collection, field)
 
     # Don't unroll terminal lists unless explicitly requested
     list_fields = [lf for lf in list_fields if lf != field]
 
-    if sample_collection.media_type == fom.VIDEO and field.startswith(
-        _FRAMES_PREFIX
-    ):
-        return _get_set_frames_field_pipeline(
-            path, pipeline, list_fields, expr
-        )
-
+    # Case 1: no list fields
     if not list_fields:
         if "." in path:
             prefix = "$" + path.rsplit(".", 1)[0]
@@ -1898,13 +1892,16 @@ def _get_set_field_pipeline(sample_collection, field, expr):
 
         path_expr = _get_mongo_expr(expr, prefix=prefix)
 
-        return pipeline + [{"$set": {path: path_expr}}]
+        return [{"$set": {path: path_expr}}]
 
+    # Case 2: one list field
     if len(list_fields) == 1:
         list_field = list_fields[0]
         subfield = path[len(list_field) + 1 :]
         expr = _set_terminal_list_field(list_field, subfield, expr)
-        return pipeline + [{"$set": {list_field: expr.to_mongo()}}]
+        return [{"$set": {list_field: expr.to_mongo()}}]
+
+    # Case 3: multiple list fields
 
     # Handle last list field
     last_list_field = list_fields[-1]
@@ -1922,22 +1919,19 @@ def _get_set_field_pipeline(sample_collection, field, expr):
 
     expr = expr.to_mongo(prefix="$" + list_fields[0])
 
-    return pipeline + [{"$set": {list_fields[0]: expr}}]
+    return [{"$set": {list_fields[0]: expr}}]
 
 
-def _get_set_frames_field_pipeline(path, pipeline, list_fields, expr):
-    raise ValueError("Setting frame fields is not yet supported")
+def _parse_field_name(sample_collection, field_name):
+    path, is_frame_field, list_fields = sample_collection._parse_field_name(
+        field_name
+    )
 
-    # @todo finish this
-    return pipeline + [
-        {
-            "$set": {
-                "frames": {
-                    "$map": {"input": "$frames", "as": "frame", "in": {}}
-                }
-            }
-        }
-    ]
+    if is_frame_field:
+        path = _FRAMES_PREFIX + path
+        list_fields = ["frames"] + [_FRAMES_PREFIX + lf for lf in list_fields]
+
+    return path, list_fields
 
 
 def _set_terminal_list_field(list_field, subfield, expr):
