@@ -962,7 +962,6 @@ def _parse_count_values(result, field):
     )
 
 
-# @todo(benjaminpkane) update parsing of aggregation results here
 async def _gather_results(col, aggs, fields, view, ticks=None):
     response = await view._async_aggregate(col, aggs)
 
@@ -972,7 +971,7 @@ async def _gather_results(col, aggs, fields, view, ticks=None):
     }
 
     results = []
-    for idx, result in enumerate(response):
+    for idx, (result, agg) in enumerate(zip(response, aggs)):
         field = fields[idx]
         try:
             type_ = field.document_type.__name__
@@ -982,16 +981,16 @@ async def _gather_results(col, aggs, fields, view, ticks=None):
             is_label = False
             cls = None
 
-        name = result.name
+        name = agg.field_name
         if cls and issubclass(cls, fol.Label):
             name = name[: -len(".label")]
 
         if cls and issubclass(cls, fol._HasLabelList):
             name = name[: -(len(cls._LABEL_LIST_FIELD) + 1)]
 
-        data = sorters[type(result)](result, field)
+        data = sorters[type(agg)](result, field)
         result_ticks = 0
-        if type(result) == foa.HistogramValues:
+        if type(agg) == foa.HistogramValues:
             result_ticks = ticks.pop(0)
             if result_ticks is None:
                 result_ticks = []
@@ -999,11 +998,7 @@ async def _gather_results(col, aggs, fields, view, ticks=None):
                 for i in range(0, len(data), step):
                     result_ticks.append(data[i]["key"])
 
-                if (
-                    result.other > 0
-                    and len(data)
-                    and data[-1]["key"] != "None"
-                ):
+                if result[2] > 0 and len(data) and data[-1]["key"] != "None":
                     result_ticks.append("None")
 
         results.append(
@@ -1056,8 +1051,7 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
     bounds = await view._async_aggregate(coll, aggs)
     aggregations = []
     ticks = []
-    for result, field, path in zip(bounds, fields, paths):
-        range_ = result.bounds
+    for range_, field, path in zip(bounds, fields, paths):
         bins = _DEFAULT_NUM_HISTOGRAM_BINS
         num_ticks = None
         if range_[0] == range_[1]:
