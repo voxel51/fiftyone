@@ -5,17 +5,11 @@ Aggregations.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from bson import ObjectId
-
 import numpy as np
 
-import eta.core.serial as etas
 import eta.core.utils as etau
 
-import fiftyone.core.fields as fof
-import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
-import fiftyone.core.utils as fou
 
 
 _FRAMES_PREFIX = "frames."
@@ -53,54 +47,26 @@ class Aggregation(object):
         raise NotImplementedError("subclasses must implement to_mongo()")
 
     def parse_result(self, d):
-        """Parses the raw MongoDB aggregation result produced by running
-        :meth:`to_mongo`.
+        """Parses the output of :meth:`to_mongo`.
 
         Args:
             d: the result dict
 
         Returns:
-            an :class:`AggregationResult`
+            the aggregation result
         """
         raise NotImplementedError("subclasses must implement parse_result()")
 
     def default_result(self):
-        """Returns a default result for this aggregation.
+        """Returns the default result for this aggregation.
 
         Returns:
-            an :class:`AggregationResult`
+            the aggregation result
         """
         raise NotImplementedError("subclasses must implement default_result()")
 
 
-class AggregationResult(etas.Serializable):
-    """Abstract base class for all aggregation results.
-
-    :class:`AggregationResult` instances represent the result of the execution
-    of an :class:`Aggregation` instance on a
-    :class:`fiftyone.core.collections.SampleCollection`.
-    """
-
-    def __init__(self, *args, **kwargs):
-        raise NotImplementedError("subclasses must implement __init__()")
-
-    def __str__(self):
-        return repr(self)
-
-    def __repr__(self):
-        d = {}
-        for f in self.attributes():
-            value = getattr(self, f)
-            if isinstance(value, ObjectId):
-                d[f] = str(value)
-            else:
-                d[f] = value
-
-        class_name = self.__class__.__name__
-        return "<%s: %s>" % (class_name, fou.pformat(d))
-
-
-class AggregationError(RuntimeError):
+class AggregationError(Exception):
     """An error raised during the execution of an :class:`Aggregation`."""
 
     pass
@@ -144,29 +110,40 @@ class Bounds(Aggregation):
         # Compute the bounds of a numeric field
         #
 
-        bounds = fo.Bounds("numeric_field")
-        r = dataset.aggregate(bounds)
-        r.bounds  # (min, max)
+        aggregation = fo.Bounds("numeric_field")
+        bounds = dataset.aggregate(aggregation)
+        print(bounds)  # (min, max)
 
         #
         # Compute the a bounds of a numeric list field
         #
 
-        list_bounds = fo.Bounds("numeric_list_field")
-        r = dataset.aggregate(list_bounds)
-        r.bounds  # (min, max)
+        aggregation = fo.Bounds("numeric_list_field")
+        bounds = dataset.aggregate(aggregation)
+        print(bounds)  # (min, max)
 
     Args:
         field_name: the name of the field to compute bounds for
     """
 
     def default_result(self):
-        return BoundsResult(self._field_name, (None, None))
+        """Returns the default result for this aggregation.
+
+        Returns:
+            ``(None, None)``
+        """
+        return None, None
 
     def parse_result(self, d):
-        mn = d["min"]
-        mx = d["max"]
-        return BoundsResult(self._field_name, (mn, mx))
+        """Parses the output of :meth:`to_mongo`.
+
+        Args:
+            d: the result dict
+
+        Returns:
+            the ``(min, max)`` bounds
+        """
+        return d["min"], d["max"]
 
     def to_mongo(self, sample_collection):
         path, pipeline, list_fields = sample_collection._parse_field_name(
@@ -187,19 +164,6 @@ class Bounds(Aggregation):
         )
 
         return pipeline
-
-
-class BoundsResult(AggregationResult):
-    """The result of the execution of a :class:`Bounds` instance.
-
-    Attributes:
-        name: the name of the field whose bounds were computed
-        bounds: the ``(min, max)`` bounds
-    """
-
-    def __init__(self, name, bounds):
-        self.name = name
-        self.bounds = bounds
 
 
 class Count(Aggregation):
@@ -243,25 +207,25 @@ class Count(Aggregation):
         # Count the number of samples in the dataset
         #
 
-        count_samples = fo.Count()
-        r = dataset.aggregate(count_samples)
-        r.count  # count
+        aggregation = fo.Count()
+        count = dataset.aggregate(aggregation)
+        print(count)  # the count
 
         #
         # Count the number of samples with `predictions`
         #
 
-        count_predictions = fo.Count("predictions")
-        r = dataset.aggregate(count_predictions)
-        r.count  # count
+        aggregation = fo.Count("predictions")
+        count = dataset.aggregate(aggregation)
+        print(count)  # the count
 
         #
         # Count the number of objects in the `predictions` field
         #
 
-        count_objects = fo.Count("predictions.detections")
-        r = dataset.aggregate(count_objects)
-        r.count  # count
+        aggregation = fo.Count("predictions.detections")
+        count = dataset.aggregate(aggregation)
+        print(count)  # the count
 
     Args:
         field_name (None): the name of the field whose values to count. If none
@@ -272,10 +236,23 @@ class Count(Aggregation):
         super().__init__(field_name)
 
     def default_result(self):
-        return CountResult(self._field_name, 0)
+        """Returns the default result for this aggregation.
+
+        Returns:
+            ``0``
+        """
+        return 0
 
     def parse_result(self, d):
-        return CountResult(self._field_name, d["count"])
+        """Parses the output of :meth:`to_mongo`.
+
+        Args:
+            d: the result dict
+
+        Returns:
+            the count
+        """
+        return d["count"]
 
     def to_mongo(self, sample_collection):
         if self._field_name is None:
@@ -292,20 +269,6 @@ class Count(Aggregation):
             pipeline.append({"$match": {"$expr": {"$gt": ["$" + path, None]}}})
 
         return pipeline + [{"$count": "count"}]
-
-
-class CountResult(AggregationResult):
-    """The result of the execution of a :class:`Count` instance.
-
-    Attributes:
-        name: the name of the field, or ``None`` if the samples themselves were
-            counted
-        count: the count
-    """
-
-    def __init__(self, name, count):
-        self.name = name
-        self.count = count
 
 
 class CountValues(Aggregation):
@@ -356,28 +319,40 @@ class CountValues(Aggregation):
         # Compute the tag counts in the dataset
         #
 
-        count_values = fo.CountValues("tags")
-        r = dataset.aggregate(count_values)
-        r.values  # dict mapping tags to counts
+        aggregation = fo.CountValues("tags")
+        counts = dataset.aggregate(aggregation)
+        print(counts)  # dict mapping values to counts
 
         #
         # Compute the predicted label counts in the dataset
         #
 
-        count_values = fo.CountValues("predictions.detections.label")
-        r = dataset.aggregate(count_values)
-        r.values  # dict mapping tags to counts
+        aggregation = fo.CountValues("predictions.detections.label")
+        counts = dataset.aggregate(aggregation)
+        print(counts)  # dict mapping values to counts
 
     Args:
         field_name: the name of the field to count
     """
 
     def default_result(self):
-        return CountValuesResult(self._field_name, {})
+        """Returns the default result for this aggregation.
+
+        Returns:
+            ``{}``
+        """
+        return {}
 
     def parse_result(self, d):
-        d = {i["k"]: i["count"] for i in d["result"] if i["k"] is not None}
-        return CountValuesResult(self._field_name, d)
+        """Parses the output of :meth:`to_mongo`.
+
+        Args:
+            d: the result dict
+
+        Returns:
+            a dict mapping values to counts
+        """
+        return {i["k"]: i["count"] for i in d["result"] if i["k"] is not None}
 
     def to_mongo(self, sample_collection):
         path, pipeline, list_fields = sample_collection._parse_field_name(
@@ -398,19 +373,6 @@ class CountValues(Aggregation):
         ]
 
         return pipeline
-
-
-class CountValuesResult(AggregationResult):
-    """The result of the execution of a :class:`CountValues` instance.
-
-    Attributes:
-        name: the name of the field whose values were counted
-        values: a dict mapping values to counts
-    """
-
-    def __init__(self, name, values):
-        self.name = name
-        self.values = values
 
 
 class Distinct(Aggregation):
@@ -461,27 +423,40 @@ class Distinct(Aggregation):
         # Get the distinct tags in a dataset
         #
 
-        distinct_tags = fo.Distinct("tags")
-        r = dataset.aggregate(distinct_tags)
-        r.values  # list of distinct values
+        aggregation = fo.Distinct("tags")
+        values = dataset.aggregate(aggregation)
+        print(values)  # list of distinct values
 
         #
         # Get the distint predicted labels in a dataset
         #
 
-        distinct_labels = fo.Distinct("predictions.detections.label")
-        r = dataset.aggregate(distinct_labels)
-        r.values  # list of distinct values
+        aggregation = fo.Distinct("predictions.detections.label")
+        values = dataset.aggregate(aggregation)
+        print(values)  # list of distinct values
 
     Args:
         field_name: the name of the field to compute distinct values for
     """
 
     def default_result(self):
-        return DistinctResult(self._field_name, [])
+        """Returns the default result for this aggregation.
+
+        Returns:
+            ``[]``
+        """
+        return []
 
     def parse_result(self, d):
-        return DistinctResult(self._field_name, sorted(d["values"]))
+        """Parses the output of :meth:`to_mongo`.
+
+        Args:
+            d: the result dict
+
+        Returns:
+            a sorted list of distinct values
+        """
+        return sorted(d["values"])
 
     def to_mongo(self, sample_collection):
         path, pipeline, list_fields = sample_collection._parse_field_name(
@@ -496,19 +471,6 @@ class Distinct(Aggregation):
         )
 
         return pipeline
-
-
-class DistinctResult(AggregationResult):
-    """The result of the execution of a :class:`Distinct` instance.
-
-    Attributes:
-        name: the name of the field that was computed on
-        values: a sorted list of distinct values
-    """
-
-    def __init__(self, name, values):
-        self.name = name
-        self.values = values
 
 
 class HistogramValues(Aggregation):
@@ -551,12 +513,12 @@ class HistogramValues(Aggregation):
         # Compute a histogram of a numeric field
         #
 
-        histogram_values = fo.HistogramValues(
+        aggregation = fo.HistogramValues(
             "numeric_field", bins=50, range=(-4, 4)
         )
-        r = dataset.aggregate(histogram_values)
+        counts, edges, other = dataset.aggregate(aggregation)
 
-        plot_hist(r.counts, r.edges)
+        plot_hist(counts, edges)
         plt.show(block=False)
 
         #
@@ -564,16 +526,16 @@ class HistogramValues(Aggregation):
         #
 
         # Compute bounds automatically
-        bounds = fo.Bounds("numeric_list_field")
-        r = dataset.aggregate(bounds)
-        limits = (r.bounds[0], r.bounds[1] + 1e-6)  # right interval is open
+        aggregation = fo.Bounds("numeric_list_field")
+        bounds = dataset.aggregate(aggregation)
+        limits = (bounds[0], bounds[1] + 1e-6)  # right interval is open
 
-        histogram_values = fo.HistogramValues(
+        aggregation = fo.HistogramValues(
             "numeric_list_field", bins=50, range=limits
         )
-        r = dataset.aggregate(histogram_values)
+        counts, edges, other = dataset.aggregate(aggregation)
 
-        plot_hist(r.counts, r.edges)
+        plot_hist(counts, edges)
         plt.show(block=False)
 
     Args:
@@ -597,61 +559,38 @@ class HistogramValues(Aggregation):
         self._edges = None
         self._parse_args()
 
-    def _parse_args(self):
-        if self.bins is None:
-            bins = 10
-        else:
-            bins = self.bins
-
-        if etau.is_numeric(bins):
-            if self.range is None:
-                # Automatic bins
-                self._bins = bins
-                return
-
-            # Linearly-spaced bins within `range`
-            self._edges = list(
-                np.linspace(self.range[0], self.range[1], bins + 1)
-            )
-            return
-
-        # User-provided bin edges
-        self._edges = list(bins)
-
     def default_result(self):
-        return HistogramValuesResult(self._field_name, [], [], 0)
+        """Returns the default result for this aggregation.
+
+        Returns:
+            a tuple of
+
+            -   counts: ``[]``
+            -   edges: ``[]``
+            -   other: ``0``
+        """
+        return [], [], 0
 
     def parse_result(self, d):
+        """Parses the output of :meth:`to_mongo`.
+
+        Args:
+            d: the result dict
+
+        Returns:
+            a tuple of
+
+            -   counts: a list of counts in each bin
+            -   edges: an increasing list of bin edges of length
+                ``len(counts) + 1``. Note that each bin is treated as having an
+                inclusive lower boundary and exclusive upper boundary,
+                ``[lower, upper)``, including the rightmost bin
+            -   other: the number of items outside the bins
+        """
         if self._edges is not None:
             return self._parse_result_edges(d)
 
         return self._parse_result_auto(d)
-
-    def _parse_result_edges(self, d):
-        _edges_array = np.array(self._edges)
-        edges = list(_edges_array)
-        counts = [0] * (len(edges) - 1)
-        other = 0
-        for di in d["bins"]:
-            left = di["_id"]
-            if left == "other":
-                other = di["count"]
-            else:
-                idx = np.abs(_edges_array - left).argmin()
-                counts[idx] = di["count"]
-
-        return HistogramValuesResult(self._field_name, counts, edges, other)
-
-    def _parse_result_auto(self, d):
-        counts = []
-        edges = []
-        for di in d["bins"]:
-            counts.append(di["count"])
-            edges.append(di["_id"]["min"])
-
-        edges.append(di["_id"]["max"])
-
-        return HistogramValuesResult(self._field_name, counts, edges, 0)
 
     def to_mongo(self, sample_collection):
         path, pipeline, list_fields = sample_collection._parse_field_name(
@@ -687,25 +626,52 @@ class HistogramValues(Aggregation):
 
         return pipeline
 
+    def _parse_args(self):
+        if self.bins is None:
+            bins = 10
+        else:
+            bins = self.bins
 
-class HistogramValuesResult(AggregationResult):
-    """The result of the execution of a :class:`HistogramValues` instance.
+        if etau.is_numeric(bins):
+            if self.range is None:
+                # Automatic bins
+                self._bins = bins
+                return
 
-    Attributes:
-        name: the name of the field that was histogramed
-        counts: a list of counts in each bin
-        edges: an increasing list of bin edges of length ``len(counts) + 1``.
-            Note that each bin is treated as having an inclusive lower boundary
-            and exclusive upper boundary, ``[lower, upper)``, including the
-            rightmost bin
-        other: the number of items outside the bins
-    """
+            # Linearly-spaced bins within `range`
+            self._edges = list(
+                np.linspace(self.range[0], self.range[1], bins + 1)
+            )
+            return
 
-    def __init__(self, name, counts, edges, other):
-        self.name = name
-        self.counts = counts
-        self.edges = edges
-        self.other = other
+        # User-provided bin edges
+        self._edges = list(bins)
+
+    def _parse_result_edges(self, d):
+        _edges_array = np.array(self._edges)
+        edges = list(_edges_array)
+        counts = [0] * (len(edges) - 1)
+        other = 0
+        for di in d["bins"]:
+            left = di["_id"]
+            if left == "other":
+                other = di["count"]
+            else:
+                idx = np.abs(_edges_array - left).argmin()
+                counts[idx] = di["count"]
+
+        return counts, edges, other
+
+    def _parse_result_auto(self, d):
+        counts = []
+        edges = []
+        for di in d["bins"]:
+            counts.append(di["count"])
+            edges.append(di["_id"]["min"])
+
+        edges.append(di["_id"]["max"])
+
+        return counts, edges, 0
 
 
 class Sum(Aggregation):
@@ -746,17 +712,17 @@ class Sum(Aggregation):
         # Compute the sum of a numeric field
         #
 
-        sum = fo.Sum("numeric_field")
-        r = dataset.aggregate(sum)
-        r.sum  # the sum
+        aggregation = fo.Sum("numeric_field")
+        total = dataset.aggregate(aggregation)
+        print(total)  # the sum
 
         #
         # Compute the sum of a numeric list field
         #
 
-        sum = fo.Sum("numeric_list_field")
-        r = dataset.aggregate(sum)
-        r.sum  # the sum
+        aggregation = fo.Sum("numeric_list_field")
+        total = dataset.aggregate(aggregation)
+        print(total)  # the sum
 
     Args:
         field_name: the name of the field to sum
@@ -766,10 +732,23 @@ class Sum(Aggregation):
         super().__init__(field_name)
 
     def default_result(self):
-        return SumResult(self._field_name, 0)
+        """Returns the default result for this aggregation.
+
+        Returns:
+            ``0``
+        """
+        return 0
 
     def parse_result(self, d):
-        return SumResult(self._field_name, d["sum"])
+        """Parses the output of :meth:`to_mongo`.
+
+        Args:
+            d: the result dict
+
+        Returns:
+            the sum
+        """
+        return d["sum"]
 
     def to_mongo(self, sample_collection):
         path, pipeline, list_fields = sample_collection._parse_field_name(
@@ -782,16 +761,3 @@ class Sum(Aggregation):
         pipeline.append({"$group": {"_id": None, "sum": {"$sum": "$" + path}}})
 
         return pipeline
-
-
-class SumResult(AggregationResult):
-    """The result of the execution of a :class:`Sum` instance.
-
-    Attributes:
-        name: the name of the field that was summed
-        sum: the sum
-    """
-
-    def __init__(self, name, sum):
-        self.name = name
-        self.sum = sum

@@ -2130,15 +2130,15 @@ class SampleCollection(object):
             # Compute the bounds of a numeric field
             #
 
-            r = dataset.bounds("numeric_field")
-            r.bounds  # (min, max)
+            bounds = dataset.bounds("numeric_field")
+            print(bounds)  # (min, max)
 
             #
             # Compute the a bounds of a numeric list field
             #
 
-            r = dataset.bounds("numeric_list_field")
-            r.bounds  # (min, max)
+            bounds = dataset.bounds("numeric_list_field")
+            print(bounds)  # (min, max)
 
         Args:
             field_name: the name of the field to compute bounds for
@@ -2190,22 +2190,22 @@ class SampleCollection(object):
             # Count the number of samples in the dataset
             #
 
-            r = dataset.count()
-            r.count  # count
+            count = dataset.count()
+            print(count)  # the count
 
             #
             # Count the number of samples with `predictions`
             #
 
-            r = dataset.count("predictions")
-            r.count  # count
+            count = dataset.count("predictions")
+            print(count)  # the count
 
             #
             # Count the number of objects in the `predictions` field
             #
 
-            r = dataset.count("predictions.detections")
-            r.count  # count
+            count = dataset.count("predictions.detections")
+            print(count)  # the count
 
         Args:
             field_name (None): the name of the field whose values to count. If
@@ -2265,15 +2265,15 @@ class SampleCollection(object):
             # Compute the tag counts in the dataset
             #
 
-            r = dataset.count_values("tags")
-            r.values  # dict mapping tags to counts
+            counts = dataset.count_values("tags")
+            print(counts)  # dict mapping values to counts
 
             #
             # Compute the predicted label counts in the dataset
             #
 
-            r = dataset.count_values("predictions.detections.label")
-            r.values  # dict mapping tags to counts
+            counts = dataset.count_values("predictions.detections.label")
+            print(counts)  # dict mapping values to counts
 
         Args:
             field_name: the name of the field to count
@@ -2332,15 +2332,15 @@ class SampleCollection(object):
             # Get the distinct tags in a dataset
             #
 
-            r = dataset.distinct("tags")
-            r.values  # list of distinct values
+            values = dataset.distinct("tags")
+            print(values)  # list of distinct values
 
             #
             # Get the distint predicted labels in a dataset
             #
 
-            r = dataset.distinct("predictions.detections.label")
-            r.values  # list of distinct values
+            values = dataset.distinct("predictions.detections.label")
+            print(values)  # list of distinct values
 
         Args:
             field_name: the name of the field to compute distinct values for
@@ -2391,11 +2391,11 @@ class SampleCollection(object):
             # Compute a histogram of a numeric field
             #
 
-            r = dataset.histogram_values(
+            counts, edges, other = dataset.histogram_values(
                 "numeric_field", bins=50, range=(-4, 4)
             )
 
-            plot_hist(r.counts, r.edges)
+            plot_hist(counts, edges)
             plt.show(block=False)
 
             #
@@ -2403,14 +2403,14 @@ class SampleCollection(object):
             #
 
             # Compute bounds automatically
-            r = dataset.bounds("numeric_list_field")
-            limits = (r.bounds[0], r.bounds[1] + 1e-6)  # right interval is open
+            bounds = dataset.bounds("numeric_list_field")
+            limits = (bounds[0], bounds[1] + 1e-6)  # right interval is open
 
-            r = dataset.histogram_values(
+            counts, edges, other = dataset.histogram_values(
                 "numeric_list_field", bins=50, range=limits
             )
 
-            plot_hist(r.counts, r.edges)
+            plot_hist(counts, edges)
             plt.show(block=False)
 
         Args:
@@ -2472,15 +2472,15 @@ class SampleCollection(object):
             # Compute the sum of a numeric field
             #
 
-            r = dataset.sum("numeric_field")
-            r.sum  # the sum
+            total = dataset.sum("numeric_field")
+            print(total)  # the sum
 
             #
             # Compute the sum of a numeric list field
             #
 
-            r = dataset.sum("numeric_list_field")
-            r.sum  # the sum
+            total = dataset.sum("numeric_list_field")
+            print(total)  # the sum
 
         Args:
             field_name: the name of the field to sum
