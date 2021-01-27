@@ -188,7 +188,7 @@ const Cell = ({
               ? theme.brand
               : colorMap[prefix + e.name]
               ? colorMap[prefix + e.name]
-              : theme.backgroundLight,
+              : theme.brand,
             hideCheckbox: e.hideCheckbox,
             disabled: Boolean(e.disabled),
             path: prefix + e.name,
