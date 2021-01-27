@@ -715,7 +715,9 @@ class DatasetMixin(object):
             for d in update_doc.values():
                 for k in d.keys():
                     for ff in filtered_fields:
-                        if k.startswith(ff) and not k.lstrip(ff).count("."):
+                        if k.startswith(ff) and not k.replace(
+                            ff, "", 1
+                        ).lstrip(".").count("."):
                             raise ValueError(
                                 "Modifying root of filtered list field '%s' "
                                 "is not allowed" % k
@@ -768,7 +770,11 @@ class DatasetMixin(object):
         for field_name in filtered_field.split("."):
             el = el[field_name]
 
-        el_fields = list_element_field.lstrip(filtered_field).split(".")
+        el_fields = (
+            list_element_field.replace(filtered_field, "", 1)
+            .lstrip(".")
+            .split(".")
+        )
         idx = int(el_fields.pop(0))
 
         el = el[idx]
