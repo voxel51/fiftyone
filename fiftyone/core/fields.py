@@ -286,6 +286,28 @@ class ArrayField(mongoengine.fields.BinaryField, Field):
             self.error("Only numpy arrays may be used in an array field")
 
 
+class IntDictField(DictField):
+    def to_mongo(self, value):
+        if value is None:
+            return None
+
+        value = {str(k): v for k, v in value.items()}
+        return super().to_mongo(value)
+
+    def to_python(self, value):
+        if value is None:
+            return None
+
+        return {int(k): v for k, v in value.items()}
+
+    def validate(self, value):
+        if not len(value):
+            return
+
+        if any(map(lambda k: isinstance(k, six.integer_types), value)):
+            self.error("Not all keys are integers")
+
+
 class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
     """A field that stores instances of a given type of
     :class:`fiftyone.core.odm.BaseEmbeddedDocument` object.
