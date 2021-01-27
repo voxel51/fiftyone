@@ -1399,7 +1399,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.MapLabels(field, map))
 
     @view_stage
-    def set_field(self, field, expr, root=False):
+    def set_field(self, field, expr):
         """Sets a field or embedded field on each sample in a collection by
         evaluating the given expression.
 
@@ -1424,14 +1424,15 @@ class SampleCollection(object):
 
             See the examples below for demonstrations of this behavior.
 
-        By default, the provided ``expr`` is interpreted relative to the
-        document on which the embedded field is being set. For example, if you
-        are setting a nested field ``field="embedded.document.field"``, then
-        the expression ``expr`` you provide will be applied to the
-        ``embedded.document`` document. Alternatively, if you would like
-        ``expr`` to be interpreted relative to the root sample document, then
-        you can set the ``root=True`` parameter. See the examples below for
-        demonstrations of this behavior.
+        The provided ``expr`` is interpreted relative to the document on which
+        the embedded field is being set. For example, if you are setting a
+        nested field ``field="embedded.document.field"``, then the expression
+        ``expr`` you provide will be applied to the ``embedded.document``
+        document. Note that you can override this behavior by defining an
+        expression that is bound to the root document by prepending ``"$"`` to
+        any field name(s) in the expression.
+
+        See the examples below for more information.
 
         .. note::
 
@@ -1477,8 +1478,7 @@ class SampleCollection(object):
 
             view = dataset.set_field(
                 "predictions.num_predictions",
-                F("predictions.detections").length(),
-                root=True,
+                F("$predictions.detections").length(),
             )
             print(view.bounds("predictions.num_predictions"))
 
@@ -1502,14 +1502,11 @@ class SampleCollection(object):
             expr: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that defines the field value to set
-            root (False): whether the provided expression should be interpreted
-                relative to the document on which the embedded field will be set
-                (False), or the root sample (True)
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.SetField(field, expr, root=root))
+        return self._add_view_stage(fos.SetField(field, expr))
 
     @view_stage
     def match(self, filter):

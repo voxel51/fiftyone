@@ -73,6 +73,11 @@ class ViewExpression(object):
     def _freeze_prefix(self, prefix):
         _do_freeze_prefix(self, prefix)
 
+    @property
+    def is_frozen(self):
+        """Whether this expression's prefix is frozen."""
+        return self._prefix is not None
+
     def to_mongo(self, prefix=None):
         """Returns a MongoDB representation of the expression.
 
@@ -83,7 +88,7 @@ class ViewExpression(object):
         Returns:
             a MongoDB expression
         """
-        if self._prefix is not None:
+        if self.is_frozen:
             prefix = self._prefix
 
         return _do_to_mongo(self._expr, prefix)
@@ -628,9 +633,9 @@ class ViewExpression(object):
 
             # Replace "cat" and "dog" labels with "other" in a `predictions`
             # field, which is assumed to be a `Classification` field
-            view = dataset.map_values(
+            view = dataset.set_field(
                 "predictions.label",
-                F().map_values({"cat": "other", "dog": "other"},
+                F("label").map_values({"cat": "other", "dog": "other"},
             )
 
         Args:
@@ -660,12 +665,12 @@ class ViewExpression(object):
             }
         )
 
-    def set_field(self, field, value_or_expr, root=False):
+    def set_field(self, field, value_or_expr):
         """Sets the specified field or embedded field of this expression, which
         must evaluate to a document, to the given value or expression.
 
-        If ``value_or_expr`` is an expression and ``root == False``, it is
-        applied to this expression via ``self.apply(value_or_expr)``.
+        If ``value_or_expr`` is a non-frozen expression, it is computed by
+        applying it to this expression via ``self.apply(value_or_expr)``.
 
         Examples::
 
@@ -689,19 +694,17 @@ class ViewExpression(object):
 
         Args:
             field: the "field" or "embedded.field.name" to set
-            value_or_expr: a :class:`ViewExpression`
-            root (False): whether ``value_or_expr`` should be treated as a
-                rooted expression rather than being applied to this expression
+            value_or_expr: a literal value or :class:`ViewExpression` defining
+                the field to set
 
         Returns:
             a :class:`ViewExpression`
         """
-        if isinstance(value_or_expr, ViewExpression):
-            if root:
-                value = value_or_expr
-                value._freeze_prefix("")
-            else:
-                value = self.apply(value_or_expr)
+        if (
+            isinstance(value_or_expr, ViewExpression)
+            and not value_or_expr.is_frozen
+        ):
+            value = self.apply(value_or_expr)
         else:
             value = value_or_expr
 
@@ -736,11 +739,8 @@ class ViewExpression(object):
         return self._let_in(expr)
 
     def _let_in(self, expr, var="expr"):
-        self_expr = ViewField()
-        self_expr._freeze_prefix("$$" + var)
-
+        self_expr = ViewField("$$" + var)
         in_expr = _do_apply_memo(expr, self, self_expr)
-
         return ViewExpression({"$let": {"vars": {var: self}, "in": in_expr}})
 
     # Array expression operators ##############################################
@@ -923,8 +923,7 @@ class ViewExpression(object):
 
             view = dataset.set_field(
                 "keypoints.count",
-                F("keypoints.keypoints").reduce(VALUE + F("points").length()),
-                root=True,
+                F("$keypoints.keypoints").reduce(VALUE + F("points").length()),
             )
             print(view.first().keypoints.count)
 
@@ -1323,7 +1322,8 @@ def _do_to_mongo(val, prefix):
 
 def _do_freeze_prefix(val, prefix):
     def fcn(val):
-        val._prefix = prefix
+        if not val.is_frozen:
+            val._prefix = prefix
 
     return _do_recurse(val, fcn)
 
@@ -1352,30 +1352,45 @@ class _MetaViewField(type):
 
 
 class ViewField(ViewExpression, metaclass=_MetaViewField):
-    """A field (or subfield) of an object in a
-    :class:`fiftyone.core.stages.ViewStage`.
-
-    A :class:`ViewField` can be created either via class attribute or object
-    constructor syntax.
+    """A :class:`ViewExpression` that refers to a field or embedded field of a
+    document.
 
     You can use `dot notation <https://docs.mongodb.com/manual/core/document/#dot-notation>`_
     to refer to subfields of embedded objects within fields.
+
+    When you create a :class:`ViewField` using a string field like
+    ``ViewField("embedded.field.name")``, the meaning of this field is
+    interpreted relative to the context in which the :class:`ViewField` object
+    is used. For example, when passed to the :meth:`ViewExpression.map` method,
+    this object will refer to the ``embedded.field.name`` object of the array
+    element being processed.
+
+    In other cases, you may wish to create a :class:`ViewField` that always
+    refers to the root document. You can do this by prepending ``"$"`` to the
+    name of the field, as in ``ViewField("$embedded.field.name")``.
 
     Examples::
 
         from fiftyone import ViewField as F
 
-        # Reference a field named `ground_truth`
+        # Reference the root of the current context
+        F()
+
+        # Reference a `ground_truth` field in the current context
         F("ground_truth")
         F.ground_truth           # equivalent
 
-        # Reference the `label` field of the `ground_truth` object
+        # Reference the `label` field of a `ground_truth` object in the
+        # current context
         F("ground_truth.label")
         F("ground_truth").label  # equivalent
         F.ground_truth.label     # equivalent
 
-        # Reference the root object
-        F()
+        # Reference the root document in any context
+        F("$")
+
+        # Reference the `label` field of the root document in any context
+        F("$label")
 
     .. automethod:: __eq__
     .. automethod:: __ge__
@@ -1399,23 +1414,26 @@ class ViewField(ViewExpression, metaclass=_MetaViewField):
     .. automethod:: __getitem__
 
     Args:
-        name (None): the name of the field
+        name (None): the name of the field, with an optional "$" preprended if
+            you wish to freeze this field to the root document
     """
 
     def __init__(self, name=None):
-        if name is not None and not etau.is_str(name):
-            raise TypeError("`name` must be str; found %s" % name)
+        if name is None:
+            name = ""
+
+        should_freeze = name.startswith("$")
+        if should_freeze:
+            name = name[1:]
 
         super().__init__(name)
+
+        if should_freeze:
+            self._freeze_prefix("")
 
     def __getattr__(self, name):
         sub_name = self._expr + "." + name if self._expr else name
         return ViewField(sub_name)
-
-    @property
-    def name(self):
-        """The name of the field."""
-        return self._expr
 
     def to_mongo(self, prefix=None):
         """Returns a MongoDB representation of the field.
@@ -1426,7 +1444,7 @@ class ViewField(ViewExpression, metaclass=_MetaViewField):
         Returns:
             a string
         """
-        if self._prefix is not None:
+        if self.is_frozen:
             prefix = self._prefix
 
         if prefix:
@@ -1437,8 +1455,7 @@ class ViewField(ViewExpression, metaclass=_MetaViewField):
 
 #: A :class:`ViewExpression` that refers to the current `$$value` in a MongoDB
 # reduction expression. See :meth:`ViewExpression.reduce`.
-VALUE = ViewField()
-VALUE._freeze_prefix("$$value")
+VALUE = ViewField("$$value")
 
 
 class ObjectId(ViewExpression, metaclass=_MetaViewField):

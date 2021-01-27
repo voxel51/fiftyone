@@ -1877,9 +1877,7 @@ class MapLabels(ViewStage):
         _get_labels_field(self._field, sample_collection)
 
 
-def _get_set_field_pipeline(
-    sample_collection, field, expr, root=False, embedded_root=False
-):
+def _get_set_field_pipeline(sample_collection, field, expr):
     path, pipeline, list_fields = sample_collection._parse_field_name(field)
 
     # Don't unroll terminal lists unless explicitly requested
@@ -1889,19 +1887,14 @@ def _get_set_field_pipeline(
         _FRAMES_PREFIX
     ):
         return _get_set_frames_field_pipeline(
-            path, pipeline, list_fields, expr, root=False, embedded_root=False
+            path, pipeline, list_fields, expr
         )
 
     if not list_fields:
-        if root:
-            prefix = None
-        elif embedded_root:
-            if "." in path:
-                prefix = "$" + path.rsplit(".", 1)[0]
-            else:
-                prefix = None
+        if "." in path:
+            prefix = "$" + path.rsplit(".", 1)[0]
         else:
-            prefix = "$" + path
+            prefix = None
 
         path_expr = _get_mongo_expr(expr, prefix=prefix)
 
@@ -1910,18 +1903,14 @@ def _get_set_field_pipeline(
     if len(list_fields) == 1:
         list_field = list_fields[0]
         subfield = path[len(list_field) + 1 :]
-        expr = _set_terminal_list_field(
-            list_field, subfield, expr, root, embedded_root
-        )
+        expr = _set_terminal_list_field(list_field, subfield, expr)
         return pipeline + [{"$set": {list_field: expr.to_mongo()}}]
 
     # Handle last list field
     last_list_field = list_fields[-1]
     terminal_prefix = last_list_field[len(list_fields[-2]) + 1 :]
     subfield = path[len(last_list_field) + 1 :]
-    expr = _set_terminal_list_field(
-        terminal_prefix, subfield, expr, root, embedded_root
-    )
+    expr = _set_terminal_list_field(terminal_prefix, subfield, expr)
 
     for list_field1, list_field2 in zip(
         reversed(list_fields[:-1]), reversed(list_fields[1:])
@@ -1936,9 +1925,7 @@ def _get_set_field_pipeline(
     return pipeline + [{"$set": {list_fields[0]: expr}}]
 
 
-def _get_set_frames_field_pipeline(
-    path, pipeline, list_fields, expr, root=False, embedded_root=False
-):
+def _get_set_frames_field_pipeline(path, pipeline, list_fields, expr):
     raise ValueError("Setting frame fields is not yet supported")
 
     # @todo finish this
@@ -1953,20 +1940,12 @@ def _get_set_frames_field_pipeline(
     ]
 
 
-def _set_terminal_list_field(list_field, subfield, expr, root, embedded_root):
+def _set_terminal_list_field(list_field, subfield, expr):
     map_path = "$$this"
     if subfield:
         map_path += "." + subfield
 
-    map_root = map_path.rsplit(".", 1)[0]
-
-    if root:
-        prefix = None
-    elif embedded_root:
-        prefix = map_root
-    else:
-        prefix = map_path
-
+    prefix = map_path.rsplit(".", 1)[0]
     map_expr = _get_mongo_expr(expr, prefix=prefix)
 
     if subfield:
@@ -2009,13 +1988,15 @@ class SetField(ViewStage):
 
         See the examples below for demonstrations of this behavior.
 
-    By default, the provided ``expr`` is interpreted relative to the document
-    on which the embedded field is being set. For example, if you are setting
-    a nested field ``field="embedded.document.field"``, then the expression
-    ``expr`` you provide will be applied to the ``embedded.document`` document.
-    Alternatively, if you would like ``expr`` to be interpreted relative to the
-    root sample document, then you can set the ``root=True`` parameter. See the
-    examples below for demonstrations of this behavior.
+    The provided ``expr`` is interpreted relative to the document on which the
+    embedded field is being set. For example, if you are setting a nested field
+    ``field="embedded.document.field"``, then the expression ``expr`` you
+    provide will be applied to the ``embedded.document`` document. Note that
+    you can override this behavior by defining an expression that is bound to
+    the root document by prepending ``"$"`` to any field name(s) in the
+    expression.
+
+    See the examples below for more information.
 
     .. note::
 
@@ -2061,8 +2042,7 @@ class SetField(ViewStage):
 
         stage = fo.SetField(
             "predictions.num_predictions",
-            F("predictions.detections").length(),
-            root=True,
+            F("$predictions.detections").length(),
         )
         view = dataset.add_stage(stage)
         print(view.bounds("predictions.num_predictions"))
@@ -2088,15 +2068,11 @@ class SetField(ViewStage):
         expr: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that defines the field value to set
-        root (False): whether the provided expression should be interpreted
-            relative to the document on which the embedded field will be set
-            (False), or the root sample (True)
     """
 
-    def __init__(self, field, expr, root=False):
+    def __init__(self, field, expr):
         self._field = field
         self._expr = expr
-        self._root = root
 
     @property
     def field(self):
@@ -2108,33 +2084,21 @@ class SetField(ViewStage):
         """The expression to apply."""
         return self._expr
 
-    @property
-    def root(self):
-        """Whether the provided expression should be interpreted relative to
-        the root sample.
-        """
-        return self._root
-
     def to_mongo(self, sample_collection, **_):
         return _get_set_field_pipeline(
-            sample_collection,
-            self._field,
-            self._expr,
-            root=self._root,
-            embedded_root=(not self._root),
+            sample_collection, self._field, self._expr
         )
 
     def _kwargs(self):
-        # #@todo doesn't handle list fields
-        if self._root or "." not in self._field:
-            prefix = None
+        # @todo doesn't handle list fields
+        if "." in self._field:
+            prefix = "$" + self._field.rsplit(".", 1)[0]
         else:
-            prefix = "$" + self._field.rsplit(".")[0]
+            prefix = None
 
         return [
             ["field", self._field],
             ["expr", _get_mongo_expr(self._expr, prefix=prefix)],
-            ["root", self._root],
         ]
 
     @classmethod
@@ -2142,12 +2106,6 @@ class SetField(ViewStage):
         return [
             {"name": "field", "type": "field"},
             {"name": "expr", "type": "dict", "placeholder": ""},
-            {
-                "name": "root",
-                "type": "bool",
-                "default": "False",
-                "placeholder": "root (default=False)",
-            },
         ]
 
     def validate(self, sample_collection):
