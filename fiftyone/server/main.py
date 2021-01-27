@@ -809,9 +809,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             if filters is not None and len(filters):
                 for stage in _make_filter_stages(view._dataset, filters):
                     view = view.add_stage(stage)
+
             aggs = fos.DatasetStatistics(view).aggregations
             stats = await view._async_aggregate(cls.sample_collection(), aggs)
-            stats = [r.serialize(reflective=True) for r in stats]
         else:
             stats = []
 
@@ -820,6 +820,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             if isinstance(base_view, fov.DatasetView)
             else []
         )
+
         message = {
             "type": "statistics",
             "stats": stats,
@@ -914,14 +915,15 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
 
 def _parse_histogram_values(result, field):
+    counts, edges, other = result
     data = sorted(
         [
             {
-                "key": round((k + result.edges[idx + 1]) / 2, 4),
+                "key": round((k + edges[idx + 1]) / 2, 4),
                 "count": v,
-                "edges": (k, result.edges[idx + 1]),
+                "edges": (k, edges[idx + 1]),
             }
-            for idx, (k, v) in enumerate(zip(result.edges, result.counts))
+            for idx, (k, v) in enumerate(zip(edges, counts))
         ],
         key=lambda i: i["key"],
     )
@@ -936,28 +938,30 @@ def _parse_histogram_values(result, field):
         for bin_ in data:
             del bin_["edges"]
 
-    if result.other > 0:
-        data.append({"key": "None", "count": result.other})
+    if other > 0:
+        data.append({"key": "None", "count": other})
 
     return data
 
 
 def _parse_count_values(result, field):
-    data = sorted(
-        [{"key": k, "count": v} for k, v in result.values.items()],
+    return sorted(
+        [{"key": k, "count": v} for k, v in result.items()],
         key=lambda i: i["count"],
         reverse=True,
     )
-    return data
 
 
+# @todo(benjaminpkane) update parsing of aggregation results here
 async def _gather_results(col, aggs, fields, view, ticks=None):
-    results = []
     response = await view._async_aggregate(col, aggs)
+
     sorters = {
-        foa.HistogramValuesResult: _parse_histogram_values,
-        foa.CountValuesResult: _parse_count_values,
+        foa.HistogramValues: _parse_histogram_values,
+        foa.CountValues: _parse_count_values,
     }
+
+    results = []
     for idx, result in enumerate(response):
         field = fields[idx]
         try:
@@ -977,7 +981,7 @@ async def _gather_results(col, aggs, fields, view, ticks=None):
 
         data = sorters[type(result)](result, field)
         result_ticks = 0
-        if type(result) == foa.HistogramValuesResult:
+        if type(result) == foa.HistogramValues:
             result_ticks = ticks.pop(0)
             if result_ticks is None:
                 result_ticks = []
@@ -993,7 +997,7 @@ async def _gather_results(col, aggs, fields, view, ticks=None):
                     result_ticks.append("None")
 
         results.append(
-            {"data": data, "name": name, "ticks": result_ticks, "type": type_,}
+            {"data": data, "name": name, "ticks": result_ticks, "type": type_}
         )
 
     return results
@@ -1011,8 +1015,9 @@ def _count_values(f, view):
             path = f(field)
             if path is None:
                 continue
+
             fields.append(field)
-            aggregations.append(fo.CountValues("%s%s" % (prefix, path)))
+            aggregations.append(foa.CountValues("%s%s" % (prefix, path)))
 
     return aggregations, fields
 
@@ -1032,6 +1037,7 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
     for name, field in schema.items():
         if prefix != "" and name == "frame_number":
             continue
+
         if fos._meets_type(field, numerics):
             paths.append("%s%s" % (prefix, name))
             fields.append(field)
@@ -1057,8 +1063,9 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
                 num_ticks = 0
         else:
             range_ = (range_[0], range_[1] + 0.01)
+
         ticks.append(num_ticks)
-        aggregations.append(fo.HistogramValues(path, bins=bins, range=range_))
+        aggregations.append(foa.HistogramValues(path, bins=bins, range=range_))
 
     return aggregations, fields, ticks
 

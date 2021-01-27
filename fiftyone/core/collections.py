@@ -2144,7 +2144,7 @@ class SampleCollection(object):
             field_name: the name of the field to compute bounds for
 
         Returns:
-            :class:`fiftyone.core.aggregations.BoundsResult`
+            the ``(min, max)`` bounds
         """
         return self.aggregate(foa.Bounds(field_name))
 
@@ -2212,7 +2212,7 @@ class SampleCollection(object):
                 none is provided, the samples themselves are counted
 
         Returns:
-            :class:`fiftyone.core.aggregations.CountResult`
+            the count
         """
         return self.aggregate(foa.Count(field_name=field_name))
 
@@ -2279,7 +2279,7 @@ class SampleCollection(object):
             field_name: the name of the field to count
 
         Returns:
-            :class:`fiftyone.core.aggregations.CountValuesResult`
+            a dict mapping values to counts
         """
         return self.aggregate(foa.CountValues(field_name))
 
@@ -2346,7 +2346,7 @@ class SampleCollection(object):
             field_name: the name of the field to compute distinct values for
 
         Returns:
-            :class:`fiftyone.core.aggregations.DistinctResult`
+            a sorted list of distinct values
         """
         return self.aggregate(foa.Distinct(field_name))
 
@@ -2426,7 +2426,14 @@ class SampleCollection(object):
                 ``bins`` is an integer
 
         Returns:
-            :class:`fiftyone.core.aggregations.HistogramResult`
+            a tuple of
+
+            -   counts: a list of counts in each bin
+            -   edges: an increasing list of bin edges of length
+                ``len(counts) + 1``. Note that each bin is treated as having an
+                inclusive lower boundary and exclusive upper boundary,
+                ``[lower, upper)``, including the rightmost bin
+            -   other: the number of items outside the bins
         """
         return self.aggregate(
             foa.HistogramValues(field_name, bins=bins, range=range)
@@ -2486,7 +2493,7 @@ class SampleCollection(object):
             field_name: the name of the field to sum
 
         Returns:
-            :class:`fiftyone.core.aggregations.SumResult`
+            the sum
         """
         return self.aggregate(foa.Sum(field_name))
 
