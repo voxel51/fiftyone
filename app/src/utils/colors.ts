@@ -1,5 +1,4 @@
 import _ from "lodash";
-import randomColor from "randomcolor";
 
 import { RESERVED_FIELDS } from "./labels";
 
@@ -47,20 +46,19 @@ export function generateColorMap(
 
   keys = keys.filter((k) => !RESERVED_FIELDS.includes(k));
 
-  const iMap = _.invert(newMap);
-  colors = colors.filter((color) => !iMap[color]);
-
   if (seed > 0) {
     colors = shuffle(colors, seed);
   }
-  keys.sort().forEach((key, i) => {
+  let idx = 0;
+  let offset = Object.keys(newMap).length;
+  keys.sort().forEach((key) => {
     if (!newMap[key]) {
-      newMap[key] =
-        colors.pop() ||
-        randomColor({
-          luminosity: "dark",
-          seed: (seed + i) * Object.keys(newMap).length,
-        });
+      let color = (offset + idx) % colors.length;
+      if (isNaN(color)) {
+        color = 0;
+      }
+      newMap[key] = colors[color];
+      idx++;
     }
   });
 
