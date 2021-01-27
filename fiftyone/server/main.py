@@ -811,7 +811,17 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                     view = view.add_stage(stage)
 
             aggs = fos.DatasetStatistics(view).aggregations
-            stats = await view._async_aggregate(cls.sample_collection(), aggs)
+            stats = [
+                {
+                    "result": result,
+                    "_CLS": agg.__class__.__name__,
+                    "name": agg.field_name,
+                }
+                for agg, result in zip(
+                    aggs,
+                    await view._async_aggregate(cls.sample_collection(), aggs),
+                )
+            ]
         else:
             stats = []
 

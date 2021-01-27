@@ -406,7 +406,7 @@ export const totalCount = selector({
   get: ({ get }): number => {
     const stats = get(datasetStats) || [];
     return stats.reduce(
-      (acc, cur) => (cur.name === null ? cur.count : acc),
+      (acc, cur) => (cur.name === null ? cur.result : acc),
       null
     );
   },
@@ -417,7 +417,7 @@ export const filteredCount = selector({
   get: ({ get }): number => {
     const stats = get(extendedDatasetStats) || [];
     return stats.reduce(
-      (acc, cur) => (cur.name === null ? cur.count : acc),
+      (acc, cur) => (cur.name === null ? cur.result : acc),
       null
     );
   },
@@ -428,7 +428,7 @@ export const tagNames = selector({
   get: ({ get }) => {
     return (get(datasetStats) ?? []).reduce((acc, cur) => {
       if (cur.name === "tags") {
-        return Object.keys(cur.values).sort();
+        return Object.keys(cur.result).sort();
       }
       return acc;
     }, []);
@@ -440,7 +440,7 @@ export const tagSampleCounts = selector({
   get: ({ get }) => {
     return (get(datasetStats) ?? []).reduce((acc, cur) => {
       if (cur.name === "tags") {
-        return cur.values;
+        return cur.result;
       }
       return acc;
     }, {});
@@ -452,7 +452,7 @@ export const filteredTagSampleCounts = selector({
   get: ({ get }) => {
     return (get(datasetStats) ?? []).reduce((acc, cur) => {
       if (cur.name === "tags") {
-        return cur.values;
+        return cur.result;
       }
       return acc;
     }, {});
@@ -570,10 +570,10 @@ export const scalarTypes = selectorFamily({
   },
 });
 
-const COUNT_CLS = "fiftyone.core.aggregations.CountResult";
-const LABELS_CLS = "fiftyone.core.aggregations.DistinctResult";
-const BOUNDS_CLS = "fiftyone.core.aggregations.BoundsResult";
-const CONFIDENCE_BOUNDS_CLS = "fiftyone.core.aggregations.BoundsResult";
+const COUNT_CLS = "Count";
+const LABELS_CLS = "Distinct";
+const BOUNDS_CLS = "Bounds";
+const CONFIDENCE_BOUNDS_CLS = "Bounds";
 
 export const labelsPath = selectorFamily({
   key: "labelsPath",
@@ -596,7 +596,7 @@ export const labelClasses = selectorFamily({
     const path = get(labelsPath(label));
     return (get(datasetStats) ?? []).reduce((acc, cur) => {
       if (cur.name === path && cur._CLS === LABELS_CLS) {
-        return cur.values;
+        return cur.result;
       }
       return acc;
     }, []);
@@ -609,7 +609,7 @@ const catchLabelCount = (names, prefix, cur, acc) => {
     names.includes(cur.name.slice(prefix.length).split(".")[0]) &&
     cur._CLS === COUNT_CLS
   ) {
-    acc[cur.name.slice(prefix.length).split(".")[0]] = cur.count;
+    acc[cur.name.slice(prefix.length).split(".")[0]] = cur.result;
   }
 };
 
@@ -888,7 +888,7 @@ export const labelConfidenceBounds = selectorFamily({
           cur.name.includes(label) &&
           cur._CLS === CONFIDENCE_BOUNDS_CLS
         ) {
-          let bounds = cur.bounds;
+          let bounds = cur.result;
           bounds = [
             0 < bounds[0] ? 0 : bounds[0],
             1 > bounds[1] ? 1 : bounds[1],
@@ -915,7 +915,7 @@ export const numericFieldBounds = selectorFamily({
     return (get(datasetStats) ?? []).reduce(
       (acc, cur) => {
         if (cur.name === label && cur._CLS === BOUNDS_CLS) {
-          const { bounds } = cur;
+          const { result: bounds } = cur;
           return [
             bounds[0] !== null && bounds[0] !== 0
               ? Number((bounds[0] - 0.01).toFixed(2))
