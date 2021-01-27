@@ -9,8 +9,9 @@ import fiftyone.core.config as foc
 import fiftyone.core.service as fos
 
 _database_service = fos.DatabaseService()
+
 config = foc.load_config()
-app_config = foc.load_app_config(config.default_app_config_path)
+app_config = foc.load_app_config()
 
 from .core.aggregations import (
     Bounds,

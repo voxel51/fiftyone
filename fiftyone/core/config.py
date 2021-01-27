@@ -14,7 +14,7 @@ except ImportError:
     import importlib_metadata  # Python < 3.8
 
 import eta
-from eta.core.config import EnvConfig
+import eta.core.config as etac
 
 import fiftyone.constants as foc
 
@@ -22,10 +22,18 @@ import fiftyone.constants as foc
 logger = logging.getLogger(__name__)
 
 
+class EnvConfig(etac.EnvConfig):
+    def __repr__(self):
+        return self.__str__()
+
+
 class FiftyOneConfig(EnvConfig):
     """FiftyOne configuration settings."""
 
-    def __init__(self, d):
+    def __init__(self, d=None):
+        if d is None:
+            d = {}
+
         self.database_dir = self.parse_string(
             d,
             "database_dir",
@@ -52,12 +60,6 @@ class FiftyOneConfig(EnvConfig):
             "model_zoo_manifest_paths",
             env_var="FIFTYONE_MODEL_ZOO_MANIFEST_PATHS",
             default=None,
-        )
-        self.default_app_config_path = self.parse_string(
-            d,
-            "default_app_config_path",
-            env_var="FIFTYONE_DEFAULT_APP_CONFIG_PATH",
-            default=foc.FIFTYONE_APP_CONFIG_PATH,
         )
         self.default_dataset_dir = self.parse_string(
             d,
@@ -171,35 +173,38 @@ class FiftyOneConfig(EnvConfig):
 class AppConfig(EnvConfig):
     """FiftyOne App configuration settings."""
 
-    def __init__(self, d):
+    def __init__(self, d=None):
+        if d is None:
+            d = {}
+
         self.color_pool = self.parse_string_array(
             d,
             "color_pool",
-            env_var="FIFTYONE_DEFAULT_APP_COLOR_POOL",
+            env_var="FIFTYONE_APP_COLOR_POOL",
             default=foc.DEFAULT_APP_COLOR_POOL,
         )
         self.notebook_height = self.parse_int(
             d,
             "notebook_height",
-            env_var="FIFTYONE_DEFAULT_APP_NOTEBOOK_HEIGHT",
+            env_var="FIFTYONE_APP_NOTEBOOK_HEIGHT",
             default=800,
         )
         self.show_confidence = self.parse_bool(
             d,
             "show_confidence",
-            env_var="FIFTYONE_DEFAULT_APP_SHOW_CONFIDENCE",
+            env_var="FIFTYONE_APP_SHOW_CONFIDENCE",
             default=True,
         )
         self.show_attributes = self.parse_bool(
             d,
             "show_attributes",
-            env_var="FIFTYONE_DEFAULT_APP_SHOW_ATTRIBUTES",
+            env_var="FIFTYONE_APP_SHOW_ATTRIBUTES",
             default=True,
         )
 
 
 def locate_config():
-    """Returns the path to the FiftyOne config on disk.
+    """Returns the path to the :class:`FiftyOneConfig` on disk.
 
     The default location is ``~/.fiftyone/config.json``, but you can override
     this path by setting the ``FIFTYONE_CONFIG_PATH`` environment variable.
@@ -208,11 +213,11 @@ def locate_config():
     location, in which case the default config settings will be used.
 
     Returns:
-        the path to the config
+        the path to the :class:`FiftyOneConfig` on disk
 
     Raises:
-        OSError: if the FiftyOne config path has been customized but the file
-            does not exist on disk
+        OSError: if the config path has been customized but the file does not
+            exist on disk
     """
     if "FIFTYONE_CONFIG_PATH" not in os.environ:
         return foc.FIFTYONE_CONFIG_PATH
@@ -224,58 +229,65 @@ def locate_config():
     return config_path
 
 
-def load_app_config(path):
-    """Loads an App config.
+def locate_app_config():
+    """Returns the path to the :class:`AppConfig` on disk.
 
-    Args:
-        path: the path to where an AppConfig may exist
+    The default location is ``~/.fiftyone/app_config.json``, but you can
+    override this path by setting the ``FIFTYONE_APP_CONFIG_PATH`` environment
+    variable.
+
+    Note that a config file may not actually exist on disk in the default
+    location, in which case the default config settings will be used.
 
     Returns:
-        a ``fiftyone.core.config.AppConfig`` instance
-    """
-    if os.path.isfile(path):
-        return AppConfig.from_json(path)
+        the path to the :class:`AppConfig` on disk
 
-    return AppConfig({})
+    Raises:
+        OSError: if the App config path has been customized but the file does
+            not exist on disk
+    """
+    if "FIFTYONE_APP_CONFIG_PATH" not in os.environ:
+        return foc.FIFTYONE_APP_CONFIG_PATH
+
+    config_path = os.environ["FIFTYONE_APP_CONFIG_PATH"]
+    if not os.path.isfile(config_path):
+        raise OSError("App config file '%s' not found" % config_path)
+
+    return config_path
 
 
 def load_config():
     """Loads the FiftyOne config.
 
     Returns:
-        a ``fiftyone.config.FiftyOneConfig`` instance
+        a :class:`FiftyOneConfig` instance
     """
     config_path = locate_config()
     if os.path.isfile(config_path):
         return FiftyOneConfig.from_json(config_path)
 
-    return FiftyOneConfig({})
+    return FiftyOneConfig()
 
 
-def set_app_config_settings(**kwargs):
-    """Sets the given FiftyOne App config setting(s).
+def load_app_config():
+    """Loads the FiftyOne App config.
 
-    Args:
-        **kwargs: keyword arguments defining valid AppConfig attributes and
-            values
-
-    Raises:
-        EnvConfigError: if the settings were invalid
+    Returns:
+        an :class:`AppConfig` instance
     """
-    import fiftyone as fo
+    app_config_path = locate_app_config()
+    if os.path.isfile(app_config_path):
+        return AppConfig.from_json(app_config_path)
 
-    # Validiate settings
-    _config = AppConfig.from_dict(kwargs)
-
-    _set_settings(fo.app_config, _config, kwargs)
+    return AppConfig()
 
 
 def set_config_settings(**kwargs):
     """Sets the given FiftyOne config setting(s).
 
     Args:
-        **kwargs: keyword arguments defining valid FiftyOneConfig attributes
-            and values
+        **kwargs: keyword arguments defining valid :class:`FiftyOneConfig`
+            attributes and values
 
     Raises:
         EnvConfigError: if the settings were invalid
@@ -286,6 +298,24 @@ def set_config_settings(**kwargs):
     _config = FiftyOneConfig.from_dict(kwargs)
 
     _set_settings(fo.config, _config, kwargs)
+
+
+def set_app_config_settings(**kwargs):
+    """Sets the given FiftyOne App config setting(s).
+
+    Args:
+        **kwargs: keyword arguments defining valid :class:`AppConfig`
+            attributes and values
+
+    Raises:
+        EnvConfigError: if the settings were invalid
+    """
+    import fiftyone as fo
+
+    # Validiate settings
+    _config = AppConfig.from_dict(kwargs)
+
+    _set_settings(fo.app_config, _config, kwargs)
 
 
 def _set_settings(config, new_config, kwargs):

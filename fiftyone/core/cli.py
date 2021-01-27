@@ -785,7 +785,7 @@ class AppCommand(Command):
 
 
 class AppConfigCommand(Command):
-    """Tools for working with your App config.
+    """Tools for working with your FiftyOne App config.
 
     Examples::
 
@@ -817,11 +817,11 @@ class AppConfigCommand(Command):
     @staticmethod
     def execute(parser, args):
         if args.locate:
-            config_path = fo.config.default_app_config_path
-            if os.path.isfile(config_path):
-                print(config_path)
+            app_config_path = focg.locate_app_config()
+            if os.path.isfile(app_config_path):
+                print(app_config_path)
             else:
-                print("No App config file found at '%s'" % config_path)
+                print("No App config file found at '%s'" % app_config_path)
 
             return
 

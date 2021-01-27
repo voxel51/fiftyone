@@ -110,7 +110,7 @@ def launch_app(
             whenever the state of the session is updated. Only applicable
             in notebook contexts
         config (None): an optional :class:`fiftyone.core.config.AppConfig` to
-            control fine-grained default App settings.
+            control fine-grained default App settings
 
     Returns:
         a :class:`Session`
@@ -224,7 +224,7 @@ class Session(foc.HasClient):
             whenever the state of the session is updated. Only applicable
             in notebook contexts
         config (None): an optional :class:`fiftyone.core.config.AppConfig` to
-            control fine-grained default App settings.
+            control fine-grained default App settings
     """
 
     _HC_NAMESPACE = "state"
