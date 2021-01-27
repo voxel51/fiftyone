@@ -7,7 +7,6 @@ Documents that track datasets and their sample schemas in the database.
 """
 from mongoengine import (
     BooleanField,
-    DictField,
     EmbeddedDocumentListField,
     ListField,
     StringField,
@@ -16,6 +15,7 @@ from mongoengine import (
 import eta.core.utils as etau
 
 from .document import Document, EmbeddedDocument
+from .fields import DictField, TargetsField
 
 
 class SampleFieldDocument(EmbeddedDocument):
@@ -105,5 +105,7 @@ class DatasetDocument(Document):
     sample_fields = EmbeddedDocumentListField(
         document_type=SampleFieldDocument
     )
+    global_targets = TargetsField(null=True)
+    label_targets = DictField(default=dict, field=TargetsField(default=dict))
     frame_fields = EmbeddedDocumentListField(document_type=SampleFieldDocument)
     version = StringField(required=True, null=True)

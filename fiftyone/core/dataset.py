@@ -280,6 +280,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """The media type of the dataset."""
         return self._doc.media_type
 
+    @property
+    def default_targets(self):
+        """Default targets..."""
+        return self._doc.default_targets
+
     @media_type.setter
     def media_type(self, media_type):
         if len(self) != 0:

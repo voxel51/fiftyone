@@ -21,6 +21,7 @@ from .document import (
     SampleDocument,
     SerializableDocument,
 )
+from .fields import DictField, Field, StringField
 from .frame import (
     DatasetFrameSampleDocument,
     NoDatasetFrameSampleDocument,
