@@ -243,7 +243,7 @@ The FiftyOne App can also be configured in various ways. A new App config is
 applied to each :class:`Session <fiftyone.core.session.Session>` which manages
 an associated App window. A session's current config can be inspected and
 modified via the :meth:`session.config <fiftyone.core.session.Session.config>`
-property. For changes to a session's config to take affect in the App,
+property. For changes to a session's config to take effect in the App,
 a call to :meth:`session.refresh() <fiftyone.core.session.Session.refresh>`
 or another state-updating action such as `session.view = my_view` must occur.
 
