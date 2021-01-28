@@ -55,7 +55,7 @@ class StateDescription(etas.Serializable):
         filters={},
         config=None,
     ):
-        self.config = config or fo.app_config
+        self.config = config or fo.app_config.copy()
         self.close = close
         self.connect = connected
         self.dataset = dataset
@@ -104,7 +104,7 @@ class StateDescription(etas.Serializable):
         Returns:
             :class:`StateDescription`
         """
-        config = fo.app_config
+        config = fo.app_config.copy()
         foc._set_settings(config, d.get("config", {}))
 
         active_handle = d.get("active_handle", None)

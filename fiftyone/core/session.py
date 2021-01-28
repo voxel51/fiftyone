@@ -389,7 +389,7 @@ class Session(foc.HasClient):
         a call to :meth:`Session.refresh` or another state-updating action
         such as `session.view = my_view` must occur.
 
-        Usage::
+        Example usage::
 
             import fiftyone as fo
 
