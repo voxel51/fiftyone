@@ -25,6 +25,7 @@ class SampleFieldDocument(EmbeddedDocument):
     ftype = StringField()
     subfield = StringField(null=True)
     embedded_doc_type = StringField(null=True)
+    targets_name = StringField(null=True)
 
     @classmethod
     def from_field(cls, field):
@@ -106,6 +107,6 @@ class DatasetDocument(Document):
         document_type=SampleFieldDocument
     )
     default_targets = TargetsField(null=True)
-    field_targets = DictField(default=dict, field=TargetsField(default=dict))
+    label_targets = DictField(default=dict, field=TargetsField(default=dict))
     frame_fields = EmbeddedDocumentListField(document_type=SampleFieldDocument)
     version = StringField(required=True, null=True)

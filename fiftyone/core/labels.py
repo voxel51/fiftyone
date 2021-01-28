@@ -214,6 +214,7 @@ class Classification(ImageLabel, _HasID):
     label = fof.StringField()
     confidence = fof.FloatField()
     logits = fof.VectorField()
+    target = fof.IntField()
 
     def to_image_labels(self, name=None):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
@@ -345,6 +346,7 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
     mask = fof.ArrayField()
     confidence = fof.FloatField()
     index = fof.IntField()
+    target = fof.IntField()
 
     def to_polyline(self, tolerance=2, filled=True):
         """Returns a :class:`Polyline` representation of this instance.
@@ -540,6 +542,7 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
     index = fof.IntField()
     closed = fof.BooleanField(default=False)
     filled = fof.BooleanField(default=False)
+    target = fof.IntField()
 
     def to_detection(self, mask_size=None):
         """Returns a :class:`Detection` representation of this instance whose
@@ -722,6 +725,7 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
     points = fof.KeypointsField()
     confidence = fof.FloatField()
     index = fof.IntField()
+    target = fof.IntField()
 
     def to_eta_keypoints(self, name=None):
         """Returns an ``eta.core.keypoints.Keypoints`` representation of this
@@ -885,6 +889,7 @@ class _Frames(Label):
 _SINGLE_LABEL_FIELDS = (Classification, Detection, Polyline, Keypoint)
 _LABEL_LIST_FIELDS = (Classifications, Detections, Polylines, Keypoints)
 _LABEL_FIELDS = _SINGLE_LABEL_FIELDS + _LABEL_LIST_FIELDS
+_TARGET_FIELDS = _LABEL_FIELDS + (Segmentation,)
 
 
 def _from_eta_attributes(attrs):

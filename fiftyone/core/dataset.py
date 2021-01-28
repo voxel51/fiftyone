@@ -286,6 +286,42 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self.save()
 
     @property
+    def label_targets(self):
+        """Label targets..."""
+        return self._doc.label_targets
+
+    @label_targets.setter
+    def label_targets(self, label_targets):
+        self._doc.label_targets = label_targets
+        self.save()
+
+    def add_label_targets(self, targets_name, targets):
+        self._doc.label_targets[targets_name] = targets
+        self.save()
+
+    def remove_label_targets(self, targets_name):
+        if targets_name in self._doc.label_targets:
+            del self._doc.label_targets[targets_name]
+
+        self.save()
+
+    def set_labels_field_targets(self, field_name, targets_name=None):
+        for field in self._doc.sample_fields:
+            if field.name != field_name:
+                continue
+
+            if not issubclass(
+                etau.get_class(field.embedded_doc_type), fol._TARGET_FIELDS
+            ):
+                raise ValueError(
+                    "field %s does not support targets" % field_name
+                )
+
+            field.targets_name = targets_name
+            self.save()
+            return
+
+    @property
     def media_type(self):
         """The media type of the dataset."""
         return self._doc.media_type
