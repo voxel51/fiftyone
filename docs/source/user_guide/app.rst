@@ -271,16 +271,33 @@ reflected in the |DatasetView| exposed by the
     :alt: CIFAR-10 View Bar
     :align: center
 
-Tabs
-____
+.. _app-stats-tabs:
 
-The `Samples`, `Labels`, `Tags`, and `Scalars` tabs in the App let you
-visualize different aspects and statistics about your dataset. `Samples` is the
-default tab, which lets you visualize and select your image samples. The
-`Labels` tab shows a distribution of labels of the currently loaded |Dataset|
-or |DatasetView|. Any tags that were added and their corresponding counts will
-show up under the `Tags` tab. Scalar fields, for example if you computed
-`uniqueness` on your dataset, will be displayed under the `Scalars` tab.
+Statistics tabs
+_______________
+
+The `Labels`, `Scalars`, and `Tags` tabs in the App let you visualize different
+statistics about your dataset.
+
+.. note::
+
+    The statistics in these tabs automatically update to reflect the current
+    :ref:`view <using-views>` that you have loaded in the App, or the entire
+    :ref:`dataset <using-datasets>` if no view is loaded.
+
+The `Labels` tab shows distributions of the `label` values for each
+:ref:`labels field <using-labels>` that you've added to your dataset. For
+example, you may have histograms of ground truth labels and one more sets of
+model predictions.
+
+The `Scalars` tab shows distributions for numeric (integer or float) or
+categorical (e.g., string) :ref:`primitive fields <adding-sample-fields>` that
+you've added to your dataset. For example, if you computed
+:ref:`uniqueness <brain-image-uniqueness>` on your dataset, a histogram of
+uniqueness values will be displayed under the `Scalars` tab.
+
+The `Tags` tab shows the distribution of any :ref:`tags <using-tags>` that
+you've added to your dataset.
 
 .. image:: ../images/cifar10_tabs.gif
    :alt: CIFAR-10 Scalars
@@ -382,3 +399,44 @@ objects in the App:
         },
         ...
     ]
+
+.. _app-config:
+
+Configuring the App
+___________________
+
+The behavior of the App can be configured in various ways. The code sample
+below shows the basic pattern for customizing the App on a one-off basis:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Create a custom App config
+    app_config = fo.AppConfig()
+    app_config.show_confidence = False
+    app_config.show_attributes = False
+
+    session = fo.launch_app(dataset, config=app_config)
+
+You can even reconfigure a live |Session| by editing its
+:meth:`session.config <fiftyone.core.session.Session.config>` property and
+calling :meth:`session.refresh() <fiftyone.core.session.Session.refresh>` to
+apply the changes:
+
+.. code-block:: python
+    :linenos:
+
+    # Customize the config of a live Session
+    session.config.show_confidence = True
+    session.config.show_attributes = True
+
+    # Refresh the session to apply the changes
+    session.refresh()
+
+See :ref:`this page <configuring-fiftyone-app>` for more information about
+configuring the App.
