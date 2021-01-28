@@ -275,7 +275,7 @@ environments.
 .. _aws:
 
 Amazon Web Services
--------------------
+~~~~~~~~~~~~~~~~~~~
 
 If your data is stored in an AWS S3 bucket, we recommend mounting the bucket as
 a local drive on an EC2 instance and then accessing the data using the standard
@@ -370,7 +370,7 @@ appropriate value in the local commands too.
 .. _google-cloud:
 
 Google Cloud
-------------
+~~~~~~~~~~~~
 
 If your data is stored in a Google Cloud storage bucket, we recommend mounting
 the bucket as a local drive on a GC compute instance and then accessing the
@@ -461,7 +461,7 @@ appropriate value in the local commands too.
 .. _azure:
 
 Microsoft Azure
----------------
+~~~~~~~~~~~~~~~
 
 If your data is stored in an Azure storage bucket, we recommend mounting the
 bucket as a local drive on an Azure compute instance and then accessing the
@@ -590,4 +590,3 @@ successfully :ref:`install FiftyOne <installing-fiftyone>`.
     # Python packages
     pip install --upgrade pip setuptools wheel
     pip install ipython
-
