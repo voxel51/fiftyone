@@ -486,6 +486,8 @@ attribute or item access:
     sample.filepath
     sample["filepath"]  # equivalent
 
+.. _adding-sample-fields:
+
 Adding fields to a sample
 -------------------------
 

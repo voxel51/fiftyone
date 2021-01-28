@@ -24,7 +24,7 @@ You can explicitly create a view that contains an entire dataset via
 
     import fiftyone.zoo as foz
 
-    dataset = foz.load_zoo_dataset("cifar10", split="test")
+    dataset = foz.load_zoo_dataset("quickstart")
 
     view = dataset.view()
 
@@ -32,16 +32,17 @@ You can explicitly create a view that contains an entire dataset via
 
 .. code-block:: text
 
-    Dataset:        cifar10-test
+    Dataset:        quickstart
     Media type:     image
-    Num samples:    10000
-    Tags:           ['test']
+    Num samples:    200
+    Tags:           ['validation']
     Sample fields:
-        media_type:   fiftyone.core.fields.StringField
         filepath:     fiftyone.core.fields.StringField
         tags:         fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
         metadata:     fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.Metadata)
-        ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Classification)
+        ground_truth: fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+        uniqueness:   fiftyone.core.fields.FloatField
+        predictions:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
     View stages:
         ---
 
@@ -51,7 +52,7 @@ You can access specific information about a view in the natural ways:
     :linenos:
 
     len(view)
-    # 10000
+    # 200
 
     view.media_type
     # "image"
@@ -74,6 +75,9 @@ Or, you can access individual samples in a view by their ID:
 
 .. code-block:: python
     :linenos:
+
+    # Grab the ID of a random sample
+    sample_id = view.take(1).first().id
 
     sample = view[sample_id]
 
@@ -153,6 +157,9 @@ You can also sort by :ref:`expressions <querying-samples>`!
 
     # Sort by number of detections in `Detections` field `ground_truth`
     view = dataset.sort_by(F("ground_truth.detections").length(), reverse=True)
+
+    print(len(view.first().ground_truth.detections))  # 39
+    print(len(view.last().ground_truth.detections))  # 0
 
 Slicing
 _______
@@ -287,14 +294,17 @@ for a full list of supported operations.
 
     from fiftyone import ViewField as F
 
-    # Samples whose size is less than 1024 bytes
-    small_files_view = dataset.match(F("metadata.size_bytes") < 1024)
+    # Populate metadata on all samples
+    dataset.compute_metadata()
 
-    # Samples for which `my_classification` is either confident or
-    # the label is "cat" or "dog"
-    classification_filtering_view = dataset.match(
-        (F("my_classification.confidence") >= 0.5)
-        | F("my_classification.label").is_in(["hex", "tricam"])
+    # Samples whose image is less than 48 KB
+    small_images_view = dataset.match(F("metadata.size_bytes") < 48 * 1024)
+
+    # Samples that contain at least one prediction with confidence above 0.99
+    # or whose label ifs "cat" or "dog"
+    match = (F("confidence") > 0.99) | (F("label").is_in(("cat", "dog")))
+    matching_view = dataset.match(
+        F("predictions.detections").filter(match).length() > 0
     )
 
 Common filters
@@ -309,11 +319,11 @@ method to match samples that have the specified tag(s) in their `tags` field:
 .. code-block:: python
     :linenos:
 
-    # The training split of the dataset
-    train_view = dataset.match_tags("train")
+    # The validation split of the dataset
+    val_view = dataset.match_tags("validation")
 
     # Union of the validation and test splits
-    val_test_view = dataset.match_tags(["val", "test"])
+    val_test_view = dataset.match_tags(("validation", "test"))
 
 Use :meth:`exists() <fiftyone.core.collections.SampleCollection.exists>` to
 only include samples for which a given |Field| exists and is not ``None``:
@@ -322,7 +332,7 @@ only include samples for which a given |Field| exists and is not ``None``:
     :linenos:
 
     # The subset of samples where predictions have been computed
-    predictions_view = dataset.exists("my_predictions")
+    predictions_view = dataset.exists("predictions")
 
 Use :meth:`select() <fiftyone.core.collections.SampleCollection.select>` and
 :meth:`exclude() <fiftyone.core.collections.SampleCollection.exclude>` to
@@ -331,10 +341,14 @@ restrict attention to or exclude samples from a view by their IDs:
 .. code-block:: python
     :linenos:
 
-    sample_ids = [sample1.id, sample2.id]
+    # Get the IDs of two random samples
+    sample_ids = [
+        dataset.take(1).first().id,
+        dataset.take(1).first().id,
+    ]
 
     # Include only samples with the given IDs in the view
-    included_view = dataset.select(sample_ids)
+    selected_view = dataset.select(sample_ids)
 
     # Exclude samples with the given IDs from the view
     excluded_view = dataset.exclude(sample_ids)
@@ -376,16 +390,15 @@ stages to select or exclude fields from the returned |SampleView|:
 .. code-block:: python
     :linenos:
 
-    for sample in dataset.select_fields(["tags"]):
-        print(sample.tags)     # OKAY: `tags` was selected and thus available
-        print(sample.id)       # OKAY: `id` is always available
-        print(sample.filepath) # AttributeError: `filepath` was not selected
+    for sample in dataset.select_fields("ground_truth"):
+        print(sample.id)            # OKAY: `id` is always available
+        print(sample.ground_truth)  # OKAY: `ground_truth` was selected
+        print(sample.predictions)   # AttributeError: `predictions` was not selected
 
-    for sample in dataset.exclude_fields(["tags"]):
-        print(sample.id)       # OKAY: `id` is always available
-        print(sample.filepath) # OKAY: `filepath` is not excluded
-        print(sample.tags)     # AttributeError: `tags` was excluded
-    )
+    for sample in dataset.exclude_fields("predictions"):
+        print(sample.id)            # OKAY: `id` is always available
+        print(sample.ground_truth)  # OKAY: `ground_truth` was not excluded
+        print(sample.predictions)   # AttributeError: `predictions` was excluded
 
 The
 :meth:`filter_labels() <fiftyone.core.collections.SampleCollection.filter_labels>`
@@ -393,7 +406,7 @@ stage is a powerful stage that allows you to filter the contents of
 |Detections|, |Classifications|, |Polylines|, and |Keypoints| fields,
 respectively.
 
-Here are some examples for each task:
+Here are some self-contained examples for each task:
 
 .. tabs::
 
@@ -402,72 +415,124 @@ Here are some examples for each task:
         .. code-block:: python
             :linenos:
 
-            # Only include labels in the `my_classifications` field of each sample with
-            # label "friend" and confidence greater than 0.5
-            confident_friends_view = dataset.filter_labels(
-                "my_classifications", (F("confidence") > 0.5) & (F("label") == "friend")
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("imagenet-sample")
+
+            # Only include labels in the `ground_truth` field whose `label` is
+            # "slug" or "conch"
+            slug_conch_view = dataset.filter_labels(
+                "ground_truth", (F("label") == "slug") | (F("label") == "conch")
             )
 
-            # Same as above, but only include samples with at least one classification
-            # after filtering
-            confident_friends_view = dataset.filter_labels(
-                "my_classifications",
-                (F("confidence") > 0.5) & (F("label") == "friend"),
+            # Same as above, but only include samples with a ground truth
+            # label after filtering
+            only_slug_conch_view = dataset.filter_labels(
+                "ground_truth",
+                (F("label") == "slug") | (F("label") == "conch"),
                 only_matches=True,
             )
+
+            session = fo.launch_app(view=only_slug_conch_view)
 
     .. tab:: Detections
 
         .. code-block:: python
             :linenos:
 
-            # Only include detections in the `my_detections` field of each sample
-            # whose bounding boxes have an area of at least 0.5
-            large_boxes_view = dataset.filter_labels(
-                "my_detections", F("bounding_box")[2] * F("bounding_box")[3] >= 0.5
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Bboxes are in [top-left-x, top-left-y, width, height] format
+            bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+
+            # Only include predictions whose bounding boxes have an area of at
+            # least 50% of the image
+            show_large_boxes_view = dataset.filter_labels(
+                "predictions", bbox_area >= 0.5
             )
 
-            # Same as above, but only include samples with at least one detection
-            # after filtering
-            large_boxes_view = dataset.filter_labels(
-                "my_detections",
-                F("bounding_box")[2] * F("bounding_box")[3] >= 0.5,
-                only_matches=True,
+            # Same as above, but only include samples with at least one
+            # prediction after filtering
+            only_large_boxes_view = dataset.filter_labels(
+                "predictions", bbox_area >= 0.5, only_matches=True
             )
+
+            session = fo.launch_app(view=only_large_boxes_view)
 
     .. tab:: Polylines
 
+        .. note::
+
+            See the :ref:`BDD100K dataset <dataset-zoo-bdd100k>` in the Dataset
+            Zoo for download instructions.
+
         .. code-block:: python
             :linenos:
 
-            # Only include polylines in the `my_polylines` field that are filled
-            # (i.e., are polygons)
-            filled_polygons_view = dataset.filter_labels(
-                "my_polylines", F("filled")
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            # The path to the source files that you manually downloaded
+            source_dir = "/path/to/dir-with-bdd100k-files"
+
+            dataset = foz.load_zoo_dataset(
+                "bdd100k", split="validation", source_dir=source_dir
             )
 
-            # Same as above, but only include samples with at least one polyline
-            # after filtering
-            filled_polygons_view = dataset.filter_labels(
-                "my_polylines", F("filled"), only_matches=True
+            # Only include polylines that are filled
+            # (i.e., polygons, not polylines)
+            polygons_view = dataset.filter_labels(
+                "gt_polylines", F("filled") == True
             )
+
+            # Same as above, but only include samples with at least one polygon
+            # after filtering
+            only_polygons_view = dataset.filter_labels(
+                "gt_polylines", F("filled") == True, only_matches=True
+            )
+
+            session = fo.launch_app(view=only_polygons_view)
 
     .. tab:: Keypoints
 
+        .. note::
+
+            This example uses a
+            :ref:`Keypoint R-CNN model <model-zoo-keypoint-rcnn-resnet50-fpn-coco-torch>`
+            from the Model Zoo.
+
         .. code-block:: python
             :linenos:
 
-            # Only include keypoints in the `my_keypoints`  field of each sample
-            # that have at least 10 vertices
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Load a keypoint model
+            model = foz.load_zoo_model("keypoint-rcnn-resnet50-fpn-coco-torch")
+
+            # Grab a few samples that have people in them
+            person_view  = dataset.match(
+                F("ground_truth.detections").map(F("label") == "person").length() > 0
+            ).take(4)
+
+            person_view.apply_model(model, label_field="rcnn")
+
+            # Only include keypoints in the `rcnn_keypoints` field of each
+            # sample that have at least 10 vertices, and only include samples
+            # with at least one keypoint instance after filtering
             many_points_view = dataset.filter_labels(
-                "my_keypoints", F("points").length() >= 10
+                "rcnn_keypoints",
+                F("points").length() >= 10,
+                only_matches=True,
             )
 
-            # Same as above, but only include samples with at least one keypoint
-            # after filtering
-            many_points_view = dataset.filter_labels(
-                "my_keypoints", F("points").length() >= 10, only_matches=True
-            )
+            session = fo.launch_app(view=many_points_view)
 
 You can also use the
 :meth:`filter_field() <fiftyone.core.collections.SampleCollection.filter_field>`
@@ -476,11 +541,8 @@ stage to filter the contents of arbitrarily-typed fields:
 .. code-block:: python
     :linenos:
 
-    # Only include values for the `my_string` field that are either "awesome" or
-    # "cool"
-    awesome_cool_view = dataset.filter_field(
-        "my_string", F().is_in(["awesome", "cool"])
-    )
+    # Remove tags from samples that don't include the "validation" tag
+    clean_tags_view = dataset.filter_field("tags", F().contains("validation"))
 
 .. note::
 
@@ -539,11 +601,18 @@ to do this:
 .. code-block:: python
     :linenos:
 
-    # Replace all "cat" and "dog" labels in the `predictions` field with "animal"
+    ANIMALS = [
+        "bear", "bird", "cat", "cow", "dog", "elephant", "giraffe",
+        "horse", "sheep", "zebra"
+    ]
 
-    view = dataset.map_labels(
-        "predictions", {"cat": "animal", "dog": "animal"}
-    )
+    # Replace all animal detection's labels with "animal"
+    mapping = {k: "animal" for k in ANIMALS}
+    animals_view = dataset.map_labels("predictions", mapping)
+
+    counts = animals_view.count_values("predictions.detections.label")
+    print(counts["animal"])
+    # 529
 
 Or, suppose you would like to lower bound all confidences of objects in the
 `predictions` field of a dataset. You can use
@@ -554,38 +623,37 @@ to do this:
     :linenos:
 
     # Lower bound all confidences in the `predictions` field to 0.5
-    view = dataset.set_field(
+    bounded_view = dataset.set_field(
         "predictions.detections.confidence",
         F("confidence").max(0.5),
     )
+
+    print(bounded_view.bounds("predictions.detections.confidence"))
+    # (0.5, 0.9999035596847534)
 
 The |ViewExpression| language is quite powerful, allowing you to define complex
 operations without needing to write an explicit Python loop to perform the
 desired manipulation.
 
-To give you a taste, copy-paste this example to visualize the top-5 highest
-confidence predictions for each sample in the
+For example, the snippet below visualizes the top-5 highest confidence
+predictions for each sample in the
 :ref:`quickstart dataset <dataset-zoo-quickstart>`:
 
 .. code-block:: python
     :linenos:
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
     from fiftyone import ViewField as F
-
-    dataset = foz.load_zoo_dataset("quickstart")
 
     # Extracts the 5 highest confidence predictions for each sample
     top5_preds = F("detections").sort_by("confidence", reverse=True)[:5]
 
-    view = (
+    top5_view = (
         dataset
         .set_field("predictions.detections", top5_preds)
         .select_fields("predictions")
     )
 
-    session = fo.launch_app(view=view)
+    session = fo.launch_app(view=top5_view)
 
 Saving and cloning
 __________________
@@ -601,7 +669,7 @@ the underlying dataset with the contents of a view you've created:
     from fiftyone import ViewField as F
 
     # Discard all predictions with confidence below 0.3
-    high_conf_view = dataset.filter_labels("predictions", F("confidence") >= 0.3)
+    high_conf_view = dataset.filter_labels("predictions", F("confidence") > 0.3)
     high_conf_view.save()
 
 Alternatively, you can create a new |Dataset| that contains only the contents
@@ -614,7 +682,7 @@ of a |DatasetView| using
     from fiftyone import ViewField as F
 
     # Create a new dataset that contains only the high confidence predictions
-    high_conf_view = dataset.filter_labels("predictions", F("confidence") >= 0.3)
+    high_conf_view = dataset.filter_labels("predictions", F("confidence") > 0.3)
     high_conf_dataset = high_conf_view.clone()
 
 Tips & Tricks
@@ -623,17 +691,20 @@ _____________
 Chaining view stages
 --------------------
 
-View stages can be chained together to perform arbitrarily complex operations:
+View stages can be chained together to perform complex operations:
 
 .. code-block:: python
     :linenos:
 
     from fiftyone import ViewField as F
 
+    # Extract the first 5 samples with the "validation" tag, alphabetically by
+    # filepath, whose images are >= 48 KB
     complex_view = (
-        dataset.match_tags("test")
+        dataset
+        .match_tags("validation")
         .exists("metadata")
-        .match(F("metadata.size_bytes") >= 64 * 1024)  # >= 64 kB
+        .match(F("metadata.size_bytes") >= 48 * 1024)  # >= 48 KB
         .sort_by("filepath")
         .limit(5)
     )
@@ -648,11 +719,11 @@ Need to filter your detections by bounding box area? Use this |ViewExpression|!
 
     from fiftyone import ViewField as F
 
-    # bbox format is [top-left-x, top-left-y, width, height]
+    # Bboxes are in [top-left-x, top-left-y, width, height] format
     bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
 
     medium_boxes_view = dataset.filter_labels(
-        "my_detections", (0.05 <= bbox_area) & (bbox_area < 0.5)
+        "predictions", (0.05 <= bbox_area) & (bbox_area < 0.5)
     )
 
 Removing a batch of samples from a dataset
@@ -665,7 +736,10 @@ dataset as follows:
 .. code-block:: python
     :linenos:
 
-    dataset.remove_samples(view)
+    # Choose 10 samples at random
+    unlucky_samples = dataset.take(10)
+
+    dataset.remove_samples(unlucky_samples)
 
 Efficiently iterating samples
 -----------------------------

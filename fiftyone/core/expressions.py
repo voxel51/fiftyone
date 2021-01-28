@@ -1748,6 +1748,7 @@ class ViewExpression(object):
         """.format(
             rev=rev
         )
+        sort_fcn = " ".join(sort_fcn.split())  # minimize
 
         return ViewExpression(
             {"$function": {"body": sort_fcn, "args": [self], "lang": "js"}}
@@ -1791,6 +1792,7 @@ class ViewExpression(object):
         """.format(
             field=field, rev=rev
         )
+        sort_fcn = " ".join(sort_fcn.split())  # minimize
 
         return ViewExpression(
             {"$function": {"body": sort_fcn, "args": [self], "lang": "js"}}
