@@ -103,8 +103,8 @@ Each view operation is captured by a |ViewStage|:
     print(dataset.list_view_stages())
     # ['exclude', 'exclude_fields', 'exists', ..., 'skip', 'sort_by', 'take']
 
-These operations are conveniently exposed as methods on both |Dataset|, in
-which case they create an initial |DatasetView|:
+These operations are conveniently exposed as methods on |Dataset| instances,
+in which case they create an initial |DatasetView|:
 
 .. code-block:: python
     :linenos:
@@ -115,9 +115,9 @@ which case they create an initial |DatasetView|:
     len(random_view)
     # 100
 
-They are also exposed on |DatasetView|, in which case they return another
-|DatasetView| with the operation appended to its internal pipeline so that
-multiple operations can be chained together.
+They are also exposed on |DatasetView| instances, in which case they return
+another |DatasetView| with the operation appended to its internal pipeline so
+that multiple operations can be chained together:
 
 .. code-block:: python
     :linenos:
@@ -125,7 +125,9 @@ multiple operations can be chained together.
     # Sort `random_view` by filepath
     sorted_random_view = random_view.sort_by("filepath")
 
-The sections below discuss each view stage in more detail.
+The sections below discuss some interesting view stages in more detail. You can
+also refer to the :mod:`fiftyone.core.stages` module documentation for examples
+of using each stage.
 
 Sorting
 _______
@@ -151,36 +153,6 @@ You can also sort by :ref:`expressions <querying-samples>`!
 
     # Sort by number of detections in `Detections` field `ground_truth`
     view = dataset.sort_by(F("ground_truth.detections").length(), reverse=True)
-
-Shuffling
-_________
-
-The samples in a |Dataset| or |DatasetView| can be randomly shuffled using
-:meth:`shuffle() <fiftyone.core.collections.SampleCollection.shuffle>`:
-
-.. code-block:: python
-    :linenos:
-
-    # Randomly shuffle the order of the samples in the dataset
-    view1 = dataset.shuffle()
-
-    print(view1.first().id)
-    # 5f31bbfcd0d78c13abe159af
-
-An optional ``seed`` can be provided to make the shuffle deterministic:
-
-.. code-block:: python
-    :linenos:
-
-    # Randomly shuffle the samples in the dataset with a fixed seed
-
-    view2 = dataset.shuffle(seed=51)
-    print(view2.first().id)
-    # 5f31bbfcd0d78c13abe159b1
-
-    also_view2 = dataset.shuffle(seed=51)
-    print(also_view2.first().id)
-    # 5f31bbfcd0d78c13abe159b1
 
 Slicing
 _______
@@ -216,6 +188,36 @@ a |DatasetView| by its ID.
 
         view[0]
         # KeyError: "Accessing samples by numeric index is not supported. Use sample IDs or slices"
+
+Shuffling
+_________
+
+The samples in a |Dataset| or |DatasetView| can be randomly shuffled using
+:meth:`shuffle() <fiftyone.core.collections.SampleCollection.shuffle>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Randomly shuffle the order of the samples in the dataset
+    view1 = dataset.shuffle()
+
+    print(view1.first().id)
+    # 5f31bbfcd0d78c13abe159af
+
+An optional ``seed`` can be provided to make the shuffle deterministic:
+
+.. code-block:: python
+    :linenos:
+
+    # Randomly shuffle the samples in the dataset with a fixed seed
+
+    view2 = dataset.shuffle(seed=51)
+    print(view2.first().id)
+    # 5f31bbfcd0d78c13abe159b1
+
+    also_view2 = dataset.shuffle(seed=51)
+    print(also_view2.first().id)
+    # 5f31bbfcd0d78c13abe159b1
 
 Random sampling
 _______________
@@ -295,25 +297,20 @@ for a full list of supported operations.
         | F("my_classification.label").is_in(["hex", "tricam"])
     )
 
-Alternatively, for ultimate flexibility, you can specify your match expression
-as a Python dict defining an arbitrary
-`MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_.
-
 Common filters
 --------------
 
 Convenience functions for common queries are also available.
 
 Use the
-:meth:`match_tag() <fiftyone.core.collections.SampleCollection.match_tag>` and
 :meth:`match_tags() <fiftyone.core.collections.SampleCollection.match_tags>`
-methods to match samples that the specified tag(s) in their `tags` field:
+method to match samples that have the specified tag(s) in their `tags` field:
 
 .. code-block:: python
     :linenos:
 
     # The training split of the dataset
-    train_view = dataset.match_tag("train")
+    train_view = dataset.match_tags("train")
 
     # Union of the validation and test splits
     val_test_view = dataset.match_tags(["val", "test"])
@@ -523,6 +520,103 @@ stage to filter the contents of arbitrarily-typed fields:
             # are deleted
             sample.save()
 
+Modifying fields
+________________
+
+In certain situations, you may wish to temporarily modify the values of sample
+fields in the context of a |DatasetView| without modifying the underlying
+dataset. FiftyOne provides the
+:meth:`set_field() <fiftyone.core.collections.SampleCollection.set_field>`
+and
+:meth:`map_labels() <fiftyone.core.collections.SampleCollection.map_labels>`
+methods for this purpose.
+
+For example, suppose you would like to rename a group of labels to a single
+category in order to run your evaluation routine. You can use
+:meth:`map_labels() <fiftyone.core.collections.SampleCollection.map_labels>`
+to do this:
+
+.. code-block:: python
+    :linenos:
+
+    # Replace all "cat" and "dog" labels in the `predictions` field with "animal"
+
+    view = dataset.map_labels(
+        "predictions", {"cat": "animal", "dog": "animal"}
+    )
+
+Or, suppose you would like to lower bound all confidences of objects in the
+`predictions` field of a dataset. You can use
+:meth:`set_field() <fiftyone.core.collections.SampleCollection.set_field>`
+to do this:
+
+.. code-block:: python
+    :linenos:
+
+    # Lower bound all confidences in the `predictions` field to 0.5
+    view = dataset.set_field(
+        "predictions.detections.confidence",
+        F("confidence").max(0.5),
+    )
+
+The |ViewExpression| language is quite powerful, allowing you to define complex
+operations without needing to write an explicit Python loop to perform the
+desired manipulation.
+
+To give you a taste, copy-paste this example to visualize the top-5 highest
+confidence predictions for each sample in the
+:ref:`quickstart dataset <dataset-zoo-quickstart>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Extracts the 5 highest confidence predictions for each sample
+    top5_preds = F("detections").sort_by("confidence", reverse=True)[:5]
+
+    view = (
+        dataset
+        .set_field("predictions.detections", top5_preds)
+        .select_fields("predictions")
+    )
+
+    session = fo.launch_app(view=view)
+
+Saving and cloning
+__________________
+
+Ordinarily, when you define a |DatasetView| that extracts a specific subset of
+a dataset and its fields, the underlying |Dataset| is not modified. However,
+you can use :meth:`save() <fiftyone.core.view.DatasetView.save>` to overwrite
+the underlying dataset with the contents of a view you've created:
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone import ViewField as F
+
+    # Discard all predictions with confidence below 0.3
+    high_conf_view = dataset.filter_labels("predictions", F("confidence") >= 0.3)
+    high_conf_view.save()
+
+Alternatively, you can create a new |Dataset| that contains only the contents
+of a |DatasetView| using
+:meth:`clone() <fiftyone.core.view.DatasetView.clone>`:
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone import ViewField as F
+
+    # Create a new dataset that contains only the high confidence predictions
+    high_conf_view = dataset.filter_labels("predictions", F("confidence") >= 0.3)
+    high_conf_dataset = high_conf_view.clone()
+
 Tips & Tricks
 _____________
 
@@ -537,7 +631,7 @@ View stages can be chained together to perform arbitrarily complex operations:
     from fiftyone import ViewField as F
 
     complex_view = (
-        dataset.match_tag("test")
+        dataset.match_tags("test")
         .exists("metadata")
         .match(F("metadata.size_bytes") >= 64 * 1024)  # >= 64 kB
         .sort_by("filepath")
@@ -547,7 +641,7 @@ View stages can be chained together to perform arbitrarily complex operations:
 Filtering detections by area
 ----------------------------
 
-Need to filter your detections by bounding box area? Use this expression!
+Need to filter your detections by bounding box area? Use this |ViewExpression|!
 
 .. code-block:: python
     :linenos:

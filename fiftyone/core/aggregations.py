@@ -5,26 +5,11 @@ Aggregations.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from bson import ObjectId
-
 import numpy as np
 
-import eta.core.serial as etas
 import eta.core.utils as etau
 
-import fiftyone.core.fields as fof
-import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
-import fiftyone.core.utils as fou
-
-
-_LABEL_LIST_FIELDS = (
-    fol.Classifications,
-    fol.Detections,
-    fol.Keypoints,
-    fol.Polylines,
-)
-_FRAMES_PREFIX = "frames."
 
 
 class Aggregation(object):
@@ -43,108 +28,57 @@ class Aggregation(object):
     @property
     def field_name(self):
         """The field name being computed on."""
-        return self.field_name
+        return self._field_name
 
-    @property
-    def _field_name_path(self):
-        return self._field_name.replace(".", "__")
+    def to_mongo(self, sample_collection):
+        """Returns the MongoDB aggregation pipeline for this aggregation.
 
-    def _get_default_result(self):
-        raise NotImplementedError(
-            "Subclass must implement _get_default_result()"
-        )
+        Args:
+            sample_collection: the
+                :class:`fiftyone.core.collections.SampleCollection` to which
+                the aggregation is being applied
 
-    def _get_output_field(self, schema, frame_schema):
-        raise NotImplementedError(
-            "Subclass must implement _get_output_field()"
-        )
+        Returns:
+            a MongoDB aggregation pipeline (list of dicts)
+        """
+        raise NotImplementedError("subclasses must implement to_mongo()")
 
-    def _get_result(self, d):
-        raise NotImplementedError("Subclass must implement _get_result()")
+    def parse_result(self, d):
+        """Parses the output of :meth:`to_mongo`.
 
-    def _to_mongo(self, dataset, schema, frame_schema):
-        raise NotImplementedError("Subclass must implement _to_mongo()")
+        Args:
+            d: the result dict
 
-    def _get_field_path_pipeline(self, schema, frame_schema, dataset):
-        field_name = self._field_name
-        frames_query = (
-            field_name.startswith(_FRAMES_PREFIX) or field_name == "frames"
-        )
-        if dataset.media_type == fom.VIDEO and frames_query:
-            if self._field_name == "frames":
-                return "frames", "frames", _unwind_frames(), None, None
+        Returns:
+            the aggregation result
+        """
+        raise NotImplementedError("subclasses must implement parse_result()")
 
-            schema = frame_schema
-            field_name = self._field_name[len(_FRAMES_PREFIX) :]
-            pipeline = _unwind_frames()
-        else:
-            field_name = self._field_name
-            pipeline = []
+    def default_result(self):
+        """Returns the default result for this aggregation.
 
-        root_field_name = field_name.split(".", 1)[0]
-
-        try:
-            root_field = schema[root_field_name]
-        except KeyError:
-            raise AggregationError(
-                "Field '%s' does not exist on dataset '%s'"
-                % (self._field_name, dataset.name)
-            )
-
-        list_field = None
-        if isinstance(root_field, fof.ListField):
-            list_field = root_field_name
-
-        labels_list_field = None
-        if isinstance(root_field, fof.EmbeddedDocumentField):
-            if root_field.document_type in _LABEL_LIST_FIELDS:
-                prefix = (
-                    root_field_name
-                    + "."
-                    + root_field.document_type.__name__.lower()
-                )
-                if field_name.startswith(prefix):
-                    labels_list_field = prefix
-
-        return root_field, field_name, pipeline, list_field, labels_list_field
+        Returns:
+            the aggregation result
+        """
+        raise NotImplementedError("subclasses must implement default_result()")
 
 
-class AggregationResult(etas.Serializable):
-    """Abstract base class for all aggregation results.
-
-    :class:`AggregationResult` instances represent the result of the execution
-    of an :class:`Aggregation` instance on a
-    :class:`fiftyone.core.collections.SampleCollection`.
-    """
-
-    def __init__(self, *args, **kwargs):
-        raise NotImplementedError("Subclass must implement __init__()")
-
-    def __str__(self):
-        return repr(self)
-
-    def __repr__(self):
-        d = {}
-        for f in self.attributes():
-            value = getattr(self, f)
-            if isinstance(value, ObjectId):
-                d[f] = str(value)
-            else:
-                d[f] = value
-
-        class_name = self.__class__.__name__
-        return "<%s: %s>" % (class_name, fou.pformat(d))
-
-
-class AggregationError(RuntimeError):
+class AggregationError(Exception):
     """An error raised during the execution of an :class:`Aggregation`."""
 
     pass
 
 
 class Bounds(Aggregation):
-    """Computes the bounds of a numeric field or numeric list field of a
-    collection.
+    """Computes the bounds of a numeric field of a collection.
+
+    ``None``-valued fields are ignored.
+
+    This aggregation is typically applied to *numeric* field types (or lists of
+    such types):
+
+    -   :class:`fiftyone.core.fields.IntField`
+    -   :class:`fiftyone.core.fields.FloatField`
 
     Examples::
 
@@ -156,71 +90,67 @@ class Bounds(Aggregation):
                 fo.Sample(
                     filepath="/path/to/image1.png",
                     numeric_field=1.0,
-                    numeric_list_field=[1.0, 2.0, 3.0],
+                    numeric_list_field=[1, 2, 3],
                 ),
                 fo.Sample(
                     filepath="/path/to/image2.png",
                     numeric_field=4.0,
-                    numeric_list_field=[1.5, 2.5],
+                    numeric_list_field=[1, 2],
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    numeric_field=None,
+                    numeric_list_field=None,
                 ),
             ]
         )
-
-        # Add a generic list field
-        dataset.add_sample_field("list_field", fo.ListField)
 
         #
         # Compute the bounds of a numeric field
         #
 
-        bounds = fo.Bounds("numeric_field")
-        r = dataset.aggregate(bounds)
-        r.bounds  # (min, max)
+        aggregation = fo.Bounds("numeric_field")
+        bounds = dataset.aggregate(aggregation)
+        print(bounds)  # (min, max)
 
         #
         # Compute the a bounds of a numeric list field
         #
 
-        bounds = fo.Bounds("numeric_list_field")
-        r = dataset.aggregate(bounds)
-        r.bounds  # (min, max)
-
-        #
-        # Cannot compute bounds of a generic list field
-        #
-
-        bounds = fo.Bounds("list_field")
-        dataset.aggregate(bounds)  # error
+        aggregation = fo.Bounds("numeric_list_field")
+        bounds = dataset.aggregate(aggregation)
+        print(bounds)  # (min, max)
 
     Args:
         field_name: the name of the field to compute bounds for
     """
 
-    def _get_default_result(self):
-        return BoundsResult(self._field_name, (None, None))
+    def default_result(self):
+        """Returns the default result for this aggregation.
 
-    def _get_output_field(self, _):
-        return "%s-bounds" % self._field_name_path
+        Returns:
+            ``(None, None)``
+        """
+        return None, None
 
-    def _get_result(self, d):
-        mn = d["min"]
-        mx = d["max"]
-        return BoundsResult(self._field_name, (mn, mx))
+    def parse_result(self, d):
+        """Parses the output of :meth:`to_mongo`.
 
-    def _to_mongo(self, dataset, schema, frame_schema):
-        (
-            _,
-            path,
-            pipeline,
-            list_field,
-            labels_list_field,
-        ) = self._get_field_path_pipeline(schema, frame_schema, dataset)
+        Args:
+            d: the result dict
 
-        if list_field:
+        Returns:
+            the ``(min, max)`` bounds
+        """
+        return d["min"], d["max"]
+
+    def to_mongo(self, sample_collection):
+        path, pipeline, list_fields = _parse_field_name(
+            sample_collection, self._field_name
+        )
+
+        for list_field in list_fields:
             pipeline.append({"$unwind": "$" + list_field})
-
-        if labels_list_field:
-            pipeline.append({"$unwind": "$" + labels_list_field})
 
         pipeline.append(
             {
@@ -235,115 +165,118 @@ class Bounds(Aggregation):
         return pipeline
 
 
-class BoundsResult(AggregationResult):
-    """The result of the execution of a :class:`Bounds` instance.
-
-    Attributes:
-        name: the name of the field
-        bounds: the ``(min, max)`` bounds
-    """
-
-    def __init__(self, name, bounds):
-        self.name = name
-        self.bounds = bounds
-
-
 class Count(Aggregation):
-    """Counts the number of samples or number of items with respect to a field
-    of a collection.
+    """Counts the number of field values in a collection.
 
-    If a ``field`` is provided, it can be a
-    :class:`fiftyone.core.fields.ListField` or a
-    :class:`fiftyone.core.labels.Label` list field.
+    ``None``-valued fields are ignored.
+
+    If no field is provided, the samples themselves are counted.
 
     Examples::
 
         import fiftyone as fo
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(label="cat"),
+                            fo.Detection(label="dog"),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(label="cat"),
+                            fo.Detection(label="rabbit"),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    predictions=None,
+                ),
+            ]
+        )
 
         #
-        # Compute the number of samples in a dataset
+        # Count the number of samples in the dataset
         #
 
-        count = fo.Count()
-        r = dataset.aggregate(count)
-        r.count
+        aggregation = fo.Count()
+        count = dataset.aggregate(aggregation)
+        print(count)  # the count
 
         #
-        # Compute the number of objects in a `Detections` field
+        # Count the number of samples with `predictions`
         #
 
-        detections = fo.Count("detections")
-        r = dataset.aggregate(detections)
-        r.count
+        aggregation = fo.Count("predictions")
+        count = dataset.aggregate(aggregation)
+        print(count)  # the count
+
+        #
+        # Count the number of objects in the `predictions` field
+        #
+
+        aggregation = fo.Count("predictions.detections")
+        count = dataset.aggregate(aggregation)
+        print(count)  # the count
 
     Args:
-        field_name (None): the field whose items to count. If no field name is
-            provided, the samples themselves are counted
+        field_name (None): the name of the field whose values to count. If none
+            is provided, the samples themselves are counted
     """
 
     def __init__(self, field_name=None):
         super().__init__(field_name)
 
-    def _get_default_result(self):
-        return CountResult(self._field_name, 0)
+    def default_result(self):
+        """Returns the default result for this aggregation.
 
-    def _get_output_field(self, *args):
-        if self._field_name is None:
-            return "count"
+        Returns:
+            ``0``
+        """
+        return 0
 
-        return "%s-count" % self._field_name_path
+    def parse_result(self, d):
+        """Parses the output of :meth:`to_mongo`.
 
-    def _get_result(self, d):
-        return CountResult(self._field_name, d["count"])
+        Args:
+            d: the result dict
 
-    def _to_mongo(self, dataset, schema, frame_schema):
+        Returns:
+            the count
+        """
+        return d["count"]
+
+    def to_mongo(self, sample_collection):
         if self._field_name is None:
             return [{"$count": "count"}]
 
-        (
-            path,
-            _,
-            pipeline,
-            list_field,
-            labels_list_field,
-        ) = self._get_field_path_pipeline(schema, frame_schema, dataset)
+        path, pipeline, list_fields = _parse_field_name(
+            sample_collection, self._field_name
+        )
 
-        if list_field:
+        for list_field in list_fields:
             pipeline.append({"$unwind": "$" + list_field})
 
-        if labels_list_field:
-            pipeline.append({"$unwind": "$" + labels_list_field})
-
-        path = self._field_name
-        if dataset.media_type == fom.VIDEO and path.startswith(_FRAMES_PREFIX):
-            path = path[len(_FRAMES_PREFIX) :]
-
-        if dataset.media_type == fom.VIDEO and self._field_name != "frames":
-            pipeline.append({"$match": {path: {"$exists": True, "$ne": None}}})
+        if sample_collection.media_type != fom.VIDEO or path != "frames":
+            pipeline.append({"$match": {"$expr": {"$gt": ["$" + path, None]}}})
 
         return pipeline + [{"$count": "count"}]
 
 
-class CountResult(AggregationResult):
-    """The result of the execution of a :class:`Count` instance.
-
-    Attributes:
-        name: the name of the field, or ``None`` if the samples were counted
-        count: the count
-    """
-
-    def __init__(self, name, count):
-        self.name = name
-        self.count = count
-
-
 class CountValues(Aggregation):
-    """Counts the occurrences of values in a countable field or list of
-    countable fields of a collection.
+    """Counts the occurrences of field values in a collection.
 
-    Countable fields are:
+    This aggregation is typically applied to *countable* field types (or lists
+    of such types):
 
     -   :class:`fiftyone.core.fields.BooleanField`
     -   :class:`fiftyone.core.fields.IntField`
@@ -353,44 +286,82 @@ class CountValues(Aggregation):
 
         import fiftyone as fo
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    tags=["sunny"],
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(label="cat"),
+                            fo.Detection(label="dog"),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    tags=["cloudy"],
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(label="cat"),
+                            fo.Detection(label="rabbit"),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    predictions=None,
+                ),
+            ]
+        )
 
         #
         # Compute the tag counts in the dataset
         #
 
-        count_values = fo.CountValues("tags")
-        r = dataset.aggregate(count_values)
-        r.values  # dict mapping tags to counts
+        aggregation = fo.CountValues("tags")
+        counts = dataset.aggregate(aggregation)
+        print(counts)  # dict mapping values to counts
+
+        #
+        # Compute the predicted label counts in the dataset
+        #
+
+        aggregation = fo.CountValues("predictions.detections.label")
+        counts = dataset.aggregate(aggregation)
+        print(counts)  # dict mapping values to counts
 
     Args:
-        field_name: the name of the countable field
+        field_name: the name of the field to count
     """
 
-    def _get_default_result(self):
-        return CountValuesResult(self._field_name, {})
+    def default_result(self):
+        """Returns the default result for this aggregation.
 
-    def _get_output_field(self, *args):
-        return "%s-count-values" % self._field_name_path
+        Returns:
+            ``{}``
+        """
+        return {}
 
-    def _get_result(self, d):
-        d = {i["k"]: i["count"] for i in d["result"] if i["k"] is not None}
-        return CountValuesResult(self._field_name, d)
+    def parse_result(self, d):
+        """Parses the output of :meth:`to_mongo`.
 
-    def _to_mongo(self, dataset, schema, frame_schema):
-        (
-            _,
-            path,
-            pipeline,
-            list_field,
-            labels_list_field,
-        ) = self._get_field_path_pipeline(schema, frame_schema, dataset)
+        Args:
+            d: the result dict
 
-        if list_field:
+        Returns:
+            a dict mapping values to counts
+        """
+        return {i["k"]: i["count"] for i in d["result"]}
+
+    def to_mongo(self, sample_collection):
+        path, pipeline, list_fields = _parse_field_name(
+            sample_collection, self._field_name
+        )
+
+        for list_field in list_fields:
             pipeline.append({"$unwind": "$" + list_field})
-
-        if labels_list_field:
-            pipeline.append({"$unwind": "$" + labels_list_field})
 
         pipeline += [
             {"$group": {"_id": "$" + path, "count": {"$sum": 1}}},
@@ -405,24 +376,13 @@ class CountValues(Aggregation):
         return pipeline
 
 
-class CountValuesResult(AggregationResult):
-    """The result of the execution of a :class:`CountValues` instance.
-
-    Attributes:
-        name: the name of the field whose values were counted
-        values: a dict mapping values to counts
-    """
-
-    def __init__(self, name, values):
-        self.name = name
-        self.values = values
-
-
 class Distinct(Aggregation):
-    """Computes the distinct values of a countable field or a list of countable
-    fields of a collection.
+    """Computes the distinct values of a field in a collection.
 
-    Countable fields are:
+    ``None``-valued fields are ignored.
+
+    This aggregation is typically applied to *countable* field types (or lists
+    of such types):
 
     -   :class:`fiftyone.core.fields.BooleanField`
     -   :class:`fiftyone.core.fields.IntField`
@@ -432,99 +392,155 @@ class Distinct(Aggregation):
 
         import fiftyone as fo
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    tags=["sunny"],
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(label="cat"),
+                            fo.Detection(label="dog"),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    tags=["sunny", "cloudy"],
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(label="cat"),
+                            fo.Detection(label="rabbit"),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    predictions=None,
+                ),
+            ]
+        )
 
         #
-        # Compute the distinct values of a StringField named `kind`
+        # Get the distinct tags in a dataset
         #
 
-        distinct = fo.Distinct("kind")
-        r = dataset.aggregate(distinct)
-        r.values  # list of distinct values
+        aggregation = fo.Distinct("tags")
+        values = dataset.aggregate(aggregation)
+        print(values)  # list of distinct values
 
         #
-        # Compute the a bounds of the `tags field
+        # Get the distint predicted labels in a dataset
         #
 
-        tags = fo.Distinct("tags")
-        r = dataset.aggregate(tags)
-        r.values  # list of distinct values
+        aggregation = fo.Distinct("predictions.detections.label")
+        values = dataset.aggregate(aggregation)
+        print(values)  # list of distinct values
 
     Args:
         field_name: the name of the field to compute distinct values for
     """
 
-    def _get_default_result(self):
-        return DistinctResult(self._field_name, [])
+    def default_result(self):
+        """Returns the default result for this aggregation.
 
-    def _get_output_field(self, *args):
-        return "%s-distinct" % self._field_name_path
+        Returns:
+            ``[]``
+        """
+        return []
 
-    def _get_result(self, d):
-        return DistinctResult(
-            self._field_name, sorted(d[self._field_name_path])
+    def parse_result(self, d):
+        """Parses the output of :meth:`to_mongo`.
+
+        Args:
+            d: the result dict
+
+        Returns:
+            a sorted list of distinct values
+        """
+        return sorted(d["values"])
+
+    def to_mongo(self, sample_collection):
+        path, pipeline, list_fields = _parse_field_name(
+            sample_collection, self._field_name
         )
 
-    def _to_mongo(self, dataset, schema, frame_schema):
-        (
-            _,
-            path,
-            pipeline,
-            list_field,
-            labels_list_field,
-        ) = self._get_field_path_pipeline(schema, frame_schema, dataset)
-
-        if list_field:
+        for list_field in list_fields:
             pipeline.append({"$unwind": "$" + list_field})
 
-        if labels_list_field:
-            pipeline.append({"$unwind": "$" + labels_list_field})
-
-        pipeline.append(
-            {
-                "$group": {
-                    "_id": None,
-                    self._field_name_path: {"$addToSet": "$" + path},
-                }
-            }
-        )
+        pipeline += [
+            {"$match": {"$expr": {"$gt": ["$" + path, None]}}},
+            {"$group": {"_id": None, "values": {"$addToSet": "$" + path}}},
+        ]
 
         return pipeline
 
 
-class DistinctResult(AggregationResult):
-    """The result of the execution of a :class:`Distinct` instance.
-
-    Attributes:
-        name: the name of the field
-        values: a sorted list of distinct values
-    """
-
-    def __init__(self, name, values):
-        self.name = name
-        self.values = values
-
-
 class HistogramValues(Aggregation):
-    """Computes a histogram of the numeric values in a field or list field of a
-    collection.
+    """Computes a histogram of the field values in a collection.
+
+    This aggregation is typically applied to *numeric* field types (or
+    lists of such types):
+
+    -   :class:`fiftyone.core.fields.IntField`
+    -   :class:`fiftyone.core.fields.FloatField`
 
     Examples::
 
+        import numpy as np
+        import matplotlib.pyplot as plt
+
         import fiftyone as fo
 
-        dataset = fo.load_dataset(...)
+        samples = []
+        for idx in range(100):
+            samples.append(
+                fo.Sample(
+                    filepath="/path/to/image%d.png" % idx,
+                    numeric_field=np.random.randn(),
+                    numeric_list_field=list(np.random.randn(10)),
+                )
+            )
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        def plot_hist(counts, edges):
+            counts = np.asarray(counts)
+            edges = np.asarray(edges)
+            left_edges = edges[:-1]
+            widths = edges[1:] - edges[:-1]
+            plt.bar(left_edges, counts, width=widths, align="edge")
 
         #
-        # Compute a histogram of values in the float field "uniqueness"
+        # Compute a histogram of a numeric field
         #
 
-        histogram_values = fo.HistogramValues(
-            "uniqueness", bins=50, range=(0, 1)
+        aggregation = fo.HistogramValues(
+            "numeric_field", bins=50, range=(-4, 4)
         )
-        r = dataset.aggregate(histogram_values)
-        r.counts  # list of counts
-        r.edges  # list of bin edges
+        counts, edges, other = dataset.aggregate(aggregation)
+
+        plot_hist(counts, edges)
+        plt.show(block=False)
+
+        #
+        # Compute the histogram of a numeric list field
+        #
+
+        # Compute bounds automatically
+        aggregation = fo.Bounds("numeric_list_field")
+        bounds = dataset.aggregate(aggregation)
+        limits = (bounds[0], bounds[1] + 1e-6)  # right interval is open
+
+        aggregation = fo.HistogramValues(
+            "numeric_list_field", bins=50, range=limits
+        )
+        counts, edges, other = dataset.aggregate(aggregation)
+
+        plot_hist(counts, edges)
+        plt.show(block=False)
 
     Args:
         field_name: the name of the field to histogram
@@ -547,79 +563,46 @@ class HistogramValues(Aggregation):
         self._edges = None
         self._parse_args()
 
-    def _parse_args(self):
-        if self.bins is None:
-            bins = 10
-        else:
-            bins = self.bins
+    def default_result(self):
+        """Returns the default result for this aggregation.
 
-        if etau.is_numeric(bins):
-            if self.range is None:
-                # Automatic bins
-                self._bins = bins
-                return
+        Returns:
+            a tuple of
 
-            # Linearly-spaced bins within `range`
-            self._edges = list(
-                np.linspace(self.range[0], self.range[1], bins + 1)
-            )
-            return
+            -   counts: ``[]``
+            -   edges: ``[]``
+            -   other: ``0``
+        """
+        return [], [], 0
 
-        # User-provided bin edges
-        self._edges = list(bins)
+    def parse_result(self, d):
+        """Parses the output of :meth:`to_mongo`.
 
-    def _get_default_result(self):
-        return HistogramValuesResult(self._field_name, [], [], 0)
+        Args:
+            d: the result dict
 
-    def _get_output_field(self, *args):
-        return "%s-histogram-values" % self._field_name_path
+        Returns:
+            a tuple of
 
-    def _get_result(self, d):
+            -   counts: a list of counts in each bin
+            -   edges: an increasing list of bin edges of length
+                ``len(counts) + 1``. Note that each bin is treated as having an
+                inclusive lower boundary and exclusive upper boundary,
+                ``[lower, upper)``, including the rightmost bin
+            -   other: the number of items outside the bins
+        """
         if self._edges is not None:
-            return self._get_result_edges(d)
+            return self._parse_result_edges(d)
 
-        return self._get_result_auto(d)
+        return self._parse_result_auto(d)
 
-    def _get_result_edges(self, d):
-        _edges_array = np.array(self._edges)
-        edges = list(_edges_array)
-        counts = [0] * (len(edges) - 1)
-        other = 0
-        for di in d["bins"]:
-            left = di["_id"]
-            if left == "other":
-                other = di["count"]
-            else:
-                idx = np.abs(_edges_array - left).argmin()
-                counts[idx] = di["count"]
+    def to_mongo(self, sample_collection):
+        path, pipeline, list_fields = _parse_field_name(
+            sample_collection, self._field_name
+        )
 
-        return HistogramValuesResult(self._field_name, counts, edges, other)
-
-    def _get_result_auto(self, d):
-        counts = []
-        edges = []
-        for di in d["bins"]:
-            counts.append(di["count"])
-            edges.append(di["_id"]["min"])
-
-        edges.append(di["_id"]["max"])
-
-        return HistogramValuesResult(self._field_name, counts, edges, 0)
-
-    def _to_mongo(self, dataset, schema, frame_schema):
-        (
-            _,
-            path,
-            pipeline,
-            list_field,
-            labels_list_field,
-        ) = self._get_field_path_pipeline(schema, frame_schema, dataset)
-
-        if list_field:
+        for list_field in list_fields:
             pipeline.append({"$unwind": "$" + list_field})
-
-        if labels_list_field:
-            pipeline.append({"$unwind": "$" + labels_list_field})
 
         if self._edges is not None:
             pipeline.append(
@@ -647,26 +630,156 @@ class HistogramValues(Aggregation):
 
         return pipeline
 
+    def _parse_args(self):
+        if self.bins is None:
+            bins = 10
+        else:
+            bins = self.bins
 
-class HistogramValuesResult(AggregationResult):
-    """The result of the execution of a :class:`HistogramValues` instance.
+        if etau.is_numeric(bins):
+            if self.range is None:
+                # Automatic bins
+                self._bins = bins
+                return
 
-    Attributes:
-        name: the name of the field that was histogramed
-        counts: a list of counts in each bin
-        edges: an increasing list of bin edges of length ``len(counts) + 1``.
-            Note that each bin is treated as having an inclusive lower boundary
-            and exclusive upper boundary, ``[lower, upper)``, including the
-            rightmost bin
-        other: the number of items outside the bins
+            # Linearly-spaced bins within `range`
+            self._edges = list(
+                np.linspace(self.range[0], self.range[1], bins + 1)
+            )
+            return
+
+        # User-provided bin edges
+        self._edges = list(bins)
+
+    def _parse_result_edges(self, d):
+        _edges_array = np.array(self._edges)
+        edges = list(_edges_array)
+        counts = [0] * (len(edges) - 1)
+        other = 0
+        for di in d["bins"]:
+            left = di["_id"]
+            if left == "other":
+                other = di["count"]
+            else:
+                idx = np.abs(_edges_array - left).argmin()
+                counts[idx] = di["count"]
+
+        return counts, edges, other
+
+    def _parse_result_auto(self, d):
+        counts = []
+        edges = []
+        for di in d["bins"]:
+            counts.append(di["count"])
+            edges.append(di["_id"]["min"])
+
+        edges.append(di["_id"]["max"])
+
+        return counts, edges, 0
+
+
+class Sum(Aggregation):
+    """Computes the sum of the field values of a collection.
+
+    ``None``-valued fields are ignored.
+
+    This aggregation is typically applied to *numeric* field types (or lists of
+    such types):
+
+    -   :class:`fiftyone.core.fields.IntField`
+    -   :class:`fiftyone.core.fields.FloatField`
+
+    Examples::
+
+        import fiftyone as fo
+
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    numeric_field=1.0,
+                    numeric_list_field=[1, 2, 3],
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    numeric_field=4.0,
+                    numeric_list_field=[1, 2],
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    numeric_field=None,
+                    numeric_list_field=None,
+                ),
+            ]
+        )
+
+        #
+        # Compute the sum of a numeric field
+        #
+
+        aggregation = fo.Sum("numeric_field")
+        total = dataset.aggregate(aggregation)
+        print(total)  # the sum
+
+        #
+        # Compute the sum of a numeric list field
+        #
+
+        aggregation = fo.Sum("numeric_list_field")
+        total = dataset.aggregate(aggregation)
+        print(total)  # the sum
+
+    Args:
+        field_name: the name of the field to sum
     """
 
-    def __init__(self, name, counts, edges, other):
-        self.name = name
-        self.counts = counts
-        self.edges = edges
-        self.other = other
+    def __init__(self, field_name):
+        super().__init__(field_name)
+
+    def default_result(self):
+        """Returns the default result for this aggregation.
+
+        Returns:
+            ``0``
+        """
+        return 0
+
+    def parse_result(self, d):
+        """Parses the output of :meth:`to_mongo`.
+
+        Args:
+            d: the result dict
+
+        Returns:
+            the sum
+        """
+        return d["sum"]
+
+    def to_mongo(self, sample_collection):
+        path, pipeline, list_fields = _parse_field_name(
+            sample_collection, self._field_name
+        )
+
+        for list_field in list_fields:
+            pipeline.append({"$unwind": "$" + list_field})
+
+        pipeline.append({"$group": {"_id": None, "sum": {"$sum": "$" + path}}})
+
+        return pipeline
 
 
-def _unwind_frames():
-    return [{"$unwind": "$frames"}, {"$replaceRoot": {"newRoot": "$frames"}}]
+def _parse_field_name(sample_collection, field_name):
+    path, is_frame_field, list_fields = sample_collection._parse_field_name(
+        field_name
+    )
+
+    if is_frame_field:
+        pipeline = [
+            {"$unwind": "$frames"},
+            {"$replaceRoot": {"newRoot": "$frames"}},
+        ]
+    else:
+        pipeline = []
+
+    return path, pipeline, list_fields

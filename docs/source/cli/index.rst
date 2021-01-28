@@ -803,7 +803,7 @@ Tools for working with the FiftyOne App.
 
 .. code-block:: text
 
-    fiftyone app [-h] [--all-help] {launch,view,connect} ...
+    fiftyone app [-h] [--all-help] {config,launch,view,connect} ...
 
 **Arguments**
 
@@ -814,11 +814,50 @@ Tools for working with the FiftyOne App.
       --all-help            show help recursively and exit
 
     available commands:
-      {launch,view,connect}
+      {config,launch,view,connect}
+        config              Tools for working with your App config.
         launch              Launch the FiftyOne App.
-        view                View datasets in the App without persisting them to
-                            the database
+        view                View datasets in the App without persisting them to the database.
         connect             Connect to a remote FiftyOne App.
+
+.. _cli-fiftyone-app-config:
+
+App Config
+~~~~~~~~~~
+
+Tools for working with your FiftyOne App config.
+
+.. code-block:: text
+
+    fiftyone app config [-h] [-l] [FIELD]
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      FIELD         an App config field to print
+
+    optional arguments:
+      -h, --help    show this help message and exit
+      -l, --locate  print the location of your App config on disk
+
+**Examples**
+
+.. code-block:: shell
+
+    # Print your entire App config
+    fiftyone app config
+
+.. code-block:: shell
+
+    # Print a specific App config field
+    fiftyone app config <field>
+
+.. code-block:: shell
+
+    # Print the location of your App config on disk (if one exists)
+    fiftyone app config --locate
 
 .. _cli-fiftyone-app-launch:
 

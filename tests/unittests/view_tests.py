@@ -48,6 +48,7 @@ class DatasetViewTests(unittest.TestCase):
         # tags
         for sample in view.match({"tags": "train"}):
             self.assertIn("train", sample.tags)
+
         for sample in view.match({"tags": "test"}):
             self.assertIn("test", sample.tags)
 
@@ -111,6 +112,7 @@ class DatasetViewTests(unittest.TestCase):
         sample_view.test_dets.detections[0].label = "COMPLEX"
         sample_view.test_dets.detections[1].confidence = 0.51
         sample_view.save()
+
         # check that correct elements are modified
         detections = dataset[sample_view.id].test_dets.detections
         self.assertEqual(detections[0].label, "COMPLEX")
@@ -158,20 +160,6 @@ class DatasetViewTests(unittest.TestCase):
 
 
 class ViewFieldTests(unittest.TestCase):
-    def test_field_names(self):
-        self.assertEqual(
-            F.ground_truth.to_mongo(), F("ground_truth").to_mongo()
-        )
-        self.assertEqual(
-            F.ground_truth.label.to_mongo(), F("ground_truth.label").to_mongo()
-        )
-        self.assertEqual(
-            F.ground_truth.label.to_mongo(), F("ground_truth.label").to_mongo()
-        )
-        self.assertEqual(
-            F.ground_truth.label.to_mongo(), F("ground_truth").label.to_mongo()
-        )
-
     @unittest.skip("TODO: Fix workflow errors. Must be run manually")
     @drop_datasets
     def test_clone_fields(self):
@@ -774,6 +762,14 @@ class ViewStageTests(unittest.TestCase):
         )
         self.sample2.save()
 
+    def _setUp_numeric(self):
+        self.sample1["numeric_field"] = 1.0
+        self.sample1["numeric_list_field"] = [-1, 0, 1]
+        self.sample1.save()
+        self.sample2["numeric_field"] = -1.0
+        self.sample2["numeric_list_field"] = [-2, -1, 0, 1]
+        self.sample2.save()
+
     def test_exclude(self):
         result = list(self.dataset.exclude([self.sample1.id]))
         self.assertIs(len(result), 1)
@@ -879,17 +875,92 @@ class ViewStageTests(unittest.TestCase):
                     else:
                         self.assertEqual(lv.label, l.label)
 
+    def test_set_field1(self):
+        self._setUp_numeric()
+
+        # Clip all negative values of `numeric_field` to zero
+        view = self.dataset.set_field(
+            "numeric_field", F("numeric_field").max(0)
+        )
+        it = zip(view, self.dataset)
+        for sv, s in it:
+            if s.numeric_field < 0:
+                self.assertTrue(sv.numeric_field == 0)
+            else:
+                self.assertTrue(sv.numeric_field >= 0)
+
+        # Replace all negative values of `numeric_field` with `None`
+        view = self.dataset.set_field(
+            "numeric_field",
+            (F("numeric_field") >= 0).if_else(F("numeric_field"), None),
+        )
+        it = zip(view, self.dataset)
+        for sv, s in it:
+            if s.numeric_field < 0:
+                self.assertIsNone(sv.numeric_field)
+            else:
+                self.assertIsNotNone(sv.numeric_field)
+
+        # Clip all negative values of `numeric_list_field` to zero
+        view = self.dataset.set_field(
+            "numeric_list_field", F("numeric_list_field").map(F().max(0))
+        )
+        it = zip(view, self.dataset)
+        for sv, s in it:
+            for fv, f in zip(sv.numeric_list_field, s.numeric_list_field):
+                if f < 0:
+                    self.assertTrue(fv == 0)
+                else:
+                    self.assertTrue(fv >= 0)
+
+    def test_set_field2(self):
+        self._setUp_detections()
+
+        # Set a new embedded list field
+        view = self.dataset.set_field(
+            "test_dets.detections.is_best_friend",
+            (F("confidence") > 0.5) & (F("label") == "friend"),
+        )
+
+        for sample in view:
+            for det in sample.test_dets.detections:
+                is_best_friend = det.confidence > 0.5 and det.label == "friend"
+                self.assertEqual(det.is_best_friend, is_best_friend)
+
+        # Set an embedded field
+        view = self.dataset.set_field(
+            "test_dets.num_predictions", F("detections").length()
+        )
+
+        for sample in view:
+            self.assertEqual(
+                sample.test_dets.num_predictions,
+                len(sample.test_dets.detections),
+            )
+
+        # Validate that terminal list fields are not automatically unrolled
+        view = self.dataset.set_field(
+            "test_dets.detections",
+            F("detections").filter(F("confidence") > 0.5),
+        )
+
+        for sample in view:
+            for det in sample.test_dets.detections:
+                self.assertGreater(det.confidence, 0.5)
+
+        # Validate that terminal list fields can be unrolled if desired
+        # Sets all bounding box coordinates to 0
+        view = self.dataset.set_field("test_dets.detections.bounding_box[]", 0)
+
+        for sample in view:
+            for det in sample.test_dets.detections:
+                for coord in det.bounding_box:
+                    self.assertEqual(coord, 0)
+
     def test_match(self):
         self.sample1["value"] = "value"
         self.sample1.save()
         result = list(self.dataset.match({"value": "value"}))
-        self.assertIs(len(result), 1)
-        self.assertEqual(result[0].id, self.sample1.id)
-
-    def test_match_tag(self):
-        self.sample1.tags.append("test")
-        self.sample1.save()
-        result = list(self.dataset.match_tag("test"))
         self.assertIs(len(result), 1)
         self.assertEqual(result[0].id, self.sample1.id)
 

@@ -715,7 +715,9 @@ class DatasetMixin(object):
             for d in update_doc.values():
                 for k in d.keys():
                     for ff in filtered_fields:
-                        if k.startswith(ff) and not k.lstrip(ff).count("."):
+                        if k.startswith(ff) and not k[len(ff) :].lstrip(
+                            "."
+                        ).count("."):
                             raise ValueError(
                                 "Modifying root of filtered list field '%s' "
                                 "is not allowed" % k
@@ -768,7 +770,9 @@ class DatasetMixin(object):
         for field_name in filtered_field.split("."):
             el = el[field_name]
 
-        el_fields = list_element_field.lstrip(filtered_field).split(".")
+        el_fields = (
+            list_element_field[len(filtered_field) :].lstrip(".").split(".")
+        )
         idx = int(el_fields.pop(0))
 
         el = el[idx]
@@ -1072,15 +1076,13 @@ def _create_field(
         )
 
     kwargs["db_field"] = field_name
+    kwargs["null"] = True
 
     if issubclass(ftype, fof.EmbeddedDocumentField):
         kwargs.update({"document_type": embedded_doc_type})
-        kwargs["null"] = True
     elif issubclass(ftype, (fof.ListField, fof.DictField)):
         if subfield is not None:
             kwargs["field"] = subfield
-    else:
-        kwargs["null"] = True
 
     field = ftype(**kwargs)
     field.name = field_name

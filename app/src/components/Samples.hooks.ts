@@ -3,18 +3,27 @@ import { useRecoilValue } from "recoil";
 import { useMessageHandler } from "../utils/hooks";
 import tile from "../utils/tile";
 import { packageMessage } from "../utils/socket";
-import { viewsAreEqual } from "../utils/view";
+import { filterView } from "../utils/view";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 
+const stringifyObj = (obj) => {
+  if (typeof obj !== "object" || Array.isArray(obj)) return obj;
+  return JSON.stringify(
+    Object.keys(obj)
+      .map((key) => {
+        return [key, obj[key]];
+      })
+      .sort((a, b) => a[0] - b[0])
+  );
+};
+
 export default () => {
   const socket = useRecoilValue(selectors.socket);
-  const [prevFilters, setPrevFilters] = useState({});
-  const filters = useRecoilValue(selectors.paginatedFilterStages);
+  const filters = useRecoilValue(selectors.filterStages);
   const datasetName = useRecoilValue(selectors.datasetName);
   const view = useRecoilValue(selectors.view);
-  const [prevView, setPrevView] = useState([]);
   const refresh = useRecoilValue(atoms.refresh);
 
   const empty = {
@@ -33,20 +42,8 @@ export default () => {
   });
 
   useEffect(() => {
-    if (JSON.stringify(filters) !== JSON.stringify(prevFilters)) {
-      setState(empty);
-      setPrevFilters(filters);
-    }
-  }, [filters, prevFilters]);
-  useEffect(() => {
-    if (viewsAreEqual(view, prevView)) return;
     setState(empty);
-    setPrevView(view);
-  }, [view, prevView]);
-
-  useEffect(() => {
-    setState(empty);
-  }, [datasetName, refresh, filters]);
+  }, [filterView(view), datasetName, refresh, stringifyObj(filters)]);
 
   useEffect(() => {
     if (!state.loadMore || state.isLoading || !state.hasMore) return;

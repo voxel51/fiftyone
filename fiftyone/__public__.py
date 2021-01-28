@@ -9,7 +9,9 @@ import fiftyone.core.config as foc
 import fiftyone.core.service as fos
 
 _database_service = fos.DatabaseService()
+
 config = foc.load_config()
+app_config = foc.load_app_config()
 
 from .core.aggregations import (
     Bounds,
@@ -17,7 +19,9 @@ from .core.aggregations import (
     CountValues,
     Distinct,
     HistogramValues,
+    Sum,
 )
+from .core.config import AppConfig
 from .core.dataset import (
     Dataset,
     list_datasets,
@@ -101,13 +105,13 @@ from .core.stages import (
     LimitLabels,
     MapLabels,
     Match,
-    MatchTag,
     MatchTags,
     Mongo,
     Shuffle,
     Select,
     SelectFields,
     SelectObjects,
+    SetField,
     Skip,
     SortBy,
     Take,

@@ -230,7 +230,6 @@
         "mime-types": "^2.1.27",
         "player51": "file:./player51",
         "prop-types": "^15.7.2",
-        "randomcolor": "^0.5.4",
         "re-resizable": "^6.8.0",
         "react": "17.0.0",
         "react-dom": "17.0.0",

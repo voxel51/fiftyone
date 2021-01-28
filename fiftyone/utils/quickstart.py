@@ -11,9 +11,7 @@ import fiftyone.core.session as fos
 import fiftyone.zoo.datasets as fozd
 
 
-def quickstart(
-    video=False, port=None, remote=False, desktop=None, auto=True, height=800
-):
+def quickstart(video=False, port=None, remote=False, desktop=None, auto=True):
     """Runs the FiftyOne quickstart.
 
     This method loads an interesting dataset from the Dataset Zoo, launches the
@@ -31,8 +29,6 @@ def quickstart(
         auto (True): whether to automatically show a new App window
             whenever the state of the session is updated. Only applicable
             in notebook contexts
-        height (800): a height, in pixels, for the App. Only applicable in
-            notebook contexts
 
     Returns:
         a tuple containing
@@ -42,31 +38,26 @@ def quickstart(
             the App that was launched
     """
     if video:
-        return _video_quickstart(port, remote, desktop, auto, height)
+        return _video_quickstart(port, remote, desktop, auto)
 
-    return _quickstart(port, remote, desktop, auto, height)
+    return _quickstart(port, remote, desktop, auto)
 
 
-def _quickstart(port, remote, desktop, auto, height):
+def _quickstart(port, remote, desktop, auto):
     print(_QUICKSTART_GUIDE)
     dataset = fozd.load_zoo_dataset("quickstart")
-    return _launch_app(dataset, port, remote, desktop, auto, height)
+    return _launch_app(dataset, port, remote, desktop, auto)
 
 
-def _video_quickstart(port, remote, desktop, auto, height):
+def _video_quickstart(port, remote, desktop, auto):
     print(_VIDEO_QUICKSTART_GUIDE)
     dataset = fozd.load_zoo_dataset("quickstart-video")
-    return _launch_app(dataset, port, remote, desktop, auto, height)
+    return _launch_app(dataset, port, remote, desktop, auto)
 
 
-def _launch_app(dataset, port, remote, desktop, auto, height):
+def _launch_app(dataset, port, remote, desktop, auto):
     session = fos.launch_app(
-        dataset=dataset,
-        port=port,
-        remote=remote,
-        desktop=desktop,
-        auto=auto,
-        height=height,
+        dataset=dataset, port=port, remote=remote, desktop=desktop, auto=auto
     )
 
     return dataset, session

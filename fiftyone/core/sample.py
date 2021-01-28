@@ -291,11 +291,6 @@ class _DatasetSample(Document):
             a BSON dict
         """
         d = super().to_mongo_dict()
-        if self.media_type == fomm.VIDEO:
-            first_frame = self.frames._get_first_frame()
-            if first_frame is not None:
-                d["frames"]["first_frame"] = first_frame
-
         return d
 
     def _secure_media(self, field_name, value):
@@ -605,15 +600,19 @@ class SampleView(_DatasetSample):
         """
         return self._excluded_fields
 
-    def to_dict(self):
+    def to_dict(self, include_frames=False):
         """Serializes the sample to a JSON dictionary.
 
         Sample IDs and private fields are excluded in this representation.
 
+        Args:
+            include_frames (False): whether to include the frame labels for
+                video samples
+
         Returns:
             a JSON dict
         """
-        d = super().to_dict()
+        d = super().to_dict(include_frames=include_frames)
 
         if self.selected_field_names or self.excluded_field_names:
             d = {k: v for k, v in d.items() if k in self.field_names}
@@ -648,24 +647,16 @@ def _apply_confidence_thresh(label, confidence_thresh):
             k: _apply_confidence_thresh(v, confidence_thresh)
             for k, v in label.items()
         }
-    elif isinstance(label, (fol.Classification, fol.Detection)):
+    elif isinstance(label, fol._SINGLE_LABEL_FIELDS):
         if label.confidence is None or label.confidence < confidence_thresh:
             label = None
-    elif isinstance(label, fol.Classifications):
-        label.classifications = [
-            c
-            for c in label.classifications
-            if c.confidence is not None and c.confidence >= confidence_thresh
+    elif isinstance(label, fol._LABEL_LIST_FIELDS):
+        labels = [
+            l
+            for l in getattr(label, label._LABEL_LIST_FIELD)
+            if l.confidence is not None and l.confidence >= confidence_thresh
         ]
-    elif isinstance(label, fol.Detections):
-        label.detections = [
-            d
-            for d in label.detections
-            if d.confidence is not None and d.confidence >= confidence_thresh
-        ]
-    elif label is not None:
-        msg = "Ignoring unsupported label type '%s'" % label.__class__
-        warnings.warn(msg)
+        setattr(label, label._LABEL_LIST_FIELD, labels)
 
     return label
 

@@ -2,6 +2,11 @@ import { atom, atomFamily } from "recoil";
 
 import { SelectedObjectMap } from "../utils/selection";
 
+export const colorSeed = atom<number>({
+  key: "colorSeed",
+  default: 0,
+});
+
 export const modal = atom({
   key: "modal",
   default: {
@@ -60,11 +65,6 @@ export const extendedDatasetStatsRaw = atom({
 export const loading = atom({
   key: "loading",
   default: false,
-});
-
-export const colorMap = atom({
-  key: "colorMap",
-  default: {},
 });
 
 export const stateDescription = atom({
@@ -185,4 +185,9 @@ export const modalColorByLabel = atom({
 export const appFeedbackIsOpen = atom({
   key: "appFeedbackIsOpen",
   default: false,
+});
+
+export const savedPlayerOverlayOptions = atom({
+  key: "savedPlayerOverlayOptions",
+  default: {},
 });

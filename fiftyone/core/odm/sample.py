@@ -114,31 +114,6 @@ class DatasetSampleDocument(DatasetMixin, Document, SampleDocument):
     def _get_repr_fields(self):
         return ("id", "media_type") + self.field_names
 
-    @classmethod
-    def from_dict(cls, d, extended=False):
-        try:
-            ff = d["frames"]["first_frame"]
-            for k, v in ff.items():
-                if isinstance(v, dict):
-                    if "_cls" in v:
-                        # Serialized embedded document
-                        _cls = getattr(fo, v["_cls"])
-                        ff[k] = _cls.from_dict(v)
-                    elif "$binary" in v:
-                        # Serialized array in extended format
-                        binary = json_util.loads(json.dumps(v))
-                        ff[k] = fou.deserialize_numpy_array(binary)
-                    else:
-                        ff[k] = v
-                elif isinstance(v, six.binary_type):
-                    # Serialized array in non-extended format
-                    ff[k] = fou.deserialize_numpy_array(v)
-                else:
-                    ff[k] = v
-        except:
-            pass
-        return super().from_dict(d, extended=extended)
-
 
 class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
     """Backing document for samples that have not been added to a dataset."""
@@ -155,11 +130,6 @@ class NoDatasetSampleDocument(NoDatasetMixin, SampleDocument):
         filepath = os.path.abspath(os.path.expanduser(kwargs["filepath"]))
         _media_type = fomm.get_media_type(filepath)
         kwargs["_media_type"] = _media_type
-
-        if _media_type == fomm.VIDEO:
-            from fiftyone.core.labels import _Frames
-
-            kwargs["frames"] = _Frames(frame_count=0)
 
         for field_name in self.default_fields_ordered:
             value = kwargs.pop(field_name, None)

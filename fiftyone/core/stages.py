@@ -93,15 +93,13 @@ class ViewStage(object):
         """
         return None
 
-    def to_mongo(self, sample_collection, hide_frames=False):
-        """Returns the MongoDB version of the stage.
+    def to_mongo(self, sample_collection):
+        """Returns the MongoDB aggregation pipeline for the stage.
 
         Args:
             sample_collection: the
                 :class:`fiftyone.core.collections.SampleCollection` to which
                 the stage is being applied
-            hide_frames (False): whether the aggregation has requested the
-                frames be hidden in the ``_frames`` field
 
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
@@ -195,29 +193,35 @@ class ViewStageError(Exception):
 
 
 class Exclude(ViewStage):
-    """Excludes the samples with the given IDs from the view.
+    """Excludes the samples with the given IDs from a collection.
 
     Examples::
 
         import fiftyone as fo
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="/path/to/image1.png"),
+                fo.Sample(filepath="/path/to/image2.png"),
+                fo.Sample(filepath="/path/to/image3.png"),
+            ]
+        )
 
         #
-        # Exclude a single sample from a dataset
+        # Exclude the first sample from the dataset
         #
 
-        stage = fo.Exclude("5f3c298768fd4d3baf422d2f")
+        sample_id = dataset.first().id
+        stage = fo.Exclude(sample_id)
         view = dataset.add_stage(stage)
 
         #
-        # Exclude a list of samples from a dataset
+        # Exclude the first and last samples from the dataset
         #
 
-        stage = fo.Exclude([
-            "5f3c298768fd4d3baf422d2f",
-            "5f3c298768fd4d3baf422d30"
-        ])
+        sample_ids = [dataset.first().id, dataset.last().id]
+        stage = fo.Exclude(sample_ids)
         view = dataset.add_stage(stage)
 
     Args:
@@ -261,7 +265,8 @@ class Exclude(ViewStage):
 
 
 class ExcludeFields(ViewStage):
-    """Excludes the fields with the given names from the samples in the view.
+    """Excludes the fields with the given names from the samples in a
+    collection.
 
     Note that default fields cannot be excluded.
 
@@ -269,20 +274,32 @@ class ExcludeFields(ViewStage):
 
         import fiftyone as fo
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    ground_truth=fo.Classification(label="cat"),
+                    predictions=fo.Classification(label="cat", confidence=0.9),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    ground_truth=fo.Classification(label="dog"),
+                    predictions=fo.Classification(label="dog", confidence=0.8),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    ground_truth=None,
+                    predictions=None,
+                ),
+            ]
+        )
 
         #
-        # Exclude a field from all samples in a dataset
+        # Exclude the `predictions` field from all samples
         #
 
         stage = fo.ExcludeFields("predictions")
-        view = dataset.add_stage(stage)
-
-        #
-        # Exclude a list of fields from all samples in a dataset
-        #
-
-        stage = fo.ExcludeFields(["ground_truth", "predictions"])
         view = dataset.add_stage(stage)
 
     Args:
@@ -370,7 +387,7 @@ class ExcludeFields(ViewStage):
 
 
 class ExcludeObjects(ViewStage):
-    """Excludes the specified objects from the view.
+    """Excludes the specified objects from a collection.
 
     The returned view will omit the objects specified in the provided
     ``objects`` argument, which should have the following format::
@@ -392,8 +409,9 @@ class ExcludeObjects(ViewStage):
     Examples::
 
         import fiftyone as fo
+        import fiftyone.zoo as foz
 
-        dataset = fo.load_dataset(...)
+        dataset = foz.load_zoo_dataset("quickstart")
 
         #
         # Exclude the objects currently selected in the App
@@ -467,14 +485,33 @@ class ExcludeObjects(ViewStage):
 
 
 class Exists(ViewStage):
-    """Returns a view containing the samples that have (or do not have) a
-    non-``None`` value for the given field.
+    """Returns a view containing the samples in a collection that have (or do
+    not have) a non-``None`` value for the given field.
 
     Examples::
 
         import fiftyone as fo
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    ground_truth=fo.Classification(label="cat"),
+                    predictions=fo.Classification(label="cat", confidence=0.9),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    ground_truth=fo.Classification(label="dog"),
+                    predictions=fo.Classification(label="dog", confidence=0.8),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    ground_truth=None,
+                    predictions=None,
+                ),
+            ]
+        )
 
         #
         # Only include samples that have a value in their `predictions` field
@@ -492,7 +529,7 @@ class Exists(ViewStage):
         view = dataset.add_stage(stage)
 
     Args:
-        field: the field
+        field: the field name
         bool (True): whether to check if the field exists (True) or does not
             exist (False)
     """
@@ -503,7 +540,7 @@ class Exists(ViewStage):
 
     @property
     def field(self):
-        """The field to check if exists."""
+        """The field to check for existence."""
         return self._field
 
     @property
@@ -545,7 +582,8 @@ class Exists(ViewStage):
 
 
 class FilterField(ViewStage):
-    """Filters the values of a given sample (or embedded document) field.
+    """Filters the values of a given sample (or embedded document) field of
+    each sample in a collection.
 
     Values of ``field`` for which ``filter`` returns ``False`` are
     replaced with ``None``.
@@ -555,26 +593,47 @@ class FilterField(ViewStage):
         import fiftyone as fo
         from fiftyone import ViewField as F
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    ground_truth=fo.Classification(label="cat"),
+                    predictions=fo.Classification(label="cat", confidence=0.9),
+                    numeric_field=1.0,
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    ground_truth=fo.Classification(label="dog"),
+                    predictions=fo.Classification(label="dog", confidence=0.8),
+                    numeric_field=-1.0,
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    ground_truth=None,
+                    predictions=None,
+                    numeric_field=None,
+                ),
+            ]
+        )
 
         #
-        # Only include classifications in the `predictions` field (assume it is
-        # a `Classification` field) whose `label` is "cat"
+        # Only include classifications in the `predictions` field
+        # whose `label` is "cat"
         #
 
         stage = fo.FilterField("predictions", F("label") == "cat")
         view = dataset.add_stage(stage)
 
         #
-        # Only include classifications in the `predictions` field (assume it is
-        # a `Classification` field) whose `confidence` is greater than 0.8
+        # Only include samples whose `numeric_field` value is positive
         #
 
-        stage = fo.FilterField("predictions", F("confidence") > 0.8)
+        stage = fo.FilterField("numeric_field", F() > 0, only_matches=True)
         view = dataset.add_stage(stage)
 
     Args:
-        field: the field to filter
+        field: the name of the field to filter
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
@@ -605,28 +664,14 @@ class FilterField(ViewStage):
         """Whether to only include samples that match the filter."""
         return self._only_matches
 
-    def _get_new_field(self, sample_collection):
-        field = self._field
-        if self._needs_frames(sample_collection):
-            field = field.split(".", 1)[1]  # remove `frames`
-
-        if self._hide_result:
-            return "__%s" % field
-
-        return field
-
-    def to_mongo(self, sample_collection, hide_frames=False):
+    def to_mongo(self, sample_collection):
         new_field = self._get_new_field(sample_collection)
-        if (
-            sample_collection.media_type == fom.VIDEO
-            and self._field.startswith(_FRAMES_PREFIX)
-        ):
+        if sample_collection._is_frame_field(self._field):
             return _get_filter_frames_field_pipeline(
                 self._field,
                 new_field,
                 self._filter,
                 only_matches=self._only_matches,
-                hide_frames=hide_frames,
             )
 
         return _get_filter_field_pipeline(
@@ -646,11 +691,18 @@ class FilterField(ViewStage):
 
         return _get_field_mongo_filter(self._filter, prefix=self._field)
 
+    def _get_new_field(self, sample_collection):
+        field = self._field
+        if sample_collection._is_frame_field(field):
+            field = field.split(".", 1)[1]  # remove `frames`
+
+        if self._hide_result:
+            return "__" + field
+
+        return field
+
     def _needs_frames(self, sample_collection):
-        return (
-            sample_collection.media_type == fom.VIDEO
-            and self._field.startswith(_FRAMES_PREFIX)
-        )
+        return sample_collection._is_frame_field(self._field)
 
     def _kwargs(self):
         return [
@@ -680,11 +732,11 @@ class FilterField(ViewStage):
             )
 
     def validate(self, sample_collection):
-        if self.field == "filepath":
+        if self._field == "filepath":
             raise ValueError("Cannot filter required field `filepath`")
 
         sample_collection.validate_fields_exist(self._field)
-        self._is_frame_field = self._needs_frames(sample_collection)
+        self._is_frame_field = sample_collection._is_frame_field(self._field)
 
 
 def _get_filter_field_pipeline(
@@ -694,7 +746,7 @@ def _get_filter_field_pipeline(
 
     pipeline = [
         {
-            "$addFields": {
+            "$set": {
                 new_field: {
                     "$cond": {
                         "if": cond,
@@ -718,23 +770,17 @@ def _get_filter_field_pipeline(
 
 
 def _get_filter_frames_field_pipeline(
-    filter_field,
-    new_field,
-    filter_arg,
-    only_matches=False,
-    hide_frames=False,
-    hide_result=False,
+    filter_field, new_field, filter_arg, only_matches=False, hide_result=False,
 ):
     filter_field = filter_field.split(".", 1)[1]  # remove `frames`
     cond = _get_field_mongo_filter(filter_arg, prefix="$frame." + filter_field)
-    frames = "_frames" if hide_frames else "frames"
 
     pipeline = [
         {
-            "$addFields": {
-                frames: {
+            "$set": {
+                "frames": {
                     "$map": {
-                        "input": "$%s" % frames,
+                        "input": "$frames",
                         "as": "frame",
                         "in": {
                             "$mergeObjects": [
@@ -764,7 +810,7 @@ def _get_filter_frames_field_pipeline(
                         "$gt": [
                             {
                                 "$reduce": {
-                                    "input": "$%s" % frames,
+                                    "input": "$frames",
                                     "initialValue": 0,
                                     "in": {
                                         "$sum": [
@@ -773,8 +819,8 @@ def _get_filter_frames_field_pipeline(
                                                 "$cond": [
                                                     {
                                                         "$ne": [
-                                                            "$$this.%s"
-                                                            % new_field,
+                                                            "$$this."
+                                                            + new_field,
                                                             None,
                                                         ]
                                                     },
@@ -794,7 +840,7 @@ def _get_filter_frames_field_pipeline(
         )
 
     if hide_result:
-        pipeline.append({"$unset": "%s.%s" % (frames, new_field)})
+        pipeline.append({"$unset": "frames." + new_field})
 
     return pipeline
 
@@ -807,7 +853,8 @@ def _get_field_mongo_filter(filter_arg, prefix="$this"):
 
 
 class FilterLabels(FilterField):
-    """Filters the :class:`fiftyone.core.labels.Label` field of each sample.
+    """Filters the :class:`fiftyone.core.labels.Label` field of each sample in
+    a collection.
 
     If the specified ``field`` is a single :class:`fiftyone.core.labels.Label`
     type, fields for which ``filter`` returns ``False`` are replaced with
@@ -832,11 +879,31 @@ class FilterLabels(FilterField):
         import fiftyone as fo
         from fiftyone import ViewField as F
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    predictions=fo.Classification(label="cat", confidence=0.9),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    predictions=fo.Classification(label="dog", confidence=0.8),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    predictions=fo.Classification(label="rabbit"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image4.png",
+                    predictions=None,
+                ),
+            ]
+        )
 
         #
         # Only include classifications in the `predictions` field whose
-        # `confidence` greater than 0.8
+        # `confidence` is greater than 0.8
         #
 
         stage = fo.FilterLabels("predictions", F("confidence") > 0.8)
@@ -858,7 +925,57 @@ class FilterLabels(FilterField):
         import fiftyone as fo
         from fiftyone import ViewField as F
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="cat",
+                                bounding_box=[0.1, 0.1, 0.5, 0.5],
+                                confidence=0.9,
+                            ),
+                            fo.Detection(
+                                label="dog",
+                                bounding_box=[0.2, 0.2, 0.3, 0.3],
+                                confidence=0.8,
+                            ),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="cat",
+                                bounding_box=[0.5, 0.5, 0.4, 0.4],
+                                confidence=0.95,
+                            ),
+                            fo.Detection(label="rabbit"),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="squirrel",
+                                bounding_box=[0.25, 0.25, 0.5, 0.5],
+                                confidence=0.5,
+                            ),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image4.png",
+                    predictions=None,
+                ),
+            ]
+        )
 
         #
         # Only include detections in the `predictions` field whose `confidence`
@@ -884,7 +1001,7 @@ class FilterLabels(FilterField):
         # area is smaller than 0.2
         #
 
-        # bbox is in [top-left-x, top-left-y, width, height] format
+        # Bboxes are in [top-left-x, top-left-y, width, height] format
         bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
 
         stage = fo.FilterLabels("predictions", bbox_area < 0.2)
@@ -895,13 +1012,55 @@ class FilterLabels(FilterField):
         import fiftyone as fo
         from fiftyone import ViewField as F
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    predictions=fo.Polylines(
+                        polylines=[
+                            fo.Polyline(
+                                label="lane",
+                                points=[[(0.1, 0.1), (0.1, 0.6)]],
+                                filled=False,
+                            ),
+                            fo.Polyline(
+                                label="road",
+                                points=[[(0.2, 0.2), (0.5, 0.5), (0.2, 0.5)]],
+                                filled=True,
+                            ),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    predictions=fo.Polylines(
+                        polylines=[
+                            fo.Polyline(
+                                label="lane",
+                                points=[[(0.4, 0.4), (0.9, 0.4)]],
+                                filled=False,
+                            ),
+                            fo.Polyline(
+                                label="road",
+                                points=[[(0.6, 0.6), (0.9, 0.9), (0.6, 0.9)]],
+                                filled=True,
+                            ),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    predictions=None,
+                ),
+            ]
+        )
 
         #
         # Only include polylines in the `predictions` field that are filled
         #
 
-        stage = fo.FilterLabels("predictions", F("filled"))
+        stage = fo.FilterLabels("predictions", F("filled") == True)
         view = dataset.add_stage(stage)
 
         #
@@ -917,11 +1076,13 @@ class FilterLabels(FilterField):
 
         #
         # Only include polylines in the `predictions` field with at least
-        # 10 vertices
+        # 3 vertices
         #
 
         num_vertices = F("points").map(F().length()).sum()
-        stage = fo.FilterLabels("predictions", num_vertices >= 10)
+        stage = fo.FilterLabels(
+            "predictions", num_vertices >= 3, only_matches=True
+        )
         view = dataset.add_stage(stage)
 
     Keypoints Examples::
@@ -929,25 +1090,47 @@ class FilterLabels(FilterField):
         import fiftyone as fo
         from fiftyone import ViewField as F
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    predictions=fo.Keypoint(
+                        label="house",
+                        points=[(0.1, 0.1), (0.1, 0.9), (0.9, 0.9), (0.9, 0.1)],
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    predictions=fo.Keypoint(
+                        label="window",
+                        points=[(0.4, 0.4), (0.5, 0.5), (0.6, 0.6)],
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    predictions=None,
+                ),
+            ]
+        )
 
         #
         # Only include keypoints in the `predictions` field whose `label` is
-        # "face", and only show samples with at least one keypoint after
+        # "house", and only show samples with at least one keypoint after
         # filtering
         #
 
         stage = fo.FilterLabels(
-            "predictions", F("label") == "face", only_matches=True
+            "predictions", F("label") == "house", only_matches=True
         )
         view = dataset.add_stage(stage)
 
         #
-        # Only include keypoints in the `predictions` field with at least
-        # 10 points
+        # Only include keypoints in the `predictions` field with less than four
+        # points
         #
 
-        stage = fo.FilterLabels("predictions", F("points").length() >= 10)
+        stage = fo.FilterLabels("predictions", F("points").length() < 4)
         view = dataset.add_stage(stage)
 
     Args:
@@ -976,21 +1159,17 @@ class FilterLabels(FilterField):
 
         return None
 
-    def to_mongo(self, sample_collection, hide_frames=False):
+    def to_mongo(self, sample_collection):
         self._get_labels_field(sample_collection)
         new_field = self._get_new_field(sample_collection)
 
-        if (
-            sample_collection.media_type == fom.VIDEO
-            and self._labels_field.startswith(_FRAMES_PREFIX)
-        ):
+        if sample_collection._is_frame_field(self._labels_field):
             if self._is_labels_list_field:
                 return _get_filter_frames_list_field_pipeline(
                     self._labels_field,
                     new_field,
                     self._filter,
                     only_matches=self._only_matches,
-                    hide_frames=hide_frames,
                     hide_result=self._hide_result,
                 )
 
@@ -999,7 +1178,6 @@ class FilterLabels(FilterField):
                 new_field,
                 self._filter,
                 only_matches=self._only_matches,
-                hide_frames=hide_frames,
                 hide_result=self._hide_result,
             )
 
@@ -1021,10 +1199,7 @@ class FilterLabels(FilterField):
         )
 
     def _needs_frames(self, sample_collection):
-        return (
-            sample_collection.media_type == fom.VIDEO
-            and self._labels_field.startswith(_FRAMES_PREFIX)
-        )
+        return sample_collection._is_frame_field(self._labels_field)
 
     def _get_mongo_filter(self):
         if self._is_labels_list_field:
@@ -1040,7 +1215,7 @@ class FilterLabels(FilterField):
 
     def _get_labels_field(self, sample_collection):
         field_name, is_list_field, is_frame_field = _get_labels_field(
-            self._field, sample_collection
+            sample_collection, self._field
         )
         self._is_frame_field = is_frame_field
         self._labels_field = field_name
@@ -1049,7 +1224,7 @@ class FilterLabels(FilterField):
 
     def _get_new_field(self, sample_collection):
         field = self._labels_field
-        if self._needs_frames(sample_collection):
+        if sample_collection._is_frame_field(field):
             field = field.split(".", 1)[1]  # remove `frames`
 
         if self._hide_result:
@@ -1068,9 +1243,9 @@ def _get_filter_list_field_pipeline(
 
     pipeline = [
         {
-            "$addFields": {
+            "$set": {
                 filter_field: {
-                    "$filter": {"input": "$" + filter_field, "cond": cond,}
+                    "$filter": {"input": "$" + filter_field, "cond": cond}
                 }
             }
         }
@@ -1082,7 +1257,7 @@ def _get_filter_list_field_pipeline(
                 "$match": {
                     filter_field: {
                         "$gt": [
-                            {"$size": {"$ifNull": ["$" + filter_field, [],]}},
+                            {"$size": {"$ifNull": ["$" + filter_field, []]}},
                             0,
                         ]
                     }
@@ -1097,38 +1272,37 @@ def _get_filter_list_field_pipeline(
 
 
 def _get_filter_frames_list_field_pipeline(
-    filter_field,
-    new_field,
-    filter_arg,
-    only_matches=False,
-    hide_frames=False,
-    hide_result=False,
+    filter_field, new_field, filter_arg, only_matches=False, hide_result=False,
 ):
     filter_field = filter_field.split(".", 1)[1]  # remove `frames`
     cond = _get_list_field_mongo_filter(filter_arg)
-    frames = "_frames" if hide_frames else "frames"
     label_field, labels_list = new_field.split(".")
 
     pipeline = [
         {
-            "$addFields": {
-                frames: {
+            "$set": {
+                "frames": {
                     "$map": {
-                        "input": "$%s" % frames,
+                        "input": "$frames",
                         "as": "frame",
                         "in": {
                             "$mergeObjects": [
                                 "$$frame",
                                 {
                                     label_field: {
-                                        labels_list: {
-                                            "$filter": {
-                                                "input": "$$frame."
-                                                + filter_field,
-                                                "cond": cond,
-                                            }
-                                        }
-                                    },
+                                        "$mergeObjects": [
+                                            "$$frame." + label_field,
+                                            {
+                                                labels_list: {
+                                                    "$filter": {
+                                                        "input": "$$frame."
+                                                        + filter_field,
+                                                        "cond": cond,
+                                                    }
+                                                }
+                                            },
+                                        ]
+                                    }
                                 },
                             ]
                         },
@@ -1146,7 +1320,7 @@ def _get_filter_frames_list_field_pipeline(
                         "$gt": [
                             {
                                 "$reduce": {
-                                    "input": "$%s" % frames,
+                                    "input": "$frames",
                                     "initialValue": 0,
                                     "in": {
                                         "$sum": [
@@ -1172,7 +1346,7 @@ def _get_filter_frames_list_field_pipeline(
         )
 
     if hide_result:
-        pipeline.append({"$unset": "%s.%s" % (frames, new_field)})
+        pipeline.append({"$unset": "frames." + new_field})
 
     return pipeline
 
@@ -1191,7 +1365,7 @@ class _FilterListField(FilterField):
             field = field.split(".", 1)[1]  # remove `frames`
 
         if self._hide_result:
-            return "__%s" % field
+            return "__" + field
 
         return field
 
@@ -1202,18 +1376,14 @@ class _FilterListField(FilterField):
     def get_filtered_list_fields(self):
         return [self._filter_field]
 
-    def to_mongo(self, sample_collection, hide_frames=False):
+    def to_mongo(self, sample_collection):
         new_field = self._get_new_field(sample_collection)
-        if (
-            sample_collection.media_type == fom.VIDEO
-            and self._filter_field.startswith(_FRAMES_PREFIX)
-        ):
+        if sample_collection._is_frame_field(self._filter_field):
             return _get_filter_frames_list_field_pipeline(
                 self._filter_field,
                 new_field,
                 self._filter,
                 only_matches=self._only_matches,
-                hide_frames=hide_frames,
                 hide_result=self._hide_result,
             )
 
@@ -1234,42 +1404,14 @@ class _FilterListField(FilterField):
 
 @deprecated(reason="Use FilterLabels instead")
 class FilterClassifications(_FilterListField):
-    """
+    """Filters the :class:`fiftyone.core.labels.Classification` elements in the
+    specified :class:`fiftyone.core.labels.Classifications` field of each
+    sample in a collection.
 
     .. warning::
 
         This class is deprecated and will be removed in a future release.
         Use the drop-in replacement :class:`FilterLabels` instead.
-
-    Filters the :class:`fiftyone.core.labels.Classification` elements in the
-    specified :class:`fiftyone.core.labels.Classifications` field of each
-    sample.
-
-    Examples::
-
-        import fiftyone as fo
-        from fiftyone import ViewField as F
-
-        dataset = fo.load_dataset(...)
-
-        #
-        # Only include classifications in the `predictions` field whose
-        # `confidence` greater than 0.8
-        #
-
-        stage = fo.FilterClassifications("predictions", F("confidence") > 0.8)
-        view = dataset.add_stage(stage)
-
-        #
-        # Only include classifications in the `predictions` field whose `label`
-        # is "cat" or "dog", and only show samples with at least one
-        # classification after filtering
-        #
-
-        stage = fo.FilterClassifications(
-            "predictions", F("label").is_in(["cat", "dog"]), only_matches=True
-        )
-        view = dataset.add_stage(stage)
 
     Args:
         field: the field to filter, which must be a
@@ -1295,52 +1437,14 @@ class FilterClassifications(_FilterListField):
 
 @deprecated(reason="Use FilterLabels instead")
 class FilterDetections(_FilterListField):
-    """
+    """Filters the :class:`fiftyone.core.labels.Detection` elements in the
+    specified :class:`fiftyone.core.labels.Detections` field of each sample in
+    a collection.
 
     .. warning::
 
         This class is deprecated and will be removed in a future release.
         Use the drop-in replacement :class:`FilterLabels` instead.
-
-    Filters the :class:`fiftyone.core.labels.Detection` elements in the
-    specified :class:`fiftyone.core.labels.Detections` field of each sample.
-
-    Examples::
-
-        import fiftyone as fo
-        from fiftyone import ViewField as F
-
-        dataset = fo.load_dataset(...)
-
-        #
-        # Only include detections in the `predictions` field whose `confidence`
-        # is greater than 0.8
-        #
-
-        stage = fo.FilterDetections("predictions", F("confidence") > 0.8)
-        view = dataset.add_stage(stage)
-
-        #
-        # Only include detections in the `predictions` field whose `label` is
-        # "cat" or "dog", and only show samples with at least one detection
-        # after filtering
-        #
-
-        stage = fo.FilterDetections(
-            "predictions", F("label").is_in(["cat", "dog"]), only_matches=True
-        )
-        view = dataset.add_stage(stage)
-
-        #
-        # Only include detections in the `predictions` field whose bounding box
-        # area is smaller than 0.2
-        #
-
-        # bbox is in [top-left-x, top-left-y, width, height] format
-        bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
-
-        stage = fo.FilterDetections("predictions", bbox_area < 0.2)
-        view = dataset.add_stage(stage)
 
     Args:
         field: the field to filter, which must be a
@@ -1366,49 +1470,14 @@ class FilterDetections(_FilterListField):
 
 @deprecated(reason="Use FilterLabels instead")
 class FilterPolylines(_FilterListField):
-    """
+    """Filters the :class:`fiftyone.core.labels.Polyline` elements in the
+    specified :class:`fiftyone.core.labels.Polylines` field of each sample in a
+    collection.
 
     .. warning::
 
         This class is deprecated and will be removed in a future release.
         Use the drop-in replacement :class:`FilterLabels` instead.
-
-    Filters the :class:`fiftyone.core.labels.Polyline` elements in the
-    specified :class:`fiftyone.core.labels.Polylines` field of each sample.
-
-    Examples::
-
-        import fiftyone as fo
-        from fiftyone import ViewField as F
-
-        dataset = fo.load_dataset(...)
-
-        #
-        # Only include polylines in the `predictions` field that are filled
-        #
-
-        stage = fo.FilterPolylines("predictions", F("filled"))
-        view = dataset.add_stage(stage)
-
-        #
-        # Only include polylines in the `predictions` field whose `label` is
-        # "lane", and only show samples with at least one polyline after
-        # filtering
-        #
-
-        stage = fo.FilterPolylines(
-            "predictions", F("label") == "lane", only_matches=True
-        )
-        view = dataset.add_stage(stage)
-
-        #
-        # Only include polylines in the `predictions` field with at least
-        # 10 vertices
-        #
-
-        num_vertices = F("points").map(F().length()).sum()
-        stage = fo.FilterPolylines("predictions", num_vertices >= 10)
-        view = dataset.add_stage(stage)
 
     Args:
         field: the field to filter, which must be a
@@ -1434,41 +1503,14 @@ class FilterPolylines(_FilterListField):
 
 @deprecated(reason="Use FilterLabels instead")
 class FilterKeypoints(_FilterListField):
-    """
+    """Filters the :class:`fiftyone.core.labels.Keypoint` elements in the
+    specified :class:`fiftyone.core.labels.Keypoints` field of each sample in a
+    collection.
 
     .. warning::
 
         This class is deprecated and will be removed in a future release.
         Use the drop-in replacement :class:`FilterLabels` instead.
-
-    Filters the :class:`fiftyone.core.labels.Keypoint` elements in the
-    specified :class:`fiftyone.core.labels.Keypoints` field of each sample.
-
-    Examples::
-
-        import fiftyone as fo
-        from fiftyone import ViewField as F
-
-        dataset = fo.load_dataset(...)
-
-        #
-        # Only include keypoints in the `predictions` field whose `label` is
-        # "face", and only show samples with at least one keypoint after
-        # filtering
-        #
-
-        stage = fo.FilterKeypoints(
-            "predictions", F("label") == "face", only_matches=True
-        )
-        view = dataset.add_stage(stage)
-
-        #
-        # Only include keypoints in the `predictions` field with at least
-        # 10 points
-        #
-
-        stage = fo.FilterKeypoints("predictions", F("points").length() >= 10)
-        view = dataset.add_stage(stage)
 
     Args:
         field: the field to filter, which must be a
@@ -1493,19 +1535,35 @@ class FilterKeypoints(_FilterListField):
 
 
 class Limit(ViewStage):
-    """Limits the view to the given number of samples.
+    """Creates a view with at most the given number of samples.
 
     Examples::
 
         import fiftyone as fo
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    ground_truth=fo.Classification(label="cat"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    ground_truth=fo.Classification(label="dog"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    ground_truth=None,
+                ),
+            ]
+        )
 
         #
-        # Only include the first 10 samples in the view
+        # Only include the first 2 samples in the view
         #
 
-        stage = fo.Limit(10)
+        stage = fo.Limit(2)
         view = dataset.add_stage(stage)
 
     Args:
@@ -1537,7 +1595,7 @@ class Limit(ViewStage):
 
 class LimitLabels(ViewStage):
     """Limits the number of :class:`fiftyone.core.labels.Label` instances in
-    the specified labels list field of each sample.
+    the specified labels list field of each sample in a collection.
 
     The specified ``field`` must be one of the following types:
 
@@ -1549,15 +1607,54 @@ class LimitLabels(ViewStage):
     Examples::
 
         import fiftyone as fo
+        from fiftyone import ViewField as F
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="cat",
+                                bounding_box=[0.1, 0.1, 0.5, 0.5],
+                                confidence=0.9,
+                            ),
+                            fo.Detection(
+                                label="dog",
+                                bounding_box=[0.2, 0.2, 0.3, 0.3],
+                                confidence=0.8,
+                            ),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="cat",
+                                bounding_box=[0.5, 0.5, 0.4, 0.4],
+                                confidence=0.95,
+                            ),
+                            fo.Detection(label="rabbit"),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image4.png",
+                    predictions=None,
+                ),
+            ]
+        )
 
         #
-        # Only include the first 5 detections in the `ground_truth` field of
-        # the view
+        # Only include the first detection in the `predictions` field of each
+        # sample
         #
 
-        stage = fo.LimitLabels("ground_truth", 5)
+        stage = fo.LimitLabels("predictions", 1)
         view = dataset.add_stage(stage)
 
     Args:
@@ -1583,14 +1680,14 @@ class LimitLabels(ViewStage):
 
     def to_mongo(self, sample_collection, **_):
         self._labels_list_field = _get_labels_list_field(
-            self._field, sample_collection
+            sample_collection, self._field
         )
 
         limit = max(self._limit, 0)
 
         return [
             {
-                "$addFields": {
+                "$set": {
                     self._labels_list_field: {
                         "$slice": ["$" + self._labels_list_field, limit]
                     }
@@ -1613,25 +1710,88 @@ class LimitLabels(ViewStage):
 
     def validate(self, sample_collection):
         self._labels_list_field = _get_labels_list_field(
-            self._field, sample_collection
+            sample_collection, self._field
         )
 
 
 class MapLabels(ViewStage):
-    """Maps the ``label`` values of :class:`fiftyone.core.labels.Label` fields
-    to new values.
+    """Maps the ``label`` values of a :class:`fiftyone.core.labels.Label` field
+    to new values for each sample in a collection.
 
     Examples::
 
         import fiftyone as fo
+        from fiftyone import ViewField as F
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    weather=fo.Classification(label="sunny"),
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="cat",
+                                bounding_box=[0.1, 0.1, 0.5, 0.5],
+                                confidence=0.9,
+                            ),
+                            fo.Detection(
+                                label="dog",
+                                bounding_box=[0.2, 0.2, 0.3, 0.3],
+                                confidence=0.8,
+                            ),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    weather=fo.Classification(label="cloudy"),
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="cat",
+                                bounding_box=[0.5, 0.5, 0.4, 0.4],
+                                confidence=0.95,
+                            ),
+                            fo.Detection(label="rabbit"),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    weather=fo.Classification(label="partly cloudy"),
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="squirrel",
+                                bounding_box=[0.25, 0.25, 0.5, 0.5],
+                                confidence=0.5,
+                            ),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image4.png",
+                    predictions=None,
+                ),
+            ]
+        )
 
         #
-        # Map "cat" and "dog" label values to "pet"
+        # Map the "partly cloudy" weather label to "cloudy"
         #
 
-        stage = fo.MapLabels("ground_truth", {"cat": "pet", "dog":, "pet"})
+        stage = fo.MapLabels("weather", {"partly cloudy": "cloudy"})
+        view = dataset.add_stage(stage)
+
+        #
+        # Map "rabbit" and "squirrel" predictions to "other"
+        #
+
+        stage = fo.MapLabels(
+            "predictions", {"rabbit": "other", "squirrel": "other"}
+        )
         view = dataset.add_stage(stage)
 
     Args:
@@ -1640,8 +1800,8 @@ class MapLabels(ViewStage):
     """
 
     def __init__(self, field, map):
-        self._map = map
         self._field = field
+        self._map = map
         self._labels_field = None
 
     @property
@@ -1655,51 +1815,13 @@ class MapLabels(ViewStage):
         return self._map
 
     def to_mongo(self, sample_collection, **_):
-        self._labels_field, is_list_field, is_frame_field = _get_labels_field(
-            self._field, sample_collection
-        )
-        if is_frame_field:
-            # @todo implement this
-            raise ValueError("Mapping frame labels is not yet supported")
-
-        values = sorted(self._map.values())
-        keys = sorted(self._map.keys(), key=lambda k: self._map[k])
-
-        label = (
-            "$$obj.label"
-            if is_list_field
-            else "$%s.label" % self._labels_field
+        labels_field, _, is_frame_field = _get_labels_field(
+            sample_collection, self._field
         )
 
-        cond = {
-            "$cond": [
-                {"$in": [label, "$$keys"]},
-                {
-                    "$arrayElemAt": [
-                        "$$values",
-                        {"$indexOfArray": ["$$keys", label]},
-                    ]
-                },
-                label,
-            ]
-        }
-
-        if is_list_field:
-            _in = {
-                "$map": {
-                    "input": "$%s" % self._labels_field,
-                    "as": "obj",
-                    "in": {"$mergeObjects": ["$$obj", {"label": cond}]},
-                }
-            }
-            set_field = self._labels_field
-        else:
-            _in = cond
-            set_field = "%s.label" % self._labels_field
-
-        let = {"$let": {"vars": {"keys": keys, "values": values}, "in": _in}}
-
-        return [{"$set": {set_field: let}}]
+        label_path = labels_field + ".label"
+        expr = foe.ViewField("label").map_values(self._map)
+        return _make_set_field_pipeline(sample_collection, label_path, expr)
 
     def _kwargs(self):
         return [
@@ -1715,18 +1837,299 @@ class MapLabels(ViewStage):
         ]
 
     def validate(self, sample_collection):
-        _get_labels_field(self._field, sample_collection)
+        _get_labels_field(sample_collection, self._field)
+
+
+def _make_set_field_pipeline(sample_collection, field, expr):
+    path, list_fields = _parse_field_name(sample_collection, field)
+
+    # Don't unroll terminal lists unless explicitly requested
+    list_fields = [lf for lf in list_fields if lf != field]
+    # Case 1: no list fields
+    if not list_fields:
+        if "." in path:
+            prefix = "$" + path.rsplit(".", 1)[0]
+        else:
+            prefix = None
+
+        path_expr = _get_mongo_expr(expr, prefix=prefix)
+
+        return [{"$set": {path: path_expr}}]
+
+    # Case 2: one list field
+    if len(list_fields) == 1:
+        list_field = list_fields[0]
+        subfield = path[len(list_field) + 1 :]
+        expr = _set_terminal_list_field(list_field, subfield, expr)
+        return [{"$set": {list_field: expr.to_mongo()}}]
+
+    # Case 3: multiple list fields
+
+    # Handle last list field
+    last_list_field = list_fields[-1]
+    terminal_prefix = last_list_field[len(list_fields[-2]) + 1 :]
+    subfield = path[len(last_list_field) + 1 :]
+    expr = _set_terminal_list_field(terminal_prefix, subfield, expr)
+
+    for list_field1, list_field2 in zip(
+        reversed(list_fields[:-1]), reversed(list_fields[1:])
+    ):
+        inner_list_field = list_field2[len(list_field1) + 1 :]
+        expr = foe.ViewField().map(
+            foe.ViewField().set_field(inner_list_field, expr)
+        )
+
+    expr = expr.to_mongo(prefix="$" + list_fields[0])
+
+    return [{"$set": {list_fields[0]: expr}}]
+
+
+def _parse_field_name(sample_collection, field_name):
+    path, is_frame_field, list_fields = sample_collection._parse_field_name(
+        field_name
+    )
+
+    if is_frame_field and path != "frames":
+        path = _FRAMES_PREFIX + path
+        list_fields = ["frames"] + [_FRAMES_PREFIX + lf for lf in list_fields]
+
+    return path, list_fields
+
+
+def _set_terminal_list_field(list_field, subfield, expr):
+    map_path = "$$this"
+    if subfield:
+        map_path += "." + subfield
+
+    prefix = map_path.rsplit(".", 1)[0]
+    map_expr = _get_mongo_expr(expr, prefix=prefix)
+
+    if subfield:
+        map_expr = foe.ViewField().set_field(subfield, map_expr)
+    else:
+        map_expr = foe.ViewExpression(map_expr)
+
+    return foe.ViewField(list_field).map(map_expr)
+
+
+def _get_mongo_expr(expr, prefix=None):
+    if isinstance(expr, foe.ViewExpression):
+        return expr.to_mongo(prefix=prefix)
+
+    return expr
+
+
+class SetField(ViewStage):
+    """Sets a field or embedded field on each sample in a collection by
+    evaluating the given expression.
+
+    This method can process embedded list fields. To do so, simply append
+    ``[]`` to any list component(s) of the field path.
+
+    .. note::
+
+        There are two cases where FiftyOne will automatically unwind array
+        fields without requiring you to explicitly specify this via the ``[]``
+        syntax:
+
+        **Top-level lists:** when you specify a ``field`` path that refers to a
+        top-level list field of a dataset; i.e., ``list_field`` is
+        automatically coerced to ``list_field[]``, if necessary.
+
+        **List fields:** When you specify a ``field`` path that refers to the
+        list field of a |Label| class, such as the
+        :attr:`Detections.detections <fiftyone.core.labels.Detections.detections>`
+        attribute; i.e., ``ground_truth.detections.label`` is automatically
+        coerced to ``ground_truth.detections[].label``, if necessary.
+
+        See the examples below for demonstrations of this behavior.
+
+    The provided ``expr`` is interpreted relative to the document on which the
+    embedded field is being set. For example, if you are setting a nested field
+    ``field="embedded.document.field"``, then the expression ``expr`` you
+    provide will be applied to the ``embedded.document`` document. Note that
+    you can override this behavior by defining an expression that is bound to
+    the root document by prepending ``"$"`` to any field name(s) in the
+    expression.
+
+    See the examples below for more information.
+
+    .. note::
+
+        Note that you cannot set a non-existing top-level field using this
+        stage, since doing so would violate the dataset's schema. You can,
+        however, first declare a new field via
+        :meth:`fiftyone.core.dataset.Dataset.add_sample_field` and then
+        populate it in a view via this stage.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        #
+        # Replace all values of uniqueness that are less than 0.5 with `None`
+        #
+
+        stage = fo.SetField(
+            "uniqueness",
+            (F("uniqueness") >= 0.5).if_else(F("uniqueness"), None)
+        )
+        view = dataset.add_stage(stage)
+        print(view.bounds("uniqueness"))
+
+        #
+        # Lower bound all object confidences in the `predictions` field by 0.5
+        #
+
+        stage = fo.SetField(
+            "predictions.detections.confidence", F("confidence").max(0.5)
+        )
+        view = dataset.add_stage(stage)
+        print(view.bounds("predictions.detections.confidence"))
+
+        #
+        # Add a `num_predictions` property to the `predictions` field that
+        # contains the number of objects in the field
+        #
+
+        stage = fo.SetField(
+            "predictions.num_predictions",
+            F("$predictions.detections").length(),
+        )
+        view = dataset.add_stage(stage)
+        print(view.bounds("predictions.num_predictions"))
+
+        #
+        # Set an `is_animal` field on each object in the `predictions` field
+        # that indicates whether the object is an animal
+        #
+
+        ANIMALS = [
+            "bear", "bird", "cat", "cow", "dog", "elephant", "giraffe",
+            "horse", "sheep", "zebra"
+        ]
+
+        stage = fo.SetField(
+            "predictions.detections.is_animal", F("label").is_in(ANIMALS)
+        )
+        view = dataset.add_stage(stage)
+        print(view.count_values("predictions.detections.is_animal"))
+
+    Args:
+        field: the field or embedded field to set
+        expr: a :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            that defines the field value to set
+    """
+
+    def __init__(self, field, expr):
+        self._field = field
+        self._expr = expr
+
+    @property
+    def field(self):
+        """The field to set."""
+        return self._field
+
+    @property
+    def expr(self):
+        """The expression to apply."""
+        return self._expr
+
+    def to_mongo(self, sample_collection, **_):
+        return _make_set_field_pipeline(
+            sample_collection, self._field, self._expr
+        )
+
+    def _kwargs(self):
+        # @todo doesn't handle list fields
+        if "." in self._field:
+            prefix = "$" + self._field.rsplit(".", 1)[0]
+        else:
+            prefix = None
+
+        return [
+            ["field", self._field],
+            ["expr", _get_mongo_expr(self._expr, prefix=prefix)],
+        ]
+
+    @classmethod
+    def _params(self):
+        return [
+            {"name": "field", "type": "field"},
+            {"name": "expr", "type": "dict", "placeholder": ""},
+        ]
+
+    def validate(self, sample_collection):
+        sample_collection.validate_fields_exist(self._field)
 
 
 class Match(ViewStage):
-    """Filters the samples in the stage by the given filter.
+    """Filters the samples in the collection by the given filter.
 
     Examples::
 
         import fiftyone as fo
         from fiftyone import ViewField as F
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    weather=fo.Classification(label="sunny"),
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="cat",
+                                bounding_box=[0.1, 0.1, 0.5, 0.5],
+                                confidence=0.9,
+                            ),
+                            fo.Detection(
+                                label="dog",
+                                bounding_box=[0.2, 0.2, 0.3, 0.3],
+                                confidence=0.8,
+                            ),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.jpg",
+                    weather=fo.Classification(label="cloudy"),
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="cat",
+                                bounding_box=[0.5, 0.5, 0.4, 0.4],
+                                confidence=0.95,
+                            ),
+                            fo.Detection(label="rabbit"),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    weather=fo.Classification(label="partly cloudy"),
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="squirrel",
+                                bounding_box=[0.25, 0.25, 0.5, 0.5],
+                                confidence=0.5,
+                            ),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image4.jpg",
+                    predictions=None,
+                ),
+            ]
+        )
 
         #
         # Only include samples whose `filepath` ends with ".jpg"
@@ -1736,32 +2139,31 @@ class Match(ViewStage):
         view = dataset.add_stage(stage)
 
         #
-        # Only include samples whose `predictions` field (assume it is a
-        # `Classification` field) has `label` of "cat"
+        # Only include samples whose `weather` field is "sunny"
         #
 
-        stage = fo.Match(F("predictions").label == "cat"))
+        stage = fo.Match(F("weather").label == "sunny")
         view = dataset.add_stage(stage)
 
         #
-        # Only include samples whose `predictions` field (assume it is a
-        # `Detections` field) has at least 5 detections
+        # Only include samples with at least 2 objects in their `predictions`
+        # field
         #
 
-        stage = fo.Match(F("predictions").detections.length() >= 5)
+        stage = fo.Match(F("predictions").detections.length() >= 2)
         view = dataset.add_stage(stage)
 
         #
-        # Only include samples whose `predictions` field (assume it is a
-        # `Detections` field) has at least one detection with area smaller
-        # than 0.2
+        # Only include samples whose `predictions` field contains at least one
+        # object with area smaller than 0.2
         #
 
-        # bbox is in [top-left-x, top-left-y, width, height] format
-        pred_bbox = F("predictions.detections.bounding_box")
-        pred_bbox_area = pred_bbox[2] * pred_bbox[3]
+        # Bboxes are in [top-left-x, top-left-y, width, height] format
+        bbox = F("bounding_box")
+        bbox_area = bbox[2] * bbox[3]
 
-        stage = fo.Match((pred_bbox_area < 0.2).length() > 0)
+        small_boxes = F("predictions.detections").filter(bbox_area < 0.2)
+        stage = fo.Match(small_boxes.length() > 0)
         view = dataset.add_stage(stage)
 
     Args:
@@ -1780,16 +2182,16 @@ class Match(ViewStage):
         return self._filter
 
     def to_mongo(self, _, **__):
-        return [{"$match": self._get_mongo_filter()}]
+        return [{"$match": self._get_mongo_expr()}]
 
-    def _get_mongo_filter(self):
+    def _get_mongo_expr(self):
         if isinstance(self._filter, foe.ViewExpression):
             return {"$expr": self._filter.to_mongo()}
 
         return self._filter
 
     def _kwargs(self):
-        return [["filter", self._get_mongo_filter()]]
+        return [["filter", self._get_mongo_expr()]]
 
     def _validate_params(self):
         if not isinstance(self._filter, (foe.ViewExpression, dict)):
@@ -1803,87 +2205,80 @@ class Match(ViewStage):
         return [{"name": "filter", "type": "dict", "placeholder": ""}]
 
 
-class MatchTag(ViewStage):
-    """Returns a view containing the samples that have the given tag.
+class MatchTags(ViewStage):
+    """Returns a view containing the samples in the collection that have any of
+    the given tag(s).
+
+    To match samples that must contain multiple tags, chain multiple
+    :class:`MatchTags` stages together.
 
     Examples::
 
         import fiftyone as fo
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    tags=["train"],
+                    ground_truth=fo.Classification(label="cat"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    tags=["test"],
+                    ground_truth=fo.Classification(label="cat"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    ground_truth=None,
+                ),
+            ]
+        )
 
         #
         # Only include samples that have the "test" tag
         #
 
-        stage = fo.MatchTag("test")
+        stage = fo.MatchTags("test")
+        view = dataset.add_stage(stage)
+
+        #
+        # Only include samples that have either the "test" or "train" tag
+        #
+
+        stage = fo.MatchTags(["test", "train"])
         view = dataset.add_stage(stage)
 
     Args:
-        tag: a tag
+        tag: the tag or iterable of tags to match
     """
 
     def __init__(self, tag):
+        if not etau.is_str(tag):
+            tag = list(tag)
+
         self._tag = tag
 
     @property
     def tag(self):
-        """The tag to match."""
+        """The tag(s) to match."""
         return self._tag
 
     def to_mongo(self, _, **__):
-        return [{"$match": {"tags": self._tag}}]
+        if etau.is_str(self._tag):
+            return [{"$match": {"tags": self._tag}}]
+
+        return [{"$match": {"tags": {"$in": self._tag}}}]
 
     def _kwargs(self):
         return [["tag", self._tag]]
 
     @classmethod
     def _params(cls):
-        return [{"name": "tag", "type": "str"}]
-
-
-class MatchTags(ViewStage):
-    """Returns a view containing the samples that have any of the given
-    tags.
-
-    To match samples that contain a single tag, use :class:`MatchTag`.
-
-    Examples::
-
-        import fiftyone as fo
-
-        dataset = fo.load_dataset(...)
-
-        #
-        # Only include samples that have either the "test" or "validation" tag
-        #
-
-        stage = fo.MatchTags(["test", "validation"])
-        view = dataset.add_stage(stage)
-
-    Args:
-        tags: an iterable of tags
-    """
-
-    def __init__(self, tags):
-        self._tags = list(tags)
-
-    @property
-    def tags(self):
-        """The list of tags to match."""
-        return self._tags
-
-    def to_mongo(self, _, **__):
-        return [{"$match": {"tags": {"$in": self._tags}}}]
-
-    def _kwargs(self):
-        return [["tags", self._tags]]
-
-    @classmethod
-    def _params(cls):
         return [
             {
-                "name": "tags",
+                "name": "tag",
                 "type": "list<str>",
                 "placeholder": "list,of,tags",
             }
@@ -1891,7 +2286,7 @@ class MatchTags(ViewStage):
 
 
 class Mongo(ViewStage):
-    """View stage defined by a raw MongoDB aggregation pipeline.
+    """A view stage defined by a raw MongoDB aggregation pipeline.
 
     See `MongoDB aggregation pipelines <https://docs.mongodb.com/manual/core/aggregation-pipeline/>`_
     for more details.
@@ -1900,23 +2295,72 @@ class Mongo(ViewStage):
 
         import fiftyone as fo
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="cat",
+                                bounding_box=[0.1, 0.1, 0.5, 0.5],
+                                confidence=0.9,
+                            ),
+                            fo.Detection(
+                                label="dog",
+                                bounding_box=[0.2, 0.2, 0.3, 0.3],
+                                confidence=0.8,
+                            ),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="cat",
+                                bounding_box=[0.5, 0.5, 0.4, 0.4],
+                                confidence=0.95,
+                            ),
+                            fo.Detection(label="rabbit"),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    predictions=fo.Detections(
+                        detections=[
+                            fo.Detection(
+                                label="squirrel",
+                                bounding_box=[0.25, 0.25, 0.5, 0.5],
+                                confidence=0.5,
+                            ),
+                        ]
+                    ),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image4.png",
+                    predictions=None,
+                ),
+            ]
+        )
 
         #
-        # Extract a view containing the 6th through 15th samples in the dataset
+        # Extract a view containing the second and third samples in the dataset
         #
 
-        stage = fo.Mongo([{"$skip": 5}, {"$limit": 10}])
+        stage = fo.Mongo([{"$skip": 1}, {"$limit": 2}])
         view = dataset.add_stage(stage)
 
         #
-        # Sort by the number of detections in the `precictions` field of the
-        # samples (assume it is a `Detections` field)
+        # Sort by the number of objects in the `precictions` field
         #
 
         stage = fo.Mongo([
             {
-                "$addFields": {
+                "$set": {
                     "_sort_field": {
                         "$size": {"$ifNull": ["$predictions.detections", []]}
                     }
@@ -1951,30 +2395,20 @@ class Mongo(ViewStage):
 
 
 class Select(ViewStage):
-    """Selects the samples with the given IDs from the view.
+    """Selects the samples with the given IDs from a collection.
 
     Examples::
 
         import fiftyone as fo
+        import fiftyone.zoo as foz
 
-        dataset = fo.load_dataset(...)
-
-        #
-        # Select the samples with the given IDs from the dataset
-        #
-
-        stage = fo.Select([
-            "5f3c298768fd4d3baf422d34",
-            "5f3c298768fd4d3baf422d35",
-            "5f3c298768fd4d3baf422d36",
-        ])
-        view = dataset.add_stage(stage)
+        dataset = foz.load_zoo_dataset("quickstart")
 
         #
         # Create a view containing the currently selected samples in the App
         #
 
-        session = fo.launch_app(dataset=dataset)
+        session = fo.launch_app(dataset)
 
         # Select samples in the App...
 
@@ -2023,16 +2457,33 @@ class Select(ViewStage):
 
 class SelectFields(ViewStage):
     """Selects only the fields with the given names from the samples in the
-    view. All other fields are excluded.
+    collection. All other fields are excluded.
 
-    Note that default sample fields are always selected and will be added if
-    not included in ``field_names``.
+    Note that default sample fields are always selected.
 
     Examples::
 
         import fiftyone as fo
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    numeric_field=1.0,
+                    numeric_list_field=[-1, 0, 1],
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    numeric_field=-1.0,
+                    numeric_list_field=[-2, -1, 0, 1],
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    numeric_field=None,
+                ),
+            ]
+        )
 
         #
         # Include only the default fields on each sample
@@ -2042,11 +2493,11 @@ class SelectFields(ViewStage):
         view = dataset.add_stage(stage)
 
         #
-        # Include only the `ground_truth` field (and the default fields) on
+        # Include only the `numeric_field` field (and the default fields) on
         # each sample
         #
 
-        stage = fo.SelectFields("ground_truth")
+        stage = fo.SelectFields("numeric_field")
         view = dataset.add_stage(stage)
 
     Args:
@@ -2108,7 +2559,7 @@ class SelectFields(ViewStage):
         return [
             {
                 "name": "field_names",
-                "type": "list<str>|NoneType",
+                "type": "NoneType|list<str>",
                 "default": "None",
                 "placeholder": "list,of,fields",
             }
@@ -2133,7 +2584,7 @@ class SelectFields(ViewStage):
 
 
 class SelectObjects(ViewStage):
-    """Selects only the specified objects from the view.
+    """Selects only the specified objects from a collection.
 
     The returned view will omit samples, sample fields, and individual objects
     that do not appear in the provided ``objects`` argument, which should have
@@ -2156,8 +2607,9 @@ class SelectObjects(ViewStage):
     Examples::
 
         import fiftyone as fo
+        import fiftyone.zoo as foz
 
-        dataset = fo.load_dataset(...)
+        dataset = foz.load_zoo_dataset("quickstart")
 
         #
         # Only include the objects currently selected in the App
@@ -2240,13 +2692,29 @@ class SelectObjects(ViewStage):
 
 
 class Shuffle(ViewStage):
-    """Randomly shuffles the samples in the view.
+    """Randomly shuffles the samples in a collection.
 
     Examples::
 
         import fiftyone as fo
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    ground_truth=fo.Classification(label="cat"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    ground_truth=fo.Classification(label="dog"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    ground_truth=None,
+                ),
+            ]
+        )
 
         #
         # Return a view that contains a randomly shuffled version of the
@@ -2257,7 +2725,7 @@ class Shuffle(ViewStage):
         view = dataset.add_stage(stage)
 
         #
-        # Shuffle the samples with a set random seed
+        # Shuffle the samples with a fixed random seed
         #
 
         stage = fo.Shuffle(seed=51)
@@ -2301,19 +2769,39 @@ class Shuffle(ViewStage):
 
 
 class Skip(ViewStage):
-    """Omits the given number of samples from the head of the view.
+    """Omits the given number of samples from the head of a collection.
 
     Examples::
 
         import fiftyone as fo
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    ground_truth=fo.Classification(label="cat"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    ground_truth=fo.Classification(label="dog"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    ground_truth=fo.Classification(label="rabbit"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image4.png",
+                    ground_truth=None,
+                ),
+            ]
+        )
 
         #
-        # Omit the first 10 samples from the dataset
+        # Omit the first two samples from the dataset
         #
 
-        stage = fo.Skip(10)
+        stage = fo.Skip(2)
         view = dataset.add_stage(stage)
 
     Args:
@@ -2344,7 +2832,7 @@ class Skip(ViewStage):
 
 
 class SortBy(ViewStage):
-    """Sorts the samples in the view by the given field or expression.
+    """Sorts the samples in a collection by the given field or expression.
 
     When sorting by an expression, ``field_or_expr`` can either be a
     :class:`fiftyone.core.expressions.ViewExpression` or a
@@ -2354,29 +2842,29 @@ class SortBy(ViewStage):
     Examples::
 
         import fiftyone as fo
+        import fiftyone.zoo as foz
         from fiftyone import ViewField as F
 
-        dataset = fo.load_dataset(...)
+        dataset = foz.load_zoo_dataset("quickstart")
 
         #
-        # Sorts the samples in descending order by the `confidence` of their
-        # `predictions` field (assume it is a `Classification` field)
+        # Sort the samples by their `uniqueness` field in ascending order
         #
 
-        stage = fo.SortBy("predictions.confidence", reverse=True)
+        stage = fo.SortBy("uniqueness", reverse=False)
         view = dataset.add_stage(stage)
 
         #
-        # Sorts the samples in ascending order by the number of detections in
-        # their `predictions` field (assume it is a `Detections` field) whose
-        # bounding box area is at most 0.2
+        # Sorts the samples in descending order by the number of detections in
+        # their `predictions` field whose bounding box area is less than 0.2
         #
 
-        # bbox is in [top-left-x, top-left-y, width, height] format
-        pred_bbox = F("predictions.detections.bounding_box")
-        pred_bbox_area = pred_bbox[2] * pred_bbox[3]
+        # Bboxes are in [top-left-x, top-left-y, width, height] format
+        bbox = F("bounding_box")
+        bbox_area = bbox[2] * bbox[3]
 
-        stage = fo.SortBy((pred_bbox_area < 0.2).length())
+        small_boxes = F("predictions.detections").filter(bbox_area < 0.2)
+        stage = fo.SortBy(small_boxes.length(), reverse=True)
         view = dataset.add_stage(stage)
 
     Args:
@@ -2407,7 +2895,7 @@ class SortBy(ViewStage):
             return [{"$sort": {field_or_expr: order}}]
 
         return [
-            {"$addFields": {"_sort_field": field_or_expr}},
+            {"$set": {"_sort_field": field_or_expr}},
             {"$sort": {"_sort_field": order}},
             {"$unset": "_sort_field"},
         ]
@@ -2453,26 +2941,46 @@ class SortBy(ViewStage):
 
 
 class Take(ViewStage):
-    """Randomly samples the given number of samples from the view.
+    """Randomly samples the given number of samples from a collection.
 
     Examples::
 
         import fiftyone as fo
 
-        dataset = fo.load_dataset(...)
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    ground_truth=fo.Classification(label="cat"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    ground_truth=fo.Classification(label="dog"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    ground_truth=fo.Classification(label="rabbit"),
+                ),
+                fo.Sample(
+                    filepath="/path/to/image4.png",
+                    ground_truth=None,
+                ),
+            ]
+        )
 
         #
-        # Take 10 random samples from the dataset
+        # Take two random samples from the dataset
         #
 
-        stage = fo.Take(10)
+        stage = fo.Take(2)
         view = dataset.add_stage(stage)
 
         #
-        # Take 10 random samples from the dataset with a set seed
+        # Take two random samples from the dataset with a fixed seed
         #
 
-        stage = fo.Take(10, seed=51)
+        stage = fo.Take(2, seed=51)
         view = dataset.add_stage(stage)
 
     Args:
@@ -2538,26 +3046,8 @@ def _get_rng(seed):
     return _random
 
 
-def _get_labels_field(field_path, sample_collection):
-    if field_path.startswith(_FRAMES_PREFIX):
-        if sample_collection.media_type != fom.VIDEO:
-            raise ValueError(
-                "Field '%s' is a frames field but '%s' is not a video dataset"
-                % (field_path, sample_collection.name)
-            )
-
-        field_name = field_path[len(_FRAMES_PREFIX) :]
-        schema = sample_collection.get_frame_field_schema()
-        is_frame_field = True
-    else:
-        field_name = field_path
-        schema = sample_collection.get_field_schema()
-        is_frame_field = False
-
-    field = schema.get(field_name, None)
-
-    if field is None:
-        raise ValueError("Field '%s' does not exist" % field_path)
+def _get_labels_field(sample_collection, field_path):
+    field, is_frame_field = _get_field(sample_collection, field_path)
 
     if isinstance(field, fof.EmbeddedDocumentField):
         document_type = field.document_type
@@ -2578,24 +3068,8 @@ def _get_labels_field(field_path, sample_collection):
     )
 
 
-def _get_labels_list_field(field_path, sample_collection):
-    if field_path.startswith(_FRAMES_PREFIX):
-        if sample_collection.media_type != fom.VIDEO:
-            raise ValueError(
-                "Field '%s' is a frames field but '%s' is not a video dataset"
-                % (field_path, sample_collection.name)
-            )
-
-        field_name = field_path[len(_FRAMES_PREFIX) :]
-        schema = sample_collection.get_frame_field_schema()
-    else:
-        field_name = field_path
-        schema = sample_collection.get_field_schema()
-
-    field = schema.get(field_name, None)
-
-    if field is None:
-        raise ValueError("Field '%s' does not exist" % field_path)
+def _get_labels_list_field(sample_collection, field_path):
+    field, _ = _get_field(sample_collection, field_path)
 
     if isinstance(field, fof.EmbeddedDocumentField):
         document_type = field.document_type
@@ -2606,6 +3080,25 @@ def _get_labels_list_field(field_path, sample_collection):
         "Field '%s' must be a labels list type %s; found '%s'"
         % (field_path, fol._LABEL_LIST_FIELDS, field)
     )
+
+
+def _get_field(sample_collection, field_path):
+    is_frame_field = sample_collection._is_frame_field(field_path)
+
+    if is_frame_field:
+        field_name = field_path[len(_FRAMES_PREFIX) :]
+        schema = sample_collection.get_frame_field_schema()
+    else:
+        field_name = field_path
+        schema = sample_collection.get_field_schema()
+
+    if field_name not in schema:
+        ftype = "Frame field" if is_frame_field else "Field"
+        raise ValueError("%s '%s' does not exist" % (ftype, field_path))
+
+    field = schema[field_name]
+
+    return field, is_frame_field
 
 
 def _parse_objects(objects):
@@ -2624,20 +3117,10 @@ def _make_label_filter_stage(label_schema, field, label_filter):
 
     label_type = label_schema[field].document_type
 
-    if label_type in (
-        fol.Classification,
-        fol.Detection,
-        fol.Polyline,
-        fol.Keypoint,
-    ):
+    if label_type in fol._SINGLE_LABEL_FIELDS:
         return FilterField(field, label_filter)
 
-    if label_type in (
-        fol.Classifications,
-        fol.Detections,
-        fol.Polylines,
-        fol.Keypoints,
-    ):
+    if label_type in fol._LABEL_LIST_FIELDS:
         return FilterLabels(field, label_filter)
 
     msg = "Ignoring unsupported field '%s' (%s)" % (field, label_type)
@@ -2676,13 +3159,13 @@ _STAGES = [
     LimitLabels,
     MapLabels,
     Match,
-    MatchTag,
     MatchTags,
     Mongo,
     Shuffle,
     Select,
     SelectFields,
     SelectObjects,
+    SetField,
     Skip,
     SortBy,
     Take,

@@ -9,7 +9,9 @@ import logging
 
 import eta.core.serial as etas
 
+import fiftyone as fo
 import fiftyone.core.aggregations as foa
+import fiftyone.core.config as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -30,11 +32,6 @@ class StateDescription(etas.Serializable):
     """Class that describes the shared state between the FiftyOne App and
     a corresponding :class:`fiftyone.core.session.Session`.
 
-    Attributes:
-        dataset: the current :class:`fiftyone.core.session.Session`
-        selected: the list of currently selected samples
-        view: the current :class:`fiftyone.core.view.DatasetView`
-
     Args:
         close (False): whether to close the app
         connected (False): whether the session is connected to an app
@@ -42,6 +39,7 @@ class StateDescription(etas.Serializable):
         selected (None): the list of currently selected samples
         selected_objects (None): the list of currently selected objects
         view (None): the current :class:`fiftyone.core.view.DatasetView`
+        config (None): an optional :class:`fiftyone.core.config.AppConfig`
     """
 
     def __init__(
@@ -55,7 +53,9 @@ class StateDescription(etas.Serializable):
         selected_objects=None,
         view=None,
         filters={},
+        config=None,
     ):
+        self.config = config or fo.app_config.copy()
         self.close = close
         self.connect = connected
         self.dataset = dataset
@@ -95,15 +95,19 @@ class StateDescription(etas.Serializable):
         )
 
     @classmethod
-    def from_dict(cls, d, **kwargs):
+    def from_dict(cls, d, with_config=None, **kwargs):
         """Constructs a :class:`StateDescription` from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
+            with_config: an existing app config to attach and apply settings to
 
         Returns:
             :class:`StateDescription`
         """
+        config = with_config or fo.app_config.copy()
+        foc._set_settings(config, d.get("config", {}))
+
         active_handle = d.get("active_handle", None)
         close = d.get("close", False)
         connected = d.get("connected", False)
@@ -126,6 +130,7 @@ class StateDescription(etas.Serializable):
 
         return cls(
             active_handle=active_handle,
+            config=config,
             close=close,
             connected=connected,
             dataset=dataset,

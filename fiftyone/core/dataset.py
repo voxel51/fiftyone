@@ -235,7 +235,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._deleted = False
 
     def __len__(self):
-        return self.aggregate(foa.Count()).count
+        return self.count()
 
     def __getitem__(self, sample_id_or_slice):
         if isinstance(sample_id_or_slice, numbers.Integral):
@@ -289,11 +289,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             raise ValueError(
                 'media_type can only be one of %s; received "%s"'
                 % (fom.MEDIA_TYPES, media_type)
-            )
-
-        if media_type == fom.VIDEO:
-            self._sample_doc_cls.add_field(
-                "frames", fof.EmbeddedDocumentField, fol._Frames
             )
 
         self._doc.media_type = media_type
@@ -369,10 +364,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         elements = [
             "Name:           %s" % self.name,
             "Media type:     %s" % self.media_type,
-            "Num samples:    %d" % aggs[0].count,
+            "Num samples:    %d" % aggs[0],
             "Persistent:     %s" % self.persistent,
             "Info:           %s" % _info_repr.repr(self.info),
-            "Tags:           %s" % aggs[1].values,
+            "Tags:           %s" % aggs[1],
             "Sample fields:",
             self._to_fields_str(self.get_field_schema()),
         ]
@@ -830,8 +825,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
-        for d in self._aggregate(hide_frames=True):
-            frames = d.pop("_frames", [])
+        for d in self._aggregate():
+            frames = d.pop("frames", [])
             doc = self._sample_dict_to_doc(d)
             sample = fos.Sample.from_doc(doc, dataset=self)
             if self.media_type == fom.VIDEO:
@@ -2231,39 +2226,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _add_view_stage(self, stage):
         return self.view().add_stage(stage)
 
-    def _pipeline(
-        self,
-        pipeline=None,
-        attach_frames=True,
-        hide_frames=False,
-        squash_frames=False,
-    ):
+    def _pipeline(self, pipeline=None, attach_frames=True):
         if attach_frames and (self.media_type == fom.VIDEO):
-            _pipeline = self._attach_frames(hide_frames=hide_frames)
+            _pipeline = self._attach_frames()
         else:
             _pipeline = []
 
         if pipeline is not None:
             _pipeline += pipeline
 
-        if squash_frames and (self.media_type == fom.VIDEO):
-            key = "_frames" if hide_frames else "frames"
-            _pipeline.append({"$project": {key: False}})
-
         return _pipeline
 
-    def _aggregate(
-        self,
-        pipeline=None,
-        attach_frames=True,
-        hide_frames=False,
-        squash_frames=False,
-    ):
+    def _aggregate(self, pipeline=None, attach_frames=True):
         _pipeline = self._pipeline(
-            pipeline=pipeline,
-            attach_frames=attach_frames,
-            hide_frames=hide_frames,
-            squash_frames=squash_frames,
+            pipeline=pipeline, attach_frames=attach_frames
         )
 
         return self._sample_collection.aggregate(_pipeline)
@@ -2403,16 +2379,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _validate_sample(self, sample):
         fields = self.get_field_schema(include_private=True)
 
-        non_existest_fields = {
+        non_existent_fields = {
             fn for fn in sample.field_names if fn not in fields
         }
 
         if self.media_type == fom.VIDEO:
-            non_existest_fields.discard("frames")
+            non_existent_fields.discard("frames")
 
-        if non_existest_fields:
+        if non_existent_fields:
             msg = "The fields %s do not exist on the dataset '%s'" % (
-                non_existest_fields,
+                non_existent_fields,
                 self.name,
             )
             raise moe.FieldDoesNotExist(msg)
