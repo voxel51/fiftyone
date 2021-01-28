@@ -60,4 +60,11 @@ def down(db, dataset_name):
     )
     writes = []
     for count in counts:
-        pass
+        writes.append(
+            pm.UpdateOne(
+                {"_id": count["_id"]},
+                {"$set": {"frames.frame_count": count["count"]}},
+            )
+        )
+
+    sample_coll.bulk_write(writes)
