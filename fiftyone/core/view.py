@@ -156,9 +156,9 @@ class DatasetView(foc.SampleCollection):
         selected_fields, excluded_fields = self._get_selected_excluded_fields()
         filtered_fields = self._get_filtered_fields()
 
-        for d in self._aggregate(hide_frames=True):
+        for d in self._aggregate():
             try:
-                frames = d.pop("_frames", [])
+                frames = d.pop("frames", [])
                 doc = self._dataset._sample_dict_to_doc(d)
                 sample = fos.SampleView(
                     doc,
@@ -378,17 +378,11 @@ class DatasetView(foc.SampleCollection):
         d["samples"] = samples
         return d
 
-    def _pipeline(
-        self,
-        pipeline=None,
-        attach_frames=True,
-        hide_frames=False,
-        squash_frames=False,
-    ):
+    def _pipeline(self, pipeline=None, attach_frames=True):
         _pipeline = []
 
         for s in self._stages:
-            _pipeline.extend(s.to_mongo(self, hide_frames=hide_frames))
+            _pipeline.extend(s.to_mongo(self))
             if s._needs_frames(self):
                 attach_frames = True
 
@@ -396,24 +390,12 @@ class DatasetView(foc.SampleCollection):
             _pipeline.extend(pipeline)
 
         return self._dataset._pipeline(
-            pipeline=_pipeline,
-            attach_frames=attach_frames,
-            hide_frames=hide_frames,
-            squash_frames=squash_frames,
+            pipeline=_pipeline, attach_frames=attach_frames,
         )
 
-    def _aggregate(
-        self,
-        pipeline=None,
-        attach_frames=True,
-        hide_frames=False,
-        squash_frames=False,
-    ):
+    def _aggregate(self, pipeline=None, attach_frames=True):
         _pipeline = self._pipeline(
-            pipeline=pipeline,
-            attach_frames=attach_frames,
-            hide_frames=hide_frames,
-            squash_frames=squash_frames,
+            pipeline=pipeline, attach_frames=attach_frames
         )
         return self._dataset._sample_collection.aggregate(_pipeline)
 
