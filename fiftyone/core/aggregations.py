@@ -72,6 +72,8 @@ class AggregationError(Exception):
 class Bounds(Aggregation):
     """Computes the bounds of a numeric field of a collection.
 
+    ``None``-valued fields are ignored.
+
     This aggregation is typically applied to *numeric* field types (or lists of
     such types):
 
@@ -164,7 +166,9 @@ class Bounds(Aggregation):
 
 
 class Count(Aggregation):
-    """Counts the number of non-``None`` field values in a collection.
+    """Counts the number of field values in a collection.
+
+    ``None``-valued fields are ignored.
 
     If no field is provided, the samples themselves are counted.
 
@@ -349,7 +353,7 @@ class CountValues(Aggregation):
         Returns:
             a dict mapping values to counts
         """
-        return {i["k"]: i["count"] for i in d["result"] if i["k"] is not None}
+        return {i["k"]: i["count"] for i in d["result"]}
 
     def to_mongo(self, sample_collection):
         path, pipeline, list_fields = _parse_field_name(
@@ -374,6 +378,8 @@ class CountValues(Aggregation):
 
 class Distinct(Aggregation):
     """Computes the distinct values of a field in a collection.
+
+    ``None``-valued fields are ignored.
 
     This aggregation is typically applied to *countable* field types (or lists
     of such types):
@@ -463,9 +469,10 @@ class Distinct(Aggregation):
         for list_field in list_fields:
             pipeline.append({"$unwind": "$" + list_field})
 
-        pipeline.append(
-            {"$group": {"_id": None, "values": {"$addToSet": "$" + path}}}
-        )
+        pipeline += [
+            {"$match": {"$expr": {"$gt": ["$" + path, None]}}},
+            {"$group": {"_id": None, "values": {"$addToSet": "$" + path}}},
+        ]
 
         return pipeline
 
@@ -672,7 +679,9 @@ class HistogramValues(Aggregation):
 
 
 class Sum(Aggregation):
-    """Computes the sum of the (non-``None``) field values of a collection.
+    """Computes the sum of the field values of a collection.
+
+    ``None``-valued fields are ignored.
 
     This aggregation is typically applied to *numeric* field types (or lists of
     such types):
