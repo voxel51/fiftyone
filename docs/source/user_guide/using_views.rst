@@ -146,7 +146,7 @@ order:
     :linenos:
 
     view = dataset.sort_by("filepath")
-    view = dataset.sort_by("id", reverse=True)
+    view = dataset.sort_by("filepath", reverse=True)
 
 You can also sort by :ref:`expressions <querying-samples>`!
 
