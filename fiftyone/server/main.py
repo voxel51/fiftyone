@@ -536,7 +536,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = view.add_stage(stage)
 
         view = view.skip((page - 1) * page_length)
-        pipeline = view._pipeline(hide_frames=True, squash_frames=True)
+        view = view.set_field("frames", F("frames")[0])
+        pipeline = view._pipeline(hide_frames=False)
         samples = (
             await cls.sample_collection()
             .aggregate(pipeline)
@@ -687,12 +688,17 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             filepath: the absolute path to the sample's video on disk
         """
         state = fos.StateDescription.from_dict(StateHandler.state)
-        find_d = {"_sample_id": ObjectId(_id)}
-        labels = etav.VideoLabels()
-        frames = list(state.dataset._frame_collection.find(find_d))
-        sample = state.dataset[_id].to_mongo_dict()
+        view = state.view or state.dataset
+        view = view.select(_id)
+        pipeline = view._pipeline(hide_frames=False)
+        sample = (
+            await self.sample_collection().aggregate(pipeline).to_list(1)
+        )[0]
+
+        frames = sample["frames"]
         convert(frames)
 
+        labels = etav.VideoLabels()
         for frame_dict in frames:
             frame_number = frame_dict["frame_number"]
             frame_labels = etav.VideoFrameLabels(frame_number=frame_number)
@@ -812,9 +818,19 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             if filters is not None and len(filters):
                 for stage in _make_filter_stages(view._dataset, filters):
                     view = view.add_stage(stage)
+
             aggs = fos.DatasetStatistics(view).aggregations
-            stats = await view._async_aggregate(cls.sample_collection(), aggs)
-            stats = [r.serialize(reflective=True) for r in stats]
+            stats = [
+                {
+                    "result": result,
+                    "_CLS": agg.__class__.__name__,
+                    "name": agg.field_name,
+                }
+                for agg, result in zip(
+                    aggs,
+                    await view._async_aggregate(cls.sample_collection(), aggs),
+                )
+            ]
         else:
             stats = []
 
@@ -823,6 +839,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             if isinstance(base_view, fov.DatasetView)
             else []
         )
+
         message = {
             "type": "statistics",
             "stats": stats,
@@ -917,14 +934,15 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
 
 def _parse_histogram_values(result, field):
+    counts, edges, other = result
     data = sorted(
         [
             {
-                "key": round((k + result.edges[idx + 1]) / 2, 4),
+                "key": round((k + edges[idx + 1]) / 2, 4),
                 "count": v,
-                "edges": (k, result.edges[idx + 1]),
+                "edges": (k, edges[idx + 1]),
             }
-            for idx, (k, v) in enumerate(zip(result.edges, result.counts))
+            for idx, (k, v) in enumerate(zip(edges, counts))
         ],
         key=lambda i: i["key"],
     )
@@ -939,29 +957,30 @@ def _parse_histogram_values(result, field):
         for bin_ in data:
             del bin_["edges"]
 
-    if result.other > 0:
-        data.append({"key": "None", "count": result.other})
+    if other > 0:
+        data.append({"key": "None", "count": other})
 
     return data
 
 
 def _parse_count_values(result, field):
-    data = sorted(
-        [{"key": k, "count": v} for k, v in result.values.items()],
+    return sorted(
+        [{"key": k, "count": v} for k, v in result.items()],
         key=lambda i: i["count"],
         reverse=True,
     )
-    return data
 
 
 async def _gather_results(col, aggs, fields, view, ticks=None):
-    results = []
     response = await view._async_aggregate(col, aggs)
+
     sorters = {
-        foa.HistogramValuesResult: _parse_histogram_values,
-        foa.CountValuesResult: _parse_count_values,
+        foa.HistogramValues: _parse_histogram_values,
+        foa.CountValues: _parse_count_values,
     }
-    for idx, result in enumerate(response):
+
+    results = []
+    for idx, (result, agg) in enumerate(zip(response, aggs)):
         field = fields[idx]
         try:
             type_ = field.document_type.__name__
@@ -971,16 +990,16 @@ async def _gather_results(col, aggs, fields, view, ticks=None):
             is_label = False
             cls = None
 
-        name = result.name
+        name = agg.field_name
         if cls and issubclass(cls, fol.Label):
             name = name[: -len(".label")]
 
         if cls and issubclass(cls, fol._HasLabelList):
             name = name[: -(len(cls._LABEL_LIST_FIELD) + 1)]
 
-        data = sorters[type(result)](result, field)
+        data = sorters[type(agg)](result, field)
         result_ticks = 0
-        if type(result) == foa.HistogramValuesResult:
+        if type(agg) == foa.HistogramValues:
             result_ticks = ticks.pop(0)
             if result_ticks is None:
                 result_ticks = []
@@ -988,15 +1007,11 @@ async def _gather_results(col, aggs, fields, view, ticks=None):
                 for i in range(0, len(data), step):
                     result_ticks.append(data[i]["key"])
 
-                if (
-                    result.other > 0
-                    and len(data)
-                    and data[-1]["key"] != "None"
-                ):
+                if result[2] > 0 and len(data) and data[-1]["key"] != "None":
                     result_ticks.append("None")
 
         results.append(
-            {"data": data, "name": name, "ticks": result_ticks, "type": type_,}
+            {"data": data, "name": name, "ticks": result_ticks, "type": type_}
         )
 
     return results
@@ -1014,8 +1029,9 @@ def _count_values(f, view):
             path = f(field)
             if path is None:
                 continue
+
             fields.append(field)
-            aggregations.append(fo.CountValues("%s%s" % (prefix, path)))
+            aggregations.append(foa.CountValues("%s%s" % (prefix, path)))
 
     return aggregations, fields
 
@@ -1035,6 +1051,7 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
     for name, field in schema.items():
         if prefix != "" and name == "frame_number":
             continue
+
         if fos._meets_type(field, numerics):
             paths.append("%s%s" % (prefix, name))
             fields.append(field)
@@ -1043,8 +1060,7 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
     bounds = await view._async_aggregate(coll, aggs)
     aggregations = []
     ticks = []
-    for result, field, path in zip(bounds, fields, paths):
-        range_ = result.bounds
+    for range_, field, path in zip(bounds, fields, paths):
         bins = _DEFAULT_NUM_HISTOGRAM_BINS
         num_ticks = None
         if range_[0] == range_[1]:
@@ -1060,8 +1076,9 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
                 num_ticks = 0
         else:
             range_ = (range_[0], range_[1] + 0.01)
+
         ticks.append(num_ticks)
-        aggregations.append(fo.HistogramValues(path, bins=bins, range=range_))
+        aggregations.append(foa.HistogramValues(path, bins=bins, range=range_))
 
     return aggregations, fields, ticks
 

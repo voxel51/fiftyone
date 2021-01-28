@@ -21,8 +21,8 @@ class DatasetTests(unittest.TestCase):
         s["numbers"] = [0, 1]
         d.add_sample(s)
         results = d.aggregate([fo.Count("number"), fo.Count("numbers")])
-        self.assertEqual(results[0].name, "number")
-        self.assertEqual(results[1].name, "numbers")
+        self.assertEqual(results[0], 1)
+        self.assertEqual(results[1], 2)
 
     @drop_datasets
     def test_bounds(self):
@@ -32,8 +32,8 @@ class DatasetTests(unittest.TestCase):
         s["number"] = 0
         s["numbers"] = [0, 1]
         d.add_sample(s)
-        self.assertEqual(d.aggregate(fo.Bounds("number")).bounds, (0, 0))
-        self.assertEqual(d.aggregate(fo.Bounds("numbers")).bounds, (0, 1))
+        self.assertEqual(d.aggregate(fo.Bounds("number")), (0, 0))
+        self.assertEqual(d.aggregate(fo.Bounds("numbers")), (0, 1))
 
         d = fo.Dataset()
         s = fo.Sample(filepath="video.mp4")
@@ -42,19 +42,15 @@ class DatasetTests(unittest.TestCase):
         s[1]["number"] = 0
         s[1]["numbers"] = [0, 1]
         s.save()
-        self.assertEqual(
-            d.aggregate(fo.Bounds("frames.number")).bounds, (0, 0)
-        )
-        self.assertEqual(
-            d.aggregate(fo.Bounds("frames.numbers")).bounds, (0, 1)
-        )
+        self.assertEqual(d.aggregate(fo.Bounds("frames.number")), (0, 0))
+        self.assertEqual(d.aggregate(fo.Bounds("frames.numbers")), (0, 1))
 
         d = fo.Dataset()
         s = fo.Sample(filepath="image.jpeg")
         s["detection"] = fo.Detection(label="label", confidence=1)
         d.add_sample(s)
         self.assertEqual(
-            d.aggregate(fo.Bounds("detection.confidence")).bounds, (1, 1)
+            d.aggregate(fo.Bounds("detection.confidence")), (1, 1)
         )
         s["detections"] = fo.Detections(
             detections=[
@@ -64,8 +60,7 @@ class DatasetTests(unittest.TestCase):
         )
         s.save()
         self.assertEqual(
-            d.aggregate(fo.Bounds("detections.detections.confidence")).bounds,
-            (0, 1),
+            d.aggregate(fo.Bounds("detections.detections.confidence")), (0, 1),
         )
 
         d = fo.Dataset()
@@ -73,8 +68,7 @@ class DatasetTests(unittest.TestCase):
         s[1]["detection"] = fo.Detection(label="label", confidence=1)
         d.add_sample(s)
         self.assertEqual(
-            d.aggregate(fo.Bounds("frames.detection.confidence")).bounds,
-            (1, 1),
+            d.aggregate(fo.Bounds("frames.detection.confidence")), (1, 1),
         )
 
     @drop_datasets
@@ -82,31 +76,27 @@ class DatasetTests(unittest.TestCase):
         d = fo.Dataset()
         s = fo.Sample(filepath="image.jpeg")
         v = d.view()
-        self.assertEqual(d.aggregate(fo.Count()).count, 0)
-        self.assertEqual(d.aggregate(fo.Count()).count, 0)
+        self.assertEqual(d.aggregate(fo.Count()), 0)
+        self.assertEqual(d.aggregate(fo.Count()), 0)
         d.add_sample(s)
-        self.assertEqual(d.aggregate(fo.Count()).count, 1)
-        self.assertEqual(d.aggregate(fo.Count()).count, 1)
+        self.assertEqual(d.aggregate(fo.Count()), 1)
+        self.assertEqual(d.aggregate(fo.Count()), 1)
         s["single"] = fo.Classification()
         s["list"] = fo.Classifications(
             classifications=[fo.Classification()] * 2
         )
         s["empty"] = fo.Classifications()
         s.save()
-        self.assertEqual(d.aggregate(fo.Count("single")).count, 1)
-        self.assertEqual(
-            d.aggregate(fo.Count("list.classifications")).count, 2
-        )
-        self.assertEqual(
-            d.aggregate(fo.Count("empty.classifications")).count, 0
-        )
+        self.assertEqual(d.aggregate(fo.Count("single")), 1)
+        self.assertEqual(d.aggregate(fo.Count("list.classifications")), 2)
+        self.assertEqual(d.aggregate(fo.Count("empty.classifications")), 0)
 
         d = fo.Dataset()
         s = fo.Sample(filepath="video.mp4")
         s[1]["value"] = "value"
         s[2]["value"] = "value"
         d.add_sample(s)
-        self.assertEqual(d.aggregate(fo.Count("frames")).count, 2)
+        self.assertEqual(d.aggregate(fo.Count("frames")), 2)
 
     @drop_datasets
     def test_count_values(self):
@@ -116,7 +106,7 @@ class DatasetTests(unittest.TestCase):
         s.tags += ["one", "two"]
         d.add_sample(s)
         self.assertEqual(
-            d.aggregate(fo.CountValues("tags")).values, {"one": 1, "two": 1}
+            d.aggregate(fo.CountValues("tags")), {"one": 1, "two": 1}
         )
 
         d = fo.Dataset()
@@ -138,19 +128,18 @@ class DatasetTests(unittest.TestCase):
         s["classification"] = fo.Classification(label="one")
         d.add_sample(s)
         self.assertEqual(
-            d.aggregate(fo.CountValues("classification.label")).values,
-            {"one": 1},
+            d.aggregate(fo.CountValues("classification.label")), {"one": 1}
         )
         self.assertEqual(
             d.aggregate(
                 fo.CountValues("classifications.classifications.label")
-            ).values,
+            ),
             {"one": 1, "two": 2},
         )
         self.assertEqual(
             d.aggregate(
                 fo.CountValues("frames.classifications.classifications.label")
-            ).values,
+            ),
             {"one": 1, "two": 2},
         )
 
@@ -162,10 +151,8 @@ class DatasetTests(unittest.TestCase):
         s["string"] = "string"
         s["strings"] = ["one", "two"]
         d.add_sample(s)
-        self.assertEqual(d.aggregate(fo.Distinct("string")).values, ["string"])
-        self.assertEqual(
-            d.aggregate(fo.Distinct("strings")).values, ["one", "two"]
-        )
+        self.assertEqual(d.aggregate(fo.Distinct("string")), ["string"])
+        self.assertEqual(d.aggregate(fo.Distinct("strings")), ["one", "two"])
 
         d = fo.Dataset()
         s = fo.Sample(filepath="video.mp4")
@@ -175,7 +162,7 @@ class DatasetTests(unittest.TestCase):
         s["classification"] = fo.Classification(label="label", confidence=1)
         s.save()
         self.assertEqual(
-            d.aggregate(fo.Distinct("classification.label")).values, ["label"]
+            d.aggregate(fo.Distinct("classification.label")), ["label"]
         )
         s["classifications"] = fo.Classifications(
             classifications=[
@@ -185,9 +172,7 @@ class DatasetTests(unittest.TestCase):
         )
         s.save()
         self.assertEqual(
-            d.aggregate(
-                fo.Distinct("classifications.classifications.label")
-            ).values,
+            d.aggregate(fo.Distinct("classifications.classifications.label")),
             ["one", "two"],
         )
 
@@ -196,21 +181,20 @@ class DatasetTests(unittest.TestCase):
         s[1]["classification"] = fo.Classification(label="label", confidence=1)
         d.add_sample(s)
         self.assertEqual(
-            d.aggregate(fo.Distinct("frames.classification.label")).values,
-            ["label"],
+            d.aggregate(fo.Distinct("frames.classification.label")), ["label"],
         )
 
     @drop_datasets
     def test_sum(self):
         d = fo.Dataset()
         d.add_sample_field("numeric_field", fo.IntField)
-        self.assertEqual(d.aggregate(fo.Sum("numeric_field")).sum, 0)
+        self.assertEqual(d.aggregate(fo.Sum("numeric_field")), 0)
         s = fo.Sample(filepath="image.jpeg", numeric_field=1)
         d.add_sample(s)
-        self.assertEqual(d.aggregate(fo.Sum("numeric_field")).sum, 1)
+        self.assertEqual(d.aggregate(fo.Sum("numeric_field")), 1)
         s = fo.Sample(filepath="image2.jpeg", numeric_field=2)
         d.add_sample(s)
-        self.assertEqual(d.aggregate(fo.Sum("numeric_field")).sum, 3)
+        self.assertEqual(d.aggregate(fo.Sum("numeric_field")), 3)
 
 
 if __name__ == "__main__":

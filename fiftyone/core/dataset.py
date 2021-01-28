@@ -235,7 +235,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._deleted = False
 
     def __len__(self):
-        return self.aggregate(foa.Count()).count
+        return self.count()
 
     def __getitem__(self, sample_id_or_slice):
         if isinstance(sample_id_or_slice, numbers.Integral):
@@ -369,10 +369,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         elements = [
             "Name:           %s" % self.name,
             "Media type:     %s" % self.media_type,
-            "Num samples:    %d" % aggs[0].count,
+            "Num samples:    %d" % aggs[0],
             "Persistent:     %s" % self.persistent,
             "Info:           %s" % _info_repr.repr(self.info),
-            "Tags:           %s" % aggs[1].values,
+            "Tags:           %s" % aggs[1],
             "Sample fields:",
             self._to_fields_str(self.get_field_schema()),
         ]

@@ -55,7 +55,7 @@ class DatasetView(foc.SampleCollection):
         self._stages = []
 
     def __len__(self):
-        return self.aggregate(foa.Count()).count
+        return self.count()
 
     def __getitem__(self, sample_id):
         if isinstance(sample_id, numbers.Integral):
@@ -119,8 +119,8 @@ class DatasetView(foc.SampleCollection):
         elements = [
             "Dataset:        %s" % self.dataset_name,
             "Media type:     %s" % self.media_type,
-            "Num samples:    %d" % aggs[0].count,
-            "Tags:           %s" % aggs[1].values,
+            "Num samples:    %d" % aggs[0],
+            "Tags:           %s" % aggs[1],
             "Sample fields:",
             self._dataset._to_fields_str(self.get_field_schema()),
         ]

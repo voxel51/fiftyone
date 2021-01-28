@@ -300,9 +300,9 @@ export const convertSampleToETA = (sample, fieldSchema) => {
     return convertImageSampleToETA(sample, fieldSchema);
   } else if (sample._media_type === "video") {
     let first_frame = {};
-    if (sample.frames.first_frame) {
+    if (sample.frames?.frame_number === 1) {
       first_frame = convertImageSampleToETA(
-        sample.frames.first_frame,
+        sample.frames,
         fieldSchema,
         1,
         "frames."
