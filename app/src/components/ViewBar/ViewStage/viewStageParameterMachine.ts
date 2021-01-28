@@ -30,7 +30,7 @@ export const toTypeAnnotation = (type) => {
  */
 export const PARSER = {
   NoneType: {
-    castFrom: () => "None",
+    castFrom: (value) => (value === null ? "None" : value),
     castTo: () => null,
     parse: () => "None",
     validate: (value) => [null, "None", ""].some((v) => value === v),

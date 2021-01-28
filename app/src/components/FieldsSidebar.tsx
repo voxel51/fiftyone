@@ -18,7 +18,6 @@ import DropdownCell from "./DropdownCell";
 import SelectionTag from "./Tags/SelectionTag";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { refreshColorMap as refreshColorMapSelector } from "../recoil/selectors";
 
 export type Entry = {
   name: string;
@@ -97,8 +96,8 @@ const Container = styled.div`
 `;
 
 const RefreshButton = () => {
-  const refreshColorMap = useSetRecoilState(refreshColorMapSelector);
   const theme = useContext(ThemeContext);
+  const [colorSeed, setColorSeed] = useRecoilState(atoms.colorSeed);
   const [clicked, setClicked] = useState(false);
   const props = useSpring({
     backgroundColor: clicked ? theme.backgroundLight : theme.background,
@@ -112,7 +111,7 @@ const RefreshButton = () => {
     <Button
       style={props}
       onClick={() => {
-        refreshColorMap(null);
+        setColorSeed(colorSeed + 1);
         setClicked(true);
       }}
     >
@@ -239,7 +238,7 @@ const FieldsSidebar = React.forwardRef(
   ) => {
     const [colorByLabel, setColorByLabel] = useRecoilState(colorByLabelAtom);
     const theme = useContext(ThemeContext);
-    const colorMap = useRecoilValue(atoms.colorMap);
+    const colorMap = useRecoilValue(selectors.colorMap);
     const cellRest = { modal };
     const mediaType = useRecoilValue(selectors.mediaType);
     const isVideo = mediaType === "video";

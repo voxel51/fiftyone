@@ -18,6 +18,9 @@ const SelectionMenu = () => {
 
   const clearSelection = () => {
     setSelectedSamples(new Set());
+    const newState = JSON.parse(JSON.stringify(stateDescription));
+    newState.selected = [];
+    setStateDescription(newState);
     socket.send(packageMessage("clear_selection", {}));
   };
 
@@ -29,6 +32,7 @@ const SelectionMenu = () => {
       kwargs: [["sample_ids", Array.from(selectedSamples)]],
     });
     newState.view = newView;
+    newState.selected = [];
     socket.send(packageMessage("update", { state: newState }));
     setStateDescription(newState);
     callback();
@@ -42,6 +46,7 @@ const SelectionMenu = () => {
       </span>
     );
   }
+
   return (
     <DropdownTag
       name={`${size} sample${size == 1 ? "" : "s"} selected`}
@@ -54,7 +59,7 @@ const SelectionMenu = () => {
         },
         {
           name: "Only show selected",
-          action: () => addStage("Select"),
+          action: () => addStage("Select", clearSelection),
         },
         {
           name: "Hide selected",

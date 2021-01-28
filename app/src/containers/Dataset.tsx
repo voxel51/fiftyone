@@ -53,13 +53,11 @@ function Dataset(props) {
   const [modal, setModal] = useRecoilState(atoms.modal);
   const http = useRecoilValue(selectors.http);
   const hasDataset = useRecoilValue(selectors.hasDataset);
-  const colorMap = useRecoilValue(atoms.colorMap);
-  const refreshColorMap = useSetRecoilState(selectors.refreshColorMap);
+  const colorMap = useRecoilValue(selectors.colorMap);
   const datasetName = useRecoilValue(selectors.datasetName);
   const currentSamples = useRecoilValue(atoms.currentSamples);
   const labelTuples = useRecoilValue(selectors.labelTuples("sample"));
   const frameLabelTuples = useRecoilValue(selectors.labelTuples("frame"));
-  const tagNames = useRecoilValue(selectors.tagNames);
   const setExtendedDatasetStats = useSetRecoilState(
     atoms.extendedDatasetStatsRaw
   );
@@ -77,11 +75,6 @@ function Dataset(props) {
     filters && setExtendedDatasetStats({ stats, view, filters });
     !filters && setDatasetStats({ stats, view });
   });
-
-  // update color map
-  useEffect(() => {
-    refreshColorMap(colorMap);
-  }, [labelTuples, frameLabelTuples, tagNames]);
 
   // select any new labels by default
 

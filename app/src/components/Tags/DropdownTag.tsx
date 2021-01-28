@@ -6,6 +6,7 @@ import { ArrowDropDown } from "@material-ui/icons";
 
 import Menu from "../Menu";
 import SelectionTag from "./SelectionTag";
+import { useOutsideClick } from "../../utils/hooks";
 
 const Container = styled.div`
   cursor: ${({ disabled }) => (disabled ? "not-allowed" : undefined)};
@@ -47,6 +48,7 @@ const DropdownTag = React.memo(
     // adapted from https://material-ui.com/components/menus/#menulist-composition
     const [isOpen, setOpen] = useState(false);
     const anchorRef = useRef(null);
+    const containerRef = useRef(null);
 
     const handleToggle = () => {
       setOpen(!isOpen);
@@ -65,6 +67,10 @@ const DropdownTag = React.memo(
       onSelect(item);
       setOpen(false);
     };
+
+    useOutsideClick(containerRef, () => {
+      setOpen(false);
+    });
 
     return (
       <Container menuZIndex={menuZIndex} disabled={disabled} title={title}>
@@ -85,6 +91,7 @@ const DropdownTag = React.memo(
           transition
           disablePortal
           className="popper"
+          ref={containerRef}
         >
           <Menu
             autoFocusItem={isOpen}

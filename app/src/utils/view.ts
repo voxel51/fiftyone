@@ -1,16 +1,11 @@
-const viewCompareMapper = (stages) =>
-  stages.map(({ kwargs, _cls }) => ({ kwargs, _cls }));
-
-const filterPrivateKwargs = (view) => {
-  return view.map((stage) => ({
-    ...stage,
-    kwargs: stage.kwargs.filter((ka) => !ka[0].startsWith("_")),
-  }));
-};
+export const filterView = (stages) =>
+  JSON.stringify(
+    stages.map(({ kwargs, _cls }) => ({
+      kwargs: kwargs.filter((ka) => !ka[0].startsWith("_")),
+      _cls,
+    }))
+  );
 
 export const viewsAreEqual = (viewOne, viewTwo) => {
-  return (
-    JSON.stringify(viewCompareMapper(filterPrivateKwargs(viewOne))) ===
-    JSON.stringify(viewCompareMapper(filterPrivateKwargs(viewTwo)))
-  );
+  return filterView(viewOne) === filterView(viewTwo);
 };
