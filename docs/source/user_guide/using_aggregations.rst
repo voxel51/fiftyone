@@ -249,8 +249,8 @@ compute the sum of the (non-``None``) values of a field in a collection:
 
     # Compute average confidence of detections in the `predictions` field
     print(
-        dataset.sum("predictions.detections.confidence").sum /
-        dataset.count("predictions.detections").count
+        dataset.sum("predictions.detections.confidence") /
+        dataset.count("predictions.detections")
     )
     # 0.34994137249820706
 
@@ -427,8 +427,8 @@ to succinctly express this:
     )
 
     print(
-        high_conf_view.sum("predictions.detections.confidence").sum /
-        high_conf_view.count("predictions.detections.confidence").count
+        high_conf_view.sum("predictions.detections.confidence") /
+        high_conf_view.count("predictions.detections.confidence")
     )
     # 0.8170506501060617
 

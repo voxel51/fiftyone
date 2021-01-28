@@ -208,9 +208,6 @@ The samples in a |Dataset| or |DatasetView| can be randomly shuffled using
     # Randomly shuffle the order of the samples in the dataset
     view1 = dataset.shuffle()
 
-    print(view1.first().id)
-    # 5f31bbfcd0d78c13abe159af
-
 An optional ``seed`` can be provided to make the shuffle deterministic:
 
 .. code-block:: python
@@ -237,8 +234,6 @@ using :meth:`take() <fiftyone.core.collections.SampleCollection.take>`:
 
     # Take 5 random samples from the dataset
     view1 = dataset.take(5)
-    print(view1.first().id)
-    # 5f31bbfcd0d78c13abe159af
 
 An optional ``seed`` can be provided to make the sampling deterministic:
 
