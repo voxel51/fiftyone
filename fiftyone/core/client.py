@@ -87,11 +87,15 @@ class HasClient(object):
                 message = json_util.loads(message)
                 event = message.pop("type")
                 if event == "update":
+                    config = None
                     if self._data:
                         message["state"][
                             "config"
                         ] = self._data.config.serialize()
-                    self._data = self._HC_ATTR_TYPE.from_dict(message["state"])
+                        config = self._data.config
+                    self._data = self._HC_ATTR_TYPE.from_dict(
+                        message["state"], with_config=config
+                    )
                 if event == "notification":
                     self.on_notification(message)
                 if event == "capture":

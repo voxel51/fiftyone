@@ -95,16 +95,17 @@ class StateDescription(etas.Serializable):
         )
 
     @classmethod
-    def from_dict(cls, d, **kwargs):
+    def from_dict(cls, d, with_config=None, **kwargs):
         """Constructs a :class:`StateDescription` from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
+            with_config: an existing app config to attach and apply settings to
 
         Returns:
             :class:`StateDescription`
         """
-        config = fo.app_config.copy()
+        config = with_config or fo.app_config.copy()
         foc._set_settings(config, d.get("config", {}))
 
         active_handle = d.get("active_handle", None)
