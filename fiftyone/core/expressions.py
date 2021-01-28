@@ -17,14 +17,33 @@ import fiftyone.core.utils as fou
 
 
 class ViewExpression(object):
-    """An expression involving one or more fields of an object in a
+    """An expression defining a possibly-complex manipulation of a document.
+
+    View expressions enable you to specify manipulations of documents that can
+    then be executed on your data in the context of a
     :class:`fiftyone.core.stages.ViewStage`.
 
-    See `MongoDB expressions <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-    for more details.
+    Typically, :class:`ViewExpression` instances are built by creating one or
+    more :class:`ViewField` instances and then defining the desired operation
+    by recursively invoking methods on these objects.
 
-    Typically, :class:`ViewExpression` instances are built by applying
-    builtin operators to :class:`ViewField` instances.
+    See
+    `MongoDB expressions <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+    for more details about the underlying expression language that this class
+    encapsulates.
+
+    Examples::
+
+        import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        # Bboxes are in [top-left-x, top-left-y, width, height] format
+        bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+
+        # Only contains predictions whose bounding box area is > 0.2
+        view = dataset.filter_labels("predictions", bbox_area > 0.2)
 
     .. automethod:: __eq__
     .. automethod:: __ge__
@@ -1439,7 +1458,7 @@ class ViewExpression(object):
             expr: a :class:`ViewExpression`
 
         Returns:
-            a :class:`ViewExpression
+            a :class:`ViewExpression`
         """
         if isinstance(self, (ViewField, ObjectId)):
             return expr
@@ -1938,7 +1957,7 @@ class ViewExpression(object):
         """Applies the given reduction to this expression, which be an array,
         and returns the single value computed by
 
-        The provided ``expr`` must include the :constant:`VALUE` expression to
+        The provided ``expr`` must include the :const:`VALUE` expression to
         properly define the reduction.
 
         Examples::
@@ -1988,7 +2007,7 @@ class ViewExpression(object):
 
         Args:
             expr: a :class:`ViewExpression` defining the reduction expression
-                to apply. Must contain the :var:`VALUE` expression
+                to apply. Must contain the :const:`VALUE` expression
             init_val (0): an initial value for the reduction
 
         Returns:
