@@ -1863,7 +1863,6 @@ def _make_set_field_pipeline(sample_collection, field, expr):
 
     # Don't unroll terminal lists unless explicitly requested
     list_fields = [lf for lf in list_fields if lf != field]
-
     # Case 1: no list fields
     if not list_fields:
         if "." in path:
@@ -1908,7 +1907,7 @@ def _parse_field_name(sample_collection, field_name):
         field_name
     )
 
-    if is_frame_field:
+    if is_frame_field and path != "frames":
         path = _FRAMES_PREFIX + path
         list_fields = ["frames"] + [_FRAMES_PREFIX + lf for lf in list_fields]
 

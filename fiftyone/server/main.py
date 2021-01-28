@@ -536,7 +536,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = view.add_stage(stage)
 
         view = view.skip((page - 1) * page_length)
-        pipeline = view._pipeline(hide_frames=True, squash_frames=True)
+        view = view.set_field("frames", F("frames")[0])
+        pipeline = view._pipeline(hide_frames=False)
         samples = (
             await cls.sample_collection()
             .aggregate(pipeline)
@@ -684,12 +685,17 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             filepath: the absolute path to the sample's video on disk
         """
         state = fos.StateDescription.from_dict(StateHandler.state)
-        find_d = {"_sample_id": ObjectId(_id)}
-        labels = etav.VideoLabels()
-        frames = list(state.dataset._frame_collection.find(find_d))
-        sample = state.dataset[_id].to_mongo_dict()
+        view = state.view or state.dataset
+        view = view.select(_id)
+        pipeline = view._pipeline(hide_frames=False)
+        sample = (
+            await self.sample_collection().aggregate(pipeline).to_list(1)
+        )[0]
+
+        frames = sample["frames"]
         convert(frames)
 
+        labels = etav.VideoLabels()
         for frame_dict in frames:
             frame_number = frame_dict["frame_number"]
             frame_labels = etav.VideoFrameLabels(frame_number=frame_number)

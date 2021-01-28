@@ -303,6 +303,9 @@ class SampleCollection(object):
                 if (
                     field_name not in schema
                     and field_name not in default_fields
+                    and (
+                        field_name == "frames" and self.media_type != fom.VIDEO
+                    )
                 ):
                     raise ValueError("Field '%s' does not exist" % field_name)
 
@@ -3342,7 +3345,6 @@ def _get_field_with_type(label_fields, label_cls):
 
 def _parse_field_name(sample_collection, field_name):
     is_frame_field = sample_collection._is_frame_field(field_name)
-
     if is_frame_field:
         if field_name == "frames":
             return field_name, is_frame_field, []
