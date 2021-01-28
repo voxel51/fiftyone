@@ -253,7 +253,7 @@ The FiftyOne App can be configured in the ways described below:
 +-------------------+---------------------------------+-----------------------------+---------------------------------------------------------------------------------------+
 | Config field      | Environment variable            | Default value               | Description                                                                           |
 +===================+=================================+=============================+=======================================================================================+
-| `color_pool`      | `FIFTYONE_APP_COLOR_POOL`       | :ref:`Color pool <colors>`  | A list of browser supported color strings from which the App should draw from when    |
+| `color_pool`      | `FIFTYONE_APP_COLOR_POOL`       | See below                   | A list of browser supported color strings from which the App should draw from when    |
 |                   |                                 |                             | drawing labels (e.g., object bounding boxes).                                         |
 +-------------------+---------------------------------+-----------------------------+---------------------------------------------------------------------------------------+
 | `notebook_height` | `FIFTYONE_APP_NOTEBOOK_HEIGHT`  | `800`                       | The default height of App instances displayed in notebook cells.                      |

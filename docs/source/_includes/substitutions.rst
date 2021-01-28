@@ -1,8 +1,9 @@
 .. |Dataset| replace:: :class:`Dataset <fiftyone.core.dataset.Dataset>`
 .. |WhatIsAFiftyOneDataset| replace:: :ref:`FiftyOne Dataset <what-is-a-fiftyone-dataset>`
 
-.. |DatasetView| replace:: :class:`DatasetView <fiftyone.core.view.DatasetView>`
+.. |SampleCollection| replace:: :class:`SampleCollection <fiftyone.core.collections.SampleCollection>`
 
+.. |DatasetView| replace:: :class:`DatasetView <fiftyone.core.view.DatasetView>`
 .. |ViewStage| replace:: :class:`ViewStage <fiftyone.core.stages.ViewStage>`
 
 .. |Sample| replace:: :class:`Sample <fiftyone.core.sample.Sample>`
@@ -65,6 +66,7 @@
 .. |VideoMetadata| replace:: :class:`VideoMetadata <fiftyone.core.metadata.VideoMetadata>`
 
 .. |AnnotationConfig| replace:: :class:`AnnotationConfig <fiftyone.utils.annotations.AnnotationConfig>`
+.. |AppConfig| replace:: :class:`AppConfig <fiftyone.core.config.AppConfig>`
 
 .. |Session| replace:: :class:`Session <fiftyone.core.session.Session>`
 
