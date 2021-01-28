@@ -345,19 +345,25 @@ class SampleCollection(object):
             ValueError: if the field does not exist or does not have the
                 expected type
         """
-        schema = self.get_field_schema()
-        frames = self.media_type == fom.VIDEO and field_name.startswith(
-            _FRAMES_PREFIX
-        )
-        if frames:
+        if self._is_frame_field(field_name):
             field_name = field_name[len(_FRAMES_PREFIX) :]
 
-        if frames:
-            frame_schema = self.get_frame_field_schema()
-            if field_name not in frame_schema:
-                raise ValueError("Field '%s' does not exist" % field_name)
-            field = frame_schema[field_name]
+            schema = self.get_frame_field_schema()
+            if field_name not in schema:
+                raise ValueError(
+                    "Frame field '%s' does not exist on collection '%s'"
+                    % (field_name, self.name)
+                )
+
+            field = schema[field_name]
         else:
+            schema = self.get_field_schema()
+            if field_name not in schema:
+                raise ValueError(
+                    "Field '%s' does not exist on collection '%s'"
+                    % (field_name, self.name)
+                )
+
             field = schema[field_name]
 
         if embedded_doc_type is not None:
@@ -3068,6 +3074,11 @@ class SampleCollection(object):
     def _parse_field_name(self, field_name):
         return _parse_field_name(self, field_name)
 
+    def _is_frame_field(self, field_name):
+        return (self.media_type == fom.VIDEO) and (
+            field_name.startswith(_FRAMES_PREFIX) or field_name == "frames"
+        )
+
 
 def get_label_fields(
     sample_collection,
@@ -3330,13 +3341,11 @@ def _get_field_with_type(label_fields, label_cls):
 
 
 def _parse_field_name(sample_collection, field_name):
-    is_frames_field = (sample_collection.media_type == fom.VIDEO) and (
-        field_name.startswith(_FRAMES_PREFIX) or field_name == "frames"
-    )
+    is_frame_field = sample_collection._is_frame_field(field_name)
 
-    if is_frames_field:
+    if is_frame_field:
         if field_name == "frames":
-            return field_name, is_frames_field, []
+            return field_name, is_frame_field, []
 
         schema = sample_collection.get_frame_field_schema()
         field_name = field_name[len(_FRAMES_PREFIX) :]
@@ -3359,9 +3368,10 @@ def _parse_field_name(sample_collection, field_name):
     try:
         root_field = schema[root_field_name]
     except KeyError:
+        ftype = "Frame field" if is_frame_field else "Field"
         raise ValueError(
-            "Field '%s' does not exist on collection '%s'"
-            % (root_field_name, sample_collection.name)
+            "%s '%s' does not exist on collection '%s'"
+            % (ftype, root_field_name, sample_collection.name)
         )
 
     # Detect certain list fields automatically
@@ -3383,7 +3393,7 @@ def _parse_field_name(sample_collection, field_name):
     # embedded field `x.y`
     list_fields = sorted(list_fields)
 
-    return field_name, is_frames_field, list_fields
+    return field_name, is_frame_field, list_fields
 
 
 def _get_random_characters(n):

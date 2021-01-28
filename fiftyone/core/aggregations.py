@@ -12,9 +12,6 @@ import eta.core.utils as etau
 import fiftyone.core.media as fom
 
 
-_FRAMES_PREFIX = "frames."
-
-
 class Aggregation(object):
     """Abstract base class for all aggregations.
 

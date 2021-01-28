@@ -666,22 +666,9 @@ class FilterField(ViewStage):
         """Whether to only include samples that match the filter."""
         return self._only_matches
 
-    def _get_new_field(self, sample_collection):
-        field = self._field
-        if self._needs_frames(sample_collection):
-            field = field.split(".", 1)[1]  # remove `frames`
-
-        if self._hide_result:
-            return "__%s" % field
-
-        return field
-
     def to_mongo(self, sample_collection, hide_frames=False):
         new_field = self._get_new_field(sample_collection)
-        if (
-            sample_collection.media_type == fom.VIDEO
-            and self._field.startswith(_FRAMES_PREFIX)
-        ):
+        if sample_collection._is_frame_field(self._field):
             return _get_filter_frames_field_pipeline(
                 self._field,
                 new_field,
@@ -707,11 +694,18 @@ class FilterField(ViewStage):
 
         return _get_field_mongo_filter(self._filter, prefix=self._field)
 
+    def _get_new_field(self, sample_collection):
+        field = self._field
+        if sample_collection._is_frame_field(field):
+            field = field.split(".", 1)[1]  # remove `frames`
+
+        if self._hide_result:
+            return "__" + field
+
+        return field
+
     def _needs_frames(self, sample_collection):
-        return (
-            sample_collection.media_type == fom.VIDEO
-            and self._field.startswith(_FRAMES_PREFIX)
-        )
+        return sample_collection._is_frame_field(self._field)
 
     def _kwargs(self):
         return [
@@ -741,11 +735,11 @@ class FilterField(ViewStage):
             )
 
     def validate(self, sample_collection):
-        if self.field == "filepath":
+        if self._field == "filepath":
             raise ValueError("Cannot filter required field `filepath`")
 
         sample_collection.validate_fields_exist(self._field)
-        self._is_frame_field = self._needs_frames(sample_collection)
+        self._is_frame_field = sample_collection._is_frame_field(self._field)
 
 
 def _get_filter_field_pipeline(
@@ -1178,10 +1172,7 @@ class FilterLabels(FilterField):
         self._get_labels_field(sample_collection)
         new_field = self._get_new_field(sample_collection)
 
-        if (
-            sample_collection.media_type == fom.VIDEO
-            and self._labels_field.startswith(_FRAMES_PREFIX)
-        ):
+        if sample_collection._is_frame_field(self._labels_field):
             if self._is_labels_list_field:
                 return _get_filter_frames_list_field_pipeline(
                     self._labels_field,
@@ -1219,10 +1210,7 @@ class FilterLabels(FilterField):
         )
 
     def _needs_frames(self, sample_collection):
-        return (
-            sample_collection.media_type == fom.VIDEO
-            and self._labels_field.startswith(_FRAMES_PREFIX)
-        )
+        return sample_collection._is_frame_field(self._labels_field)
 
     def _get_mongo_filter(self):
         if self._is_labels_list_field:
@@ -1247,7 +1235,7 @@ class FilterLabels(FilterField):
 
     def _get_new_field(self, sample_collection):
         field = self._labels_field
-        if self._needs_frames(sample_collection):
+        if sample_collection._is_frame_field(field):
             field = field.split(".", 1)[1]  # remove `frames`
 
         if self._hide_result:
@@ -1394,7 +1382,7 @@ class _FilterListField(FilterField):
             field = field.split(".", 1)[1]  # remove `frames`
 
         if self._hide_result:
-            return "__%s" % field
+            return "__" + field
 
         return field
 
@@ -1407,10 +1395,7 @@ class _FilterListField(FilterField):
 
     def to_mongo(self, sample_collection, hide_frames=False):
         new_field = self._get_new_field(sample_collection)
-        if (
-            sample_collection.media_type == fom.VIDEO
-            and self._filter_field.startswith(_FRAMES_PREFIX)
-        ):
+        if sample_collection._is_frame_field(self._filter_field):
             return _get_filter_frames_list_field_pipeline(
                 self._filter_field,
                 new_field,
@@ -1852,11 +1837,7 @@ class MapLabels(ViewStage):
             sample_collection, self._field
         )
 
-        if is_frame_field:
-            labels_field = _FRAMES_PREFIX + labels_field
-
         label_path = labels_field + ".label"
-
         expr = foe.ViewField("label").map_values(self._map)
         return _make_set_field_pipeline(sample_collection, label_path, expr)
 
@@ -3085,25 +3066,7 @@ def _get_rng(seed):
 
 
 def _get_labels_field(sample_collection, field_path):
-    if field_path.startswith(_FRAMES_PREFIX):
-        if sample_collection.media_type != fom.VIDEO:
-            raise ValueError(
-                "Field '%s' is a frames field but '%s' is not a video dataset"
-                % (field_path, sample_collection.name)
-            )
-
-        field_name = field_path[len(_FRAMES_PREFIX) :]
-        schema = sample_collection.get_frame_field_schema()
-        is_frame_field = True
-    else:
-        field_name = field_path
-        schema = sample_collection.get_field_schema()
-        is_frame_field = False
-
-    field = schema.get(field_name, None)
-
-    if field is None:
-        raise ValueError("Field '%s' does not exist" % field_path)
+    field, is_frame_field = _get_field(sample_collection, field_path)
 
     if isinstance(field, fof.EmbeddedDocumentField):
         document_type = field.document_type
@@ -3125,23 +3088,7 @@ def _get_labels_field(sample_collection, field_path):
 
 
 def _get_labels_list_field(sample_collection, field_path):
-    if field_path.startswith(_FRAMES_PREFIX):
-        if sample_collection.media_type != fom.VIDEO:
-            raise ValueError(
-                "Field '%s' is a frames field but '%s' is not a video dataset"
-                % (field_path, sample_collection.name)
-            )
-
-        field_name = field_path[len(_FRAMES_PREFIX) :]
-        schema = sample_collection.get_frame_field_schema()
-    else:
-        field_name = field_path
-        schema = sample_collection.get_field_schema()
-
-    field = schema.get(field_name, None)
-
-    if field is None:
-        raise ValueError("Field '%s' does not exist" % field_path)
+    field, _ = _get_field(sample_collection, field_path)
 
     if isinstance(field, fof.EmbeddedDocumentField):
         document_type = field.document_type
@@ -3152,6 +3099,25 @@ def _get_labels_list_field(sample_collection, field_path):
         "Field '%s' must be a labels list type %s; found '%s'"
         % (field_path, fol._LABEL_LIST_FIELDS, field)
     )
+
+
+def _get_field(sample_collection, field_path):
+    is_frame_field = sample_collection._is_frame_field(field_path)
+
+    if is_frame_field:
+        field_name = field_path[len(_FRAMES_PREFIX) :]
+        schema = sample_collection.get_frame_field_schema()
+    else:
+        field_name = field_path
+        schema = sample_collection.get_field_schema()
+
+    if field_name not in schema:
+        ftype = "Frame field" if is_frame_field else "Field"
+        raise ValueError("%s '%s' does not exist" % (ftype, field_path))
+
+    field = schema[field_name]
+
+    return field, is_frame_field
 
 
 def _parse_objects(objects):
