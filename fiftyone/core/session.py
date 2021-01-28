@@ -401,6 +401,10 @@ class Session(foc.HasClient):
         """
         return self.state.config
 
+    @config.setter
+    def config(self, config):
+        self.state.config = config
+
     @property
     def dataset(self):
         """The :class:`fiftyone.core.dataset.Dataset` connected to the session.
