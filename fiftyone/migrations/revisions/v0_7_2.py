@@ -39,8 +39,8 @@ def down(db, dataset_name):
         "embedded_doc_type": "fiftyone.core.labels._Frames",
     }
     dataset_dict["sample_fields"].append(frames)
-
-    frame_coll = db[dataset_dict["sample_collection_name"]]
+    db.datasets.replace_one(match_d, dataset_dict)
+    frame_coll = db["frames." + dataset_dict["sample_collection_name"]]
     sample_coll = db[dataset_dict["sample_collection_name"]]
 
     first_frames = frame_coll.find({"frame_number": 1})
@@ -52,11 +52,10 @@ def down(db, dataset_name):
                 {"_id": f["_sample_id"]}, {"$set": {"frames": frame_d}}
             )
         )
-
     sample_coll.bulk_write(writes)
 
     counts = frame_coll.aggregate(
-        {"$group": {"_id": "$_sample_id", "count": {"$sum": 1}}}
+        [{"$group": {"_id": "$_sample_id", "count": {"$sum": 1}}}]
     )
     writes = []
     for count in counts:
