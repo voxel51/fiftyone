@@ -297,10 +297,6 @@ for a full list of supported operations.
         | F("my_classification.label").is_in(["hex", "tricam"])
     )
 
-Alternatively, for ultimate flexibility, you can specify your match expression
-as a Python dict defining an arbitrary
-`MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_.
-
 Common filters
 --------------
 
