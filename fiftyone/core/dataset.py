@@ -2226,9 +2226,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _add_view_stage(self, stage):
         return self.view().add_stage(stage)
 
-    def _pipeline(
-        self, pipeline=None, attach_frames=True,
-    ):
+    def _pipeline(self, pipeline=None, attach_frames=True):
         if attach_frames and (self.media_type == fom.VIDEO):
             _pipeline = self._attach_frames()
         else:
@@ -2239,11 +2237,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return _pipeline
 
-    def _aggregate(
-        self, pipeline=None, attach_frames=True,
-    ):
+    def _aggregate(self, pipeline=None, attach_frames=True):
         _pipeline = self._pipeline(
-            pipeline=pipeline, attach_frames=attach_frames,
+            pipeline=pipeline, attach_frames=attach_frames
         )
 
         return self._sample_collection.aggregate(_pipeline)

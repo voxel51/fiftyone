@@ -378,9 +378,7 @@ class DatasetView(foc.SampleCollection):
         d["samples"] = samples
         return d
 
-    def _pipeline(
-        self, pipeline=None, attach_frames=True,
-    ):
+    def _pipeline(self, pipeline=None, attach_frames=True):
         _pipeline = []
 
         for s in self._stages:
@@ -395,11 +393,9 @@ class DatasetView(foc.SampleCollection):
             pipeline=_pipeline, attach_frames=attach_frames,
         )
 
-    def _aggregate(
-        self, pipeline=None, attach_frames=True,
-    ):
+    def _aggregate(self, pipeline=None, attach_frames=True):
         _pipeline = self._pipeline(
-            pipeline=pipeline, attach_frames=attach_frames,
+            pipeline=pipeline, attach_frames=attach_frames
         )
         return self._dataset._sample_collection.aggregate(_pipeline)
 

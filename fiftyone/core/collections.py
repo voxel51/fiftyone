@@ -2958,9 +2958,7 @@ class SampleCollection(object):
 
         return self._process_aggregations(aggregations, result, scalar_result)
 
-    def _pipeline(
-        self, pipeline=None, attach_frames=True,
-    ):
+    def _pipeline(self, pipeline=None, attach_frames=True):
         """Returns the MongoDB aggregation pipeline for the collection.
 
         Args:
@@ -2974,9 +2972,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _pipeline()")
 
-    def _aggregate(
-        self, pipeline=None, attach_frames=True,
-    ):
+    def _aggregate(self, pipeline=None, attach_frames=True):
         """Runs the MongoDB aggregation pipeline on the collection and returns
         the result.
 
@@ -2992,8 +2988,6 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement _aggregate()")
 
     def _attach_frames(self):
-        key = "frames"
-
         # pylint: disable=no-member
         return [
             {
@@ -3001,7 +2995,7 @@ class SampleCollection(object):
                     "from": self._frame_collection_name,
                     "localField": "_id",
                     "foreignField": "_sample_id",
-                    "as": key,
+                    "as": "frames",
                 }
             }
         ]

@@ -774,14 +774,13 @@ def _get_filter_frames_field_pipeline(
 ):
     filter_field = filter_field.split(".", 1)[1]  # remove `frames`
     cond = _get_field_mongo_filter(filter_arg, prefix="$frame." + filter_field)
-    frames = "frames"
 
     pipeline = [
         {
             "$set": {
-                frames: {
+                "frames": {
                     "$map": {
-                        "input": "$" + frames,
+                        "input": "$frames",
                         "as": "frame",
                         "in": {
                             "$mergeObjects": [
@@ -811,7 +810,7 @@ def _get_filter_frames_field_pipeline(
                         "$gt": [
                             {
                                 "$reduce": {
-                                    "input": "$" + frames,
+                                    "input": "$frames",
                                     "initialValue": 0,
                                     "in": {
                                         "$sum": [
@@ -841,7 +840,7 @@ def _get_filter_frames_field_pipeline(
         )
 
     if hide_result:
-        pipeline.append({"$unset": "%s.%s" % (frames, new_field)})
+        pipeline.append({"$unset": "frames." + new_field})
 
     return pipeline
 
@@ -1277,15 +1276,14 @@ def _get_filter_frames_list_field_pipeline(
 ):
     filter_field = filter_field.split(".", 1)[1]  # remove `frames`
     cond = _get_list_field_mongo_filter(filter_arg)
-    frames = "frames"
     label_field, labels_list = new_field.split(".")
 
     pipeline = [
         {
             "$set": {
-                frames: {
+                "frames": {
                     "$map": {
-                        "input": "$%s" % frames,
+                        "input": "$frames",
                         "as": "frame",
                         "in": {
                             "$mergeObjects": [
@@ -1322,7 +1320,7 @@ def _get_filter_frames_list_field_pipeline(
                         "$gt": [
                             {
                                 "$reduce": {
-                                    "input": "$" + frames,
+                                    "input": "$frames",
                                     "initialValue": 0,
                                     "in": {
                                         "$sum": [
@@ -1348,7 +1346,7 @@ def _get_filter_frames_list_field_pipeline(
         )
 
     if hide_result:
-        pipeline.append({"$unset": "%s.%s" % (frames, new_field)})
+        pipeline.append({"$unset": "frames." + new_field})
 
     return pipeline
 
