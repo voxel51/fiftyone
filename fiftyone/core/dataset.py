@@ -291,11 +291,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 % (fom.MEDIA_TYPES, media_type)
             )
 
-        if media_type == fom.VIDEO:
-            self._sample_doc_cls.add_field(
-                "frames", fof.EmbeddedDocumentField, fol._Frames
-            )
-
         self._doc.media_type = media_type
 
         self._doc.save()
@@ -830,8 +825,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
-        for d in self._aggregate(hide_frames=True):
-            frames = d.pop("_frames", [])
+        for d in self._aggregate():
+            frames = d.pop("frames", [])
             doc = self._sample_dict_to_doc(d)
             sample = fos.Sample.from_doc(doc, dataset=self)
             if self.media_type == fom.VIDEO:
@@ -2232,38 +2227,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self.view().add_stage(stage)
 
     def _pipeline(
-        self,
-        pipeline=None,
-        attach_frames=True,
-        hide_frames=False,
-        squash_frames=False,
+        self, pipeline=None, attach_frames=True,
     ):
         if attach_frames and (self.media_type == fom.VIDEO):
-            _pipeline = self._attach_frames(hide_frames=hide_frames)
+            _pipeline = self._attach_frames()
         else:
             _pipeline = []
 
         if pipeline is not None:
             _pipeline += pipeline
 
-        if squash_frames and (self.media_type == fom.VIDEO):
-            key = "_frames" if hide_frames else "frames"
-            _pipeline.append({"$project": {key: False}})
-
         return _pipeline
 
     def _aggregate(
-        self,
-        pipeline=None,
-        attach_frames=True,
-        hide_frames=False,
-        squash_frames=False,
+        self, pipeline=None, attach_frames=True,
     ):
         _pipeline = self._pipeline(
-            pipeline=pipeline,
-            attach_frames=attach_frames,
-            hide_frames=hide_frames,
-            squash_frames=squash_frames,
+            pipeline=pipeline, attach_frames=attach_frames,
         )
 
         return self._sample_collection.aggregate(_pipeline)

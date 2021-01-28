@@ -291,11 +291,6 @@ class _DatasetSample(Document):
             a BSON dict
         """
         d = super().to_mongo_dict()
-        if self.media_type == fomm.VIDEO:
-            first_frame = self.frames._get_first_frame()
-            if first_frame is not None:
-                d["frames"]["first_frame"] = first_frame
-
         return d
 
     def _secure_media(self, field_name, value):

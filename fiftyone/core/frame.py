@@ -56,7 +56,10 @@ class Frames(object):
         return "{ <%d frame%s> }" % (num_frames, plural)
 
     def __len__(self):
-        return self._sample._doc.frames.frame_count
+        self._save_replacements()
+        return self._frame_collection.find(
+            {"_sample_id": self._sample._id}
+        ).count()
 
     def _set_replacement(self, frame):
         self._replacements[frame.frame_number] = frame
@@ -151,7 +154,6 @@ class Frames(object):
             d = self._frame_collection.find_one(default_d)
             if d is None:
                 d = default_d
-                self._sample._doc.frames.frame_count += 1
 
             frame = Frame.from_doc(
                 self._sample._dataset._frame_dict_to_doc(d),
@@ -160,7 +162,6 @@ class Frames(object):
             self._set_replacement(frame)
         else:
             frame = Frame.from_doc(NoDatasetFrameSampleDocument(**default_d))
-            self._sample._doc.frames.frame_count += 1
             self._set_replacement(frame)
 
         return frame
@@ -176,7 +177,7 @@ class Frames(object):
         doc._sample_id = self._sample._id
 
         if not self._in_db and frame_number not in self._replacements:
-            self._sample._doc.frames.frame_count += 1
+            pass
         elif self._in_db:
             if (
                 self._iter_frame is not None
@@ -187,8 +188,6 @@ class Frames(object):
                     "frame_number": frame_number,
                 }
                 exists = self._frame_collection.find(find_d)
-                if exists is None:
-                    self._sample._doc.frames.frame_count += 1
 
         self._set_replacement(frame)
 
@@ -302,24 +301,9 @@ class Frames(object):
             )
             self._sample._doc.clear_field("frames")
 
-    def to_mongo_dict(self):
-        first_frame = self._first_frame
-        return {
-            "frame_count": self._sample._doc.frames.frame_count,
-            "first_frame": self._first_frame,
-        }
-
     @property
     def _in_db(self):
         return self._sample._in_db
-
-    @property
-    def _first_frame(self):
-        first_frame = self._replacements.get(1, None)
-        if first_frame is None and self._in_db:
-            first_frame = self._sample._doc.frames.first_frame
-
-        return first_frame
 
     @property
     def _frame_collection(self):
@@ -357,39 +341,9 @@ class Frames(object):
     def _get_field_cls(self):
         return self._sample._doc.frames.__class__
 
-    def _get_first_frame(self):
-        if 1 in self._replacements:
-            d = self._make_dict(self._replacements[1])
-            d.pop("_sample_id")
-            return d
-
-        return None
-
     def _save(self, insert=False):
         if not self._in_db:
             return
-
-        d = self._get_first_frame()
-        if d is not None:
-            for k, v in d.items():
-                if isinstance(v, dict):
-                    if "_cls" in v:
-                        # Serialized embedded document
-                        _cls = getattr(fo, v["_cls"])
-                        d[k] = _cls.from_dict(v)
-                    elif "$binary" in v:
-                        # Serialized array in extended format
-                        binary = json_util.loads(json.dumps(v))
-                        d[k] = fou.deserialize_numpy_array(binary)
-                    else:
-                        d[k] = v
-                elif isinstance(v, six.binary_type):
-                    # Serialized array in non-extended format
-                    d[k] = fou.deserialize_numpy_array(v)
-                else:
-                    d[k] = v
-
-            self._sample._doc.frames.first_frame = fol._FrameLabels(**d)
 
         self._save_replacements(insert)
 

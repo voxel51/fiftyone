@@ -93,15 +93,13 @@ class ViewStage(object):
         """
         return None
 
-    def to_mongo(self, sample_collection, hide_frames=False):
+    def to_mongo(self, sample_collection):
         """Returns the MongoDB aggregation pipeline for the stage.
 
         Args:
             sample_collection: the
                 :class:`fiftyone.core.collections.SampleCollection` to which
                 the stage is being applied
-            hide_frames (False): whether the aggregation has requested the
-                frames be hidden in the ``_frames`` field
 
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
@@ -666,7 +664,7 @@ class FilterField(ViewStage):
         """Whether to only include samples that match the filter."""
         return self._only_matches
 
-    def to_mongo(self, sample_collection, hide_frames=False):
+    def to_mongo(self, sample_collection):
         new_field = self._get_new_field(sample_collection)
         if sample_collection._is_frame_field(self._field):
             return _get_filter_frames_field_pipeline(
@@ -674,7 +672,6 @@ class FilterField(ViewStage):
                 new_field,
                 self._filter,
                 only_matches=self._only_matches,
-                hide_frames=hide_frames,
             )
 
         return _get_filter_field_pipeline(
@@ -773,16 +770,11 @@ def _get_filter_field_pipeline(
 
 
 def _get_filter_frames_field_pipeline(
-    filter_field,
-    new_field,
-    filter_arg,
-    only_matches=False,
-    hide_frames=False,
-    hide_result=False,
+    filter_field, new_field, filter_arg, only_matches=False, hide_result=False,
 ):
     filter_field = filter_field.split(".", 1)[1]  # remove `frames`
     cond = _get_field_mongo_filter(filter_arg, prefix="$frame." + filter_field)
-    frames = "_frames" if hide_frames else "frames"
+    frames = "frames"
 
     pipeline = [
         {
@@ -1168,7 +1160,7 @@ class FilterLabels(FilterField):
 
         return None
 
-    def to_mongo(self, sample_collection, hide_frames=False):
+    def to_mongo(self, sample_collection):
         self._get_labels_field(sample_collection)
         new_field = self._get_new_field(sample_collection)
 
@@ -1179,7 +1171,6 @@ class FilterLabels(FilterField):
                     new_field,
                     self._filter,
                     only_matches=self._only_matches,
-                    hide_frames=hide_frames,
                     hide_result=self._hide_result,
                 )
 
@@ -1188,7 +1179,6 @@ class FilterLabels(FilterField):
                 new_field,
                 self._filter,
                 only_matches=self._only_matches,
-                hide_frames=hide_frames,
                 hide_result=self._hide_result,
             )
 
@@ -1283,16 +1273,11 @@ def _get_filter_list_field_pipeline(
 
 
 def _get_filter_frames_list_field_pipeline(
-    filter_field,
-    new_field,
-    filter_arg,
-    only_matches=False,
-    hide_frames=False,
-    hide_result=False,
+    filter_field, new_field, filter_arg, only_matches=False, hide_result=False,
 ):
     filter_field = filter_field.split(".", 1)[1]  # remove `frames`
     cond = _get_list_field_mongo_filter(filter_arg)
-    frames = "_frames" if hide_frames else "frames"
+    frames = "frames"
     label_field, labels_list = new_field.split(".")
 
     pipeline = [
@@ -1393,7 +1378,7 @@ class _FilterListField(FilterField):
     def get_filtered_list_fields(self):
         return [self._filter_field]
 
-    def to_mongo(self, sample_collection, hide_frames=False):
+    def to_mongo(self, sample_collection):
         new_field = self._get_new_field(sample_collection)
         if sample_collection._is_frame_field(self._filter_field):
             return _get_filter_frames_list_field_pipeline(
@@ -1401,7 +1386,6 @@ class _FilterListField(FilterField):
                 new_field,
                 self._filter,
                 only_matches=self._only_matches,
-                hide_frames=hide_frames,
                 hide_result=self._hide_result,
             )
 

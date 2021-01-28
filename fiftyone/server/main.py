@@ -537,7 +537,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         view = view.skip((page - 1) * page_length)
         view = view.set_field("frames", F("frames")[0])
-        pipeline = view._pipeline(hide_frames=False)
+        pipeline = view._pipeline()
         samples = (
             await cls.sample_collection()
             .aggregate(pipeline)
@@ -687,7 +687,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         state = fos.StateDescription.from_dict(StateHandler.state)
         view = state.view or state.dataset
         view = view.select(_id)
-        pipeline = view._pipeline(hide_frames=False)
+        pipeline = view._pipeline()
         sample = (
             await self.sample_collection().aggregate(pipeline).to_list(1)
         )[0]

@@ -2952,11 +2952,7 @@ class SampleCollection(object):
         return self._process_aggregations(aggregations, result, scalar_result)
 
     def _pipeline(
-        self,
-        pipeline=None,
-        attach_frames=True,
-        hide_frames=False,
-        squash_frames=False,
+        self, pipeline=None, attach_frames=True,
     ):
         """Returns the MongoDB aggregation pipeline for the collection.
 
@@ -2965,10 +2961,6 @@ class SampleCollection(object):
                 append to the current pipeline
             attach_frames (True): whether to attach the frame documents to the
                 result. Only applicable to video datasets
-            hide_frames (False): whether to hide frames in the result. Only
-                applicable to video datasets
-            squash_frames (False): whether to squash frames in the result. Only
-                applicable to video datasets
 
         Returns:
             the aggregation pipeline
@@ -2976,11 +2968,7 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement _pipeline()")
 
     def _aggregate(
-        self,
-        pipeline=None,
-        attach_frames=True,
-        hide_frames=False,
-        squash_frames=False,
+        self, pipeline=None, attach_frames=True,
     ):
         """Runs the MongoDB aggregation pipeline on the collection and returns
         the result.
@@ -2990,18 +2978,14 @@ class SampleCollection(object):
                 append to the current pipeline
             attach_frames (True): whether to attach the frame documents to the
                 result. Only applicable to video datasets
-            hide_frames (False): whether to hide frames in the result. Only
-                applicable to video datasets
-            squash_frames (False): whether to squash frames in the result. Only
-                applicable to video datasets
 
         Returns:
             the aggregation result dict
         """
         raise NotImplementedError("Subclass must implement _aggregate()")
 
-    def _attach_frames(self, hide_frames=False):
-        key = "_frames" if hide_frames else "frames"
+    def _attach_frames(self):
+        key = "frames"
 
         # pylint: disable=no-member
         return [
