@@ -16,6 +16,7 @@ import {
 } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
+import { lightTheme } from "../shared/colors";
 
 class HTTPSSocket {
   location: string;
@@ -850,7 +851,8 @@ export const colorPool = selector({
 export const colorMap = selector({
   key: "colorMap",
   get: ({ get }) => {
-    const pool = get(colorPool);
+    let pool = get(colorPool);
+    pool = pool.length ? pool : [lightTheme.brand];
     const seed = get(atoms.colorSeed);
     const colorLabelNames = get(labelTuples("sample"))
       .filter(([name, type]) => labelTypeHasColor(type))
