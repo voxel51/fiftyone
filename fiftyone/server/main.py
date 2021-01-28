@@ -536,7 +536,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             view = view.add_stage(stage)
 
         view = view.skip((page - 1) * page_length)
-        view = view.set_field("frames", F("frames")[0])
+        if view.media_type == fom.VIDEO:
+            view = view.set_field("frames", F("frames")[0])
+
         pipeline = view._pipeline()
         samples = (
             await cls.sample_collection()
