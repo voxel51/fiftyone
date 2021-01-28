@@ -16,6 +16,7 @@ import {
 } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
+import { lightTheme } from "../shared/colors";
 
 class HTTPSSocket {
   location: string;
@@ -292,7 +293,7 @@ export const isVideoDataset = selector({
   },
 });
 
-export const view = selector({
+export const view = selector<[]>({
   key: "view",
   get: ({ get }) => {
     return get(atoms.stateDescription).view || [];
@@ -488,17 +489,77 @@ const fields = selectorFamily({
   },
 });
 
+const selectedFields = selectorFamily({
+  key: "selectedFields",
+  get: (dimension: string) => ({ get }) => {
+    const view_ = get(view);
+    const fields_ = { ...get(fields(dimension)) };
+    const video = get(isVideoDataset);
+    view_.forEach(({ _cls, kwargs }) => {
+      if (_cls === "fiftyone.core.stages.SelectFields") {
+        const supplied = kwargs[0][1] ? kwargs[0][1] : [];
+        let names = new Set([...supplied, ...RESERVED_FIELDS]);
+        if (video && dimension === "frame") {
+          names = new Set(
+            Array.from(names).map((n) => n.slice("frames.".length))
+          );
+        }
+        Object.keys(fields_).forEach((f) => {
+          if (!names.has(f)) {
+            delete fields_[f];
+          }
+        });
+      } else if (_cls === "fiftyone.core.stages.ExcludeFields") {
+        const supplied = kwargs[0][1] ? kwargs[0][1] : [];
+        let names = Array.from(supplied);
+
+        if (video && dimension === "frame") {
+          names = names.map((n) => n.slice("frames.".length));
+        } else if (video) {
+          names = names.filter((n) => n.startsWith("frames."));
+        }
+        names.forEach((n) => {
+          delete fields_[n];
+        });
+      }
+    });
+    return fields_;
+  },
+});
+
+export const defaultPlayerOverlayOptions = selector({
+  key: "defaultPlayerOverlayOptions",
+  get: ({ get }) => {
+    const showAttrs = get(appConfig).show_attributes;
+    const showConfidence = get(appConfig).show_confidence;
+    return {
+      showAttrs,
+      showConfidence,
+    };
+  },
+});
+
+export const playerOverlayOptions = selector({
+  key: "playerOverlayOptions",
+  get: ({ get }) => {
+    return {
+      ...get(defaultPlayerOverlayOptions),
+      ...get(atoms.savedPlayerOverlayOptions),
+    };
+  },
+});
+
 export const fieldPaths = selector({
   key: "fieldPaths",
   get: ({ get }) => {
     const excludePrivateFilter = (f) => !f.startsWith("_");
-    const fieldsNames = Object.keys(get(fields("sample"))).filter(
+    const fieldsNames = Object.keys(get(selectedFields("sample"))).filter(
       excludePrivateFilter
     );
     if (get(mediaType) === "video") {
       return fieldsNames
         .concat(
-          Object.keys(get(fields("frame")))
+          Object.keys(get(selectedFields("frame")))
             .filter(excludePrivateFilter)
             .map((f) => "frames." + f)
         )
@@ -511,7 +572,7 @@ export const fieldPaths = selector({
 const labels = selectorFamily({
   key: "labels",
   get: (dimension: string) => ({ get }) => {
-    const fieldsValue = get(fields(dimension));
+    const fieldsValue = get(selectedFields(dimension));
     return Object.keys(fieldsValue)
       .map((k) => fieldsValue[k])
       .filter(labelFilter);
@@ -547,7 +608,7 @@ export const labelTypes = selectorFamily({
 const scalars = selectorFamily({
   key: "scalars",
   get: (dimension: string) => ({ get }) => {
-    const fieldsValue = get(fields(dimension));
+    const fieldsValue = get(selectedFields(dimension));
     return Object.keys(fieldsValue)
       .map((k) => fieldsValue[k])
       .filter(scalarFilter);
@@ -773,10 +834,26 @@ const scalarsMap = selectorFamily({
   },
 });
 
-export const refreshColorMap = selector({
-  key: "refreshColorMap",
-  get: ({ get }) => get(atoms.colorMap),
-  set: ({ get, set }, colorMap) => {
+export const appConfig = selector({
+  key: "appConfig",
+  get: ({ get }) => {
+    return get(atoms.stateDescription).config || {};
+  },
+});
+
+export const colorPool = selector({
+  key: "colorPool",
+  get: ({ get }) => {
+    return get(appConfig).color_pool || [];
+  },
+});
+
+export const colorMap = selector({
+  key: "colorMap",
+  get: ({ get }) => {
+    let pool = get(colorPool);
+    pool = pool.length ? pool : [lightTheme.brand];
+    const seed = get(atoms.colorSeed);
     const colorLabelNames = get(labelTuples("sample"))
       .filter(([name, type]) => labelTypeHasColor(type))
       .map(([name]) => name);
@@ -787,17 +864,16 @@ export const refreshColorMap = selector({
       ...get(scalarNames("sample")),
       ...get(scalarNames("frame")),
     ];
-    set(
-      atoms.colorMap,
-      generateColorMap(
-        [
-          ...get(tagNames),
-          ...scalarsList,
-          ...colorLabelNames,
-          ...colorFrameLabelNames,
-        ],
-        colorMap
-      )
+
+    return generateColorMap(
+      pool,
+      [
+        ...get(tagNames),
+        ...scalarsList,
+        ...colorLabelNames,
+        ...colorFrameLabelNames,
+      ],
+      seed
     );
   },
 });
@@ -936,7 +1012,7 @@ export const labelNameGroups = selectorFamily({
   key: "labelNameGroups",
   get: (dimension: string) => ({ get }) =>
     makeLabelNameGroups(
-      get(fields(dimension)),
+      get(selectedFields(dimension)),
       get(labelNames(dimension)),
       get(labelTypes(dimension))
     ),

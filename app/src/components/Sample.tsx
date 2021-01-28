@@ -114,7 +114,7 @@ const Sample = ({ sample, metadata, setView }) => {
   const src = `${http}/filepath${sample.filepath}?id=${id}`;
   const socket = useRecoilValue(selectors.socket);
   const filter = useRecoilValue(selectors.labelFilters);
-  const colorMap = useRecoilValue(atoms.colorMap);
+  const colorMap = useRecoilValue(selectors.colorMap);
   const colorByLabel = useRecoilValue(atoms.colorByLabel);
   const activeLabels = useRecoilValue(atoms.activeLabels("sample"));
   const activeFrameLabels = useRecoilValue(atoms.activeLabels("frame"));
