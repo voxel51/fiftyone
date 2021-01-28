@@ -15,7 +15,6 @@ import eta.core.utils as etau
 
 import fiftyone.core.utils as fou
 import fiftyone.core.frame_utils as fofu
-from fiftyone.core.odm import DictField, Field
 
 
 def parse_field_str(field_str):
@@ -47,6 +46,65 @@ def parse_field_str(field_str):
             raise ValueError("Failed to parse field string '%s'" % field_str)
 
     return ftype, embedded_doc_type, subfield
+
+
+class Field(mongoengine.fields.BaseField):
+    """Base class for :class:`fiftyone.core.sample.Sample` fields."""
+
+    def __str__(self):
+        return etau.get_class_name(self)
+
+
+class DictField(mongoengine.DictField, Field):
+    """A dictionary field that wraps a standard Python dictionary.
+
+    If this field is not set, its default value is ``{}``.
+
+    Args:
+        field (None): an optional :class:`Field` instance describing the type
+            of the values in the dict
+    """
+
+    def __init__(self, field=None, **kwargs):
+        if field is not None:
+            if not isinstance(field, Field):
+                raise ValueError(
+                    "Invalid field type '%s'; must be a subclass of %s"
+                    % (type(field), Field)
+                )
+
+        super().__init__(field=field, **kwargs)
+
+    def __str__(self):
+        if self.field is not None:
+            return "%s(%s)" % (
+                etau.get_class_name(self),
+                etau.get_class_name(self.field),
+            )
+
+        return etau.get_class_name(self)
+
+
+class IntField(mongoengine.IntField, Field):
+    """A 32 bit integer field."""
+
+    pass
+
+
+class ObjectIdField(mongoengine.ObjectIdField, Field):
+    """An Object ID field."""
+
+    pass
+
+
+class FrameNumberField(IntField):
+    """A video frame number field."""
+
+    def validate(self, value):
+        try:
+            fofu.validate_frame_number(value)
+        except fofu.FrameError as e:
+            self.error(str(e))
 
 
 class UUIDField(mongoengine.UUIDField, Field):

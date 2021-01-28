@@ -21,12 +21,6 @@ class Field(mongoengine.fields.BaseField):
         return etau.get_class_name(self)
 
 
-class IntField(mongoengine.IntField, Field):
-    """A 32 bit integer field."""
-
-    pass
-
-
 class DictField(mongoengine.DictField, Field):
     """A dictionary field that wraps a standard Python dictionary.
 
@@ -57,16 +51,6 @@ class DictField(mongoengine.DictField, Field):
         return etau.get_class_name(self)
 
 
-class FrameNumberField(IntField):
-    """A video frame number field."""
-
-    def validate(self, value):
-        try:
-            fofu.validate_frame_number(value)
-        except fofu.FrameError as e:
-            self.error(str(e))
-
-
 class IntDictField(DictField):
     def to_mongo(self, value):
         if value is None:
@@ -87,12 +71,6 @@ class IntDictField(DictField):
 
         if not all(map(lambda k: isinstance(k, six.integer_types), value)):
             self.error("Not all keys are integers")
-
-
-class ObjectIdField(mongoengine.ObjectIdField, Field):
-    """An Object ID field."""
-
-    pass
 
 
 class StringField(mongoengine.StringField, Field):

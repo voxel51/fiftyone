@@ -7,9 +7,10 @@ Backing document classes for :class:`fiftyone.core.frame.Frame` instances.
 """
 from collections import OrderedDict
 
+from fiftyone.core.fields import FrameNumberField, ObjectIdField
+
 from .document import Document, SampleDocument
 from .mixins import DatasetMixin, default_sample_fields, NoDatasetMixin
-from .fields import FrameNumberField, ObjectIdField
 
 
 class DatasetFrameSampleDocument(DatasetMixin, Document, SampleDocument):
