@@ -52,7 +52,17 @@ class ETAModelConfig(fom.ModelConfig):
             ETA model
     """
 
-    pass
+    @property
+    def confidence_thresh(self):
+        """The confidence threshold of the underlying ``eta.core.model.Model``.
+
+        Note that this may not be defined for some models.
+        """
+        return self.config.confidence_thresh
+
+    @confidence_thresh.setter
+    def confidence_thresh(self, confidence_thresh):
+        self.config.confidence_thresh = confidence_thresh
 
 
 class ETAModel(fom.Model, fom.EmbeddingsMixin):
