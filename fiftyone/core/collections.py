@@ -2102,6 +2102,8 @@ class SampleCollection(object):
     def bounds(self, field_name):
         """Computes the bounds of a numeric field of the collection.
 
+        ``None``-valued fields are ignored.
+
         This aggregation is typically applied to *numeric* field types (or
         lists of such types):
 
@@ -2157,7 +2159,9 @@ class SampleCollection(object):
 
     @aggregation
     def count(self, field_name=None):
-        """Counts the number of non-``None`` field values in the collection.
+        """Counts the number of field values in the collection.
+
+        ``None``-valued fields are ignored.
 
         If no field is provided, the samples themselves are counted.
 
@@ -2293,6 +2297,8 @@ class SampleCollection(object):
     @aggregation
     def distinct(self, field_name):
         """Computes the distinct values of a field in the collection.
+
+        ``None``-valued fields are ignored.
 
         This aggregation is typically applied to *countable* field types (or
         lists of such types):
@@ -2448,8 +2454,9 @@ class SampleCollection(object):
 
     @aggregation
     def sum(self, field_name):
-        """Computes the sum of the (non-``None``) field values of the
-        collection.
+        """Computes the sum of the field values of the collection.
+
+        ``None``-valued fields are ignored.
 
         This aggregation is typically applied to *numeric* field types (or
         lists of such types):

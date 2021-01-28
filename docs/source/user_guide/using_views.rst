@@ -154,36 +154,6 @@ You can also sort by :ref:`expressions <querying-samples>`!
     # Sort by number of detections in `Detections` field `ground_truth`
     view = dataset.sort_by(F("ground_truth.detections").length(), reverse=True)
 
-Shuffling
-_________
-
-The samples in a |Dataset| or |DatasetView| can be randomly shuffled using
-:meth:`shuffle() <fiftyone.core.collections.SampleCollection.shuffle>`:
-
-.. code-block:: python
-    :linenos:
-
-    # Randomly shuffle the order of the samples in the dataset
-    view1 = dataset.shuffle()
-
-    print(view1.first().id)
-    # 5f31bbfcd0d78c13abe159af
-
-An optional ``seed`` can be provided to make the shuffle deterministic:
-
-.. code-block:: python
-    :linenos:
-
-    # Randomly shuffle the samples in the dataset with a fixed seed
-
-    view2 = dataset.shuffle(seed=51)
-    print(view2.first().id)
-    # 5f31bbfcd0d78c13abe159b1
-
-    also_view2 = dataset.shuffle(seed=51)
-    print(also_view2.first().id)
-    # 5f31bbfcd0d78c13abe159b1
-
 Slicing
 _______
 
@@ -218,6 +188,36 @@ a |DatasetView| by its ID.
 
         view[0]
         # KeyError: "Accessing samples by numeric index is not supported. Use sample IDs or slices"
+
+Shuffling
+_________
+
+The samples in a |Dataset| or |DatasetView| can be randomly shuffled using
+:meth:`shuffle() <fiftyone.core.collections.SampleCollection.shuffle>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Randomly shuffle the order of the samples in the dataset
+    view1 = dataset.shuffle()
+
+    print(view1.first().id)
+    # 5f31bbfcd0d78c13abe159af
+
+An optional ``seed`` can be provided to make the shuffle deterministic:
+
+.. code-block:: python
+    :linenos:
+
+    # Randomly shuffle the samples in the dataset with a fixed seed
+
+    view2 = dataset.shuffle(seed=51)
+    print(view2.first().id)
+    # 5f31bbfcd0d78c13abe159b1
+
+    also_view2 = dataset.shuffle(seed=51)
+    print(also_view2.first().id)
+    # 5f31bbfcd0d78c13abe159b1
 
 Random sampling
 _______________
@@ -296,10 +296,6 @@ for a full list of supported operations.
         (F("my_classification.confidence") >= 0.5)
         | F("my_classification.label").is_in(["hex", "tricam"])
     )
-
-Alternatively, for ultimate flexibility, you can specify your match expression
-as a Python dict defining an arbitrary
-`MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_.
 
 Common filters
 --------------
@@ -563,6 +559,34 @@ to do this:
         F("confidence").max(0.5),
     )
 
+The |ViewExpression| language is quite powerful, allowing you to define complex
+operations without needing to write an explicit Python loop to perform the
+desired manipulation.
+
+To give you a taste, copy-paste this example to visualize the top-5 highest
+confidence predictions for each sample in the
+:ref:`quickstart dataset <dataset-zoo-quickstart>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Extracts the 5 highest confidence predictions for each sample
+    top5_preds = F("detections").sort_by("confidence", reverse=True)[:5]
+
+    view = (
+        dataset
+        .set_field("predictions.detections", top5_preds)
+        .select_fields("predictions")
+    )
+
+    session = fo.launch_app(view=view)
+
 Saving and cloning
 __________________
 
@@ -617,7 +641,7 @@ View stages can be chained together to perform arbitrarily complex operations:
 Filtering detections by area
 ----------------------------
 
-Need to filter your detections by bounding box area? Use this expression!
+Need to filter your detections by bounding box area? Use this |ViewExpression|!
 
 .. code-block:: python
     :linenos:

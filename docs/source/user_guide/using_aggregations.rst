@@ -52,14 +52,14 @@ explict loops over your dataset to compute a statistic:
     dataset = foz.load_zoo_dataset("quickstart")
 
     # Compute label histogram manually
-    counts = defaultdict(int)
+    manual_counts = defaultdict(int)
     for sample in dataset:
         for detection in sample.ground_truth.detections:
-            counts[detection.label] += 1
+            manual_counts[detection.label] += 1
 
     # Compute via aggregation
     counts = dataset.count_values("ground_truth.detections.label")
-    print(counts)  # same as `counts` above
+    print(counts)  # same as `manual_counts` above
 
 The sections below discuss the available aggregations in more detail. You can
 also refer to the :mod:`fiftyone.core.aggregations` module documentation for

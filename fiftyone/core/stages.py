@@ -2561,7 +2561,7 @@ class SelectFields(ViewStage):
         return [
             {
                 "name": "field_names",
-                "type": "list<str>|NoneType",
+                "type": "NoneType|list<str>",
                 "default": "None",
                 "placeholder": "list,of,fields",
             }
