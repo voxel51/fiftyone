@@ -467,8 +467,8 @@ Here are some self-contained examples for each task:
 
         .. note::
 
-            See :ref:`this page <dataset-zoo-bdd100k>` for dataset download
-            instructions.
+            See the :ref:`BDD100K dataset <dataset-zoo-bdd100k>` in the Dataset
+            Zoo for download instructions.
 
         .. code-block:: python
             :linenos:
@@ -501,8 +501,8 @@ Here are some self-contained examples for each task:
 
         .. note::
 
-            This example uses
-            :ref:`this keypoint model <keypoint-rcnn-resnet50-fpn-coco-torch>`
+            This example uses a
+            :ref:`Keypoint R-CNN model <model-zoo-keypoint-rcnn-resnet50-fpn-coco-torch>`
             from the Model Zoo.
 
         .. code-block:: python
