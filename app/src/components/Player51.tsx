@@ -55,13 +55,15 @@ export default ({
   fieldSchema = {},
   filterSelector,
   playerRef,
-  defaultOverlayOptions,
   selectedObjects,
   onSelectObject,
+  savedOverlayOptions,
 }) => {
   const filter = useRecoilValue(filterSelector);
   const fps = useRecoilValue(atoms.sampleFrameRate(sample._id));
-  const colorMap = useRecoilValue(atoms.colorMap);
+  const overlayOptions = useRecoilValue(selectors.playerOverlayOptions);
+
+  const colorMap = useRecoilValue(selectors.colorMap);
   if (overlay === null) {
     overlay = convertSampleToETA(sample, fieldSchema);
   }
@@ -100,7 +102,8 @@ export default ({
           attrRenderBox: false,
         },
         defaultOverlayOptions: {
-          ...defaultOverlayOptions,
+          ...overlayOptions,
+          ...savedOverlayOptions,
           action: "hover",
           attrRenderMode: "attr-value",
           smoothMasks: false,
@@ -133,6 +136,7 @@ export default ({
         colorMap,
         fps,
       });
+      player.updateOverlayOptions(overlayOptions);
       if (!thumbnail) {
         player.updateOverlay(overlay);
       }
@@ -145,6 +149,7 @@ export default ({
     colorMap,
     colorByLabel,
     fps,
+    overlayOptions,
   ]);
 
   useEffect(() => {

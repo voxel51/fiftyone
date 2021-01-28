@@ -87,7 +87,7 @@ def launch_app(
     remote=False,
     desktop=None,
     auto=True,
-    height=800,
+    config=None,
 ):
     """Launches the FiftyOne App.
 
@@ -109,8 +109,8 @@ def launch_app(
         auto (True): whether to automatically show a new App window
             whenever the state of the session is updated. Only applicable
             in notebook contexts
-        height (800): a height, in pixels, for the App. Only applicable in
-            notebook contexts
+        config (None): an optional :class:`fiftyone.core.config.AppConfig` to
+            control fine-grained default App settings
 
     Returns:
         a :class:`Session`
@@ -135,7 +135,7 @@ def launch_app(
         remote=remote,
         desktop=desktop,
         auto=auto,
-        height=height,
+        config=config,
     )
 
     if _session.remote:
@@ -162,16 +162,21 @@ def close_app():
         _session = None
 
 
-def _update_state(func):
-    @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        result = func(self, *args, **kwargs)
-        self.state.datasets = fod.list_datasets()
-        self._auto_show()
-        self._update_state()
-        return result
+def _update_state(auto_show=False):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            result = func(self, *args, **kwargs)
+            self.state.datasets = fod.list_datasets()
+            if auto_show:
+                self._auto_show()
 
-    return wrapper
+            self._update_state()
+            return result
+
+        return wrapper
+
+    return decorator
 
 
 class Session(foc.HasClient):
@@ -218,8 +223,8 @@ class Session(foc.HasClient):
         auto (True): whether to automatically show a new App window
             whenever the state of the session is updated. Only applicable
             in notebook contexts
-        height (800): a height, in pixels, for the App. Only applicable in
-            notebook contexts
+        config (None): an optional :class:`fiftyone.core.config.AppConfig` to
+            control fine-grained default App settings
     """
 
     _HC_NAMESPACE = "state"
@@ -234,10 +239,16 @@ class Session(foc.HasClient):
         remote=False,
         desktop=None,
         auto=True,
-        height=800,
+        config=None,
     ):
         if port is None:
             port = fo.config.default_app_port
+
+        if config is None:
+            config = fo.app_config.copy()
+
+        state = self._HC_ATTR_TYPE()
+        state.config = config
 
         self._context = focx._get_context()
         self._port = port
@@ -247,7 +258,6 @@ class Session(foc.HasClient):
         self._WAIT_INSTRUCTIONS = _WAIT_INSTRUCTIONS
         self._disable_wait_warning = False
         self._auto = auto
-        self._height = height
         self._handles = {}
         self._colab_img_counter = defaultdict(int)
 
@@ -271,9 +281,17 @@ class Session(foc.HasClient):
         self._start_time = self._get_time()
 
         if view is not None:
-            self.view = view
+            state.view = view
+            state.dataset = view._dataset
         elif dataset is not None:
-            self.dataset = dataset
+            state.dataset = dataset
+
+        if state.dataset is not None:
+            state.dataset._reload()
+
+        state.datasets = fod.list_datasets()
+        state.active_handle = self._auto_show()
+        self._update_state(state)
 
         if self._remote:
             if self._context != focx._NONE:
@@ -364,6 +382,30 @@ class Session(foc.HasClient):
         return "http://localhost:%d/" % self.server_port
 
     @property
+    def config(self):
+        """The current :class:`fiftyone.core.config.AppConfig`.
+
+        For changes to a session's config to take effect in the App,
+        a call to :meth:`Session.refresh` or another state-updating action
+        such as `session.view = my_view` must occur.
+
+        Example usage::
+
+            import fiftyone as fo
+
+            dataset, session = fo.quickstart()
+
+            # change the show confidence setting and push the change to the App
+            session.config.show_confidence = False
+            session.refresh()
+        """
+        return self.state.config
+
+    @config.setter
+    def config(self, config):
+        self.state.config = config
+
+    @property
     def dataset(self):
         """The :class:`fiftyone.core.dataset.Dataset` connected to the session.
         """
@@ -373,7 +415,7 @@ class Session(foc.HasClient):
         return self.state.dataset
 
     @dataset.setter
-    @_update_state
+    @_update_state(auto_show=True)
     def dataset(self, dataset):
         if dataset is not None:
             dataset._reload()
@@ -399,7 +441,7 @@ class Session(foc.HasClient):
         return self.state.view
 
     @view.setter
-    @_update_state
+    @_update_state(auto_show=True)
     def view(self, view):
         self.state.view = view
         if view is not None:
@@ -417,7 +459,7 @@ class Session(foc.HasClient):
         """
         self.state.view = None
 
-    @_update_state
+    @_update_state(auto_show=True)
     def refresh(self):
         """Refreshes the App, reloading the current dataset/view."""
         pass
@@ -582,7 +624,7 @@ class Session(foc.HasClient):
 
     def _auto_show(self):
         if self._auto and (self._context != focx._NONE):
-            self._show()
+            return self._show()
 
     def _capture(self, data):
         from IPython.display import HTML
@@ -644,15 +686,16 @@ class Session(foc.HasClient):
         self.state.active_handle = uuid
 
         if height is None:
-            height = self._height
+            height = self.config.notebook_height
 
         self._handles[uuid] = {"target": handle, "height": height}
 
         _display(self, handle, uuid, self._port, height=height)
+        return uuid
 
-    def _update_state(self):
+    def _update_state(self, state=None):
         # see fiftyone.core.client if you would like to understand this
-        self.state = self.state
+        self.state = state or self.state
 
 
 def _display(session, handle, uuid, port=None, height=None, update=False):
@@ -664,7 +707,7 @@ def _display(session, handle, uuid, port=None, height=None, update=False):
             FiftyOne UI, in pixels. If None, a default value is used
     """
     if height is None:
-        height = 800
+        height = session.config.notebook_height
 
     funcs = {focx._COLAB: _display_colab, focx._IPYTHON: _display_ipython}
     fn = funcs[focx._get_context()]

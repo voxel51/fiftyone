@@ -675,7 +675,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             dataset_name: the dataset name
         """
         dataset = fod.load_dataset(dataset_name)
-        StateHandler.state = fos.StateDescription(dataset=dataset).serialize()
+        config = fos.StateDescription.from_dict(StateHandler.state).config
+        StateHandler.state = fos.StateDescription(
+            dataset=dataset, config=config
+        ).serialize()
         await self.on_update(self, StateHandler.state)
 
     @staticmethod

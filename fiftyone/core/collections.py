@@ -2102,6 +2102,8 @@ class SampleCollection(object):
     def bounds(self, field_name):
         """Computes the bounds of a numeric field of the collection.
 
+        ``None``-valued fields are ignored.
+
         This aggregation is typically applied to *numeric* field types (or
         lists of such types):
 
@@ -2157,7 +2159,9 @@ class SampleCollection(object):
 
     @aggregation
     def count(self, field_name=None):
-        """Counts the number of non-``None`` field values in the collection.
+        """Counts the number of field values in the collection.
+
+        ``None``-valued fields are ignored.
 
         If no field is provided, the samples themselves are counted.
 
@@ -2293,6 +2297,8 @@ class SampleCollection(object):
     @aggregation
     def distinct(self, field_name):
         """Computes the distinct values of a field in the collection.
+
+        ``None``-valued fields are ignored.
 
         This aggregation is typically applied to *countable* field types (or
         lists of such types):
@@ -2448,8 +2454,9 @@ class SampleCollection(object):
 
     @aggregation
     def sum(self, field_name):
-        """Computes the sum of the (non-``None``) field values of the
-        collection.
+        """Computes the sum of the field values of the collection.
+
+        ``None``-valued fields are ignored.
 
         This aggregation is typically applied to *numeric* field types (or
         lists of such types):
@@ -2951,9 +2958,7 @@ class SampleCollection(object):
 
         return self._process_aggregations(aggregations, result, scalar_result)
 
-    def _pipeline(
-        self, pipeline=None, attach_frames=True,
-    ):
+    def _pipeline(self, pipeline=None, attach_frames=True):
         """Returns the MongoDB aggregation pipeline for the collection.
 
         Args:
@@ -2967,9 +2972,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _pipeline()")
 
-    def _aggregate(
-        self, pipeline=None, attach_frames=True,
-    ):
+    def _aggregate(self, pipeline=None, attach_frames=True):
         """Runs the MongoDB aggregation pipeline on the collection and returns
         the result.
 
@@ -2985,8 +2988,6 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement _aggregate()")
 
     def _attach_frames(self):
-        key = "frames"
-
         # pylint: disable=no-member
         return [
             {
@@ -2994,7 +2995,7 @@ class SampleCollection(object):
                     "from": self._frame_collection_name,
                     "localField": "_id",
                     "foreignField": "_sample_id",
-                    "as": key,
+                    "as": "frames",
                 }
             }
         ]
