@@ -1,7 +1,8 @@
 <div align="center">
 
-<img src="docs/source/_static/images/voxel51_300dpi.png" height="55px"> &nbsp;
-<img src="docs/source/_static/images/fiftyone.png" height="50px">
+<!-- prettier-ignore -->
+<img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="55px"> &nbsp;
+<img src="https://user-images.githubusercontent.com/25985824/106288518-24bb7680-6216-11eb-8f10-60052c519586.png" height="50px">
 
 **The open-source tool for building high-quality datasets and computer vision
 models.**
@@ -23,6 +24,7 @@ models.**
 [![Downloads](https://pepy.tech/badge/fiftyone)](https://pepy.tech/project/fiftyone)
 [![Build](https://github.com/voxel51/fiftyone/workflows/Build/badge.svg?branch=develop&event=push)](https://github.com/voxel51/fiftyone/actions?query=workflow%3ABuild)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Slack](https://img.shields.io/badge/slack-chat-green.svg?logo=slack)](https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg)
 [![Mailing list](http://bit.ly/2Md9rxM)](https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk)
 [![Twitter](https://img.shields.io/twitter/follow/Voxel51?style=social)](https://twitter.com/voxel51)
 
@@ -104,8 +106,9 @@ FiftyOne.
 
 FiftyOne is open source and community contributions are welcome!
 
-Check out the [contribution guide](CONTRIBUTING.md) to learn how to get
-involved.
+Check out the
+[contribution guide](https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md)
+to learn how to get involved.
 
 ## Installing from source
 
@@ -119,10 +122,10 @@ to make adjustments.
 
 You will need:
 
--   [Python](https://www.python.org/) (3.6 or newer)
--   [Node.js](https://nodejs.org/) - on Linux, we recommend using
+-   [Python](https://www.python.org) (3.6 or newer)
+-   [Node.js](https://nodejs.org) - on Linux, we recommend using
     [nvm](https://github.com/nvm-sh/nvm) to install an up-to-date version.
--   [Yarn](https://yarnpkg.com/) - once Node.js is installed, you can install
+-   [Yarn](https://yarnpkg.com) - once Node.js is installed, you can install
     Yarn via `npm install -g yarn`
 -   On Linux, you will need at least the `openssl` and `libcurl` packages. On
     Debian-based distributions, you will need to install `libcurl4` or
@@ -179,8 +182,10 @@ or wish to otherwise customize your ETA installation,
 
 ### Developer installation
 
-If you would like to [contribute to FiftyOne](CONTRIBUTING.md), you should
-perform a developer installation using the `-d` flag of the install script:
+If you would like to
+[contribute to FiftyOne](https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md),
+you should perform a developer installation using the `-d` flag of the install
+script:
 
 ```shell
 bash install.bash -d
@@ -199,8 +204,9 @@ bash install.bash [-d]
 
 ### Generating documentation
 
-See the [docs guide](docs/docs_guide.md) for information on building and
-contributing to the documentation.
+See the
+[docs guide](https://github.com/voxel51/fiftyone/blob/develop/docs/docs_guide.md)
+for information on building and contributing to the documentation.
 
 ## Uninstallation
 
