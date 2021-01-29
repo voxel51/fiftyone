@@ -1,4 +1,5 @@
 <div align="center">
+<p align="center">
 
 <!-- prettier-ignore -->
 <img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="55px"> &nbsp;
@@ -9,15 +10,14 @@ models.**
 
 ---
 
-<p align="center">
-  <a href="https://voxel51.com/fiftyone">Website</a> •
-  <a href="https://voxel51.com/docs/fiftyone">Docs</a> •
-  <a href="https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb">Try it Now</a> •
-  <a href="https://voxel51.com/docs/fiftyone/tutorials/index.html">Tutorials</a> •
-  <a href="https://github.com/voxel51/fiftyone-examples">Examples</a> •
-  <a href="https://medium.com/voxel51">Blog</a> •
-  <a href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg">Community</a>
-</p>
+<!-- prettier-ignore -->
+<a href="https://voxel51.com/fiftyone">Website</a> •
+<a href="https://voxel51.com/docs/fiftyone">Docs</a> •
+<a href="https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb">Try it Now</a> •
+<a href="https://voxel51.com/docs/fiftyone/tutorials/index.html">Tutorials</a>
+• <a href="https://github.com/voxel51/fiftyone-examples">Examples</a> •
+<a href="https://medium.com/voxel51">Blog</a> •
+<a href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg">Community</a>
 
 [![PyPI python](https://img.shields.io/pypi/pyversions/fiftyone)](https://pypi.org/project/fiftyone)
 [![PyPI version](https://badge.fury.io/py/fiftyone.svg)](https://pypi.org/project/fiftyone)
@@ -31,6 +31,7 @@ models.**
 
 <img alt="FiftyOne" src="https://user-images.githubusercontent.com/25985824/96070012-5c6fff80-0e6d-11eb-84d0-a88f8b026ee1.png">
 
+</p>
 </div>
 
 ---
