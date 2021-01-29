@@ -21,6 +21,7 @@ import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.sample as fos
 from fiftyone.core.odm.frame import DatasetFrameSampleDocument
 from fiftyone.core.odm.mixins import default_sample_fields
 from fiftyone.core.odm.sample import DatasetSampleDocument
@@ -225,15 +226,20 @@ class Exclude(ViewStage):
         view = dataset.add_stage(stage)
 
     Args:
-        sample_ids: a sample ID or iterable of sample IDs
+        sample_ids: the samples to exclude. Can be any of the following:
+
+            -   a sample ID
+            -   an iterable of sample IDs
+            -   a :class:`fiftyone.core.sample.Sample` or
+                :class:`fiftyone.core.sample.SampleView`
+            -   an iterable of sample IDs
+            -   a :class:`fiftyone.core.collections.SampleCollection`
+            -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                :class:`fiftyone.core.sample.SampleView` instances
     """
 
     def __init__(self, sample_ids):
-        if etau.is_str(sample_ids):
-            self._sample_ids = [sample_ids]
-        else:
-            self._sample_ids = list(sample_ids)
-
+        self._sample_ids = _get_sample_ids(sample_ids)
         self._validate_params()
 
     @property
@@ -309,8 +315,10 @@ class ExcludeFields(ViewStage):
     def __init__(self, field_names):
         if etau.is_str(field_names):
             field_names = [field_names]
+        else:
+            field_names = list(field_names)
 
-        self._field_names = list(field_names)
+        self._field_names = field_names
         self._dataset = None
 
     @property
@@ -2251,34 +2259,33 @@ class MatchTags(ViewStage):
         view = dataset.add_stage(stage)
 
     Args:
-        tag: the tag or iterable of tags to match
+        tags: the tag or iterable of tags to match
     """
 
-    def __init__(self, tag):
-        if not etau.is_str(tag):
-            tag = list(tag)
+    def __init__(self, tags):
+        if etau.is_str(tags):
+            tags = [tags]
+        else:
+            tags = list(tags)
 
-        self._tag = tag
+        self._tags = tags
 
     @property
-    def tag(self):
-        """The tag(s) to match."""
-        return self._tag
+    def tags(self):
+        """The list of tags to match."""
+        return self._tags
 
     def to_mongo(self, _, **__):
-        if etau.is_str(self._tag):
-            return [{"$match": {"tags": self._tag}}]
-
-        return [{"$match": {"tags": {"$in": self._tag}}}]
+        return [{"$match": {"tags": {"$in": self._tags}}}]
 
     def _kwargs(self):
-        return [["tag", self._tag]]
+        return [["tags", self._tags]]
 
     @classmethod
     def _params(cls):
         return [
             {
-                "name": "tag",
+                "name": "tags",
                 "type": "list<str>",
                 "placeholder": "list,of,tags",
             }
@@ -2416,15 +2423,20 @@ class Select(ViewStage):
         view = dataset.add_stage(stage)
 
     Args:
-        sample_ids: a sample ID or iterable of sample IDs
+        sample_ids: the samples to select. Can be any of the following:
+
+            -   a sample ID
+            -   an iterable of sample IDs
+            -   a :class:`fiftyone.core.sample.Sample` or
+                :class:`fiftyone.core.sample.SampleView`
+            -   an iterable of sample IDs
+            -   a :class:`fiftyone.core.collections.SampleCollection`
+            -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                :class:`fiftyone.core.sample.SampleView` instances
     """
 
     def __init__(self, sample_ids):
-        if etau.is_str(sample_ids):
-            self._sample_ids = [sample_ids]
-        else:
-            self._sample_ids = list(sample_ids)
-
+        self._sample_ids = _get_sample_ids(sample_ids)
         self._validate_params()
 
     @property
@@ -2902,10 +2914,10 @@ class SortBy(ViewStage):
 
     def _get_mongo_field_or_expr(self):
         if isinstance(self._field_or_expr, foe.ViewField):
-            return self._field_or_expr.name
+            return self._field_or_expr._expr
 
         if isinstance(self._field_or_expr, foe.ViewExpression):
-            return self._field_or_expr.to_mongo(None)  # @todo: fix me
+            return self._field_or_expr.to_mongo()
 
         return self._field_or_expr
 
@@ -3035,6 +3047,25 @@ class Take(ViewStage):
             },
             {"name": "_randint", "type": "int|NoneType", "default": "None"},
         ]
+
+
+def _get_sample_ids(samples_or_ids):
+    # avoid circular import...
+    import fiftyone.core.collections as foc
+
+    if etau.is_str(samples_or_ids):
+        return [samples_or_ids]
+
+    if isinstance(samples_or_ids, (fos.Sample, fos.SampleView)):
+        return [samples_or_ids.id]
+
+    if isinstance(samples_or_ids, foc.SampleCollection):
+        return [s.id for s in samples_or_ids.select_fields()]
+
+    if isinstance(next(iter(samples_or_ids)), (fos.Sample, fos.SampleView)):
+        return [s.id for s in samples_or_ids]
+
+    return list(samples_or_ids)
 
 
 def _get_rng(seed):
