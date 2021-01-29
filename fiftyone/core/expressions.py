@@ -1957,7 +1957,7 @@ class ViewExpression(object):
 
     def reduce(self, expr, init_val=0):
         """Applies the given reduction to this expression, which must be an
-        array, and returns the single value computed by
+        array, and returns the single value computed.
 
         The provided ``expr`` must include the :const:`VALUE` expression to
         properly define the reduction.
