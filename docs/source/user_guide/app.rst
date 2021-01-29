@@ -10,6 +10,18 @@ The FiftyOne App is a powerful graphical user interface that enables you to
 visualize, browse, and interact directly with your
 :ref:`FiftyOne Datasets <what-is-a-fiftyone-dataset>`.
 
+.. image:: ../images/app/app-filters.gif
+   :alt: app-filters
+   :align: center
+
+App environments
+________________
+
+The FiftyOne App can be used in any environment that you're working in, from
+a local IPython shell, to a remote machine or cloud instance, to a Jupyter or
+Colab notebook. Check out the :ref:`environments guide <environments>` for best
+practices when working in each environment.
+
 Sessions
 ________
 
@@ -23,9 +35,9 @@ Creating a session
 ------------------
 
 You can launch an instance of the App by calling
-:func:`fo.launch_app() <fiftyone.core.session.launch_app>`. This method returns
-a |Session| instance, which you can subsequently use to interact
-programmatically with the App!
+:func:`launch_app() <fiftyone.core.session.launch_app>`. This method returns a
+|Session| instance, which you can subsequently use to interact programmatically
+with the App!
 
 .. code-block:: python
     :linenos:
@@ -33,6 +45,15 @@ programmatically with the App!
     import fiftyone as fo
 
     session = fo.launch_app()
+
+App sessions are highly flexible. For example, you can launch
+:ref:`launch multiple App instances <faq-multiple-apps>` and connect multiple
+App instances to the  :ref:`same dataset <faq-multiple-sessions-same-dataset>`.
+
+By default, when you're working in a non-notebook context, the App will be
+opened in a new tab of your web browser. However, there is also a
+:ref:`desktop App <installing-fiftyone-desktop>` that you can install if you
+would like to run the App as a desktop application.
 
 .. note::
 
@@ -48,19 +69,14 @@ programmatically with the App!
 
         # Launch the App
         session = fo.launch_app(...)
+
         # (Perform any additional operations here)
 
         # Blocks execution until the App is closed
         session.wait()
 
-.. note::
-
-    App sessions are highly flexible. For example, you can
-    :ref:`launch multiple App instances on a machine <faq-multiple-apps>` and
-    :ref:`connect multiple App instances to the same dataset <faq-multiple-sessions-same-dataset>`.
-
-.. image:: ../images/empty_app.png
-   :alt: App Startup
+.. image:: ../images/app/app-empty.gif
+   :alt: app-empty
    :align: center
 
 Updating a session's dataset
@@ -76,29 +92,32 @@ session object:
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("cifar10")
+
+    # View the dataset in the App
     session.dataset = dataset
 
-.. image:: ../images/cifar10.gif
-   :alt: CIFAR-10
+.. image:: ../images/app/app-scroll.gif
+   :alt: app-scroll
    :align: center
 
 Updating a session's view
 -------------------------
 
-You can also show a specific |DatasetView| into the current dataset in the App
-by updating the :meth:`Session.view <fiftyone.core.session.Session.view>`
-property of the session.
+You can also show a specific :ref:`view <using-views>` into the current dataset
+in the App by setting the
+:meth:`Session.view <fiftyone.core.session.Session.view>` property of the
+session.
 
 For example, the command below loads a |DatasetView| in the App that shows the
-first 10 samples in the dataset sorted alphabetically by ground truth label:
+first 10 samples in the dataset sorted by their `uniqueness` field:
 
 .. code-block:: python
     :linenos:
 
-    session.view = dataset.sort_by("ground_truth.label")[:10]
+    session.view = dataset.sort_by("uniqueness").limit(10)
 
-.. image:: ../images/cifar10_sorted.gif
-   :alt: CIFAR-10 Sorted
+.. image:: ../images/app/app-views1.gif
+   :alt: app-views1
    :align: center
 
 .. _remote-session:
@@ -229,10 +248,10 @@ session using either the Python library or the CLI (recommended).
 
 .. note::
 
-    Remote sessions are highly flexible. For example, you can
-    :ref:`connect to multiple remote sessions <faq-connect-to-multiple-remote-sessions>`
-    and
-    :ref:`run multiple remote sessions from a machine <faq-serve-multiple-remote-sessions>`.
+    Remote sessions are highly flexible. For example, you can connect to
+    :ref:`multiple remote sessions <faq-connect-to-multiple-remote-sessions>`
+    and run multiple remote sessions
+    :ref:`from one machine <faq-serve-multiple-remote-sessions>`.
 
 Fields
 ______
@@ -240,8 +259,8 @@ ______
 Any labels, tags, and scalar fields can be overlaid on the samples in the App
 by toggling the corresponding display options on the lefthand side of the App.
 
-.. image:: ../images/cifar10_button_toggle.gif
-    :alt: CIFAR-10 Toggle
+.. image:: ../images/app/app-fields.gif
+    :alt: app-fields
     :align: center
 
 Viewing a sample
@@ -251,9 +270,25 @@ Double-click a sample to open an expanded view of the sample. This modal also
 contains information about the fields of the |Sample| and allows you to access
 the raw JSON description of the sample.
 
-.. image:: ../images/cifar10_sidebar.gif
-    :alt: CIFAR-10 Sidebar
+.. image:: ../images/app/app-expanded.gif
+    :alt: app-expanded
     :align: center
+
+.. _app-filtering:
+
+Filtering sample fields
+_______________________
+
+The App provides UI elements in both grid view and expanded sample view that
+you can use to filter your dataset. To view the available filter options for a
+field, click the caret icon to the right of the field's name.
+
+Whenever you modify a filter element, the App will automatically update to show
+only those samples and/or labels that match the filter.
+
+.. image:: ../images/app/app-filters.gif
+   :alt: app-filters
+   :align: center
 
 .. _app-create-view:
 
@@ -261,30 +296,51 @@ Using the view bar
 __________________
 
 The view bar makes all of the powerful searching, sorting, and filtering
-operations :ref:`provided by DatasetViews <using-views>` available directly in
-the App. Any changes to the current view that you make in the view bar are
-reflected in the |DatasetView| exposed by the
-:meth:`Session.view <fiftyone.core.session.Session.view>` property of the
-|Session| object associated with the App.
+operations :ref:`provided by dataset views <using-views>` available directly in
+the App.
 
-.. image:: ../images/cifar10_view_bar.gif
-    :alt: CIFAR-10 View Bar
+.. note::
+
+    Any changes to the current view that you make in the view bar are
+    automatically reflected in the |DatasetView| exposed by the
+    :meth:`Session.view <fiftyone.core.session.Session.view>` property of the
+    App's session object.
+
+.. image:: ../images/app/app-views2.gif
+    :alt: app-views2
     :align: center
 
-Tabs
-____
+.. _app-stats-tabs:
 
-The `Samples`, `Labels`, `Tags`, and `Scalars` tabs in the App let you
-visualize different aspects and statistics about your dataset. `Samples` is the
-default tab, which lets you visualize and select your image samples. The
-`Labels` tab shows a distribution of labels of the currently loaded |Dataset|
-or |DatasetView|. Any tags that were added and their corresponding counts will
-show up under the `Tags` tab. Scalar fields, for example if you computed
-`uniqueness` on your dataset, will be displayed under the `Scalars` tab.
+Statistics tabs
+_______________
 
-.. image:: ../images/cifar10_tabs.gif
-   :alt: CIFAR-10 Scalars
-   :align: center
+The `Labels`, `Scalars`, and `Tags` tabs in the App let you visualize different
+statistics about your dataset.
+
+.. note::
+
+    The statistics in these tabs automatically update to reflect the current
+    :ref:`view <using-views>` that you have loaded in the App, or the entire
+    :ref:`dataset <using-datasets>` if no view is loaded.
+
+The `Labels` tab shows distributions of the `label` values for each
+:ref:`labels field <using-labels>` that you've added to your dataset. For
+example, you may have histograms of ground truth labels and one more sets of
+model predictions.
+
+The `Scalars` tab shows distributions for numeric (integer or float) or
+categorical (e.g., string) :ref:`primitive fields <adding-sample-fields>` that
+you've added to your dataset. For example, if you computed
+:ref:`uniqueness <brain-image-uniqueness>` on your dataset, a histogram of
+uniqueness values will be displayed under the `Scalars` tab.
+
+The `Tags` tab shows the distribution of any :ref:`tags <using-tags>` that
+you've added to your dataset.
+
+.. image:: ../images/app/app-stats.gif
+    :alt: app-stats
+    :align: center
 
 .. _app-select-samples:
 
@@ -298,9 +354,9 @@ One common workflow is to select samples visually in the App and then access
 the data for the selected samples in Python. To perform this workflow, first
 select some samples in the App:
 
-.. image:: ../images/cifar10_selected.gif
-   :alt: CIFAR-10 Selected
-   :align: center
+.. image:: ../images/app/app-selection.gif
+    :alt: app-selection
+    :align: center
 
 The selected samples dropdown on the upper-left of the sample grid records the
 number of samples that you have currently selected. You can also take actions
@@ -339,9 +395,9 @@ creating a |DatasetView| that includes/excludes the selected objects.
 To perform this workflow, open the expanded sample modal by double-clicking on
 a sample in the App. Then click on individual objects to select them:
 
-.. image:: ../images/coco2017_selected.png
-   :alt: COCO-2017 Selected
-   :align: center
+.. image:: ../images/app/app-object-selection.gif
+    :alt: app-object-selection
+    :align: center
 
 Selected objects will appear with dotted lines around them. The example above
 shows selecting an object detection, but polygons, polylines, segmentations,
@@ -382,3 +438,44 @@ objects in the App:
         },
         ...
     ]
+
+.. _app-config:
+
+Configuring the App
+___________________
+
+The behavior of the App can be configured in various ways. The code sample
+below shows the basic pattern for customizing the App on a one-off basis:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Create a custom App config
+    app_config = fo.AppConfig()
+    app_config.show_confidence = False
+    app_config.show_attributes = False
+
+    session = fo.launch_app(dataset, config=app_config)
+
+You can even reconfigure a live |Session| by editing its
+:meth:`session.config <fiftyone.core.session.Session.config>` property and
+calling :meth:`session.refresh() <fiftyone.core.session.Session.refresh>` to
+apply the changes:
+
+.. code-block:: python
+    :linenos:
+
+    # Customize the config of a live Session
+    session.config.show_confidence = True
+    session.config.show_attributes = True
+
+    # Refresh the session to apply the changes
+    session.refresh()
+
+See :ref:`this page <configuring-fiftyone-app>` for more information about
+configuring the App.

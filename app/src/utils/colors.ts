@@ -1,46 +1,67 @@
 import _ from "lodash";
-import randomColor from "randomcolor";
 
-const FIXED_COLORS = [
-  "#ee0000",
-  "#ee6600",
-  "#993300",
-  "#996633",
-  "#999900",
-  "#009900",
-  "#003300",
-  "#009999",
-  "#000099",
-  "#0066ff",
-  "#6600ff",
-  "#cc33cc",
-  "#777799",
-];
+import { RESERVED_FIELDS } from "./labels";
+
+let seedCache = 0;
+let mapCache = {};
+let poolCache = null;
+
+function shuffle(array: string[], seed: number) {
+  let m = array.length,
+    t,
+    i;
+
+  while (m) {
+    i = Math.floor(random(seed) * m--);
+
+    t = array[m];
+    array[m] = array[i];
+    array[i] = t;
+    ++seed;
+  }
+
+  return array;
+}
+
+function random(seed: number) {
+  const x = Math.sin(seed + 1) * 10000;
+  return x - Math.floor(x);
+}
 
 type Color = string;
 type ColorMap = { [name: string]: Color };
 
 export function generateColorMap(
-  names: string[],
-  existingMap: ColorMap = {}
+  colorPool: Color[],
+  keys: string[],
+  seed: number
 ): ColorMap {
-  let newMap = {};
-
-  const availableColors = new Set(FIXED_COLORS);
-  for (const [name, color] of Object.entries(existingMap || {})) {
-    if (names.includes(name)) {
-      availableColors.delete(color);
-      newMap[name] = color;
-    }
+  if (JSON.stringify(poolCache) !== JSON.stringify(colorPool)) {
+    poolCache = colorPool;
+    mapCache = {};
   }
+  const newMap = seed == seedCache ? Object.assign({}, mapCache) : {};
+  seedCache = seed;
+  let colors = Array.from(poolCache);
 
-  const remainingColors = _.shuffle(Array.from(availableColors));
-  for (const name of names) {
-    if (!newMap[name]) {
-      newMap[name] =
-        remainingColors.pop() || randomColor({ luminosity: "dark" });
-    }
+  keys = keys.filter((k) => !RESERVED_FIELDS.includes(k));
+
+  if (seed > 0) {
+    colors = shuffle(colors, seed);
   }
+  let idx = 0;
+  let offset = Object.keys(newMap).length;
+  keys.sort().forEach((key) => {
+    if (!newMap[key]) {
+      let color = (offset + idx) % colors.length;
+      if (isNaN(color)) {
+        color = 0;
+      }
+      newMap[key] = colors[color];
+      idx++;
+    }
+  });
 
+  mapCache = newMap;
   return newMap;
 }

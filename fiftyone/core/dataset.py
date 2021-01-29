@@ -28,7 +28,6 @@ from fiftyone.constants import VERSION
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
-import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 from fiftyone.migrations import get_migration_runner
 import fiftyone.core.odm as foo
@@ -235,7 +234,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._deleted = False
 
     def __len__(self):
-        return self.aggregate(foa.Count()).count
+        return self.count()
 
     def __getitem__(self, sample_id_or_slice):
         if isinstance(sample_id_or_slice, numbers.Integral):
@@ -337,11 +336,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 % (fom.MEDIA_TYPES, media_type)
             )
 
-        if media_type == fom.VIDEO:
-            self._sample_doc_cls.add_field(
-                "frames", fof.EmbeddedDocumentField, fol._Frames
-            )
-
         self._doc.media_type = media_type
 
         self._doc.save()
@@ -415,10 +409,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         elements = [
             "Name:           %s" % self.name,
             "Media type:     %s" % self.media_type,
-            "Num samples:    %d" % aggs[0].count,
+            "Num samples:    %d" % aggs[0],
             "Persistent:     %s" % self.persistent,
             "Info:           %s" % _info_repr.repr(self.info),
-            "Tags:           %s" % aggs[1].values,
+            "Tags:           %s" % aggs[1],
             "Sample fields:",
             self._to_fields_str(self.get_field_schema()),
         ]
@@ -876,8 +870,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
-        for d in self._aggregate(hide_frames=True):
-            frames = d.pop("_frames", [])
+        for d in self._aggregate():
+            frames = d.pop("frames", [])
             doc = self._sample_dict_to_doc(d)
             sample = fos.Sample.from_doc(doc, dataset=self)
             if self.media_type == fom.VIDEO:
@@ -1212,13 +1206,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         updated such that ``sample.in_dataset == False``.
 
         Args:
-            sample_or_id: the :class:`fiftyone.core.sample.Sample` or sample
-                ID to remove
+            sample_or_id: the sample ID, :class:`fiftyone.core.sample.Sample`,
+                or :class:`fiftyone.core.sample.SampleView` to remove
         """
-        if not isinstance(sample_or_id, fos.Sample):
-            sample_id = sample_or_id
-        else:
+        if isinstance(sample_or_id, (fos.Sample, fos.SampleView)):
             sample_id = sample_or_id.id
+        else:
+            sample_id = sample_or_id
 
         self._sample_collection.delete_one({"_id": ObjectId(sample_id)})
 
@@ -1233,16 +1227,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         updated such that ``sample.in_dataset == False``.
 
         Args:
-            samples: an iterable of :class:`fiftyone.core.sample.Sample`
-                instances or sample IDs. For example, ``samples`` may be a
-                :class:`fiftyone.core.views.DatasetView`
+            samples: an iterable of sample IDs or a
+                :class:`fiftyone.core.collections.SampleCollection` to remove
         """
-        sample_ids = [
-            sample_or_id.id
-            if isinstance(sample_or_id, fos.Sample)
-            else sample_or_id
-            for sample_or_id in samples_or_ids
-        ]
+        if isinstance(samples_or_ids, foc.SampleCollection):
+            sample_ids = [s.id for s in samples_or_ids.select_fields()]
+        else:
+            sample_ids = samples_or_ids
 
         self._sample_collection.delete_many(
             {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
@@ -2277,39 +2268,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _add_view_stage(self, stage):
         return self.view().add_stage(stage)
 
-    def _pipeline(
-        self,
-        pipeline=None,
-        attach_frames=True,
-        hide_frames=False,
-        squash_frames=False,
-    ):
+    def _pipeline(self, pipeline=None, attach_frames=True):
         if attach_frames and (self.media_type == fom.VIDEO):
-            _pipeline = self._attach_frames(hide_frames=hide_frames)
+            _pipeline = self._attach_frames()
         else:
             _pipeline = []
 
         if pipeline is not None:
             _pipeline += pipeline
 
-        if squash_frames and (self.media_type == fom.VIDEO):
-            key = "_frames" if hide_frames else "frames"
-            _pipeline.append({"$project": {key: False}})
-
         return _pipeline
 
-    def _aggregate(
-        self,
-        pipeline=None,
-        attach_frames=True,
-        hide_frames=False,
-        squash_frames=False,
-    ):
+    def _aggregate(self, pipeline=None, attach_frames=True):
         _pipeline = self._pipeline(
-            pipeline=pipeline,
-            attach_frames=attach_frames,
-            hide_frames=hide_frames,
-            squash_frames=squash_frames,
+            pipeline=pipeline, attach_frames=attach_frames
         )
 
         return self._sample_collection.aggregate(_pipeline)

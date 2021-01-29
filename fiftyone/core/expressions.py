@@ -7,6 +7,7 @@ Expressions for :class:`fiftyone.core.stages.ViewStage` definitions.
 """
 from copy import deepcopy
 import re
+import warnings
 
 import bson
 
@@ -16,14 +17,33 @@ import fiftyone.core.utils as fou
 
 
 class ViewExpression(object):
-    """An expression involving one or more fields of an object in a
+    """An expression defining a possibly-complex manipulation of a document.
+
+    View expressions enable you to specify manipulations of documents that can
+    then be executed on your data in the context of a
     :class:`fiftyone.core.stages.ViewStage`.
 
-    See `MongoDB expressions <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-    for more details.
+    Typically, :class:`ViewExpression` instances are built by creating one or
+    more :class:`ViewField` instances and then defining the desired operation
+    by recursively invoking methods on these objects.
 
-    Typically, :class:`ViewExpression` instances are built by applying
-    builtin operators to :class:`ViewField` instances.
+    See
+    `MongoDB expressions <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+    for more details about the underlying expression language that this class
+    encapsulates.
+
+    Examples::
+
+        import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        # Bboxes are in [top-left-x, top-left-y, width, height] format
+        bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+
+        # Only contains predictions whose bounding box area is > 0.2
+        view = dataset.filter_labels("predictions", bbox_area > 0.2)
 
     .. automethod:: __eq__
     .. automethod:: __ge__
@@ -52,6 +72,7 @@ class ViewExpression(object):
 
     def __init__(self, expr):
         self._expr = expr
+        self._prefix = None
 
     def __str__(self):
         return repr(self)
@@ -67,6 +88,14 @@ class ViewExpression(object):
     def __deepcopy__(self, memo):
         return self.__class__(deepcopy(self._expr, memo))
 
+    def _freeze_prefix(self, prefix):
+        _do_freeze_prefix(self, prefix)
+
+    @property
+    def is_frozen(self):
+        """Whether this expression's prefix is frozen."""
+        return self._prefix is not None
+
     def to_mongo(self, prefix=None):
         """Returns a MongoDB representation of the expression.
 
@@ -77,17 +106,33 @@ class ViewExpression(object):
         Returns:
             a MongoDB expression
         """
-        return ViewExpression._recurse(self._expr, prefix)
+        if self.is_frozen:
+            prefix = self._prefix
 
-    # Comparison expression operators #########################################
+        return _do_to_mongo(self._expr, prefix)
+
+    # Comparison operators ####################################################
 
     def __eq__(self, other):
-        """Creates an expression that returns a boolean indicating whether
-        ``self == other``.
+        """Determines whether this expression is equal to the given value or
+        expression, ``self == other``.
+
+        Examples::
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset(
+                "cifar10", split="test", max_samples=500, shuffle=True
+            )
+
+            # Get samples whose ground truth `label` is "airplane"
+            view = dataset.match(F("ground_truth.label") == "airplane")
+
+            print(view.distinct("ground_truth.label"))
 
         Args:
-            other: a :class:`ViewExpression` or a python primitive understood
-                by MongoDB
+            other: a literal value or :class:`ViewExpression`
 
         Returns:
             a :class:`ViewExpression`
@@ -97,13 +142,53 @@ class ViewExpression(object):
 
         return ViewExpression({"$eq": [self, other]})
 
-    def __ge__(self, other):
-        """Creates an expression that returns a boolean indicating whether
-        ``self >= other``.
+    def __ne__(self, other):
+        """Determines whether this expression is not equal to the given value
+        or expression, ``self != other``.
+
+        Examples::
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset(
+                "cifar10", split="test", max_samples=500, shuffle=True
+            )
+
+            # Get samples whose ground truth `label` is NOT "airplane"
+            view = dataset.match(F("ground_truth.label") != "airplane")
+
+            print("airplane" in view.distinct("ground_truth.label"))
 
         Args:
-            other: a :class:`ViewExpression` or a python primitive understood
-                by MongoDB
+            other: a literal value or :class:`ViewExpression`
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        if other is None:
+            return self.exists()
+
+        return ViewExpression({"$ne": [self, other]})
+
+    def __ge__(self, other):
+        """Determines whether this expression is greater than or equal to the
+        given value or expression, ``self >= other``.
+
+        Examples::
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Get samples whose `uniqueness` value is >= 0.5
+            view = dataset.match(F("uniqueness") >= 0.5)
+
+            print(view.bounds("uniqueness"))
+
+        Args:
+            other: a literal value or :class:`ViewExpression`
 
         Returns:
             a :class:`ViewExpression`
@@ -111,12 +196,23 @@ class ViewExpression(object):
         return ViewExpression({"$gte": [self, other]})
 
     def __gt__(self, other):
-        """Creates an expression that returns a boolean indicating whether
-        ``self > other``.
+        """Determines whether this expression is greater than the given value
+        or expression, ``self >= other``.
+
+        Examples::
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Get samples whose `uniqueness` value is > 0.5
+            view = dataset.match(F("uniqueness") > 0.5)
+
+            print(view.bounds("uniqueness"))
 
         Args:
-            other: a :class:`ViewExpression` or a python primitive understood
-                by MongoDB
+            other: a literal value or :class:`ViewExpression`
 
         Returns:
             a :class:`ViewExpression`
@@ -124,8 +220,23 @@ class ViewExpression(object):
         return ViewExpression({"$gt": [self, other]})
 
     def __le__(self, other):
-        """Creates an expression that returns a boolean indicating whether
-        ``self <= other``.
+        """Determines whether this expression is less than or equal to the
+        given value or expression, ``self <= other``.
+
+        Examples::
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Get samples whose `uniqueness` value is <= 0.5
+            view = dataset.match(F("uniqueness") <= 0.5)
+
+            print(view.bounds("uniqueness"))
+
+        Args:
+            other: a literal value or :class:`ViewExpression`
 
         Args:
             other: a :class:`ViewExpression` or a python primitive understood
@@ -137,37 +248,49 @@ class ViewExpression(object):
         return ViewExpression({"$lte": [self, other]})
 
     def __lt__(self, other):
-        """Creates an expression that returns a boolean indicating whether
-        ``self < other``.
+        """Determines whether this expression is less than the given value or
+        expression, ``self <= other``.
+
+        Examples::
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Get samples whose `uniqueness` value is < 0.5
+            view = dataset.match(F("uniqueness") < 0.5)
+
+            print(view.bounds("uniqueness"))
 
         Args:
-            other: a :class:`ViewExpression` or a python primitive understood
-                by MongoDB
+            other: a literal value or :class:`ViewExpression`
 
         Returns:
             a :class:`ViewExpression`
         """
         return ViewExpression({"$lt": [self, other]})
 
-    def __ne__(self, other):
-        """Creates an expression that returns a boolean indicating whether
-        ``self != other``.
-
-        Args:
-            other: a :class:`ViewExpression` or a python primitive understood
-                by MongoDB
-
-        Returns:
-            a :class:`ViewExpression`
-        """
-        if other is None:
-            return self.exists()
-
-        return ViewExpression({"$ne": [self, other]})
-
     def exists(self):
-        """Creates an expression that returns a boolean indicating whether the
-        expression, which must resolve to a field, exists and is not None.
+        """Determines whether this expression, which must resolve to a field,
+        exists and is not None.
+
+        Examples::
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Add a new field to one sample
+            sample = dataset.first()
+            sample["new_field"] = ["hello", "there"]
+            sample.save()
+
+            # Get samples that have a value for `new_field`
+            view = dataset.match(F("new_field").exists())
+
+            print(len(view))
 
         Returns:
             a :class:`ViewExpression`
@@ -175,63 +298,139 @@ class ViewExpression(object):
         # https://stackoverflow.com/a/25515046
         return ViewExpression({"$gt": [self, None]})
 
-    # Logical expression operators ############################################
-
-    def __and__(self, other):
-        """Creates an expression that returns a boolean that is the logical
-        AND ``self & other``.
-
-        Args:
-            other: a :class:`ViewField` or :class:`ViewExpression`
-
-        Returns:
-            a :class:`ViewExpression`
-        """
-        return ViewExpression({"$and": [self, other]})
+    # Logical operators #######################################################
 
     def __invert__(self):
-        """Creates an expression that returns a boolean that is the logical
-        inversion ``~self``.
+        """Inverts this expression, ``~self``.
+
+        Examples::
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Add a new field to one sample
+            sample = dataset.first()
+            sample["new_field"] = ["hello", "there"]
+            sample.save()
+
+            # Get samples that do NOT have a value for `new_field`
+            view = dataset.match(~F("new_field").exists())
+
+            print(len(view))
 
         Returns:
             a :class:`ViewExpression`
         """
         return ViewExpression({"$not": self})
 
-    def __or__(self, other):
-        """Creates an expression that returns a boolean that is the logical OR
-        ``self | other``.
+    def __and__(self, other):
+        """Computes the logical AND of this expression and the given value or
+        expression, ``self & other``.
+
+        Examples::
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Only contains predictions with label "cat" and confidence > 0.9
+            view = dataset.filter_labels(
+                "predictions",
+                (F("label") == "cat") & (F("confidence") > 0.9)
+            )
+
+            print(view.count_values("predictions.detections.label"))
+            print(view.bounds("predictions.detections.confidence"))
 
         Args:
-            other: a :class:`ViewField` or :class:`ViewExpression`
+            other: a literal value or :class:`ViewExpression`
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$and": [self, other]})
+
+    def __rand__(self, other):
+        return ViewExpression({"$and": [other, self]})
+
+    def __or__(self, other):
+        """Computes the logical OR of this expression and the given value or
+        expression, ``self | other``.
+
+        Examples::
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Only contains predictions with label "cat" or confidence > 0.9
+            view = dataset.filter_labels(
+                "predictions",
+                (F("label") == "cat") | (F("confidence") > 0.9)
+            )
+
+            print(view.count_values("predictions.detections.label"))
+            print(view.bounds("predictions.detections.confidence"))
+
+        Args:
+            other: a literal value or :class:`ViewExpression`
 
         Returns:
             a :class:`ViewExpression`
         """
         return ViewExpression({"$or": [self, other]})
 
-    def __rand__(self, other):
-        return ViewExpression({"$and": [other, self]})
-
     def __ror__(self, other):
         return ViewExpression({"$or": [other, self]})
 
-    # Arithmetic expression operators #########################################
+    # Numeric expression operators ############################################
 
     def __abs__(self):
-        """Creates an expression that returns a number that is the absolute
-        value of this expression.
+        """Computes the absolute value of this numeric expression.
+
+        Examples::
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Only contains samples with `uniqueness` in [0.25, 0.75]
+            view = dataset.match(abs(F("uniqueness") - 0.5) < 0.25)
+
+            print(view.bounds("uniqueness"))
 
         Returns:
             a :class:`ViewExpression`
         """
-        return ViewExpression({"$abs": self})
+        return self.abs()
 
     def __add__(self, other):
-        """Creates an expression that returns ``self + other``.
+        """Adds the given value to this numeric expression, ``self + other``.
+
+        Examples::
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Bboxes are in [top-left-x, top-left-y, width, height] format
+            manhattan_dist = F("bounding_box")[0] + F("bounding_box")[1]
+
+            # Only contains predictions whose bounding boxes' upper left corner
+            # is a Manhattan distance of at least 1 from the origin
+            dataset.filter_labels("predictions, manhattan_dist > 1)
+
+            print(dataset.count("predictions.detections"))
+            print(view.count("predictions.detections"))
 
         Args:
-            other: a :class:`ViewField`, :class:`ViewExpression` or numeric
+            other: a number or :class:`ViewExpression`
 
         Returns:
             a :class:`ViewExpression`
@@ -239,26 +438,51 @@ class ViewExpression(object):
         return ViewExpression({"$add": [self, other]})
 
     def __ceil__(self):
-        """Creates an expression that returns a number that is the ``CEIL``
-        of this expression.
+        """Computes the ceiling of this numeric expression.
+
+        Examples::
+
+            import math
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Only contains samples with `uniqueness` in [0.5, 1]
+            view = dataset.match(math.ceil(F("uniqueness") + 0.5) == 2)
+
+            print(view.bounds("uniqueness"))
 
         Returns:
             a :class:`ViewExpression`
         """
-        return ViewExpression({"$ceil": self})
+        return self.ceil()
 
     def __floor__(self):
-        """Creates an expression that returns a number that is the ``FLOOR`` of
-        this expression.
+        """Computes the floor of this numeric expression.
+
+        Examples::
+
+            import math
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Only contains samples with `uniqueness` in [0.5, 1]
+            view = dataset.match(math.floor(F("uniqueness") + 0.5) == 1)
+
+            print(view.bounds("uniqueness"))
 
         Returns:
             a :class:`ViewExpression`
         """
-        return ViewExpression({"$floor": self})
+        return self.floor()
 
     def __round__(self, place=0):
-        """Creates an expression that returns a number that is the rounded
-        value of this expression.
+        """Rounds this numeric expression at the given decimal place.
 
         Positive values of ``place`` will round to ``place`` decimal
         places::
@@ -273,16 +497,43 @@ class ViewExpression(object):
             place (0): the decimal place at which to round. Must be an
                 integer in range ``(-20, 100)``
 
+        Examples::
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Only contains samples with `uniqueness` in [0.25, 0.75]
+            view = dataset.match(round(2 * F("uniqueness")) == 1)
+
+            print(view.bounds("uniqueness"))
+
         Returns:
             a :class:`ViewExpression`
         """
-        return ViewExpression({"$round": [self, place]})
+        return self.round(place=place)
 
     def __mod__(self, other):
-        """Creates an expression that returns ``self % other``.
+        """Computes the modulus of this numeric expression, ``self % other``.
+
+        Examples::
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Only contains samples with an even number of predictions
+            view = dataset.match(
+                (F("predictions.detections").length() % 2) == 0
+            )
+
+            print(dataset.count("predictions.detections"))
+            print(view.count("predictions.detections"))
 
         Args:
-            other: a :class:`ViewField`, :class:`ViewExpression` or numeric
+            other: a number or :class:`ViewExpression`
 
         Returns:
             a :class:`ViewExpression`
@@ -290,10 +541,24 @@ class ViewExpression(object):
         return ViewExpression({"$mod": [self, other]})
 
     def __mul__(self, other):
-        """Creates an expression that returns ``self * other``.
+        """Computes the product of the given value and this numeric expression,
+        ``self * other``.
+
+        Examples::
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Bboxes are in [top-left-x, top-left-y, width, height] format
+            bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+
+            # Only contains predictions whose bounding box area is > 0.2
+            view = dataset.filter_labels("predictions", bbox_area > 0.2)
 
         Args:
-            other: a :class:`ViewField`, :class:`ViewExpression` or numeric
+            other: a number or :class:`ViewExpression`
 
         Returns:
             a :class:`ViewExpression`
@@ -302,16 +567,41 @@ class ViewExpression(object):
 
     # pylint: disable=unused-argument
     def __pow__(self, power, modulo=None):
-        """Creates an expression that returns ``self ** power``.
+        """Raises this numeric expression to the given power,
+        ``self ** power``.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Bboxes are in [top-left-x, top-left-y, width, height] format
+            center_dist = (
+                (F("bounding_box")[0] + 0.5 * F("bounding_box")[2] - 0.5) ** 2 +
+                (F("bounding_box")[1] + 0.5 * F("bounding_box")[3] - 0.5) ** 2
+            ).sqrt()
+
+            # Only contains predictions whose bounding box center is a distance
+            # of at most 0.02 from the center of the image
+            view = dataset.select_fields("predictions").filter_labels(
+                "predictions", center_dist < 0.02, only_matches=True
+            )
+
+            session = fo.launch_app(view=view)
 
         Args:
-            power: the power that ``self`` is raised to
-            modulo (None): unsupported argument
+            power: the power
 
         Returns:
             a :class:`ViewExpression`
         """
-        return ViewExpression({"pow": [self, power]})
+        if modulo is not None:
+            warnings.warn("Ignoring unsupported `modulo` argument")
+
+        return self.pow(power)
 
     def __radd__(self, other):
         return ViewExpression({"$add": [other, self]})
@@ -329,10 +619,36 @@ class ViewExpression(object):
         return ViewExpression({"$divide": [other, self]})
 
     def __sub__(self, other):
-        """Creates an expression that returns ``self - other``.
+        """Subtracts the given value from this numeric expression,
+        ``self - other``.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            dataset.compute_metadata()
+
+            # Bboxes are in [top-left-x, top-left-y, width, height] format
+            rectangleness = abs(
+                F("$metadata.width") * F("bounding_box")[2] -
+                F("$metadata.height") * F("bounding_box")[3]
+            )
+
+            # Only contains predictions whose bounding boxes are within 1 pixel
+            # of being square
+            view = (
+                dataset
+                .select_fields("predictions")
+                .filter_labels("predictions", rectangleness <= 1, only_matches=True)
+            )
+
+            session = fo.launch_app(view=view)
 
         Args:
-            other: a :class:`ViewField`, :class:`ViewExpression` or numeric
+            other: a number or :class:`ViewExpression`
 
         Returns:
             a :class:`ViewExpression`
@@ -340,19 +656,171 @@ class ViewExpression(object):
         return ViewExpression({"$subtract": [self, other]})
 
     def __truediv__(self, other):
-        """Creates an expression that returns ``self / other``.
+        """Divides this numeric expression by the given value,
+        ``self / other``.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            dataset.compute_metadata()
+
+            # Bboxes are in [top-left-x, top-left-y, width, height] format
+            aspect_ratio = (
+                (F("$metadata.width") * F("bounding_box")[2]) /
+                (F("$metadata.height") * F("bounding_box")[3])
+            )
+
+            # Only contains predictions whose aspect ratio is > 2
+            view = (
+                dataset
+                .select_fields("predictions")
+                .filter_labels("predictions", aspect_ratio > 2, only_matches=True)
+            )
+
+            session = fo.launch_app(view=view)
 
         Args:
-            other: a :class:`ViewField`, :class:`ViewExpression` or numeric
+            other: a number or :class:`ViewExpression`
 
         Returns:
             a :class:`ViewExpression`
         """
         return ViewExpression({"$divide": [self, other]})
 
+    def abs(self):
+        """Computes the absolute value of the numeric expression.
+
+        Examples::
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Only contains samples with `uniqueness` in [0.25, 0.75]
+            view = dataset.match((F("uniqueness") - 0.5).abs() < 0.25)
+
+            print(view.bounds("uniqueness"))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$abs": self})
+
+    def floor(self):
+        """Computes the floor of this numeric expression.
+
+        Examples::
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Only contains samples with `uniqueness` in [0.5, 1]
+            view = dataset.match((F("uniqueness") + 0.5).floor() == 1)
+
+            print(view.bounds("uniqueness"))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$floor": self})
+
+    def ceil(self):
+        """Computes the ceiling of this numeric expression.
+
+        Examples::
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Only contains samples with `uniqueness` in [0.5, 1]
+            view = dataset.match((F("uniqueness") + 0.5).ceil() == 2)
+
+            print(view.bounds("uniqueness"))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$ceil": self})
+
+    def round(self, place=0):
+        """Rounds this numeric expression at the given decimal place.
+
+        Positive values of ``place`` will round to ``place`` decimal
+        places::
+
+            place=2: 1234.5678 --> 1234.57
+
+        Negative values of ``place`` will round ``place`` digits left of the
+        decimal::
+
+            place=-1: 1234.5678 --> 1230
+
+        Examples::
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Only contains samples with `uniqueness` in [0.25, 0.75]
+            view = dataset.match((2 * F("uniqueness")).round() == 1)
+
+            print(view.bounds("uniqueness"))
+
+        Args:
+            place (0): the decimal place at which to round. Must be an
+                integer in range ``(-20, 100)``
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$round": [self, place]})
+
+    def trunc(self, place=0):
+        """Truncates this numeric expression at the specified decimal place.
+
+        Positive values of ``place`` will truncate to ``place`` decimal
+        places::
+
+            place=2: 1234.5678 --> 1234.56
+
+        Negative values of ``place`` will replace ``place`` digits left of the
+        decimal with zero::
+
+            place=-1: 1234.5678 --> 1230
+
+        Examples::
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            dataset.compute_metadata()
+
+            # Only contains samples whose height is in [500, 600) pixels
+            view = dataset.match(F("metadata.height").trunc(-2) == 500)
+
+            print(view.bounds("metadata.height"))
+
+        Args:
+            place (0): the decimal place at which to truncate
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$trunc": [self, place]})
+
     def exp(self):
-        """Creates an expression that raises Euler’s number to the specified
-        exponent and returns the result.
+        """Raises Euler's number to this numeric expression.
 
         Returns:
             a :class:`ViewExpression`
@@ -360,8 +828,21 @@ class ViewExpression(object):
         return ViewExpression({"$exp": self})
 
     def ln(self):
-        """Creates an expression that calculates the natural logarithm of a
-        number and returns the result.
+        """Computes the natural logarithm of this numeric expression.
+
+        Examples::
+
+            import math
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Get samples whose `uniqueness` value is >= 0.5
+            view = dataset.match(F("uniqueness").ln() >= math.log(0.5))
+
+            print(view.bounds("uniqueness"))
 
         Returns:
             a :class:`ViewExpression`
@@ -369,11 +850,24 @@ class ViewExpression(object):
         return ViewExpression({"$ln": self})
 
     def log(self, base):
-        """Creates an expression that calculates the log of a number in the
-        specified base and returns the result.
+        """Computes logarithm base ``base`` of this numeric expression.
+
+        Examples::
+
+            import math
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Get samples whose `uniqueness` value is >= 0.5
+            view = dataset.match(F("uniqueness").log(2) >= math.log2(0.5))
+
+            print(view.bounds("uniqueness"))
 
         Args:
-            base: the base to compute the log on
+            base: the logarithm base
 
         Returns:
             a :class:`ViewExpression`
@@ -381,60 +875,292 @@ class ViewExpression(object):
         return ViewExpression({"$log": [self, base]})
 
     def log10(self):
-        """Creates an expression that calculates the log base 10 of a number
-        and returns the result.
+        """Computes logarithm base 10 of this numeric expression.
+
+        Examples::
+
+            import math
+
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Get samples whose `uniqueness` value is >= 0.5
+            view = dataset.match(F("uniqueness").log10() >= math.log10(0.5))
+
+            print(view.bounds("uniqueness"))
 
         Returns:
             a :class:`ViewExpression`
         """
         return ViewExpression({"$log10": self})
 
+    def pow(self, power):
+        """Raises this numeric expression to the given power,
+        ``self ** power``.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Bboxes are in [top-left-x, top-left-y, width, height] format
+            center_dist = (
+                (F("bounding_box")[0] + 0.5 * F("bounding_box")[2] - 0.5).pow(2) +
+                (F("bounding_box")[1] + 0.5 * F("bounding_box")[3] - 0.5).pow(2)
+            ).sqrt()
+
+            # Only contains predictions whose bounding box center is a distance
+            # of at most 0.02 from the center of the image
+            view = dataset.select_fields("predictions").filter_labels(
+                "predictions", center_dist < 0.02, only_matches=True
+            )
+
+            session = fo.launch_app(view=view)
+
+        Args:
+            power: the power
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$pow": [self, power]})
+
     def sqrt(self):
-        """Creates an expression that calculates the square root of a positive
-        number and returns the result.
+        """Computes the square root of this numeric expression.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Bboxes are in [top-left-x, top-left-y, width, height] format
+            center_dist = (
+                (F("bounding_box")[0] + 0.5 * F("bounding_box")[2] - 0.5) ** 2 +
+                (F("bounding_box")[1] + 0.5 * F("bounding_box")[3] - 0.5) ** 2
+            ).sqrt()
+
+            # Only contains predictions whose bounding box center is a distance
+            # of at most 0.02 from the center of the image
+            view = dataset.select_fields("predictions").filter_labels(
+                "predictions", center_dist < 0.02, only_matches=True
+            )
+
+            session = fo.launch_app(view=view)
 
         Returns:
             a :class:`ViewExpression`
         """
         return ViewExpression({"$sqrt": self})
 
-    def trunc(self, place=0):
-        """Creates an expression that truncates a number to a specified
-        decimal place.
+    # Generic field operators #################################################
 
-        Positive values of ``place`` will truncate to ``place`` decimal
-        places::
+    def type(self):
+        """Returns the type string of this expression.
 
-            place=2: 1234.5678 --> 1234.56
+        See `this page <https://docs.mongodb.com/manual/reference/operator/aggregation/type>`_
+        for more details.
 
-        Negative values of ``place`` replace digits left of the decimal with
-        zero::
+        Examples::
 
-            place=-2: 1234.5678 --> 1200
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Set `uniqueness` values below 0.75 to None
+            view = dataset.set_field(
+                "uniqueness",
+                (F("uniqueness") > 0.75).if_else(F("uniqueness"), None)
+            )
+
+            # Create a view that only contains samples with non-None uniqueness
+            unique_only_view = view.match(F("uniqueness").type() != "null")
+
+            print(len(unique_only_view))
+
+        Returns:
+             a :class:`ViewExpression`
+        """
+        return ViewExpression({"$type": self})
+
+    def is_null(self):
+        """Determines whether this expression is null.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Set `uniqueness` values below 0.25 to None
+            view = dataset.set_field(
+                "uniqueness",
+                (F("uniqueness") >= 0.25).if_else(F("uniqueness"), None)
+            )
+
+            # Create view that only contains samples with uniqueness = None
+            not_unique_view = view.match(F("uniqueness").is_null())
+
+            print(len(not_unique_view))
+
+        Returns:
+            :class:`ViewExpression`
+        """
+        return self == None
+
+    def is_number(self):
+        """Determines whether this expression is a number.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Set `uniqueness` values below 0.25 to None
+            view = dataset.set_field(
+                "uniqueness",
+                (F("uniqueness") >= 0.25).if_else(F("uniqueness"), None)
+            )
+
+            # Create view that only contains samples with uniqueness values
+            has_unique_view = view.match(F("uniqueness").is_number())
+
+            print(len(has_unique_view))
+
+        Returns:
+            :class:`ViewExpression`
+        """
+        return ViewExpression({"$isNumber": self})
+
+    def is_string(self):
+        """Determines whether this expression is a string.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Verify that filepaths are strings
+            view = dataset.match(F("filepath").is_string())
+
+            print(len(view))
+
+        Returns:
+            :class:`ViewExpression`
+        """
+        return self.type() == "string"
+
+    def is_array(self):
+        """Determines whether this expression is an array.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Verify that tags are arrays
+            view = dataset.match(F("tags").is_array())
+
+            print(len(view))
+
+        Returns:
+            :class:`ViewExpression`
+        """
+        return ViewExpression({"$isArray": self})
+
+    def is_missing(self):
+        """Determines whether this expression refers to a missing field.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Verify that `foobar` is a non-existent field on all samples
+            view = dataset.match(F("foobar").is_missing())
+
+            print(len(view) == len(dataset))
+
+        Returns:
+            :class:`ViewExpression`
+        """
+        return self.type() == "missing"
+
+    def is_in(self, values):
+        """Creates an expression that returns a boolean indicating whether
+        ``self in values``.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            ANIMALS = [
+                "bear", "bird", "cat", "cow", "dog", "elephant", "giraffe",
+                "horse", "sheep", "zebra"
+            ]
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Create a view that only contains animal predictions
+            view = dataset.filter_labels(
+                "predictions", F("label").is_in(ANIMALS)
+            )
+
+            print(view.count_values("predictions.detections.label"))
 
         Args:
-            place (0): the decimal place at which to truncate. Must be an
-                integer in range ``(-20, 100)``
+            values: a value or iterable of values
 
         Returns:
             a :class:`ViewExpression`
         """
-        return ViewExpression({"$trunc": [self, place]})
+        if etau.is_str(values):
+            values = [values]
 
-    # Field expression operators ##############################################
+        return ViewExpression({"$in": [self, list(values)]})
 
     def apply(self, expr):
         """Applies the given expression to this expression.
 
         Examples::
 
+            import fiftyone as fo
+            import fiftyone.zoo as foz
             from fiftyone import ViewField as F
 
-            # Show samples whose first detection in the `predictions` field
-            # has confidence > 0.95
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Get samples with `uniqueness` in [0.25, 0.75]
             view = dataset.match(
-                F("predictions.detections")[0].apply(F("confidence") > 0.95)
+                F("uniqueness").apply((F() > 0.25) & (F() < 0.75))
             )
+
+            print(view.bounds("uniqueness"))
 
         Args:
             expr: a :class:`ViewExpression`
@@ -442,30 +1168,412 @@ class ViewExpression(object):
         Returns:
             a :class:`ViewExpression`
         """
+        expr._freeze_prefix("$$expr")
+        return ViewExpression({"$let": {"vars": {"expr": self}, "in": expr}})
+
+    def if_else(self, true_expr, false_expr):
+        """Returns either ``true_expr`` or ``false_expr`` depending on the
+        value of this expression, which must resolve to a boolean.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Set `uniqueness` values below 0.75 to None
+            view = dataset.set_field(
+                "uniqueness",
+                (F("uniqueness") > 0.75).if_else(F("uniqueness"), None)
+            )
+
+            print(view.bounds("uniqueness"))
+
+        Args:
+            true_expr: a :class:`ViewExpression` or MongoDB expression dict
+            false_expr: a :class:`ViewExpression` or MongoDB expression dict
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression(
+            {"$cond": {"if": self, "then": true_expr, "else": false_expr}}
+        )
+
+    def cases(self, mapping, default=None):
+        """Applies a case statement to this expression, which effectively
+        computes the following pseudocode::
+
+            for key, value in mapping.items():
+                if self == key:
+                    return value
+
+            if default is not None:
+                return default
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Set `uniqueness` values below 0.75 to None
+            view = dataset.set_field(
+                "uniqueness",
+                (F("uniqueness") > 0.75).if_else(F("uniqueness"), None)
+            )
+
+            # Map numeric `uniqueness` values to 1 and null values to 0
+            cases_view = view.set_field(
+                "uniqueness",
+                F("uniqueness").type().cases({"double": 1, "null": 0}),
+            )
+
+            print(cases_view.count_values("uniqueness"))
+
+        Args:
+            mapping: a dict mapping literals or :class:`ViewExpression` keys to
+                literal or :class:`ViewExpression` values
+            default (None): an optional literal or :class:`ViewExpression` to
+                return if none of the switch branches are taken
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        mapping = {ViewField() == k: v for k, v in mapping.items()}
+        return self.switch(mapping, default=default)
+
+    def switch(self, mapping, default=None):
+        """Applies a switch statement to this expression, which effectively
+        computes the given pseudocode::
+
+            for key, value in mapping.items():
+                if self.apply(key):
+                    return value
+
+            if default is not None:
+                return default
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Round `uniqueness` values to either 0.25 or 0.75
+            view = dataset.set_field(
+                "uniqueness",
+                F("uniqueness").switch(
+                    {
+                        (0.0 < F()) & (F() <= 0.5): 0.25,
+                        (0.5 < F()) & (F() <= 1.0): 0.75,
+                    },
+                )
+            )
+
+            print(cases_view.count_values("uniqueness"))
+
+        Args:
+            mapping: a dict mapping boolean :class:`ViewExpression` keys to
+                literal or :class:`ViewExpression` values
+            default (None): an optional literal or :class:`ViewExpression` to
+                return if none of the switch branches are taken
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        branches = []
+        for key, value in mapping.items():
+            key._freeze_prefix("$$expr")
+            branches.append({"case": key, "then": value})
+
+        switch = {"branches": branches}
+        if default is not None:
+            switch["default"] = default
+
+        return ViewExpression(
+            {"$let": {"vars": {"expr": self}, "in": {"$switch": switch}}}
+        )
+
+    def map_values(self, mapping):
+        """Replaces this expression with the corresponding value in the
+        provided mapping dict, if it is present as a key.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            ANIMALS = [
+                "bear", "bird", "cat", "cow", "dog", "elephant", "giraffe",
+                "horse", "sheep", "zebra"
+            ]
+
+            #
+            # Replace the `label` of all animal objects in the `predictions`
+            # field with "animal"
+            #
+            view = dataset.set_field(
+                "predictions.detections",
+                F("detections").map(
+                    F().set_field(
+                        "label",
+                        F("label").map_values({a: "animal" for a in ANIMALS}),
+                    )
+                )
+            )
+
+            print(view.count_values("predictions.detections.label"))
+
+        Args:
+            mapping: a dict mapping keys to replacement values
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        keys, values = zip(*list(mapping.items()))
         return ViewExpression(
             {
                 "$let": {
-                    "vars": {"field": self},
-                    "in": expr.to_mongo(prefix="$$field"),
+                    "vars": {"this": self, "keys": keys, "values": values},
+                    "in": {
+                        "$cond": [
+                            {"$in": ["$$this", "$$keys"]},
+                            {
+                                "$arrayElemAt": [
+                                    "$$values",
+                                    {"$indexOfArray": ["$$keys", "$$this"]},
+                                ],
+                            },
+                            "$$this",
+                        ]
+                    },
                 }
             }
         )
 
-    # Array expression operators ##############################################
+    def set_field(self, field, value_or_expr):
+        """Sets the specified field or embedded field of this expression, which
+        must evaluate to a document, to the given value or expression.
 
-    def __getitem__(self, idx_or_slice):
-        """Returns the element or slice of this expression, which must resolve
-        to an array.
-
-        All of the typical array slicing operations are supported, except for
-        specifying a non-unit step.
+        The provided expression is computed by applying it to this expression
+        via ``self.apply(value_or_expr)``.
 
         Examples::
 
-            expr[3]      # the fourth element of the array
-            expr[:10]    # the first (up to) 10 elements of the array
-            expr[-3:]    # the last (up to) 3 elements of the array
-            expr[3:10]   # the fourth through tenth elements of the array
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            #
+            # Replaces the `label` attritubes of the objects in the
+            # `predictions` field according to the following rule:
+            #
+            #   If the `label` starts with `b`, replace it with `b`. Otherwise,
+            #   replace it with "other"
+            #
+            view = dataset.set_field(
+                "predictions.detections",
+                F("detections").map(
+                    F().set_field(
+                        "label",
+                        F("label").re_match("^b").if_else("b", "other"),
+                    )
+                )
+            )
+
+            print(view.count_values("predictions.detections.label"))
+
+        Args:
+            field: the "field" or "embedded.field.name" to set
+            value_or_expr: a literal value or :class:`ViewExpression` defining
+                the field to set
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        if (
+            isinstance(value_or_expr, ViewExpression)
+            and not value_or_expr.is_frozen
+        ):
+            value = self.apply(value_or_expr)
+        else:
+            value = value_or_expr
+
+        field = "$$expr." + field
+        expr = value
+        chunks = field.split(".")
+        for idx, chunk in enumerate(reversed(chunks[1:]), 1):
+            expr = {"$mergeObjects": [".".join(chunks[:-idx]), {chunk: expr}]}
+
+        return self._let_in(ViewExpression(expr), var="expr")
+
+    def let_in(self, expr):
+        """Returns an equivalent expression where this expression is defined as
+        a variable that is used wherever necessary in the given expression.
+
+        This method is useful when ``expr`` contains multiple instances of this
+        expression, since it avoids duplicate computation of this expression in
+        the final pipeline.
+
+        If ``expr`` is a simple expression such as a :class:`ViewField`, no
+        variable is defined and ``expr`` is directly returned.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Bboxes are in [top-left-x, top-left-y, width, height] format
+            bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+
+            good_bboxes = (bbox_area > 0.25) & (bbox_area < 0.75)
+
+            # Optimize the expression
+            good_bboxes_opt = bbox_area.let_in(good_bboxes)
+
+            # Contains predictions whose bounding box areas are in [0.25, 0.75]
+            view = dataset.filter_labels("predictions", good_bboxes_opt)
+
+            print(good_bboxes)
+            print(good_bboxes_opt)
+            print(dataset.count("predictions.detections"))
+            print(view.count("predictions.detections"))
+
+        Args:
+            expr: a :class:`ViewExpression`
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        if isinstance(self, (ViewField, ObjectId)):
+            return expr
+
+        return self._let_in(expr)
+
+    def _let_in(self, expr, var="expr"):
+        self_expr = ViewField("$$" + var)
+        in_expr = _do_apply_memo(expr, self, self_expr)
+        return ViewExpression({"$let": {"vars": {var: self}, "in": in_expr}})
+
+    def min(self, value=None):
+        """Returns the minimum value of either this array expression, or the
+        minimum of this expression and the given value.
+
+        Missing or ``None`` values are ignored.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Bboxes are in [top-left-x, top-left-y, width, height] format
+            bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+
+            # Adds a `min_area` property to the `predictions` field that
+            # records the minimum prediction area in that sample
+            view = dataset.set_field(
+                "predictions.min_area",
+                F("detections").map(bbox_area).min()
+            )
+
+            print(view.bounds("predictions.min_area"))
+
+        Args:
+            value (None): an optional value to compare to
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        if value is not None:
+            return ViewExpression({"$min": [self, value]})
+
+        return ViewExpression({"$min": self})
+
+    def max(self, value=None):
+        """Returns the maximum value of either this array expression, or the
+        maximum of this expression and the given value.
+
+        Missing or ``None`` values are ignored.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Bboxes are in [top-left-x, top-left-y, width, height] format
+            bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+
+            # Adds a `max_area` property to the `predictions` field that
+            # records the maximum prediction area in that sample
+            view = dataset.set_field(
+                "predictions.max_area",
+                F("detections").map(bbox_area).max()
+            )
+
+            print(view.bounds("predictions.max_area"))
+
+        Args:
+            value (None): an optional value to compare to
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        if value is not None:
+            return ViewExpression({"$max": [self, value]})
+
+        return ViewExpression({"$max": self})
+
+    # Array expression operators ##############################################
+
+    def __getitem__(self, idx_or_slice):
+        """Returns the element or slice of this array expression.
+
+        All of the typical slicing operations are supported, except for
+        specifying a non-unit step::
+
+            expr[3]      # the fourth element
+            expr[-1]     # the last element
+            expr[:10]    # the first (up to) 10 elements
+            expr[-3:]    # the last (up to) 3 elements
+            expr[3:10]   # the fourth through tenth elements
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Bboxes are in [top-left-x, top-left-y, width, height] format
+            bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+
+            # Only contains objects in the `predictions` field with area > 0.2
+            view = dataset.filter_labels("predictions", bbox_area > 0.2)
+
+            print(dataset.count("predictions.detections"))
+            print(view.count("predictions.detections"))
 
         Args:
             idx_or_slice: the index or slice
@@ -490,8 +1598,13 @@ class ViewExpression(object):
 
             position = s.start
             n = s.stop - position
+            if n < 0:
+                return ViewExpression({"$literal": []})
+
             if position < 0:
                 position += self.length()
+                expr = ViewExpression({"$slice": [self, position, n]})
+                return self.let_in(expr)
 
             return ViewExpression({"$slice": [self, position, n]})
 
@@ -500,7 +1613,8 @@ class ViewExpression(object):
 
         if s.stop < 0:
             n = self.length() + s.stop
-            return ViewExpression({"$slice": [self, n]})
+            expr = ViewExpression({"$slice": [self, n]})
+            return self.let_in(expr)
 
         n = s.stop
         return ViewExpression({"$slice": [self, n]})
@@ -514,37 +1628,50 @@ class ViewExpression(object):
         )
 
     def length(self):
-        """Computes the length of this expression, which must resolve to an
-        array.
+        """Computes the length of this array expression.
 
-        If the expression is null, 0 is returned.
+        If this expression's value is null or missing, zero is returned.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Only contains samples with at least 15 predicted objects
+            view = dataset.match(F("predictions.detections").length() >= 15)
+
+            print(dataset.count())
+            print(view.count())
 
         Returns:
             a :class:`ViewExpression`
         """
         return ViewExpression({"$size": {"$ifNull": [self, []]}})
 
-    def is_in(self, values):
-        """Creates an expression that returns a boolean indicating whether
-        ``self in values``.
-
-        Args:
-            values: a value or iterable of values
-
-        Returns:
-            a :class:`ViewExpression`
-        """
-        if etau.is_str(values):
-            values = [values]
-
-        return ViewExpression({"$in": [self, list(values)]})
-
     def contains(self, value):
-        """Creates an expression that returns a boolean indicating whether
-        ``value in self``.
+        """Checks whether the given value is in this array expression.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Only contains samples with a "cat" prediction
+            view = dataset.match(
+                F("predictions.detections").map(F("label")).contains("cat")
+            )
+
+            print(dataset.count())
+            print(view.count())
 
         Args:
-            value: the value to check if it is contained in ``self``
+            value: a value
 
         Returns:
             a :class:`ViewExpression`
@@ -554,10 +1681,122 @@ class ViewExpression(object):
     def reverse(self):
         """Reverses the order of the elements in the array expression.
 
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            first_obj = F("predictions.detections")[0]
+            last_obj = F("predictions.detections").reverse()[0]
+
+            # Only contains samples whose first and last prediction have the
+            # same label
+            view = dataset.match(
+                first_obj.apply(F("label")) == last_obj.apply(F("label"))
+            )
+
+            print(dataset.count())
+            print(view.count())
+
         Returns:
             a :class:`ViewExpression`
         """
         return ViewExpression({"$reverseArray": self})
+
+    def sort(self, reverse=False):
+        """Sorts this expression, which must resolve an array whose BSON
+        representation can be sorted by JavaScript's ``.sort()`` method.
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(filepath="im1.jpg", tags=["z", "f", "p", "a"]),
+                    fo.Sample(filepath="im2.jpg", tags=["y", "q", "h", "d"]),
+                    fo.Sample(filepath="im3.jpg", tags=["w", "c", "v", "l"]),
+                ]
+            )
+
+            # Sort the `tags` of each sample
+            view = dataset.set_field("tags", F("tags").sort())
+
+            print(view.first().tags)
+
+        Args:
+            field: the field to sort by
+            reverse (False): whether to sort in descending order
+
+        Args:
+            reverse (False): whether to sort in descending order
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        rev = ".reverse()" if reverse else ""
+        sort_fcn = """
+        function(array) {{
+            array.sort(){rev};
+            return array;
+        }}
+        """.format(
+            rev=rev
+        )
+        sort_fcn = " ".join(sort_fcn.split())  # minimize
+
+        return ViewExpression(
+            {"$function": {"body": sort_fcn, "args": [self], "lang": "js"}}
+        )
+
+    def sort_by(self, field, reverse=False):
+        """Sorts this expression, which must resolve to a document array, by
+        the given field or embedded field.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Sort the predictions in each sample by `confidence`
+            view = dataset.set_field(
+                "predictions.detections",
+                F("detections").sort_by("confidence", reverse=True)
+            )
+
+            sample = view.first()
+            print(sample.predictions.detections[0].confidence)
+            print(sample.predictions.detections[-1].confidence)
+
+        Args:
+            field: the field to sort by
+            reverse (False): whether to sort in descending order
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        rev = ".reverse()" if reverse else ""
+        sort_fcn = """
+        function(array) {{
+            array.sort((a, b) => a.{field} - b.{field}){rev};
+            return array;
+        }}
+        """.format(
+            field=field, rev=rev
+        )
+        sort_fcn = " ".join(sort_fcn.split())  # minimize
+
+        return ViewExpression(
+            {"$function": {"body": sort_fcn, "args": [self], "lang": "js"}}
+        )
 
     def filter(self, expr):
         """Applies the given filter to the elements of this expression, which
@@ -566,26 +1805,55 @@ class ViewExpression(object):
         The output array will only contain elements of the input array for
         which ``expr`` returns ``True``.
 
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Only include predictions with `confidence` of at least 0.9
+            view = dataset.set_field(
+                "predictions.detections",
+                F("detections").filter(F("confidence") > 0.9)
+            )
+
+            print(view.bounds("predictions.detections.confidence"))
+
         Args:
             expr: a :class:`ViewExpression` that returns a boolean
 
         Returns:
             a :class:`ViewExpression`
         """
-        return ViewExpression(
-            {
-                "$filter": {
-                    "input": self,
-                    "cond": expr.to_mongo(prefix="$$this"),
-                }
-            }
-        )
+        expr._freeze_prefix("$$this")
+        return ViewExpression({"$filter": {"input": self, "cond": expr}})
 
     def map(self, expr):
         """Applies the given expression to the elements of this expression,
-        which must resolve to an array.
+        which must be an array.
 
         The output will be an array with the applied results.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Bboxes are in [top-left-x, top-left-y, width, height] format
+            bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
+
+            # Only include predictions with `confidence` of at least 0.9
+            view = dataset.set_field(
+                "predictions.detections",
+                F("detections").map(F().set_field("area", bbox_area))
+            )
+
+            print(view.bounds("predictions.detections.area"))
 
         Args:
             expr: a :class:`ViewExpression`
@@ -593,33 +1861,71 @@ class ViewExpression(object):
         Returns:
             a :class:`ViewExpression`
         """
+        expr._freeze_prefix("$$this")
         return ViewExpression(
-            {"$map": {"input": self, "in": expr.to_mongo(prefix="$$this")}}
+            {"$map": {"input": self, "as": "this", "in": expr}}
         )
 
+    def extend(self, *args, before=False):
+        """Concatenates the given array(s) or array expression(s) to this array
+        expression.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Adds the "good" and "ready" tags to each sample
+            view = dataset.set_field(
+                "tags", F("tags").extend(["good", "ready"])
+            )
+
+            print(view.first().tags)
+
+        Args:
+            *args: one or more arrays or :class:`ViewExpression` instances that
+                resolve to array expressions
+            before (False): whether to position ``args`` before this array in
+                the output array
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        if before:
+            return ViewExpression({"$concatArrays": list(args) + [self]})
+
+        return ViewExpression({"$concatArrays": [self] + list(args)})
+
     def sum(self):
-        """Returns the sum of the values in this expression, which must resolve
-        to a numeric array.
+        """Returns the sum of the values in this expression, which must be a
+        numeric array.
 
         Missing, non-numeric, or ``None``-valued elements are ignored.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Add a field to each `predictions` object that records the total
+            # confidence of the predictions
+            view = dataset.set_field(
+                "predictions.total_conf",
+                F("detections").map(F("confidence")).sum()
+            )
+
+            print(view.bounds("predictions.total_conf"))
 
         Returns:
             a :class:`ViewExpression`
         """
         return ViewExpression({"$sum": self})
-
-        # @todo is this version needed?
-        """
-        return ViewExpression(
-            {
-                "$reduce": {
-                    "input": self,
-                    "initialValue": 0,
-                    "in": {"$add": ["$$value", "$$this"]},
-                }
-            }
-        )
-        """
 
     def mean(self):
         """Returns the average value in this expression, which must resolve to
@@ -627,52 +1933,417 @@ class ViewExpression(object):
 
         Missing or ``None``-valued elements are ignored.
 
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Add a field to each `predictions` object that records the average
+            # confidence of the predictions
+            view = dataset.set_field(
+                "predictions.avg_conf",
+                F("detections").map(F("confidence")).mean()
+            )
+
+            print(view.bounds("predictions.avg_conf"))
+
         Returns:
             a :class:`ViewExpression`
         """
         return ViewExpression({"$avg": self})
 
-    # Hybrid expression operators #############################################
+    def reduce(self, expr, init_val=0):
+        """Applies the given reduction to this expression, which must be an
+        array, and returns the single value computed.
 
-    def min(self, value=None):
-        """Returns the minimum value of the expression, which can be an array.
+        The provided ``expr`` must include the :const:`VALUE` expression to
+        properly define the reduction.
 
-        If ``val != None``, the minimum of this expression and ``val`` is
-        returned.
+        Examples::
 
-        Missing or ``None`` values are ignored.
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+            from fiftyone.core.expressions import VALUE
+
+            #
+            # Compute the number of keypoints in each sample of a dataset
+            #
+
+            dataset = fo.Dataset()
+            dataset.add_sample(
+                fo.Sample(
+                    filepath="image.jpg",
+                    keypoints=fo.Keypoints(
+                        keypoints=[
+                            fo.Keypoint(points=[(0, 0), (1, 1)]),
+                            fo.Keypoint(points=[(0, 0), (1, 0), (1, 1), (0, 1)]),
+                        ]
+                    )
+                )
+            )
+
+            view = dataset.set_field(
+                "keypoints.count",
+                F("$keypoints.keypoints").reduce(VALUE + F("points").length()),
+            )
+
+            print(view.first().keypoints.count)
+
+            #
+            # Generate a `list,of,labels` for the `predictions` of each sample
+            #
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            join_labels = F("detections").reduce(
+                VALUE.concat(",", F("label")), init_val=""
+            ).lstrip(",")
+
+            view = dataset.set_field("predictions.labels", join_labels)
+
+            print(view.first().predictions.labels)
 
         Args:
-            value (None): an optional value to compare to
+            expr: a :class:`ViewExpression` defining the reduction expression
+                to apply. Must contain the :const:`VALUE` expression
+            init_val (0): an initial value for the reduction
 
         Returns:
             a :class:`ViewExpression`
         """
-        if value is not None:
-            return ViewExpression({"$min": [self, value]})
+        expr._freeze_prefix("$$this")
+        return ViewExpression(
+            {"$reduce": {"input": self, "initialValue": init_val, "in": expr}}
+        )
 
-        return ViewExpression({"$min": self})
+    def join(self, delimiter):
+        """Joins the element of this expression, which must be a string array,
+        by the given delimiter.
 
-    def max(self, value=None):
-        """Returns the maximum value of the expression, which can be an array.
+        Examples::
 
-        If ``val != None``, the maximum of this expression and ``val`` is
-        returned.
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
 
-        Missing or ``None`` values are ignored.
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Generate a `list,of,labels` for the `predictions` of each sample
+            view = dataset.set_field(
+                "predictions.labels",
+                F("detections").map(F("label")).join(",")
+            )
+
+            print(view.first().predictions.labels)
 
         Args:
-            value (None): an optional value to compare to
+            delimiter: the delimiter string
 
         Returns:
             a :class:`ViewExpression`
         """
-        if value is not None:
-            return ViewExpression({"$max": [self, value]})
-
-        return ViewExpression({"$max": self})
+        return self.reduce(
+            VALUE.concat(delimiter, ViewField()), init_val=""
+        ).substr(start=len(delimiter))
 
     # String expression operators #############################################
+
+    def substr(self, start=None, end=None, count=None):
+        """Extracts the specified substring from this string expression.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Truncate the `label` of each prediction to 3 characters
+            truncate_label = F().set_field("label", F("label").substr(count=3))
+            view = dataset.set_field(
+                "predictions.detections",
+                F("detections").map(truncate_label),
+            )
+
+            print(view.distinct("predictions.detections.label"))
+
+        Args:
+            start (None): the starting index of the substring. If negative,
+                specifies an offset from the end of the string
+            end (None): the ending index of the substring. If negative,
+                specifies an offset from the end of the string
+            count (None): the substring length to extract. If ``None``, the
+                rest of the string is returned
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        if start is None and end is None and count is None:
+            return self
+
+        if start is None:
+            start = 0
+
+        if start < 0 and end is not None and end < 0:
+            count = end - start
+            end = None
+
+        if start < 0:
+            start += self.strlen()
+
+        if end is not None:
+            if end < 0:
+                end += self.strlen()
+
+            count = end - start
+        elif count is None:
+            count = -1
+
+        expr = ViewExpression({"$substrBytes": [self, start, count]})
+        return self.let_in(expr)
+
+    def strlen(self):
+        """Computes the length of this string expression.
+
+        If this expression's value is null or missing, zero is returned.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Records the length of each predicted object's `label`
+            label_len = F().set_field("label_len", F("label").strlen())
+            view = dataset.set_field(
+                "predictions.detections",
+                F("detections").map(label_len),
+            )
+
+            print(view.bounds("predictions.detections.label_len"))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$strLenBytes": {"$ifNull": [self, ""]}})
+
+    def lower(self):
+        """Converts the string expression to lowercase.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Converts all tags to lowercase
+            transform_tag = F().lower()
+            view = dataset.set_field("tags", F("tags").map(transform_tag))
+
+            print(dataset.distinct("tags"))
+            print(view.distinct("tags"))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$toLower": self})
+
+    def upper(self):
+        """Converts the string expression to uppercase.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Converts all tags to uppercase
+            transform_tag = F().upper()
+            view = dataset.set_field("tags", F("tags").map(transform_tag))
+
+            print(dataset.distinct("tags"))
+            print(view.distinct("tags"))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$toUpper": self})
+
+    def concat(self, *args, before=False):
+        """Concatenates the given string(s) to this string expression.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Appends "-tag" to all tags
+            transform_tag = F().concat("-tag")
+            view = dataset.set_field("tags", F("tags").map(transform_tag))
+
+            print(dataset.distinct("tags"))
+            print(view.distinct("tags"))
+
+        Args:
+            *args: one or more strings or string :class:`ViewExpression`
+                instances
+            before (False): whether to position ``args`` before this string in
+                the output string
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        if before:
+            return ViewExpression({"$concat": list(args) + [self]})
+
+        return ViewExpression({"$concat": [self] + list(args)})
+
+    def strip(self, chars=None):
+        """Removes whitespace characters from the beginning and end of the
+        string expression. Or, if ``chars`` is provided, remove those
+        characters instead.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Adds and then strips whitespace from each tag
+            transform_tag = F().concat(" ", before=True).concat(" ").rstrip()
+            view = dataset.set_field("tags", F("tags").map(transform_tag))
+
+            print(dataset.distinct("tags"))
+            print(view.distinct("tags"))
+
+        Args:
+            chars (None): an optional string or :class:`ViewExpression`
+                resolving to a string expression specifying characters to
+                remove
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        trim = {"input": self}
+        if chars is not None:
+            trim["chars"] = chars
+
+        return ViewExpression({"$trim": trim})
+
+    def lstrip(self, chars=None):
+        """Removes whitespace characters from the beginning of the string
+        expression. Or, if ``chars`` is provided, remove those characters
+        instead.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Adds and then strips whitespace from the beginning of each tag
+            transform_tag = F().concat(" ", before=True).lstrip()
+            view = dataset.set_field("tags", F("tags").map(transform_tag))
+
+            print(dataset.distinct("tags"))
+            print(view.distinct("tags"))
+
+        Args:
+            chars (None): an optional string or :class:`ViewExpression`
+                resolving to a string expression specifying characters to
+                remove
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        ltrim = {"input": self}
+        if chars is not None:
+            ltrim["chars"] = chars
+
+        return ViewExpression({"$ltrim": ltrim})
+
+    def rstrip(self, chars=None):
+        """Removes whitespace characters from the end of the string expression.
+        Or, if ``chars`` is provided, remove those characters instead.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Adds and then strips whitespace from the end of each tag
+            transform_tag = F().concat(" ").rstrip()
+            view = dataset.set_field("tags", F("tags").map(transform_tag))
+
+            print(dataset.distinct("tags"))
+            print(view.distinct("tags"))
+
+        Args:
+            chars (None): an optional string or :class:`ViewExpression`
+                resolving to a string expression specifying characters to
+                remove
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        rtrim = {"input": self}
+        if chars is not None:
+            rtrim["chars"] = chars
+
+        return ViewExpression({"$rtrim": rtrim})
+
+    def replace(self, old, new):
+        """Replaces all occurances of ``old`` with ``new`` in the string
+        expression.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Replaces "val" with "VAL" in each tag
+            transform_tag = F().replace("val", "VAL")
+            view = dataset.set_field("tags", F("tags").map(transform_tag))
+
+            print(dataset.distinct("tags"))
+            print(view.distinct("tags"))
+
+        Args:
+            old: a string or :class:`ViewExpression` resolving to a string
+                expression specifying the substring to replace
+            new: a string or :class:`ViewExpression` resolving to a string
+                expression specifying the replacement value
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression(
+            {"$replaceAll": {"input": self, "find": old, "replacement": new}}
+        )
 
     def re_match(self, regex, options=None):
         """Performs a regular expression pattern match on this expression,
@@ -683,11 +2354,29 @@ class ViewExpression(object):
 
         Examples::
 
-            # Match fields that end in ".jpg"
-            expr.re_match("\\.jpg$")
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
 
-            # Match PNG images in "/my/dir"
-            expr.re_match("/my/dir/.*\\.png")
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            #
+            # Get samples whose images are JPEGs
+            #
+
+            view = dataset.match(F("filepath").re_match("\\.jpg$"))
+
+            print(view.count())
+            print(view.first().filepath)
+
+            #
+            # Get samples whose images are in the "/Users" directory
+            #
+
+            view = dataset.match(F("filepath").re_match("^/Users/"))
+
+            print(view.count())
+            print(view.first().filepath)
 
         Args:
             regex: the regular expression to apply. Must be a Perl Compatible
@@ -715,6 +2404,20 @@ class ViewExpression(object):
         """Determines whether this string expression starts with the given
         string (or any of a list of strings).
 
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Get samples whose images are in "/Users" or "/home" directories
+            view = dataset.match(F("filepath").starts_with(("/Users", "/home"))
+
+            print(view.count())
+            print(view.first().filepath)
+
         Args:
             str_or_strs: a string or iterable of strings
             case_sensitive (True): whether to perform a case sensitive match
@@ -735,6 +2438,20 @@ class ViewExpression(object):
     def ends_with(self, str_or_strs, case_sensitive=True):
         """Determines whether this string expression ends with the given string
         (or any of a list of strings).
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Get samples whose images are JPEGs or PNGs
+            view = dataset.match(F("filepath").ends_with((".jpg", ".png")))
+
+            print(view.count())
+            print(view.first().filepath)
 
         Args:
             str_or_strs: a string or iterable of strings
@@ -757,6 +2474,21 @@ class ViewExpression(object):
         """Determines whether this string expression contains the given string
         (or any of a list of strings).
 
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Only contains predictions whose `label` contains "be"
+            view = dataset.filter_labels(
+                "predictions", F("label").contains_str("be")
+            )
+
+            print(view.distinct("predictions.detections.label"))
+
         Args:
             str_or_strs: a string or iterable of strings
             case_sensitive (True): whether to perform a case sensitive match
@@ -778,6 +2510,25 @@ class ViewExpression(object):
         """Determines whether this string expression exactly matches the given
         string (or any of a list of strings).
 
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Only contains predictions whose `label` is "cat" or "dog", case
+            # insensitive
+            view = dataset.map_labels(
+                "predictions", {"cat": "CAT", "dog": "DOG"}
+            ).filter_labels(
+                "predictions",
+                F("label").matches_str(("cat", "dog"), case_sensitive=False)
+            )
+
+            print(view.distinct("predictions.detections.label"))
+
         Args:
             str_or_strs: a string or iterable of strings
             case_sensitive (True): whether to perform a case sensitive match
@@ -795,81 +2546,81 @@ class ViewExpression(object):
         options = None if case_sensitive else "i"
         return self.re_match(regex, options=options)
 
-    # Conditional operators ###################################################
+    def split(self, delimiter):
+        """Splits the string expression by the given delimiter.
 
-    def if_else(self, true_expr, false_expr):
-        """Returns either ``true_expr`` or ``false_expr`` depending on the
-        value of this expression, which must resolve to a boolean.
+        The result is a string array that contains the chunks with the
+        delimiter removed. If the delimiter is not found, this full string is
+        returned as a single element array.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Add "-good" to the first tag and then split on "-" to create
+            # multiple tags for each sample
+            view = dataset.set_field(
+                "tags", F("tags")[0].concat("-good").split("-")
+            )
+
+            print(view.distinct("tags"))
 
         Args:
-            true_expr: a :class:`ViewExpression` or MongoDB expression dict
-            false_expr: a :class:`ViewExpression` or MongoDB expression dict
+            delimiter: the delimiter string or :class:`ViewExpression`
+                resolving to a string expression
 
         Returns:
             a :class:`ViewExpression`
         """
-        return ViewExpression(
-            {"$cond": {"if": self, "then": true_expr, "else": false_expr}}
-        )
-
-    # Private methods #########################################################
-
-    @staticmethod
-    def _recurse(val, prefix):
-        if isinstance(val, ViewExpression):
-            return val.to_mongo(prefix=prefix)
-
-        if isinstance(val, dict):
-            return {
-                ViewExpression._recurse(k, prefix): ViewExpression._recurse(
-                    v, prefix
-                )
-                for k, v in val.items()
-            }
-
-        if isinstance(val, list):
-            return [ViewExpression._recurse(v, prefix) for v in val]
-
-        return val
+        return ViewExpression({"$split": [self, delimiter]})
 
 
-class _MetaViewField(type):
+class ViewField(ViewExpression):
+    """A :class:`ViewExpression` that refers to a field or embedded field of a
+    document.
 
-    # pylint: disable=no-member
-    def __getattr__(cls, name):
-        # This is here to prevent Sphinx from getting confused...
-        # https://github.com/sphinx-doc/sphinx/issues/6859
-        if not etau.is_str(name) or name.startswith("_"):
-            return super().__getattr__(name)
-
-        return ViewField(name)
-
-
-class ViewField(ViewExpression, metaclass=_MetaViewField):
-    """A field (or subfield) of an object in a
-    :class:`fiftyone.core.stages.ViewStage`.
-
-    A :class:`ViewField` can be created either via class attribute or object
-    constructor syntax.
-
-    You can use `dot notation <https://docs.mongodb.com/manual/core/document/#dot-notation>`_
+    You can use
+    `dot notation <https://docs.mongodb.com/manual/core/document/#dot-notation>`_
     to refer to subfields of embedded objects within fields.
+
+    When you create a :class:`ViewField` using a string field like
+    ``ViewField("embedded.field.name")``, the meaning of this field is
+    interpreted relative to the context in which the :class:`ViewField` object
+    is used. For example, when passed to the :meth:`ViewExpression.map` method,
+    this object will refer to the ``embedded.field.name`` object of the array
+    element being processed.
+
+    In other cases, you may wish to create a :class:`ViewField` that always
+    refers to the root document. You can do this by prepending ``"$"`` to the
+    name of the field, as in ``ViewField("$embedded.field.name")``.
 
     Examples::
 
         from fiftyone import ViewField as F
 
-        # Reference a field named `ground_truth`
-        F("ground_truth")
-        F.ground_truth           # equivalent
-
-        # Reference the `label` field of the `ground_truth` object
-        F("ground_truth.label")
-        F("ground_truth").label  # equivalent
-        F.ground_truth.label     # equivalent
-
-        # Reference the root object
+        # Reference the root of the current context
         F()
+
+        # Reference the `ground_truth` field in the current context
+        F("ground_truth")
+
+        # Reference the `label` field of the `ground_truth` object in the
+        # current context
+        F("ground_truth.label")
+
+        # Reference the root document in any context
+        F("$")
+
+        # Reference the `label` field of the root document in any context
+        F("$label")
+
+        # Reference the `label` field of the `ground_truth` object in the root
+        # document in any context
+        F("$ground_truth.label")
 
     .. automethod:: __eq__
     .. automethod:: __ge__
@@ -893,23 +2644,22 @@ class ViewField(ViewExpression, metaclass=_MetaViewField):
     .. automethod:: __getitem__
 
     Args:
-        name (None): the name of the field
+        name (None): the name of the field, with an optional "$" preprended if
+            you wish to freeze this field to the root document
     """
 
     def __init__(self, name=None):
-        if name is not None and not etau.is_str(name):
-            raise TypeError("`name` must be str; found %s" % name)
+        if name is None:
+            name = ""
+
+        should_freeze = name.startswith("$")
+        if should_freeze:
+            name = name[1:]
 
         super().__init__(name)
 
-    def __getattr__(self, name):
-        sub_name = self._expr + "." + name if self._expr else name
-        return ViewField(sub_name)
-
-    @property
-    def name(self):
-        """The name of the field."""
-        return self._expr
+        if should_freeze:
+            self._freeze_prefix("")
 
     def to_mongo(self, prefix=None):
         """Returns a MongoDB representation of the field.
@@ -920,13 +2670,66 @@ class ViewField(ViewExpression, metaclass=_MetaViewField):
         Returns:
             a string
         """
+        if self.is_frozen:
+            prefix = self._prefix
+
         if prefix:
             return prefix + "." + self._expr if self._expr else prefix
 
         return "$" + self._expr if self._expr else "$this"
 
 
-class ObjectId(ViewExpression, metaclass=_MetaViewField):
+def _do_recurse(val, fcn):
+    if isinstance(val, ViewExpression):
+        return fcn(val)
+
+    if isinstance(val, dict):
+        return {
+            _do_recurse(k, fcn): _do_recurse(v, fcn) for k, v in val.items()
+        }
+
+    if isinstance(val, list):
+        return [_do_recurse(v, fcn) for v in val]
+
+    return val
+
+
+def _do_to_mongo(val, prefix):
+    def fcn(val):
+        return val.to_mongo(prefix=prefix)
+
+    return _do_recurse(val, fcn)
+
+
+def _do_freeze_prefix(val, prefix):
+    def fcn(val):
+        if not val.is_frozen:
+            val._prefix = prefix
+
+    return _do_recurse(val, fcn)
+
+
+def _do_apply_memo(val, old, new):
+    def fcn(val):
+        if val is old:
+            return new
+
+        val._expr = _do_apply_memo(val._expr, old, new)
+        return val
+
+    return _do_recurse(val, fcn)
+
+
+#: A :class:`ViewExpression` that refers to the current `$$value` in a MongoDB
+# reduction expression. See :meth:`ViewExpression.reduce`.
+VALUE = ViewField("$$value")
+
+#: A :class:`ViewExpression` that generates a random float in ``[0, 1]`` each
+# time it is called.
+RAND = ViewExpression({"$rand": {}})
+
+
+class ObjectId(ViewExpression):
     """A :class:`ViewExpression` that refers to an
     `ObjectId <https://docs.mongodb.com/manual/reference/method/ObjectId>`_ of
     a document.

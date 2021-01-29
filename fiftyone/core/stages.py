@@ -93,15 +93,13 @@ class ViewStage(object):
         """
         return None
 
-    def to_mongo(self, sample_collection, hide_frames=False):
+    def to_mongo(self, sample_collection):
         """Returns the MongoDB aggregation pipeline for the stage.
 
         Args:
             sample_collection: the
                 :class:`fiftyone.core.collections.SampleCollection` to which
                 the stage is being applied
-            hide_frames (False): whether the aggregation has requested the
-                frames be hidden in the ``_frames`` field
 
         Returns:
             a MongoDB aggregation pipeline (list of dicts)
@@ -666,28 +664,14 @@ class FilterField(ViewStage):
         """Whether to only include samples that match the filter."""
         return self._only_matches
 
-    def _get_new_field(self, sample_collection):
-        field = self._field
-        if self._needs_frames(sample_collection):
-            field = field.split(".", 1)[1]  # remove `frames`
-
-        if self._hide_result:
-            return "__%s" % field
-
-        return field
-
-    def to_mongo(self, sample_collection, hide_frames=False):
+    def to_mongo(self, sample_collection):
         new_field = self._get_new_field(sample_collection)
-        if (
-            sample_collection.media_type == fom.VIDEO
-            and self._field.startswith(_FRAMES_PREFIX)
-        ):
+        if sample_collection._is_frame_field(self._field):
             return _get_filter_frames_field_pipeline(
                 self._field,
                 new_field,
                 self._filter,
                 only_matches=self._only_matches,
-                hide_frames=hide_frames,
             )
 
         return _get_filter_field_pipeline(
@@ -707,11 +691,18 @@ class FilterField(ViewStage):
 
         return _get_field_mongo_filter(self._filter, prefix=self._field)
 
+    def _get_new_field(self, sample_collection):
+        field = self._field
+        if sample_collection._is_frame_field(field):
+            field = field.split(".", 1)[1]  # remove `frames`
+
+        if self._hide_result:
+            return "__" + field
+
+        return field
+
     def _needs_frames(self, sample_collection):
-        return (
-            sample_collection.media_type == fom.VIDEO
-            and self._field.startswith(_FRAMES_PREFIX)
-        )
+        return sample_collection._is_frame_field(self._field)
 
     def _kwargs(self):
         return [
@@ -741,11 +732,11 @@ class FilterField(ViewStage):
             )
 
     def validate(self, sample_collection):
-        if self.field == "filepath":
+        if self._field == "filepath":
             raise ValueError("Cannot filter required field `filepath`")
 
         sample_collection.validate_fields_exist(self._field)
-        self._is_frame_field = self._needs_frames(sample_collection)
+        self._is_frame_field = sample_collection._is_frame_field(self._field)
 
 
 def _get_filter_field_pipeline(
@@ -779,23 +770,17 @@ def _get_filter_field_pipeline(
 
 
 def _get_filter_frames_field_pipeline(
-    filter_field,
-    new_field,
-    filter_arg,
-    only_matches=False,
-    hide_frames=False,
-    hide_result=False,
+    filter_field, new_field, filter_arg, only_matches=False, hide_result=False,
 ):
     filter_field = filter_field.split(".", 1)[1]  # remove `frames`
     cond = _get_field_mongo_filter(filter_arg, prefix="$frame." + filter_field)
-    frames = "_frames" if hide_frames else "frames"
 
     pipeline = [
         {
             "$set": {
-                frames: {
+                "frames": {
                     "$map": {
-                        "input": "$%s" % frames,
+                        "input": "$frames",
                         "as": "frame",
                         "in": {
                             "$mergeObjects": [
@@ -825,7 +810,7 @@ def _get_filter_frames_field_pipeline(
                         "$gt": [
                             {
                                 "$reduce": {
-                                    "input": "$%s" % frames,
+                                    "input": "$frames",
                                     "initialValue": 0,
                                     "in": {
                                         "$sum": [
@@ -834,8 +819,8 @@ def _get_filter_frames_field_pipeline(
                                                 "$cond": [
                                                     {
                                                         "$ne": [
-                                                            "$$this.%s"
-                                                            % new_field,
+                                                            "$$this."
+                                                            + new_field,
                                                             None,
                                                         ]
                                                     },
@@ -855,7 +840,7 @@ def _get_filter_frames_field_pipeline(
         )
 
     if hide_result:
-        pipeline.append({"$unset": "%s.%s" % (frames, new_field)})
+        pipeline.append({"$unset": "frames." + new_field})
 
     return pipeline
 
@@ -1174,21 +1159,17 @@ class FilterLabels(FilterField):
 
         return None
 
-    def to_mongo(self, sample_collection, hide_frames=False):
+    def to_mongo(self, sample_collection):
         self._get_labels_field(sample_collection)
         new_field = self._get_new_field(sample_collection)
 
-        if (
-            sample_collection.media_type == fom.VIDEO
-            and self._labels_field.startswith(_FRAMES_PREFIX)
-        ):
+        if sample_collection._is_frame_field(self._labels_field):
             if self._is_labels_list_field:
                 return _get_filter_frames_list_field_pipeline(
                     self._labels_field,
                     new_field,
                     self._filter,
                     only_matches=self._only_matches,
-                    hide_frames=hide_frames,
                     hide_result=self._hide_result,
                 )
 
@@ -1197,7 +1178,6 @@ class FilterLabels(FilterField):
                 new_field,
                 self._filter,
                 only_matches=self._only_matches,
-                hide_frames=hide_frames,
                 hide_result=self._hide_result,
             )
 
@@ -1219,10 +1199,7 @@ class FilterLabels(FilterField):
         )
 
     def _needs_frames(self, sample_collection):
-        return (
-            sample_collection.media_type == fom.VIDEO
-            and self._labels_field.startswith(_FRAMES_PREFIX)
-        )
+        return sample_collection._is_frame_field(self._labels_field)
 
     def _get_mongo_filter(self):
         if self._is_labels_list_field:
@@ -1238,7 +1215,7 @@ class FilterLabels(FilterField):
 
     def _get_labels_field(self, sample_collection):
         field_name, is_list_field, is_frame_field = _get_labels_field(
-            self._field, sample_collection
+            sample_collection, self._field
         )
         self._is_frame_field = is_frame_field
         self._labels_field = field_name
@@ -1247,7 +1224,7 @@ class FilterLabels(FilterField):
 
     def _get_new_field(self, sample_collection):
         field = self._labels_field
-        if self._needs_frames(sample_collection):
+        if sample_collection._is_frame_field(field):
             field = field.split(".", 1)[1]  # remove `frames`
 
         if self._hide_result:
@@ -1280,7 +1257,7 @@ def _get_filter_list_field_pipeline(
                 "$match": {
                     filter_field: {
                         "$gt": [
-                            {"$size": {"$ifNull": ["$" + filter_field, [],]}},
+                            {"$size": {"$ifNull": ["$" + filter_field, []]}},
                             0,
                         ]
                     }
@@ -1295,38 +1272,37 @@ def _get_filter_list_field_pipeline(
 
 
 def _get_filter_frames_list_field_pipeline(
-    filter_field,
-    new_field,
-    filter_arg,
-    only_matches=False,
-    hide_frames=False,
-    hide_result=False,
+    filter_field, new_field, filter_arg, only_matches=False, hide_result=False,
 ):
     filter_field = filter_field.split(".", 1)[1]  # remove `frames`
     cond = _get_list_field_mongo_filter(filter_arg)
-    frames = "_frames" if hide_frames else "frames"
     label_field, labels_list = new_field.split(".")
 
     pipeline = [
         {
             "$set": {
-                frames: {
+                "frames": {
                     "$map": {
-                        "input": "$%s" % frames,
+                        "input": "$frames",
                         "as": "frame",
                         "in": {
                             "$mergeObjects": [
                                 "$$frame",
                                 {
                                     label_field: {
-                                        labels_list: {
-                                            "$filter": {
-                                                "input": "$$frame."
-                                                + filter_field,
-                                                "cond": cond,
-                                            }
-                                        }
-                                    },
+                                        "$mergeObjects": [
+                                            "$$frame." + label_field,
+                                            {
+                                                labels_list: {
+                                                    "$filter": {
+                                                        "input": "$$frame."
+                                                        + filter_field,
+                                                        "cond": cond,
+                                                    }
+                                                }
+                                            },
+                                        ]
+                                    }
                                 },
                             ]
                         },
@@ -1344,7 +1320,7 @@ def _get_filter_frames_list_field_pipeline(
                         "$gt": [
                             {
                                 "$reduce": {
-                                    "input": "$%s" % frames,
+                                    "input": "$frames",
                                     "initialValue": 0,
                                     "in": {
                                         "$sum": [
@@ -1370,7 +1346,7 @@ def _get_filter_frames_list_field_pipeline(
         )
 
     if hide_result:
-        pipeline.append({"$unset": "%s.%s" % (frames, new_field)})
+        pipeline.append({"$unset": "frames." + new_field})
 
     return pipeline
 
@@ -1389,7 +1365,7 @@ class _FilterListField(FilterField):
             field = field.split(".", 1)[1]  # remove `frames`
 
         if self._hide_result:
-            return "__%s" % field
+            return "__" + field
 
         return field
 
@@ -1400,18 +1376,14 @@ class _FilterListField(FilterField):
     def get_filtered_list_fields(self):
         return [self._filter_field]
 
-    def to_mongo(self, sample_collection, hide_frames=False):
+    def to_mongo(self, sample_collection):
         new_field = self._get_new_field(sample_collection)
-        if (
-            sample_collection.media_type == fom.VIDEO
-            and self._filter_field.startswith(_FRAMES_PREFIX)
-        ):
+        if sample_collection._is_frame_field(self._filter_field):
             return _get_filter_frames_list_field_pipeline(
                 self._filter_field,
                 new_field,
                 self._filter,
                 only_matches=self._only_matches,
-                hide_frames=hide_frames,
                 hide_result=self._hide_result,
             )
 
@@ -1708,7 +1680,7 @@ class LimitLabels(ViewStage):
 
     def to_mongo(self, sample_collection, **_):
         self._labels_list_field = _get_labels_list_field(
-            self._field, sample_collection
+            sample_collection, self._field
         )
 
         limit = max(self._limit, 0)
@@ -1738,7 +1710,7 @@ class LimitLabels(ViewStage):
 
     def validate(self, sample_collection):
         self._labels_list_field = _get_labels_list_field(
-            self._field, sample_collection
+            sample_collection, self._field
         )
 
 
@@ -1843,51 +1815,13 @@ class MapLabels(ViewStage):
         return self._map
 
     def to_mongo(self, sample_collection, **_):
-        self._labels_field, is_list_field, is_frame_field = _get_labels_field(
-            self._field, sample_collection
-        )
-        if is_frame_field:
-            # @todo implement this
-            raise ValueError("Mapping frame labels is not yet supported")
-
-        values = sorted(self._map.values())
-        keys = sorted(self._map.keys(), key=lambda k: self._map[k])
-
-        label = (
-            "$$obj.label"
-            if is_list_field
-            else "$%s.label" % self._labels_field
+        labels_field, _, is_frame_field = _get_labels_field(
+            sample_collection, self._field
         )
 
-        cond = {
-            "$cond": [
-                {"$in": [label, "$$keys"]},
-                {
-                    "$arrayElemAt": [
-                        "$$values",
-                        {"$indexOfArray": ["$$keys", label]},
-                    ]
-                },
-                label,
-            ]
-        }
-
-        if is_list_field:
-            _in = {
-                "$map": {
-                    "input": "$%s" % self._labels_field,
-                    "as": "obj",
-                    "in": {"$mergeObjects": ["$$obj", {"label": cond}]},
-                }
-            }
-            set_field = self._labels_field
-        else:
-            _in = cond
-            set_field = "%s.label" % self._labels_field
-
-        let = {"$let": {"vars": {"keys": keys, "values": values}, "in": _in}}
-
-        return [{"$set": {set_field: let}}]
+        label_path = labels_field + ".label"
+        expr = foe.ViewField("label").map_values(self._map)
+        return _make_set_field_pipeline(sample_collection, label_path, expr)
 
     def _kwargs(self):
         return [
@@ -1903,64 +1837,193 @@ class MapLabels(ViewStage):
         ]
 
     def validate(self, sample_collection):
-        _get_labels_field(self._field, sample_collection)
+        _get_labels_field(sample_collection, self._field)
 
 
-class MapValues(ViewStage):
-    """Applies an expression to the values of a field for each sample in a
-    collection.
+def _make_set_field_pipeline(sample_collection, field, expr):
+    path, list_fields = _parse_field_name(sample_collection, field)
+
+    # Don't unroll terminal lists unless explicitly requested
+    list_fields = [lf for lf in list_fields if lf != field]
+    # Case 1: no list fields
+    if not list_fields:
+        if "." in path:
+            prefix = "$" + path.rsplit(".", 1)[0]
+        else:
+            prefix = None
+
+        path_expr = _get_mongo_expr(expr, prefix=prefix)
+
+        return [{"$set": {path: path_expr}}]
+
+    # Case 2: one list field
+    if len(list_fields) == 1:
+        list_field = list_fields[0]
+        subfield = path[len(list_field) + 1 :]
+        expr = _set_terminal_list_field(list_field, subfield, expr)
+        return [{"$set": {list_field: expr.to_mongo()}}]
+
+    # Case 3: multiple list fields
+
+    # Handle last list field
+    last_list_field = list_fields[-1]
+    terminal_prefix = last_list_field[len(list_fields[-2]) + 1 :]
+    subfield = path[len(last_list_field) + 1 :]
+    expr = _set_terminal_list_field(terminal_prefix, subfield, expr)
+
+    for list_field1, list_field2 in zip(
+        reversed(list_fields[:-1]), reversed(list_fields[1:])
+    ):
+        inner_list_field = list_field2[len(list_field1) + 1 :]
+        expr = foe.ViewField().map(
+            foe.ViewField().set_field(inner_list_field, expr)
+        )
+
+    expr = expr.to_mongo(prefix="$" + list_fields[0])
+
+    return [{"$set": {list_fields[0]: expr}}]
+
+
+def _parse_field_name(sample_collection, field_name):
+    path, is_frame_field, list_fields = sample_collection._parse_field_name(
+        field_name
+    )
+
+    if is_frame_field and path != "frames":
+        path = _FRAMES_PREFIX + path
+        list_fields = ["frames"] + [_FRAMES_PREFIX + lf for lf in list_fields]
+
+    return path, list_fields
+
+
+def _set_terminal_list_field(list_field, subfield, expr):
+    map_path = "$$this"
+    if subfield:
+        map_path += "." + subfield
+
+    prefix = map_path.rsplit(".", 1)[0]
+    map_expr = _get_mongo_expr(expr, prefix=prefix)
+
+    if subfield:
+        map_expr = foe.ViewField().set_field(subfield, map_expr)
+    else:
+        map_expr = foe.ViewExpression(map_expr)
+
+    return foe.ViewField(list_field).map(map_expr)
+
+
+def _get_mongo_expr(expr, prefix=None):
+    if isinstance(expr, foe.ViewExpression):
+        return expr.to_mongo(prefix=prefix)
+
+    return expr
+
+
+class SetField(ViewStage):
+    """Sets a field or embedded field on each sample in a collection by
+    evaluating the given expression.
+
+    This method can process embedded list fields. To do so, simply append
+    ``[]`` to any list component(s) of the field path.
+
+    .. note::
+
+        There are two cases where FiftyOne will automatically unwind array
+        fields without requiring you to explicitly specify this via the ``[]``
+        syntax:
+
+        **Top-level lists:** when you specify a ``field`` path that refers to a
+        top-level list field of a dataset; i.e., ``list_field`` is
+        automatically coerced to ``list_field[]``, if necessary.
+
+        **List fields:** When you specify a ``field`` path that refers to the
+        list field of a |Label| class, such as the
+        :attr:`Detections.detections <fiftyone.core.labels.Detections.detections>`
+        attribute; i.e., ``ground_truth.detections.label`` is automatically
+        coerced to ``ground_truth.detections[].label``, if necessary.
+
+        See the examples below for demonstrations of this behavior.
+
+    The provided ``expr`` is interpreted relative to the document on which the
+    embedded field is being set. For example, if you are setting a nested field
+    ``field="embedded.document.field"``, then the expression ``expr`` you
+    provide will be applied to the ``embedded.document`` document. Note that
+    you can override this behavior by defining an expression that is bound to
+    the root document by prepending ``"$"`` to any field name(s) in the
+    expression.
+
+    See the examples below for more information.
+
+    .. note::
+
+        Note that you cannot set a non-existing top-level field using this
+        stage, since doing so would violate the dataset's schema. You can,
+        however, first declare a new field via
+        :meth:`fiftyone.core.dataset.Dataset.add_sample_field` and then
+        populate it in a view via this stage.
 
     Examples::
 
         import fiftyone as fo
+        import fiftyone.zoo as foz
         from fiftyone import ViewField as F
 
-        dataset = fo.Dataset()
-        dataset.add_samples(
-            [
-                fo.Sample(
-                    filepath="/path/to/image1.png",
-                    numeric_field=1.0,
-                    numeric_list_field=[-1, 0, 1],
-                ),
-                fo.Sample(
-                    filepath="/path/to/image2.png",
-                    numeric_field=-1.0,
-                    numeric_list_field=[-2, -1, 0, 1],
-                ),
-                fo.Sample(
-                    filepath="/path/to/image3.png",
-                    numeric_field=-1.0,
-                ),
-            ]
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        #
+        # Replace all values of uniqueness that are less than 0.5 with `None`
+        #
+
+        stage = fo.SetField(
+            "uniqueness",
+            (F("uniqueness") >= 0.5).if_else(F("uniqueness"), None)
         )
-
-        #
-        # Clip all negative values of `numeric_field` to zero
-        #
-
-        stage = fo.MapValues("numeric_field", F().max(0))
         view = dataset.add_stage(stage)
+        print(view.bounds("uniqueness"))
 
         #
-        # Clip all negative values of `numeric_list_field` to zero
+        # Lower bound all object confidences in the `predictions` field by 0.5
         #
 
-        stage = fo.MapValues("numeric_list_field", F().map(F().max(0)))
+        stage = fo.SetField(
+            "predictions.detections.confidence", F("confidence").max(0.5)
+        )
         view = dataset.add_stage(stage)
+        print(view.bounds("predictions.detections.confidence"))
 
         #
-        # Replace all negative values of `numeric_field` with `None`
+        # Add a `num_predictions` property to the `predictions` field that
+        # contains the number of objects in the field
         #
 
-        stage = fo.MapValues("numeric_field", (F() >= 0).if_else(F(), None))
+        stage = fo.SetField(
+            "predictions.num_predictions",
+            F("$predictions.detections").length(),
+        )
         view = dataset.add_stage(stage)
+        print(view.bounds("predictions.num_predictions"))
+
+        #
+        # Set an `is_animal` field on each object in the `predictions` field
+        # that indicates whether the object is an animal
+        #
+
+        ANIMALS = [
+            "bear", "bird", "cat", "cow", "dog", "elephant", "giraffe",
+            "horse", "sheep", "zebra"
+        ]
+
+        stage = fo.SetField(
+            "predictions.detections.is_animal", F("label").is_in(ANIMALS)
+        )
+        view = dataset.add_stage(stage)
+        print(view.count_values("predictions.detections.is_animal"))
 
     Args:
-        field: the field to operate on
+        field: the field or embedded field to set
         expr: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
-            that defines the operation to apply to the field
+            that defines the field value to set
     """
 
     def __init__(self, field, expr):
@@ -1969,7 +2032,7 @@ class MapValues(ViewStage):
 
     @property
     def field(self):
-        """The field to map."""
+        """The field to set."""
         return self._field
 
     @property
@@ -1978,22 +2041,20 @@ class MapValues(ViewStage):
         return self._expr
 
     def to_mongo(self, sample_collection, **_):
-        if (
-            sample_collection.media_type == fom.VIDEO
-            and self._field.startswith(_FRAMES_PREFIX)
-        ):
-            # @todo implement this
-            raise ValueError("Mapping frame values is not yet supported")
-
-        return [{"$set": {self._field: self._get_mongo_filter()}}]
-
-    def _get_mongo_filter(self):
-        return _get_field_mongo_filter(self._expr, prefix=self._field)
+        return _make_set_field_pipeline(
+            sample_collection, self._field, self._expr
+        )
 
     def _kwargs(self):
+        # @todo doesn't handle list fields
+        if "." in self._field:
+            prefix = "$" + self._field.rsplit(".", 1)[0]
+        else:
+            prefix = None
+
         return [
             ["field", self._field],
-            ["expr", self._get_mongo_filter()],
+            ["expr", _get_mongo_expr(self._expr, prefix=prefix)],
         ]
 
     @classmethod
@@ -2121,16 +2182,16 @@ class Match(ViewStage):
         return self._filter
 
     def to_mongo(self, _, **__):
-        return [{"$match": self._get_mongo_filter()}]
+        return [{"$match": self._get_mongo_expr()}]
 
-    def _get_mongo_filter(self):
+    def _get_mongo_expr(self):
         if isinstance(self._filter, foe.ViewExpression):
             return {"$expr": self._filter.to_mongo()}
 
         return self._filter
 
     def _kwargs(self):
-        return [["filter", self._get_mongo_filter()]]
+        return [["filter", self._get_mongo_expr()]]
 
     def _validate_params(self):
         if not isinstance(self._filter, (foe.ViewExpression, dict)):
@@ -2498,7 +2559,7 @@ class SelectFields(ViewStage):
         return [
             {
                 "name": "field_names",
-                "type": "list<str>|NoneType",
+                "type": "NoneType|list<str>",
                 "default": "None",
                 "placeholder": "list,of,fields",
             }
@@ -2985,26 +3046,8 @@ def _get_rng(seed):
     return _random
 
 
-def _get_labels_field(field_path, sample_collection):
-    if field_path.startswith(_FRAMES_PREFIX):
-        if sample_collection.media_type != fom.VIDEO:
-            raise ValueError(
-                "Field '%s' is a frames field but '%s' is not a video dataset"
-                % (field_path, sample_collection.name)
-            )
-
-        field_name = field_path[len(_FRAMES_PREFIX) :]
-        schema = sample_collection.get_frame_field_schema()
-        is_frame_field = True
-    else:
-        field_name = field_path
-        schema = sample_collection.get_field_schema()
-        is_frame_field = False
-
-    field = schema.get(field_name, None)
-
-    if field is None:
-        raise ValueError("Field '%s' does not exist" % field_path)
+def _get_labels_field(sample_collection, field_path):
+    field, is_frame_field = _get_field(sample_collection, field_path)
 
     if isinstance(field, fof.EmbeddedDocumentField):
         document_type = field.document_type
@@ -3025,24 +3068,8 @@ def _get_labels_field(field_path, sample_collection):
     )
 
 
-def _get_labels_list_field(field_path, sample_collection):
-    if field_path.startswith(_FRAMES_PREFIX):
-        if sample_collection.media_type != fom.VIDEO:
-            raise ValueError(
-                "Field '%s' is a frames field but '%s' is not a video dataset"
-                % (field_path, sample_collection.name)
-            )
-
-        field_name = field_path[len(_FRAMES_PREFIX) :]
-        schema = sample_collection.get_frame_field_schema()
-    else:
-        field_name = field_path
-        schema = sample_collection.get_field_schema()
-
-    field = schema.get(field_name, None)
-
-    if field is None:
-        raise ValueError("Field '%s' does not exist" % field_path)
+def _get_labels_list_field(sample_collection, field_path):
+    field, _ = _get_field(sample_collection, field_path)
 
     if isinstance(field, fof.EmbeddedDocumentField):
         document_type = field.document_type
@@ -3053,6 +3080,25 @@ def _get_labels_list_field(field_path, sample_collection):
         "Field '%s' must be a labels list type %s; found '%s'"
         % (field_path, fol._LABEL_LIST_FIELDS, field)
     )
+
+
+def _get_field(sample_collection, field_path):
+    is_frame_field = sample_collection._is_frame_field(field_path)
+
+    if is_frame_field:
+        field_name = field_path[len(_FRAMES_PREFIX) :]
+        schema = sample_collection.get_frame_field_schema()
+    else:
+        field_name = field_path
+        schema = sample_collection.get_field_schema()
+
+    if field_name not in schema:
+        ftype = "Frame field" if is_frame_field else "Field"
+        raise ValueError("%s '%s' does not exist" % (ftype, field_path))
+
+    field = schema[field_name]
+
+    return field, is_frame_field
 
 
 def _parse_objects(objects):
@@ -3112,7 +3158,6 @@ _STAGES = [
     Limit,
     LimitLabels,
     MapLabels,
-    MapValues,
     Match,
     MatchTags,
     Mongo,
@@ -3120,6 +3165,7 @@ _STAGES = [
     Select,
     SelectFields,
     SelectObjects,
+    SetField,
     Skip,
     SortBy,
     Take,

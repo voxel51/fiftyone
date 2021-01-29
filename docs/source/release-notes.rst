@@ -3,6 +3,104 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.7.2:
+
+FiftyOne 0.7.2
+--------------
+*Released January 28, 2021*
+
+App
+^^^
+- Changed the Fields Sidebar label filters to only return matched samples,
+  i.e., samples with at least one matching label with respect to a filter
+- Fixed a bug in Colab notebooks that allowed for the `.ipynb` file to grow
+  unnecessarily large
+- Improved plotting of numeric fields in the `Scalars` tab, including
+  `[min, max)` ranges for tooltips and integer binning when appropriate
+- Fixed a bug that prevented
+  :meth:`select_fields() <fiftyone.core.collections.SampleCollection.select_fields>`
+  and
+  :meth:`exclude_fields() <fiftyone.core.collections.SampleCollection.exclude_fields>`
+  from being properly respected by the Fields Sidebar
+- Fixed a bug that prevented selected samples from being cleared when modifying
+  your view or choosing an option from the select samples dropdown
+- Added an |AppConfig| for configuring options like the color pool to use when
+  drawing |Label| fields. See :ref:`this page <configuring-fiftyone-app>` for
+  more info
+
+Core
+^^^^
+- Added the :class:`MapLabels <fiftyone.core.stages.MapLabels>` and
+  :class:`SetField <fiftyone.core.stages.SetField>` view stages
+- Added the
+  :class:`HistogramValues <fiftyone.core.aggregations.HistogramValues>` and
+  :class:`Sum <fiftyone.core.aggregations.Sum>` aggregations
+- Added over a dozen new
+  |ViewExpression| methods including powerful transformations like
+  :meth:`map_values() <fiftyone.core.expressions.ViewExpression.map_values>`,
+  :meth:`reduce() <fiftyone.core.expressions.ViewExpression.reduce>`, and
+  :meth:`sort_by() <fiftyone.core.expressions.ViewExpression.sort_by>`
+- Exposed all :class:`Aggregtaions <fiftyone.core.aggregations.Aggregation>` as
+  single execution methods on the |SampleCollection| interface, e.g.,
+  :meth:`distinct() <fiftyone.core.collections.SampleCollection.distinct>`
+- Added support for all |Label| types in
+  :meth:`filter_labels() <fiftyone.core.collections.SampleCollection.filter_labels>`
+- Added support for generalized field paths (embedded fields, lists, etc) to
+  the :class:`Bounds <fiftyone.core.aggregations.Bounds>`,
+  :class:`Count <fiftyone.core.aggregations.Count>`,
+  :class:`CountValues <fiftyone.core.aggregations.CountValues>`, and
+  :class:`Distinct <fiftyone.core.aggregations.Distinct>`
+  aggregations
+- Removed the deprecated
+  :class:`ConfidenceBounds <fiftyone.core.aggregations.ConfidenceBounds>`,
+  :class:`CountLabels <fiftyone.core.aggregations.CountLabels>`, and
+  :class:`DistinctLabels <fiftyone.core.aggregations.DistinctLabels>`
+  aggregations
+- Removed the redundant
+  :meth:`match_tag() <fiftyone.core.collections.SampleCollection.match_tag>`
+  stage in favor of
+  :meth:`match_tags() <fiftyone.core.collections.SampleCollection.match_tags>`
+- Removed `AggregationResult` classes in favor of returning
+  :class:`Aggregation <fiftyone.core.aggregations.Aggregation>` results
+  directly as builtin types
+- Added the optional `config` keyword argument to
+  :meth:`launch_app() <fiftyone.core.session.launch_app>` and
+  :class:`Session <fiftyone.core.session.Session>` for overriding the default
+  :ref:`AppConfig <configuring-fiftyone-app>`.
+
+Zoo
+^^^
+- Added a default confidence threshold of `0.3` when applying models from the
+  :ref:`Model Zoo <model-zoo>` via
+  :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`,
+  which omits spurious low quality predictions from many models
+
+CLI
+^^^
+- Added a :ref:`fiftyone app config <cli-fiftyone-zpp-config>` command for
+  inspecting the default :ref:`App config <configuring-fiftyone-app>`
+- Improved `ctrl + c` exit handling for CLI commands
+
+Docs
+^^^^
+- Added a :ref:`new section <configuring-fiftyone-app>` to the
+  :ref:`Configuring FiftyOne guide <configuring-fiftyone>` explaining how to
+  programmatically configure the App's behavior
+- Updated the :ref:`Dataset views guide <using-views>` to provide a thorough
+  overview of new functionality provided by stages like
+  :class:`SetField <fiftyone.core.stages.SetField>`
+- Updated the :ref:`Aggregations guide <using-aggregations>` to provide a
+  thorough overview and examples of various aggregation functionality,
+  including advanced usage tips
+- Added an FAQ section providing instructions for working with
+  :ref:`remote Jupyter notebooks <faq-remote-notebook-support>`
+- Added code examples to all |ViewStage| class docstrings and their
+  corresponding sample collection methods, e.g.,
+  :meth:`map_labels() <fiftyone.core.collections.SampleCollection.map_labels>`
+- Added code examples to all |Aggregation| class docs and their corresponding
+  sample collection methods, e.g.,
+  :meth:`bounds() <fiftyone.core.collections.SampleCollection.bounds>`
+
 .. _release-notes-v0.7.1:
 
 FiftyOne 0.7.1

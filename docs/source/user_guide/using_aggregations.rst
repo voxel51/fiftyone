@@ -52,14 +52,14 @@ explict loops over your dataset to compute a statistic:
     dataset = foz.load_zoo_dataset("quickstart")
 
     # Compute label histogram manually
-    values = defaultdict(int)
+    manual_counts = defaultdict(int)
     for sample in dataset:
         for detection in sample.ground_truth.detections:
-            values[detection.label] += 1
+            manual_counts[detection.label] += 1
 
     # Compute via aggregation
-    result = dataset.count_values("ground_truth.detections.label")
-    result.values  # same as `values` above
+    counts = dataset.count_values("ground_truth.detections.label")
+    print(counts)  # same as `manual_counts` above
 
 The sections below discuss the available aggregations in more detail. You can
 also refer to the :mod:`fiftyone.core.aggregations` module documentation for
@@ -92,13 +92,13 @@ dataset:
     dataset = foz.load_zoo_dataset("quickstart")
 
     # Compute the bounds of the `uniqueness` field
-    result = dataset.bounds("uniqueness")
-    print(result.bounds)
+    bounds = dataset.bounds("uniqueness")
+    print(bounds)
     # (0.15001302256126986, 1.0)
 
     # Compute the bounds of the detection confidences in the `predictions` field
-    result = dataset.bounds("predictions.detections.confidence")
-    print(result.bounds)
+    bounds = dataset.bounds("predictions.detections.confidence")
+    print(bounds)
     # (0.05003104358911514, 0.9999035596847534)
 
 .. _aggregations-count:
@@ -118,18 +118,18 @@ to compute the number of non-``None`` field values in a collection:
     dataset = foz.load_zoo_dataset("quickstart")
 
     # Compute the number of samples in the dataset
-    result = dataset.count()
-    print(result.count)
+    count = dataset.count()
+    print(count)
     # 200
 
     # Compute the number of samples with `predictions`
-    result = dataset.count("predictions")
-    print(result.count)
+    count = dataset.count("predictions")
+    print(count)
     # 200
 
     # Compute the number of detections in the `ground_truth` field
-    result = dataset.count("predictions.detections")
-    print(result.count)
+    count = dataset.count("predictions.detections")
+    print(count)
     # 5620
 
 .. _aggregations-count-values:
@@ -149,13 +149,13 @@ aggregation to compute the occurrences of field values in a collection:
     dataset = foz.load_zoo_dataset("quickstart")
 
     # Compute the number of samples in the dataset
-    result = dataset.count_values("tags")
-    print(result.values)
+    counts = dataset.count_values("tags")
+    print(counts)
     # {'validation': 200}
 
     # Compute a histogram of the predicted labels in the `predictions` field
-    result = dataset.count_values("predictions.detections.label")
-    print(result.values)
+    counts = dataset.count_values("predictions.detections.label")
+    print(counts)
     # {'bicycle': 13, 'hot dog': 8, ..., 'skis': 52}
 
 .. _aggregations-distinct:
@@ -175,13 +175,13 @@ aggregation to compute the distinct values of a field in a collection:
     dataset = foz.load_zoo_dataset("quickstart")
 
     # Get the distinct tags on the dataset
-    result = dataset.distinct("tags")
-    print(result.values)
+    values = dataset.distinct("tags")
+    print(values)
     # ['validation']
 
     # Get the distinct labels in the `predictions` field
-    result = dataset.distinct("predictions.detections.label")
-    print(result.values)
+    values = dataset.distinct("predictions.detections.label")
+    print(values)
     # ['airplane', 'apple', 'backpack', ..., 'wine glass', 'zebra']
 
 .. _aggregations-histogram-values:
@@ -217,11 +217,14 @@ aggregation to compute the histograms of numeric fields of a collection:
     #
 
     # Compute bounds automatically
-    r = dataset.bounds("uniqueness")
-    limits = (r.bounds[0], r.bounds[1] + 1e-6)  # right interval is open
+    bounds = dataset.bounds("uniqueness")
+    limits = (bounds[0], bounds[1] + 1e-6)  # right interval is open
 
-    result = dataset.histogram_values("uniqueness", bins=50, range=limits)
-    plot_hist(result.counts, result.edges)
+    counts, edges, other = dataset.histogram_values(
+        "uniqueness", bins=50, range=limits
+    )
+
+    plot_hist(counts, edges)
     plt.show(block=False)
 
 .. image:: ../images/histogram_values_uniqueness.png
@@ -246,8 +249,8 @@ compute the sum of the (non-``None``) values of a field in a collection:
 
     # Compute average confidence of detections in the `predictions` field
     print(
-        dataset.sum("predictions.detections.confidence").sum /
-        dataset.count("predictions.detections").count
+        dataset.sum("predictions.detections.confidence") /
+        dataset.count("predictions.detections")
     )
     # 0.34994137249820706
 
@@ -292,13 +295,13 @@ The example below demonstrates this capability:
     )
 
     # Count the number of keypoints in the dataset
-    result = dataset.count("keypoints.points[]")
-    print(result.count)
+    count = dataset.count("keypoints.points[]")
+    print(count)
     # 5
 
     # Compute the values in the custom `friends` field of the predictions
-    result = dataset.count_values("classes.friends[]")
-    print(result.values)
+    counts = dataset.count_values("classes.friends[]")
+    print(counts)
     # {'dog': 1, 'squirrel': 2, 'rabbit': 1}
 
 .. note::
@@ -355,17 +358,17 @@ aggregations on a dataset or view efficiently in a batch via
 
     results = dataset.aggregate([sample_count, count_values, histogram_values])
 
-    print(results[0].count)
+    print(results[0])
     # 200
 
-    print(results[1].values)
+    print(results[1])
     # {'bowl': 15, 'scissors': 1, 'cup': 21, ..., 'vase': 1, 'sports ball': 3}
 
-    print(results[2].edges)
-    # [0.0, 0.02, 0.04, ..., 0.98, 1.0]
-
-    print(results[2].counts)
+    print(results[2][0])  # counts
     # [0, 0, 0, ..., 15, 12, ..., 0, 0]
+
+    print(results[2][1])  # edges
+    # [0.0, 0.02, 0.04, ..., 0.98, 1.0]
 
 .. _aggregations-transforming-data:
 
@@ -394,13 +397,13 @@ to succinctly express this:
     # Map `cat` and `dog` to `pet`
     labels_map = {"cat": "pet", "dog": "pet"}
 
-    result = (
+    counts = (
         dataset
         .map_labels("ground_truth", labels_map)
         .count_values("ground_truth.detections.label")
     )
 
-    print(result.values)
+    print(counts)
     # {'toothbrush': 2, 'train': 5, ..., 'pet': 31, ..., 'cow': 22}
 
 Or, suppose you would like to compute the average confidence of a model's
@@ -424,8 +427,8 @@ to succinctly express this:
     )
 
     print(
-        high_conf_view.sum("predictions.detections.confidence").sum /
-        high_conf_view.count("predictions.detections.confidence").count
+        high_conf_view.sum("predictions.detections.confidence") /
+        high_conf_view.count("predictions.detections.confidence")
     )
     # 0.8170506501060617
 
@@ -446,11 +449,13 @@ the ``frames`` prefix to the relevant frame field name:
     dataset = foz.load_zoo_dataset("quickstart-video")
 
     # Count the number of video frames
-    result = dataset.count("frames")
-    print(result.count)
+    count = dataset.count("frames")
+    print(count)
     # 1279
 
     # Compute a histogram of per-frame object labels
-    result = dataset.count_values("frames.ground_truth_detections.detections.label")
-    print(result.values)
+    counts = dataset.count_values(
+        "frames.ground_truth_detections.detections.label"
+    )
+    print(counts)
     # {'person': 1108, 'vehicle': 7511, 'road sign': 2726}

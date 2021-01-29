@@ -877,15 +877,6 @@ class _FrameLabels(Label):
     pass
 
 
-class _Frames(Label):
-    """Private label class used for storing quick access information about
-    the frame labels of video samples.
-    """
-
-    frame_count = fof.IntField(required=True, null=False, default=0)
-    first_frame = fof.EmbeddedDocumentField(_FrameLabels, null=True)
-
-
 _SINGLE_LABEL_FIELDS = (Classification, Detection, Polyline, Keypoint)
 _LABEL_LIST_FIELDS = (Classifications, Detections, Polylines, Keypoints)
 _LABEL_FIELDS = _SINGLE_LABEL_FIELDS + _LABEL_LIST_FIELDS
