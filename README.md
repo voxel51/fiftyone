@@ -1,33 +1,37 @@
 <div align="center">
+<p align="center">
 
-<img src="docs/source/_static/images/voxel51_300dpi.png" height="55px"> &nbsp;
-<img src="docs/source/_static/images/fiftyone.png" height="50px">
+<!-- prettier-ignore -->
+<img src="https://user-images.githubusercontent.com/25985824/106288517-2422e000-6216-11eb-871d-26ad2e7b1e59.png" height="55px"> &nbsp;
+<img src="https://user-images.githubusercontent.com/25985824/106288518-24bb7680-6216-11eb-8f10-60052c519586.png" height="50px">
 
 **The open-source tool for building high-quality datasets and computer vision
 models.**
 
 ---
 
-<p align="center">
-  <a href="https://voxel51.com/fiftyone">Website</a> •
-  <a href="https://voxel51.com/docs/fiftyone">Docs</a> •
-  <a href="https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb">Try it Now</a> •
-  <a href="https://voxel51.com/docs/fiftyone/tutorials/index.html">Tutorials</a> •
-  <a href="https://github.com/voxel51/fiftyone-examples">Examples</a> •
-  <a href="https://medium.com/voxel51">Blog</a> •
-  <a href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg">Community</a>
-</p>
+<!-- prettier-ignore -->
+<a href="https://voxel51.com/fiftyone">Website</a> •
+<a href="https://voxel51.com/docs/fiftyone">Docs</a> •
+<a href="https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb">Try it Now</a> •
+<a href="https://voxel51.com/docs/fiftyone/tutorials/index.html">Tutorials</a> •
+<a href="https://github.com/voxel51/fiftyone-examples">Examples</a> •
+<a href="https://medium.com/voxel51">Blog</a> •
+<a href="https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg">Community</a>
 
 [![PyPI python](https://img.shields.io/pypi/pyversions/fiftyone)](https://pypi.org/project/fiftyone)
 [![PyPI version](https://badge.fury.io/py/fiftyone.svg)](https://pypi.org/project/fiftyone)
 [![Downloads](https://pepy.tech/badge/fiftyone)](https://pepy.tech/project/fiftyone)
 [![Build](https://github.com/voxel51/fiftyone/workflows/Build/badge.svg?branch=develop&event=push)](https://github.com/voxel51/fiftyone/actions?query=workflow%3ABuild)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=white)](https://join.slack.com/t/fiftyone-users/shared_invite/zt-gtpmm76o-9AjvzNPBOzevBySKzt02gg)
+[![Medium](https://img.shields.io/badge/Medium-12100E?logo=medium&logoColor=white)](https://medium.com/voxel51)
 [![Mailing list](http://bit.ly/2Md9rxM)](https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk)
 [![Twitter](https://img.shields.io/twitter/follow/Voxel51?style=social)](https://twitter.com/voxel51)
 
 <img alt="FiftyOne" src="https://user-images.githubusercontent.com/25985824/96070012-5c6fff80-0e6d-11eb-84d0-a88f8b026ee1.png">
 
+</p>
 </div>
 
 ---
@@ -104,8 +108,9 @@ FiftyOne.
 
 FiftyOne is open source and community contributions are welcome!
 
-Check out the [contribution guide](CONTRIBUTING.md) to learn how to get
-involved.
+Check out the
+[contribution guide](https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md)
+to learn how to get involved.
 
 ## Installing from source
 
@@ -119,10 +124,10 @@ to make adjustments.
 
 You will need:
 
--   [Python](https://www.python.org/) (3.6 or newer)
--   [Node.js](https://nodejs.org/) - on Linux, we recommend using
+-   [Python](https://www.python.org) (3.6 or newer)
+-   [Node.js](https://nodejs.org) - on Linux, we recommend using
     [nvm](https://github.com/nvm-sh/nvm) to install an up-to-date version.
--   [Yarn](https://yarnpkg.com/) - once Node.js is installed, you can install
+-   [Yarn](https://yarnpkg.com) - once Node.js is installed, you can install
     Yarn via `npm install -g yarn`
 -   On Linux, you will need at least the `openssl` and `libcurl` packages. On
     Debian-based distributions, you will need to install `libcurl4` or
@@ -179,8 +184,10 @@ or wish to otherwise customize your ETA installation,
 
 ### Developer installation
 
-If you would like to [contribute to FiftyOne](CONTRIBUTING.md), you should
-perform a developer installation using the `-d` flag of the install script:
+If you would like to
+[contribute to FiftyOne](https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md),
+you should perform a developer installation using the `-d` flag of the install
+script:
 
 ```shell
 bash install.bash -d
@@ -199,8 +206,9 @@ bash install.bash [-d]
 
 ### Generating documentation
 
-See the [docs guide](docs/docs_guide.md) for information on building and
-contributing to the documentation.
+See the
+[docs guide](https://github.com/voxel51/fiftyone/blob/develop/docs/docs_guide.md)
+for information on building and contributing to the documentation.
 
 ## Uninstallation
 
