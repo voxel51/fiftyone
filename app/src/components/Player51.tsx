@@ -62,6 +62,7 @@ export default ({
   const filter = useRecoilValue(filterSelector);
   const fps = useRecoilValue(atoms.sampleFrameRate(sample._id));
   const overlayOptions = useRecoilValue(selectors.playerOverlayOptions);
+  const defaultTargets = useRecoilValue(selectors.defaultTargets);
 
   const colorMap = useRecoilValue(selectors.colorMap);
   if (overlay === null) {
@@ -96,6 +97,7 @@ export default ({
         colorMap,
         activeLabels: playerActiveLabels,
         filter,
+        defaultTargets,
         enableOverlayOptions: {
           attrRenderMode: false,
           attrsOnlyOnClick: false,
@@ -135,6 +137,7 @@ export default ({
         filter,
         colorMap,
         fps,
+        defaultTargets,
       });
       player.updateOverlayOptions(overlayOptions);
       if (!thumbnail) {
@@ -150,6 +153,7 @@ export default ({
     colorByLabel,
     fps,
     overlayOptions,
+    defaultTargets,
   ]);
 
   useEffect(() => {

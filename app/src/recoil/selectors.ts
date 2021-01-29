@@ -1163,3 +1163,13 @@ export const filterNumericFieldIncludeNone = selectorFamily({
     set(filterStage(path), filter);
   },
 });
+
+export const defaultTargets = selector({
+  key: "defaultTargets",
+  get: ({ get }) => {
+    const targets = get(atoms.stateDescription).default_targets || {};
+    return Object.fromEntries(
+      Object.entries(targets).map(([k, v]) => [parseInt(k, 10), v])
+    );
+  },
+});
