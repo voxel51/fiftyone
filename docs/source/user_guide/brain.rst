@@ -48,7 +48,7 @@ workflow:
   the most valuable to have annotated and fed back into the system as training
   samples, for example.
 
-Each of these functions has a detailed :doc:`tutorial <../tutorials/index>`
+Each of these functions has a detailed :ref:`tutorial <tutorials>`
 demonstrating a workflow.
 
 .. _brain-image-uniqueness:
@@ -75,9 +75,9 @@ predictions of a pre-trained model via the
     fob.compute_uniqueness(dataset)
 
 **Input**: An unlabeled (or labeled) image dataset. There are
-:doc:`recipes<../recipes/index>` for building datasets from a wide variety of
-image formats, ranging from a simple directory of images to complicated dataset
-structures like `MS-COCO <https://cocodataset.org/#home>`_.
+:ref:`recipes <recipes>` for building datasets from a wide variety of image
+formats, ranging from a simple directory of images to complicated dataset
+structures like `COCO <https://cocodataset.org/#home>`_.
 
 **Output**: A scalar-valued field on each sample that ranks the uniqueness of
 that sample (higher value means more unique). The default name of this field
@@ -94,8 +94,8 @@ most other samples are more unique.
 
 .. note::
 
-    Check out the :doc:`uniqueness tutorial<../tutorials/uniqueness>` to see an
-    example use case of the Brain's uniqueness method.
+    Check out the :doc:`uniqueness tutorial <../tutorials/uniqueness>` to see
+    an example use case of the Brain's uniqueness method.
 
 .. _brain-label-mistakes:
 
@@ -144,7 +144,7 @@ datasets.
         .. note::
 
             Check out the
-            :doc:`label mistakes tutorial<../tutorials/label_mistakes>`
+            :doc:`label mistakes tutorial <../tutorials/label_mistakes>`
             to see an example use case of the Brain's mistakenness method on
             a classification dataset.
 
@@ -219,7 +219,7 @@ datasets.
         .. note::
 
             Check out the
-            :doc:`detection mistakenness recipe<../recipes/detection_mistakenness>`
+            :doc:`detection mistakenness recipe <../recipes/detection_mistakenness>`
             to see an example use case of the Brain's mistakenness method on a
             detection dataset.
 

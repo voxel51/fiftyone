@@ -324,9 +324,8 @@ instance:
     print(same_sample is sample)
     # True
 
-You can use :doc:`DatasetViews <using_views>` to perform more
-sophisticated operations on samples like searching, filtering, sorting, and
-slicing.
+You can use :ref:`dataset views <using-views>` to perform more sophisticated
+operations on samples like searching, filtering, sorting, and slicing.
 
 Removing samples from a dataset
 -------------------------------
@@ -649,9 +648,9 @@ ________
 
 All |Sample| instances have a `metadata` field, which can optionally be
 populated with a |Metadata| instance that stores data type-specific metadata
-about the raw data in the sample. The :doc:`FiftyOne App </user_guide/app>` and
-the :doc:`FiftyOne Brain </user_guide/brain>` will use this provided metadata
-in some workflows when it is available.
+about the raw data in the sample. The :ref:`FiftyOne App <fiftyone-app>` and
+the :ref:`FiftyOne Brain <fiftyone-brain>` will use this provided metadata in
+some workflows when it is available.
 
 You can automically compute metadata for all samples in a dataset via
 :meth:`Dataset.compute_metadata() <fiftyone.core.collections.SampleCollection.compute_metadata>`.
@@ -804,8 +803,8 @@ truth or predicted labels in a sample.
 
 Although such information can be stored in custom sample fields
 (e.g, in a |DictField|), it is recommended that you store label information in
-|Label| instances so that the :doc:`FiftyOne App </user_guide/app>` and the
-:doc:`FiftyOne Brain </user_guide/brain>` can visualize and compute on your
+|Label| instances so that the :ref:`FiftyOne App <fiftyone-app>` and the
+:ref:`FiftyOne Brain <fiftyone-brain>` can visualize and compute on your
 labels.
 
 .. note::

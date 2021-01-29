@@ -1,3 +1,6 @@
+
+.. _recipes:
+
 FiftyOne Recipes
 ================
 
