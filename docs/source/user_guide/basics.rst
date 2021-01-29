@@ -5,10 +5,10 @@ FiftyOne Dataset Basics
 
 FiftyOne Datasets are the core data structure in FiftyOne, allowing you to
 represent your data and manipulate it through the Python library and the
-:doc:`FiftyOne App <app>`.
+:ref:`FiftyOne App <fiftyone-app>`.
 
-.. image:: ../images/dataset-basics.png
-   :alt: App
+.. image:: ../images/datasets-hero.png
+   :alt: datasets-hero
    :align: center
 
 .. _what-is-a-fiftyone-dataset:
@@ -16,11 +16,11 @@ represent your data and manipulate it through the Python library and the
 What is a FiftyOne Dataset?
 ---------------------------
 
-FiftyOne Datasets allow you to easily :doc:`load <dataset_creation/index>`,
-:doc:`modify <using_datasets>` and :doc:`visualize <app>` your data along with
-any related labels (classification, detection, etc). It provides a way to
-easily load images, videos, annotations, and model predictions into a format
-that can be visualized in the FiftyOne App.
+FiftyOne Datasets allow you to easily :ref:`load <loading-datasets>`,
+:ref:`modify <using-datasets>` and :ref:`visualize <fiftyone-app>` your data
+along with any related labels (classification, detection, etc). It provides a
+way to easily load images, videos, annotations, and model predictions into a
+format that can be visualized in the FiftyOne App.
 
 If you have your own collection of data, loading it as a |Dataset| will allow
 you to easily search and sort your samples. You can use FiftyOne to identify
@@ -35,8 +35,8 @@ into your training set.
 
 .. note::
 
-    Check out :doc:`creating FiftyOne datasets <dataset_creation/index>` for
-    more information about loading your data into FiftyOne.
+    Check out :ref:`creating FiftyOne datasets <loading-datasets>` for more
+    information about loading your data into FiftyOne.
 
 A |Dataset| is composed of multiple |Sample| objects which contain |Field|
 attributes, all of which can be dynamically created, modified and deleted.
@@ -49,7 +49,7 @@ Datasets are ordered collections of samples. When a |Sample| is added to a
 from the dataset.
 
 Slicing and other batch operations on datasets are done through the use of
-:doc:`DatasetViews <using_views>`. A |DatasetView| provides a view into the
+:ref:`dataset views <using-views>`. A |DatasetView| provides a view into the
 |Dataset|, which can be filtered, sorted, sampled, etc. along various axes to
 obtain a desired subset of the samples.
 
@@ -343,8 +343,7 @@ datasets to perform the analysis that you need.
     similar_cats = cats.sort_by("uniqueness", reverse=False)
 
     session = fo.launch_app(view=similar_cats)
-    session.wait()
 
-.. image:: ../images/cats-similiar.png
-   :alt: App
+.. image:: ../images/cats-similar.png
+   :alt: cats-similar
    :align: center

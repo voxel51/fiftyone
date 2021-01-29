@@ -28,7 +28,6 @@ from fiftyone.constants import VERSION
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
-import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 from fiftyone.migrations import get_migration_runner
 import fiftyone.core.odm as foo
@@ -1161,13 +1160,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         updated such that ``sample.in_dataset == False``.
 
         Args:
-            sample_or_id: the :class:`fiftyone.core.sample.Sample` or sample
-                ID to remove
+            sample_or_id: the sample ID, :class:`fiftyone.core.sample.Sample`,
+                or :class:`fiftyone.core.sample.SampleView` to remove
         """
-        if not isinstance(sample_or_id, fos.Sample):
-            sample_id = sample_or_id
-        else:
+        if isinstance(sample_or_id, (fos.Sample, fos.SampleView)):
             sample_id = sample_or_id.id
+        else:
+            sample_id = sample_or_id
 
         self._sample_collection.delete_one({"_id": ObjectId(sample_id)})
 
@@ -1182,16 +1181,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         updated such that ``sample.in_dataset == False``.
 
         Args:
-            samples: an iterable of :class:`fiftyone.core.sample.Sample`
-                instances or sample IDs. For example, ``samples`` may be a
-                :class:`fiftyone.core.views.DatasetView`
+            samples: an iterable of sample IDs or a
+                :class:`fiftyone.core.collections.SampleCollection` to remove
         """
-        sample_ids = [
-            sample_or_id.id
-            if isinstance(sample_or_id, fos.Sample)
-            else sample_or_id
-            for sample_or_id in samples_or_ids
-        ]
+        if isinstance(samples_or_ids, foc.SampleCollection):
+            sample_ids = [s.id for s in samples_or_ids.select_fields()]
+        else:
+            sample_ids = samples_or_ids
 
         self._sample_collection.delete_many(
             {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
