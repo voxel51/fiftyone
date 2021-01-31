@@ -451,7 +451,8 @@ class ViewExpression(object):
     # Numeric expression operators ############################################
 
     def __abs__(self):
-        """Computes the absolute value of this numeric expression.
+        """Computes the absolute value of this expression, which must resolve
+        to a numeric value.
 
         Examples::
 
@@ -471,7 +472,8 @@ class ViewExpression(object):
         return self.abs()
 
     def __add__(self, other):
-        """Adds the given value to this numeric expression, ``self + other``.
+        """Adds the given value to this expression, which must resolve to a
+        numeric value, ``self + other``.
 
         Examples::
 
@@ -499,7 +501,8 @@ class ViewExpression(object):
         return ViewExpression({"$add": [self, other]})
 
     def __ceil__(self):
-        """Computes the ceiling of this numeric expression.
+        """Computes the ceiling of this expression, which must resolve to a
+        numeric value.
 
         Examples::
 
@@ -521,7 +524,8 @@ class ViewExpression(object):
         return self.ceil()
 
     def __floor__(self):
-        """Computes the floor of this numeric expression.
+        """Computes the floor of this expression, which must resolve to a
+        numeric value.
 
         Examples::
 
@@ -543,7 +547,8 @@ class ViewExpression(object):
         return self.floor()
 
     def __round__(self, place=0):
-        """Rounds this numeric expression at the given decimal place.
+        """Rounds this expression, which must resolve to a numeric value, at
+        the given decimal place.
 
         Positive values of ``place`` will round to ``place`` decimal
         places::
@@ -576,7 +581,8 @@ class ViewExpression(object):
         return self.round(place=place)
 
     def __mod__(self, other):
-        """Computes the modulus of this numeric expression, ``self % other``.
+        """Computes the modulus of this expression, which must resolve to a
+        numeric value, ``self % other``.
 
         Examples::
 
@@ -602,8 +608,8 @@ class ViewExpression(object):
         return ViewExpression({"$mod": [self, other]})
 
     def __mul__(self, other):
-        """Computes the product of the given value and this numeric expression,
-        ``self * other``.
+        """Computes the product of the given value and this expression, which
+        must resolve to a numeric value, ``self * other``.
 
         Examples::
 
@@ -628,8 +634,8 @@ class ViewExpression(object):
 
     # pylint: disable=unused-argument
     def __pow__(self, power, modulo=None):
-        """Raises this numeric expression to the given power,
-        ``self ** power``.
+        """Raises this expression, which must resolve to a numeric value, to
+        the given power, ``self ** power``.
 
         Examples::
 
@@ -680,8 +686,8 @@ class ViewExpression(object):
         return ViewExpression({"$divide": [other, self]})
 
     def __sub__(self, other):
-        """Subtracts the given value from this numeric expression,
-        ``self - other``.
+        """Subtracts the given value from this expression, which must resolve
+        to a numeric value, ``self - other``.
 
         Examples::
 
@@ -717,8 +723,8 @@ class ViewExpression(object):
         return ViewExpression({"$subtract": [self, other]})
 
     def __truediv__(self, other):
-        """Divides this numeric expression by the given value,
-        ``self / other``.
+        """Divides this expression, which must resolve to a numeric value, by
+        the given value, ``self / other``.
 
         Examples::
 
@@ -753,7 +759,8 @@ class ViewExpression(object):
         return ViewExpression({"$divide": [self, other]})
 
     def abs(self):
-        """Computes the absolute value of the numeric expression.
+        """Computes the absolute value of this expression, which must resolve
+        to a numeric value.
 
         Examples::
 
@@ -773,7 +780,8 @@ class ViewExpression(object):
         return ViewExpression({"$abs": self})
 
     def floor(self):
-        """Computes the floor of this numeric expression.
+        """Computes the floor of this expression, which must resolve to a
+        numeric value.
 
         Examples::
 
@@ -793,7 +801,8 @@ class ViewExpression(object):
         return ViewExpression({"$floor": self})
 
     def ceil(self):
-        """Computes the ceiling of this numeric expression.
+        """Computes the ceiling of this expression, which must resolve to a
+        numeric value.
 
         Examples::
 
@@ -813,7 +822,8 @@ class ViewExpression(object):
         return ViewExpression({"$ceil": self})
 
     def round(self, place=0):
-        """Rounds this numeric expression at the given decimal place.
+        """Rounds this expression, which must resolve to a numeric value, at
+        the given decimal place.
 
         Positive values of ``place`` will round to ``place`` decimal
         places::
@@ -847,7 +857,8 @@ class ViewExpression(object):
         return ViewExpression({"$round": [self, place]})
 
     def trunc(self, place=0):
-        """Truncates this numeric expression at the specified decimal place.
+        """Truncates this expression, which must resolve to a numeric value, at
+        the specified decimal place.
 
         Positive values of ``place`` will truncate to ``place`` decimal
         places::
@@ -881,7 +892,8 @@ class ViewExpression(object):
         return ViewExpression({"$trunc": [self, place]})
 
     def exp(self):
-        """Raises Euler's number to this numeric expression.
+        """Raises Euler's number to this expression, which must resolve to a
+        numeric value.
 
         Returns:
             a :class:`ViewExpression`
@@ -889,7 +901,8 @@ class ViewExpression(object):
         return ViewExpression({"$exp": self})
 
     def ln(self):
-        """Computes the natural logarithm of this numeric expression.
+        """Computes the natural logarithm of this expression, which must
+        resolve to a numeric value.
 
         Examples::
 
@@ -911,7 +924,8 @@ class ViewExpression(object):
         return ViewExpression({"$ln": self})
 
     def log(self, base):
-        """Computes logarithm base ``base`` of this numeric expression.
+        """Computes logarithm base ``base`` of this expression, which must
+        resolve to a numeric value.
 
         Examples::
 
@@ -936,7 +950,8 @@ class ViewExpression(object):
         return ViewExpression({"$log": [self, base]})
 
     def log10(self):
-        """Computes logarithm base 10 of this numeric expression.
+        """Computes logarithm base 10 of this expression, which must resolve to
+        a numeric value.
 
         Examples::
 
@@ -958,8 +973,8 @@ class ViewExpression(object):
         return ViewExpression({"$log10": self})
 
     def pow(self, power):
-        """Raises this numeric expression to the given power,
-        ``self ** power``.
+        """Raises this expression, which must resolve to a numeric value, to
+        the given power, ``self ** power``.
 
         Examples::
 
@@ -992,7 +1007,8 @@ class ViewExpression(object):
         return ViewExpression({"$pow": [self, power]})
 
     def sqrt(self):
-        """Computes the square root of this numeric expression.
+        """Computes the square root of this expression, which must resolve to a
+        numeric value.
 
         Examples::
 
@@ -1424,7 +1440,7 @@ class ViewExpression(object):
 
     def set_field(self, field, value_or_expr):
         """Sets the specified field or embedded field of this expression, which
-        must evaluate to a document, to the given value or expression.
+        must resolve to a document, to the given value or expression.
 
         The provided expression is computed by applying it to this expression
         via ``self.apply(value_or_expr)``.
@@ -1532,8 +1548,9 @@ class ViewExpression(object):
         return ViewExpression({"$let": {"vars": {var: self}, "in": in_expr}})
 
     def min(self, value=None):
-        """Returns the minimum value of either this array expression, or the
-        minimum of this expression and the given value.
+        """Returns the minimum value of either this expression, which must
+        resolve to an array, or the minimum of this expression and the given
+        value.
 
         Missing or ``None`` values are ignored.
 
@@ -1569,8 +1586,9 @@ class ViewExpression(object):
         return ViewExpression({"$min": self})
 
     def max(self, value=None):
-        """Returns the maximum value of either this array expression, or the
-        maximum of this expression and the given value.
+        """Returns the maximum value of either this expression, which must
+        resolve to an array, or the maximum of this expression and the given
+        value.
 
         Missing or ``None`` values are ignored.
 
@@ -1608,7 +1626,8 @@ class ViewExpression(object):
     # Array expression operators ##############################################
 
     def __getitem__(self, idx_or_slice):
-        """Returns the element or slice of this array expression.
+        """Returns the element or slice of this expression, which must resolve
+        to an array.
 
         All of the typical slicing operations are supported, except for
         specifying a non-unit step::
@@ -1689,7 +1708,8 @@ class ViewExpression(object):
         )
 
     def length(self):
-        """Computes the length of this array expression.
+        """Computes the length of this expression, which must resolve to an
+        array.
 
         If this expression's value is null or missing, zero is returned.
 
@@ -1713,7 +1733,8 @@ class ViewExpression(object):
         return ViewExpression({"$size": {"$ifNull": [self, []]}})
 
     def contains(self, value):
-        """Checks whether the given value is in this array expression.
+        """Checks whether the given value is in this expression, which must
+        resolve to an array.
 
         Examples::
 
@@ -1740,7 +1761,8 @@ class ViewExpression(object):
         return ViewExpression({"$in": [value, self]})
 
     def reverse(self):
-        """Reverses the order of the elements in the array expression.
+        """Reverses the order of the elements in the expression, which must
+        resolve to an array.
 
         Examples::
 
@@ -1893,7 +1915,7 @@ class ViewExpression(object):
 
     def map(self, expr):
         """Applies the given expression to the elements of this expression,
-        which must be an array.
+        which must resolve to an array.
 
         The output will be an array with the applied results.
 
@@ -1949,20 +1971,15 @@ class ViewExpression(object):
         Args:
             *args: one or more arrays or :class:`ViewExpression` instances that
                 resolve to array expressions
-            before (False): whether to position ``args`` before this array in
-                the output array
 
         Returns:
             a :class:`ViewExpression`
         """
-        if before:
-            return ViewExpression({"$concatArrays": list(args) + [self]})
-
         return ViewExpression({"$concatArrays": [self] + list(args)})
 
     def sum(self):
-        """Returns the sum of the values in this expression, which must be a
-        numeric array.
+        """Returns the sum of the values in this expression, which must resolve
+        to a numeric array.
 
         Missing, non-numeric, or ``None``-valued elements are ignored.
 
@@ -2017,8 +2034,8 @@ class ViewExpression(object):
         return ViewExpression({"$avg": self})
 
     def reduce(self, expr, init_val=0):
-        """Applies the given reduction to this expression, which must be an
-        array, and returns the single value computed.
+        """Applies the given reduction to this expression, which must resolve
+        to an array, and returns the single value computed.
 
         The provided ``expr`` must include the :const:`VALUE` expression to
         properly define the reduction.
@@ -2082,8 +2099,8 @@ class ViewExpression(object):
         )
 
     def join(self, delimiter):
-        """Joins the element of this expression, which must be a string array,
-        by the given delimiter.
+        """Joins the elements of this expression, which must resolve to a
+        string array, by the given delimiter.
 
         Examples::
 
@@ -2114,7 +2131,8 @@ class ViewExpression(object):
     # String expression operators #############################################
 
     def substr(self, start=None, end=None, count=None):
-        """Extracts the specified substring from this string expression.
+        """Extracts the specified substring from this expression, which must
+        resolve to a string.
 
         Examples::
 
@@ -2169,7 +2187,8 @@ class ViewExpression(object):
         return self.let_in(expr)
 
     def strlen(self):
-        """Computes the length of this string expression.
+        """Computes the length of this expression, which must resolve to a
+        string.
 
         If this expression's value is null or missing, zero is returned.
 
@@ -2196,7 +2215,8 @@ class ViewExpression(object):
         return ViewExpression({"$strLenBytes": {"$ifNull": [self, ""]}})
 
     def lower(self):
-        """Converts the string expression to lowercase.
+        """Converts this expression, which must resolve to a string, to
+        lowercase.
 
         Examples::
 
@@ -2219,7 +2239,8 @@ class ViewExpression(object):
         return ViewExpression({"$toLower": self})
 
     def upper(self):
-        """Converts the string expression to uppercase.
+        """Converts this expression, which must resolve to a string, to
+        uppercase.
 
         Examples::
 
@@ -2241,8 +2262,9 @@ class ViewExpression(object):
         """
         return ViewExpression({"$toUpper": self})
 
-    def concat(self, *args, before=False):
-        """Concatenates the given string(s) to this string expression.
+    def concat(self, *args):
+        """Concatenates the given string(s) to this expression, which must
+        resolve to a string.
 
         Examples::
 
@@ -2268,26 +2290,26 @@ class ViewExpression(object):
         Returns:
             a :class:`ViewExpression`
         """
-        if before:
-            return ViewExpression({"$concat": list(args) + [self]})
-
         return ViewExpression({"$concat": [self] + list(args)})
 
     def strip(self, chars=None):
-        """Removes whitespace characters from the beginning and end of the
-        string expression. Or, if ``chars`` is provided, remove those
-        characters instead.
+        """Removes whitespace characters from the beginning and end of this
+        expression, which must resolve to a string.
+
+        If ``chars`` is provided, those characters are removed instead of
+        whitespace.
 
         Examples::
 
             import fiftyone as fo
             import fiftyone.zoo as foz
+            from fiftyone import ViewExpression as E
             from fiftyone import ViewField as F
 
             dataset = foz.load_zoo_dataset("quickstart")
 
             # Adds and then strips whitespace from each tag
-            transform_tag = F().concat(" ", before=True).concat(" ").rstrip()
+            transform_tag = E(" ").concat(F(), " ").rstrip()
             view = dataset.set_field("tags", F("tags").map(transform_tag))
 
             print(dataset.distinct("tags"))
@@ -2308,20 +2330,23 @@ class ViewExpression(object):
         return ViewExpression({"$trim": trim})
 
     def lstrip(self, chars=None):
-        """Removes whitespace characters from the beginning of the string
-        expression. Or, if ``chars`` is provided, remove those characters
-        instead.
+        """Removes whitespace characters from the beginning of this expression,
+        which must resolve to a string.
+
+        If ``chars`` is provided, those characters are removed instead of
+        whitespace.
 
         Examples::
 
             import fiftyone as fo
             import fiftyone.zoo as foz
+            from fiftyone import ViewExpression as E
             from fiftyone import ViewField as F
 
             dataset = foz.load_zoo_dataset("quickstart")
 
             # Adds and then strips whitespace from the beginning of each tag
-            transform_tag = F().concat(" ", before=True).lstrip()
+            transform_tag = E(" ").concat(F()).lstrip()
             view = dataset.set_field("tags", F("tags").map(transform_tag))
 
             print(dataset.distinct("tags"))
@@ -2342,8 +2367,11 @@ class ViewExpression(object):
         return ViewExpression({"$ltrim": ltrim})
 
     def rstrip(self, chars=None):
-        """Removes whitespace characters from the end of the string expression.
-        Or, if ``chars`` is provided, remove those characters instead.
+        """Removes whitespace characters from the end of this expression, which
+        must resolve to a string.
+
+        If ``chars`` is provided, those characters are removed instead of
+        whitespace.
 
         Examples::
 
@@ -2375,8 +2403,8 @@ class ViewExpression(object):
         return ViewExpression({"$rtrim": rtrim})
 
     def replace(self, old, new):
-        """Replaces all occurances of ``old`` with ``new`` in the string
-        expression.
+        """Replaces all occurances of ``old`` with ``new`` in this expression,
+        which must resolve to a string.
 
         Examples::
 
@@ -2462,8 +2490,8 @@ class ViewExpression(object):
         )
 
     def starts_with(self, str_or_strs, case_sensitive=True):
-        """Determines whether this string expression starts with the given
-        string (or any of a list of strings).
+        """Determines whether this expression, which must resolve to a string,
+        starts with the given string or string(s).
 
         Examples::
 
@@ -2497,8 +2525,8 @@ class ViewExpression(object):
         return self.re_match(regex, options=options)
 
     def ends_with(self, str_or_strs, case_sensitive=True):
-        """Determines whether this string expression ends with the given string
-        (or any of a list of strings).
+        """Determines whether this expression, which must resolve to a string,
+        ends with the given string or string(s).
 
         Examples::
 
@@ -2532,8 +2560,8 @@ class ViewExpression(object):
         return self.re_match(regex, options=options)
 
     def contains_str(self, str_or_strs, case_sensitive=True):
-        """Determines whether this string expression contains the given string
-        (or any of a list of strings).
+        """Determines whether this expression, which must resolve to a string,
+        contains the given string or string(s).
 
         Examples::
 
@@ -2568,8 +2596,8 @@ class ViewExpression(object):
         return self.re_match(regex, options=options)
 
     def matches_str(self, str_or_strs, case_sensitive=True):
-        """Determines whether this string expression exactly matches the given
-        string (or any of a list of strings).
+        """Determines whether this expression, which must resolve to a string,
+        exactly matches the given string or string(s).
 
         Examples::
 
@@ -2622,13 +2650,13 @@ class ViewExpression(object):
 
             dataset = foz.load_zoo_dataset("quickstart")
 
-            # Add "-good" to the first tag and then split on "-" to create
-            # multiple tags for each sample
+            # Add "-good" to the first tag and then split on "-" to create two
+            # tags for each sample
             view = dataset.set_field(
                 "tags", F("tags")[0].concat("-good").split("-")
             )
 
-            print(view.distinct("tags"))
+            print(view.first().tags)
 
         Args:
             delimiter: the delimiter string or :class:`ViewExpression`
@@ -2740,6 +2768,42 @@ class ViewField(ViewExpression):
         return "$" + self._expr if self._expr else "$this"
 
 
+class ObjectId(ViewExpression):
+    """A :class:`ViewExpression` that refers to an
+    `ObjectId <https://docs.mongodb.com/manual/reference/method/ObjectId>`_ of
+    a document.
+
+    The typical use case for this class is writing an expression that involves
+    checking if the ID of a document matches a particular known ID.
+
+    Example::
+
+        from fiftyone import ViewField as F
+        from fiftyone.core.expressions import ObjectId
+
+        # Check if the ID of the document matches the given ID
+        expr = F("_id") == ObjectId("5f452489ef00e6374aad384a")
+
+    Args:
+        oid: the object ID string
+    """
+
+    def __init__(self, oid):
+        _ = bson.ObjectId(oid)  # validates that `oid` is valid value
+        super().__init__(oid)
+
+    def to_mongo(self, prefix=None):
+        """Returns a MongoDB representation of the ObjectId.
+
+        Args:
+            prefix (None): unused
+
+        Returns:
+            a MongoDB expression
+        """
+        return {"$toObjectId": self._expr}
+
+
 def _do_recurse(val, fcn):
     if isinstance(val, ViewExpression):
         return fcn(val)
@@ -2781,49 +2845,12 @@ def _do_apply_memo(val, old, new):
     return _do_recurse(val, fcn)
 
 
-#: A :class:`ViewExpression` that refers to the current `$$value` in a MongoDB
-# reduction expression. See :meth:`ViewExpression.reduce`.
 VALUE = ViewField("$$value")
+"""A :class:`ViewExpression` that refers to the current ``$$value`` in a
+MongoDB reduction expression.
 
-#: A :class:`ViewExpression` that generates a random float in ``[0, 1]`` each
-# time it is called.
-RAND = ViewExpression({"$rand": {}})
-
-
-class ObjectId(ViewExpression):
-    """A :class:`ViewExpression` that refers to an
-    `ObjectId <https://docs.mongodb.com/manual/reference/method/ObjectId>`_ of
-    a document.
-
-    The typical use case for this class is writing an expression that involves
-    checking if the ID of a document matches a particular known ID.
-
-    Example::
-
-        from fiftyone import ViewField as F
-        from fiftyone.core.expressions import ObjectId
-
-        # Check if the ID of the document matches the given ID
-        expr = F("_id") == ObjectId("5f452489ef00e6374aad384a")
-
-    Args:
-        oid: the object ID string
-    """
-
-    def __init__(self, oid):
-        _ = bson.ObjectId(oid)  # validates that `oid` is valid value
-        super().__init__(oid)
-
-    def to_mongo(self, prefix=None):
-        """Returns a MongoDB representation of the ObjectId.
-
-        Args:
-            prefix (None): unused
-
-        Returns:
-            a MongoDB expression
-        """
-        return {"$toObjectId": self._expr}
+See :meth:`ViewExpression.reduce` for more information.
+"""
 
 
 def _escape_regex_chars(str_or_strs):
