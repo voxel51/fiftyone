@@ -1941,22 +1941,120 @@ class ViewExpression(object):
             {"$map": {"input": self, "as": "this", "in": expr}}
         )
 
-    def extend(self, *args, before=False):
-        """Concatenates the given array(s) or array expression(s) to this array
-        expression.
+    def prepend(self, value):
+        """Prepends the given value to this expression, which must resolve to
+        an array.
 
         Examples::
 
             import fiftyone as fo
-            import fiftyone.zoo as foz
             from fiftyone import ViewField as F
 
-            dataset = foz.load_zoo_dataset("quickstart")
-
-            # Adds the "good" and "ready" tags to each sample
-            view = dataset.set_field(
-                "tags", F("tags").extend(["good", "ready"])
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(filepath="image1.jpg", tags=["b", "c"]),
+                    fo.Sample(filepath="image2.jpg", tags=["b", "c"]),
+                ]
             )
+
+            # Adds the "a" tag to each sample
+            view = dataset.set_field("tags", F("tags").prepend("a"))
+
+            print(view.first().tags)
+
+        Args:
+            value: the value or :class:`ViewExpression`
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression([value]).extend(self)
+
+    def append(self, value):
+        """Appends the given value to this expression, which must resolve to an
+        array.
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(filepath="image1.jpg", tags=["a", "b"]),
+                    fo.Sample(filepath="image2.jpg", tags=["a", "b"]),
+                ]
+            )
+
+            # Appends the "c" tag to each sample
+            view = dataset.set_field("tags", F("tags").append("c"))
+
+            print(view.first().tags)
+
+        Args:
+            value: the value or :class:`ViewExpression`
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return self.extend([value])
+
+    def insert(self, index, value):
+        """Inserts the value before the given index in this expression, which
+        must resolve to an array.
+
+        If ``index <= 0``, the value is prepended to this array.
+        If ``index >= self.length()``, the value is appended to this array.
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(filepath="image1.jpg", tags=["a", "c"]),
+                    fo.Sample(filepath="image2.jpg", tags=["a", "c"]),
+                ]
+            )
+
+            # Adds the "ready" tag to each sample
+            view = dataset.set_field("tags", F("tags").insert(1, "b"))
+
+            print(view.first().tags)
+
+        Args:
+            index: the index at which to insert the value
+            value: the value or :class:`ViewExpression`
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        expr = self[:index].extend([value], self[index:])
+        return self.let_in(expr)
+
+    def extend(self, *args):
+        """Concatenates the given array(s) or array expression(s) to this
+        expression, which must resolve to an array.
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(filepath="image1.jpg", tags=["a", "b"]),
+                    fo.Sample(filepath="image2.jpg", tags=["a", "b"]),
+                ]
+            )
+
+            # Adds the "c" and "d" tags to each sample
+            view = dataset.set_field("tags", F("tags").extend(["c", "d"]))
 
             print(view.first().tags)
 
