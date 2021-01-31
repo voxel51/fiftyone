@@ -1790,11 +1790,20 @@ class ViewExpression(object):
         """
         return ViewExpression({"$reverseArray": self})
 
-    def sort(self, reverse=False):
-        """Sorts this expression, which must resolve an array whose BSON
-        representation can be sorted by JavaScript's ``.sort()`` method.
+    def sort(self, key=None, reverse=False):
+        """Sorts this expression, which must resolve to an array.
+
+        If no ``field`` is provided, this array must contain elements whose
+        BSON representation can be sorted by JavaScript's ``.sort()`` method.
+
+        If a ``field`` is provided, the array must contain documents, which are
+        sorted by the specified field or embedded field.
 
         Examples::
+
+            #
+            # Sort the tags of each sample in a dataset
+            #
 
             import fiftyone as fo
             from fiftyone import ViewField as F
@@ -1813,36 +1822,9 @@ class ViewExpression(object):
 
             print(view.first().tags)
 
-        Args:
-            field: the field to sort by
-            reverse (False): whether to sort in descending order
-
-        Args:
-            reverse (False): whether to sort in descending order
-
-        Returns:
-            a :class:`ViewExpression`
-        """
-        rev = ".reverse()" if reverse else ""
-        sort_fcn = """
-        function(array) {{
-            array.sort(){rev};
-            return array;
-        }}
-        """.format(
-            rev=rev
-        )
-        sort_fcn = " ".join(sort_fcn.split())  # minimize
-
-        return ViewExpression(
-            {"$function": {"body": sort_fcn, "args": [self], "lang": "js"}}
-        )
-
-    def sort_by(self, field, reverse=False):
-        """Sorts this expression, which must resolve to a document array, by
-        the given field or embedded field.
-
-        Examples::
+            #
+            # Sort the predictions in each sample of a dataset by `confidence`
+            #
 
             import fiftyone as fo
             import fiftyone.zoo as foz
@@ -1850,10 +1832,9 @@ class ViewExpression(object):
 
             dataset = foz.load_zoo_dataset("quickstart")
 
-            # Sort the predictions in each sample by `confidence`
             view = dataset.set_field(
                 "predictions.detections",
-                F("detections").sort_by("confidence", reverse=True)
+                F("detections").sort(key="confidence", reverse=True)
             )
 
             sample = view.first()
@@ -1861,21 +1842,31 @@ class ViewExpression(object):
             print(sample.predictions.detections[-1].confidence)
 
         Args:
-            field: the field to sort by
+            key (None): an optional field or ``embedded.field.name`` to sort by
             reverse (False): whether to sort in descending order
 
         Returns:
             a :class:`ViewExpression`
         """
-        rev = ".reverse()" if reverse else ""
+        if key is not None:
+            comp = "(a, b) => a.{key} - b.{key}".format(key=key)
+        else:
+            comp = ""
+
+        if reverse:
+            rev = ".reverse()"
+        else:
+            rev = ""
+
         sort_fcn = """
         function(array) {{
-            array.sort((a, b) => a.{field} - b.{field}){rev};
+            array.sort({comp}){rev};
             return array;
         }}
         """.format(
-            field=field, rev=rev
+            comp=comp, rev=rev
         )
+
         sort_fcn = " ".join(sort_fcn.split())  # minimize
 
         return ViewExpression(
