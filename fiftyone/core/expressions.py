@@ -25,7 +25,56 @@ class ViewExpression(object):
 
     Typically, :class:`ViewExpression` instances are built by creating one or
     more :class:`ViewField` instances and then defining the desired operation
-    by recursively invoking methods on these objects.
+    by recursively invoking methods on these objects::
+
+        from fiftyone import ViewField as F
+
+        # An expression that tests whether the `confidence` field of a document
+        # is greater than 0.9
+        F("confidence") > 0.9
+
+        # An expression that computes the area of a bounding box
+        # Bboxes are in [top-left-x, top-left-y, width, height] format
+        F("bounding_box")[2] * F("bounding_box")[3]
+
+        #
+        # A more complex expression that returns one of three strings based on
+        # the number of high confidence predictions in the `detections` field
+        # of a document with the label "cat" or "dog" after normalizing to
+        # lowercase
+        #
+        F("detections").map(
+            F().set_field("label", F("label").lower())
+        ).filter(
+            F("label").is_in(("cat", "dog")) & (F("confidence") > 0.9)
+        ).length().switch(
+            {
+                (F() >= 10): "zoo",
+                (F() > 2) & (F() < 10): "party",
+                (F() <= 2): "home",
+            }
+        )
+
+    There are a few cases where you may need to instantitate a
+    :class:`ViewExpression` directly, typically when you need to write an
+    expression that begins with a literal Python value::
+
+        from fiftyone import ViewExpression as E
+        from fiftyone import ViewField as F
+
+        # Concatenates the "-animal" string to the `label` field of a document
+        F("label").concat("-animal")
+
+        # Prepends the "animal-" string to the `label` field
+        E("animal-").concat(F("label"))
+
+        # Appends the strings "test" and "validation" to the contents of the
+        # `tags` field array
+        # assumed to be an array
+        F("tags").extend(["test", "validation"])
+
+        # Prepends the "test" and "validation" strings to the `tags` field
+        E(["test", "validation"]).extend(F("tags"))
 
     See
     `MongoDB expressions <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
@@ -34,6 +83,7 @@ class ViewExpression(object):
 
     Examples::
 
+        import fiftyone as fo
         import fiftyone.zoo as foz
         from fiftyone import ViewField as F
 
@@ -42,8 +92,19 @@ class ViewExpression(object):
         # Bboxes are in [top-left-x, top-left-y, width, height] format
         bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
 
-        # Only contains predictions whose bounding box area is > 0.2
-        view = dataset.filter_labels("predictions", bbox_area > 0.2)
+        #
+        # Create a view that only contains predictions whose bounding boxes
+        # have area < 0.2 with confidence > 0.9, and only include samples with
+        # at least 10 such objects
+        #
+        view = dataset.filter_labels(
+            "predictions",
+            (bbox_area < 0.2) & (F("confidence") > 0.9)
+        ).match(
+            F("predictions.detections").length() > 15
+        )
+
+        session = fo.launch_app(view=view)
 
     .. automethod:: __eq__
     .. automethod:: __ge__
