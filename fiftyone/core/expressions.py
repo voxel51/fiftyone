@@ -1672,11 +1672,12 @@ class ViewExpression(object):
             )
 
         if s.start is not None:
-            if s.stop is None:
-                n = s.start
-                return ViewExpression({"$slice": [self, n]})
-
             position = s.start
+            if s.stop is None:
+                n = self.length()
+                expr = ViewExpression({"$slice": [self, position, n]})
+                return self.let_in(expr)
+
             n = s.stop - position
             if n < 0:
                 return ViewExpression({"$literal": []})
