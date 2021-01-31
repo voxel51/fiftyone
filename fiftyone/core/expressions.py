@@ -2725,8 +2725,9 @@ class ViewExpression(object):
         options = None if case_sensitive else "i"
         return self.re_match(regex, options=options)
 
-    def split(self, delimiter):
-        """Splits the string expression by the given delimiter.
+    def split(self, delimiter, maxsplit=None):
+        """Splits this expression, which must resolve to a string, by the given
+        delimiter.
 
         The result is a string array that contains the chunks with the
         delimiter removed. If the delimiter is not found, this full string is
@@ -2751,11 +2752,285 @@ class ViewExpression(object):
         Args:
             delimiter: the delimiter string or :class:`ViewExpression`
                 resolving to a string expression
+            maxsplit (None): a maximum number of splits to perform, from the
+                left
 
         Returns:
             a :class:`ViewExpression`
         """
-        return ViewExpression({"$split": [self, delimiter]})
+        split_expr = ViewExpression({"$split": [self, delimiter]})
+
+        if maxsplit is None:
+            return split_expr
+
+        if maxsplit <= 0:
+            return ViewExpression([self])
+
+        # pylint: disable=invalid-unary-operand-type
+        maxsplit_expr = (split_expr.length() > maxsplit + 1).if_else(
+            split_expr[:maxsplit].append(
+                split_expr[maxsplit:].join(delimiter)
+            ),
+            split_expr,
+        )
+        return split_expr.let_in(maxsplit_expr)
+
+    def rsplit(self, delimiter, maxsplit=None):
+        """Splits this expression, which must resolve to a string, by the given
+        delimiter.
+
+        If the number of chunks exceeds ``maxsplit``, splits are only performed
+        on the last ``maxsplit`` occurances of the delimiter.
+
+        The result is a string array that contains the chunks with the
+        delimiter removed. If the delimiter is not found, this full string is
+        returned as a single element array.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Add "-ok-go" to the first tag and then split once on "-" from the
+            # right to create two tags for each sample
+            view = dataset.set_field(
+                "tags", F("tags")[0].concat("-ok-go").rsplit("-", 1)
+            )
+
+            print(view.first().tags)
+
+        Args:
+            delimiter: the delimiter string or :class:`ViewExpression`
+                resolving to a string expression
+            maxsplit (None): a maximum number of splits to perform, from the
+                right
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        split_expr = ViewExpression({"$split": [self, delimiter]})
+
+        if maxsplit is None:
+            return split_expr
+
+        if maxsplit <= 0:
+            return ViewExpression([self])
+
+        # pylint: disable=invalid-unary-operand-type
+        maxsplit_expr = (split_expr.length() > maxsplit + 1).if_else(
+            split_expr[-maxsplit:].prepend(
+                split_expr[:-maxsplit].join(delimiter)
+            ),
+            split_expr,
+        )
+        return split_expr.let_in(maxsplit_expr)
+
+    # Static expressions ######################################################
+
+    @staticmethod
+    def literal(value):
+        """Returns an expression representing the given value without parsing.
+
+        See `this page <https://docs.mongodb.com/manual/reference/operator/aggregation/literal>`_
+        for more information on when this method is reqiured.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Add the "$money" tag to each sample
+            # The "$" character ordinarily has special meaning, so we must wrap
+            # it in `literal()` in order to add it via this method
+            view = dataset.set_field(
+                "tags", F("tags").append(F.literal("$money"))
+            )
+
+            print(view.first().tags)
+
+        Args:
+            value: a value
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$literal": value})
+
+    @staticmethod
+    def rand():
+        """Returns an expression that generates a random float in ``[0, 1]``
+        each time it is called.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Create a view that contains a different 10%% of the dataset each
+            # time it is used
+            view = dataset.match(F.rand() < 0.1)
+
+            print(view.first().id)
+            print(view.first().id)  # probably different!
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$rand": {}})
+
+    @staticmethod
+    def range(start, stop=None):
+        """Returns an array expression containing the sequence of integers from
+        the specified start (inclusive) to stop (exclusive).
+
+        If ``stop`` is provided, returns ``[start, start + 1, ..., stop - 1]``.
+
+        If no ``stop`` is provided, returns ``[0, 1, ..., start - 1]``.
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(filepath="image1.jpg", tags=["a", "b", "c"]),
+                    fo.Sample(filepath="image2.jpg", tags=["y", "z"]),
+                ]
+            )
+
+            # Populates an `ints` field based on the number of `tags`
+            dataset.add_sample_field("ints", fo.ListField)
+            view = dataset.set_field("ints", F.range(F("tags").length()))
+
+            print(view.first())
+
+        Args:
+            start: the starting value, or stopping value if no ``stop`` is
+                provided
+            stop (None): the stopping value, if both input arguments are
+                provided
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        if stop is None:
+            stop = start
+            start = 0
+
+        return ViewExpression({"$range": [start, stop]})
+
+    @staticmethod
+    def enumerate(array, start=0):
+        """Returns an array of ``[index, element]`` pairs enumerating the
+        elements of the given expression, which must resolve to an array.
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(filepath="image1.jpg", tags=["a", "b", "c"]),
+                    fo.Sample(filepath="image2.jpg", tags=["y", "z"]),
+                ]
+            )
+
+            # Populates an `enumerated_tags` field with the enumerated `tag`
+            dataset.add_sample_field("enumerated_tags", fo.ListField)
+            view = dataset.set_field("enumerated_tags", F.enumerate(F("tags")))
+
+            print(view.first())
+
+        Args:
+            array: a :class:`ViewExpression` that resolves to an array
+            start (0): the starting enumeration index to use
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        expr = ViewExpression.zip(
+            ViewExpression.range(start, stop=start + array.length()), array,
+        )
+        return array.let_in(expr)
+
+    @staticmethod
+    def zip(*args, use_longest=False, defaults=None):
+        """Zips the given expressions, which must resolve to arrays, into an
+        array whose ith element is an array containing the ith element from
+        each input array.
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="image1.jpg",
+                        tags=["a", "b", "c"],
+                        ints=[1, 2, 3, 4, 5],
+                    ),
+                    fo.Sample(
+                        filepath="image2.jpg",
+                        tags=["y", "z"],
+                        ints=[25, 26, 27, 28],
+                    ),
+                ]
+            )
+
+            dataset.add_sample_field("tags_ints", fo.ListField)
+
+            # Populates an `tags_ints` field with the zipped `tags` and `ints`
+            view = dataset.set_field("tags_ints", F.zip(F("tags"), F("ints")))
+
+            print(view.first())
+
+            # Same as above but use the longest array to determine output size
+            view = dataset.set_field(
+                "tags_ints",
+                F.zip(F("tags"), F("ints"), use_longest=True, defaults=("", 0))
+            )
+
+            print(view.first())
+
+        Args:
+            *args: one or more arrays or :class:`ViewExpression` instances
+                resolving to arrays
+            use_longest (False): whether to use the longest array to determine
+                the number of elements in the output array. By default, the
+                length of the shortest array is used
+            defaults (None): an optional array of default values of same length
+                as ``*args`` to use when ``use_longest == True`` and the input
+                arrays are of different lengths. If no defaults are provided
+                and ``use_longest == True``, then missing values are set to
+                ``None``
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        if not use_longest:
+            return ViewExpression({"$zip": {"inputs": list(args)}})
+
+        zip_expr = {"inputs": list(args), "useLongestLength": True}
+        if defaults is not None:
+            zip_expr["defaults"] = defaults
+
+        return ViewExpression({"$zip": zip_expr})
 
 
 class ViewField(ViewExpression):
