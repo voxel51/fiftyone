@@ -2121,6 +2121,48 @@ class ViewExpression(object):
         """
         return ViewExpression({"$avg": self})
 
+    def std(self, sample=False):
+        """Returns the standard deviation of the values in this expression,
+        which must resolve to a numeric array.
+
+        Missing or ``None``-valued elements are ignored.
+
+        By default, the population standard deviation is returned. If you wish
+        to compute the sample standard deviation instead, set ``sample=True``.
+
+        See https://en.wikipedia.org/wiki/Standard_deviation#Estimation for
+        more information on population (biased) vs sample (unbiased) standard
+        deviation.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Add a field to each `predictions` object that records the
+            # standard deviation of the confidences
+            view = dataset.set_field(
+                "predictions.conf_std",
+                F("detections").map(F("confidence")).std()
+            )
+
+            print(view.bounds("predictions.conf_std"))
+
+        Args:
+            sample (False): whether to compute the sample standard deviation
+                rather than the population standard deviation
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        if sample:
+            return ViewExpression({"$stdDevSamp": self})
+
+        return ViewExpression({"$stdDevPop": self})
+
     def reduce(self, expr, init_val=0):
         """Applies the given reduction to this expression, which must resolve
         to an array, and returns the single value computed.
