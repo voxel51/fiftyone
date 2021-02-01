@@ -156,7 +156,7 @@ def delete_dataset(name, verbose=False):
     Raises:
         ValueError: if the dataset is not found
     """
-    dataset = fo.load_dataset(name)
+    dataset = load_dataset(name)
     dataset.delete()
     if verbose:
         logger.info("Dataset '%s' deleted", name)
