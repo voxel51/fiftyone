@@ -2099,7 +2099,7 @@ class SampleCollection(object):
         return list(aggregation.all)
 
     @aggregation
-    def bounds(self, field_name):
+    def bounds(self, field_name, expr=None):
         """Computes the bounds of a numeric field of the collection.
 
         ``None``-valued fields are ignored.
@@ -2149,16 +2149,27 @@ class SampleCollection(object):
             bounds = dataset.bounds("numeric_list_field")
             print(bounds)  # (min, max)
 
+            #
+            # Compute the bounds of a transformation of a numeric field
+            #
+
+            bounds = dataset.bounds("numeric_field", expr=2 * (F() + 1))
+            print(bounds)  # (min, max)
+
         Args:
-            field_name: the name of the field to compute bounds for
+            field_name: the name of the field to operate on
+            expr (None): an optional
+                :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                to apply to the field before aggregating
 
         Returns:
             the ``(min, max)`` bounds
         """
-        return self.aggregate(foa.Bounds(field_name))
+        return self.aggregate(foa.Bounds(field_name, expr=expr))
 
     @aggregation
-    def count(self, field_name=None):
+    def count(self, field_name=None, expr=None):
         """Counts the number of field values in the collection.
 
         ``None``-valued fields are ignored.
@@ -2187,6 +2198,7 @@ class SampleCollection(object):
                             detections=[
                                 fo.Detection(label="cat"),
                                 fo.Detection(label="rabbit"),
+                                fo.Detection(label="squirrel"),
                             ]
                         ),
                     ),
@@ -2218,17 +2230,29 @@ class SampleCollection(object):
             count = dataset.count("predictions.detections")
             print(count)  # the count
 
+            #
+            # Count the number of samples with more than 2 predictions
+            #
+
+            expr = (F("detections").length() > 2).if_else(F("detections"), None)
+            count = dataset.count("predictions", expr=expr)
+            print(count)  # the count
+
         Args:
-            field_name (None): the name of the field whose values to count. If
-                none is provided, the samples themselves are counted
+            field_name (None): the name of the field to operate on. If none is
+                provided, the samples themselves are counted
+            expr (None): an optional
+                :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                to apply to the field before aggregating
 
         Returns:
             the count
         """
-        return self.aggregate(foa.Count(field_name=field_name))
+        return self.aggregate(foa.Count(field_name=field_name, expr=expr))
 
     @aggregation
-    def count_values(self, field_name):
+    def count_values(self, field_name, expr=None):
         """Counts the occurrences of field values in the collection.
 
         This aggregation is typically applied to *countable* field types (or
@@ -2286,16 +2310,28 @@ class SampleCollection(object):
             counts = dataset.count_values("predictions.detections.label")
             print(counts)  # dict mapping values to counts
 
+            #
+            # Compute the predicted label counts after some normalization
+            #
+
+            expr = F().map_values({"cat": "pet", "dog": "pet"}).upper()
+            counts = dataset.count_values("predictions.detections.label", expr=expr)
+            print(counts)  # dict mapping values to counts
+
         Args:
-            field_name: the name of the field to count
+            field_name: the name of the field to operate on
+            expr (None): an optional
+                :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                to apply to the field before aggregating
 
         Returns:
             a dict mapping values to counts
         """
-        return self.aggregate(foa.CountValues(field_name))
+        return self.aggregate(foa.CountValues(field_name, expr=expr))
 
     @aggregation
-    def distinct(self, field_name):
+    def distinct(self, field_name, expr=None):
         """Computes the distinct values of a field in the collection.
 
         ``None``-valued fields are ignored.
@@ -2349,22 +2385,36 @@ class SampleCollection(object):
             print(values)  # list of distinct values
 
             #
-            # Get the distint predicted labels in a dataset
+            # Get the distinct predicted labels in a dataset
             #
 
             values = dataset.distinct("predictions.detections.label")
             print(values)  # list of distinct values
 
+            #
+            # Get the distinct predicted labels after some normalization
+            #
+
+            expr = F().map_values({"cat": "pet", "dog": "pet"}).upper()
+            values = dataset.distinct("predictions.detections.label", expr=expr)
+            print(values)  # list of distinct values
+
         Args:
-            field_name: the name of the field to compute distinct values for
+            field_name: the name of the field to operate on
+            expr (None): an optional
+                :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                to apply to the field before aggregating
 
         Returns:
             a sorted list of distinct values
         """
-        return self.aggregate(foa.Distinct(field_name))
+        return self.aggregate(foa.Distinct(field_name, expr=expr))
 
     @aggregation
-    def histogram_values(self, field_name, bins=None, range=None):
+    def histogram_values(
+        self, field_name, expr=None, bins=None, range=None, auto=False
+    ):
         """Computes a histogram of the field values in the collection.
 
         This aggregation is typically applied to *numeric* field types (or
@@ -2415,19 +2465,30 @@ class SampleCollection(object):
             # Compute the histogram of a numeric list field
             #
 
-            # Compute bounds automatically
-            bounds = dataset.bounds("numeric_list_field")
-            limits = (bounds[0], bounds[1] + 1e-6)  # right interval is open
+            counts, edges, other = dataset.histogram_values(
+                "numeric_list_field", bins=50
+            )
+
+            plot_hist(counts, edges)
+            plt.show(block=False)
+
+            #
+            # Compute the histogram of a transformation of a numeric field
+            #
 
             counts, edges, other = dataset.histogram_values(
-                "numeric_list_field", bins=50, range=limits
+                "numeric_field", expr=2 * (F() + 1), bins=50
             )
 
             plot_hist(counts, edges)
             plt.show(block=False)
 
         Args:
-            field_name: the name of the field to histogram
+            field_name: the name of the field to operate on
+            expr (None): an optional
+                :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                to apply to the field before aggregating
             bins (None): can be either an integer number of bins to generate or
                 a monotonically increasing sequence specifying the bin edges to
                 use. By default, 10 bins are created. If ``bins`` is an integer
@@ -2437,6 +2498,10 @@ class SampleCollection(object):
             range (None): a ``(lower, upper)`` tuple specifying a range in
                 which to generate equal-width bins. Only applicable when
                 ``bins`` is an integer
+            auto (False): whether to automatically choose bin edges in an
+                attempt to evenly distribute the counts in each bin. If this
+                option is chosen, ``bins`` will only be used if it is an
+                integer, and the ``range`` parameter is ignored
 
         Returns:
             a tuple of
@@ -2449,11 +2514,156 @@ class SampleCollection(object):
             -   other: the number of items outside the bins
         """
         return self.aggregate(
-            foa.HistogramValues(field_name, bins=bins, range=range)
+            foa.HistogramValues(
+                field_name, expr=expr, bins=bins, range=range, auto=auto
+            )
         )
 
     @aggregation
-    def sum(self, field_name):
+    def mean(self, field_name, expr=None):
+        """Computes the arithmetic mean of the field values of the collection.
+
+        ``None``-valued fields are ignored.
+
+        This aggregation is typically applied to *numeric* field types (or
+        lists of such types):
+
+        -   :class:`fiftyone.core.fields.IntField`
+        -   :class:`fiftyone.core.fields.FloatField`
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        numeric_field=1.0,
+                        numeric_list_field=[1, 2, 3],
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        numeric_field=4.0,
+                        numeric_list_field=[1, 2],
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        numeric_field=None,
+                        numeric_list_field=None,
+                    ),
+                ]
+            )
+
+            #
+            # Compute the mean of a numeric field
+            #
+
+            mean = dataset.mean("numeric_field")
+            print(mean)  # the mean
+
+            #
+            # Compute the mean of a numeric list field
+            #
+
+            mean = dataset.mean("numeric_list_field")
+            print(mean)  # the mean
+
+            #
+            # Compute the mean of a transformation of a numeric field
+            #
+
+            mean = dataset.mean("numeric_field", expr=2 * (F() + 1))
+            print(mean)  # the mean
+
+        Args:
+            field_name: the name of the field to operate on
+            expr (None): an optional
+                :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                to apply to the field before aggregating
+
+        Returns:
+            the mean
+        """
+        return self.aggregate(foa.Mean(field_name, expr=expr))
+
+    @aggregation
+    def std(self, field_name, expr=None, sample=False):
+        """Computes the standard deviation of the field values of the
+        collection.
+
+        ``None``-valued fields are ignored.
+
+        This aggregation is typically applied to *numeric* field types (or
+        lists of such types):
+
+        -   :class:`fiftyone.core.fields.IntField`
+        -   :class:`fiftyone.core.fields.FloatField`
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        numeric_field=1.0,
+                        numeric_list_field=[1, 2, 3],
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        numeric_field=4.0,
+                        numeric_list_field=[1, 2],
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        numeric_field=None,
+                        numeric_list_field=None,
+                    ),
+                ]
+            )
+
+            #
+            # Compute the standard deviation of a numeric field
+            #
+
+            std = dataset.std("numeric_field")
+            print(std)  # the standard deviation
+
+            #
+            # Compute the standard deviation of a numeric list field
+            #
+
+            std = dataset.std("numeric_list_field")
+            print(std)  # the standard deviation
+
+            #
+            # Compute the standard deviation of a transformation of a numeric field
+            #
+
+            std = dataset.std("numeric_field", expr=2 * (F() + 1))
+            print(std)  # the standard deviation
+
+        Args:
+            field_name: the name of the field to operate on
+            expr (None): an optional
+                :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                to apply to the field before aggregating
+            sample (False): whether to compute the sample standard deviation rather
+                than the population standard deviation
+
+        Returns:
+            the standard deviation
+        """
+        return self.aggregate(foa.Std(field_name, expr=expr, sample=sample))
+
+    @aggregation
+    def sum(self, field_name, expr=None):
         """Computes the sum of the field values of the collection.
 
         ``None``-valued fields are ignored.
@@ -2503,13 +2713,24 @@ class SampleCollection(object):
             total = dataset.sum("numeric_list_field")
             print(total)  # the sum
 
+            #
+            # Compute the sum of a transformation of a numeric field
+            #
+
+            total = dataset.sum("numeric_field", expr=2 * (F() + 1))
+            print(total)  # the sum
+
         Args:
-            field_name: the name of the field to sum
+            field_name: the name of the field to operate on
+            expr (None): an optional
+                :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                to apply to the field before aggregating
 
         Returns:
             the sum
         """
-        return self.aggregate(foa.Sum(field_name))
+        return self.aggregate(foa.Sum(field_name, expr=expr))
 
     def draw_labels(
         self,
