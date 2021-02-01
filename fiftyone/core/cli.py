@@ -26,6 +26,7 @@ import fiftyone.core.config as focg
 import fiftyone.core.dataset as fod
 import fiftyone.core.session as fos
 import fiftyone.core.utils as fou
+import fiftyone.migrations as fom
 import fiftyone.utils.data as foud
 import fiftyone.utils.image as foui
 import fiftyone.utils.quickstart as fouq
@@ -79,6 +80,7 @@ class FiftyOneCommand(Command):
         _register_command(subparsers, "constants", ConstantsCommand)
         _register_command(subparsers, "convert", ConvertCommand)
         _register_command(subparsers, "datasets", DatasetsCommand)
+        _register_command(subparsers, "migrate", MigrateCommand)
         _register_command(subparsers, "utils", UtilsCommand)
         _register_command(subparsers, "zoo", ZooCommand)
 
@@ -2223,6 +2225,61 @@ class ModelZooDeleteCommand(Command):
     def execute(parser, args):
         name = args.name
         fozm.delete_zoo_model(name)
+
+
+class MigrateCommand(Command):
+    """Tools for migrating the FiftyOne database.
+
+    Examples::
+
+        # Migrates the database and all datasets to the current package version
+        fiftyone migrate
+
+        # Migrates the database and all datasets to a specifc revision
+        fiftyone migrate --version <VERSION>
+
+        # Migrates a specific dataset
+        fiftyone migrate ... --dataset-name <DATASET_NAME>
+
+        # Runs only the admin (database) migrations
+        fiftyone migrate ... --admin-only
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-v",
+            "--version",
+            metavar="VERSION",
+            help="the revision to migrate to",
+        )
+        parser.add_argument(
+            "-n",
+            "--dataset-name",
+            nargs="+",
+            metavar="DATASET_NAME",
+            help="the name of a specific dataset to migrate",
+        )
+        parser.add_argument(
+            "-a",
+            "--admin-only",
+            action="store_true",
+            help="whether to run only admin (database) migrations",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        destination = args.version
+
+        if args.admin_only:
+            fom.migrate_database_if_necessary(destination=destination)
+            return
+
+        if args.dataset_name:
+            for name in args.dataset_name:
+                fom.migrate_dataset_if_necessary(name, destination=destination)
+        else:
+            fom.migrate_all(destination=destination)
 
 
 class UtilsCommand(Command):
