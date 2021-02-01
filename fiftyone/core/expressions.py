@@ -1388,24 +1388,22 @@ class ViewExpression(object):
             import fiftyone.zoo as foz
             from fiftyone import ViewField as F
 
-            dataset = foz.load_zoo_dataset("quickstart")
-
             ANIMALS = [
                 "bear", "bird", "cat", "cow", "dog", "elephant", "giraffe",
                 "horse", "sheep", "zebra"
             ]
 
+            dataset = foz.load_zoo_dataset("quickstart")
+
             #
             # Replace the `label` of all animal objects in the `predictions`
             # field with "animal"
             #
+            mapping = {a: "animal" for a in ANIMALS}
             view = dataset.set_field(
                 "predictions.detections",
                 F("detections").map(
-                    F().set_field(
-                        "label",
-                        F("label").map_values({a: "animal" for a in ANIMALS}),
-                    )
+                    F().set_field("label", F("label").map_values(mapping))
                 )
             )
 
@@ -2112,11 +2110,11 @@ class ViewExpression(object):
             # Add a field to each `predictions` object that records the average
             # confidence of the predictions
             view = dataset.set_field(
-                "predictions.avg_conf",
+                "predictions.conf_mean",
                 F("detections").map(F("confidence")).mean()
             )
 
-            print(view.bounds("predictions.avg_conf"))
+            print(view.bounds("predictions.conf_mean"))
 
         Returns:
             a :class:`ViewExpression`
