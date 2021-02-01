@@ -11,7 +11,7 @@ import pymongo as pm
 def up(db, dataset_name):
     match_d = {"name": dataset_name}
     dataset_dict = db.datasets.find_one(match_d)
-    if dataset_dict["media_type"] != "video":
+    if dataset_dict.get("media_type", None) != "video":
         return
 
     fields = []
@@ -30,7 +30,7 @@ def up(db, dataset_name):
 def down(db, dataset_name):
     match_d = {"name": dataset_name}
     dataset_dict = db.datasets.find_one(match_d)
-    if dataset_dict["media_type"] != "video":
+    if dataset_dict.get("media_type", None) != "video":
         return
 
     frames = {
