@@ -5,4 +5,8 @@ FiftyOne's migration interface.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from .runner import get_migration_runner, migrate_database_if_necessary
+from .runner import (
+    migrate_all,
+    migrate_database_if_necessary,
+    migrate_dataset_if_necessary,
+)

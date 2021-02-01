@@ -12,7 +12,7 @@ import numpy as np
 
 import fiftyone as fo
 import fiftyone.core.media as fom
-from fiftyone.migrations.runner import Runner
+from fiftyone.migrations.runner import MigrationRunner
 
 from decorators import drop_datasets
 
@@ -184,21 +184,30 @@ class MigrationTests(unittest.TestCase):
         def revs(versions):
             return list(map(lambda v: (v, v + ".py"), versions))
 
-        runner = Runner(
-            head=None, destination="0.3", revisions=revs(["0.1", "0.2", "0.3"])
+        runner = MigrationRunner(
+            head=None,
+            destination="0.3",
+            _revisions=revs(["0.1", "0.2", "0.3"]),
         )
         self.assertEqual(runner.revisions, ["0.1", "0.2", "0.3"])
-        runner = Runner(
+
+        runner = MigrationRunner(
             head="0.1",
             destination="0.3",
-            revisions=revs(["0.1", "0.2", "0.3"]),
+            _revisions=revs(["0.1", "0.2", "0.3"]),
         )
         self.assertEqual(runner.revisions, ["0.2", "0.3"])
-        runner = Runner(
-            head="0.3", destination=None, revisions=revs(["0.1", "0.2", "0.3"])
+
+        runner = MigrationRunner(
+            head="0.3",
+            destination=None,
+            _revisions=revs(["0.1", "0.2", "0.3"]),
         )
         self.assertEqual(runner.revisions, ["0.3", "0.2", "0.1"])
-        runner = Runner(head=None, destination="0.1", revisions=revs(["0.1"]))
+
+        runner = MigrationRunner(
+            head=None, destination="0.1", _revisions=revs(["0.1"])
+        )
         self.assertEqual(runner.revisions, ["0.1"])
 
 

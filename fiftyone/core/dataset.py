@@ -24,12 +24,12 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
-from fiftyone.constants import VERSION
+import fiftyone.constants as focn
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
 import fiftyone.core.media as fom
-from fiftyone.migrations import get_migration_runner
+import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.odm.sample as foos
 import fiftyone.core.sample as fos
@@ -270,7 +270,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return super().__getattribute__(name)
 
         if getattr(self, "_deleted", False):
-            raise DoesNotExistError("Dataset '%s' is deleted" % self.name)
+            raise ValueError("Dataset '%s' is deleted" % self.name)
 
         return super().__getattribute__(name)
 
@@ -2411,12 +2411,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.reload()
 
 
-class DoesNotExistError(Exception):
-    """Exception raised when a dataset that does not exist is encountered."""
-
-    pass
-
-
 class _DatasetInfoRepr(reprlib.Repr):
     def repr_BaseList(self, obj, level):
         return self.repr_list(obj, level)
@@ -2466,7 +2460,7 @@ def _create_dataset(name, persistent=False, media_type=None):
         sample_fields=foo.SampleFieldDocument.list_from_field_schema(
             sample_doc_cls.get_field_schema(include_private=True)
         ),
-        version=VERSION,
+        version=focn.VERSION,
     )
     dataset_doc.save()
 
@@ -2601,26 +2595,13 @@ def _create_frame_document_cls(frame_collection_name):
 
 
 def _load_dataset(name):
+    fomi.migrate_dataset_if_necessary(name, destination=focn.VERSION)
+
     try:
         # pylint: disable=no-member
         dataset_doc = foo.DatasetDocument.objects.get(name=name)
     except moe.DoesNotExist:
-        raise DoesNotExistError("Dataset '%s' not found" % name)
-
-    version = dataset_doc.version
-    if version is None or version != VERSION:
-        runner = get_migration_runner(dataset_doc.version, VERSION)
-        if runner.has_revisions:
-            logger.info(
-                "Migrating dataset '%s' to the current version (%s)",
-                dataset_doc.name,
-                VERSION,
-            )
-            runner.run(dataset_names=[dataset_doc.name])
-
-        dataset_doc.reload()
-        dataset_doc.version = VERSION
-        dataset_doc.save()
+        raise ValueError("Dataset '%s' not found" % name)
 
     sample_doc_cls = _create_sample_document_cls(
         dataset_doc.sample_collection_name
@@ -2690,7 +2671,7 @@ def _drop_dataset(name, drop_persistent=True):
         # pylint: disable=no-member
         dataset_doc = foo.DatasetDocument.objects.get(name=name)
     except moe.DoesNotExist:
-        raise DoesNotExistError("Dataset '%s' not found" % name)
+        raise ValueError("Dataset '%s' not found" % name)
 
     if dataset_doc.persistent and not drop_persistent:
         return False
