@@ -26,6 +26,7 @@ import eta.core.serial as etas
 import eta.core.video as etav
 
 os.environ["FIFTYONE_SERVER"] = "1"
+
 import fiftyone as fo
 import fiftyone.core.aggregations as foa
 import fiftyone.constants as foc
@@ -39,8 +40,8 @@ from fiftyone.core.service import DatabaseService
 from fiftyone.core.stages import _STAGES
 import fiftyone.core.stages as fosg
 import fiftyone.core.state as fos
+import fiftyone.core.uid as fou
 import fiftyone.core.view as fov
-from fiftyone.utils.uid import _get_user_id
 
 from fiftyone.server.json_util import convert, FiftyOneJSONEncoder
 from fiftyone.server.util import get_file_dimensions
@@ -86,7 +87,7 @@ class FiftyOneHandler(RequestHandler):
         Returns:
             dict
         """
-        uid, _ = _get_user_id()
+        uid, _ = fou.get_user_id()
         isfile = os.path.isfile(foc.FEEDBACK_PATH)
         if isfile:
             submitted = etas.load_json(foc.FEEDBACK_PATH)["submitted"]
