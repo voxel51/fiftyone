@@ -1,5 +1,5 @@
 """
-FiftyOne v0.6.2 revision
+FiftyOne v0.6.2 revision.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -15,12 +15,16 @@ def _up_convert_polyline_points(d):
     if cls == "Polyline":
         if "points" not in d:
             return False
+
         d["points"] = [d["points"]]
         return True
-    elif cls == "Polylines":
+
+    if cls == "Polylines":
         for polyline in d.get("polylines", []):
             _up_convert_polyline_points(polyline)
+
         return True
+
     return False
 
 
@@ -62,10 +66,13 @@ def up(db, dataset_name):
             converted = False
             for d in s.values():
                 converted |= _up_convert_polyline_points(d)
+
             if converted:
                 writes.append(pm.ReplaceOne({"_id": s["_id"]}, s))
+
         if len(writes):
             db[sample_coll].bulk_write(writes, ordered=False)
+
         return
 
     frame_coll = "frames.%s" % sample_coll
@@ -81,11 +88,13 @@ def up(db, dataset_name):
             frame_d = db[frame_coll].find_one({"_id": frame_id})
             for d in frame_d.values():
                 _up_convert_polyline_points(d)
+
             frame_d["_sample_id"] = s["_id"]
             if frame_number == 1:
                 first_frame = db[frame_coll].find_one({"_id": frame_id})
                 first_frame["_cls"] = "_FrameLabels"
                 frames_d["first_frame"] = first_frame
+
             frame_updates.append(pm.ReplaceOne({"_id": frame_id}, frame_d))
         db[sample_coll].update_one(
             {"_id": s["_id"]}, {"$set": {"frames": frames_d}}
@@ -97,19 +106,25 @@ def up(db, dataset_name):
 def _down_convert_polyline_points(d):
     if not isinstance(d, dict):
         return False
+
     cls = d.get("_cls", None)
     if cls == "Polyline":
         if "points" not in d:
             return False
-        elif len(d["points"]) != 1:
+
+        if len(d["points"]) != 1:
             d["points"] = [[]]
         else:
             d["points"] = d["points"][0]
+
         return True
-    elif cls == "Polylines":
+
+    if cls == "Polylines":
         for polyline in d.get("polylines", []):
             _down_convert_polyline_points(polyline)
+
         return True
+
     return False
 
 
@@ -140,6 +155,7 @@ def down(db, dataset_name):
             converted = False
             for d in f.values():
                 converted |= _down_convert_polyline_points(d)
+
             if converted:
                 frame_writes.append(pm.ReplaceOne({"_id": f["_id"]}, f))
 
