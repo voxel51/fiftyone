@@ -583,7 +583,16 @@ class SampleCollection(object):
             view = dataset.exclude(sample_ids)
 
         Args:
-            sample_ids: a sample ID or iterable of sample IDs
+            sample_ids: the samples to exclude. Can be any of the following:
+
+                -   a sample ID
+                -   an iterable of sample IDs
+                -   a :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView`
+                -   an iterable of sample IDs
+                -   a :class:`fiftyone.core.collections.SampleCollection`
+                -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView` instances
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -1668,7 +1677,7 @@ class SampleCollection(object):
             view = dataset.match_tags(["test", "train"])
 
         Args:
-            tag: the tag or iterable of tags to match
+            tags: the tag or iterable of tags to match
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -1791,7 +1800,16 @@ class SampleCollection(object):
             view = dataset.select(session.selected)
 
         Args:
-            sample_ids: a sample ID or iterable of sample IDs
+            sample_ids: the samples to select. Can be any of the following:
+
+                -   a sample ID
+                -   an iterable of sample IDs
+                -   a :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView`
+                -   an iterable of sample IDs
+                -   a :class:`fiftyone.core.collections.SampleCollection`
+                -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView` instances
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`

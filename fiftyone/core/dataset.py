@@ -1160,8 +1160,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         updated such that ``sample.in_dataset == False``.
 
         Args:
-            sample_or_id: the sample ID, :class:`fiftyone.core.sample.Sample`,
-                or :class:`fiftyone.core.sample.SampleView` to remove
+            sample_or_id: the sample to remove. Can be any of the following:
+
+                -   a sample ID
+                -   a :class:`fiftyone.core.sample.Sample`
+                -   a :class:`fiftyone.core.sample.SampleView`
         """
         if isinstance(sample_or_id, (fos.Sample, fos.SampleView)):
             sample_id = sample_or_id.id
@@ -1181,13 +1184,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         updated such that ``sample.in_dataset == False``.
 
         Args:
-            samples: an iterable of sample IDs or a
-                :class:`fiftyone.core.collections.SampleCollection` to remove
+            samples_or_ids: the samples to remove. Can be any of the following:
+
+                -   a sample ID
+                -   an iterable of sample IDs
+                -   a :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView`
+                -   an iterable of sample IDs
+                -   a :class:`fiftyone.core.collections.SampleCollection`
+                -   an iterable of :class:`fiftyone.core.sample.Sample` or
+                    :class:`fiftyone.core.sample.SampleView` instances
         """
-        if isinstance(samples_or_ids, foc.SampleCollection):
-            sample_ids = [s.id for s in samples_or_ids.select_fields()]
-        else:
-            sample_ids = samples_or_ids
+        sample_ids = _get_sample_ids(samples_or_ids)
 
         self._sample_collection.delete_many(
             {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
@@ -2700,3 +2708,19 @@ def _drop_dataset(name, drop_persistent=True):
     dataset_doc.delete()
 
     return True
+
+
+def _get_sample_ids(samples_or_ids):
+    if etau.is_str(samples_or_ids):
+        return [samples_or_ids]
+
+    if isinstance(samples_or_ids, (fos.Sample, fos.SampleView)):
+        return [samples_or_ids.id]
+
+    if isinstance(samples_or_ids, foc.SampleCollection):
+        return [s.id for s in samples_or_ids.select_fields()]
+
+    if isinstance(next(iter(samples_or_ids)), (fos.Sample, fos.SampleView)):
+        return [s.id for s in samples_or_ids]
+
+    return list(samples_or_ids)
