@@ -13,7 +13,6 @@ export const modal = atom({
     visible: false,
     sample: null,
     metadata: null,
-    activeLabels: {},
   },
 });
 

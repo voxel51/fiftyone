@@ -1,5 +1,5 @@
 import mime from "mime-types";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
@@ -11,7 +11,7 @@ import { ContentDiv } from "./utils";
 import ExternalLink from "./ExternalLink";
 import Player51 from "player51";
 import { useEventHandler } from "../utils/hooks";
-import { convertSampleToETA } from "../utils/labels";
+import { convertSampleToETA, stringify } from "../utils/labels";
 import { useMove } from "react-use-gesture";
 
 import * as atoms from "../recoil/atoms";
@@ -42,22 +42,61 @@ const InfoWrapper = styled.div`
 
 const TooltipDiv = animated(styled(ContentDiv)`
   position: absolute;
+  margin-top: 0;
 `);
 
-const TooltipInfo = ({ player }) => {
-  const [isShown, setIsShown] = useState(false);
+const computeCoordinates = (ref, xy) => {
+  const rect = ref.current.getBoundingClientRect();
+  return {
+    top: xy[1] - rect.y,
+    left: xy[0] - rect.x + 24,
+  };
+};
 
-  const props = useSpring({
-    display: isShown ? "block" : "none",
+const TooltipInfo = ({ player, moveRef, containerRef }) => {
+  const [props, set] = useSpring(() => ({
+    display: "none",
+    opacity: 1,
+    top: 0,
+    left: 0,
+  }));
+  const [overlays, setOverlays] = useState([]);
+  const defaultTargets = useRecoilValue(selectors.defaultTargets);
+
+  useEventHandler(player, "tooltipinfo", (e) => {
+    setOverlays(e.data.overlays);
   });
-
-  useEventHandler(player, "tooltipinfo", (e) => {});
   useEventHandler(player, "mouseenter", () => {
-    setIsShown(true);
+    set({ display: "block", opacity: 1 });
   });
-  useEventHandler(player, "mouseleave", () => setIsShown(false));
+  useEventHandler(player, "mouseleave", () =>
+    set({ display: "none", opacity: 0 })
+  );
 
-  return <TooltipDiv style={props}>Hello</TooltipDiv>;
+  useEffect(() => {
+    moveRef.current = ({ values }) => {
+      set(computeCoordinates(containerRef, values));
+    };
+  });
+
+  return (
+    <>
+      {overlays.length && (
+        <TooltipDiv style={props}>
+          {overlays.map((o) => (
+            <div>
+              name: {o.name}
+              <br />
+              target: {o.target}
+              <br />
+              label: {defaultTargets[o.target]}
+              <br />
+            </div>
+          ))}
+        </TooltipDiv>
+      )}
+    </>
+  );
 };
 
 export default ({
@@ -66,7 +105,6 @@ export default ({
   src,
   style,
   onClick,
-  onDoubleClick,
   overlay = null,
   onLoad = () => {},
   onMouseEnter = () => {},
@@ -140,7 +178,7 @@ export default ({
   if (playerRef) {
     playerRef.current = player;
   }
-  const props = thumbnail ? { onClick, onDoubleClick } : {};
+  const props = thumbnail ? { onClick } : {};
   useEffect(() => {
     if (!player || error) {
       return;
@@ -216,10 +254,18 @@ export default ({
       onSelectObject({ id, name });
     }
   });
-  const bind = useMove((s) => console.log(s.xy));
+  const ref = useRef(null);
+  const containerRef = useRef(null);
+  const bind = useMove((s) => ref.current && ref.current(s));
 
   return (
-    <animated.div id={id} style={style} {...props} {...bind()}>
+    <animated.div
+      id={id}
+      style={style}
+      {...props}
+      {...bind()}
+      ref={containerRef}
+    >
       {error || mediaLoading ? (
         <InfoWrapper>
           {error ? (
@@ -232,7 +278,13 @@ export default ({
           ) : null}
         </InfoWrapper>
       ) : null}
-      <TooltipInfo player={player} />
+      {!thumbnail && (
+        <TooltipInfo
+          player={player}
+          moveRef={ref}
+          containerRef={containerRef}
+        />
+      )}
     </animated.div>
   );
 };

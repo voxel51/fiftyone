@@ -82,8 +82,9 @@ export const ContentDiv = styled.div`
   box-sizing: border-box;
   border-radius: 3px;
   background-color: ${({ theme }) => theme.backgroundDarker};
-  box-shadow: 0 2px 25px 0 ${({ theme }) => theme.darkShadow};
   color: ${({ theme }) => theme.fontDark};
+  border: 1px solid #191c1f;
+  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
   border-radius: 2px;
   padding: 0.5rem;
   line-height: 1rem;

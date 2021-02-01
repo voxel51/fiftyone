@@ -17,7 +17,7 @@ const Container = styled.div`
   height: 100%;
 `;
 
-function Samples({ setView }) {
+function Samples() {
   const setCurrentSamples = useSetRecoilState(atoms.currentSamples);
   const [containerRef, bounds] = useMeasure();
 
@@ -46,18 +46,14 @@ function Samples({ setView }) {
               columns={r.columns}
               style={{
                 ...r.style,
-                height: (bounds.width - 16) / r.aspectRatio,
+                height: (bounds.width - 16) / r.aspectRatio + 41,
               }}
               key={i}
             >
               {r.samples.map((s, j) => (
                 <React.Fragment key={j}>
                   <div key={"column"} style={{ padding: 0, width: "100%" }}>
-                    <Sample
-                      sample={s.sample}
-                      metadata={s.metadata}
-                      setView={setView}
-                    />
+                    <Sample sample={s.sample} metadata={s.metadata} />
                   </div>
                   {j < r.samples.length - 1 && (
                     <div

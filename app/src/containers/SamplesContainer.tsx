@@ -135,7 +135,7 @@ const Container = styled.div`
   overflow: hidden;
 `;
 
-const SamplesContainer = React.memo((props) => {
+const SamplesContainer = React.memo(() => {
   const [showSidebar, setShowSidebar] = useRecoilState(atoms.sidebarVisible);
 
   return (
@@ -148,7 +148,7 @@ const SamplesContainer = React.memo((props) => {
       <Container>
         {showSidebar ? <FieldsWrapper /> : null}
         <ContentColumn>
-          <Samples {...props} />
+          <Samples />
         </ContentColumn>
       </Container>
     </>

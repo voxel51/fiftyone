@@ -49,7 +49,7 @@ const applyActiveLabels = (tuples, current, setter) => {
   setter(newSelection);
 };
 
-function Dataset(props) {
+function Dataset() {
   const [modal, setModal] = useRecoilState(atoms.modal);
   const http = useRecoilValue(selectors.http);
   const hasDataset = useRecoilValue(selectors.hasDataset);
@@ -102,22 +102,6 @@ function Dataset(props) {
 
   useEffect(() => {
     document.body.classList.toggle("noscroll", modal.visible);
-
-    setModal({
-      ...modal,
-      activeLabels: modal.visible
-        ? {
-            ...activeLabels,
-            ...activeOther,
-          }
-        : {},
-      activeFrameLabels: modal.visible
-        ? {
-            ...activeFrameLabels,
-            ...activeFrameOther,
-          }
-        : {},
-    });
   }, [modal.visible]);
 
   const hideModal = useMemo(() => {
@@ -189,18 +173,7 @@ function Dataset(props) {
         {hasDataset && <HorizontalNav entries={PLOTS} />}
         {hasDataset ? (
           <Body>
-            <SamplesContainer
-              {...props.socket}
-              setView={(sample, metadata) =>
-                setModal({
-                  ...modal,
-                  visible: true,
-                  sample,
-                  metadata,
-                })
-              }
-              colorMap={colorMap}
-            />
+            <SamplesContainer />
           </Body>
         ) : (
           <Loading text={"No dataset selected"} />

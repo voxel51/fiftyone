@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
-import styled from "styled-components";
+import styled, { ThemeContext } from "styled-components";
 import { animated, useSpring, useTransition } from "react-spring";
 
 import { getColor } from "player51";
@@ -11,22 +11,25 @@ import * as selectors from "../recoil/selectors";
 import { getLabelText, stringify } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
 import { useFastRerender, useVideoData } from "../utils/hooks";
+import { Checkbox } from "@material-ui/core";
 
 const SampleDiv = animated(styled.div`
   position: relative;
   overflow: hidden;
   box-shadow: 0 2px 10px ${({ theme }) => theme.backgroundDark};
-  background-color: ${({ theme }) => theme.backgroundLight};
+  background-color: ${({ theme }) => theme.backgroundDark};
 `);
 
+const SampleChin = styled.div`
+  display: flex;
+`;
+
 const SampleInfo = styled.div`
-  position: absolute;
-  width: 100%;
-  max-height: 100%;
+  flex-grow: 1;
+  max-height: 42px;
   display: block;
-  z-index: 100;
-  overflow-y: hidden;
-  padding: 0.5rem;
+  padding: 0.5rem 0 0.5rem 0.5rem;
+  max-width: calc(100% - 43px);
   bottom: 0;
   &::-webkit-scrollbar {
     width: 0px;
@@ -108,7 +111,14 @@ const useHoverLoad = (socket, sample) => {
   return [bar, onMouseEnter, onMouseLeave];
 };
 
-const Sample = ({ sample, metadata, setView }) => {
+const SelectedDiv = styled.div`
+  border-left-width: 1px;
+  border-color: ${({ theme }) => theme.backgroundDarkBorder};
+  border-left-style: solid;
+`;
+
+const Sample = ({ sample, metadata }) => {
+  const setModal = useSetRecoilState(atoms.modal);
   const http = useRecoilValue(selectors.http);
   const id = sample._id;
   const src = `${http}/filepath${sample.filepath}?id=${id}`;
@@ -123,6 +133,7 @@ const Sample = ({ sample, metadata, setView }) => {
   const [stateDescription, setStateDescription] = useRecoilState(
     atoms.stateDescription
   );
+  const theme = useContext(ThemeContext);
 
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     atoms.selectedSamples
@@ -143,10 +154,6 @@ const Sample = ({ sample, metadata, setView }) => {
     rerender();
     socket.send(packageMessage(event, { _id: id }));
     setStateDescription({ ...stateDescription, selected: [...newSelected] });
-  };
-  const eventHandlers = {
-    onClick: () => handleClick(),
-    onDoubleClick: () => setView(sample, metadata),
   };
   const renderLabel = ({ name, label, idx }) => {
     if (!activeLabels[name] || !label) {
@@ -202,9 +209,10 @@ const Sample = ({ sample, metadata, setView }) => {
       <Player51
         src={src}
         style={{
-          height: "100%",
+          height: "calc(100% - 42px)",
           width: "100%",
           position: "relative",
+          cursor: "pointer",
         }}
         sample={sample}
         metadata={metadata}
@@ -212,49 +220,55 @@ const Sample = ({ sample, metadata, setView }) => {
         activeLabels={activeLabels}
         activeFrameLabels={activeFrameLabels}
         colorByLabel={colorByLabel}
-        {...eventHandlers}
         filterSelector={selectors.labelFilters}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
+        onClick={() => setModal({ visible: true, sample, metadata })}
       />
-      <SampleInfo {...eventHandlers}>
-        {Object.keys(sample)
-          .sort()
-          .reduce((acc, name) => {
-            const label = sample[name];
-            if (label && label._cls === "Classifications") {
-              return [
-                ...acc,
-                ...label[label._cls.toLowerCase()].map((l, i) => ({
-                  name,
-                  label: l,
-                  idx: i,
-                })),
-              ];
-            }
-            return [...acc, { name, label }];
-          }, [])
-          .map(renderLabel)}
-        {[...sample.tags].sort().map((t) => {
-          return activeTags[t] ? (
-            <Tag key={t} name={String(t)} color={colorMap[t]} />
-          ) : null;
-        })}
-        {Object.keys(sample).sort().map(renderScalar)}
-      </SampleInfo>
-      {selectedSamples.has(id) ? (
-        <div
-          style={{
-            border: "2px solid rgb(255, 109, 4)",
-            width: "100%",
-            height: "100%",
-            position: "absolute",
-            top: 0,
-            pointerEvents: "none",
-            zIndex: 10,
-          }}
-        />
-      ) : null}
+      <SampleChin>
+        <SampleInfo>
+          <div
+            style={{
+              overflowX: "auto",
+              overflowY: "hidden",
+              display: "flex",
+              alignItems: "center",
+              marginTop: 3,
+            }}
+          >
+            {Object.keys(sample)
+              .sort()
+              .reduce((acc, name) => {
+                const label = sample[name];
+                if (label && label._cls === "Classifications") {
+                  return [
+                    ...acc,
+                    ...label[label._cls.toLowerCase()].map((l, i) => ({
+                      name,
+                      label: l,
+                      idx: i,
+                    })),
+                  ];
+                }
+                return [...acc, { name, label }];
+              }, [])
+              .map(renderLabel)}
+            {[...sample.tags].sort().map((t) => {
+              return activeTags[t] ? (
+                <Tag key={t} name={String(t)} color={colorMap[t]} />
+              ) : null;
+            })}
+            {Object.keys(sample).sort().map(renderScalar)}
+          </div>
+        </SampleInfo>
+        <SelectedDiv>
+          <Checkbox
+            checked={selectedSamples.has(id)}
+            style={{ color: theme.brand }}
+            onClick={() => handleClick()}
+          />
+        </SelectedDiv>
+      </SampleChin>
       {bar.map(({ key, props }) => (
         <LoadingBar key={key} style={props} />
       ))}
