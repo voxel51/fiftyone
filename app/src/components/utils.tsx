@@ -77,3 +77,18 @@ scrollbar-width: none;
   box-shadow: inset 0 0 10px 10px ${theme.fontDarkest};
 }
 `;
+
+export const ContentDiv = styled.div`
+  box-sizing: border-box;
+  border-radius: 3px;
+  background-color: ${({ theme }) => theme.backgroundDarker};
+  box-shadow: 0 2px 25px 0 ${({ theme }) => theme.darkShadow};
+  color: ${({ theme }) => theme.fontDark};
+  border-radius: 2px;
+  padding: 0.5rem;
+  line-height: 1rem;
+  margin-top: 2.5rem;
+  font-weight: bold;
+  width: auto;
+  z-index: 802;
+`;

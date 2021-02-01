@@ -5,11 +5,14 @@ import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import { Warning } from "@material-ui/icons";
+import { animated, useSpring } from "react-spring";
 
+import { ContentDiv } from "./utils";
 import ExternalLink from "./ExternalLink";
 import Player51 from "player51";
 import { useEventHandler } from "../utils/hooks";
 import { convertSampleToETA } from "../utils/labels";
+import { useMove } from "react-use-gesture";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
@@ -37,6 +40,26 @@ const InfoWrapper = styled.div`
   }
 `;
 
+const TooltipDiv = animated(styled(ContentDiv)`
+  position: absolute;
+`);
+
+const TooltipInfo = ({ player }) => {
+  const [isShown, setIsShown] = useState(false);
+
+  const props = useSpring({
+    display: isShown ? "block" : "none",
+  });
+
+  useEventHandler(player, "tooltipinfo", (e) => {});
+  useEventHandler(player, "mouseenter", () => {
+    setIsShown(true);
+  });
+  useEventHandler(player, "mouseleave", () => setIsShown(false));
+
+  return <TooltipDiv style={props}>Hello</TooltipDiv>;
+};
+
 export default ({
   thumbnail,
   sample,
@@ -63,7 +86,6 @@ export default ({
   const fps = useRecoilValue(atoms.sampleFrameRate(sample._id));
   const overlayOptions = useRecoilValue(selectors.playerOverlayOptions);
   const defaultTargets = useRecoilValue(selectors.defaultTargets);
-
   const colorMap = useRecoilValue(selectors.colorMap);
   if (overlay === null) {
     overlay = convertSampleToETA(sample, fieldSchema);
@@ -97,7 +119,6 @@ export default ({
         colorMap,
         activeLabels: playerActiveLabels,
         filter,
-        defaultTargets,
         enableOverlayOptions: {
           attrRenderMode: false,
           attrsOnlyOnClick: false,
@@ -137,7 +158,6 @@ export default ({
         filter,
         colorMap,
         fps,
-        defaultTargets,
       });
       player.updateOverlayOptions(overlayOptions);
       if (!thumbnail) {
@@ -186,6 +206,7 @@ export default ({
       </>
     )
   );
+
   useEventHandler(player, "mouseenter", onMouseEnter);
   useEventHandler(player, "mouseleave", onMouseLeave);
   useEventHandler(player, "select", (e) => {
@@ -195,9 +216,10 @@ export default ({
       onSelectObject({ id, name });
     }
   });
+  const bind = useMove((s) => console.log(s.xy));
 
   return (
-    <div id={id} style={style} {...props}>
+    <animated.div id={id} style={style} {...props} {...bind()}>
       {error || mediaLoading ? (
         <InfoWrapper>
           {error ? (
@@ -210,6 +232,7 @@ export default ({
           ) : null}
         </InfoWrapper>
       ) : null}
-    </div>
+      <TooltipInfo player={player} />
+    </animated.div>
   );
 };

@@ -1167,7 +1167,7 @@ export const filterNumericFieldIncludeNone = selectorFamily({
 export const defaultTargets = selector({
   key: "defaultTargets",
   get: ({ get }) => {
-    const targets = get(atoms.stateDescription).default_targets || {};
+    const targets = get(atoms.stateDescription).dataset?.default_targets || {};
     return Object.fromEntries(
       Object.entries(targets).map(([k, v]) => [parseInt(k, 10), v])
     );

@@ -57,7 +57,7 @@ const LoadingBar = animated(styled.div`
 
 const useHoverLoad = (socket, sample) => {
   if (sample._media_type !== "video") {
-    return [[], null, null];
+    return [[], () => {}, () => {}];
   }
   const [barItem, setBarItem] = useState([]);
   const [loaded, setLoaded] = useState(null);
@@ -187,7 +187,6 @@ const Sample = ({ sample, metadata, setView }) => {
       />
     );
   };
-  const tooltip = `Double-click for details`;
 
   const showSamples = useSpring({
     from: {
@@ -199,7 +198,7 @@ const Sample = ({ sample, metadata, setView }) => {
   const [bar, onMouseEnter, onMouseLeave] = useHoverLoad(socket, sample);
 
   return (
-    <SampleDiv className="sample" style={showSamples} title={tooltip}>
+    <SampleDiv className="sample" style={showSamples}>
       <Player51
         src={src}
         style={{
