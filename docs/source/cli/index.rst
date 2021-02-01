@@ -83,6 +83,7 @@ The FiftyOne command-line interface.
         constants           Print constants from `fiftyone.constants`.
         convert             Convert datasets on disk between supported formats.
         datasets            Tools for working with FiftyOne datasets.
+        migrate             Tools for migrating the FiftyOne database.
         utils               FiftyOne utilities.
         zoo                 Tools for working with the FiftyOne Dataset Zoo.
 
@@ -626,6 +627,52 @@ Delete FiftyOne datasets.
 
     # Delete all non-persistent datasets
     fiftyone datasets delete --non-persistent
+
+.. _cli-fiftyone-migrate:
+
+FiftyOne migrations
+~~~~~~~~~~~~~~~~~~~
+
+Tools for migrating the FiftyOne database.
+
+.. code-block:: text
+
+    fiftyone migrate [-h] [-v VERSION] [-n DATASET_NAME [DATASET_NAME ...]]
+                     [-a]
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -v VERSION, --version VERSION
+                            the revision to migrate to
+      -n DATASET_NAME [DATASET_NAME ...], --dataset-name DATASET_NAME [DATASET_NAME ...]
+                            the name of a specific dataset to migrate
+      -a, --admin-only      whether to run only admin (database) migrations
+
+**Examples**
+
+.. code-block:: shell
+
+    # Migrates the database and all datasets to the current package version
+    fiftyone migrate
+
+.. code-block:: shell
+
+    # Migrates the database and all datasets to a specifc revision
+    fiftyone migrate --version <VERSION>
+
+.. code-block:: shell
+
+    # Migrate a specific dataset
+    fiftyone migrate ... --dataset-name <DATASET_NAME>
+
+.. code-block:: shell
+
+    # Run only the admin (database) migrations
+    fiftyone migrate ... --admin-only
 
 .. _cli-fiftyone-utils:
 
