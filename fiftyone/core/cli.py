@@ -2235,7 +2235,7 @@ class MigrateCommand(Command):
         # Migrates the database and all datasets to the current package version
         fiftyone migrate
 
-        # Migrates the database and all datasets to a specifc revision
+        # Migrates the database and all datasets to a specific revision
         fiftyone migrate --version <VERSION>
 
         # Migrates a specific dataset

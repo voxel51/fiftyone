@@ -661,7 +661,7 @@ Tools for migrating the FiftyOne database.
 
 .. code-block:: shell
 
-    # Migrates the database and all datasets to a specifc revision
+    # Migrates the database and all datasets to a specific revision
     fiftyone migrate --version <VERSION>
 
 .. code-block:: shell
