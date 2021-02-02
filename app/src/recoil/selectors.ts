@@ -1173,3 +1173,29 @@ export const defaultTargets = selector({
     );
   },
 });
+
+export const targets = selector({
+  key: "targets",
+  get: ({ get }) => {
+    const defaults = get(atoms.stateDescription).dataset?.default_targets || {};
+    const labelTargets =
+      get(atoms.stateDescription).dataset?.label_targets || {};
+    return {
+      defaults,
+      fields: labelTargets,
+    };
+  },
+});
+
+export const getTarget = selector({
+  key: "getTarget",
+  get: ({ get }) => {
+    const { defaults, fields } = get(targets);
+    return (field, target) => {
+      if (field in fields) {
+        return fields[field][target];
+      }
+      return defaults[target];
+    };
+  },
+});

@@ -69,15 +69,11 @@ const computeCoordinates = ([x, y], ref) => {
   };
 };
 
-const ColorBlock = styled.div`
-  display: inline-block;
-  height: 1rem;
-  width: 1rem;
-`;
-
 const ContentItemDiv = styled.div`
   margin: 0;
   padding: 0;
+  max-width: 12rem;
+  word-wrap: break-word;
 `;
 
 const ContentValue = styled.div`
@@ -102,19 +98,47 @@ const ContentItem = ({ name, value }) => {
   );
 };
 
-const ClassificationInfo = ({}) => {
-  return <></>;
+const useTarget = (info) => {
+  const getTarget = useRecoilValue(selectors.getTarget);
+  return getTarget(info.field, info.target);
 };
 
-const MaskInfo = ({ info }) => {
-  const defaultTargets = useRecoilValue(selectors.defaultTargets);
-  const coord = info.coordinates;
-  const label = defaultTargets[info.target];
+const ClassificationInfo = ({ info }) => {
+  const targetValue = useTarget(info);
   return (
     <ContentBlock style={{ borderColor: info.color }}>
       <ContentItem key={"field"} name={"Field"} value={info.field} />
-      <ContentItem key={"label"} name={"Label"} value={label} />
-      <ContentItem key={"target"} name={"Target"} value={info.target} />
+      <ContentItem key={"label"} name={"Label"} value={info.label} />
+      {info.target && (
+        <>
+          <ContentItem key={"target"} name={"Target"} value={info.target} />
+          <ContentItem
+            key={"target-value"}
+            name={"Target Value"}
+            value={targetValue}
+          />
+        </>
+      )}
+    </ContentBlock>
+  );
+};
+
+const MaskInfo = ({ info }) => {
+  const coord = info.coordinates;
+  const targetValue = useTarget(info);
+  return (
+    <ContentBlock style={{ borderColor: info.color }}>
+      <ContentItem key={"field"} name={"Field"} value={info.field} />
+      {info.target && (
+        <>
+          <ContentItem key={"target"} name={"Target"} value={info.target} />
+          <ContentItem
+            key={"target-value"}
+            name={"Target Value"}
+            value={targetValue}
+          />
+        </>
+      )}
       <ContentItem
         key={"coordinates"}
         name={"Coordinates"}
@@ -130,17 +154,12 @@ const MaskInfo = ({ info }) => {
 };
 
 const DetectionInfo = ({ info }) => {
-  const defaultTargets = useRecoilValue(selectors.defaultTargets);
-  const coord = info.coordinates;
-  const label = defaultTargets[info.target];
+  const targetValue = useTarget(info);
   return (
     <ContentBlock style={{ borderColor: info.color }}>
       <ContentItem key={"id"} name={"ID"} value={info.id} />
       <ContentItem key={"field"} name={"Field"} value={info.field} />
       <ContentItem key={"label"} name={"Label"} value={info.label} />
-      {info.target && (
-        <ContentItem key={"target"} name={"Target"} value={info.target} />
-      )}
       <ContentItem
         key={"confidence"}
         name={"Confidence"}
@@ -150,6 +169,16 @@ const DetectionInfo = ({ info }) => {
             : "None"
         }
       />
+      {info.target && (
+        <>
+          <ContentItem key={"target"} name={"Target"} value={info.target} />
+          <ContentItem
+            key={"target-value"}
+            name={"Target Value"}
+            value={targetValue}
+          />
+        </>
+      )}
       <ContentItem
         key={"top-left"}
         name={"Top-Left"}
