@@ -100,6 +100,12 @@ export const ContentHeader = styled.div`
   padding-bottom: 0.5rem;
 `;
 
-export const ContentBlock = styled.div`
+export const ContentBlock = styled.ul`
+  padding: 0.5rem;
   border-top: 1px solid ${({ theme }) => theme.font};
+  margin: 0;
+
+  & > li {
+    list-style-type: none;
+  }
 `;

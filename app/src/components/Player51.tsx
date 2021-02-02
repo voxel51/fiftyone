@@ -69,12 +69,35 @@ const computeCoordinates = ([x, y], ref) => {
   };
 };
 
-const MaskInfo = (info) => {
+const ColorBlock = styled.div`
+  display: inline-block;
+  height: 1rem;
+  width: 1rem;
+`;
+
+const MaskInfo = ({ info }) => {
   const defaultTargets = useRecoilValue(selectors.defaultTargets);
-  return;
+  return (
+    <ContentBlock>
+      <li>Field: {info.field}</li>
+      <li>Label: {defaultTargets[info.target]}</li>
+      <li>
+        Target: {info.target} &#183;{" "}
+        <ColorBlock style={{ backgroundColor: info.color }} />
+      </li>
+      <li>
+        Coordinates: ({info.coordinates[0]}, {info.coordinates[1]})
+      </li>
+      <li>
+        Shape: ({info.shape[0]}, {info.shape[1]})
+      </li>
+    </ContentBlock>
+  );
 };
 
-const DetectionInfo = (info) => {};
+const DetectionInfo = ({ info }) => {
+  return <div></div>;
+};
 
 const OVERLAY_INFO = {
   mask: MaskInfo,
@@ -99,8 +122,11 @@ const TooltipInfo = ({ player, moveRef }) => {
   useEventHandler(player, "mouseenter", () => {
     set({ display: "block", opacity: 1 });
   });
-  useEventHandler(player, "mouseleave", () =>
-    set({ display: "none", opacity: 0 })
+  useEventHandler(
+    player,
+    "mouseleave",
+    () => {}
+    // set({ display: "none", opacity: 0 })
   );
 
   useEffect(() => {
@@ -116,7 +142,10 @@ const TooltipInfo = ({ player, moveRef }) => {
           <ContentHeader>
             Point: ({point[0]}, {point[1]})
           </ContentHeader>
-          {overlays.map((o) => OVERLAY_INFO[o.type](o))}
+          {overlays.map((o) => {
+            const Component = OVERLAY_INFO[o.type];
+            return <Component info={o} />;
+          })}
         </TooltipDiv>
       )}
     </>,
