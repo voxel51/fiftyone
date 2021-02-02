@@ -7,7 +7,6 @@ Definition of the `fiftyone` command-line interface (CLI).
 """
 import argparse
 from collections import defaultdict
-import io
 import json
 import os
 import subprocess
@@ -562,26 +561,8 @@ class DatasetsStreamCommand(Command):
 
     @staticmethod
     def execute(parser, args):
-        name = args.name
-
-        dataset = fod.load_dataset(name)
-
-        # @todo support Windows and other environments without `less`
-        # Look at pydoc.pager() for inspiration?
-        p = subprocess.Popen(
-            ["less", "-F", "-R", "-S", "-X", "-K"],
-            shell=True,
-            stdin=subprocess.PIPE,
-        )
-
-        try:
-            with io.TextIOWrapper(p.stdin, errors="backslashreplace") as pipe:
-                for sample in dataset:
-                    pipe.write(str(sample) + "\n")
-
-            p.wait()
-        except (KeyboardInterrupt, OSError):
-            pass
+        dataset = fod.load_dataset(args.name)
+        fou.stream_objects(dataset)
 
 
 class DatasetsExportCommand(Command):

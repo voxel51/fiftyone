@@ -10,7 +10,12 @@ from .database import (
     get_db_conn,
     get_async_db_conn,
     drop_database,
+    sync_database,
+    drop_orphan_collections,
+    list_collections,
+    stream_collection,
     ASC,
+    DESC,
 )
 from .dataset import SampleFieldDocument, DatasetDocument
 from .document import (
