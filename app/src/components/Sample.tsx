@@ -25,6 +25,16 @@ const SampleChin = styled.div`
   display: grid;
   grid-template-columns: 1fr 43px;
   width: 100%;
+  &::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+    display: none;
+  }
+  &::-webkit-scrollbar-thumb {
+    width: 0px;
+    display: none;
+  }
+  scrollbar-width: none;
 `;
 
 const SampleInfo = styled.div`
@@ -43,6 +53,7 @@ const SampleInfo = styled.div`
     width: 0px;
     display: none;
   }
+  scrollbar-width: none;
 `;
 
 const LoadingBar = animated(styled.div`

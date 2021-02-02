@@ -119,6 +119,15 @@ const ClassificationInfo = ({ info }) => {
           />
         </>
       )}
+      <ContentItem
+        key={"confidence"}
+        name={"Confidence"}
+        value={
+          typeof info.confidence === "number"
+            ? info.confidence.toFixed(5)
+            : "None"
+        }
+      />
     </ContentBlock>
   );
 };
@@ -424,13 +433,7 @@ export default ({
           ) : null}
         </InfoWrapper>
       ) : null}
-      {!thumbnail && (
-        <TooltipInfo
-          player={player}
-          moveRef={ref}
-          containerRef={containerRef}
-        />
-      )}
+      <TooltipInfo player={player} moveRef={ref} containerRef={containerRef} />
     </animated.div>
   );
 };

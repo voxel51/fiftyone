@@ -1191,6 +1191,7 @@ export const getTarget = selector({
   key: "getTarget",
   get: ({ get }) => {
     const { defaults, fields } = get(targets);
+    console.log(fields);
     return (field, target) => {
       if (field in fields) {
         return fields[field][target];
