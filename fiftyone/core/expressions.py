@@ -95,7 +95,7 @@ class ViewExpression(object):
         #
         # Create a view that only contains predictions whose bounding boxes
         # have area < 0.2 with confidence > 0.9, and only include samples with
-        # at least 10 such objects
+        # at least 15 such objects
         #
         view = dataset.filter_labels(
             "predictions",
