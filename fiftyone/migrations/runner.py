@@ -5,8 +5,10 @@ FiftyOne migrations runner.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import bisect
 import logging
 import os
+from packaging.version import Version
 
 import mongoengine.errors as moe
 
@@ -25,24 +27,27 @@ DOWN = "down"
 UP = "up"
 
 
-def migrate_all(destination=None):
+def migrate_all(destination=None, verbose=False):
     """Migrates the database and all datasets to the specified destination
     revision.
 
     Args:
         destination (None): the destination revision. By default, the
             ``fiftyone`` package version is used
+        verbose (False): whether to log incremental migrations that are run
     """
     if destination is None:
         destination = foc.VERSION
 
-    migrate_database_if_necessary(destination=destination)
+    migrate_database_if_necessary(destination=destination, verbose=verbose)
 
     for name in fo.list_datasets():
-        migrate_dataset_if_necessary(name, destination=destination)
+        migrate_dataset_if_necessary(
+            name, destination=destination, verbose=verbose
+        )
 
 
-def migrate_dataset_if_necessary(name, destination=None):
+def migrate_dataset_if_necessary(name, destination=None, verbose=False):
     """Migrates the dataset from its current revision to the specified
     destination revision.
 
@@ -50,6 +55,7 @@ def migrate_dataset_if_necessary(name, destination=None):
         name: the name of the dataset
         destination (None): the destination revision. By default, the
             ``fiftyone`` package version is used
+        verbose (False): whether to log incremental migrations that are run
     """
     if destination is None:
         destination = foc.VERSION
@@ -68,20 +74,21 @@ def migrate_dataset_if_necessary(name, destination=None):
     runner = MigrationRunner(head=head, destination=destination)
     if runner.has_revisions:
         logger.info("Migrating dataset '%s' to v%s", name, destination)
-        runner.run(name)
+        runner.run(name, verbose=verbose)
 
     dataset_doc.reload()
     dataset_doc.version = destination
     dataset_doc.save()
 
 
-def migrate_database_if_necessary(destination=None):
+def migrate_database_if_necessary(destination=None, verbose=False):
     """Migrates the database to the current revision of the ``fiftyone``
     package, if necessary.
 
     Args:
         destination (None): the destination revision. By default, the
             ``fiftyone`` package version is used
+        verbose (False): whether to log incremental migrations that are run
     """
     if destination is None:
         destination = foc.VERSION
@@ -99,8 +106,8 @@ def migrate_database_if_necessary(destination=None):
 
     runner = MigrationRunner(head=head, destination=destination)
     if runner.has_admin_revisions:
-        logger.info("Migrating database to v%s", foc.VERSION)
-        runner.run_admin()
+        logger.info("Migrating database to v%s", destination)
+        runner.run_admin(verbose=verbose)
 
     config.version = destination
     config_path = _get_database_config_path()
@@ -122,6 +129,12 @@ class MigrationRunner(object):
         _revisions=None,
         _admin_revisions=None,
     ):
+        if head is None:
+            head = foc.VERSION
+
+        if destination is None:
+            destination = foc.VERSION
+
         if _revisions is None:
             _revisions = _get_all_revisions()
 
@@ -165,29 +178,42 @@ class MigrationRunner(object):
     @property
     def revisions(self):
         """The list of revisions that will be run by :meth:`run`."""
-        return list(map(lambda r: r[0], self._revisions))
+        return [r[0] for r in self._revisions]
 
     @property
     def admin_revisions(self):
         """The list of admin revisions that will be run by :meth:`run_admin`.
         """
-        return list(map(lambda r: r[0], self._admin_revisions))
+        return [r[0] for r in self._admin_revisions]
 
-    def run(self, dataset_name):
+    def run(self, dataset_name, verbose=False):
         """Runs any required migrations on the specified dataset.
 
         Args:
             dataset_name: the name of the dataset to migrate
+            verbose (False): whether to log incremental migrations that are run
         """
         conn = foo.get_db_conn()
-        for _, module in self._revisions:
+        for rev, module in self._revisions:
+            if verbose:
+                logger.info("Running %s migration v%s", self.direction, rev)
+
             fcn = etau.get_function(self.direction, module)
             fcn(conn, dataset_name)
 
-    def run_admin(self):
-        """Runs any required admin revisions."""
+    def run_admin(self, verbose=False):
+        """Runs any required admin revisions.
+
+        Args:
+            verbose (False): whether to log incremental migrations that are run
+        """
         client = foo.get_db_client()
-        for _, module in self._admin_revisions:
+        for rev, module in self._admin_revisions:
+            if verbose:
+                logger.info(
+                    "Running %s admin migration v%s", self.direction, rev
+                )
+
             fcn = etau.get_function(self.direction, module)
             fcn(client)
 
@@ -222,41 +248,23 @@ def _get_database_config_path():
     return os.path.join(fo.config.database_dir, "config.json")
 
 
-def _get_revisions_to_run(head, destination, revisions):
-    revision_strs = list(map(lambda rt: rt[0], revisions))
-    direction = UP
-    if head == destination:
-        return [], direction
+def _get_revisions_to_run(head, dest, revisions):
+    revisions = sorted(revisions, key=lambda r: Version(r[0]))
 
-    if destination is None or (head is not None and destination < head):
-        direction = DOWN
+    head = Version(head)
+    dest = Version(dest)
 
-    if destination is None:
-        destination_idx = 0
-    else:
-        for idx, revision in enumerate(revision_strs):
-            if revision > destination:
-                break
+    rev_versions = [Version(r[0]) for r in revisions]
 
-            destination_idx = idx + 1
+    head_idx = bisect.bisect(rev_versions, head)
+    dest_idx = bisect.bisect(rev_versions, dest)
 
-    if head is None:
-        head_idx = 0
-    else:
-        for idx, revision in enumerate(revision_strs):
-            if revision > head:
-                break
+    if dest >= head:
+        revisions_to_run = revisions[head_idx:dest_idx]
+        return revisions_to_run, UP
 
-            head_idx = idx + 1
-
-    if destination is None or head_idx > destination_idx:
-        destination_idx, head_idx = head_idx, destination_idx
-
-    revisions_to_run = revisions[head_idx:destination_idx]
-    if direction == DOWN:
-        revisions_to_run = list(reversed(revisions_to_run))
-
-    return revisions_to_run, direction
+    revisions_to_run = revisions[dest_idx:head_idx][::-1]
+    return revisions_to_run, DOWN
 
 
 def _get_all_revisions(admin=False):
@@ -264,18 +272,18 @@ def _get_all_revisions(admin=False):
     if admin:
         revisions_dir = os.path.join(revisions_dir, "admin")
 
-    files = etau.list_files(revisions_dir)
-    filtered_files = filter(lambda r: r.endswith(".py"), files)
-    module_prefix = ".".join(__loader__.name.split(".")[:-1] + ["revisions"])
-    if admin:
-        module_prefix = ".".join([module_prefix, "admin"])
+    revision_files = [
+        f for f in etau.list_files(revisions_dir) if f.endswith(".py")
+    ]
 
-    return list(
-        map(
-            lambda r: (
-                r[1:-3].replace("_", "."),
-                ".".join([module_prefix, r[:-3]]),
-            ),
-            filtered_files,
-        )
-    )
+    module_prefix = __loader__.name.rsplit(".", 1)[0] + ".revisions"
+    if admin:
+        module_prefix = module_prefix + ".admin"
+
+    revisions = []
+    for filename in revision_files:
+        version = filename[1:-3].replace("_", ".")
+        module = module_prefix + filename[:-3]
+        revisions.append((version, module))
+
+    return sorted(revisions, key=lambda r: Version(r[0]))

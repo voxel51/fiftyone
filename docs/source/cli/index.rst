@@ -638,7 +638,7 @@ Tools for migrating the FiftyOne database.
 .. code-block:: text
 
     fiftyone migrate [-h] [-v VERSION] [-n DATASET_NAME [DATASET_NAME ...]]
-                     [-a]
+                     [-a] [--verbose]
 
 **Arguments**
 
@@ -651,6 +651,7 @@ Tools for migrating the FiftyOne database.
       -n DATASET_NAME [DATASET_NAME ...], --dataset-name DATASET_NAME [DATASET_NAME ...]
                             the name of a specific dataset to migrate
       -a, --admin-only      whether to run only admin (database) migrations
+      --verbose             whether to log incremental migrations that are performed
 
 **Examples**
 

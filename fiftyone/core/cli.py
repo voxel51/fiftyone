@@ -2266,20 +2266,27 @@ class MigrateCommand(Command):
             action="store_true",
             help="whether to run only admin (database) migrations",
         )
+        parser.add_argument(
+            "--verbose",
+            action="store_true",
+            help="whether to log incremental migrations that are performed",
+        )
 
     @staticmethod
     def execute(parser, args):
-        destination = args.version
-
         if args.admin_only:
-            fom.migrate_database_if_necessary(destination=destination)
+            fom.migrate_database_if_necessary(
+                destination=args.version, verbose=args.verbose
+            )
             return
 
         if args.dataset_name:
             for name in args.dataset_name:
-                fom.migrate_dataset_if_necessary(name, destination=destination)
+                fom.migrate_dataset_if_necessary(
+                    name, destination=args.version, verbose=args.verbose
+                )
         else:
-            fom.migrate_all(destination=destination)
+            fom.migrate_all(destination=args.version, verbose=args.verbose)
 
 
 class UtilsCommand(Command):
