@@ -188,12 +188,12 @@ class MigrationRunner(object):
     @property
     def has_revisions(self):
         """Whether there are any revisions to run."""
-        return bool(len(self._revisions))
+        return bool(self._revisions)
 
     @property
     def has_admin_revisions(self):
         """Whether there are any admin revisions to run."""
-        return bool(len(self._admin_revisions))
+        return bool(self._admin_revisions)
 
     @property
     def revisions(self):
