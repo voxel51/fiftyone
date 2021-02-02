@@ -6,6 +6,8 @@ FiftyOne's migration interface.
 |
 """
 from .runner import (
+    get_database_revision,
+    get_dataset_revision,
     migrate_all,
     migrate_database_if_necessary,
     migrate_dataset_if_necessary,

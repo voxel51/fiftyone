@@ -25,6 +25,33 @@ DOWN = "down"
 UP = "up"
 
 
+def get_database_revision():
+    """Gets the current revision of the database.
+
+    Returns:
+        the database revision string
+    """
+    config = _get_database_config()
+    return config.version
+
+
+def get_dataset_revision(name):
+    """Gets the current revision of the given dataset.
+
+    Args:
+        name: the name of the dataset
+
+    Returns:
+        the dataset revision string
+    """
+    conn = foo.get_db_conn()
+    dataset_doc = conn.datasets.find_one({"name": name})
+    if dataset_doc is None:
+        raise ValueError("Dataset '%s' not found" % name)
+
+    return dataset_doc.get("version", None)
+
+
 def migrate_all(destination=None, verbose=False):
     """Migrates the database and all datasets to the specified destination
     revision.
@@ -45,39 +72,6 @@ def migrate_all(destination=None, verbose=False):
         )
 
 
-def migrate_dataset_if_necessary(name, destination=None, verbose=False):
-    """Migrates the dataset from its current revision to the specified
-    destination revision.
-
-    Args:
-        name: the name of the dataset
-        destination (None): the destination revision. By default, the
-            ``fiftyone`` package version is used
-        verbose (False): whether to log incremental migrations that are run
-    """
-    if destination is None:
-        destination = foc.VERSION
-
-    conn = foo.get_db_conn()
-    dataset_doc = conn.datasets.find_one({"name": name})
-    if dataset_doc is None:
-        raise ValueError("Dataset '%s' not found" % name)
-
-    head = dataset_doc.get("version", None)
-
-    if head == destination:
-        return
-
-    runner = MigrationRunner(head=head, destination=destination)
-    if runner.has_revisions:
-        logger.info("Migrating dataset '%s' to v%s", name, destination)
-        runner.run(name, verbose=verbose)
-
-    conn.datasets.update_one(
-        {"name": name}, {"$set": {"version": destination}}
-    )
-
-
 def migrate_database_if_necessary(destination=None, verbose=False):
     """Migrates the database to the current revision of the ``fiftyone``
     package, if necessary.
@@ -90,8 +84,7 @@ def migrate_database_if_necessary(destination=None, verbose=False):
     if destination is None:
         destination = foc.VERSION
 
-    config = _get_database_config()
-    head = config.version
+    head = get_database_revision()
 
     if head == destination:
         return
@@ -106,9 +99,39 @@ def migrate_database_if_necessary(destination=None, verbose=False):
         logger.info("Migrating database to v%s", destination)
         runner.run_admin(verbose=verbose)
 
-    config.version = destination
     config_path = _get_database_config_path()
+    config = _get_database_config()
+    config.version = destination
     config.write_json(config_path)
+
+
+def migrate_dataset_if_necessary(name, destination=None, verbose=False):
+    """Migrates the dataset from its current revision to the specified
+    destination revision.
+
+    Args:
+        name: the name of the dataset
+        destination (None): the destination revision. By default, the
+            ``fiftyone`` package version is used
+        verbose (False): whether to log incremental migrations that are run
+    """
+    if destination is None:
+        destination = foc.VERSION
+
+    head = get_dataset_revision(name)
+
+    if head == destination:
+        return
+
+    runner = MigrationRunner(head=head, destination=destination)
+    if runner.has_revisions:
+        logger.info("Migrating dataset '%s' to v%s", name, destination)
+        runner.run(name, verbose=verbose)
+
+    conn = foo.get_db_conn()
+    conn.datasets.update_one(
+        {"name": name}, {"$set": {"version": destination}}
+    )
 
 
 class MigrationRunner(object):
@@ -234,11 +257,11 @@ class DatabaseConfig(etas.Serializable):
 def _get_database_config():
     try:
         config_path = _get_database_config_path()
-        return DatabaseConfig.from_json(config_path)
+        config = DatabaseConfig.from_json(config_path)
     except FileNotFoundError:
-        pass
+        config = DatabaseConfig()
 
-    return DatabaseConfig()
+    return config
 
 
 def _get_database_config_path():

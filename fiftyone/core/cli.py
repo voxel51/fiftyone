@@ -2213,6 +2213,9 @@ class MigrateCommand(Command):
 
     Examples::
 
+        # Print information about the current revisions of all datasets
+        fiftyone migrate --info
+
         # Migrates the database and all datasets to the current package version
         fiftyone migrate --all
 
@@ -2228,6 +2231,12 @@ class MigrateCommand(Command):
 
     @staticmethod
     def setup(parser):
+        parser.add_argument(
+            "-i",
+            "--info",
+            action="store_true",
+            help="whether to print info about the current revisions",
+        )
         parser.add_argument(
             "-a",
             "--all",
@@ -2260,6 +2269,26 @@ class MigrateCommand(Command):
 
     @staticmethod
     def execute(parser, args):
+        if args.info:
+            if args.admin_only:
+                print(fom.get_database_revision())
+                return
+
+            if args.dataset_name is not None:
+                for name in args.dataset_name:
+                    print(fom.get_dataset_revision(name))
+
+                return
+
+            db_ver = fom.get_database_revision()
+            dataset_vers = {
+                name: fom.get_dataset_revision(name)
+                for name in fod.list_datasets()
+            }
+
+            _print_migration_table(foc.VERSION, db_ver, dataset_vers)
+            return
+
         if args.all:
             fom.migrate_all(destination=args.version, verbose=args.verbose)
             return
@@ -2279,6 +2308,16 @@ class MigrateCommand(Command):
             return
 
         parser.print_help()
+
+
+def _print_migration_table(fo_ver, db_ver, dataset_vers):
+    print("FiftyOne package version: %s" % fo_ver)
+    if db_ver is not None:
+        print("Database version: %s" % db_ver)
+
+    if dataset_vers:
+        print("")
+        _print_dict_as_table(dataset_vers, headers=["dataset", "version"])
 
 
 class UtilsCommand(Command):
@@ -2560,11 +2599,12 @@ def _print_dict_as_json(d):
     print(json.dumps(d, indent=4))
 
 
-def _print_dict_as_table(d):
+def _print_dict_as_table(d, headers=None):
+    if headers is None:
+        headers = ["key", "value"]
+
     records = [(k, v) for k, v in d.items()]
-    table_str = tabulate(
-        records, headers=["key", "value"], tablefmt=_TABLE_FORMAT
-    )
+    table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
     print(table_str)
 
 

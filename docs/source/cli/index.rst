@@ -637,7 +637,7 @@ Tools for migrating the FiftyOne database.
 
 .. code-block:: text
 
-    fiftyone migrate [-h] [-a] [-v VERSION]
+    fiftyone migrate [-h] [-i] [-a] [-v VERSION]
                      [-n DATASET_NAME [DATASET_NAME ...]] [--admin-only]
                      [--verbose]
 
@@ -647,6 +647,7 @@ Tools for migrating the FiftyOne database.
 
     optional arguments:
       -h, --help            show this help message and exit
+      -i, --info            whether to print info about the current revisions
       -a, --all             whether to migrate the database and all datasets
       -v VERSION, --version VERSION
                             the revision to migrate to
@@ -656,6 +657,11 @@ Tools for migrating the FiftyOne database.
       --verbose             whether to log incremental migrations that are performed
 
 **Examples**
+
+.. code-block:: shell
+
+    # Print information about the current revisions of all datasets
+    fiftyone migrate --info
 
 .. code-block:: shell
 
