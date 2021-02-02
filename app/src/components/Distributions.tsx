@@ -7,7 +7,7 @@ import _ from "lodash";
 import { scrollbarStyles } from "./utils";
 
 import Loading from "./Loading";
-import { ContentDiv } from "./utils";
+import { ContentDiv, ContentHeader } from "./utils";
 import { isFloat } from "../utils/generic";
 import { useMessageHandler, useSendMessage } from "../utils/hooks";
 import * as atoms from "../recoil/atoms";
@@ -22,16 +22,10 @@ const Container = styled.div`
   padding-left: 1rem;
 `;
 
-const TooltipHeader = styled.div`
-  color: ${({ theme }) => theme.font};
-  display: flex;
-  padding-bottom: 0.5rem;
-`;
-
 const PlotTooltip = ({ title, count }) => {
   return (
     <ContentDiv>
-      <TooltipHeader>{title}</TooltipHeader>
+      <ContentHeader>{title}</ContentHeader>
       Count: {count}
     </ContentDiv>
   );

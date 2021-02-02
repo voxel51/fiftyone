@@ -93,3 +93,13 @@ export const ContentDiv = styled.div`
   width: auto;
   z-index: 802;
 `;
+
+export const ContentHeader = styled.div`
+  color: ${({ theme }) => theme.font};
+  display: flex;
+  padding-bottom: 0.5rem;
+`;
+
+export const ContentBlock = styled.div`
+  border-top: 1px solid ${({ theme }) => theme.font};
+`;

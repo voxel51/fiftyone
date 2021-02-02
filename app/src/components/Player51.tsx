@@ -1,5 +1,6 @@
 import mime from "mime-types";
 import React, { useState, useEffect, useRef } from "react";
+import ReactDOM from "react-dom";
 import styled from "styled-components";
 import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
@@ -7,11 +8,11 @@ import CircularProgress from "@material-ui/core/CircularProgress";
 import { Warning } from "@material-ui/icons";
 import { animated, useSpring } from "react-spring";
 
-import { ContentDiv } from "./utils";
+import { ContentDiv, ContentHeader, ContentBlock } from "./utils";
 import ExternalLink from "./ExternalLink";
 import Player51 from "player51";
 import { useEventHandler } from "../utils/hooks";
-import { convertSampleToETA, stringify } from "../utils/labels";
+import { convertSampleToETA } from "../utils/labels";
 import { useMove } from "react-use-gesture";
 
 import * as atoms from "../recoil/atoms";
@@ -43,17 +44,44 @@ const InfoWrapper = styled.div`
 const TooltipDiv = animated(styled(ContentDiv)`
   position: absolute;
   margin-top: 0;
+  z-index: 20000;
+  pointer-events: none;
 `);
 
-const computeCoordinates = (ref, xy) => {
-  const rect = ref.current.getBoundingClientRect();
+const computeCoordinates = ([x, y], ref) => {
+  if (!ref.current) {
+    return {};
+  }
+  x +=
+    x > window.innerWidth / 2
+      ? 24
+      : -24 - ref.current.getBoundingClientRect().width;
+  let top = y,
+    bottom = "unset";
+  if (y > window.innerHeight / 2) {
+    bottom = window.innerHeight - y;
+    top = "unset";
+  }
   return {
-    top: xy[1] - rect.y,
-    left: xy[0] - rect.x + 24,
+    bottom,
+    top,
+    left: x,
   };
 };
 
-const TooltipInfo = ({ player, moveRef, containerRef }) => {
+const MaskInfo = (info) => {
+  const defaultTargets = useRecoilValue(selectors.defaultTargets);
+  return;
+};
+
+const DetectionInfo = (info) => {};
+
+const OVERLAY_INFO = {
+  mask: MaskInfo,
+  detection: DetectionInfo,
+};
+
+const TooltipInfo = ({ player, moveRef }) => {
   const [props, set] = useSpring(() => ({
     display: "none",
     opacity: 1,
@@ -61,10 +89,12 @@ const TooltipInfo = ({ player, moveRef, containerRef }) => {
     left: 0,
   }));
   const [overlays, setOverlays] = useState([]);
-  const defaultTargets = useRecoilValue(selectors.defaultTargets);
+  const [point, setPoint] = useState([0, 0]);
+  const ref = useRef(null);
 
   useEventHandler(player, "tooltipinfo", (e) => {
     setOverlays(e.data.overlays);
+    setPoint(e.data.point);
   });
   useEventHandler(player, "mouseenter", () => {
     set({ display: "block", opacity: 1 });
@@ -75,27 +105,22 @@ const TooltipInfo = ({ player, moveRef, containerRef }) => {
 
   useEffect(() => {
     moveRef.current = ({ values }) => {
-      set(computeCoordinates(containerRef, values));
+      set(computeCoordinates(values, ref));
     };
   });
 
-  return (
+  return ReactDOM.createPortal(
     <>
       {overlays.length && (
-        <TooltipDiv style={props}>
-          {overlays.map((o) => (
-            <div>
-              name: {o.name}
-              <br />
-              target: {o.target}
-              <br />
-              label: {defaultTargets[o.target]}
-              <br />
-            </div>
-          ))}
+        <TooltipDiv style={props} ref={ref}>
+          <ContentHeader>
+            Point: ({point[0]}, {point[1]})
+          </ContentHeader>
+          {overlays.map((o) => OVERLAY_INFO[o.type](o))}
         </TooltipDiv>
       )}
-    </>
+    </>,
+    document.body
   );
 };
 
