@@ -53,7 +53,7 @@ const computeCoordinates = ([x, y], ref) => {
     return {};
   }
   x +=
-    x > window.innerWidth / 2
+    x < window.innerWidth / 2
       ? 24
       : -24 - ref.current.getBoundingClientRect().width;
   let top = y,
@@ -75,28 +75,79 @@ const ColorBlock = styled.div`
   width: 1rem;
 `;
 
+const ContentItemDiv = styled.div`
+  margin: 0;
+  padding: 0;
+`;
+
+const ContentValue = styled.div`
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: ${({ theme }) => theme.font};
+`;
+
+const ContentName = styled.div`
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding-bottom: 0.3rem;
+  color: ${({ theme }) => theme.fontDark};
+`;
+
+const ContentItem = ({ name, value }) => {
+  return (
+    <ContentItemDiv>
+      <ContentValue>{value}</ContentValue>
+      <ContentName>{name}</ContentName>
+    </ContentItemDiv>
+  );
+};
+
 const MaskInfo = ({ info }) => {
   const defaultTargets = useRecoilValue(selectors.defaultTargets);
+  const coord = info.coordinates;
+  const label = defaultTargets[info.target];
   return (
-    <ContentBlock>
-      <li>Field: {info.field}</li>
-      <li>Label: {defaultTargets[info.target]}</li>
-      <li>
-        Target: {info.target} &#183;{" "}
-        <ColorBlock style={{ backgroundColor: info.color }} />
-      </li>
-      <li>
-        Coordinates: ({info.coordinates[0]}, {info.coordinates[1]})
-      </li>
-      <li>
-        Shape: ({info.shape[0]}, {info.shape[1]})
-      </li>
+    <ContentBlock style={{ borderColor: info.color }}>
+      <ContentItem key={"field"} name={"Field"} value={info.field} />
+      <ContentItem key={"label"} name={"Label"} value={label} />
+      <ContentItem key={"target"} name={"Target"} value={info.target} />
+      <ContentItem
+        key={"coordinates"}
+        name={"Coordinates"}
+        value={`${coord[0]}, ${coord[1]}`}
+      />
+      <ContentItem
+        key={"dimensions"}
+        name={"Dimensions"}
+        value={`${info.shape[1]}, ${info.shape[0]}`}
+      />
     </ContentBlock>
   );
 };
 
 const DetectionInfo = ({ info }) => {
-  return <div></div>;
+  const defaultTargets = useRecoilValue(selectors.defaultTargets);
+  const coord = info.coordinates;
+  const label = defaultTargets[info.target];
+  return (
+    <ContentBlock style={{ borderColor: info.color }}>
+      <ContentItem key={"field"} name={"Field"} value={info.field} />
+      <ContentItem key={"label"} name={"Label"} value={info.label} />
+      {info.target && (
+        <ContentItem key={"target"} name={"Target"} value={info.target} />
+      )}
+      <ContentItem
+        key={"top-left"}
+        name={"Top-Left"}
+        value={`${info.left}, ${info.top}`}
+      />
+      <ContentItem
+        key={""}
+        name={"Dimensions"}
+        value={`${info.shape[1]}, ${info.shape[0]}`}
+      />
+    </ContentBlock>
+  );
 };
 
 const OVERLAY_INFO = {
@@ -126,7 +177,7 @@ const TooltipInfo = ({ player, moveRef }) => {
     player,
     "mouseleave",
     () => {}
-    // set({ display: "none", opacity: 0 })
+    //  set({ display: "none", opacity: 0 })
   );
 
   useEffect(() => {
@@ -140,7 +191,7 @@ const TooltipInfo = ({ player, moveRef }) => {
       {overlays.length && (
         <TooltipDiv style={props} ref={ref}>
           <ContentHeader>
-            Point: ({point[0]}, {point[1]})
+            {point[0]}, {point[1]}
           </ContentHeader>
           {overlays.map((o) => {
             const Component = OVERLAY_INFO[o.type];

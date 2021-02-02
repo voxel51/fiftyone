@@ -100,12 +100,12 @@ export const ContentHeader = styled.div`
   padding-bottom: 0.5rem;
 `;
 
-export const ContentBlock = styled.ul`
-  padding: 0.5rem;
-  border-top: 1px solid ${({ theme }) => theme.font};
+export const ContentBlock = styled.div`
+  padding: 0.5rem 0 0 0;
+  border-top: 2px solid ${({ theme }) => theme.font};
   margin: 0;
-
-  & > li {
-    list-style-type: none;
-  }
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-row-gap: 0.1rem;
+  grid-column-gap: 0.5rem;
 `;
