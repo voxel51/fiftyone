@@ -631,7 +631,7 @@ Delete FiftyOne datasets.
 .. _cli-fiftyone-migrate:
 
 FiftyOne migrations
-~~~~~~~~~~~~~~~~~~~
+-------------------
 
 Tools for migrating the FiftyOne database.
 
