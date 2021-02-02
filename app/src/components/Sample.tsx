@@ -18,10 +18,13 @@ const SampleDiv = animated(styled.div`
   overflow: hidden;
   box-shadow: 0 2px 10px ${({ theme }) => theme.backgroundDark};
   background-color: ${({ theme }) => theme.backgroundDark};
+  width: 100%;
 `);
 
 const SampleChin = styled.div`
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 43px;
+  width: 100%;
 `;
 
 const SampleInfo = styled.div`
@@ -209,7 +212,7 @@ const Sample = ({ sample, metadata }) => {
       <Player51
         src={src}
         style={{
-          height: "calc(100% - 42px)",
+          height: "calc(100% - 41px)",
           width: "100%",
           position: "relative",
           cursor: "pointer",

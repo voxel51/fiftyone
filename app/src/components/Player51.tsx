@@ -102,6 +102,10 @@ const ContentItem = ({ name, value }) => {
   );
 };
 
+const ClassificationInfo = ({}) => {
+  return <></>;
+};
+
 const MaskInfo = ({ info }) => {
   const defaultTargets = useRecoilValue(selectors.defaultTargets);
   const coord = info.coordinates;
@@ -131,20 +135,30 @@ const DetectionInfo = ({ info }) => {
   const label = defaultTargets[info.target];
   return (
     <ContentBlock style={{ borderColor: info.color }}>
+      <ContentItem key={"id"} name={"ID"} value={info.id} />
       <ContentItem key={"field"} name={"Field"} value={info.field} />
       <ContentItem key={"label"} name={"Label"} value={info.label} />
       {info.target && (
         <ContentItem key={"target"} name={"Target"} value={info.target} />
       )}
       <ContentItem
-        key={"top-left"}
-        name={"Top-Left"}
-        value={`${info.left}, ${info.top}`}
+        key={"confidence"}
+        name={"Confidence"}
+        value={
+          typeof info.confidence === "number"
+            ? info.confidence.toFixed(5)
+            : "None"
+        }
       />
       <ContentItem
-        key={""}
+        key={"top-left"}
+        name={"Top-Left"}
+        value={`${info.left.toFixed(5)}, ${info.top.toFixed(5)}`}
+      />
+      <ContentItem
+        key={"dimensions"}
         name={"Dimensions"}
-        value={`${info.shape[1]}, ${info.shape[0]}`}
+        value={`${info.width.toFixed(5)} x ${info.height.toFixed(5)}`}
       />
     </ContentBlock>
   );
@@ -153,6 +167,7 @@ const DetectionInfo = ({ info }) => {
 const OVERLAY_INFO = {
   mask: MaskInfo,
   detection: DetectionInfo,
+  classification: ClassificationInfo,
 };
 
 const TooltipInfo = ({ player, moveRef }) => {
@@ -173,11 +188,8 @@ const TooltipInfo = ({ player, moveRef }) => {
   useEventHandler(player, "mouseenter", () => {
     set({ display: "block", opacity: 1 });
   });
-  useEventHandler(
-    player,
-    "mouseleave",
-    () => {}
-    //  set({ display: "none", opacity: 0 })
+  useEventHandler(player, "mouseleave", () =>
+    set({ display: "none", opacity: 0 })
   );
 
   useEffect(() => {
