@@ -182,10 +182,10 @@ class MediaTypeTests(unittest.TestCase):
 class MigrationTests(unittest.TestCase):
     def test_runner(self):
         def revs(versions):
-            return list(map(lambda v: (v, v + ".py"), versions))
+            return [(v, v + ".py") for v in versions]
 
         runner = MigrationRunner(
-            head=None,
+            head="0.0.1",
             destination="0.3",
             _revisions=revs(["0.1", "0.2", "0.3"]),
         )
@@ -200,15 +200,17 @@ class MigrationTests(unittest.TestCase):
 
         runner = MigrationRunner(
             head="0.3",
-            destination=None,
+            destination="0.1",
+            _revisions=revs(["0.1", "0.2", "0.3"]),
+        )
+        self.assertEqual(runner.revisions, ["0.3", "0.2"])
+
+        runner = MigrationRunner(
+            head="0.3",
+            destination="0.0.1",
             _revisions=revs(["0.1", "0.2", "0.3"]),
         )
         self.assertEqual(runner.revisions, ["0.3", "0.2", "0.1"])
-
-        runner = MigrationRunner(
-            head=None, destination="0.1", _revisions=revs(["0.1"])
-        )
-        self.assertEqual(runner.revisions, ["0.1"])
 
 
 if __name__ == "__main__":
