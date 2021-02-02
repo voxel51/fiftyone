@@ -196,7 +196,7 @@ class MigrationRunner(object):
         conn = foo.get_db_conn()
         for rev, module in self._revisions:
             if verbose:
-                logger.info("Running %s migration v%s", self.direction, rev)
+                logger.info("Running v%s %s migration", rev, self.direction)
 
             fcn = etau.get_function(self.direction, module)
             fcn(conn, dataset_name)
@@ -211,7 +211,7 @@ class MigrationRunner(object):
         for rev, module in self._admin_revisions:
             if verbose:
                 logger.info(
-                    "Running %s admin migration v%s", self.direction, rev
+                    "Running v%s %s admin migration", rev, self.direction
                 )
 
             fcn = etau.get_function(self.direction, module)
@@ -283,7 +283,7 @@ def _get_all_revisions(admin=False):
     revisions = []
     for filename in revision_files:
         version = filename[1:-3].replace("_", ".")
-        module = module_prefix + filename[:-3]
+        module = module_prefix + "." + filename[:-3]
         revisions.append((version, module))
 
     return sorted(revisions, key=lambda r: Version(r[0]))
