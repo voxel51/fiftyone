@@ -304,10 +304,15 @@ class DatabaseService(MultiClientService):
             # mongod may have exited - ok to wait until next time
             return
 
-        food.set_default_port(port)
-        food.get_db_conn()
-        fod.delete_non_persistent_datasets()
-        food.sync_database()
+        try:
+            food.set_default_port(port)
+            food.get_db_conn()
+            fod.delete_non_persistent_datasets()
+            food.sync_database()
+        except:
+            # something weird may have happened, like a downward DB migration
+            # - ok to wait until next time
+            pass
 
     @staticmethod
     def find_mongod():

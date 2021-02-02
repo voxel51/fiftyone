@@ -10,8 +10,6 @@ import logging
 import os
 from packaging.version import Version
 
-import mongoengine.errors as moe
-
 import eta.core.serial as etas
 import eta.core.utils as etau
 
@@ -60,13 +58,12 @@ def migrate_dataset_if_necessary(name, destination=None, verbose=False):
     if destination is None:
         destination = foc.VERSION
 
-    try:
-        # pylint: disable=no-member
-        dataset_doc = foo.DatasetDocument.objects.get(name=name)
-    except moe.DoesNotExist:
+    conn = foo.get_db_conn()
+    dataset_doc = conn.datasets.find_one({"name": name})
+    if dataset_doc is None:
         raise ValueError("Dataset '%s' not found" % name)
 
-    head = dataset_doc.version
+    head = dataset_doc.get("version", None)
 
     if head == destination:
         return
@@ -76,9 +73,7 @@ def migrate_dataset_if_necessary(name, destination=None, verbose=False):
         logger.info("Migrating dataset '%s' to v%s", name, destination)
         runner.run(name, verbose=verbose)
 
-    dataset_doc.reload()
-    dataset_doc.version = destination
-    dataset_doc.save()
+    conn.datasets.update({"name": name}, {"version": destination})
 
 
 def migrate_database_if_necessary(destination=None, verbose=False):

@@ -17,7 +17,10 @@ from .database import (
     ASC,
     DESC,
 )
-from .dataset import SampleFieldDocument, DatasetDocument
+from .dataset import (
+    SampleFieldDocument,
+    DatasetDocument,
+)
 from .document import (
     Document,
     DynamicDocument,
