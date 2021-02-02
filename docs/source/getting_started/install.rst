@@ -190,8 +190,8 @@ you can install only what you need.
 Upgrading FiftyOne
 ------------------
 
-You can upgrade an existing FiftyOne installation by passing the `--upgrade`
-option to `pip install`:
+You can upgrade an existing FiftyOne installation by passing the ``--upgrade``
+option to ``pip install``:
 
 .. code-block:: shell
 
@@ -238,6 +238,15 @@ Here's the workflow for downgrading to an older version of FiftyOne:
     in FiftyOne v0.7.3. If you would like to downgrade from a FiftyOne version
     prior to v0.7.3 (to a yet older version), then you will first need to
     *upgrade* to v0.7.3 or later and then follow the instructions above.
+
+.. note::
+
+    To install a FiftyOne version **prior to v0.7.0**, you must add an
+    ``--index`` option to ``pip install``:
+
+    .. code-block:: shell
+
+        pip install --index https://pypi.voxel51.com fiftyone==<version>
 
 .. _uninstalling-fiftyone:
 

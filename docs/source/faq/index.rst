@@ -518,7 +518,7 @@ Manually configuring a connection requires setting up port forwarding.
 Can I downgrade to an older version of FiftyOne?
 ------------------------------------------------
 
-Certainly, refer to :ref:`these simple instructions <downgrading-fiftyone>`.
+Certainly, refer to :ref:`these instructions <downgrading-fiftyone>`.
 
 .. _faq-do-we-track:
 
