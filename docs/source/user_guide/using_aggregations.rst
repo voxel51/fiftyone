@@ -84,8 +84,8 @@ detailed examples of using each aggregation.
     ``embedded.field.name`` syntax.
 
     In addition, you can aggregate the elements of array fields. Some array
-    fields are automatically handled, but you can manually unwind an array
-    using the ``embedded.array[].field`` syntax. See
+    fields are automatically handled, but you can always manually unwind an
+    array using the ``embedded.array[].field`` syntax. See
     :ref:`this section <aggregations-list-fields>` for more details.
 
 .. _aggregations-bounds:
