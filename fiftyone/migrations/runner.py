@@ -73,7 +73,9 @@ def migrate_dataset_if_necessary(name, destination=None, verbose=False):
         logger.info("Migrating dataset '%s' to v%s", name, destination)
         runner.run(name, verbose=verbose)
 
-    conn.datasets.update({"name": name}, {"version": destination})
+    conn.datasets.update_one(
+        {"name": name}, {"$set": {"version": destination}}
+    )
 
 
 def migrate_database_if_necessary(destination=None, verbose=False):
