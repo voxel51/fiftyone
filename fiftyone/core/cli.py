@@ -2233,10 +2233,10 @@ class MigrateCommand(Command):
     Examples::
 
         # Migrates the database and all datasets to the current package version
-        fiftyone migrate
+        fiftyone migrate --all
 
-        # Migrates the database and all datasets to a specific revision
-        fiftyone migrate --version <VERSION>
+        # Migrates to a specific revision
+        fiftyone migrate --all --version <VERSION>
 
         # Migrates a specific dataset
         fiftyone migrate ... --dataset-name <DATASET_NAME>
@@ -2247,6 +2247,12 @@ class MigrateCommand(Command):
 
     @staticmethod
     def setup(parser):
+        parser.add_argument(
+            "-a",
+            "--all",
+            action="store_true",
+            help="whether to migrate the database and all datasets",
+        )
         parser.add_argument(
             "-v",
             "--version",
@@ -2261,7 +2267,6 @@ class MigrateCommand(Command):
             help="the name of a specific dataset to migrate",
         )
         parser.add_argument(
-            "-a",
             "--admin-only",
             action="store_true",
             help="whether to run only admin (database) migrations",
@@ -2274,6 +2279,10 @@ class MigrateCommand(Command):
 
     @staticmethod
     def execute(parser, args):
+        if args.all:
+            fom.migrate_all(destination=args.version, verbose=args.verbose)
+            return
+
         if args.admin_only:
             fom.migrate_database_if_necessary(
                 destination=args.version, verbose=args.verbose
@@ -2285,8 +2294,10 @@ class MigrateCommand(Command):
                 fom.migrate_dataset_if_necessary(
                     name, destination=args.version, verbose=args.verbose
                 )
-        else:
-            fom.migrate_all(destination=args.version, verbose=args.verbose)
+
+            return
+
+        parser.print_help()
 
 
 class UtilsCommand(Command):
