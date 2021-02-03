@@ -15,7 +15,7 @@ from mongoengine import (
 import eta.core.utils as etau
 
 from .document import Document, EmbeddedDocument
-from .fields import DictField, TargetsField
+from .fields import DictField, LabelTargetsField, TargetsField
 
 
 class SampleFieldDocument(EmbeddedDocument):
@@ -107,6 +107,6 @@ class DatasetDocument(Document):
         document_type=SampleFieldDocument
     )
     default_targets = TargetsField(null=True)
-    label_targets = DictField(default=dict, field=TargetsField(default=dict))
+    label_targets = LabelTargetsField(default=dict)
     frame_fields = EmbeddedDocumentListField(document_type=SampleFieldDocument)
     version = StringField(required=True, null=True)
