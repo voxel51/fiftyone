@@ -6,7 +6,7 @@ import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import { Warning } from "@material-ui/icons";
-import { animated, useSpring } from "react-spring";
+import { animated, useChain, useSpring } from "react-spring";
 
 import { ContentDiv, ContentHeader, ContentBlock } from "./utils";
 import ExternalLink from "./ExternalLink";
@@ -92,62 +92,66 @@ const ContentName = styled.div`
 const ContentItem = ({ name, value }) => {
   return (
     <ContentItemDiv>
-      <ContentValue>{value}</ContentValue>
+      <ContentValue>
+        {(() => {
+          switch (typeof value) {
+            case "number":
+              return Number.isInteger(value) ? value : value.toFixed(3);
+            case "string":
+              return value;
+            default:
+              return "None";
+          }
+        })()}
+      </ContentValue>
       <ContentName>{name}</ContentName>
     </ContentItemDiv>
   );
 };
 
-const useTarget = (info) => {
+const ConfidenceItem = ({ confidence }) => {
+  return <ContentItem name={"confidence"} value={confidence} />;
+};
+
+const useTarget = (field, target) => {
   const getTarget = useRecoilValue(selectors.getTarget);
-  return getTarget(info.field, info.target);
+  return getTarget(field, target);
+};
+
+const TargetItems = ({ target, field }) => {
+  const targetValue = useTarget(field, target);
+
+  if (!target) {
+    return null;
+  }
+  return (
+    <>
+      <ContentItem key={"target"} name={"Target"} value={target} />
+      <ContentItem
+        key={"target-value"}
+        name={"Target Value"}
+        value={targetValue}
+      />
+    </>
+  );
 };
 
 const ClassificationInfo = ({ info }) => {
-  const targetValue = useTarget(info);
   return (
     <ContentBlock style={{ borderColor: info.color }}>
       <ContentItem key={"field"} name={"Field"} value={info.field} />
       <ContentItem key={"label"} name={"Label"} value={info.label} />
-      {info.target && (
-        <>
-          <ContentItem key={"target"} name={"Target"} value={info.target} />
-          <ContentItem
-            key={"target-value"}
-            name={"Target Value"}
-            value={targetValue}
-          />
-        </>
-      )}
-      <ContentItem
-        key={"confidence"}
-        name={"Confidence"}
-        value={
-          typeof info.confidence === "number"
-            ? info.confidence.toFixed(5)
-            : "None"
-        }
-      />
+      <TargetItems field={info.field} target={info.target} />
     </ContentBlock>
   );
 };
 
 const MaskInfo = ({ info }) => {
   const coord = info.coordinates;
-  const targetValue = useTarget(info);
   return (
     <ContentBlock style={{ borderColor: info.color }}>
       <ContentItem key={"field"} name={"Field"} value={info.field} />
-      {info.target && (
-        <>
-          <ContentItem key={"target"} name={"Target"} value={info.target} />
-          <ContentItem
-            key={"target-value"}
-            name={"Target Value"}
-            value={targetValue}
-          />
-        </>
-      )}
+      <TargetItems field={info.field} target={info.target} />
       <ContentItem
         key={"coordinates"}
         name={"Coordinates"}
@@ -163,31 +167,13 @@ const MaskInfo = ({ info }) => {
 };
 
 const DetectionInfo = ({ info }) => {
-  const targetValue = useTarget(info);
   return (
     <ContentBlock style={{ borderColor: info.color }}>
       <ContentItem key={"id"} name={"ID"} value={info.id} />
       <ContentItem key={"field"} name={"Field"} value={info.field} />
       <ContentItem key={"label"} name={"Label"} value={info.label} />
-      <ContentItem
-        key={"confidence"}
-        name={"Confidence"}
-        value={
-          typeof info.confidence === "number"
-            ? info.confidence.toFixed(5)
-            : "None"
-        }
-      />
-      {info.target && (
-        <>
-          <ContentItem key={"target"} name={"Target"} value={info.target} />
-          <ContentItem
-            key={"target-value"}
-            name={"Target Value"}
-            value={targetValue}
-          />
-        </>
-      )}
+      <ConfidenceItem confidence={info.confidence} />
+      <TargetItems field={info.field} target={info.target} />
       <ContentItem
         key={"top-left"}
         name={"Top-Left"}
@@ -202,20 +188,56 @@ const DetectionInfo = ({ info }) => {
   );
 };
 
+const KeypointInfo = ({ info }) => {
+  return (
+    <ContentBlock style={{ borderColor: info.color }}>
+      <ContentItem key={"id"} name={"ID"} value={info.id} />
+      <ContentItem key={"field"} name={"Field"} value={info.field} />
+      <ContentItem key={"label"} name={"Label"} value={info.label} />
+      <ConfidenceItem confidence={info.confidence} />
+      <TargetItems field={info.field} target={info.target} />
+    </ContentBlock>
+  );
+};
+
+const PolylineInfo = ({ info }) => {
+  return (
+    <ContentBlock style={{ borderColor: info.color }}>
+      <ContentItem key={"id"} name={"ID"} value={info.id} />
+      <ContentItem key={"field"} name={"Field"} value={info.field} />
+      <ContentItem key={"label"} name={"Label"} value={info.label} />
+      <ConfidenceItem confidence={info.confidence} />
+      <TargetItems field={info.field} target={info.target} />
+    </ContentBlock>
+  );
+};
+
 const OVERLAY_INFO = {
-  mask: MaskInfo,
-  detection: DetectionInfo,
   classification: ClassificationInfo,
+  detection: DetectionInfo,
+  keypoint: KeypointInfo,
+  mask: MaskInfo,
+  polyline: PolylineInfo,
 };
 
 const TooltipInfo = ({ player, moveRef }) => {
-  const [props, set] = useSpring(() => ({
-    display: "none",
-    opacity: 1,
-    top: 0,
-    left: 0,
-  }));
+  const [hovering, setHovering] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, left: 0, bottom: "unset" });
+  const coordsRef = useRef();
+  const coordsProps = useSpring({
+    ref: coordsRef,
+    ...coords,
+    config: {
+      duration: 0,
+    },
+  });
   const [overlays, setOverlays] = useState([]);
+  const showRef = useRef();
+  const showProps = useSpring({
+    ref: showRef,
+    display: hovering ? "block" : "none",
+    opacity: hovering ? 1 : 0,
+  });
   const [point, setPoint] = useState([0, 0]);
   const ref = useRef(null);
 
@@ -223,30 +245,41 @@ const TooltipInfo = ({ player, moveRef }) => {
     setOverlays(e.data.overlays);
     setPoint(e.data.point);
   });
-  useEventHandler(player, "mouseenter", () => {
-    set({ display: "block", opacity: 1 });
-  });
-  useEventHandler(player, "mouseleave", () =>
-    set({ display: "none", opacity: 0 })
-  );
+  useEventHandler(player, "mouseenter", () => setHovering(true));
+  useEventHandler(player, "mouseleave", () => setHovering(false));
 
   useEffect(() => {
     moveRef.current = ({ values }) => {
-      set(computeCoordinates(values, ref));
+      setCoords(computeCoordinates(values, ref));
     };
   });
+
+  useChain(hovering ? [showRef, coordsRef] : [coordsRef, showRef]);
+
+  let more = 0;
+  let limitedOverlays = overlays;
+  if (overlays.length > 3) {
+    more = overlays.length - 3;
+    limitedOverlays = overlays.slice(0, 3);
+  }
 
   return ReactDOM.createPortal(
     <>
       {overlays.length && (
-        <TooltipDiv style={props} ref={ref}>
+        <TooltipDiv style={{ ...coordsProps, ...showProps }} ref={ref}>
           <ContentHeader>
             {point[0]}, {point[1]}
           </ContentHeader>
-          {overlays.map((o) => {
+          {limitedOverlays.map((o) => {
             const Component = OVERLAY_INFO[o.type];
             return <Component info={o} />;
           })}
+          {more > 0 && (
+            <>
+              <br />
+              {`and ${more} more`}
+            </>
+          )}
         </TooltipDiv>
       )}
     </>,

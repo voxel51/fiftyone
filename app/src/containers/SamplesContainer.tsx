@@ -22,7 +22,7 @@ const SidebarColumn = styled.div`
 
 const ContentColumn = styled.div`
   flex-grow: 1;
-  width: 10px;
+  width: 1px; // idk
 `;
 
 const FieldsWrapper = () => {

@@ -38,11 +38,9 @@ const SampleChin = styled.div`
 `;
 
 const SampleInfo = styled.div`
-  flex-grow: 1;
   max-height: 42px;
   display: block;
-  padding: 0.5rem 0 0.5rem 0.5rem;
-  max-width: calc(100% - 43px);
+  padding: 10.5px 0 10.5px 0.5rem;
   bottom: 0;
   &::-webkit-scrollbar {
     width: 0px;
@@ -54,6 +52,8 @@ const SampleInfo = styled.div`
     display: none;
   }
   scrollbar-width: none;
+  overflow-x: scroll;
+  display: flex;
 `;
 
 const LoadingBar = animated(styled.div`
@@ -218,6 +218,33 @@ const Sample = ({ sample, metadata }) => {
 
   const [bar, onMouseEnter, onMouseLeave] = useHoverLoad(socket, sample);
 
+  const bubbles = [
+    ...Object.keys(sample)
+      .sort()
+      .reduce((acc, name) => {
+        const label = sample[name];
+        if (label && label._cls === "Classifications") {
+          return [
+            ...acc,
+            ...label[label._cls.toLowerCase()].map((l, i) => ({
+              name,
+              label: l,
+              idx: i,
+            })),
+          ];
+        }
+        return [...acc, { name, label }];
+      }, [])
+      .map(renderLabel),
+    ...[...sample.tags]
+      .sort()
+      .filter((t) => activeTags[t])
+      .map((t) => {
+        return <Tag key={t} name={String(t)} color={colorMap[t]} />;
+      }),
+    ...Object.keys(sample).sort().map(renderScalar),
+  ].filter((s) => s !== null);
+
   return (
     <SampleDiv className="sample" style={showSamples}>
       <Player51
@@ -241,45 +268,14 @@ const Sample = ({ sample, metadata }) => {
       />
       <SampleChin>
         <SampleInfo>
-          <div
-            style={{
-              overflowX: "auto",
-              overflowY: "hidden",
-              display: "flex",
-              alignItems: "center",
-              marginTop: 3,
-            }}
-          >
-            {Object.keys(sample)
-              .sort()
-              .reduce((acc, name) => {
-                const label = sample[name];
-                if (label && label._cls === "Classifications") {
-                  return [
-                    ...acc,
-                    ...label[label._cls.toLowerCase()].map((l, i) => ({
-                      name,
-                      label: l,
-                      idx: i,
-                    })),
-                  ];
-                }
-                return [...acc, { name, label }];
-              }, [])
-              .map(renderLabel)}
-            {[...sample.tags].sort().map((t) => {
-              return activeTags[t] ? (
-                <Tag key={t} name={String(t)} color={colorMap[t]} />
-              ) : null;
-            })}
-            {Object.keys(sample).sort().map(renderScalar)}
-          </div>
+          {bubbles.length ? bubbles : "No classifications or tags"}
         </SampleInfo>
         <SelectedDiv>
           <Checkbox
             checked={selectedSamples.has(id)}
             style={{ color: theme.brand }}
             onClick={() => handleClick()}
+            title={"Click to select sample"}
           />
         </SelectedDiv>
       </SampleChin>
