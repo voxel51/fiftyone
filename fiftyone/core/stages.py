@@ -1853,6 +1853,7 @@ def _make_set_field_pipeline(sample_collection, field, expr):
 
     # Don't unroll terminal lists unless explicitly requested
     list_fields = [lf for lf in list_fields if lf != field]
+
     # Case 1: no list fields
     if not list_fields:
         if "." in path:

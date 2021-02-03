@@ -20,6 +20,8 @@ from .core.aggregations import (
     Distinct,
     HistogramValues,
     Sum,
+    Mean,
+    Std,
 )
 from .core.config import AppConfig
 from .core.dataset import (
