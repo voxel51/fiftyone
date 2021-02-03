@@ -535,23 +535,25 @@ class SampleCollection(object):
 
             dataset = foz.load_zoo_dataset("quickstart")
 
-            filepath = dataset.take(1).first().filepath
-
             #
             # Get a sample by filepath
             #
 
+            # A random filepath in the dataset
+            filepath = dataset.take(1).first().filepath
+
+            # Get sample by filepath
             sample = dataset.match_one(F("filepath") == filepath)
 
             #
             # Dealing with multiple matches
             #
 
-            # Get one sample (out of many) whose image is a JPEG
+            # Get a sample whose image is JPEG
             sample = dataset.match_one(F("filepath").ends_with(".jpg"))
 
-            # Wrongly insist that only one JPEG image exists
-            dataset.match_one(F("filepath").ends_with(".jpg"), exact=True)  # error
+            # Raises an error since there are multiple JPEGs
+            dataset.match_one(F("filepath").ends_with(".jpg"), exact=True)
 
         Args:
             expr: a :class:`fiftyone.core.expressions.ViewExpression` or
