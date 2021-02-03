@@ -524,6 +524,65 @@ class SampleCollection(object):
             alpha=alpha,
         )
 
+    def match_one(self, expr, exact=False):
+        """Returns a single sample in this collection matching the expression.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            filepath = dataset.take(1).first().filepath
+
+            #
+            # Get a sample by filepath
+            #
+
+            sample = dataset.match_one(F("filepath") == filepath)
+
+            #
+            # Dealing with multiple matches
+            #
+
+            # Get one sample (out of many) whose image is a JPEG
+            sample = dataset.match_one(F("filepath").ends_with(".jpg"))
+
+            # Wrongly insist that only one JPEG image exists
+            dataset.match_one(F("filepath").ends_with(".jpg"), exact=True)  # error
+
+        Args:
+            expr: a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that evaluates to ``True`` for the sample to match
+            exact (False): whether to raise an error if multiple samples match
+                the expression
+
+        Returns:
+            a :class:`fiftyone.core.sample.SampleView`
+        """
+        view = self.match(expr)
+        matches = iter(view)
+
+        try:
+            sample = next(matches)
+        except StopIteration:
+            raise ValueError("No samples match the given expression")
+
+        if exact:
+            try:
+                next(matches)
+                raise ValueError(
+                    "Expected one matching sample, but found %d matches"
+                    % len(view)
+                )
+            except StopIteration:
+                pass
+
+        return sample
+
     @classmethod
     def list_view_stages(cls):
         """Returns a list of all available methods on this collection that
