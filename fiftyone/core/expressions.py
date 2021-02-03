@@ -1791,11 +1791,11 @@ class ViewExpression(object):
     def sort(self, key=None, reverse=False):
         """Sorts this expression, which must resolve to an array.
 
-        If no ``field`` is provided, this array must contain elements whose
+        If no ``key`` is provided, this array must contain elements whose
         BSON representation can be sorted by JavaScript's ``.sort()`` method.
 
-        If a ``field`` is provided, the array must contain documents, which are
-        sorted by the specified field or embedded field.
+        If a ``key`` is provided, the array must contain documents, which are
+        sorted by ``key``, which must be a field or embedded field.
 
         Examples::
 
