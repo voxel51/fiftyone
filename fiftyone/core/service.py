@@ -35,7 +35,8 @@ class ServiceException(Exception):
 
 
 class ServiceListenTimeout(ServiceException):
-    """Exception raised when a network-bound service fails to bind to a port."""
+    """Exception raised when a network-bound service fails to bind to a port.
+    """
 
     def __init__(self, name, port=None):
         self.name = name
@@ -45,6 +46,7 @@ class ServiceListenTimeout(ServiceException):
         message = "%s failed to bind to port" % self.name
         if self.port is not None:
             message += " " + str(self.port)
+
         return message
 
 
@@ -64,7 +66,6 @@ class Service(object):
     allow_headless = False
 
     def __init__(self):
-        """Creates (starts) the Service."""
         self._system = os.system
         self._disabled = (
             os.environ.get("FIFTYONE_SERVER", False)
@@ -80,7 +81,7 @@ class Service(object):
             self.start()
 
     def __del__(self):
-        """Deletes (stops) the Service."""
+        """Stops the service."""
         if not self._disabled:
             try:
                 self.stop()
@@ -99,20 +100,22 @@ class Service(object):
 
     @property
     def _service_args(self):
-        """Arguments passed to the service entrypoint"""
+        """Arguments passed to the service entrypoint."""
         if not self.service_name:
             raise NotImplementedError(
                 "%r must define `service_name`" % type(self)
             )
+
         return ["--51-service", self.service_name]
 
     def start(self):
-        """Starts the Service."""
+        """Starts the service."""
         service_main_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             "service",
             "main.py",
         )
+
         # use psutil's Popen wrapper because its wait() more reliably waits
         # for the process to exit on Windows
         self.child = psutil.Popen(
@@ -125,26 +128,25 @@ class Service(object):
         )
 
     def stop(self):
-        """Stops the Service."""
+        """Stops the service."""
         self.child.stdin.close()
         self.child.wait()
 
     def wait(self):
-        """Waits for the Service to exit and returns its exit code."""
+        """Waits for the service to exit and returns its exit code."""
         return self.child.wait()
 
     @staticmethod
     def cleanup():
         """Performs any necessary cleanup when the service exits.
 
-        Note that this is called by the subprocess (service/main.py) and is
-        not intended to be called directly.
+        This is called by the subprocess (cf. ``service/main.py``) and is not
+        intended to be called directly.
         """
         pass
 
     def _wait_for_child_port(self, port=None, timeout=10):
-        """
-        Waits for any child process of this service to bind to a TCP port.
+        """Waits for any child process of this service to bind to a TCP port.
 
         Args:
             port: if specified, wait for a child to bind to this port
@@ -171,8 +173,10 @@ class Service(object):
                     for local_port in fosu.get_listening_tcp_ports(child):
                         if port is None or port == local_port:
                             return local_port
+
                 except psutil.Error:
                     pass
+
             raise ServiceListenTimeout(etau.get_class_name(self), port)
 
         return find_port()
@@ -182,10 +186,12 @@ class Service(object):
         for subclass in cls.__subclasses__():
             if subclass.service_name == name:
                 return subclass
+
             try:
                 return subclass.find_subclass_by_name(name)
             except ValueError:
                 pass
+
         raise ValueError("Unrecognized %s subclass: %s" % (cls.__name__, name))
 
 
@@ -222,6 +228,7 @@ class MultiClientService(Service):
                     return
                 else:
                     logger.warning("Failed to connect to %s: %r", desc, reply)
+
             except IOError:
                 logger.warning("%s did not respond", desc)
 
@@ -234,6 +241,7 @@ class MultiClientService(Service):
         elif self.child is not None:
             # this process is the original parent
             self.child.stdin.close()
+
         self.child = None
 
 
@@ -267,6 +275,7 @@ class DatabaseService(MultiClientService):
         ]
         if not sys.platform.startswith("win"):
             args.append("--nounixsocket")
+
         if focx._get_context() == focx._COLAB:
             args = ["sudo"] + args
 
