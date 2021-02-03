@@ -57,21 +57,32 @@ class DatasetView(foc.SampleCollection):
     def __len__(self):
         return self.count()
 
-    def __getitem__(self, sample_id):
-        if isinstance(sample_id, numbers.Integral):
+    def __getitem__(self, id_filepath_slice):
+        if isinstance(id_filepath_slice, numbers.Integral):
             raise KeyError(
                 "Accessing samples by numeric index is not supported. "
-                "Use sample IDs or slices"
+                "Use sample IDs, filepaths, or slices"
             )
 
-        if isinstance(sample_id, slice):
-            return self._slice(sample_id)
+        if isinstance(id_filepath_slice, slice):
+            return self._slice(id_filepath_slice)
 
-        view = self.match({"_id": ObjectId(sample_id)})
         try:
-            return view.first()
-        except ValueError:
-            raise KeyError("No sample found with ID '%s'" % sample_id)
+            oid = ObjectId(id_filepath_slice)
+            query = {"_id": oid}
+        except:
+            oid = None
+            query = {"filepath": id_filepath_slice}
+
+        view = self.match(query)
+
+        try:
+            return next(iter(view))
+        except StopIteration:
+            field = "ID" if oid is not None else "filepath"
+            raise KeyError(
+                "No sample found with %s '%s'" % (field, id_filepath_slice)
+            )
 
     def __copy__(self):
         view = self.__class__(self._dataset)

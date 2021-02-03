@@ -94,7 +94,7 @@ class SampleCollection(object):
 
         return True
 
-    def __getitem__(self, sample_id_or_slice):
+    def __getitem__(self, id_filepath_slice):
         raise NotImplementedError("Subclass must implement __getitem__()")
 
     def __iter__(self):
