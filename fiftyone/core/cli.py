@@ -2270,8 +2270,10 @@ class MigrateCommand(Command):
     @staticmethod
     def execute(parser, args):
         if args.info:
+            db_ver = fom.get_database_revision() or ""
+
             if args.admin_only:
-                print(fom.get_database_revision())
+                print(db_ver)
                 return
 
             if args.dataset_name is not None:
@@ -2280,7 +2282,6 @@ class MigrateCommand(Command):
 
                 return
 
-            db_ver = fom.get_database_revision()
             dataset_vers = {
                 name: fom.get_dataset_revision(name)
                 for name in fod.list_datasets()
@@ -2312,8 +2313,7 @@ class MigrateCommand(Command):
 
 def _print_migration_table(fo_ver, db_ver, dataset_vers):
     print("FiftyOne package version: %s" % fo_ver)
-    if db_ver is not None:
-        print("Database version: %s" % db_ver)
+    print("Database version: %s" % db_ver)
 
     if dataset_vers:
         print("")

@@ -84,25 +84,28 @@ def migrate_database_if_necessary(destination=None, verbose=False):
     if destination is None:
         destination = foc.VERSION
 
-    head = get_database_revision()
+    config = _get_database_config()
+
+    head = config.version
+    if head is None:
+        head = "0.0"  # < v0.7.1
 
     if head == destination:
         return
 
-    # If there's no database, don't do anything
-    client = foo.get_db_client()
-    if foc.DEFAULT_DATABASE not in client.list_database_names():
-        return
-
-    runner = MigrationRunner(head=head, destination=destination)
-    if runner.has_admin_revisions:
-        logger.info("Migrating database to v%s", destination)
-        runner.run_admin(verbose=verbose)
+    if _database_exists():
+        runner = MigrationRunner(head=head, destination=destination)
+        if runner.has_admin_revisions:
+            logger.info("Migrating database to v%s", destination)
+            runner.run_admin(verbose=verbose)
 
     config_path = _get_database_config_path()
-    config = _get_database_config()
-    config.version = destination
-    config.write_json(config_path)
+    if Version(destination) >= Version("0.7.1"):
+        config.version = destination
+        config.write_json(config_path)
+    elif os.path.isfile(config_path):
+        # Old version of FiftyOne that didn't have DB config files
+        os.remove(config_path)
 
 
 def migrate_dataset_if_necessary(name, destination=None, verbose=False):
@@ -119,6 +122,8 @@ def migrate_dataset_if_necessary(name, destination=None, verbose=False):
         destination = foc.VERSION
 
     head = get_dataset_revision(name)
+    if head is None:
+        head = "0.0"  # < v0.6.2
 
     if head == destination:
         return
@@ -128,10 +133,14 @@ def migrate_dataset_if_necessary(name, destination=None, verbose=False):
         logger.info("Migrating dataset '%s' to v%s", name, destination)
         runner.run(name, verbose=verbose)
 
-    conn = foo.get_db_conn()
-    conn.datasets.update_one(
-        {"name": name}, {"$set": {"version": destination}}
-    )
+    if Version(destination) >= Version("0.6.2"):
+        conn = foo.get_db_conn()
+        dataset_doc = conn.datasets.update_one(
+            {"name": name}, {"$set": {"version": destination}}
+        )
+    else:
+        # Old version of FiftyOne that didn't store dataset versions
+        pass
 
 
 class MigrationRunner(object):
@@ -252,6 +261,11 @@ class DatabaseConfig(etas.Serializable):
     @classmethod
     def from_dict(cls, d):
         return cls(**d)
+
+
+def _database_exists():
+    client = foo.get_db_client()
+    return foc.DEFAULT_DATABASE in client.list_database_names()
 
 
 def _get_database_config():
