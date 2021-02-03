@@ -83,6 +83,7 @@ The FiftyOne command-line interface.
         constants           Print constants from `fiftyone.constants`.
         convert             Convert datasets on disk between supported formats.
         datasets            Tools for working with FiftyOne datasets.
+        migrate             Tools for migrating the FiftyOne database.
         utils               FiftyOne utilities.
         zoo                 Tools for working with the FiftyOne Dataset Zoo.
 
@@ -626,6 +627,61 @@ Delete FiftyOne datasets.
 
     # Delete all non-persistent datasets
     fiftyone datasets delete --non-persistent
+
+.. _cli-fiftyone-migrate:
+
+FiftyOne migrations
+-------------------
+
+Tools for migrating the FiftyOne database.
+
+.. code-block:: text
+
+    fiftyone migrate [-h] [-i] [-a] [-v VERSION]
+                     [-n DATASET_NAME [DATASET_NAME ...]] [--admin-only]
+                     [--verbose]
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -i, --info            whether to print info about the current revisions
+      -a, --all             whether to migrate the database and all datasets
+      -v VERSION, --version VERSION
+                            the revision to migrate to
+      -n DATASET_NAME [DATASET_NAME ...], --dataset-name DATASET_NAME [DATASET_NAME ...]
+                            the name of a specific dataset to migrate
+      --admin-only          whether to run only admin (database) migrations
+      --verbose             whether to log incremental migrations that are performed
+
+**Examples**
+
+.. code-block:: shell
+
+    # Print information about the current revisions of all datasets
+    fiftyone migrate --info
+
+.. code-block:: shell
+
+    # Migrates the database and all datasets to the current package version
+    fiftyone migrate --all
+
+.. code-block:: shell
+
+    # Migrates to a specific revision
+    fiftyone migrate --all --version <VERSION>
+
+.. code-block:: shell
+
+    # Migrate a specific dataset
+    fiftyone migrate ... --dataset-name <DATASET_NAME>
+
+.. code-block:: shell
+
+    # Run only the admin (database) migrations
+    fiftyone migrate ... --admin-only
 
 .. _cli-fiftyone-utils:
 

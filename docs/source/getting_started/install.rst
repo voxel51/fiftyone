@@ -190,12 +190,63 @@ you can install only what you need.
 Upgrading FiftyOne
 ------------------
 
-Passing the `--upgrade` (or `-U`) option to `pip install` can be used to
-upgrade an existing FiftyOne installation:
+You can upgrade an existing FiftyOne installation by passing the ``--upgrade``
+option to ``pip install``:
 
 .. code-block:: shell
 
    pip install --upgrade fiftyone
+
+.. note::
+
+  New versions of FiftyOne occasionally introduce data model changes that
+  require database migrations after you upgrade. Rest assured, these migrations
+  will be **automatically** performed on a per-dataset basis whenever you load
+  a dataset for the first time in a newer version of FiftyOne.
+
+.. _downgrading-fiftyone:
+
+Downgrading FiftyOne
+--------------------
+
+If you need to downgrade to an older version of FiftyOne for any reason, you
+can do so.
+
+Since new releases occasionally introduce backwards-incompatible changes to the
+data model, we provide a :ref:`fiftyone migrate <cli-fiftyone-migrate>` command
+that can perform any necessary downward database migrations.
+
+Here's the workflow for downgrading to an older version of FiftyOne:
+
+.. code-block:: shell
+
+    # The version that you wish to downgrade to
+    VERSION=0.7.1  # for example
+
+    # Migrate the database
+    fiftyone migrate --all -v $VERSION
+
+    # Verify that all of your datasets were migrated
+    fiftyone migrate --info
+
+    # Now install the older version of `fiftyone`
+    pip install fiftyone==$VERSION
+
+.. note::
+
+    The :ref:`fiftyone migrate <cli-fiftyone-migrate>` command was introduced
+    in FiftyOne v0.7.3. If you would like to downgrade from a FiftyOne version
+    prior to v0.7.3 (to a yet older version), then you will first need to
+    *upgrade* to v0.7.3 or later and then follow the instructions above.
+
+.. note::
+
+    To install a FiftyOne version **prior to v0.7.0**, you must add an
+    ``--index`` option to ``pip install``:
+
+    .. code-block:: shell
+
+        pip install --index https://pypi.voxel51.com fiftyone==<version>
 
 .. _uninstalling-fiftyone:
 

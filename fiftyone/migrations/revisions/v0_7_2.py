@@ -1,5 +1,5 @@
 """
-FiftyOne v0.7.2 revision
+FiftyOne v0.7.2 revision.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -18,6 +18,7 @@ def up(db, dataset_name):
     for field in dataset_dict["sample_fields"]:
         if field["name"] == "frames":
             continue
+
         fields.append(field)
 
     dataset_dict["sample_fields"] = fields
@@ -52,6 +53,7 @@ def down(db, dataset_name):
                 {"_id": f["_sample_id"]}, {"$set": {"frames": frame_d}}
             )
         )
+
     sample_coll.bulk_write(writes)
 
     counts = frame_coll.aggregate(

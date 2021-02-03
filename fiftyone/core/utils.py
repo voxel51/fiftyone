@@ -17,6 +17,7 @@ import itertools
 import logging
 import os
 import signal
+import subprocess
 import types
 import zlib
 
@@ -70,6 +71,33 @@ def pformat(obj, indent=4, width=80, depth=None):
         the pretty-formatted string
     """
     return _pprint.pformat(obj, indent=indent, width=width, depth=depth)
+
+
+def stream_objects(objects):
+    """Streams the iterable of objects to stdout via ``less``.
+
+    The output can be interactively traversed via scrolling and can be
+    terminated via keyboard interrupt.
+
+    Args:
+        objects: an iterable of objects that can be printed via ``str(obj)``
+    """
+    # @todo support Windows and other environments without `less`
+    # Look at pydoc.pager() for inspiration?
+    p = subprocess.Popen(
+        ["less", "-F", "-R", "-S", "-X", "-K"],
+        shell=True,
+        stdin=subprocess.PIPE,
+    )
+
+    try:
+        with io.TextIOWrapper(p.stdin, errors="backslashreplace") as pipe:
+            for obj in objects:
+                pipe.write(str(obj) + "\n")
+
+        p.wait()
+    except (KeyboardInterrupt, OSError):
+        pass
 
 
 def indent_lines(s, indent=4, skip=0):
