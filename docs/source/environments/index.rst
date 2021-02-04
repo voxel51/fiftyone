@@ -296,7 +296,7 @@ and :ref:`install FiftyOne <installing-fiftyone>` if necessary.
 .. code-block:: shell
 
     # On remote machine
-    pip install --index https://pypi.voxel51.com fiftyone
+    pip install fiftyone
 
 .. note::
 
@@ -391,7 +391,7 @@ and :ref:`install FiftyOne <installing-fiftyone>` if necessary.
 .. code-block:: shell
 
     # On remote machine
-    pip install --index https://pypi.voxel51.com fiftyone
+    pip install fiftyone
 
 .. note::
 
@@ -482,7 +482,7 @@ and :ref:`install FiftyOne <installing-fiftyone>` if necessary.
 .. code-block:: shell
 
     # On remote machine
-    pip install --index https://pypi.voxel51.com fiftyone
+    pip install fiftyone
 
 .. note::
 
