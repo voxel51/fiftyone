@@ -728,11 +728,12 @@ export const labelFilters = selector({
       const range = get(filterLabelConfidenceRange(label));
       const none = get(filterLabelIncludeNoConfidence(label));
       const include = get(filterIncludeLabels(label));
-      filters[label] = (s) => {
+      filters[label] = (s, useValue = false) => {
         const inRange =
           range[0] - 0.005 <= s.confidence && s.confidence <= range[1] + 0.005;
         const noConfidence = none && s.confidence === undefined;
-        const isIncluded = include.length === 0 || include.includes(s.label);
+        const key = useValue ? "value" : "label";
+        const isIncluded = include.length === 0 || include.includes(s[key]);
         return (inRange || noConfidence) && isIncluded;
       };
     }
@@ -759,14 +760,15 @@ export const modalLabelFilters = selector({
       const range = get(atoms.modalFilterLabelConfidenceRange(label));
       const none = get(atoms.modalFilterLabelIncludeNoConfidence(label));
       const include = get(atoms.modalFilterIncludeLabels(label));
-      filters[label] = (s) => {
+      filters[label] = (s, useValue = false) => {
         if (hiddenObjects[s.id]) {
           return false;
         }
         const inRange =
           range[0] - 0.005 <= s.confidence && s.confidence <= range[1] + 0.005;
         const noConfidence = none && s.confidence === undefined;
-        const isIncluded = include.length === 0 || include.includes(s.label);
+        const key = useValue ? "value" : "label";
+        const isIncluded = include.length === 0 || include.includes(s[key]);
         return labels[label] && (inRange || noConfidence) && isIncluded;
       };
     }
