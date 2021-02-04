@@ -182,11 +182,11 @@ equivalently, by using array slicing:
     range_view2 = dataset[2:5]
 
 Samples can be accessed from views in
-:ref:`all the same ways as for datasets <accessing-samples-in-a-dataset>`.
-This includes using :meth:`first() <fiftyone.core.dataset.Dataset.first>` and
-:meth:`last() <fiftyone.core.dataset.Dataset.last>` to retrieve the first and
-last samples in a dataset, respectively, or accessing a |Sample| directly from
-a |DatasetView| by its ID.
+:ref:`all the same ways <accessing-samples-in-a-dataset>` as for datasets.
+This includes using :meth:`first() <fiftyone.core.view.DatasetView.first>` and
+:meth:`last() <fiftyone.core.view.DatasetView.last>` to retrieve the first and
+last samples in a view, respectively, or accessing a sample directly from a
+|DatasetView| by its ID or filepath.
 
 .. note::
 
