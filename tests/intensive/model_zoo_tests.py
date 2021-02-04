@@ -136,11 +136,10 @@ def _apply_models(
 
 def _apply_models_with_logits(model_names, store_logits=True):
     dataset = foz.load_zoo_dataset(
-        "coco-2017",
-        split="validation",
+        "imagenet-sample",
         dataset_name=fo.get_default_dataset_name(),
         shuffle=True,
-        max_samples=10,
+        max_samples=1,
     )
 
     label_fields = []
@@ -153,7 +152,10 @@ def _apply_models_with_logits(model_names, store_logits=True):
 
         label_field = model_name.lower().replace("-", "_").replace(".", "_")
         dataset.apply_model(
-            model, label_field=label_field, store_logits=store_logits
+            model,
+            label_field=label_field,
+            confidence_thresh=None,
+            store_logits=store_logits,
         )
         label_fields.append(label_field)
 
