@@ -2049,6 +2049,13 @@ class ModelZooApplyCommand(Command):
 
         # Apply the zoo model to the dataset
         fiftyone zoo models apply <model-name> <dataset-name> <label-field>
+
+        # Apply a zoo classifier with some customized parameters
+        fiftyone zoo models apply \\
+            <model-name> <dataset-name> <label-field> \\
+            --confidence-thresh 0.7 \\
+            --store-logits \\
+            --batch-size 32
     """
 
     @staticmethod
@@ -2091,6 +2098,12 @@ class ModelZooApplyCommand(Command):
             ),
         )
         parser.add_argument(
+            "-l",
+            "--store-logits",
+            action="store_true",
+            help="store logits for the predictions",
+        )
+        parser.add_argument(
             "-i",
             "--install",
             action="store_true",
@@ -2113,11 +2126,14 @@ class ModelZooApplyCommand(Command):
             install_requirements=args.install,
             error_level=args.error_level,
         )
+
         dataset = fod.load_dataset(args.dataset_name)
+
         dataset.apply_model(
             model,
             args.label_field,
             confidence_thresh=args.confidence_thresh,
+            store_logits=args.store_logits,
             batch_size=args.batch_size,
         )
 

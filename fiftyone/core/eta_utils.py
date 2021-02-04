@@ -7,6 +7,7 @@ Utilities for interfacing with the
 |
 """
 from collections import defaultdict
+import itertools
 import warnings
 
 import numpy as np
@@ -65,7 +66,7 @@ class ETAModelConfig(fom.ModelConfig):
         self.config.confidence_thresh = confidence_thresh
 
 
-class ETAModel(fom.Model, fom.EmbeddingsMixin):
+class ETAModel(fom.Model, fom.EmbeddingsMixin, fom.LogitsMixin):
     """Wrapper for running an ``eta.core.learning.Model`` model.
 
     Args:
@@ -78,6 +79,7 @@ class ETAModel(fom.Model, fom.EmbeddingsMixin):
 
         self.config = config
         self._model = _model
+        fom.LogitsMixin.__init__(self)
 
     def __enter__(self):
         self._model.__enter__()
@@ -99,6 +101,14 @@ class ETAModel(fom.Model, fom.EmbeddingsMixin):
             return self._model.transforms
         except AttributeError:
             return None
+
+    @property
+    def has_logits(self):
+        return (
+            isinstance(self._model, etal.ExposesProbabilities)
+            and isinstance(self._model, etal.Classifier)
+            and self._model.exposes_probabilities
+        )
 
     @property
     def has_embeddings(self):
@@ -174,7 +184,14 @@ class ETAModel(fom.Model, fom.EmbeddingsMixin):
 
         eta_labels = self._parse_predictions(eta_labels)
 
-        return parse_eta_labels(eta_labels)
+        label = parse_eta_labels(eta_labels)
+
+        if self.has_logits and self.store_logits:
+            # num_preds x num_classes
+            logits = np.log(self._model.get_probabilities()[0])
+            _add_logits(label, logits)
+
+        return label
 
     def predict_all(self, args):
         if isinstance(self._model, etal.ImageClassifier):
@@ -184,11 +201,20 @@ class ETAModel(fom.Model, fom.EmbeddingsMixin):
         elif isinstance(self._model, etal.ImageSemanticSegmenter):
             eta_labels_batch = self._model.segment_all(args)
         else:
-            eta_labels_batch = super().predict_all(args)
+            return [self.predict(arg) for arg in args]
 
         eta_labels_batch = self._parse_predictions(eta_labels_batch)
 
-        return [parse_eta_labels(el) for el in eta_labels_batch]
+        labels = [parse_eta_labels(el) for el in eta_labels_batch]
+
+        if self.has_logits and self.store_logits:
+            # num_images x num_preds x num_classes
+            logits = np.log(self._model.get_probabilities())
+
+            for label, _logits in zip(labels, logits):
+                _add_logits(label, _logits)
+
+        return labels
 
     def _parse_predictions(self, eta_labels_or_batch):
         if (
@@ -662,3 +688,14 @@ def _squeeze_extra_unit_dims(embeddings):
         return np.squeeze(embeddings, axis=extra_axes)
 
     return embeddings
+
+
+def _add_logits(label, logits):
+    if isinstance(label, fol.Classification):
+        label.logits = logits[0]
+    elif isinstance(label, fol.Classifications):
+        for c, l in zip(label.classifications, logits):
+            c.logits = l
+    elif label is not None:
+        msg = "Cannot store logits on label type '%s'" % label.__class__
+        warnings.warn(msg)

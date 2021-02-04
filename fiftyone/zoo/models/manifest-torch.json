@@ -35,7 +35,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -147,7 +153,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -185,7 +197,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -223,7 +241,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -261,7 +285,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -407,7 +437,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -445,7 +481,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -558,7 +600,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -596,7 +644,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -634,7 +688,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -672,7 +732,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -710,7 +776,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -748,7 +820,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -786,7 +864,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -824,7 +908,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -862,7 +952,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -900,7 +996,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -972,7 +1074,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1010,7 +1118,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1122,7 +1236,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1160,7 +1280,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1198,7 +1324,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1236,7 +1368,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1274,7 +1412,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1312,7 +1456,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1350,7 +1500,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1388,7 +1544,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1426,7 +1588,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1464,7 +1632,13 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "torch"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "torch"
+            ],
             "date_added": "2020-12-11 13:45:51"
         }
     ]
