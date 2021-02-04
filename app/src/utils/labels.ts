@@ -87,6 +87,7 @@ export const RESERVED_DETECTION_FIELDS = [
   "confidence",
   "attributes",
   "mask",
+  "target",
 ];
 
 export const METADATA_FIELDS = [
@@ -238,6 +239,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
       const bb = obj.bounding_box;
       const attrs = convertAttributesToETA(getDetectionAttributes(obj));
       const base = frame_number ? { frame_number } : {};
+
       return {
         ...base,
         type: "eta.core.objects.DetectedObject",
