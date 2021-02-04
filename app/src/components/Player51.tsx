@@ -129,7 +129,7 @@ const TargetItems = ({ target, field }) => {
       <ContentItem key={"target"} name={"Target"} value={target} />
       <ContentItem
         key={"target-value"}
-        name={"Target Value"}
+        name={"Target value"}
         value={targetValue}
       />
     </>
@@ -215,7 +215,7 @@ const PolylineInfo = ({ info }) => {
 const OVERLAY_INFO = {
   classification: ClassificationInfo,
   detection: DetectionInfo,
-  keypoint: KeypointInfo,
+  keypoints: KeypointInfo,
   mask: MaskInfo,
   polyline: PolylineInfo,
 };
@@ -263,28 +263,26 @@ const TooltipInfo = ({ player, moveRef }) => {
     limitedOverlays = overlays.slice(0, 3);
   }
 
-  return ReactDOM.createPortal(
-    <>
-      {overlays.length && (
+  return limitedOverlays.length
+    ? ReactDOM.createPortal(
         <TooltipDiv style={{ ...coordsProps, ...showProps }} ref={ref}>
-          <ContentHeader>
+          <ContentHeader key="header">
             {point[0]}, {point[1]}
           </ContentHeader>
-          {limitedOverlays.map((o) => {
+          {limitedOverlays.map((o, i) => {
             const Component = OVERLAY_INFO[o.type];
-            return <Component info={o} />;
+            return <Component info={o} key={i} />;
           })}
-          {more > 0 && (
+          {more > 0 ? (
             <>
               <br />
               {`and ${more} more`}
             </>
-          )}
-        </TooltipDiv>
-      )}
-    </>,
-    document.body
-  );
+          ) : null}
+        </TooltipDiv>,
+        document.body
+      )
+    : null;
 };
 
 export default ({
@@ -466,7 +464,13 @@ export default ({
           ) : null}
         </InfoWrapper>
       ) : null}
-      <TooltipInfo player={player} moveRef={ref} containerRef={containerRef} />
+      {!thumbnail && (
+        <TooltipInfo
+          player={player}
+          moveRef={ref}
+          containerRef={containerRef}
+        />
+      )}
     </animated.div>
   );
 };

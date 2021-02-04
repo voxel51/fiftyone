@@ -228,6 +228,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
         _id: obj._id,
         confidence: obj.confidence,
         value: obj.label,
+        target: obj.target,
       };
     },
   },
@@ -246,6 +247,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
         index: obj.index,
         confidence: obj.confidence,
         mask: obj.mask,
+        target: obj.target,
         bounding_box: bb
           ? {
               top_left: { x: bb[0], y: bb[1] },
@@ -267,6 +269,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
         _id: obj._id,
         label: obj.label,
         points: obj.points,
+        target: obj.target,
       };
     },
   },
@@ -280,6 +283,7 @@ const FIFTYONE_TO_ETA_CONVERTERS = {
         points: obj.points,
         closed: Boolean(obj.closed),
         filled: Boolean(obj.filled),
+        target: obj.target,
       };
     },
   },
