@@ -333,27 +333,35 @@ operations on samples like searching, filtering, sorting, and slicing.
 Removing samples from a dataset
 -------------------------------
 
-Samples can be removed from a |Dataset| through their ID, either one at a
-time or in a batch:
-
-.. code-block:: python
-    :linenos:
-
-    del dataset[sample_id]
-
-    dataset.remove_samples([sample_id2, sample_id3])
-
-Samples can also be removed from a |Dataset| by using the sample's ID or the
-|Sample| instance:
+Samples can be removed from a |Dataset| through their ID, either one at a time
+or in batches via
+:meth:`remove_sample() <fiftyone.core.dataset.Dataset.remove_sample>` and
+:meth:`remove_samples() <fiftyone.core.dataset.Dataset.remove_samples>`,
+respectively:
 
 .. code-block:: python
     :linenos:
 
     dataset.remove_sample(sample_id)
 
-    # Equivalently
-    sample = dataset[sample_id]
+    # equivalent to above
+    del dataset[sample_id]
+
+    dataset.remove_samples([sample_id2, sample_id3])
+
+Samples can also be removed from a |Dataset| by passing |Sample| instance(s)
+or |DatasetView| instances:
+
+.. code-block:: python
+    :linenos:
+
+    # Remove a random sample
+    sample = dataset.take(1).first()
     dataset.remove_sample(sample)
+
+    # Remove 10 random samples
+    view = dataset.take(10)
+    dataset.remove_samples(view)
 
 If a |Sample| object in memory is deleted from a dataset, it will revert to
 a |Sample| that has not been added to a |Dataset|:

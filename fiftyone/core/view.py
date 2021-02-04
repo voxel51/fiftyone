@@ -180,6 +180,7 @@ class DatasetView(foc.SampleCollection):
                 )
                 if self.media_type == fom.VIDEO:
                     sample.frames._set_replacements(frames)
+
                 yield sample
             except Exception as e:
                 raise ValueError(
