@@ -2129,12 +2129,18 @@ class ModelZooApplyCommand(Command):
 
         dataset = fod.load_dataset(args.dataset_name)
 
+        # Only pass if not None, since `apply_model()` has a non-None default
+        if args.confidence_thresh is not None:
+            kwargs = {"confidence_thresh": args.confidence_thresh}
+        else:
+            kwargs = {}
+
         dataset.apply_model(
             model,
             args.label_field,
-            confidence_thresh=args.confidence_thresh,
             store_logits=args.store_logits,
             batch_size=args.batch_size,
+            **kwargs
         )
 
 
