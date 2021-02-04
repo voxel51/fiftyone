@@ -312,16 +312,19 @@ last samples in a dataset, respectively:
     first_sample = dataset.first()
     last_sample = dataset.last()
 
-Samples can be accessed directly from datasets by their IDs. The |Sample|
-that is returned when accessing a |Dataset| will always provide the same
-instance:
+Samples can be accessed directly from datasets by their IDs or their filepaths.
+|Sample| objects are singletons, so the same |Sample| instance is returned
+whenever accessing the sample from the |Dataset|:
 
 .. code-block:: python
     :linenos:
 
     same_sample = dataset[sample.id]
-
     print(same_sample is sample)
+    # True
+
+    also_same_sample = dataset[sample.filepath]
+    print(also_same_sample is sample)
     # True
 
 You can use :ref:`dataset views <using-views>` to perform more sophisticated

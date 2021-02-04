@@ -71,18 +71,21 @@ Like datasets, you access the samples in a view by iterating over it:
     for sample in view:
         # Do something with `sample`
 
-Or, you can access individual samples in a view by their ID:
+Or, you can access individual samples in a view by their ID or filepath:
 
 .. code-block:: python
     :linenos:
 
-    # Grab the ID of a random sample
-    sample_id = view.take(1).first().id
+    sample = view.take(1).first()
 
-    sample = view[sample_id]
+    print(type(sample))
+    # fiftyone.core.sample.SampleView
+
+    same_sample = view[sample.id]
+    also_same_sample = view[sample.filepath]
 
     view[other_sample_id]
-    # KeyError: if the specified sample is not in the view
+    # KeyError: sample non-existent or not in view
 
 .. note::
 
@@ -188,13 +191,15 @@ a |DatasetView| by its ID.
 .. note::
 
     Accessing a sample by its integer index in a |DatasetView| is not allowed.
-    The best practice is to lookup individual samples by ID, or use array
-    slicing to extract a range of samples, and iterate over samples in a view.
+    The best practice is to lookup individual samples by ID or filepath, or use
+    array slicing to extract a range of samples, and iterate over samples in a
+    view.
 
     .. code-block:: python
 
         view[0]
-        # KeyError: "Accessing samples by numeric index is not supported. Use sample IDs or slices"
+        # KeyError: "Accessing samples by numeric index is not supported.
+        # Use sample IDs, filepaths, or slices"
 
 Shuffling
 _________
