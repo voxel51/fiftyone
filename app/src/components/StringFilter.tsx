@@ -1,11 +1,11 @@
 import React, { useContext, useEffect, useRef } from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import styled, { ThemeContext } from "styled-components";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
+import uuid from "uuid-v4";
 
 import SearchResults from "./ViewBar/ViewStage/SearchResults";
-import * as selectors from "../recoil/selectors";
 import { useOutsideClick } from "../utils/hooks";
 
 const stringFilterMachine = Machine({
@@ -242,11 +242,13 @@ const StringFilterContainer = styled.div`
   margin: 0.25rem 0;
 `;
 
-export default React.memo(({ valuesAtom, includeNoneAtom }) => {
+export default React.memo(({ valuesAtom, selectedValuesAtom }) => {
   const theme = useContext(ThemeContext);
   const values = useRecoilValue(valuesAtom);
-  const [selectedValues, setSelectedValues] = useRecoilState(includeNoneAtom);
-  const [state, send] = useMachine(valueFilterMachine);
+  const [selectedValues, setSelectedValues] = useRecoilState(
+    selectedValuesAtom
+  );
+  const [state, send] = useMachine(stringFilterMachine);
   const inputRef = useRef();
 
   useEffect(() => {
