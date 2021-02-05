@@ -1163,3 +1163,11 @@ export const filterNumericFieldIncludeNone = selectorFamily({
     set(filterStage(path), filter);
   },
 });
+
+export const stringFieldValues = selectorFamily({
+  key: "stringFieldValues",
+  get: ({ get }) => {
+    const stats = get(datasetStats);
+    return ["eww"];
+  },
+});

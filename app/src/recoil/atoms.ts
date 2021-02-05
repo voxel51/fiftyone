@@ -191,3 +191,13 @@ export const savedPlayerOverlayOptions = atom({
   key: "savedPlayerOverlayOptions",
   default: {},
 });
+
+export const stringFieldFilterIncludeNone = atomFamily({
+  key: "stringFieldFilterIncludeNone",
+  default: true,
+});
+
+export const stringFieldFilterValues = atomFamily({
+  key: "stringFieldFilterValues",
+  default: [],
+});
