@@ -1084,7 +1084,7 @@ const resolveFilter = ({ num, str }) => {
   if (
     defaultRange &&
     num.none &&
-    (str.values === null || str.values.length === 0)
+    (!str || str.values === null || str.values.length === 0)
   ) {
     return null;
   }
@@ -1096,8 +1096,14 @@ const resolveFilter = ({ num, str }) => {
   if (defaultRange && !num.none) {
     filter.none = num.none;
   }
-  if (str.values !== null && str.values.length > 0) {
-    filter.values = str.values;
+  if (str) {
+    filter.values = {};
+    if (str.values !== null && str.values.length > 0) {
+      filter.values.includes = str.values;
+    }
+    if (filter.values.includes || str.none === false) {
+      filter.values.none = str.none;
+    }
   }
   if (Object.keys(filter).length > 0) return filter;
   return null;
@@ -1126,12 +1132,13 @@ export const filterIncludeNoLabel = selectorFamily({
   key: "filterIncludeNoLabel",
   get: (path) => ({ get }) => {
     const filter = get(filterStage(path));
-    return filter?.labels?.values;
+    return filter?.labels?.values || true;
   },
   set: (path) => ({ get, set }, noLabel) => {
     const bounds = get(labelConfidenceBounds(path));
     const range = get(filterLabelConfidenceRange(path));
     const none = get(filterLabelIncludeNoConfidence(path));
+    const labels = get(filterIncludeLabels(path));
     const filter = resolveFilter({
       num: { bounds, range, none },
       str: { values: labels, none: noLabel, path: "label" },
@@ -1151,7 +1158,11 @@ export const filterLabelConfidenceRange = selectorFamily({
     const bounds = get(labelConfidenceBounds(path));
     const none = get(filterLabelIncludeNoConfidence(path));
     const labels = get(filterIncludeLabels(path));
-    const filter = resolveFilter(bounds, range, none, labels);
+    const noLabel = get(filterIncludeNoLabel(path));
+    const filter = resolveFilter({
+      num: { bounds, range, none },
+      str: { values: labels, none: noLabel, path: "label" },
+    });
     set(filterStage(path), filter);
   },
 });
@@ -1166,7 +1177,11 @@ export const filterLabelIncludeNoConfidence = selectorFamily({
     const range = get(filterLabelConfidenceRange(path));
     const bounds = get(labelConfidenceBounds(path));
     const labels = get(filterIncludeLabels(path));
-    const filter = resolveFilter(bounds, range, none, labels);
+    const noLabel = get(filterIncludeNoLabel(path));
+    const filter = resolveFilter({
+      num: { bounds, range, none },
+      str: { values: labels, none: noLabel, path: "label" },
+    });
     set(filterStage(path), filter);
   },
 });
@@ -1180,7 +1195,10 @@ export const filterNumericFieldRange = selectorFamily({
   set: (path) => ({ get, set }, range) => {
     const bounds = get(numericFieldBounds(path));
     const none = get(filterNumericFieldIncludeNone(path));
-    const filter = resolveFilter(bounds, range, none);
+    const filter = resolveFilter({
+      num: { bounds, range, none },
+      str: null,
+    });
     set(filterStage(path), filter);
   },
 });
@@ -1194,7 +1212,10 @@ export const filterNumericFieldIncludeNone = selectorFamily({
   set: (path) => ({ get, set }, none) => {
     const range = get(filterNumericFieldRange(path));
     const bounds = get(numericFieldBounds(path));
-    const filter = resolveFilter(bounds, range, none);
+    const filter = resolveFilter({
+      num: { bounds, range, none },
+      str: null,
+    });
     set(filterStage(path), filter);
   },
 });
@@ -1208,8 +1229,6 @@ export const filterStringFieldValues = selectorFamily({
   set: (path) => ({ get, set }, range) => {
     const values = get(numericFieldBounds(path));
     const none = get(filterNumericFieldIncludeNone(path));
-    const filter = resolveFilter(bounds, range, none);
-    set(filterStage(path), filter);
   },
 });
 
@@ -1222,8 +1241,6 @@ export const filterStringFieldIncludeNone = selectorFamily({
   set: (path) => ({ get, set }, none) => {
     const range = get(filterNumericFieldRange(path));
     const bounds = get(numericFieldBounds(path));
-    const filter = resolveFilter(bounds, range, none);
-    set(filterStage(path), filter);
   },
 });
 
