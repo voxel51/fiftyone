@@ -369,12 +369,19 @@ const NamedStringFilterHeader = styled.div`
   justify-content: space-between;
 `;
 
+const CheckboxContainer = styled.div`
+  background: ${({ theme }) => theme.backgroundDark};
+  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
+  border: 1px solid #191c1f;
+  border-radius: 2px;
+  color: ${({ theme }) => theme.fontDark};
+  margin-top: 0.25rem;
+`;
+
 type NamedProps = {
   valuesAtom: RecoilState<string[]>;
   selectedValuesAtom: RecoilState<string[]>;
   includeNoneAtom: RecoilState<boolean>;
-  maxMin?: number;
-  minMax?: number;
   name: string;
   valueName: string;
   color: string;
@@ -410,23 +417,25 @@ export const NamedStringFilter = ({
       </NamedStringFilterHeader>
       <StringFilterContainer>
         <StringFilter {...stringFilterProps} />
-        <FormControlLabel
-          label={
-            <div style={{ lineHeight: "20px", fontSize: 14 }}>
-              Filter no {valueName}
-            </div>
-          }
-          control={
-            <Checkbox
-              checked={!includeNone}
-              onChange={() => setIncludeNone(!includeNone)}
-              style={{
-                padding: "0 5px",
-                color,
-              }}
-            />
-          }
-        />
+        <CheckboxContainer>
+          <FormControlLabel
+            label={
+              <div style={{ lineHeight: "20px", fontSize: 14 }}>
+                Filter no {valueName}
+              </div>
+            }
+            control={
+              <Checkbox
+                checked={!includeNone}
+                onChange={() => setIncludeNone(!includeNone)}
+                style={{
+                  padding: "0 5px",
+                  color,
+                }}
+              />
+            }
+          />
+        </CheckboxContainer>
       </StringFilterContainer>
     </NamedStringFilterContainer>
   );

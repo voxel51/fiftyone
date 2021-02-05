@@ -8,7 +8,7 @@ import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { SampleContext } from "../../utils/context";
 import { NamedRangeSlider } from "./RangeSlider";
-import StringFilter from "./StringFilter";
+import { NamedStringFilter } from "./StringFilter";
 import { CONFIDENCE_LABELS } from "../../utils/labels";
 import { removeObjectIDsFromSelection } from "../../utils/selection";
 
@@ -69,12 +69,13 @@ const Filter = React.memo(({ expanded, style, entry, ...rest }) => {
     <animated.div style={{ ...props, overflow }}>
       <div ref={ref}>
         <div style={{ margin: 3 }}>
-          <StringFilter
+          <NamedStringFilter
+            color={entry.color}
             name={"Labels"}
             valueName={"label"}
             valuesAtom={selectors.labelClasses(entry.path)}
             selectedValuesAtom={rest.includeLabels(entry.path)}
-            includeNoneAtom={rest.includeNoLabelAtom(entry.path)}
+            includeNoneAtom={rest.includeNoLabel(entry.path)}
           />
           <HiddenObjectFilter entry={entry} />
           {CONFIDENCE_LABELS.includes(entry.type) && (
