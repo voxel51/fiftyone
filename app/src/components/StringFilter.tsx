@@ -1,27 +1,19 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useRef } from "react";
+import { useRecoilValue } from "recoil";
 import styled, { ThemeContext } from "styled-components";
-import { useRecoilState, useRecoilValue } from "recoil";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
-import uuid from "uuid-v4";
-import { animated, useSpring } from "react-spring";
-import useMeasure from "react-use-measure";
 
-import * as atoms from "../recoil/atoms";
-import * as selectors from "../recoil/selectors";
-import { SampleContext } from "../utils/context";
-import { useOutsideClick } from "../utils/hooks";
 import SearchResults from "./ViewBar/ViewStage/SearchResults";
-import { NamedRangeSlider } from "./RangeSlider";
-import { CONFIDENCE_LABELS } from "../utils/labels";
-import { removeObjectIDsFromSelection } from "../utils/selection";
+import * as selectors from "../recoil/selectors";
+import { useOutsideClick } from "../utils/hooks";
 
-const classFilterMachine = Machine({
-  id: "classFilter",
+const stringFilterMachine = Machine({
+  id: "stringFilter",
   initial: "init",
   context: {
     error: undefined,
-    classes: [],
+    values: [],
     inputValue: "",
     selected: [],
     currentResult: null,
@@ -116,11 +108,11 @@ const classFilterMachine = Machine({
                   [...new Set([...selected, value])].sort(),
                 inputValue: "",
                 valid: true,
-                results: ({ classes }) => classes,
+                results: ({ values }) => values,
               }),
             ],
-            cond: ({ classes }, { value }) => {
-              return classes.some((c) => c === value);
+            cond: ({ values }, { value }) => {
+              return values.some((c) => c === value);
             },
           },
           {
@@ -138,8 +130,8 @@ const classFilterMachine = Machine({
           actions: [
             assign({
               inputValue: (_, { value }) => value,
-              results: ({ classes }, { value }) =>
-                classes.filter((c) =>
+              results: ({ values }, { value }) =>
+                values.filter((c) =>
                   c.toLowerCase().includes(value.toLowerCase())
                 ),
               prevValue: ({ inputValue }) => inputValue,
@@ -166,14 +158,14 @@ const classFilterMachine = Machine({
         }),
       ],
     },
-    SET_CLASSES: {
+    SET_VALUES: {
       target: "reading",
       actions: [
         assign({
-          classes: (_, { classes }) => (classes ? classes : []),
-          results: ({ inputValue }, { classes }) =>
-            classes
-              ? classes.filter((c) =>
+          values: (_, { values }) => (values ? values : []),
+          results: ({ inputValue }, { values }) =>
+            values
+              ? values.filter((c) =>
                   c.toLowerCase().includes(inputValue.toLowerCase())
                 )
               : [],
@@ -203,7 +195,7 @@ const FilterHeader = styled.div`
   }
 `;
 
-const ClassInput = styled.input`
+const StringInput = styled.input`
   width: 100%;
   background: ${({ theme }) => theme.backgroundDark};
   border: 1px solid #191c1f;
@@ -228,54 +220,52 @@ const Selected = styled.div`
   flex-wrap: wrap;
 `;
 
-const ClassButton = styled.button`
-  background: ${({ theme }) => theme.background};
-  border: 2px solid #393C3F;
-  background-color: #2D3034;
-  border-radius: 11px;
-  text-align: center
-  vertical-align: middle;
-  margin: 0.5rem 0.25rem 0;
-  padding: 0 0.5rem;
-  line-height: 20px;
-  font-weight: bold;
-  cursor: pointer;
-  &:focus {
-    outline: none;
-  }
-`;
+const StringButton = styled.button`
+    background: ${({ theme }) => theme.background};
+    border: 2px solid #393C3F;
+    background-color: #2D3034;
+    border-radius: 11px;
+    text-align: center
+    vertical-align: middle;
+    margin: 0.5rem 0.25rem 0;
+    padding: 0 0.5rem;
+    line-height: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    &:focus {
+      outline: none;
+    }
+  `;
 
-const ClassFilterContainer = styled.div`
+const StringFilterContainer = styled.div`
   position: relative;
   margin: 0.25rem 0;
 `;
 
-const ClassFilter = ({ entry: { path }, atoms }) => {
+export default React.memo(({ valuesAtom, includeNoneAtom }) => {
   const theme = useContext(ThemeContext);
-  const classes = useRecoilValue(selectors.labelClasses(path));
-  const [selectedClasses, setSelectedClasses] = useRecoilState(
-    atoms.includeLabels(path)
-  );
-  const [state, send] = useMachine(classFilterMachine);
+  const values = useRecoilValue(valuesAtom);
+  const [selectedValues, setSelectedValues] = useRecoilState(includeNoneAtom);
+  const [state, send] = useMachine(valueFilterMachine);
   const inputRef = useRef();
 
   useEffect(() => {
-    const filtered = selectedClasses.filter((c) => classes.includes(c));
-    filtered.length !== selectedClasses.length && setSelectedClasses(filtered);
-  }, [classes, selectedClasses]);
+    const filtered = selectedValues.filter((c) => values.includes(c));
+    filtered.length !== selectedValues.length && setSelectedValues(filtered);
+  }, [values, selectedValues]);
 
   useEffect(() => {
-    send({ type: "SET_CLASSES", classes });
-  }, [classes]);
+    send({ type: "SET_VALUES", values });
+  }, [values]);
 
   useOutsideClick(inputRef, () => send("BLUR"));
   const { inputValue, results, currentResult, selected } = state.context;
 
   useEffect(() => {
-    if (JSON.stringify(selected) !== JSON.stringify(selectedClasses)) {
-      send({ type: "SET_SELECTED", selected: selectedClasses });
+    if (JSON.stringify(selected) !== JSON.stringify(selectedValues)) {
+      send({ type: "SET_SELECTED", selected: selectedValues });
     }
-  }, [selectedClasses]);
+  }, [selectedValues]);
 
   useEffect(() => {
     if (
@@ -283,7 +273,7 @@ const ClassFilter = ({ entry: { path }, atoms }) => {
       state.event.type === "REMOVE" ||
       state.event.type === "CLEAR"
     ) {
-      setSelectedClasses(state.context.selected);
+      setSelectedValues(state.context.selected);
     }
   }, [state.event]);
 
@@ -295,9 +285,9 @@ const ClassFilter = ({ entry: { path }, atoms }) => {
           <a onClick={() => send({ type: "CLEAR" })}>clear {selected.length}</a>
         ) : null}
       </FilterHeader>
-      <ClassFilterContainer>
+      <StringFilterContainer>
         <div ref={inputRef}>
-          <ClassInput
+          <StringInput
             value={inputValue}
             placeholder={"+ add label"}
             onFocus={() => state.matches("reading") && send("EDIT")}
@@ -343,7 +333,7 @@ const ClassFilter = ({ entry: { path }, atoms }) => {
         {selected.length ? (
           <Selected>
             {selected.map((s) => (
-              <ClassButton
+              <StringButton
                 key={s}
                 onClick={() => {
                   send({ type: "REMOVE", value: s });
@@ -351,80 +341,11 @@ const ClassFilter = ({ entry: { path }, atoms }) => {
               >
                 {s + " "}
                 <a style={{ color: theme.fontDark }}>x</a>
-              </ClassButton>
+              </StringButton>
             ))}
           </Selected>
         ) : null}
-      </ClassFilterContainer>
+      </StringFilterContainer>
     </>
   );
-};
-
-const HiddenObjectFilter = ({ entry }) => {
-  const fieldName = entry.name;
-  const sample = useContext(SampleContext);
-  const [hiddenObjects, setHiddenObjects] = useRecoilState(atoms.hiddenObjects);
-  if (!sample) {
-    return null;
-  }
-
-  const sampleHiddenObjectIDs = Object.entries(hiddenObjects)
-    .filter(
-      ([object_id, data]) =>
-        data.sample_id === sample._id && data.field === fieldName
-    )
-    .map(([object_id]) => object_id);
-  if (!sampleHiddenObjectIDs.length) {
-    return null;
-  }
-  const clear = () =>
-    setHiddenObjects((hiddenObjects) =>
-      removeObjectIDsFromSelection(hiddenObjects, sampleHiddenObjectIDs)
-    );
-
-  return (
-    <FilterHeader>
-      Manually hidden: {sampleHiddenObjectIDs.length}
-      <a onClick={clear}>reset</a>
-    </FilterHeader>
-  );
-};
-
-const Filter = React.memo(({ expanded, style, entry, ...rest }) => {
-  const [overflow, setOverflow] = useState("hidden");
-
-  const [ref, { height }] = useMeasure();
-  const props = useSpring({
-    height: expanded ? height : 0,
-    from: {
-      height: 0,
-    },
-    onStart: () => !expanded && setOverflow("hidden"),
-    onRest: () => expanded && setOverflow("visible"),
-  });
-
-  return (
-    <animated.div style={{ ...props, overflow }}>
-      <div ref={ref}>
-        <div style={{ margin: 3 }}>
-          <ClassFilter entry={entry} atoms={rest} />
-          <HiddenObjectFilter entry={entry} />
-          {CONFIDENCE_LABELS.includes(entry.type) && (
-            <NamedRangeSlider
-              color={entry.color}
-              name={"Confidence"}
-              valueName={"confidence"}
-              includeNoneAtom={rest.includeNoConfidence(entry.path)}
-              boundsAtom={rest.confidenceBounds(entry.path)}
-              rangeAtom={rest.confidenceRange(entry.path)}
-              maxMin={0}
-              minMax={1}
-            />
-          )}
-        </div>
-      </div>
-    </animated.div>
-  );
 });
-
-export default Filter;
