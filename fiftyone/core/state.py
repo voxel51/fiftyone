@@ -184,13 +184,10 @@ class DatasetStatistics(object):
                 else:
                     aggregations.append(foa.Count(field_name))
 
-                    if _meets_type(
-                        field,
-                        (fof.BooleanField, fof.IntField, fof.StringField),
-                    ):
-                        aggregations.append(foa.CountValues(field_name))
-                    elif _meets_type(field, (fof.IntField, fof.FloatField)):
+                    if _meets_type(field, (fof.IntField, fof.FloatField)):
                         aggregations.append(foa.Bounds(field_name))
+                    elif _meets_type(field, fof.StringField):
+                        aggregations.append(foa.Distinct(field_name))
 
         self._aggregations = aggregations
 
