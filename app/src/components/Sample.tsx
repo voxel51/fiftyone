@@ -35,12 +35,14 @@ const SampleChin = styled.div`
     display: none;
   }
   scrollbar-width: none;
+  border: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
+  border-top-width: 0;
 `;
 
 const SampleInfo = styled.div`
-  max-height: 42px;
+  height: 43px;
   display: block;
-  padding: 10.5px 0 10.5px 0.5rem;
+  padding: 14px 0 8px 0.5rem;
   bottom: 0;
   &::-webkit-scrollbar {
     width: 0px;
@@ -247,28 +249,40 @@ const Sample = ({ sample, metadata }) => {
 
   return (
     <SampleDiv className="sample" style={showSamples}>
-      <Player51
-        src={src}
+      <div
         style={{
-          height: "calc(100% - 41px)",
-          width: "100%",
           position: "relative",
-          cursor: "pointer",
+          width: "100%",
+          height: "calc(100% - 44px)",
         }}
-        sample={sample}
-        metadata={metadata}
-        thumbnail={true}
-        activeLabels={activeLabels}
-        activeFrameLabels={activeFrameLabels}
-        colorByLabel={colorByLabel}
-        filterSelector={selectors.labelFilters}
-        onMouseEnter={onMouseEnter}
-        onMouseLeave={onMouseLeave}
-        onClick={() => setModal({ visible: true, sample, metadata })}
-      />
+      >
+        <Player51
+          src={src}
+          style={{
+            height: "100%",
+            width: "100%",
+            position: "relative",
+            cursor: "pointer",
+          }}
+          sample={sample}
+          metadata={metadata}
+          thumbnail={true}
+          activeLabels={activeLabels}
+          activeFrameLabels={activeFrameLabels}
+          colorByLabel={colorByLabel}
+          filterSelector={selectors.labelFilters}
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
+          onClick={() => setModal({ visible: true, sample, metadata })}
+        />
+        {bar.map(({ key, props }) => (
+          <LoadingBar key={key} style={props} />
+        ))}
+      </div>
       <SampleChin>
         <SampleInfo>
-          {bubbles.length ? bubbles : "No classifications or tags"}
+          {bubbles}
+          <Tag key={"filepath"} name={sample.filepath} color={"transparent"} />
         </SampleInfo>
         <SelectedDiv>
           <Checkbox
@@ -279,9 +293,6 @@ const Sample = ({ sample, metadata }) => {
           />
         </SelectedDiv>
       </SampleChin>
-      {bar.map(({ key, props }) => (
-        <LoadingBar key={key} style={props} />
-      ))}
     </SampleDiv>
   );
 };

@@ -46,7 +46,7 @@ function Samples() {
               columns={r.columns}
               style={{
                 ...r.style,
-                height: (bounds.width - 16) / r.aspectRatio + 41,
+                height: (bounds.width - 16) / r.aspectRatio + 44,
               }}
               key={i}
             >

@@ -28,6 +28,7 @@ from fiftyone.constants import VERSION
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
+import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 from fiftyone.migrations import get_migration_runner
 import fiftyone.core.odm as foo
@@ -294,17 +295,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.label_targets = label_targets
         self.save()
 
-    def add_label_targets(self, targets_name, targets):
-        self._doc.label_targets[targets_name] = targets
-        self.save()
+    def add_label_targets(self, field_name, targets):
+        """Add targets for a specific field
 
-    def remove_label_targets(self, targets_name):
-        if targets_name in self._doc.label_targets:
-            del self._doc.label_targets[targets_name]
-
-        self.save()
-
-    def set_labels_field_targets(self, field_name, targets_name=None):
+        Args:
+            field_name: a labels field name
+            targets: a `dict` with target integers as keys and strings as
+                values
+        """
         for field in self._doc.sample_fields:
             if field.name != field_name:
                 continue
@@ -316,9 +314,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     "field %s does not support targets" % field_name
                 )
 
-            field.targets_name = targets_name
+            self._doc.label_targets[field_name] = targets
             self.save()
             return
+
+    def remove_label_targets(self, field_name):
+        """Remove label targets for a specific field.
+
+        Args:
+            field_name: the labels field name
+        """
+        if field_name in self._doc.label_targets:
+            del self._doc.label_targets[field_name]
+
+        self.save()
 
     @property
     def media_type(self):

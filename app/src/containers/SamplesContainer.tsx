@@ -22,7 +22,7 @@ const SidebarColumn = styled.div`
 
 const ContentColumn = styled.div`
   flex-grow: 1;
-  width: 1px; // idk
+  width: 1px; // flex-related?, unset width causes the sidebar to collapse
 `;
 
 const FieldsWrapper = () => {

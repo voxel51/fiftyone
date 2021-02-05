@@ -99,6 +99,8 @@ const ContentItem = ({ name, value }) => {
               return Number.isInteger(value) ? value : value.toFixed(3);
             case "string":
               return value;
+            case "boolean":
+              return value ? "True" : "False";
             default:
               return "None";
           }
@@ -126,10 +128,10 @@ const TargetItems = ({ target, field }) => {
   }
   return (
     <>
-      <ContentItem key={"target"} name={"Target"} value={target} />
+      <ContentItem key={"target"} name={"target"} value={target} />
       <ContentItem
         key={"target-value"}
-        name={"Target value"}
+        name={"target value"}
         value={targetValue}
       />
     </>
@@ -139,9 +141,12 @@ const TargetItems = ({ target, field }) => {
 const ClassificationInfo = ({ info }) => {
   return (
     <ContentBlock style={{ borderColor: info.color }}>
-      <ContentItem key={"field"} name={"Field"} value={info.field} />
-      <ContentItem key={"label"} name={"Label"} value={info.label} />
+      <ContentItem key={"id"} name={"id"} value={info.id} />
+      <ContentItem key={"field"} name={"field"} value={info.field} />
+      <ContentItem key={"label"} name={"label"} value={info.label} />
+      <ConfidenceItem confidence={info.confidence} />
       <TargetItems field={info.field} target={info.target} />
+      <AttrInfo attrs={info.attrs} />
     </ContentBlock>
   );
 };
@@ -150,40 +155,67 @@ const MaskInfo = ({ info }) => {
   const coord = info.coordinates;
   return (
     <ContentBlock style={{ borderColor: info.color }}>
-      <ContentItem key={"field"} name={"Field"} value={info.field} />
+      <ContentItem key={"field"} name={"field"} value={info.field} />
       <TargetItems field={info.field} target={info.target} />
       <ContentItem
         key={"coordinates"}
-        name={"Coordinates"}
+        name={"coordinates"}
         value={`${coord[0]}, ${coord[1]}`}
       />
       <ContentItem
         key={"dimensions"}
-        name={"Dimensions"}
+        name={"dimensions"}
         value={`${info.shape[1]}, ${info.shape[0]}`}
       />
     </ContentBlock>
   );
 };
 
+const AttrInfo = ({ attrs }) => {
+  if (!attrs) {
+    return null;
+  }
+  let etc = null;
+  let entries = attrs;
+  if (attrs.length > 4) {
+    etc = `and ${entries.length - 4} more attribues`;
+    entries = entries.slice(0, 4);
+  }
+
+  return (
+    <>
+      {entries.map((a) => (
+        <ContentItem key={a.name} name={a.name} value={a.value} />
+      ))}
+      {etc && (
+        <>
+          <br />
+          {etc}
+        </>
+      )}
+    </>
+  );
+};
+
 const DetectionInfo = ({ info }) => {
   return (
     <ContentBlock style={{ borderColor: info.color }}>
-      <ContentItem key={"id"} name={"ID"} value={info.id} />
-      <ContentItem key={"field"} name={"Field"} value={info.field} />
-      <ContentItem key={"label"} name={"Label"} value={info.label} />
+      <ContentItem key={"id"} name={"id"} value={info.id} />
+      <ContentItem key={"field"} name={"field"} value={info.field} />
+      <ContentItem key={"label"} name={"label"} value={info.label} />
       <ConfidenceItem confidence={info.confidence} />
       <TargetItems field={info.field} target={info.target} />
       <ContentItem
         key={"top-left"}
-        name={"Top-Left"}
+        name={"top-left"}
         value={`${info.left.toFixed(5)}, ${info.top.toFixed(5)}`}
       />
       <ContentItem
         key={"dimensions"}
-        name={"Dimensions"}
+        name={"dimensions"}
         value={`${info.width.toFixed(5)} x ${info.height.toFixed(5)}`}
       />
+      <AttrInfo attrs={info.attrs} />
     </ContentBlock>
   );
 };
@@ -191,11 +223,22 @@ const DetectionInfo = ({ info }) => {
 const KeypointInfo = ({ info }) => {
   return (
     <ContentBlock style={{ borderColor: info.color }}>
-      <ContentItem key={"id"} name={"ID"} value={info.id} />
-      <ContentItem key={"field"} name={"Field"} value={info.field} />
-      <ContentItem key={"label"} name={"Label"} value={info.label} />
+      <ContentItem key={"id"} name={"id"} value={info.id} />
+      <ContentItem key={"field"} name={"field"} value={info.field} />
+      <ContentItem key={"label"} name={"label"} value={info.label} />
+      <ContentItem
+        key={"point"}
+        name={"keypoint"}
+        value={`${info.point[0].toFixed(5)}, ${info.point[1].toFixed(5)}`}
+      />
+      <ContentItem
+        key={"# pkeyoints"}
+        name={"# pkeyoints"}
+        value={info.numPoints}
+      />
       <ConfidenceItem confidence={info.confidence} />
       <TargetItems field={info.field} target={info.target} />
+      <AttrInfo attrs={info.attrs} />
     </ContentBlock>
   );
 };
@@ -203,11 +246,15 @@ const KeypointInfo = ({ info }) => {
 const PolylineInfo = ({ info }) => {
   return (
     <ContentBlock style={{ borderColor: info.color }}>
-      <ContentItem key={"id"} name={"ID"} value={info.id} />
-      <ContentItem key={"field"} name={"Field"} value={info.field} />
-      <ContentItem key={"label"} name={"Label"} value={info.label} />
+      <ContentItem key={"id"} name={"id"} value={info.id} />
+      <ContentItem key={"field"} name={"field"} value={info.field} />
+      <ContentItem key={"label"} name={"label"} value={info.label} />
       <ConfidenceItem confidence={info.confidence} />
+      <ContentItem key={"closed"} name={"closed"} value={info.closed} />
+      <ContentItem key={"filled"} name={"filled"} value={info.filled} />
+      <ContentItem key={"# points"} name={"# points"} value={info.points} />
       <TargetItems field={info.field} target={info.target} />
+      <AttrInfo attrs={info.attrs} />
     </ContentBlock>
   );
 };
@@ -222,21 +269,21 @@ const OVERLAY_INFO = {
 
 const TooltipInfo = ({ player, moveRef }) => {
   const [hovering, setHovering] = useState(false);
+  const [display, setDisplay] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0, bottom: "unset" });
-  const coordsRef = useRef();
   const coordsProps = useSpring({
-    ref: coordsRef,
     ...coords,
     config: {
       duration: 0,
     },
+    onRest: () => {
+      !display && setDisplay(true);
+    },
   });
   const [overlays, setOverlays] = useState([]);
-  const showRef = useRef();
   const showProps = useSpring({
-    ref: showRef,
-    display: hovering ? "block" : "none",
-    opacity: hovering ? 1 : 0,
+    display: display ? "block" : "none",
+    opacity: display ? 1 : 0,
   });
   const [point, setPoint] = useState([0, 0]);
   const ref = useRef(null);
@@ -246,7 +293,10 @@ const TooltipInfo = ({ player, moveRef }) => {
     setPoint(e.data.point);
   });
   useEventHandler(player, "mouseenter", () => setHovering(true));
-  useEventHandler(player, "mouseleave", () => setHovering(false));
+  useEventHandler(player, "mouseleave", () => {
+    setHovering(false);
+    setDisplay(false);
+  });
 
   useEffect(() => {
     moveRef.current = ({ values }) => {
@@ -254,13 +304,11 @@ const TooltipInfo = ({ player, moveRef }) => {
     };
   });
 
-  useChain(hovering ? [showRef, coordsRef] : [coordsRef, showRef]);
-
   let more = 0;
-  let limitedOverlays = overlays;
-  if (overlays.length > 3) {
-    more = overlays.length - 3;
-    limitedOverlays = overlays.slice(0, 3);
+  let limitedOverlays = overlays ? overlays : [];
+  if (limitedOverlays.length > 3) {
+    more = limitedOverlays.length - 3;
+    limitedOverlays = limitedOverlays.slice(0, 3);
   }
 
   return limitedOverlays.length
@@ -273,12 +321,6 @@ const TooltipInfo = ({ player, moveRef }) => {
             const Component = OVERLAY_INFO[o.type];
             return <Component info={o} key={i} />;
           })}
-          {more > 0 ? (
-            <>
-              <br />
-              {`and ${more} more`}
-            </>
-          ) : null}
         </TooltipDiv>,
         document.body
       )
@@ -464,13 +506,7 @@ export default ({
           ) : null}
         </InfoWrapper>
       ) : null}
-      {!thumbnail && (
-        <TooltipInfo
-          player={player}
-          moveRef={ref}
-          containerRef={containerRef}
-        />
-      )}
+      <TooltipInfo player={player} moveRef={ref} containerRef={containerRef} />
     </animated.div>
   );
 };

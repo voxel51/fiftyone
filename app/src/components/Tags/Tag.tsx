@@ -15,6 +15,7 @@ const Body = styled.div`
   font-weight: bold;
   text-align: center;
   vertical-align: bottom;
+  white-space: nowrap;
 
   ${({ maxWidth }) =>
     maxWidth
