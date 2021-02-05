@@ -547,7 +547,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             .to_list(page_length + 1)
         )
         convert(samples)
-
         more = False
         if len(samples) > page_length:
             samples = samples[:page_length]
@@ -1118,12 +1117,21 @@ def _make_filter_stages(dataset, filters):
 
         if isinstance(field, fof.EmbeddedDocumentField):
             expr = _make_range_expression(F("confidence"), args)
-            if "labels" in args:
-                labels_expr = F("label").is_in(args["labels"])
-                if expr is not None:
-                    expr &= labels_expr
-                else:
-                    expr = labels_expr
+            values = args["values"]
+            labels_expr = None
+            f = F("label")
+            if "include" in values:
+                labels_expr = f.is_in(values["include"])
+                if values.get("none", False):
+                    labels_expr |= ~(f.exists())
+            elif "none" in values:
+                if not values["none"]:
+                    labels_expr = f.exists()
+
+            if expr is not None:
+                expr &= labels_expr
+            else:
+                expr = labels_expr
 
             stages.append(fosg.FilterLabels(path, expr, only_matches=True))
         else:
