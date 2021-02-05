@@ -4,13 +4,13 @@ import { animated, useSpring } from "react-spring";
 import useMeasure from "react-use-measure";
 import styled from "styled-components";
 
-import * as atoms from "../recoil/atoms";
-import * as selectors from "../recoil/selectors";
-import { SampleContext } from "../utils/context";
+import * as atoms from "../../recoil/atoms";
+import * as selectors from "../../recoil/selectors";
+import { SampleContext } from "../../utils/context";
 import { NamedRangeSlider } from "./RangeSlider";
 import StringFilter from "./StringFilter";
-import { CONFIDENCE_LABELS } from "../utils/labels";
-import { removeObjectIDsFromSelection } from "../utils/selection";
+import { CONFIDENCE_LABELS } from "../../utils/labels";
+import { removeObjectIDsFromSelection } from "../../utils/selection";
 
 const FilterHeader = styled.div`
   display: flex;
@@ -71,6 +71,7 @@ const Filter = React.memo(({ expanded, style, entry, ...rest }) => {
       <div ref={ref}>
         <div style={{ margin: 3 }}>
           <StringFilter
+            name={"Labels"}
             valuesAtom={selectors.labelClasses(entry.path)}
             selectedValuesAtom={rest.includeLabels(entry.path)}
           />

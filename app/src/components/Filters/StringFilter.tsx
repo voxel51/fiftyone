@@ -5,8 +5,8 @@ import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
 import uuid from "uuid-v4";
 
-import SearchResults from "./ViewBar/ViewStage/SearchResults";
-import { useOutsideClick } from "../utils/hooks";
+import SearchResults from "../ViewBar/ViewStage/SearchResults";
+import { useOutsideClick } from "../../utils/hooks";
 
 const stringFilterMachine = Machine({
   id: "stringFilter",
@@ -242,7 +242,7 @@ const StringFilterContainer = styled.div`
   margin: 0.25rem 0;
 `;
 
-export default React.memo(({ valuesAtom, selectedValuesAtom }) => {
+const StringFilter = React.memo(({ name, valuesAtom, selectedValuesAtom }) => {
   const theme = useContext(ThemeContext);
   const values = useRecoilValue(valuesAtom);
   const [selectedValues, setSelectedValues] = useRecoilState(
@@ -282,7 +282,7 @@ export default React.memo(({ valuesAtom, selectedValuesAtom }) => {
   return (
     <>
       <FilterHeader>
-        Labels{" "}
+        {name}{" "}
         {selected.length ? (
           <a onClick={() => send({ type: "CLEAR" })}>clear {selected.length}</a>
         ) : null}
@@ -351,3 +351,5 @@ export default React.memo(({ valuesAtom, selectedValuesAtom }) => {
     </>
   );
 });
+
+export default StringFilter;

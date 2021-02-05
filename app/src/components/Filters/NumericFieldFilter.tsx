@@ -1,14 +1,14 @@
 import React, { useState } from "react";
 
-import * as selectors from "../recoil/selectors";
+import * as selectors from "../../recoil/selectors";
 import { NamedRangeSlider } from "./RangeSlider";
 import { animated, useSpring } from "react-spring";
 import useMeasure from "react-use-measure";
 
 const NumericFieldFilter = ({ expanded, entry }) => {
-  const boundsAtom = selectors.stringFieldValues(entry.path);
+  const boundsAtom = selectors.numericFieldBounds(entry.path);
   const rangeAtom = selectors.filterNumericFieldRange(entry.path);
-  const includeNoneAtom = selectors.filterStringFieldIncludeNone(entry.path);
+  const includeNoneAtom = selectors.filterNumericFieldIncludeNone(entry.path);
   const [overflow, setOverflow] = useState("hidden");
 
   const [ref, { height }] = useMeasure();

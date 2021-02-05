@@ -1,14 +1,14 @@
 import React, { useState } from "react";
 
-import * as selectors from "../recoil/selectors";
-import { NamedRangeSlider } from "./RangeSlider";
+import * as selectors from "../../recoil/selectors";
+import StringFilter from "./StringFilter";
 import { animated, useSpring } from "react-spring";
 import useMeasure from "react-use-measure";
 
-const NumericFieldFilter = ({ expanded, entry }) => {
-  const boundsAtom = selectors.numericFieldBounds(entry.path);
-  const rangeAtom = selectors.filterNumericFieldRange(entry.path);
-  const includeNoneAtom = selectors.filterNumericFieldIncludeNone(entry.path);
+const StringFieldFilter = ({ expanded, entry }) => {
+  const valuesAtom = selectors.stringFieldValues(entry.path);
+  const selectedValuesAtom = selectors.filterStringFieldValues(entry.path);
+  const includeNoneAtom = selectors.filterStringFieldIncludeNone(entry.path);
   const [overflow, setOverflow] = useState("hidden");
 
   const [ref, { height }] = useMeasure();
@@ -23,17 +23,15 @@ const NumericFieldFilter = ({ expanded, entry }) => {
 
   return (
     <animated.div style={{ ...props, overflow }}>
-      <NamedRangeSlider
-        color={entry.color}
-        name={"Range"}
+      <StringFilter
+        name={"Values"}
         valueName={"value"}
-        includeNoneAtom={includeNoneAtom}
-        boundsAtom={boundsAtom}
-        rangeAtom={rangeAtom}
+        selectedValuesAtom={selectedValuesAtom}
+        valuesAtom={valuesAtom}
         ref={ref}
       />
     </animated.div>
   );
 };
 
-export default NumericFieldFilter;
+export default StringFieldFilter;

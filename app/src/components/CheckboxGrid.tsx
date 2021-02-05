@@ -14,9 +14,9 @@ import * as selectors from "../recoil/selectors";
 import { SampleContext } from "../utils/context";
 import { labelTypeIsFilterable, LABEL_LISTS } from "../utils/labels";
 
-import Filter from "./Filter";
-import NumericFieldFilter from "./NumericFieldFilter";
-import StringFieldFilter from "./StringFieldFilter";
+import Filter from "./Filters/Filter";
+import NumericFieldFilter from "./Filters/NumericFieldFilter";
+import StringFieldFilter from "./Filters/StringFieldFilter";
 
 const GLOBAL_ATOMS = {
   colorByLabel: atoms.colorByLabel,
