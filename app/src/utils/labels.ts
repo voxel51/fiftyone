@@ -70,6 +70,8 @@ export const VALID_NUMERIC_TYPES = [
   "fiftyone.core.fields.IntField",
 ];
 
+export const STRING_FIELD = "fiftyone.core.fields.StringField";
+
 export const RESERVED_FIELDS = [
   "_id",
   "_rand",

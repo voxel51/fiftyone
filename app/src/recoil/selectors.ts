@@ -7,6 +7,7 @@ import { generateColorMap } from "../utils/colors";
 import { isElectron } from "../utils/generic";
 import {
   RESERVED_FIELDS,
+  STRING_FIELD,
   VALID_LABEL_TYPES,
   VALID_LIST_TYPES,
   VALID_NUMERIC_TYPES,
@@ -1026,6 +1027,14 @@ export const isNumericField = selectorFamily({
   },
 });
 
+export const isStringField = selectorFamily({
+  key: "isStringField",
+  get: (name) => ({ get }) => {
+    const map = get(scalarsMap("sample"));
+    return map[name] === STRING_FIELD;
+  },
+});
+
 export const sampleModalFilter = selector({
   key: "sampleModalFilter",
   get: ({ get }) => {
@@ -1070,21 +1079,25 @@ export const sampleModalFilter = selector({
   },
 });
 
-const resolveFilter = (bounds, range, none, labels = null) => {
-  const defaultRange = range.every((r, i) => r === bounds[i]);
-  if (defaultRange && none && (labels === null || labels.length === 0)) {
+const resolveFilter = ({ num, str }) => {
+  const defaultRange = num.range.every((r, i) => r === num.bounds[i]);
+  if (
+    defaultRange &&
+    num.none &&
+    (str.values === null || str.values.length === 0)
+  ) {
     return null;
   }
   const filter = {};
   if (!defaultRange) {
-    filter.range = range;
-    filter.none = none;
+    filter.range = num.range;
+    filter.none = num.none;
   }
-  if (defaultRange && !none) {
-    filter.none = none;
+  if (defaultRange && !num.none) {
+    filter.none = num.none;
   }
-  if (labels !== null && labels.length > 0) {
-    filter.labels = labels;
+  if (str.values !== null && str.values.length > 0) {
+    filter.values = str.values;
   }
   if (Object.keys(filter).length > 0) return filter;
   return null;
@@ -1100,7 +1113,29 @@ export const filterIncludeLabels = selectorFamily({
     const bounds = get(labelConfidenceBounds(path));
     const range = get(filterLabelConfidenceRange(path));
     const none = get(filterLabelIncludeNoConfidence(path));
-    const filter = resolveFilter(bounds, range, none, labels);
+    const noLabel = get(filterIncludeNoLabel(path));
+    const filter = resolveFilter({
+      num: { bounds, range, none },
+      str: { values: labels, none: noLabel, path: "label" },
+    });
+    set(filterStage(path), filter);
+  },
+});
+
+export const filterIncludeNoLabel = selectorFamily({
+  key: "filterIncludeNoLabel",
+  get: (path) => ({ get }) => {
+    const filter = get(filterStage(path));
+    return filter?.labels?.values;
+  },
+  set: (path) => ({ get, set }, noLabel) => {
+    const bounds = get(labelConfidenceBounds(path));
+    const range = get(filterLabelConfidenceRange(path));
+    const none = get(filterLabelIncludeNoConfidence(path));
+    const filter = resolveFilter({
+      num: { bounds, range, none },
+      str: { values: labels, none: noLabel, path: "label" },
+    });
     set(filterStage(path), filter);
   },
 });
@@ -1164,9 +1199,37 @@ export const filterNumericFieldIncludeNone = selectorFamily({
   },
 });
 
+export const filterStringFieldValues = selectorFamily({
+  key: "filterStringFieldValues",
+  get: (path) => ({ get }) => {
+    const filter = get(filterStage(path));
+    return filter?.values ?? [];
+  },
+  set: (path) => ({ get, set }, range) => {
+    const values = get(numericFieldBounds(path));
+    const none = get(filterNumericFieldIncludeNone(path));
+    const filter = resolveFilter(bounds, range, none);
+    set(filterStage(path), filter);
+  },
+});
+
+export const filterStringFieldIncludeNone = selectorFamily({
+  key: "filterStringFieldIncludeNone",
+  get: (path) => ({ get }) => {
+    const filter = get(filterStage(path));
+    return filter?.none ?? true;
+  },
+  set: (path) => ({ get, set }, none) => {
+    const range = get(filterNumericFieldRange(path));
+    const bounds = get(numericFieldBounds(path));
+    const filter = resolveFilter(bounds, range, none);
+    set(filterStage(path), filter);
+  },
+});
+
 export const stringFieldValues = selectorFamily({
   key: "stringFieldValues",
-  get: ({ get }) => {
+  get: (fieldName) => ({ get }) => {
     const stats = get(datasetStats);
     return ["eww"];
   },

@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useRef } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
+import { Checkbox, FormControlLabel } from "@material-ui/core";
 import styled, { ThemeContext } from "styled-components";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
@@ -242,7 +243,12 @@ const StringFilterContainer = styled.div`
   margin: 0.25rem 0;
 `;
 
-const StringFilter = React.memo(({ name, valuesAtom, selectedValuesAtom }) => {
+type Props = {
+  valuesAtom: RecoilState<string[]>;
+  selectedValuesAtom: RecoilState<string[]>;
+};
+
+const StringFilter = React.memo(({ valuesAtom, selectedValuesAtom }: Props) => {
   const theme = useContext(ThemeContext);
   const values = useRecoilValue(valuesAtom);
   const [selectedValues, setSelectedValues] = useRecoilState(
@@ -351,5 +357,79 @@ const StringFilter = React.memo(({ name, valuesAtom, selectedValuesAtom }) => {
     </>
   );
 });
+
+const NamedStringFilterContainer = styled.div`
+  padding-bottom: 0.5rem;
+  margin: 3px;
+  font-weight: bold;
+`;
+
+const NamedStringFilterHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+`;
+
+type NamedProps = {
+  valuesAtom: RecoilState<string[]>;
+  selectedValuesAtom: RecoilState<string[]>;
+  includeNoneAtom: RecoilState<boolean>;
+  maxMin?: number;
+  minMax?: number;
+  name: string;
+  valueName: string;
+  color: string;
+};
+
+export const NamedStringFilter = ({
+  color,
+  name,
+  valueName,
+  includeNoneAtom,
+  ...stringFilterProps
+}: NamedProps) => {
+  const [includeNone, setIncludeNone] = useRecoilState(includeNoneAtom);
+  const [values, setValues] = useRecoilState(
+    stringFilterProps.selectedValuesAtom
+  );
+
+  return (
+    <NamedStringFilterContainer>
+      <NamedStringFilterHeader>
+        {name}
+        {values.length || !includeNone ? (
+          <a
+            style={{ cursor: "pointer", textDecoration: "underline" }}
+            onClick={() => {
+              setValues([]);
+              setIncludeNone(true);
+            }}
+          >
+            reset
+          </a>
+        ) : null}
+      </NamedStringFilterHeader>
+      <StringFilterContainer>
+        <StringFilter {...stringFilterProps} />
+        <FormControlLabel
+          label={
+            <div style={{ lineHeight: "20px", fontSize: 14 }}>
+              Filter no {valueName}
+            </div>
+          }
+          control={
+            <Checkbox
+              checked={!includeNone}
+              onChange={() => setIncludeNone(!includeNone)}
+              style={{
+                padding: "0 5px",
+                color,
+              }}
+            />
+          }
+        />
+      </StringFilterContainer>
+    </NamedStringFilterContainer>
+  );
+};
 
 export default StringFilter;

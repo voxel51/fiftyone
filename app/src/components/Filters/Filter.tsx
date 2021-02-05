@@ -64,7 +64,6 @@ const Filter = React.memo(({ expanded, style, entry, ...rest }) => {
     onStart: () => !expanded && setOverflow("hidden"),
     onRest: () => expanded && setOverflow("visible"),
   });
-  console.log(rest);
 
   return (
     <animated.div style={{ ...props, overflow }}>
@@ -72,8 +71,10 @@ const Filter = React.memo(({ expanded, style, entry, ...rest }) => {
         <div style={{ margin: 3 }}>
           <StringFilter
             name={"Labels"}
+            valueName={"label"}
             valuesAtom={selectors.labelClasses(entry.path)}
             selectedValuesAtom={rest.includeLabels(entry.path)}
+            includeNoneAtom={rest.includeNoLabelAtom(entry.path)}
           />
           <HiddenObjectFilter entry={entry} />
           {CONFIDENCE_LABELS.includes(entry.type) && (

@@ -75,49 +75,45 @@ export type Range = [RangeValue, RangeValue];
 type Props = {
   rangeAtom: RecoilState<Range>;
   boundsAtom: RecoilState<Range>;
-  maxMin?: number;
-  minMax?: number;
 };
 
-const RangeSlider = React.memo(
-  ({ rangeAtom, boundsAtom, maxMin, minMax }: Props) => {
-    const [value, setValue] = useRecoilState<Range>(rangeAtom);
-    const bounds = useRecoilValue<Range>(boundsAtom);
-    const [localValue, setLocalValue] = useState<Range>([null, null]);
-    useEffect(() => {
-      JSON.stringify(value) !== JSON.stringify(localValue) &&
-        setLocalValue(value);
-    }, [value]);
+const RangeSlider = React.memo(({ rangeAtom, boundsAtom }: Props) => {
+  const [value, setValue] = useRecoilState<Range>(rangeAtom);
+  const bounds = useRecoilValue<Range>(boundsAtom);
+  const [localValue, setLocalValue] = useState<Range>([null, null]);
+  useEffect(() => {
+    JSON.stringify(value) !== JSON.stringify(localValue) &&
+      setLocalValue(value);
+  }, [value]);
 
-    const hasBounds = bounds.every((b) => b !== null);
-    const hasValue = value.every((v) => v !== null);
-    return hasBounds && hasValue ? (
-      <SliderContainer>
-        {bounds[0]}
-        <Slider
-          value={[...localValue]}
-          onChange={(_, v: Range) => setLocalValue(v)}
-          onChangeCommitted={(_, v: Range) => {
-            setValue(v);
-          }}
-          classes={{
-            thumb: "thumb",
-            track: "track",
-            rail: "rail",
-            active: "active",
-            valueLabel: "valueLabel",
-          }}
-          aria-labelledby="range-slider"
-          valueLabelDisplay={"on"}
-          max={bounds[1]}
-          min={bounds[0]}
-          step={(bounds[1] - bounds[0]) / 100}
-        />
-        {bounds[1]}
-      </SliderContainer>
-    ) : null;
-  }
-);
+  const hasBounds = bounds.every((b) => b !== null);
+  const hasValue = value.every((v) => v !== null);
+  return hasBounds && hasValue ? (
+    <SliderContainer>
+      {bounds[0]}
+      <Slider
+        value={[...localValue]}
+        onChange={(_, v: Range) => setLocalValue(v)}
+        onChangeCommitted={(_, v: Range) => {
+          setValue(v);
+        }}
+        classes={{
+          thumb: "thumb",
+          track: "track",
+          rail: "rail",
+          active: "active",
+          valueLabel: "valueLabel",
+        }}
+        aria-labelledby="range-slider"
+        valueLabelDisplay={"on"}
+        max={bounds[1]}
+        min={bounds[0]}
+        step={(bounds[1] - bounds[0]) / 100}
+      />
+      {bounds[1]}
+    </SliderContainer>
+  ) : null;
+});
 
 const NamedRangeSliderContainer = styled.div`
   padding-bottom: 0.5rem;
