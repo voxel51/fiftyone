@@ -1099,9 +1099,9 @@ const resolveFilter = ({ num, str }) => {
   if (str) {
     filter.values = {};
     if (str.values !== null && str.values.length > 0) {
-      filter.values.includes = str.values;
+      filter.values.include = str.values;
     }
-    if (filter.values.includes || str.none === false) {
+    if (filter.values.include || str.none === false) {
       filter.values.none = str.none;
     }
   }
@@ -1113,7 +1113,7 @@ export const filterIncludeLabels = selectorFamily({
   key: "filterIncludeLabels",
   get: (path) => ({ get }) => {
     const filter = get(filterStage(path));
-    return filter?.labels ?? [];
+    return filter?.values?.include ?? [];
   },
   set: (path) => ({ get, set }, labels) => {
     const bounds = get(labelConfidenceBounds(path));
@@ -1132,17 +1132,20 @@ export const filterIncludeNoLabel = selectorFamily({
   key: "filterIncludeNoLabel",
   get: (path) => ({ get }) => {
     const filter = get(filterStage(path));
-    return filter?.labels?.values || true;
+    console.log(filter);
+    return filter?.values?.none || true;
   },
   set: (path) => ({ get, set }, noLabel) => {
     const bounds = get(labelConfidenceBounds(path));
     const range = get(filterLabelConfidenceRange(path));
     const none = get(filterLabelIncludeNoConfidence(path));
     const labels = get(filterIncludeLabels(path));
+    console.log(path, noLabel);
     const filter = resolveFilter({
       num: { bounds, range, none },
       str: { values: labels, none: noLabel, path: "label" },
     });
+    console.log(filter);
     set(filterStage(path), filter);
   },
 });
@@ -1248,6 +1251,11 @@ export const stringFieldValues = selectorFamily({
   key: "stringFieldValues",
   get: (fieldName) => ({ get }) => {
     const stats = get(datasetStats);
-    return ["eww"];
+    return (get(datasetStats) ?? []).reduce((acc, cur) => {
+      if (cur.name === fieldName && cur._CLS === LABELS_CLS) {
+        return cur.result;
+      }
+      return acc;
+    }, []);
   },
 });

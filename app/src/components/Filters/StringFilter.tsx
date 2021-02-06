@@ -246,117 +246,114 @@ const StringFilterContainer = styled.div`
 type Props = {
   valuesAtom: RecoilState<string[]>;
   selectedValuesAtom: RecoilState<string[]>;
+  valueName: string;
 };
 
-const StringFilter = React.memo(({ valuesAtom, selectedValuesAtom }: Props) => {
-  const theme = useContext(ThemeContext);
-  const values = useRecoilValue(valuesAtom);
-  const [selectedValues, setSelectedValues] = useRecoilState(
-    selectedValuesAtom
-  );
-  const [state, send] = useMachine(stringFilterMachine);
-  const inputRef = useRef();
+const StringFilter = React.memo(
+  ({ valuesAtom, selectedValuesAtom, valueName }: Props) => {
+    const theme = useContext(ThemeContext);
+    const values = useRecoilValue(valuesAtom);
+    const [selectedValues, setSelectedValues] = useRecoilState(
+      selectedValuesAtom
+    );
+    const [state, send] = useMachine(stringFilterMachine);
+    const inputRef = useRef();
 
-  useEffect(() => {
-    const filtered = selectedValues.filter((c) => values.includes(c));
-    filtered.length !== selectedValues.length && setSelectedValues(filtered);
-  }, [values, selectedValues]);
+    useEffect(() => {
+      const filtered = selectedValues.filter((c) => values.includes(c));
+      filtered.length !== selectedValues.length && setSelectedValues(filtered);
+    }, [values, selectedValues]);
 
-  useEffect(() => {
-    send({ type: "SET_VALUES", values });
-  }, [values]);
+    useEffect(() => {
+      send({ type: "SET_VALUES", values });
+    }, [values]);
 
-  useOutsideClick(inputRef, () => send("BLUR"));
-  const { inputValue, results, currentResult, selected } = state.context;
+    useOutsideClick(inputRef, () => send("BLUR"));
+    const { inputValue, results, currentResult, selected } = state.context;
 
-  useEffect(() => {
-    if (JSON.stringify(selected) !== JSON.stringify(selectedValues)) {
-      send({ type: "SET_SELECTED", selected: selectedValues });
-    }
-  }, [selectedValues]);
+    useEffect(() => {
+      if (JSON.stringify(selected) !== JSON.stringify(selectedValues)) {
+        send({ type: "SET_SELECTED", selected: selectedValues });
+      }
+    }, [selectedValues]);
 
-  useEffect(() => {
-    if (
-      (state.event.type === "COMMIT" && state.context.valid) ||
-      state.event.type === "REMOVE" ||
-      state.event.type === "CLEAR"
-    ) {
-      setSelectedValues(state.context.selected);
-    }
-  }, [state.event]);
+    useEffect(() => {
+      if (
+        (state.event.type === "COMMIT" && state.context.valid) ||
+        state.event.type === "REMOVE" ||
+        state.event.type === "CLEAR"
+      ) {
+        setSelectedValues(state.context.selected);
+      }
+    }, [state.event]);
 
-  return (
-    <>
-      <FilterHeader>
-        {name}{" "}
-        {selected.length ? (
-          <a onClick={() => send({ type: "CLEAR" })}>clear {selected.length}</a>
-        ) : null}
-      </FilterHeader>
-      <StringFilterContainer>
-        <div ref={inputRef}>
-          <StringInput
-            value={inputValue}
-            placeholder={"+ add label"}
-            onFocus={() => state.matches("reading") && send("EDIT")}
-            onBlur={() => {
-              state.matches("editing.searchResults.notHovering") &&
-                send("BLUR");
-            }}
-            onChange={(e) => send({ type: "CHANGE", value: e.target.value })}
-            onKeyPress={(e) => {
-              if (e.key === "Enter") {
-                send({ type: "COMMIT", value: e.target.value });
-              }
-            }}
-            onKeyDown={(e) => {
-              switch (e.key) {
-                case "Escape":
+    return (
+      <>
+        <StringFilterContainer>
+          <div ref={inputRef}>
+            <StringInput
+              value={inputValue}
+              placeholder={`+ add ${valueName}`}
+              onFocus={() => state.matches("reading") && send("EDIT")}
+              onBlur={() => {
+                state.matches("editing.searchResults.notHovering") &&
                   send("BLUR");
-                  break;
-                case "ArrowDown":
-                  send("NEXT_RESULT");
-                  break;
-                case "ArrowUp":
-                  send("PREVIOUS_RESULT");
-                  break;
-              }
-            }}
-          />
-          {state.matches("editing") && (
-            <SearchResults
-              results={results.filter((r) => !selected.includes(r)).sort()}
-              send={send}
-              currentResult={currentResult}
-              style={{
-                position: "absolute",
-                top: "0.25rem",
-                fontSize: 14,
-                maxHeight: 294,
-                overflowY: "scroll",
+              }}
+              onChange={(e) => send({ type: "CHANGE", value: e.target.value })}
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  send({ type: "COMMIT", value: e.target.value });
+                }
+              }}
+              onKeyDown={(e) => {
+                switch (e.key) {
+                  case "Escape":
+                    send("BLUR");
+                    break;
+                  case "ArrowDown":
+                    send("NEXT_RESULT");
+                    break;
+                  case "ArrowUp":
+                    send("PREVIOUS_RESULT");
+                    break;
+                }
               }}
             />
-          )}
-        </div>
-        {selected.length ? (
-          <Selected>
-            {selected.map((s) => (
-              <StringButton
-                key={s}
-                onClick={() => {
-                  send({ type: "REMOVE", value: s });
+            {state.matches("editing") && (
+              <SearchResults
+                results={results.filter((r) => !selected.includes(r)).sort()}
+                send={send}
+                currentResult={currentResult}
+                style={{
+                  position: "absolute",
+                  top: "0.25rem",
+                  fontSize: 14,
+                  maxHeight: 294,
+                  overflowY: "scroll",
                 }}
-              >
-                {s + " "}
-                <a style={{ color: theme.fontDark }}>x</a>
-              </StringButton>
-            ))}
-          </Selected>
-        ) : null}
-      </StringFilterContainer>
-    </>
-  );
-});
+              />
+            )}
+          </div>
+          {selected.length ? (
+            <Selected>
+              {selected.map((s) => (
+                <StringButton
+                  key={s}
+                  onClick={() => {
+                    send({ type: "REMOVE", value: s });
+                  }}
+                >
+                  {s + " "}
+                  <a style={{ color: theme.fontDark }}>x</a>
+                </StringButton>
+              ))}
+            </Selected>
+          ) : null}
+        </StringFilterContainer>
+      </>
+    );
+  }
+);
 
 const NamedStringFilterContainer = styled.div`
   padding-bottom: 0.5rem;
@@ -387,58 +384,59 @@ type NamedProps = {
   color: string;
 };
 
-export const NamedStringFilter = ({
-  color,
-  name,
-  valueName,
-  includeNoneAtom,
-  ...stringFilterProps
-}: NamedProps) => {
-  const [includeNone, setIncludeNone] = useRecoilState(includeNoneAtom);
-  const [values, setValues] = useRecoilState(
-    stringFilterProps.selectedValuesAtom
-  );
+export const NamedStringFilter = React.memo(
+  React.forwardRef(
+    (
+      { color, name, includeNoneAtom, ...stringFilterProps }: NamedProps,
+      ref
+    ) => {
+      const [includeNone, setIncludeNone] = useRecoilState(includeNoneAtom);
+      const [values, setValues] = useRecoilState(
+        stringFilterProps.selectedValuesAtom
+      );
 
-  return (
-    <NamedStringFilterContainer>
-      <NamedStringFilterHeader>
-        {name}
-        {values.length || !includeNone ? (
-          <a
-            style={{ cursor: "pointer", textDecoration: "underline" }}
-            onClick={() => {
-              setValues([]);
-              setIncludeNone(true);
-            }}
-          >
-            reset
-          </a>
-        ) : null}
-      </NamedStringFilterHeader>
-      <StringFilterContainer>
-        <StringFilter {...stringFilterProps} />
-        <CheckboxContainer>
-          <FormControlLabel
-            label={
-              <div style={{ lineHeight: "20px", fontSize: 14 }}>
-                Filter no {valueName}
-              </div>
-            }
-            control={
-              <Checkbox
-                checked={!includeNone}
-                onChange={() => setIncludeNone(!includeNone)}
-                style={{
-                  padding: "0 5px",
-                  color,
+      return (
+        <NamedStringFilterContainer ref={ref}>
+          <NamedStringFilterHeader>
+            {name}
+            {values.length || !includeNone ? (
+              <a
+                style={{ cursor: "pointer", textDecoration: "underline" }}
+                onClick={() => {
+                  setValues([]);
+                  setIncludeNone(true);
                 }}
+              >
+                reset
+              </a>
+            ) : null}
+          </NamedStringFilterHeader>
+          <StringFilterContainer>
+            <StringFilter {...stringFilterProps} />
+            <CheckboxContainer>
+              <FormControlLabel
+                label={
+                  <div style={{ lineHeight: "20px", fontSize: 14 }}>
+                    Filter no {stringFilterProps.valueName}
+                  </div>
+                }
+                control={
+                  <Checkbox
+                    checked={!includeNone}
+                    onChange={() => setIncludeNone(!includeNone)}
+                    style={{
+                      padding: "0 5px",
+                      color,
+                    }}
+                  />
+                }
               />
-            }
-          />
-        </CheckboxContainer>
-      </StringFilterContainer>
-    </NamedStringFilterContainer>
-  );
-};
+            </CheckboxContainer>
+          </StringFilterContainer>
+        </NamedStringFilterContainer>
+      );
+    }
+  )
+);
 
 export default StringFilter;

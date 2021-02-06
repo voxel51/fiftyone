@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 
 import * as selectors from "../../recoil/selectors";
-import StringFilter from "./StringFilter";
+import { NamedStringFilter } from "./StringFilter";
 import { animated, useSpring } from "react-spring";
 import useMeasure from "react-use-measure";
 
@@ -23,11 +23,13 @@ const StringFieldFilter = ({ expanded, entry }) => {
 
   return (
     <animated.div style={{ ...props, overflow }}>
-      <StringFilter
+      <NamedStringFilter
         name={"Values"}
         valueName={"value"}
+        color={entry.color}
         selectedValuesAtom={selectedValuesAtom}
         valuesAtom={valuesAtom}
+        includeNoneAtom={includeNoneAtom}
         ref={ref}
       />
     </animated.div>
