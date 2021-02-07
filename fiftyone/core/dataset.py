@@ -17,6 +17,7 @@ import string
 
 from bson import ObjectId
 import mongoengine.errors as moe
+from pymongo import UpdateOne
 from pymongo.errors import BulkWriteError
 
 import eta.core.serial as etas
@@ -958,6 +959,30 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 sample.frames._save(insert=True)
 
         return [str(d["_id"]) for d in dicts]
+
+    def _bulk_update(self, sample_ids, updates, ordered=False):
+        ops = [
+            UpdateOne({"_id": _id}, update)
+            for _id, update in zip(sample_ids, updates)
+        ]
+        self._bulk_write(ops, ordered=ordered)
+
+        """
+        coll = self._sample_collection
+        with fou.ProgressBar() as pb:
+            for _id, update in zip(pb(sample_ids), updates):
+                coll.update_one({"_id": _id}, update)
+        """
+
+    def _bulk_write(self, ops, ordered=False):
+        try:
+            for ops_batch in fou.iter_batches(ops, 100000):  # mongodb limit
+                self._sample_collection.bulk_write(
+                    list(ops_batch), ordered=ordered
+                )
+        except BulkWriteError as bwe:
+            msg = bwe.details["writeErrors"][0]["errmsg"]
+            raise ValueError(msg) from bwe
 
     def merge_samples(
         self,
