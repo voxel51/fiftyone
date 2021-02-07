@@ -3748,6 +3748,7 @@ def _parse_field_name(sample_collection, field_name, auto_unwind):
         schema = sample_collection.get_field_schema()
 
     list_fields = set()
+    other_list_fields = set()
 
     # Parse explicit array references
     chunks = field_name.split("[]")
@@ -3770,25 +3771,31 @@ def _parse_field_name(sample_collection, field_name, auto_unwind):
         )
 
     # Detect certain list fields automatically
-    if auto_unwind:
-        if isinstance(root_field, fof.ListField):
+    if isinstance(root_field, fof.ListField):
+        if auto_unwind:
             list_fields.add(root_field_name)
+        elif root_field_name not in list_fields:
+            other_list_fields.add(root_field_name)
 
-        if isinstance(root_field, fof.EmbeddedDocumentField):
-            if root_field.document_type in fol._LABEL_LIST_FIELDS:
-                prefix = (
-                    root_field_name
-                    + "."
-                    + root_field.document_type._LABEL_LIST_FIELD
-                )
-                if field_name.startswith(prefix):
+    if isinstance(root_field, fof.EmbeddedDocumentField):
+        if root_field.document_type in fol._LABEL_LIST_FIELDS:
+            prefix = (
+                root_field_name
+                + "."
+                + root_field.document_type._LABEL_LIST_FIELD
+            )
+            if field_name.startswith(prefix):
+                if auto_unwind:
                     list_fields.add(prefix)
+                elif prefix not in list_fields:
+                    other_list_fields.add(prefix)
 
     # sorting is important here because one must unwind field `x` before
     # embedded field `x.y`
     list_fields = sorted(list_fields)
+    other_list_fields = sorted(other_list_fields)
 
-    return field_name, is_frame_field, list_fields
+    return field_name, is_frame_field, list_fields, other_list_fields
 
 
 def _is_array_field(sample_collection, field_name):

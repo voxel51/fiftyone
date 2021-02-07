@@ -1888,7 +1888,7 @@ def _make_set_field_pipeline(sample_collection, field, expr):
 
 
 def _parse_field_name(sample_collection, field_name):
-    path, is_frame_field, list_fields = sample_collection._parse_field_name(
+    path, is_frame_field, list_fields, _ = sample_collection._parse_field_name(
         field_name
     )
 

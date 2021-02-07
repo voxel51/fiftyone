@@ -10,6 +10,7 @@ import numpy as np
 import eta.core.utils as etau
 
 import fiftyone.core.expressions as foe
+from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
@@ -1167,40 +1168,89 @@ class Values(Aggregation):
         return values
 
     def to_mongo(self, sample_collection):
-        path, pipeline = self._parse_field_name(
+        path, pipeline, other_list_fields = self._parse_field_name(
             sample_collection, auto_unwind=False
         )
 
-        self._found_array_field = sample_collection._is_array_field(
-            self._field_name
-        )
+        self._found_array_field = sample_collection._is_array_field(path)
+
+        if len(other_list_fields) > 1:
+            raise ValueError(
+                "This method supports at most one unwound list field"
+            )
+
+        if not other_list_fields:
+            if self._omit_missing:
+                pipeline.append(
+                    {"$match": {"$expr": {"$gt": ["$" + path, None]}}}
+                )
+            else:
+                pipeline.append(
+                    {
+                        "$set": {
+                            path: {
+                                "$cond": {
+                                    "if": {"$gt": ["$" + path, None]},
+                                    "then": "$" + path,
+                                    "else": self._missing_value,
+                                }
+                            }
+                        }
+                    }
+                )
+
+            pipeline.append(
+                {"$group": {"_id": None, "values": {"$push": "$" + path}}}
+            )
+
+            return pipeline
+
+        root = other_list_fields[0]
+        leaf = path[len(root) + 1 :]
 
         if self._omit_missing:
-            pipeline.append({"$match": {"$expr": {"$gt": ["$" + path, None]}}})
+            pipeline.extend(
+                [
+                    {"$match": {"$expr": {"$gt": ["$" + root, None]}}},
+                    {
+                        "$set": {
+                            root: F(root)
+                            .filter(F(leaf) != None)
+                            .map(F(leaf))
+                            .to_mongo()
+                        }
+                    },
+                ]
+            )
         else:
             pipeline.append(
                 {
                     "$set": {
-                        path: {
-                            "$cond": {
-                                "if": {"$gt": ["$" + path, None]},
-                                "then": "$" + path,
-                                "else": self._missing_value,
-                            }
-                        }
+                        root: F(root)
+                        .map(
+                            (F(leaf) != None).if_else(
+                                F(leaf), self._missing_value
+                            )
+                        )
+                        .to_mongo()
                     }
                 }
             )
 
         pipeline.append(
-            {"$group": {"_id": None, "values": {"$push": "$" + path}}}
+            {"$group": {"_id": None, "values": {"$push": "$" + root}}}
         )
 
         return pipeline
 
 
 def _parse_field_name(sample_collection, field_name, auto_unwind, expr):
-    path, is_frame_field, list_fields = sample_collection._parse_field_name(
+    (
+        path,
+        is_frame_field,
+        list_fields,
+        other_list_fields,
+    ) = sample_collection._parse_field_name(
         field_name, auto_unwind=auto_unwind
     )
 
@@ -1225,7 +1275,10 @@ def _parse_field_name(sample_collection, field_name, auto_unwind, expr):
     else:
         pipeline.append({"$project": {path: True}})
 
-    return path, pipeline
+    if auto_unwind:
+        return path, pipeline
+
+    return path, pipeline, other_list_fields
 
 
 def _get_mongo_expr(expr, prefix=None):
