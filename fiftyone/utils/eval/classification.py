@@ -72,13 +72,15 @@ def evaluate_classifications(
     #             sample.save()
 
     if classes is None:
-        classes = sorted(set(ytrue) | set(ypred))
+        classes = set(ytrue) | set(ypred)
+        classes.discard(None)
+        classes = sorted(classes)
 
     return ClassificationResults(ytrue, ypred, confs, classes)
 
 
 def evaluate_binary_classifications(
-    samples, pos_label, pred_field, gt_field="ground_truth", eval_field=None,
+    samples, classes, pred_field, gt_field="ground_truth", eval_field=None,
 ):
     """Evaluates the binary classification predictions in the given samples
     with respect to the specified ground truth labels.
@@ -88,7 +90,7 @@ def evaluate_binary_classifications(
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        pos_label: the label string for the positive class of the binary task
+        classes: the ``(neg_label, pos_label)`` label strings for the task
         pred_field: the name of the field containing the predicted
             :class:`fiftyone.core.labels.Classification` instances to evaluate
         gt_field ("ground_truth"): the name of the field containing the ground
@@ -99,6 +101,8 @@ def evaluate_binary_classifications(
     Returns:
         a :class:`BinaryClassificationResults`
     """
+    pos_label = classes[-1]
+
     gt = gt_field + ".label"
     pred = pred_field + ".label"
     pred_conf = pred_field + ".confidence"
@@ -141,10 +145,6 @@ def evaluate_binary_classifications(
     #
     #             sample[eval_field] = fol.Classification(label=eval_label)
     #             sample.save()
-
-    classes = set(ytrue) | set(ypred)
-    classes.discard(pos_label)
-    classes = sorted(classes) + [pos_label]
 
     return BinaryClassificationResults(ytrue, ypred, confs, classes)
 
