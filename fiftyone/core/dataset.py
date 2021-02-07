@@ -275,6 +275,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return super().__getattribute__(name)
 
     @property
+    def _dataset(self):
+        return self
+
+    @property
     def media_type(self):
         """The media type of the dataset."""
         return self._doc.media_type
@@ -346,10 +350,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def deleted(self):
         """Whether the dataset is deleted."""
         return self._deleted
-
-    @property
-    def _dataset(self):
-        return self
 
     def summary(self):
         """Returns a string summary of the dataset.
@@ -928,7 +928,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _add_samples_batch(self, samples, expand_schema):
         samples = [s.copy() if s._in_db else s for s in samples]
 
-        if self.media_type is None and len(samples) > 0:
+        if self.media_type is None and samples:
             self.media_type = samples[0].media_type
 
         if expand_schema:
@@ -1213,9 +1213,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._save()
 
-    def _save(self, view=None):
+    def _save(self, view=None, fields=None):
         if view is not None:
-            _save_view(view)
+            _save_view(view, fields)
 
         self._doc.save()
 
@@ -2552,24 +2552,33 @@ def _clone_dataset_or_view(dataset_or_view, name):
     _create_indexes(sample_collection_name, frames_collection_name)
 
 
-def _save_view(view):
+def _save_view(view, fields):
     dataset = view._dataset
-    dataset._sample_collection.aggregate(
-        view._pipeline(attach_frames=False)
-        + [{"$out": dataset._sample_collection_name}]
-    )
-
-    doc_ids = [str(_id) for _id in dataset._sample_collection.distinct("_id")]
-    fos.Sample._refresh_backing_docs(dataset._sample_collection_name, doc_ids)
-
-    for field_name in view._get_missing_fields():
-        dataset._sample_doc_cls._delete_field_schema(field_name, False)
 
     if dataset.media_type == fom.VIDEO:
         # @todo support this
         raise ValueError(
             "Saving views into video datasets is not yet supported"
         )
+
+    pipeline = view._pipeline(attach_frames=False)
+
+    merge = fields is not None
+
+    if merge:
+        pipeline.append({"$project": {f: True for f in fields}})
+        pipeline.append({"$merge": dataset._sample_collection_name})
+    else:
+        pipeline.append({"$out": dataset._sample_collection_name})
+
+    dataset._sample_collection.aggregate(pipeline)
+
+    doc_ids = [str(_id) for _id in dataset._sample_collection.distinct("_id")]
+    fos.Sample._refresh_backing_docs(dataset._sample_collection_name, doc_ids)
+
+    if not merge:
+        for field_name in view._get_missing_fields():
+            dataset._sample_doc_cls._delete_field_schema(field_name, False)
 
 
 def _make_sample_collection_name():

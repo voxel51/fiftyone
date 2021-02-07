@@ -11,6 +11,8 @@ import numbers
 
 from bson import ObjectId
 
+import eta.core.utils as etau
+
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.media as fom
@@ -326,13 +328,20 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._clear_frame_field(field_name, view=self)
 
-    def save(self):
+    def save(self, fields=None):
         """Overwrites the underlying dataset with the contents of the view.
 
         **WARNING:** this will permanently delete any omitted, filtered, or
         otherwise modified contents of the dataset.
+
+        Args:
+            fields (None): an optional field or list of fields to save. If
+                specified, only these fields are overwritten
         """
-        self._dataset._save(view=self)
+        if etau.is_str(fields):
+            fields = [fields]
+
+        self._dataset._save(view=self, fields=fields)
 
     def clone(self, name=None):
         """Creates a new dataset containing only the contents of the view.
