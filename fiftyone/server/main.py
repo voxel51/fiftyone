@@ -510,7 +510,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
     @classmethod
     async def on_page(cls, self, page, page_length=20):
-        """Sends a pagination response to the current client
+        """Sends a pagination response to the current client.
 
         Args:
             page: the page number
@@ -828,7 +828,9 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                 }
                 for agg, result in zip(
                     aggs,
-                    await view._async_aggregate(cls.sample_collection(), aggs),
+                    await view._async_aggregate(
+                        cls.sample_collection(), aggs, graceful=True
+                    ),
                 )
             ]
         else:
@@ -972,7 +974,7 @@ def _parse_count_values(result, field):
 
 
 async def _gather_results(col, aggs, fields, view, ticks=None):
-    response = await view._async_aggregate(col, aggs)
+    response = await view._async_aggregate(col, aggs, graceful=True)
 
     sorters = {
         foa.HistogramValues: _parse_histogram_values,
@@ -1057,7 +1059,7 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
             fields.append(field)
 
     aggs = _numeric_bounds(fields, paths)
-    bounds = await view._async_aggregate(coll, aggs)
+    bounds = await view._async_aggregate(coll, aggs, graceful=True)
     aggregations = []
     ticks = []
     for range_, field, path in zip(bounds, fields, paths):

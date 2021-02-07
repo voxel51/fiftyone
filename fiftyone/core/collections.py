@@ -3309,7 +3309,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
 
-    def aggregate(self, aggregations, _attach_frames=True):
+    def aggregate(self, aggregations, graceful=False, _attach_frames=True):
         """Aggregates one or more
         :class:`fiftyone.core.aggregations.Aggregation` instances.
 
@@ -3321,10 +3321,12 @@ class SampleCollection(object):
             aggregations: an :class:`fiftyone.core.aggregations.Aggregation` or
                 iterable of :class:`<fiftyone.core.aggregations.Aggregation>`
                 instances
+            graceful (False): whether to return the default result for any
+                aggregations that fail rather than raising an error
 
         Returns:
             an aggregation result or list of aggregation results corresponding
-            to the input aggregations
+            to the input aggregation(s)
         """
         scalar_result, aggregations, facets = self._build_aggregation(
             aggregations
@@ -3332,17 +3334,18 @@ class SampleCollection(object):
         if len(aggregations) == 0:
             return []
 
-        # pylint: disable=no-member
         pipeline = self._pipeline(
             pipeline=facets, attach_frames=_attach_frames
         )
         try:
-            # pylint: disable=no-member
-            result = next(self._dataset._sample_collection.aggregate(pipeline))
+            result = self._dataset._sample_collection.aggregate(pipeline)
+            result = next(result)
         except StopIteration:
             pass
 
-        return self._process_aggregations(aggregations, result, scalar_result)
+        return self._process_aggregations(
+            aggregations, result, scalar_result, graceful
+        )
 
     def _pipeline(self, pipeline=None, attach_frames=True):
         """Returns the MongoDB aggregation pipeline for the collection.
@@ -3397,7 +3400,9 @@ class SampleCollection(object):
             }
         ]
 
-    async def _async_aggregate(self, sample_collection, aggregations):
+    async def _async_aggregate(
+        self, sample_collection, aggregations, graceful=False
+    ):
         scalar_result, aggregations, facets = self._build_aggregation(
             aggregations
         )
@@ -3414,7 +3419,9 @@ class SampleCollection(object):
         except StopIteration:
             pass
 
-        return self._process_aggregations(aggregations, result, scalar_result)
+        return self._process_aggregations(
+            aggregations, result, scalar_result, graceful
+        )
 
     def _build_aggregation(self, aggregations):
         scalar_result = isinstance(aggregations, foa.Aggregation)
@@ -3434,13 +3441,20 @@ class SampleCollection(object):
 
         return scalar_result, aggregations, [{"$facet": pipelines}]
 
-    def _process_aggregations(self, aggregations, result, scalar_result):
+    def _process_aggregations(
+        self, aggregations, result, scalar_result, graceful
+    ):
         results = []
         for idx, agg in enumerate(aggregations):
             try:
-                results.append(agg.parse_result(result[str(idx)][0]))
+                _result = agg.parse_result(result[str(idx)][0])
             except:
-                results.append(agg.default_result())
+                if graceful:
+                    _result = agg.default_result()
+                else:
+                    raise
+
+            results.append(_result)
 
         return results[0] if scalar_result else results
 
