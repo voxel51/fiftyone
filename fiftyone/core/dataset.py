@@ -2332,9 +2332,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if value is None:
                     continue
 
-                self._sample_doc_cls.add_implied_field(
-                    field_name, value, frame_doc_cls=self._frame_doc_cls,
-                )
+                self._sample_doc_cls.add_implied_field(field_name, value)
                 fields = self.get_field_schema(include_private=True)
 
         self._reload()
@@ -2353,9 +2351,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if value is None:
                     continue
 
-                self._frame_doc_cls.add_implied_field(
-                    field_name, value, frame_doc_cls=self._frame_doc_cls,
-                )
+                self._frame_doc_cls.add_implied_field(field_name, value)
                 fields = self.get_frame_field_schema(include_private=True)
 
         return fields
