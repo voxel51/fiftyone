@@ -431,6 +431,34 @@ class SampleCollection(object):
                     % (field_name, ftype, field)
                 )
 
+    def set_values(self, field_name, values):
+        """Sets the field or embedded field on each sample in the collection to
+        the given values.
+
+        This function is an efficient implementation of the following loop::
+
+            for sample, value in zip(sample_collection, values):
+                sample.embedded.field.name = value
+                sample.save()
+
+        Args:
+            field_name: a field or ``embedded.field.name``
+            values: an iterable of values
+        """
+        if self._is_frame_field(field_name):
+            raise ValueError("set_values() only supports sample fields")
+
+        root = field_name.split(".", 1)[0]
+        if root not in self.get_field_schema():
+            raise ValueError(
+                "Field '%s' does not exist on collection '%s'"
+                % (root, self.name)
+            )
+
+        sample_ids = self._get_sample_ids()
+        updates = [{"$set": {field_name: value}} for value in values]
+        self._dataset._bulk_update(sample_ids, updates)
+
     def compute_metadata(self, overwrite=False, num_workers=None):
         """Populates the ``metadata`` field of all samples in the collection.
 

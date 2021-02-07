@@ -13,6 +13,7 @@ import bson
 
 import eta.core.utils as etau
 
+from fiftyone.core.odm.document import MongoEngineBaseDocument
 import fiftyone.core.utils as fou
 
 
@@ -1354,7 +1355,7 @@ class ViewExpression(object):
                 )
             )
 
-            print(cases_view.count_values("uniqueness"))
+            print(view.count_values("uniqueness"))
 
         Args:
             mapping: a dict mapping boolean :class:`ViewExpression` keys to
@@ -1483,6 +1484,9 @@ class ViewExpression(object):
             and not value_or_expr.is_frozen
         ):
             value = self.apply(value_or_expr)
+        elif isinstance(value_or_expr, MongoEngineBaseDocument):
+            value = value_or_expr.to_dict()
+            value.pop("_id", None)
         else:
             value = value_or_expr
 

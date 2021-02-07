@@ -2032,6 +2032,10 @@ class SetField(ViewStage):
     """
 
     def __init__(self, field, expr):
+        if isinstance(expr, MongoEngineBaseDocument):
+            expr = expr.to_dict()
+            expr.pop("_id", None)
+
         self._field = field
         self._expr = expr
 
