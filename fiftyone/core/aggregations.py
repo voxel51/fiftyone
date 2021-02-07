@@ -1235,7 +1235,7 @@ def _parse_field_name(sample_collection, field_name, auto_unwind, expr):
     (
         path,
         is_frame_field,
-        list_fields,
+        unwind_list_fields,
         other_list_fields,
     ) = sample_collection._parse_field_name(
         field_name, auto_unwind=auto_unwind
@@ -1252,7 +1252,9 @@ def _parse_field_name(sample_collection, field_name, auto_unwind, expr):
     if expr is not None:
         # Expression are applied to terminal lists themselves, not their
         # elements, unless `[]` was explicitly specified
-        list_fields = [lf for lf in list_fields if lf != field_name]
+        unwind_list_fields = [
+            lf for lf in unwind_list_fields if lf != field_name
+        ]
         other_list_fields = [
             lf for lf in other_list_fields if lf != field_name
         ]
@@ -1260,7 +1262,7 @@ def _parse_field_name(sample_collection, field_name, auto_unwind, expr):
     if len(other_list_fields) > 1:
         raise ValueError("Aggregations support at most one unwound list field")
 
-    for list_field in list_fields:
+    for list_field in unwind_list_fields:
         pipeline.append({"$unwind": "$" + list_field})
 
     if other_list_fields:

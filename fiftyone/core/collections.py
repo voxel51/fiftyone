@@ -3740,20 +3740,20 @@ def _parse_field_name(sample_collection, field_name, auto_unwind):
     is_frame_field = sample_collection._is_frame_field(field_name)
     if is_frame_field:
         if field_name == "frames":
-            return field_name, is_frame_field, []
+            return field_name, is_frame_field, [], []
 
         schema = sample_collection.get_frame_field_schema()
         field_name = field_name[len(sample_collection._FRAMES_PREFIX) :]
     else:
         schema = sample_collection.get_field_schema()
 
-    list_fields = set()
+    unwind_list_fields = set()
     other_list_fields = set()
 
     # Parse explicit array references
     chunks = field_name.split("[]")
     for idx in range(len(chunks) - 1):
-        list_fields.add("".join(chunks[: (idx + 1)]))
+        unwind_list_fields.add("".join(chunks[: (idx + 1)]))
 
     # Array references [] have been stripped
     field_name = "".join(chunks)
@@ -3773,8 +3773,8 @@ def _parse_field_name(sample_collection, field_name, auto_unwind):
     # Detect certain list fields automatically
     if isinstance(root_field, fof.ListField):
         if auto_unwind:
-            list_fields.add(root_field_name)
-        elif root_field_name not in list_fields:
+            unwind_list_fields.add(root_field_name)
+        elif root_field_name not in unwind_list_fields:
             other_list_fields.add(root_field_name)
 
     if isinstance(root_field, fof.EmbeddedDocumentField):
@@ -3786,16 +3786,16 @@ def _parse_field_name(sample_collection, field_name, auto_unwind):
             )
             if field_name.startswith(prefix):
                 if auto_unwind:
-                    list_fields.add(prefix)
-                elif prefix not in list_fields:
+                    unwind_list_fields.add(prefix)
+                elif prefix not in unwind_list_fields:
                     other_list_fields.add(prefix)
 
     # sorting is important here because one must unwind field `x` before
     # embedded field `x.y`
-    list_fields = sorted(list_fields)
+    unwind_list_fields = sorted(unwind_list_fields)
     other_list_fields = sorted(other_list_fields)
 
-    return field_name, is_frame_field, list_fields, other_list_fields
+    return field_name, is_frame_field, unwind_list_fields, other_list_fields
 
 
 def _is_array_field(sample_collection, field_name):
