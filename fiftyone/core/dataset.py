@@ -2551,6 +2551,7 @@ def _clone_dataset_or_view(dataset_or_view, name):
     dataset._doc.reload()
     dataset_doc = dataset._doc.copy()
     dataset_doc.name = name
+    dataset_doc.persistent = False
     dataset_doc.sample_collection_name = sample_collection_name
 
     if view is not None:
