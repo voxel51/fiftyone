@@ -1905,7 +1905,9 @@ class ViewExpression(object):
             a :class:`ViewExpression`
         """
         expr._freeze_prefix("$$this")
-        return ViewExpression({"$filter": {"input": self, "cond": expr}})
+        return ViewExpression(
+            {"$filter": {"input": self, "as": "this", "cond": expr}}
+        )
 
     def map(self, expr):
         """Applies the given expression to the elements of this expression,
@@ -3174,7 +3176,13 @@ class ViewField(ViewExpression):
         if prefix:
             return prefix + "." + self._expr if self._expr else prefix
 
-        return "$" + self._expr if self._expr else "$this"
+        if self._expr:
+            return "$" + self._expr
+
+        if self.is_frozen:
+            return "$$ROOT"
+
+        return "$$CURRENT"
 
 
 class ObjectId(ViewExpression):
