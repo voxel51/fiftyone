@@ -286,10 +286,11 @@ class ClassificationResults(object):
         )
         print(report_str)
 
-    def plot_confusion_matrix(self, block=False, **kwargs):
+    def plot_confusion_matrix(self, ax=None, block=False, **kwargs):
         """Plots a confusion matrix for the results.
 
         Args:
+            ax (None): an optional matplotlib axis to plot in
             block (False): whether to block execution when the plot is
                 displayed via ``matplotlib.pyplot.show(block=block)``
             **kwargs: optional keyword arguments for
@@ -301,7 +302,7 @@ class ClassificationResults(object):
         display = skm.ConfusionMatrixDisplay(
             confusion_matrix=confusion_matrix, display_labels=self.classes,
         )
-        display.plot(**kwargs)
+        display.plot(ax=ax, **kwargs)
         plt.show(block=block)
 
 
@@ -338,10 +339,13 @@ class BinaryClassificationResults(ClassificationResults):
             self.ytrue, self.scores, pos_label=self.pos_label, average=average
         )
 
-    def plot_pr_curve(self, block=False, **kwargs):
+    def plot_pr_curve(self, average="micro", ax=None, block=False, **kwargs):
         """Plots a precision-recall (PR) curve for the results.
 
         Args:
+            average ("micro"): the averaging strategy to use when computing
+                average precision
+            ax (None): an optional matplotlib axis to plot in
             block (False): whether to block execution when the plot is
                 displayed via ``matplotlib.pyplot.show(block=block)``
             **kwargs: optional keyword arguments for
@@ -350,17 +354,20 @@ class BinaryClassificationResults(ClassificationResults):
         precision, recall, _ = skm.precision_recall_curve(
             self.ytrue, self.scores, pos_label=self.pos_label
         )
+        avg_precision = self.average_precision()
         display = skm.PrecisionRecallDisplay(
             precision=precision, recall=recall
         )
-        display.plot(**kwargs)
+        label = "AP = %.2f" % avg_precision
+        display.plot(ax=ax, label=label, **kwargs)
         plt.show(block=block)
 
-    def plot_roc_curve(self, block=False, **kwargs):
+    def plot_roc_curve(self, ax=None, block=False, **kwargs):
         """Plots a receiver operating characteristic (ROC) curve for the
         results.
 
         Args:
+            ax (None): an optional matplotlib axis to plot in
             block (False): whether to block execution when the plot is
                 displayed via ``matplotlib.pyplot.show(block=block)``
             **kwargs: optional keyword arguments for
@@ -371,5 +378,5 @@ class BinaryClassificationResults(ClassificationResults):
         )
         roc_auc = skm.auc(fpr, tpr)
         display = skm.RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc)
-        display.plot(**kwargs)
+        display.plot(ax=ax, **kwargs)
         plt.show(block=block)
