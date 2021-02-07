@@ -967,12 +967,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ]
         self._bulk_write(ops, ordered=ordered)
 
-        """
-        coll = self._sample_collection
-        with fou.ProgressBar() as pb:
-            for _id, update in zip(pb(sample_ids), updates):
-                coll.update_one({"_id": _id}, update)
-        """
+        # Equivalent with loops
+        # coll = self._sample_collection
+        # with fou.ProgressBar() as pb:
+        #     for _id, update in zip(pb(sample_ids), updates):
+        #         coll.update_one({"_id": _id}, update)
 
         fos.Sample._reload_docs(self._sample_collection_name)
 

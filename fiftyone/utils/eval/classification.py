@@ -56,22 +56,20 @@ def evaluate_classifications(
         samples.set_field(eval_field, F(gt) == F(pred)).save(eval_field)
 
     # Equivalent with loops
-    """
-    ytrue = []
-    ypred = []
-    confs = []
-    with fou.ProgressBar() as pb:
-        for sample in pb(samples.select_fields([pred_field, gt_field])):
-            gt_label = sample[gt_field].label
-            pred_label = sample[pred_field].label
-            pred_conf = sample[pred_field].confidence
-            ytrue.append(gt_label)
-            ypred.append(pred_label)
-            confs.append(pred_conf)
-            if eval_field:
-                sample[eval_field] = gt_label == pred_label
-                sample.save()
-    """
+    # ytrue = []
+    # ypred = []
+    # confs = []
+    # with fou.ProgressBar() as pb:
+    #     for sample in pb(samples.select_fields([pred_field, gt_field])):
+    #         gt_label = sample[gt_field].label
+    #         pred_label = sample[pred_field].label
+    #         pred_conf = sample[pred_field].confidence
+    #         ytrue.append(gt_label)
+    #         ypred.append(pred_label)
+    #         confs.append(pred_conf)
+    #         if eval_field:
+    #             sample[eval_field] = gt_label == pred_label
+    #             sample.save()
 
     if classes is None:
         classes = sorted(set(ytrue) | set(ypred))
@@ -124,27 +122,25 @@ def evaluate_binary_classifications(
         ).save(eval_field)
 
     # Equivalent with loops
-    """
-    ytrue = []
-    ypred = []
-    confs = []
-    with fou.ProgressBar() as pb:
-        for sample in pb(samples.select_fields([pred_field, gt_field])):
-            gt_label = sample[gt_field].label
-            pred_label = sample[pred_field].label
-            pred_conf = sample[pred_field].confidence
-            ytrue.append(gt_label)
-            ypred.append(pred_label)
-            confs.append(pred_conf)
-            if eval_field:
-                if gt_label == pos_label:
-                    eval_label = "TP" if pred_label == pos_label else "FN"
-                else:
-                    eval_label = "TN" if pred_label != pos_label else "FP"
-
-                sample[eval_field] = fol.Classification(label=eval_label)
-                sample.save()
-    """
+    # ytrue = []
+    # ypred = []
+    # confs = []
+    # with fou.ProgressBar() as pb:
+    #     for sample in pb(samples.select_fields([pred_field, gt_field])):
+    #         gt_label = sample[gt_field].label
+    #         pred_label = sample[pred_field].label
+    #         pred_conf = sample[pred_field].confidence
+    #         ytrue.append(gt_label)
+    #         ypred.append(pred_label)
+    #         confs.append(pred_conf)
+    #         if eval_field:
+    #             if gt_label == pos_label:
+    #                 eval_label = "TP" if pred_label == pos_label else "FN"
+    #             else:
+    #                 eval_label = "TN" if pred_label != pos_label else "FP"
+    #
+    #             sample[eval_field] = fol.Classification(label=eval_label)
+    #             sample.save()
 
     classes = set(ytrue) | set(ypred)
     classes.discard(pos_label)
@@ -181,15 +177,21 @@ def evaluate_top_k_classifications(
     """
     targets_map = {label: idx for idx, label in enumerate(classes)}
 
-    # warning: this extracts a `num_samples x num_classes` array of logits
+    # This extracts a `num_samples x num_classes` array of logits
     ytrue, logits = samples.aggregate(
         [foa.Values(gt_field + ".label"), foa.Values(pred_field + ".logits")]
     )
 
-    targets = [targets_map[label] for label in ytrue]
-    logits = np.stack(logits)
-    top_ks = np.argpartition(logits, -k, axis=-1)[:, -k:]
-    correct = [t in top_k for t, top_k in zip(targets, top_ks)]
+    correct = []
+    for _label, _logits in zip(ytrue, logits):
+        if _logits is not None:
+            target = targets_map[_label]
+            top_k = np.argpartition(_logits, -k)[-k:]
+            _correct = target in top_k
+        else:
+            _correct = False
+
+        correct.append(_correct)
 
     if eval_field:
         samples._add_field_if_necessary(eval_field, fof.BooleanField)
@@ -198,22 +200,18 @@ def evaluate_top_k_classifications(
     top_k_accuracy = np.mean(correct)
 
     # Equivalent with loops
-    """
-    targets_map = {label: idx for idx, label in enumerate(classes)}
-
-    num_correct = 0
-    with fou.ProgressBar() as pb:
-        for sample in pb(samples.select_fields([gt_field, pred_field])):
-            idx = targets_map[sample[gt_field].label]
-            logits = sample[pred_field].logits
-            in_top_k = idx in np.argpartition(logits, -k)[-k:]
-            num_correct += int(in_top_k)
-            if eval_field:
-                sample[eval_field] = in_top_k
-                sample.save()
-
-    top_k_accuracy = num_correct / len(samples)
-    """
+    # num_correct = 0
+    # with fou.ProgressBar() as pb:
+    #     for sample in pb(samples.select_fields([gt_field, pred_field])):
+    #         idx = targets_map[sample[gt_field].label]
+    #         logits = sample[pred_field].logits
+    #         in_top_k = idx in np.argpartition(logits, -k)[-k:]
+    #         num_correct += int(in_top_k)
+    #         if eval_field:
+    #             sample[eval_field] = in_top_k
+    #             sample.save()
+    #
+    # top_k_accuracy = num_correct / len(samples)
 
     return top_k_accuracy
 
