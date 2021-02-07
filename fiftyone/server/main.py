@@ -828,9 +828,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                 }
                 for agg, result in zip(
                     aggs,
-                    await view._async_aggregate(
-                        cls.sample_collection(), aggs, graceful=True
-                    ),
+                    await view._async_aggregate(cls.sample_collection(), aggs),
                 )
             ]
         else:
@@ -974,7 +972,7 @@ def _parse_count_values(result, field):
 
 
 async def _gather_results(col, aggs, fields, view, ticks=None):
-    response = await view._async_aggregate(col, aggs, graceful=True)
+    response = await view._async_aggregate(col, aggs)
 
     sorters = {
         foa.HistogramValues: _parse_histogram_values,
@@ -1059,7 +1057,7 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
             fields.append(field)
 
     aggs = _numeric_bounds(fields, paths)
-    bounds = await view._async_aggregate(coll, aggs, graceful=True)
+    bounds = await view._async_aggregate(coll, aggs)
     aggregations = []
     ticks = []
     for range_, field, path in zip(bounds, fields, paths):

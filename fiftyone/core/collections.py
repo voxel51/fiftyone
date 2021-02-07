@@ -2819,7 +2819,7 @@ class SampleCollection(object):
 
         .. note::
 
-            Unlike other aggregations, :meth:`value` does not *automatically*
+            Unlike other aggregations, :meth:`values` does not *automatically*
             unwind top-level list fields and label list fields. This default
             behavior ensures that there is a 1-1 correspondence between the
             elements of the output list and the samples in the collection.
@@ -3309,7 +3309,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _add_view_stage()")
 
-    def aggregate(self, aggregations, graceful=False, _attach_frames=True):
+    def aggregate(self, aggregations, _attach_frames=True):
         """Aggregates one or more
         :class:`fiftyone.core.aggregations.Aggregation` instances.
 
@@ -3321,8 +3321,6 @@ class SampleCollection(object):
             aggregations: an :class:`fiftyone.core.aggregations.Aggregation` or
                 iterable of :class:`<fiftyone.core.aggregations.Aggregation>`
                 instances
-            graceful (False): whether to return the default result for any
-                aggregations that fail rather than raising an error
 
         Returns:
             an aggregation result or list of aggregation results corresponding
@@ -3331,21 +3329,17 @@ class SampleCollection(object):
         scalar_result, aggregations, facets = self._build_aggregation(
             aggregations
         )
-        if len(aggregations) == 0:
+        if not aggregations:
             return []
 
         pipeline = self._pipeline(
             pipeline=facets, attach_frames=_attach_frames
         )
-        try:
-            result = self._dataset._sample_collection.aggregate(pipeline)
-            result = next(result)
-        except StopIteration:
-            pass
 
-        return self._process_aggregations(
-            aggregations, result, scalar_result, graceful
-        )
+        result = self._dataset._sample_collection.aggregate(pipeline)
+        result = next(result)
+
+        return self._process_aggregations(aggregations, result, scalar_result)
 
     def _pipeline(self, pipeline=None, attach_frames=True):
         """Returns the MongoDB aggregation pipeline for the collection.
@@ -3400,9 +3394,7 @@ class SampleCollection(object):
             }
         ]
 
-    async def _async_aggregate(
-        self, sample_collection, aggregations, graceful=False
-    ):
+    async def _async_aggregate(self, sample_collection, aggregations):
         scalar_result, aggregations, facets = self._build_aggregation(
             aggregations
         )
@@ -3412,16 +3404,10 @@ class SampleCollection(object):
         # pylint: disable=no-member
         pipeline = self._pipeline(pipeline=facets)
 
-        try:
-            # pylint: disable=no-member
-            result = await sample_collection.aggregate(pipeline).to_list(1)
-            result = result[0]
-        except StopIteration:
-            pass
+        result = await sample_collection.aggregate(pipeline).to_list(1)
+        result = result[0]
 
-        return self._process_aggregations(
-            aggregations, result, scalar_result, graceful
-        )
+        return self._process_aggregations(aggregations, result, scalar_result)
 
     def _build_aggregation(self, aggregations):
         scalar_result = isinstance(aggregations, foa.Aggregation)
@@ -3441,20 +3427,14 @@ class SampleCollection(object):
 
         return scalar_result, aggregations, [{"$facet": pipelines}]
 
-    def _process_aggregations(
-        self, aggregations, result, scalar_result, graceful
-    ):
+    def _process_aggregations(self, aggregations, result, scalar_result):
         results = []
         for idx, agg in enumerate(aggregations):
-            try:
-                _result = agg.parse_result(result[str(idx)][0])
-            except:
-                if graceful:
-                    _result = agg.default_result()
-                else:
-                    raise
-
-            results.append(_result)
+            _result = result[str(idx)]
+            if _result:
+                results.append(agg.parse_result(_result[0]))
+            else:
+                results.append(agg.default_result())
 
         return results[0] if scalar_result else results
 
