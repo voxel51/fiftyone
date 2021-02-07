@@ -198,8 +198,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     FiftyOne datasets ingest and store the labels for all samples internally;
     raw media is stored on disk and the dataset provides paths to the data.
 
-    See :doc:`this guide </user_guide/basics>` for an overview of the basics of
-    working with FiftyOne datasets.
+    See https://voxel51.com/docs/fiftyone/user_guide/basics.html for an
+    overview of working with FiftyOne datasets.
 
     Args:
         name (None): the name of the dataset. By default,
@@ -974,6 +974,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 coll.update_one({"_id": _id}, update)
         """
 
+        fos.Sample._reload_docs(self._sample_collection_name)
+
     def _bulk_write(self, ops, ordered=False):
         try:
             for ops_batch in fou.iter_batches(ops, 100000):  # mongodb limit
@@ -1198,7 +1200,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._sample_collection.delete_one({"_id": ObjectId(sample_id)})
 
-        fos.Sample._reset_backing_docs(
+        fos.Sample._reset_docs(
             self._sample_collection_name, doc_ids=[sample_id]
         )
 
@@ -1226,7 +1228,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
         )
 
-        fos.Sample._reset_backing_docs(
+        fos.Sample._reset_docs(
             self._sample_collection_name, doc_ids=sample_ids
         )
 
@@ -1275,11 +1277,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         updated such that ``sample.in_dataset == False``.
         """
         self._sample_doc_cls.drop_collection()
-        fos.Sample._reset_backing_docs(self._sample_collection_name)
+        fos.Sample._reset_docs(self._sample_collection_name)
 
         if self.media_type == fom.VIDEO:
             self._frame_doc_cls.drop_collection()
-            fos.Sample._reset_backing_docs(self._frame_collection_name)
+            fos.Sample._reset_docs(self._frame_collection_name)
 
     def delete(self):
         """Deletes the dataset.
@@ -2599,8 +2601,8 @@ def _save_view(view, fields):
 
     dataset._sample_collection.aggregate(pipeline)
 
-    doc_ids = [str(_id) for _id in dataset._sample_collection.distinct("_id")]
-    fos.Sample._refresh_backing_docs(dataset._sample_collection_name, doc_ids)
+    doc_ids = [str(_id) for _id in dataset._get_sample_ids()]
+    fos.Sample._reload_docs(dataset._sample_collection_name, doc_ids=doc_ids)
 
     if not merge:
         for field_name in view._get_missing_fields():
@@ -2730,7 +2732,7 @@ def _get_sample_ids(samples_or_ids):
         return [samples_or_ids.id]
 
     if isinstance(samples_or_ids, foc.SampleCollection):
-        return [s.id for s in samples_or_ids.select_fields()]
+        return [str(_id) for _id in samples_or_ids._get_sample_ids()]
 
     if isinstance(next(iter(samples_or_ids)), (fos.Sample, fos.SampleView)):
         return [s.id for s in samples_or_ids]

@@ -25,9 +25,6 @@ import fiftyone.core.view as fov
 logger = logging.getLogger(__name__)
 
 
-_FRAMES_PREFIX = "frames."
-
-
 class StateDescription(etas.Serializable):
     """Class that describes the shared state between the FiftyOne App and
     a corresponding :class:`fiftyone.core.session.Session`.
@@ -151,7 +148,9 @@ class DatasetStatistics(object):
         schemas = [("", view.get_field_schema())]
         aggregations = [foa.Count()]
         if view.media_type == fom.VIDEO:
-            schemas.append((_FRAMES_PREFIX, view.get_frame_field_schema()))
+            schemas.append(
+                (view._FRAMES_PREFIX, view.get_frame_field_schema())
+            )
             aggregations.extend([foa.Count("frames")])
 
         default_fields = fosa.get_default_sample_fields()
@@ -159,7 +158,8 @@ class DatasetStatistics(object):
         for prefix, schema in schemas:
             for field_name, field in schema.items():
                 if field_name in default_fields or (
-                    prefix == _FRAMES_PREFIX and field_name == "frame_number"
+                    prefix == view._FRAMES_PREFIX
+                    and field_name == "frame_number"
                 ):
                     continue
 

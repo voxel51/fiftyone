@@ -41,19 +41,15 @@ class DatasetView(foc.SampleCollection):
     :class:`fiftyone.core.sample.Sample` objects, since they may contain a
     subset of the sample's content.
 
-    Example use::
-
-        # Print paths for 5 random samples from the test split of a dataset
-        view = dataset.match_tags("test").take(5)
-        for sample in view:
-            print(sample.filepath)
+    See https://voxel51.com/docs/fiftyone/user_guide/using_views.html for an
+    overview of working with dataset views.
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
     """
 
     def __init__(self, dataset):
-        self._dataset = dataset
+        self.__dataset__ = dataset
         self._stages = []
 
     def __len__(self):
@@ -79,6 +75,10 @@ class DatasetView(foc.SampleCollection):
         view = self.__class__(self._dataset)
         view._stages = deepcopy(self._stages)
         return view
+
+    @property
+    def _dataset(self):
+        return self.__dataset__
 
     @property
     def media_type(self):

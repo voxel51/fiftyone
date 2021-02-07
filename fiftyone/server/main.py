@@ -53,9 +53,6 @@ dbs.start()
 db = foo.get_async_db_conn()
 
 
-_FRAMES_PREFIX = "frames."
-
-
 class RequestHandler(tornado.web.RequestHandler):
     """"Base class for HTTP request handlers"""
 
@@ -708,7 +705,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             for k, v in frame_dict.items():
                 if isinstance(v, dict) and "_cls" in v:
                     field_labels = _make_frame_labels(
-                        k, v, frame_number, prefix=_FRAMES_PREFIX
+                        k, v, frame_number, prefix=view._FRAMES_PREFIX
                     )
                     frame_labels.merge_labels(field_labels)
 
@@ -1025,7 +1022,7 @@ def _count_values(f, view):
     fields = []
     schemas = [(view.get_field_schema(), "")]
     if view.media_type == fom.VIDEO:
-        schemas.append((view.get_frame_field_schema(), _FRAMES_PREFIX))
+        schemas.append((view.get_frame_field_schema(), view._FRAMES_PREFIX))
 
     for schema, prefix in schemas:
         for name, field in schema.items():
@@ -1107,11 +1104,12 @@ def _make_filter_stages(dataset, filters):
         frame_field_schema = dataset.get_frame_field_schema()
     else:
         frame_field_schema = None
+
     stages = []
     for path, args in filters.items():
-        if path.startswith(_FRAMES_PREFIX):
+        if path.startswith(dataset._FRAMES_PREFIX):
             schema = frame_field_schema
-            field = schema[path[len(_FRAMES_PREFIX) :]]
+            field = schema[path[len(dataset._FRAMES_PREFIX) :]]
         else:
             schema = field_schema
             field = schema[path]
