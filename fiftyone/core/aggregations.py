@@ -178,7 +178,7 @@ class Bounds(Aggregation):
         return d["min"], d["max"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline = self._parse_field_name(sample_collection)
+        path, pipeline, _ = self._parse_field_name(sample_collection)
 
         pipeline.append(
             {
@@ -301,7 +301,7 @@ class Count(Aggregation):
         if self._field_name is None:
             return [{"$count": "count"}]
 
-        path, pipeline = self._parse_field_name(sample_collection)
+        path, pipeline, _ = self._parse_field_name(sample_collection)
 
         if sample_collection.media_type != fom.VIDEO or path != "frames":
             pipeline.append({"$match": {"$expr": {"$gt": ["$" + path, None]}}})
@@ -408,7 +408,7 @@ class CountValues(Aggregation):
         return {i["k"]: i["count"] for i in d["result"]}
 
     def to_mongo(self, sample_collection):
-        path, pipeline = self._parse_field_name(sample_collection)
+        path, pipeline, _ = self._parse_field_name(sample_collection)
 
         pipeline += [
             {"$group": {"_id": "$" + path, "count": {"$sum": 1}}},
@@ -522,7 +522,7 @@ class Distinct(Aggregation):
         return sorted(d["values"])
 
     def to_mongo(self, sample_collection):
-        path, pipeline = self._parse_field_name(sample_collection)
+        path, pipeline, _ = self._parse_field_name(sample_collection)
 
         pipeline += [
             {"$match": {"$expr": {"$gt": ["$" + path, None]}}},
@@ -667,7 +667,7 @@ class HistogramValues(Aggregation):
         return self._parse_result_edges(d)
 
     def to_mongo(self, sample_collection):
-        path, pipeline = self._parse_field_name(sample_collection)
+        path, pipeline, _ = self._parse_field_name(sample_collection)
 
         if self._auto:
             pipeline.append(
@@ -850,7 +850,7 @@ class Mean(Aggregation):
         return d["mean"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline = self._parse_field_name(sample_collection)
+        path, pipeline, _ = self._parse_field_name(sample_collection)
 
         pipeline.append(
             {"$group": {"_id": None, "mean": {"$avg": "$" + path}}}
@@ -953,7 +953,7 @@ class Std(Aggregation):
         return d["std"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline = self._parse_field_name(sample_collection)
+        path, pipeline, _ = self._parse_field_name(sample_collection)
 
         op = "$stdDevSamp" if self._sample else "$stdDevPop"
         pipeline.append({"$group": {"_id": None, "std": {op: "$" + path}}})
@@ -1049,7 +1049,7 @@ class Sum(Aggregation):
         return d["sum"]
 
     def to_mongo(self, sample_collection):
-        path, pipeline = self._parse_field_name(sample_collection)
+        path, pipeline, _ = self._parse_field_name(sample_collection)
 
         pipeline.append({"$group": {"_id": None, "sum": {"$sum": "$" + path}}})
 
@@ -1174,44 +1174,20 @@ class Values(Aggregation):
 
         self._found_array_field = sample_collection._is_array_field(path)
 
-        if len(other_list_fields) > 1:
-            raise ValueError(
-                "This method supports at most one unwound list field"
-            )
-
-        if not other_list_fields:
-            if self._omit_missing:
-                pipeline.append(
-                    {"$match": {"$expr": {"$gt": ["$" + path, None]}}}
-                )
-            else:
-                pipeline.append(
-                    {
-                        "$set": {
-                            path: {
-                                "$cond": {
-                                    "if": {"$gt": ["$" + path, None]},
-                                    "then": "$" + path,
-                                    "else": self._missing_value,
-                                }
-                            }
-                        }
-                    }
-                )
-
-            pipeline.append(
-                {"$group": {"_id": None, "values": {"$push": "$" + path}}}
-            )
-
-            return pipeline
-
-        root = other_list_fields[0]
-        leaf = path[len(root) + 1 :]
+        if other_list_fields:
+            root = other_list_fields[0]
+            leaf = path[len(root) + 1 :]
+        else:
+            root = path
+            leaf = None
 
         if self._omit_missing:
-            pipeline.extend(
-                [
-                    {"$match": {"$expr": {"$gt": ["$" + root, None]}}},
+            pipeline.append(
+                {"$match": {"$expr": (F(root) != None).to_mongo()}}
+            )
+
+            if leaf:
+                pipeline.append(
                     {
                         "$set": {
                             root: F(root)
@@ -1219,10 +1195,9 @@ class Values(Aggregation):
                             .map(F(leaf))
                             .to_mongo()
                         }
-                    },
-                ]
-            )
-        else:
+                    }
+                )
+        elif leaf:
             pipeline.append(
                 {
                     "$set": {
@@ -1232,6 +1207,18 @@ class Values(Aggregation):
                                 F(leaf), self._missing_value
                             )
                         )
+                        .to_mongo()
+                    }
+                }
+            )
+        else:
+            # This is important, even when `self._missing_value is None`,
+            # because it inserts `None` for missing fields
+            pipeline.append(
+                {
+                    "$set": {
+                        root: (F(root) != None)
+                        .if_else(F(root), self._missing_value)
                         .to_mongo()
                     }
                 }
@@ -1263,20 +1250,43 @@ def _parse_field_name(sample_collection, field_name, auto_unwind, expr):
         pipeline = []
 
     if expr is not None:
-        # Don't unroll terminal lists unless explicitly requested
+        # Expression are applied to terminal lists themselves, not their
+        # elements, unless `[]` was explicitly specified
         list_fields = [lf for lf in list_fields if lf != field_name]
+        other_list_fields = [
+            lf for lf in other_list_fields if lf != field_name
+        ]
+
+    if len(other_list_fields) > 1:
+        raise ValueError("Aggregations support at most one unwound list field")
 
     for list_field in list_fields:
         pipeline.append({"$unwind": "$" + list_field})
 
-    if expr is not None:
-        expr = _get_mongo_expr(expr, prefix="$" + path)
-        pipeline.append({"$project": {path: expr}})
+    if other_list_fields:
+        root = other_list_fields[0]
+        leaf = path[len(root) + 1 :]
     else:
-        pipeline.append({"$project": {path: True}})
+        root = path
+        leaf = None
 
-    if auto_unwind:
-        return path, pipeline
+    if expr is not None:
+        if leaf:
+            expr = (
+                F(root)
+                .map(
+                    F().set_field(
+                        leaf, _get_mongo_expr(expr, prefix="$$this." + leaf)
+                    )
+                )
+                .to_mongo()
+            )
+        else:
+            expr = _get_mongo_expr(expr, prefix="$" + root)
+
+        pipeline.append({"$project": {root: expr}})
+    else:
+        pipeline.append({"$project": {root: True}})
 
     return path, pipeline, other_list_fields
 
