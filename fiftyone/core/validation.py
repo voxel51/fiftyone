@@ -79,6 +79,102 @@ def validate_collection(sample_collection):
         )
 
 
+def validate_image_collection(sample_collection):
+    """Validates that the provided samples are an image
+    :class:`fiftyone.core.collections.SampleCollection`.
+
+    Args:
+        sample_collection: a sample collection
+
+    Raises:
+        ValueError: if ``samples`` is not an image
+        :class:`fiftyone.core.collections.SampleCollection`
+    """
+    validate_collection(sample_collection)
+
+    if sample_collection.media_type != fom.IMAGE:
+        raise ValueError(
+            "Expected collection to have media type %s; found %s"
+            % (fom.IMAGE, sample_collection.media_type)
+        )
+
+
+def validate_video_collection(sample_collection):
+    """Validates that the provided samples are a video
+    :class:`fiftyone.core.collections.SampleCollection`.
+
+    Args:
+        sample_collection: a sample collection
+
+    Raises:
+        ValueError: if ``samples`` is not a video
+        :class:`fiftyone.core.collections.SampleCollection`
+    """
+    validate_collection(sample_collection)
+
+    if sample_collection.media_type != fom.VIDEO:
+        raise ValueError(
+            "Expected collection to have media type %s; found %s"
+            % (fom.VIDEO, sample_collection.media_type)
+        )
+
+
+def validate_collection_frame_label_fields(
+    sample_collection, field_names, allowed_label_types, same_type=False
+):
+    """Validates that the :class:`fiftyone.core.collections.SampleCollection`
+    has frame fields with the specified :class:`fiftyone.core.labels.Label`
+    types.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        field_names: a frame field name or iterable of frame field names
+        allowed_label_types: an iterable of allowed
+            :class:`fiftyone.core.labels.Label` types
+        same_type (False): whether to enforce that all fields have same type
+
+    Raises:
+        ValueError if the required conditions are not met
+    """
+    validate_video_collection(sample_collection)
+
+    if etau.is_str(field_names):
+        field_names = [field_names]
+
+    non_frame_fields = [
+        f
+        for f in field_names
+        if not f.startswith(sample_collection._FRAMES_PREFIX)
+    ]
+
+    if non_frame_fields:
+        raise ValueError(
+            "%s '%s' fields %s are not frame fields"
+            % (
+                sample_collection.__class__.__name__,
+                sample_collection.name,
+                non_frame_fields,
+            )
+        )
+
+    fields_map = {
+        f[len(sample_collection._FRAMES_PREFIX) :]: f for f in field_names
+    }
+
+    frames_schema = sample_collection.get_frames_field_schema(
+        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+    )
+
+    _validate_fields(
+        sample_collection,
+        fields_map,
+        frames_schema,
+        allowed_label_types,
+        same_type,
+    )
+
+
 def validate_collection_label_fields(
     sample_collection, field_names, allowed_label_types, same_type=False
 ):
@@ -96,27 +192,39 @@ def validate_collection_label_fields(
     Raises:
         ValueError if the required conditions are not met
     """
+    validate_collection(sample_collection)
+
     if etau.is_str(field_names):
         field_names = [field_names]
 
-    label_fields = sample_collection.get_field_schema(
+    fields_map = {f: f for f in field_names}
+
+    schema = sample_collection.get_field_schema(
         ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
     )
 
+    _validate_fields(
+        sample_collection, fields_map, schema, allowed_label_types, same_type,
+    )
+
+
+def _validate_fields(
+    sample_collection, fields_map, schema, allowed_label_types, same_type
+):
     label_types = {}
-    for field_name in field_names:
-        if field_name not in label_fields:
+    for field_name, full_name in fields_map.items():
+        if field_name not in schema:
             raise ValueError(
                 "%s '%s' has no label field '%s'"
                 % (
                     sample_collection.__class__.__name__,
                     sample_collection.name,
-                    field_name,
+                    full_name,
                 )
             )
 
-        label_type = label_fields[field_name].document_type
-        label_types[field_name] = label_type
+        label_type = schema[field_name].document_type
+        label_types[full_name] = label_type
 
         if label_type not in allowed_label_types:
             raise ValueError(
@@ -124,7 +232,7 @@ def validate_collection_label_fields(
                 % (
                     sample_collection.__class__.__name__,
                     sample_collection.name,
-                    field_name,
+                    full_name,
                     allowed_label_types,
                     label_type,
                 )
@@ -136,7 +244,7 @@ def validate_collection_label_fields(
             % (
                 sample_collection.__class__.__name__,
                 sample_collection.name,
-                field_names,
+                fields_map.values(),
                 label_types,
             )
         )
