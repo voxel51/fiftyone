@@ -2783,6 +2783,92 @@ class SampleCollection(object):
         """
         return self.aggregate(foa.Sum(field_name, expr=expr))
 
+    @aggregation
+    def values(
+        self, field_name, expr=None, omit_missing=False, missing_value=None
+    ):
+        """Extracts the values of a field from all samples in the collection.
+
+        .. note::
+
+            Unlike other aggregations, :meth:`value` does not *automatically*
+            unwind top-level list fields and label list fields. This default
+            behavior ensures that there is a 1-1 correspondence between the
+            elements of the output list and the samples in the collection.
+
+            You can opt-in to unwinding list fields using the ``[]`` syntax.
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        numeric_field=1.0,
+                        numeric_list_field=[1, 2, 3],
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        numeric_field=4.0,
+                        numeric_list_field=[1, 2],
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        numeric_field=None,
+                        numeric_list_field=None,
+                    ),
+                ]
+            )
+
+            #
+            # Get all values of a field
+            #
+
+            values = dataset.values("numeric_field")
+            print(values)  # [1.0, 4.0, None]
+
+            #
+            # Get all values of a list field
+            #
+
+            values = dataset.values("numeric_list_field")
+            print(values)  # [[1, 2, 3], [1, 2], None]
+
+            #
+            # Get all values of transformed field
+            #
+
+            values = dataset.values("numeric_field", expr=2 * (F() + 1))
+            print(values)  # [4.0, 10.0, None]
+
+        Args:
+            field_name: the name of the field to operate on
+            expr (None): an optional
+                :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                to apply to the field before aggregating
+            omit_missing (False): whether to omit missing or ``None``-valued
+                fields from the output list
+            missing_value (None): a value to insert for missing or
+                ``None``-valued fields. Only applicable when ``omit_missing``
+                is ``False``
+
+        Returns:
+            the list of values
+        """
+        return self.aggregate(
+            foa.Values(
+                field_name,
+                expr=expr,
+                omit_missing=omit_missing,
+                missing_value=missing_value,
+            )
+        )
+
     def draw_labels(
         self,
         anno_dir,

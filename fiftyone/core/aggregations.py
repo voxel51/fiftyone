@@ -11,6 +11,7 @@ import eta.core.utils as etau
 
 import fiftyone.core.expressions as foe
 import fiftyone.core.media as fom
+import fiftyone.core.utils as fou
 
 
 class Aggregation(object):
@@ -75,9 +76,9 @@ class Aggregation(object):
         """
         raise NotImplementedError("subclasses must implement default_result()")
 
-    def _parse_field_name(self, sample_collection):
+    def _parse_field_name(self, sample_collection, auto_unwind=True):
         return _parse_field_name(
-            sample_collection, self._field_name, expr=self._expr
+            sample_collection, self._field_name, auto_unwind, self._expr
         )
 
 
@@ -1054,9 +1055,153 @@ class Sum(Aggregation):
         return pipeline
 
 
-def _parse_field_name(sample_collection, field_name, expr=None):
+class Values(Aggregation):
+    """Extracts the values of the field from all samples in a collection.
+
+    .. note::
+
+        Unlike other aggregations, :class:`Values` does not *automatically*
+        unwind top-level list fields and label list fields. This default
+        behavior ensures that there is a 1-1 correspondence between the
+        elements of the output list and the samples in the collection.
+
+        You can opt-in to unwinding list fields using the ``[]`` syntax.
+
+    Examples::
+
+        import fiftyone as fo
+        from fiftyone import ViewField as F
+
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(
+                    filepath="/path/to/image1.png",
+                    numeric_field=1.0,
+                    numeric_list_field=[1, 2, 3],
+                ),
+                fo.Sample(
+                    filepath="/path/to/image2.png",
+                    numeric_field=4.0,
+                    numeric_list_field=[1, 2],
+                ),
+                fo.Sample(
+                    filepath="/path/to/image3.png",
+                    numeric_field=None,
+                    numeric_list_field=None,
+                ),
+            ]
+        )
+
+        #
+        # Get all values of a field
+        #
+
+        aggregation = fo.Values("numeric_field")
+        values = dataset.aggregate(aggregation)
+        print(values)  # [1.0, 4.0, None]
+
+        #
+        # Get all values of a list field
+        #
+
+        aggregation = fo.Values("numeric_list_field")
+        values = dataset.aggregate(aggregation)
+        print(values)  # [[1, 2, 3], [1, 2], None]
+
+        #
+        # Get all values of transformed field
+        #
+
+        aggregation = fo.Values("numeric_field", expr=2 * (F() + 1))
+        values = dataset.aggregate(aggregation)
+        print(values)  # [4.0, 10.0, None]
+
+    Args:
+        field_name: the name of the field to operate on
+        expr (None): an optional
+            :class:`fiftyone.core.expressions.ViewExpression` or
+            `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+            to apply to the field before aggregating
+        omit_missing (False): whether to omit missing or ``None``-valued fields
+            from the output list
+        missing_value (None): a value to insert for missing or ``None``-valued
+            fields. Only applicable when ``omit_missing`` is ``False``
+    """
+
+    def __init__(
+        self, field_name, expr=None, omit_missing=False, missing_value=None
+    ):
+        super().__init__(field_name, expr=expr)
+        self._omit_missing = omit_missing
+        self._missing_value = missing_value
+        self._found_array_field = False
+
+    def default_result(self):
+        """Returns the default result for this aggregation.
+
+        Returns:
+            ``[]``
+        """
+        return []
+
+    def parse_result(self, d):
+        """Parses the output of :meth:`to_mongo`.
+
+        Args:
+            d: the result dict
+
+        Returns:
+            the list of field values
+        """
+        if not self._found_array_field:
+            return d["values"]
+
+        values = []
+        for value in d["values"]:
+            if value is not None:
+                values.append(fou.deserialize_numpy_array(value))
+            else:
+                values.append(None)
+
+        return values
+
+    def to_mongo(self, sample_collection):
+        path, pipeline = self._parse_field_name(
+            sample_collection, auto_unwind=False
+        )
+
+        self._found_array_field = sample_collection._is_array_field(
+            self._field_name
+        )
+
+        if self._omit_missing:
+            pipeline.append({"$match": {"$expr": {"$gt": ["$" + path, None]}}})
+        else:
+            pipeline.append(
+                {
+                    "$set": {
+                        path: {
+                            "$cond": {
+                                "if": {"$gt": ["$" + path, None]},
+                                "then": "$" + path,
+                                "else": self._missing_value,
+                            }
+                        }
+                    }
+                }
+            )
+
+        pipeline.append(
+            {"$group": {"_id": None, "values": {"$push": "$" + path}}}
+        )
+
+        return pipeline
+
+
+def _parse_field_name(sample_collection, field_name, auto_unwind, expr):
     path, is_frame_field, list_fields = sample_collection._parse_field_name(
-        field_name
+        field_name, auto_unwind=auto_unwind
     )
 
     if is_frame_field:
