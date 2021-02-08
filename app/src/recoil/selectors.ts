@@ -1096,13 +1096,13 @@ const resolveFilter = ({ num, str }) => {
   if (defaultRange && !num.none) {
     filter.none = num.none;
   }
-  console.log(str);
   if (str) {
-    filter.values = {};
     if (str.values !== null && str.values.length > 0) {
+      filter.values = {};
       filter.values.include = str.values;
     }
-    if (filter.values.include || str.none === false) {
+    if (str.values.length > 0 || str.none === false) {
+      if (!filter.values) filter.values = {};
       filter.values.none = str.none;
     }
   }
@@ -1133,7 +1133,6 @@ export const filterIncludeNoLabel = selectorFamily({
   key: "filterIncludeNoLabel",
   get: (path) => ({ get }) => {
     const filter = get(filterStage(path));
-    console.log(filter);
     const none = filter?.values?.none;
     return typeof none === "boolean" ? none : true;
   },
