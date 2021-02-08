@@ -236,25 +236,32 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def __len__(self):
         return self.count()
 
-    def __getitem__(self, sample_id_or_slice):
-        if isinstance(sample_id_or_slice, numbers.Integral):
+    def __getitem__(self, id_filepath_slice):
+        if isinstance(id_filepath_slice, numbers.Integral):
             raise ValueError(
                 "Accessing dataset samples by numeric index is not supported. "
-                "Use sample IDs instead"
+                "Use sample IDs, filepaths, or slices instead"
             )
 
-        if isinstance(sample_id_or_slice, slice):
-            return self.view()[sample_id_or_slice]
+        if isinstance(id_filepath_slice, slice):
+            return self.view()[id_filepath_slice]
 
-        d = self._sample_collection.find_one(
-            {"_id": ObjectId(sample_id_or_slice)}
-        )
+        try:
+            oid = ObjectId(id_filepath_slice)
+            query = {"_id": oid}
+        except:
+            oid = None
+            query = {"filepath": id_filepath_slice}
+
+        d = self._sample_collection.find_one(query)
 
         if d is None:
-            raise KeyError("No sample found with ID '%s'" % sample_id_or_slice)
+            field = "ID" if oid is not None else "filepath"
+            raise KeyError(
+                "No sample found with %s '%s'" % (field, id_filepath_slice)
+            )
 
         doc = self._sample_dict_to_doc(d)
-
         return fos.Sample.from_doc(doc, dataset=self)
 
     def __delitem__(self, sample_id):
