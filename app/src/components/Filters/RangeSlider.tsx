@@ -1,6 +1,11 @@
 import React, { useContext, useEffect, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
-import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
+import {
+  RecoilState,
+  RecoilValueReadOnly,
+  useRecoilState,
+  useRecoilValue,
+} from "recoil";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
 
 import { Slider as SliderUnstyled } from "@material-ui/core";
@@ -74,7 +79,7 @@ export type Range = [RangeValue, RangeValue];
 
 type Props = {
   rangeAtom: RecoilState<Range>;
-  boundsAtom: RecoilState<Range>;
+  boundsAtom: RecoilValueReadOnly<Range>;
 };
 
 const RangeSlider = React.memo(({ rangeAtom, boundsAtom }: Props) => {
@@ -137,10 +142,8 @@ const RangeSliderContainer = styled.div`
 
 type NamedProps = {
   rangeAtom: RecoilState<Range>;
-  boundsAtom: RecoilState<Range>;
-  includeNoneAtom: RecoilState<boolean>;
-  maxMin?: number;
-  minMax?: number;
+  boundsAtom: RecoilValueReadOnly<Range>;
+  noneAtom: RecoilState<boolean>;
   name: string;
   valueName: string;
   color: string;
@@ -153,17 +156,11 @@ const isDefaultRange = (range, bounds) => {
 export const NamedRangeSlider = React.memo(
   React.forwardRef(
     (
-      {
-        color,
-        name,
-        valueName,
-        includeNoneAtom,
-        ...rangeSliderProps
-      }: NamedProps,
+      { color, name, valueName, noneAtom, ...rangeSliderProps }: NamedProps,
       ref
     ) => {
       const theme = useContext(ThemeContext);
-      const [includeNone, setIncludeNone] = useRecoilState(includeNoneAtom);
+      const [includeNone, setIncludeNone] = useRecoilState(noneAtom);
       const [range, setRange] = useRecoilState(rangeSliderProps.rangeAtom);
       const bounds = useRecoilValue(rangeSliderProps.boundsAtom);
       const hasDefaultRange = isDefaultRange(range, bounds);

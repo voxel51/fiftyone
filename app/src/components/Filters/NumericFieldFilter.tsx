@@ -1,14 +1,64 @@
 import React, { useState } from "react";
-
-import * as selectors from "../../recoil/selectors";
-import { NamedRangeSlider } from "./RangeSlider";
 import { animated, useSpring } from "react-spring";
+import {
+  DefaultValue,
+  GetRecoilValue,
+  selectorFamily,
+  SetRecoilState,
+} from "recoil";
 import useMeasure from "react-use-measure";
 
+import * as selectors from "../../recoil/selectors";
+import { NamedRangeSlider, Range } from "./RangeSlider";
+
+type NumericFilter = {
+  range: Range;
+  none: boolean;
+};
+
+const getFilter = (get: GetRecoilValue, path: string): NumericFilter => {
+  return {
+    ...{
+      range: [undefined, undefined],
+      none: true,
+    },
+    ...get(selectors.filterStage(path)),
+  };
+};
+
+const setFilter = (
+  get: GetRecoilValue,
+  set: SetRecoilState,
+  path: string,
+  key: string,
+  value: boolean | Range | DefaultValue
+) => {
+  set(selectors.filterStage(path), {
+    ...getFilter(get, path),
+    [key]: value,
+  });
+};
+
+const getRange = (get: GetRecoilValue, path: string, range: Range): Range => {
+  const bounds = get(selectors.numericFieldBounds(path));
+  return bounds; // todo;
+};
+
+const rangeAtom = selectorFamily<Range, string>({
+  key: "filterNumericFieldRange",
+  get: (path) => ({ get }) => getFilter(get, path).range,
+  set: (path) => ({ get, set }, range) =>
+    setFilter(get, set, path, "range", getRange(get, path, range)),
+});
+
+const noneAtom = selectorFamily<boolean, string>({
+  key: "filterStringFieldNone",
+  get: (path) => ({ get }) => getFilter(get, path).none,
+  set: (path) => ({ get, set }, value) =>
+    setFilter(get, set, path, "none", value),
+});
+
 const NumericFieldFilter = ({ expanded, entry }) => {
-  const boundsAtom = selectors.numericFieldBounds(entry.path);
-  const rangeAtom = selectors.filterNumericFieldRange(entry.path);
-  const includeNoneAtom = selectors.filterNumericFieldIncludeNone(entry.path);
   const [overflow, setOverflow] = useState("hidden");
 
   const [ref, { height }] = useMeasure();
@@ -27,9 +77,9 @@ const NumericFieldFilter = ({ expanded, entry }) => {
         color={entry.color}
         name={"Range"}
         valueName={"value"}
-        includeNoneAtom={includeNoneAtom}
-        boundsAtom={boundsAtom}
-        rangeAtom={rangeAtom}
+        noneAtom={noneAtom(entry.path)}
+        boundsAtom={selectors.numericFieldBounds(entry.path)}
+        rangeAtom={rangeAtom(entry.path)}
         ref={ref}
       />
     </animated.div>

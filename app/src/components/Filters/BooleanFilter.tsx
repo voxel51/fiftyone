@@ -40,46 +40,36 @@ const BooleanFilter = React.memo(({ trueAtom, falseAtom, color }: Props) => {
 
   return (
     <>
-      <BooleanFilterContainer>
-        <CheckboxContainer>
-          <FormControlLabel
-            label={
-              <div style={{ lineHeight: "20px", fontSize: 14 }}>
-                Filter true
-              </div>
-            }
-            control={
-              <Checkbox
-                checked={!trueValue}
-                onChange={() => setTrue(!trueValue)}
-                style={{
-                  padding: "0 5px",
-                  color,
-                }}
-              />
-            }
+      <FormControlLabel
+        label={
+          <div style={{ lineHeight: "20px", fontSize: 14 }}>Filter true</div>
+        }
+        control={
+          <Checkbox
+            checked={!trueValue}
+            onChange={() => setTrue(!trueValue)}
+            style={{
+              padding: "0 5px",
+              color,
+            }}
           />
-        </CheckboxContainer>
-        <CheckboxContainer>
-          <FormControlLabel
-            label={
-              <div style={{ lineHeight: "20px", fontSize: 14 }}>
-                Filter false
-              </div>
-            }
-            control={
-              <Checkbox
-                checked={!falseValue}
-                onChange={() => setFalse(!falseValue)}
-                style={{
-                  padding: "0 5px",
-                  color,
-                }}
-              />
-            }
+        }
+      />
+      <FormControlLabel
+        label={
+          <div style={{ lineHeight: "20px", fontSize: 14 }}>Filter false</div>
+        }
+        control={
+          <Checkbox
+            checked={!falseValue}
+            onChange={() => setFalse(!falseValue)}
+            style={{
+              padding: "0 5px",
+              color,
+            }}
           />
-        </CheckboxContainer>
-      </BooleanFilterContainer>
+        }
+      />
     </>
   );
 });
@@ -92,12 +82,10 @@ type NamedProps = {
   trueAtom: RecoilState<boolean>;
   falseAtom: RecoilState<boolean>;
   noneAtom: RecoilState<boolean>;
-  name: string;
-  valueName: string;
   color: string;
 };
 
-export const NamedStringFilter = React.memo(
+export const NamedBooleanFilter = React.memo(
   React.forwardRef(
     ({ name, noneAtom, ...booleanFilterProps }: NamedProps, ref) => {
       const [none, setNone] = useRecoilState(noneAtom);
@@ -124,12 +112,13 @@ export const NamedStringFilter = React.memo(
             ) : null}
           </NamedBooleanFilterHeader>
           <BooleanFilterContainer>
-            <BooleanFilter {...booleanFilterProps} />
             <CheckboxContainer>
+              <BooleanFilter {...booleanFilterProps} />
+
               <FormControlLabel
                 label={
                   <div style={{ lineHeight: "20px", fontSize: 14 }}>
-                    Filter no {booleanFilterProps.valueName}
+                    Filter no value
                   </div>
                 }
                 control={

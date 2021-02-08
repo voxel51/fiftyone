@@ -7,7 +7,7 @@ import {
 } from "recoil";
 
 import * as selectors from "../../recoil/selectors";
-import { NamedBooleanFilter } from "./StringFilter";
+import { NamedBooleanFilter } from "./BooleanFilter";
 import { animated, useSpring } from "react-spring";
 import useMeasure from "react-use-measure";
 
@@ -80,7 +80,7 @@ const BooleanFieldFilter = ({ expanded, entry }) => {
         color={entry.color}
         trueAtom={trueAtom(entry.path)}
         falseAtom={falseAtom(entry.path)}
-        includeNoneAtom={noneAtom(entry.path)}
+        noneAtom={noneAtom(entry.path)}
         ref={ref}
       />
     </animated.div>

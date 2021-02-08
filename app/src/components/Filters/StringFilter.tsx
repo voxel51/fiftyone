@@ -1,5 +1,10 @@
 import React, { useContext, useEffect, useRef } from "react";
-import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
+import {
+  RecoilState,
+  RecoilValueReadOnly,
+  useRecoilState,
+  useRecoilValue,
+} from "recoil";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
 import styled, { ThemeContext } from "styled-components";
 import { Machine, assign } from "xstate";
@@ -234,7 +239,7 @@ const StringFilterContainer = styled.div`
 `;
 
 type Props = {
-  valuesAtom: RecoilState<string[]>;
+  valuesAtom: RecoilValueReadOnly<string[]>;
   selectedValuesAtom: RecoilState<string[]>;
   valueName: string;
 };
@@ -366,9 +371,9 @@ const CheckboxContainer = styled.div`
 `;
 
 type NamedProps = {
-  valuesAtom: RecoilState<string[]>;
+  valuesAtom: RecoilValueReadOnly<string[]>;
   selectedValuesAtom: RecoilState<string[]>;
-  includeNoneAtom: RecoilState<boolean>;
+  noneAtom: RecoilState<boolean>;
   name: string;
   valueName: string;
   color: string;
@@ -376,11 +381,8 @@ type NamedProps = {
 
 export const NamedStringFilter = React.memo(
   React.forwardRef(
-    (
-      { color, name, includeNoneAtom, ...stringFilterProps }: NamedProps,
-      ref
-    ) => {
-      const [includeNone, setIncludeNone] = useRecoilState(includeNoneAtom);
+    ({ color, name, noneAtom, ...stringFilterProps }: NamedProps, ref) => {
+      const [includeNone, setIncludeNone] = useRecoilState(noneAtom);
       const [values, setValues] = useRecoilState(
         stringFilterProps.selectedValuesAtom
       );
