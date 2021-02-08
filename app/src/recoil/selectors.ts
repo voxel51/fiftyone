@@ -1084,7 +1084,7 @@ const resolveFilter = ({ num, str }) => {
   if (
     defaultRange &&
     num.none &&
-    (!str || str.values === null || str.values.length === 0)
+    (!str || (str.values === null && str.values.length === 0))
   ) {
     return null;
   }
@@ -1096,6 +1096,7 @@ const resolveFilter = ({ num, str }) => {
   if (defaultRange && !num.none) {
     filter.none = num.none;
   }
+  console.log(str);
   if (str) {
     filter.values = {};
     if (str.values !== null && str.values.length > 0) {
@@ -1133,19 +1134,18 @@ export const filterIncludeNoLabel = selectorFamily({
   get: (path) => ({ get }) => {
     const filter = get(filterStage(path));
     console.log(filter);
-    return filter?.values?.none || true;
+    const none = filter?.values?.none;
+    return typeof none === "boolean" ? none : true;
   },
   set: (path) => ({ get, set }, noLabel) => {
     const bounds = get(labelConfidenceBounds(path));
     const range = get(filterLabelConfidenceRange(path));
     const none = get(filterLabelIncludeNoConfidence(path));
     const labels = get(filterIncludeLabels(path));
-    console.log(path, noLabel);
     const filter = resolveFilter({
       num: { bounds, range, none },
       str: { values: labels, none: noLabel, path: "label" },
     });
-    console.log(filter);
     set(filterStage(path), filter);
   },
 });
