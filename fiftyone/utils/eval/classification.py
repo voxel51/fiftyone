@@ -224,13 +224,22 @@ class ClassificationResults(object):
         ypred: a list of predicted labels
         confs: a list of confidences for the predictions
         classes: the list of possible classes
+        missing ("none"): a missing label string. Any None-valued labels are
+            replaced with this string
     """
 
-    def __init__(self, ytrue, ypred, confs, classes):
+    def __init__(self, ytrue, ypred, confs, classes, missing="none"):
+        ytrue, ypred, classes = _parse_labels(ytrue, ypred, classes, missing)
+
         self.ytrue = ytrue
         self.ypred = ypred
         self.confs = confs
         self.classes = classes
+        self.missing = missing
+
+    @property
+    def _labels(self):
+        return [l for l in self.classes if l != self.missing]
 
     def report(self):
         """Generates a classification report for the results via
@@ -240,10 +249,7 @@ class ClassificationResults(object):
             a dict
         """
         return skm.classification_report(
-            self.ytrue,
-            self.ypred,
-            target_names=self.classes,
-            output_dict=True,
+            self.ytrue, self.ypred, labels=self._labels, output_dict=True
         )
 
     def metrics(self, average="micro", beta=1.0):
@@ -264,9 +270,10 @@ class ClassificationResults(object):
             self.ytrue,
             self.ypred,
             average=average,
-            labels=self.classes,
+            labels=self._labels,
             beta=beta,
         )
+
         return {
             "accuracy": accuracy,
             "precision": precision,
@@ -282,7 +289,7 @@ class ClassificationResults(object):
             digits (2): the number of digits of precision to print
         """
         report_str = skm.classification_report(
-            self.ytrue, self.ypred, target_names=self.classes, digits=digits
+            self.ytrue, self.ypred, labels=self._labels, digits=digits
         )
         print(report_str)
 
@@ -309,21 +316,24 @@ class ClassificationResults(object):
 class BinaryClassificationResults(ClassificationResults):
     """Class that stores the results of a binary classification evaluation.
 
+    Any missing ground truth or prediction labels are assumed to be examples of
+    the negative class (with zero confidence, for predictions).
+
     Args:
         ytrue: a list of ground truth labels
         ypred: a list of predicted labels
         confs: a list of confidences for the predictions
-        classes: the list of possible classes. The positive class must be the
-            *last* element
+        classes: the ``(neg_label, pos_label)`` label strings for the task
     """
 
     def __init__(self, ytrue, ypred, confs, classes):
-        super().__init__(ytrue, ypred, confs, classes)
-        self.pos_label = classes[-1]
-        self.scores = [
-            conf if pred == self.pos_label else 1.0 - conf
-            for pred, conf in zip(ypred, confs)
-        ]
+        super().__init__(ytrue, ypred, confs, classes, missing=classes[0])
+        self._pos_label = classes[1]
+        self.scores = _to_binary_scores(ypred, confs, self._pos_label)
+
+    @property
+    def _labels(self):
+        return self.classes
 
     def average_precision(self, average="micro"):
         """Computes the average precision for the results via
@@ -336,7 +346,7 @@ class BinaryClassificationResults(ClassificationResults):
             the average precision
         """
         return skm.average_precision_score(
-            self.ytrue, self.scores, pos_label=self.pos_label, average=average
+            self.ytrue, self.scores, pos_label=self._pos_label, average=average
         )
 
     def plot_pr_curve(self, average="micro", ax=None, block=False, **kwargs):
@@ -352,9 +362,9 @@ class BinaryClassificationResults(ClassificationResults):
                 ``sklearn.metrics.PrecisionRecallDisplay.plot(**kwargs)``
         """
         precision, recall, _ = skm.precision_recall_curve(
-            self.ytrue, self.scores, pos_label=self.pos_label
+            self.ytrue, self.scores, pos_label=self._pos_label
         )
-        avg_precision = self.average_precision()
+        avg_precision = self.average_precision(average=average)
         display = skm.PrecisionRecallDisplay(
             precision=precision, recall=recall
         )
@@ -374,9 +384,46 @@ class BinaryClassificationResults(ClassificationResults):
                 ``sklearn.metrics.RocCurveDisplay.plot(**kwargs)``
         """
         fpr, tpr, _ = skm.roc_curve(
-            self.ytrue, self.scores, pos_label=self.pos_label
+            self.ytrue, self.scores, pos_label=self._pos_label
         )
         roc_auc = skm.auc(fpr, tpr)
         display = skm.RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc)
         display.plot(ax=ax, **kwargs)
         plt.show(block=block)
+
+
+def _parse_labels(ytrue, ypred, classes, missing):
+    ytrue, found_missing_true = _clean_labels(ytrue, missing)
+    ypred, found_missing_pred = _clean_labels(ypred, missing)
+
+    found_missing = found_missing_true or found_missing_pred
+    if found_missing and missing not in classes:
+        classes = list(classes) + [missing]
+
+    return ytrue, ypred, classes
+
+
+def _clean_labels(y, missing):
+    found_missing = False
+
+    yclean = []
+    for yi in y:
+        if yi is None:
+            found_missing = True
+            yi = missing
+
+        yclean.append(yi)
+
+    return yclean, found_missing
+
+
+def _to_binary_scores(y, confs, pos_label):
+    scores = []
+    for yi, conf in zip(y, confs):
+        if conf is None:
+            conf = 0.0
+
+        score = conf if yi == pos_label else 1.0 - conf
+        scores.append(score)
+
+    return scores
