@@ -927,7 +927,7 @@ export const fieldIsFiltered = selectorFamily({
     if (string) {
       return (
         !get(filterStringFieldIncludeNone(field)) ||
-        get(filterStringFieldValues(field))
+        get(filterStringFieldValues(field)).length > 0
       );
     }
     const range = get(

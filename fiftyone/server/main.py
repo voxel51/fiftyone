@@ -1093,11 +1093,14 @@ def _make_scalar_expression(f, args):
         expr = (f >= mn) & (f <= mx)
         if args.get("none", False):
             expr |= ~(f.exists())
-    elif "values" in args and "include" in args["values"]:
+    elif "values":
         values = args["values"]
-        expr = f.is_in(values["include"])
-        if values.get("none", False):
-            expr |= ~(f.exists())
+        if "include" in args["values"]:
+            expr = f.is_in(values["include"])
+            if values.get("none", False):
+                expr |= ~(f.exists())
+        elif "none" in values and not values["none"]:
+            expr = f.exists()
     elif "none" in args:
         if not args["none"]:
             expr = f.exists()
