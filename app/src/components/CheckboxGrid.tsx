@@ -11,33 +11,14 @@ import { animated, useSpring } from "react-spring";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+import { isBooleanField, isNumericField, isStringField } from "./Filters/utils";
 import { SampleContext } from "../utils/context";
 import { labelTypeIsFilterable, LABEL_LISTS } from "../utils/labels";
 
-import Filter from "./Filters/Filter";
+import LabelFieldFilter from "./Filters/LabelFieldFilter";
 import NumericFieldFilter from "./Filters/NumericFieldFilter";
 import StringFieldFilter from "./Filters/StringFieldFilter";
 import BooleanFieldFilter from "./Filters/BooleanFieldFilter";
-
-const GLOBAL_ATOMS = {
-  colorByLabel: atoms.colorByLabel,
-  includeLabels: selectors.filterIncludeLabels,
-  includeNoLabel: selectors.filterIncludeNoLabel,
-  includeNoConfidence: selectors.filterLabelIncludeNoConfidence,
-  confidenceRange: selectors.filterLabelConfidenceRange,
-  confidenceBounds: selectors.labelConfidenceBounds,
-  fieldIsFiltered: selectors.fieldIsFiltered,
-};
-
-const MODAL_ATOMS = {
-  colorByLabel: atoms.modalColorByLabel,
-  includeLabels: atoms.modalFilterIncludeLabels,
-  includeNoLabel: selectors.modalFilterIncludeNoLabel,
-  includeNoConfidence: atoms.modalFilterLabelIncludeNoConfidence,
-  confidenceRange: atoms.modalFilterLabelConfidenceRange,
-  confidenceBounds: selectors.labelConfidenceBounds,
-  fieldIsFiltered: selectors.modalFieldIsFiltered,
-};
 
 const Body = styled.div`
   vertical-align: middle;
@@ -155,13 +136,10 @@ type Props = {
 const Entry = ({ entry, onCheck, modal }) => {
   const [expanded, setExpanded] = useState(false);
   const theme = useContext(ThemeContext);
-  const filterAtoms = modal ? MODAL_ATOMS : GLOBAL_ATOMS;
-  const fieldIsFiltered = useRecoilValue(
-    filterAtoms.fieldIsFiltered(entry.path)
-  );
-  const isNumericField = useRecoilValue(selectors.isNumericField(entry.path));
-  const isStringField = useRecoilValue(selectors.isStringField(entry.path));
-  const isBooleanField = useRecoilValue(selectors.isBooleanField(entry.path));
+  const fieldIsFiltered = useRecoilValue(fieldIsFiltered(entry.path, modal));
+  const isNumericField = useRecoilValue(isNumericField(entry.path));
+  const isStringField = useRecoilValue(isStringField(entry.path));
+  const isBooleanField = useRecoilValue(isBooleanField(entry.path));
 
   const handleCheck = (entry) => {
     if (onCheck) {
@@ -173,7 +151,7 @@ const Entry = ({ entry, onCheck, modal }) => {
   const hiddenObjects = useRecoilValue(atoms.hiddenObjects);
   const hasHiddenObjects = sample
     ? Object.entries(hiddenObjects).some(
-        ([object_id, data]) =>
+        ([_, data]) =>
           data.sample_id === sample._id && data.field === entry.name
       )
     : false;
@@ -265,7 +243,7 @@ const Entry = ({ entry, onCheck, modal }) => {
         <BooleanFieldFilter expanded={expanded} entry={entry} />
       )}
       {entry.type && labelTypeIsFilterable(entry.type) ? (
-        <Filter expanded={expanded} entry={entry} {...filterAtoms} />
+        <LabelFieldFilter expanded={expanded} entry={entry} modal={modal} />
       ) : null}
     </CheckboxContainer>
   );

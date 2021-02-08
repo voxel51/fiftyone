@@ -83,6 +83,7 @@ type NamedProps = {
   falseAtom: RecoilState<boolean>;
   noneAtom: RecoilState<boolean>;
   color: string;
+  name?: string;
 };
 
 export const NamedBooleanFilter = React.memo(

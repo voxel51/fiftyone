@@ -12,6 +12,26 @@ import { NamedStringFilter } from "./StringFilter";
 import { CONFIDENCE_LABELS } from "../../utils/labels";
 import { removeObjectIDsFromSelection } from "../../utils/selection";
 
+const GLOBAL_ATOMS = {
+  colorByLabel: atoms.colorByLabel,
+  includeLabels: selectors.filterIncludeLabels,
+  includeNoLabel: selectors.filterIncludeNoLabel,
+  includeNoConfidence: selectors.filterLabelIncludeNoConfidence,
+  confidenceRange: selectors.filterLabelConfidenceRange,
+  confidenceBounds: selectors.labelConfidenceBounds,
+  fieldIsFiltered: selectors.fieldIsFiltered,
+};
+
+const MODAL_ATOMS = {
+  colorByLabel: atoms.modalColorByLabel,
+  includeLabels: atoms.modalFilterIncludeLabels,
+  includeNoLabel: selectors.modalFilterIncludeNoLabel,
+  includeNoConfidence: atoms.modalFilterLabelIncludeNoConfidence,
+  confidenceRange: atoms.modalFilterLabelConfidenceRange,
+  confidenceBounds: selectors.labelConfidenceBounds,
+  fieldIsFiltered: selectors.modalFieldIsFiltered,
+};
+
 const FilterHeader = styled.div`
   display: flex;
   justify-content: space-between;
@@ -52,7 +72,7 @@ const HiddenObjectFilter = ({ entry }) => {
   );
 };
 
-const Filter = React.memo(({ expanded, style, entry, ...rest }) => {
+const LabelFilter = React.memo(({ expanded, style, entry, ...rest }) => {
   const [overflow, setOverflow] = useState("hidden");
 
   const [ref, { height }] = useMeasure();
@@ -96,4 +116,4 @@ const Filter = React.memo(({ expanded, style, entry, ...rest }) => {
   );
 });
 
-export default Filter;
+export default React.memo(LabelFilter);

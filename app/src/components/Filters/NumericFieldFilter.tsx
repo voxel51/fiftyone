@@ -39,20 +39,15 @@ const setFilter = (
   });
 };
 
-const getRange = (get: GetRecoilValue, path: string, range: Range): Range => {
-  const bounds = get(selectors.numericFieldBounds(path));
-  return bounds; // todo;
-};
-
 const rangeAtom = selectorFamily<Range, string>({
   key: "filterNumericFieldRange",
   get: (path) => ({ get }) => getFilter(get, path).range,
   set: (path) => ({ get, set }, range) =>
-    setFilter(get, set, path, "range", getRange(get, path, range)),
+    setFilter(get, set, path, "range", range),
 });
 
 const noneAtom = selectorFamily<boolean, string>({
-  key: "filterStringFieldNone",
+  key: "filterNumericFieldNone",
   get: (path) => ({ get }) => getFilter(get, path).none,
   set: (path) => ({ get, set }, value) =>
     setFilter(get, set, path, "none", value),
@@ -86,4 +81,4 @@ const NumericFieldFilter = ({ expanded, entry }) => {
   );
 };
 
-export default NumericFieldFilter;
+export default React.memo(NumericFieldFilter);

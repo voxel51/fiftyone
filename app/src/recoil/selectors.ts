@@ -7,11 +7,8 @@ import { generateColorMap } from "../utils/colors";
 import { isElectron } from "../utils/generic";
 import {
   RESERVED_FIELDS,
-  BOOLEAN_FIELD,
-  STRING_FIELD,
   VALID_LABEL_TYPES,
   VALID_LIST_TYPES,
-  VALID_NUMERIC_TYPES,
   VALID_SCALAR_TYPES,
   makeLabelNameGroups,
   labelTypeHasColor,
@@ -712,95 +709,6 @@ export const filteredLabelSampleCounts = selectorFamily({
   },
 });
 
-export const labelFilters = selector({
-  key: "labelFilters",
-  get: ({ get }) => {
-    const frameLabels = get(atoms.activeLabels("frame"));
-    const labels = {
-      ...get(atoms.activeLabels("sample")),
-      ...Object.keys(frameLabels).reduce((acc, cur) => {
-        return {
-          ...acc,
-          ["frames." + cur]: frameLabels[cur],
-        };
-      }, {}),
-    };
-    const filters = {};
-    for (const label in labels) {
-      const range = get(filterLabelConfidenceRange(label));
-      const none = get(filterLabelIncludeNoConfidence(label));
-      const include = get(filterIncludeLabels(label));
-      filters[label] = (s) => {
-        const inRange =
-          range[0] - 0.005 <= s.confidence && s.confidence <= range[1] + 0.005;
-        const noConfidence = none && s.confidence === undefined;
-        const isIncluded = include.length === 0 || include.includes(s.label);
-        return (inRange || noConfidence) && isIncluded;
-      };
-    }
-    return filters;
-  },
-});
-
-export const modalLabelFilters = selector({
-  key: "modalLabelFilters",
-  get: ({ get }) => {
-    const frameLabels = get(atoms.modalActiveLabels("frame"));
-    const labels = {
-      ...get(atoms.modalActiveLabels("sample")),
-      ...Object.keys(frameLabels).reduce((acc, cur) => {
-        return {
-          ...acc,
-          ["frames." + cur]: frameLabels[cur],
-        };
-      }, {}),
-    };
-    const hiddenObjects = get(atoms.hiddenObjects);
-    const filters = {};
-    for (const label in labels) {
-      const range = get(atoms.modalFilterLabelConfidenceRange(label));
-      const none = get(atoms.modalFilterLabelIncludeNoConfidence(label));
-      const include = get(atoms.modalFilterIncludeLabels(label));
-      filters[label] = (s) => {
-        if (hiddenObjects[s.id]) {
-          return false;
-        }
-        const inRange =
-          range[0] - 0.005 <= s.confidence && s.confidence <= range[1] + 0.005;
-        const noConfidence = none && s.confidence === undefined;
-        const isIncluded = include.length === 0 || include.includes(s.label);
-        return labels[label] && (inRange || noConfidence) && isIncluded;
-      };
-    }
-    return filters;
-  },
-  set: ({ get, set }, _) => {
-    const paths = get(labelPaths);
-    const activeLabels = get(atoms.activeLabels("sample"));
-    set(atoms.modalActiveLabels("sample"), activeLabels);
-    const activeFrameLabels = get(atoms.activeLabels("frame"));
-    set(atoms.modalActiveLabels("frame"), activeFrameLabels);
-    for (const label of paths) {
-      set(
-        atoms.modalFilterLabelConfidenceRange(label),
-        get(filterLabelConfidenceRange(label))
-      );
-
-      set(
-        atoms.modalFilterLabelIncludeNoConfidence(label),
-        get(filterLabelIncludeNoConfidence(label))
-      );
-
-      set(
-        atoms.modalFilterIncludeLabels(label),
-        get(filterIncludeLabels(label))
-      );
-
-      set(atoms.modalColorByLabel, get(atoms.colorByLabel));
-    }
-  },
-});
-
 export const labelTuples = selectorFamily({
   key: "labelTuples",
   get: (dimension: string) => ({ get }) => {
@@ -822,9 +730,9 @@ export const labelMap = selectorFamily({
   },
 });
 
-const scalarsMap = selectorFamily({
+export const scalarsMap = selectorFamily<{ [key: string]: string }, string>({
   key: "scalarsMap",
-  get: (dimension: string) => ({ get }) => {
+  get: (dimension) => ({ get }) => {
     const types = get(scalarTypes(dimension));
     return get(scalarNames(dimension)).reduce(
       (acc, cur, i) => ({
@@ -1027,74 +935,6 @@ export const labelNameGroups = selectorFamily({
     ),
 });
 
-export const isBooleanField = selectorFamily({
-  key: "isBooleanField",
-  get: (name) => ({ get }) => {
-    const map = get(scalarsMap("sample"));
-    return map[name] === BOOLEAN_FIELD;
-  },
-});
-
-export const isNumericField = selectorFamily({
-  key: "isNumericField",
-  get: (name) => ({ get }) => {
-    const map = get(scalarsMap("sample"));
-    return VALID_NUMERIC_TYPES.includes(map[name]);
-  },
-});
-
-export const isStringField = selectorFamily({
-  key: "isStringField",
-  get: (name) => ({ get }) => {
-    const map = get(scalarsMap("sample"));
-    return map[name] === STRING_FIELD;
-  },
-});
-
-export const sampleModalFilter = selector({
-  key: "sampleModalFilter",
-  get: ({ get }) => {
-    const filters = get(modalLabelFilters);
-    const frameLabels = get(atoms.modalActiveLabels("frame"));
-    const activeLabels = {
-      ...get(atoms.modalActiveLabels("sample")),
-      ...Object.keys(frameLabels).reduce((acc, cur) => {
-        return {
-          ...acc,
-          ["frames." + cur]: frameLabels[cur],
-        };
-      }, {}),
-    };
-    return (sample) => {
-      return Object.entries(sample).reduce((acc, [key, value]) => {
-        if (key === "tags") {
-          acc[key] = value;
-        } else if (value && VALID_LIST_TYPES.includes(value._cls)) {
-          acc[key] =
-            filters[key] && value !== null
-              ? {
-                  ...value,
-                  [value._cls.toLowerCase()]: value[
-                    value._cls.toLowerCase()
-                  ].filter(filters[key]),
-                }
-              : value;
-        } else if (value !== null && filters[key] && filters[key](value)) {
-          acc[key] = value;
-        } else if (RESERVED_FIELDS.includes(key)) {
-          acc[key] = value;
-        } else if (
-          ["string", "number", "null"].includes(typeof value) &&
-          activeLabels[key]
-        ) {
-          acc[key] = value;
-        }
-        return acc;
-      }, {});
-    };
-  },
-});
-
 const meetsDefault = (filter: object, path?: string) => {
   const none = filter.none === true;
   switch (filter._type) {
@@ -1126,67 +966,3 @@ export const updateFilter = (filter, path, args) => {
 
   return filterDefaults(filter);
 };
-
-export const filterIncludeLabels = selectorFamily<string[], string>({
-  key: "filterIncludeLabels",
-  get: (path) => ({ get }) => {
-    const filter = get(filterStage(path));
-    return filter?.values?.include ?? [];
-  },
-  set: (path) => ({ get, set }, values) => {
-    const none = get(filterIncludeNoLabel(path));
-    set(filterStage(path + ".label"), { none, values });
-  },
-});
-
-export const filterIncludeNoLabel = selectorFamily<boolean, string>({
-  key: "filterIncludeNoLabel",
-  get: (path) => ({ get }) => {
-    const filter = get(filterStage(path));
-    const none = filter?.values?.none;
-    return typeof none === "boolean" ? none : true;
-  },
-  set: (path) => ({ get, set }, none) => {
-    const values = get(filterIncludeLabels(path));
-    set(filterStage(path + ".label"), { none, values });
-  },
-});
-
-export const filterLabelConfidenceRange = selectorFamily({
-  key: "filterLabelConfidenceRange",
-  get: (path) => ({ get }) => {
-    const filter = get(filterStage(path));
-    if (filter?.range) return filter.range;
-    return get(labelConfidenceBounds(path));
-  },
-  set: (path) => ({ get, set }, range) => {
-    const bounds = get(labelConfidenceBounds(path));
-    const none = get(filterLabelIncludeNoConfidence(path));
-    const labels = get(filterIncludeLabels(path));
-    const noLabel = get(filterIncludeNoLabel(path));
-    const filter = resolveFilter({
-      num: { bounds, range, none },
-      str: { values: labels, none: noLabel, path: "label" },
-    });
-    set(filterStage(path), filter);
-  },
-});
-
-export const filterLabelIncludeNoConfidence = selectorFamily({
-  key: "filterLabelIncludeNoConfidence",
-  get: (path) => ({ get }) => {
-    const filter = get(filterStage(path));
-    return filter?.none ?? true;
-  },
-  set: (path) => ({ get, set }, none) => {
-    const range = get(filterLabelConfidenceRange(path));
-    const bounds = get(labelConfidenceBounds(path));
-    const labels = get(filterIncludeLabels(path));
-    const noLabel = get(filterIncludeNoLabel(path));
-    const filter = resolveFilter({
-      num: { bounds, range, none },
-      str: { values: labels, none: noLabel, path: "label" },
-    });
-    set(filterStage(path), filter);
-  },
-});
