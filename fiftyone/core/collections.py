@@ -186,6 +186,67 @@ class SampleCollection(object):
         """
         return [s for s in self[-num_samples:]]
 
+    def one(self, expr, exact=False):
+        """Returns a single sample in this collection matching the expression.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            #
+            # Get a sample by filepath
+            #
+
+            # A random filepath in the dataset
+            filepath = dataset.take(1).first().filepath
+
+            # Get sample by filepath
+            sample = dataset.one(F("filepath") == filepath)
+
+            #
+            # Dealing with multiple matches
+            #
+
+            # Get a sample whose image is JPEG
+            sample = dataset.one(F("filepath").ends_with(".jpg"))
+
+            # Raises an error since there are multiple JPEGs
+            dataset.one(F("filepath").ends_with(".jpg"), exact=True)
+
+        Args:
+            expr: a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                that evaluates to ``True`` for the sample to match
+            exact (False): whether to raise an error if multiple samples match
+                the expression
+
+        Returns:
+            a :class:`fiftyone.core.sample.SampleView`
+        """
+        view = self.match(expr)
+        matches = iter(view)
+
+        try:
+            sample = next(matches)
+        except StopIteration:
+            raise ValueError("No samples match the given expression")
+
+        if exact:
+            try:
+                next(matches)
+                raise ValueError(
+                    "Expected one matching sample, but found %d matches"
+                    % len(view)
+                )
+            except StopIteration:
+                pass
+
+        return sample
+
     def iter_samples(self):
         """Returns an iterator over the samples in the collection.
 
