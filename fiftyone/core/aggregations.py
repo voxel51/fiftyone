@@ -1250,7 +1250,7 @@ def _parse_field_name(sample_collection, field_name, auto_unwind, expr):
         pipeline = []
 
     if expr is not None:
-        # Expression are applied to terminal lists themselves, not their
+        # Expressions are applied to terminal lists themselves, not their
         # elements, unless `[]` was explicitly specified
         unwind_list_fields = [
             lf for lf in unwind_list_fields if lf != field_name

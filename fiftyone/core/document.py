@@ -361,7 +361,7 @@ class Document(object):
 
         self._dataset = dataset
 
-    def _reset_doc(self):
+    def _reset_backing_doc(self):
         """Resets the backing doc for the document.
 
         The document will no longer belong to a dataset.
@@ -445,7 +445,7 @@ class Document(object):
                 document.reload()
             else:
                 reset_ids.add(document.id)
-                document._reset_doc()
+                document._reset_backing_doc()
 
         for doc_id in reset_ids:
             dataset_instances.pop(doc_id, None)
@@ -468,7 +468,7 @@ class Document(object):
         if doc_ids is None:
             dataset_instances = cls._instances.pop(collection_name)
             for document in dataset_instances.values():
-                document._reset_doc()
+                document._reset_backing_doc()
 
             return
 
@@ -477,4 +477,4 @@ class Document(object):
         for doc_id in doc_ids:
             document = dataset_instances.pop(doc_id, None)
             if document is not None:
-                document._reset_doc()
+                document._reset_backing_doc()
