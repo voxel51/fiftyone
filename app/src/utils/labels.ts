@@ -58,6 +58,11 @@ export const LABEL_LISTS = [
   "Polylines",
 ];
 
+export const AGGS = {
+  COUNT: "Count",
+  DISTINCT: "Distinct",
+};
+
 export const VALID_SCALAR_TYPES = [
   "fiftyone.core.fields.BooleanField",
   "fiftyone.core.fields.FloatField",
@@ -69,6 +74,8 @@ export const VALID_NUMERIC_TYPES = [
   "fiftyone.core.fields.FloatField",
   "fiftyone.core.fields.IntField",
 ];
+
+export const BOOLEAN_FIELD = "fiftyone.core.fields.BooleanField";
 
 export const STRING_FIELD = "fiftyone.core.fields.StringField";
 

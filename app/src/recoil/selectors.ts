@@ -7,6 +7,7 @@ import { generateColorMap } from "../utils/colors";
 import { isElectron } from "../utils/generic";
 import {
   RESERVED_FIELDS,
+  BOOLEAN_FIELD,
   STRING_FIELD,
   VALID_LABEL_TYPES,
   VALID_LIST_TYPES,
@@ -14,6 +15,7 @@ import {
   VALID_SCALAR_TYPES,
   makeLabelNameGroups,
   labelTypeHasColor,
+  AGGS,
 } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
@@ -633,7 +635,6 @@ export const scalarTypes = selectorFamily({
 });
 
 const COUNT_CLS = "Count";
-const LABELS_CLS = "Distinct";
 const BOUNDS_CLS = "Bounds";
 const CONFIDENCE_BOUNDS_CLS = "Bounds";
 
@@ -657,7 +658,7 @@ export const labelClasses = selectorFamily({
   get: (label) => ({ get }) => {
     const path = get(labelsPath(label));
     return (get(datasetStats) ?? []).reduce((acc, cur) => {
-      if (cur.name === path && cur._CLS === LABELS_CLS) {
+      if (cur.name === path && cur._CLS === AGGS.DISTINCT) {
         return cur.result;
       }
       return acc;
@@ -1026,6 +1027,14 @@ export const labelNameGroups = selectorFamily({
     ),
 });
 
+export const isBooleanField = selectorFamily({
+  key: "isBooleanField",
+  get: (name) => ({ get }) => {
+    const map = get(scalarsMap("sample"));
+    return map[name] === BOOLEAN_FIELD;
+  },
+});
+
 export const isNumericField = selectorFamily({
   key: "isNumericField",
   get: (name) => ({ get }) => {
@@ -1179,84 +1188,5 @@ export const filterLabelIncludeNoConfidence = selectorFamily({
       str: { values: labels, none: noLabel, path: "label" },
     });
     set(filterStage(path), filter);
-  },
-});
-
-export const filterNumericFieldRange = selectorFamily({
-  key: "filterNumericFieldRange",
-  get: (path) => ({ get }) => {
-    const filter = get(filterStage(path));
-    return filter?.range ?? get(numericFieldBounds(path));
-  },
-  set: (path) => ({ get, set }, range) => {
-    const bounds = get(numericFieldBounds(path));
-    const none = get(filterNumericFieldIncludeNone(path));
-    const filter = resolveFilter({
-      num: { bounds, range, none },
-      str: null,
-    });
-    set(filterStage(path), filter);
-  },
-});
-
-export const filterNumericFieldIncludeNone = selectorFamily({
-  key: "filterNumericFieldIncludeNone",
-  get: (path) => ({ get }) => {
-    const filter = get(filterStage(path));
-    return filter?.none ?? true;
-  },
-  set: (path) => ({ get, set }, none) => {
-    const range = get(filterNumericFieldRange(path));
-    const bounds = get(numericFieldBounds(path));
-    const filter = resolveFilter({
-      num: { bounds, range, none },
-      str: null,
-    });
-    set(filterStage(path), filter);
-  },
-});
-
-export const filterStringFieldValues = selectorFamily<string, string[]>({
-  key: "filterStringFieldValues",
-  get: (path) => ({ get }) => {
-    const filter = get(filterStage(path));
-    return filter?.values?.include ?? [];
-  },
-  set: (path) => ({ get, set }, values) => {
-    const none = get(filterStringFieldIncludeNone(path));
-    const filter = resolveFilter({
-      num: null,
-      str: { values, none },
-    });
-    set(filterStage(path), filter);
-  },
-});
-
-export const filterStringFieldIncludeNone = selectorFamily<string, boolean>({
-  key: "filterStringFieldIncludeNone",
-  get: (path) => ({ get }) => {
-    const filter = get(filterStage(path));
-    return filter?.values?.none ?? true;
-  },
-  set: (path) => ({ get, set }, none) => {
-    const values = get(filterStringFieldValues(path));
-    const filter = resolveFilter({
-      num: null,
-      str: { values, none },
-    });
-    set(filterStage(path), filter);
-  },
-});
-
-export const stringFieldValues = selectorFamily<string, string[]>({
-  key: "stringFieldValues",
-  get: (fieldName) => ({ get }) => {
-    const stats = get(datasetStats);
-    return (get(datasetStats) ?? []).reduce((acc, cur) => {
-      if (cur.name === fieldName && cur._CLS === LABELS_CLS) {
-        return cur.result;
-      }
-      return acc;
-    }, []);
   },
 });

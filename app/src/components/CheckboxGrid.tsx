@@ -17,6 +17,7 @@ import { labelTypeIsFilterable, LABEL_LISTS } from "../utils/labels";
 import Filter from "./Filters/Filter";
 import NumericFieldFilter from "./Filters/NumericFieldFilter";
 import StringFieldFilter from "./Filters/StringFieldFilter";
+import BooleanFieldFilter from "./Filters/BooleanFieldFilter";
 
 const GLOBAL_ATOMS = {
   colorByLabel: atoms.colorByLabel,
@@ -160,6 +161,7 @@ const Entry = ({ entry, onCheck, modal }) => {
   );
   const isNumericField = useRecoilValue(selectors.isNumericField(entry.path));
   const isStringField = useRecoilValue(selectors.isStringField(entry.path));
+  const isBooleanField = useRecoilValue(selectors.isBooleanField(entry.path));
 
   const handleCheck = (entry) => {
     if (onCheck) {
@@ -203,7 +205,8 @@ const Entry = ({ entry, onCheck, modal }) => {
                 </span>
                 {!(entry.icon && !LABEL_LISTS.includes(entry.type)) &&
                 ((entry.type && labelTypeIsFilterable(entry.type)) ||
-                  ((isNumericField || isStringField) && !modal)) ? (
+                  ((isNumericField || isStringField || isBooleanField) &&
+                    !modal)) ? (
                   <ArrowType
                     onClick={(e) => {
                       e.preventDefault();
@@ -258,6 +261,9 @@ const Entry = ({ entry, onCheck, modal }) => {
         <NumericFieldFilter expanded={expanded} entry={entry} />
       )}
       {isStringField && <StringFieldFilter expanded={expanded} entry={entry} />}
+      {isBooleanField && (
+        <BooleanFieldFilter expanded={expanded} entry={entry} />
+      )}
       {entry.type && labelTypeIsFilterable(entry.type) ? (
         <Filter expanded={expanded} entry={entry} {...filterAtoms} />
       ) : null}
