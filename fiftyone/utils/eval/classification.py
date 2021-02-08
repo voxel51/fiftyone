@@ -299,15 +299,31 @@ class ClassificationResults(object):
         )
         print(report_str)
 
-    def plot_confusion_matrix(self, ax=None, block=False, **kwargs):
+    def plot_confusion_matrix(
+        self,
+        include_values=True,
+        cmap="viridis",
+        xticks_rotation=45.0,
+        ax=None,
+        block=False,
+        **kwargs
+    ):
         """Plots a confusion matrix for the results.
 
         Args:
+            include_values (True): whether to include count values in the
+                confusion matrix cells
+            cmap ("viridis"): a colormap recognized by ``matplotlib``
+            xticks_rotation (45.0): a rotation for the x-tick labels. Can be
+                numeric degrees, or "vertical" or "horizontal"
             ax (None): an optional matplotlib axis to plot in
             block (False): whether to block execution when the plot is
                 displayed via ``matplotlib.pyplot.show(block=block)``
             **kwargs: optional keyword arguments for
                 ``sklearn.metrics.ConfusionMatrixDisplay.plot(**kwargs)``
+
+        Returns:
+            the matplotlib axis containing the plot
         """
         confusion_matrix = skm.confusion_matrix(
             self.ytrue, self.ypred, labels=self.classes
@@ -315,8 +331,15 @@ class ClassificationResults(object):
         display = skm.ConfusionMatrixDisplay(
             confusion_matrix=confusion_matrix, display_labels=self.classes,
         )
-        display.plot(ax=ax, **kwargs)
+        display.plot(
+            include_values=include_values,
+            cmap=cmap,
+            xticks_rotation=xticks_rotation,
+            ax=ax,
+            **kwargs
+        )
         plt.show(block=block)
+        return display.ax_
 
 
 class BinaryClassificationResults(ClassificationResults):
@@ -366,6 +389,9 @@ class BinaryClassificationResults(ClassificationResults):
                 displayed via ``matplotlib.pyplot.show(block=block)``
             **kwargs: optional keyword arguments for
                 ``sklearn.metrics.PrecisionRecallDisplay.plot(**kwargs)``
+
+        Returns:
+            the matplotlib axis containing the plot
         """
         precision, recall, _ = skm.precision_recall_curve(
             self.ytrue, self.scores, pos_label=self._pos_label
@@ -377,6 +403,7 @@ class BinaryClassificationResults(ClassificationResults):
         label = "AP = %.2f" % avg_precision
         display.plot(ax=ax, label=label, **kwargs)
         plt.show(block=block)
+        return display.ax_
 
     def plot_roc_curve(self, ax=None, block=False, **kwargs):
         """Plots a receiver operating characteristic (ROC) curve for the
@@ -388,6 +415,9 @@ class BinaryClassificationResults(ClassificationResults):
                 displayed via ``matplotlib.pyplot.show(block=block)``
             **kwargs: optional keyword arguments for
                 ``sklearn.metrics.RocCurveDisplay.plot(**kwargs)``
+
+        Returns:
+            the matplotlib axis containing the plot
         """
         fpr, tpr, _ = skm.roc_curve(
             self.ytrue, self.scores, pos_label=self._pos_label
@@ -396,6 +426,7 @@ class BinaryClassificationResults(ClassificationResults):
         display = skm.RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc)
         display.plot(ax=ax, **kwargs)
         plt.show(block=block)
+        return display.ax_
 
 
 def _parse_labels(ytrue, ypred, classes, missing):
