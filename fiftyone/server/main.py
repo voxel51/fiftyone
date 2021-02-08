@@ -1093,6 +1093,11 @@ def _make_range_expression(f, args):
         expr = (f >= mn) & (f <= mx)
         if args.get("none", False):
             expr |= ~(f.exists())
+    elif "values" in args:
+        values = args["values"]
+        expr = f.is_in(values["include"])
+        if values.get("none", False):
+            expr |= ~(f.exists())
     elif "none" in args:
         if not args["none"]:
             expr = f.exists()
