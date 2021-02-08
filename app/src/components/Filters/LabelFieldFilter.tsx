@@ -1,9 +1,9 @@
-import React, { useContext, useState } from "react";
+import React, { useContext } from "react";
 import { useRecoilState } from "recoil";
-import { animated, useSpring } from "react-spring";
-import useMeasure from "react-use-measure";
+import { animated } from "react-spring";
 import styled from "styled-components";
 
+import { useExpand } from "./utils";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { SampleContext } from "../../utils/context";
@@ -72,21 +72,23 @@ const HiddenObjectFilter = ({ entry }) => {
   );
 };
 
-const LabelFilter = React.memo(({ expanded, style, entry, ...rest }) => {
-  const [overflow, setOverflow] = useState("hidden");
+type Props = {
+  expanded: boolean;
+  modal: boolean;
+  entry: {
+    path: string;
+    name: string;
+    color: string;
+    type: string;
+  };
+};
 
-  const [ref, { height }] = useMeasure();
-  const props = useSpring({
-    height: expanded ? height : 0,
-    from: {
-      height: 0,
-    },
-    onStart: () => !expanded && setOverflow("hidden"),
-    onRest: () => expanded && setOverflow("visible"),
-  });
+const LabelFilter = ({ expanded, entry, modal }: Props) => {
+  const [ref, props] = useExpand(expanded);
+  const atoms = modal ? MODAL_ATOMS : GLOBAL_ATOMS;
 
   return (
-    <animated.div style={{ ...props, overflow }}>
+    <animated.div style={{ ...props }}>
       <div ref={ref}>
         <div style={{ margin: 3 }}>
           <NamedStringFilter
@@ -94,8 +96,8 @@ const LabelFilter = React.memo(({ expanded, style, entry, ...rest }) => {
             name={"Labels"}
             valueName={"label"}
             valuesAtom={selectors.labelClasses(entry.path)}
-            selectedValuesAtom={rest.includeLabels(entry.path)}
-            includeNoneAtom={rest.includeNoLabel(entry.path)}
+            selectedValuesAtom={atoms.includeLabels(entry.path)}
+            noneAtom={atoms.includeNoLabel(entry.path)}
           />
           <HiddenObjectFilter entry={entry} />
           {CONFIDENCE_LABELS.includes(entry.type) && (
@@ -103,17 +105,15 @@ const LabelFilter = React.memo(({ expanded, style, entry, ...rest }) => {
               color={entry.color}
               name={"Confidence"}
               valueName={"confidence"}
-              includeNoneAtom={rest.includeNoConfidence(entry.path)}
-              boundsAtom={rest.confidenceBounds(entry.path)}
-              rangeAtom={rest.confidenceRange(entry.path)}
-              maxMin={0}
-              minMax={1}
+              noneAtom={atoms.includeNoConfidence(entry.path)}
+              boundsAtom={atoms.confidenceBounds(entry.path)}
+              rangeAtom={atoms.confidenceRange(entry.path)}
             />
           )}
         </div>
       </div>
     </animated.div>
   );
-});
+};
 
 export default React.memo(LabelFilter);

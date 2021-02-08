@@ -1,4 +1,7 @@
+import React, { useState } from "react";
+import { useSpring } from "react-spring";
 import { selectorFamily } from "recoil";
+import useMeasure from "react-use-measure";
 
 import * as selectors from "../../recoil/selectors";
 import {
@@ -30,3 +33,33 @@ export const isStringField = selectorFamily<boolean, string>({
     return map[name] === STRING_FIELD;
   },
 });
+
+type Overflow = "hidden" | "visible";
+
+type ExpandStyle = {
+  overflow: Overflow;
+  height: number;
+};
+
+export const useExpand = (
+  expanded: boolean
+): [(element: HTMLElement | null) => void, ExpandStyle] => {
+  const [overflow, setOverflow] = useState<Overflow>("hidden");
+
+  const [ref, { height }] = useMeasure();
+  const props = useSpring({
+    height: expanded ? height : 0,
+    from: {
+      height: 0,
+    },
+    onStart: () => !expanded && setOverflow("hidden"),
+    onRest: () => expanded && setOverflow("visible"),
+  });
+  return [
+    ref,
+    {
+      overflow,
+      ...props,
+    },
+  ];
+};

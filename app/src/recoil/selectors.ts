@@ -650,7 +650,7 @@ export const labelsPath = selectorFamily({
   },
 });
 
-export const labelClasses = selectorFamily({
+export const labelClasses = selectorFamily<string[], string>({
   key: "labelClasses",
   get: (label) => ({ get }) => {
     const path = get(labelsPath(label));
@@ -798,79 +798,6 @@ export const isLabel = selectorFamily({
   },
 });
 
-export const modalFieldIsFiltered = selectorFamily({
-  key: "modalFieldIsFiltered",
-  get: (field: string) => ({ get }): boolean => {
-    const label = get(isLabel(field));
-
-    if (!label) {
-      return false;
-    }
-
-    const range = get(atoms.modalFilterLabelConfidenceRange(field));
-    const bounds = get(labelConfidenceBounds(field));
-    const none = get(atoms.modalFilterLabelIncludeNoConfidence(field));
-    const include = get(atoms.modalFilterIncludeLabels(field));
-    const maxMin = label ? 0 : bounds[0];
-    const minMax = label ? 1 : bounds[1];
-    const stretchedBounds = [
-      maxMin < bounds[0] && bounds[1] !== bounds[0] ? maxMin : bounds[0],
-      minMax > bounds[1] && bounds[1] !== bounds[0] ? minMax : bounds[1],
-    ];
-
-    const rangeIsFiltered =
-      stretchedBounds.some(
-        (b, i) => range[i] !== b && b !== null && range[i] !== null
-      ) && bounds[0] !== bounds[1];
-
-    return Boolean(include.length) || rangeIsFiltered || !none;
-  },
-});
-
-export const fieldIsFiltered = selectorFamily({
-  key: "fieldIsFiltered",
-  get: (field: string) => ({ get }): boolean => {
-    const label = get(isLabel(field));
-    const numeric = get(isNumericField(field));
-    const string = get(isStringField(field));
-    if (string) {
-      return (
-        !get(filterStringFieldIncludeNone(field)) ||
-        get(filterStringFieldValues(field)).length > 0
-      );
-    }
-    const range = get(
-      label ? filterLabelConfidenceRange(field) : filterNumericFieldRange(field)
-    );
-    const bounds = get(
-      label ? labelConfidenceBounds(field) : numericFieldBounds(field)
-    );
-    const none = get(
-      label
-        ? filterLabelIncludeNoConfidence(field)
-        : filterNumericFieldIncludeNone(field)
-    );
-    const include = get(filterIncludeLabels(field));
-    const maxMin = label ? 0 : bounds[0];
-    const minMax = label ? 1 : bounds[1];
-    const stretchedBounds = [
-      maxMin < bounds[0] ? maxMin : bounds[0],
-      minMax > bounds[1] ? minMax : bounds[1],
-    ];
-
-    if (!label && !numeric) return false;
-
-    const rangeIsFiltered =
-      stretchedBounds.some(
-        (b, i) => range[i] !== b && b !== null && range[i] !== null
-      ) && bounds[0] !== bounds[1];
-
-    if (numeric) return rangeIsFiltered || !none;
-
-    return Boolean(include.length) || rangeIsFiltered || !none;
-  },
-});
-
 export const labelConfidenceBounds = selectorFamily({
   key: "labelConfidenceBounds",
   get: (label) => ({ get }) => {
@@ -934,35 +861,3 @@ export const labelNameGroups = selectorFamily({
       get(labelTypes(dimension))
     ),
 });
-
-const meetsDefault = (filter: object, path?: string) => {
-  const none = filter.none === true;
-  switch (filter._type) {
-    case "bool":
-      return filter.true === true && filter.false === false && none;
-    default:
-      throw Error("No Type");
-  }
-};
-
-const filterDefaults = (filter, path = "") => {
-  Object.keys(filter).forEach((key) => {
-    if (filter[key]._type && !meetsDefault(filter[key], path)) {
-      delete filter[key];
-    } else {
-      filterDefaults(filter[key], path.length ? `${path}.${key}` : key);
-    }
-  });
-};
-
-export const updateFilter = (filter, path, args) => {
-  const keys = path.split(".");
-  let o = filter;
-  keys.array.forEach((key, idx) => {
-    !o[key] && (o[key] = {});
-    idx !== keys.length - 1 && (o = o[key]);
-    idx === keys.length - 1 && (o[key] = args);
-  });
-
-  return filterDefaults(filter);
-};
