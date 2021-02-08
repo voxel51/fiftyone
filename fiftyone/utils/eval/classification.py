@@ -22,6 +22,7 @@ def evaluate_classifications(
     gt_field="ground_truth",
     eval_field=None,
     classes=None,
+    missing="none",
 ):
     """Evaluates the classification predictions in the given samples with
     respect to the specified ground truth labels.
@@ -39,6 +40,8 @@ def evaluate_classifications(
             prediction is correct
         classes (None): the list of possible classes. If not provided, the
             observed ground truth/predicted labels are used
+        missing ("none"): a missing label string. Any None-valued labels are
+            replaced with this string
 
     Returns:
         a :class:`ClassificationResults`
@@ -76,7 +79,7 @@ def evaluate_classifications(
         classes.discard(None)
         classes = sorted(classes)
 
-    return ClassificationResults(ytrue, ypred, confs, classes)
+    return ClassificationResults(ytrue, ypred, confs, classes, missing=missing)
 
 
 def evaluate_binary_classifications(
@@ -84,6 +87,9 @@ def evaluate_binary_classifications(
 ):
     """Evaluates the binary classification predictions in the given samples
     with respect to the specified ground truth labels.
+
+    Any missing ground truth or prediction labels are assumed to be examples of
+    the negative class (with zero confidence, for predictions).
 
     If an ``eval_field`` is specified, this method will record the TP/FP/FN/TN
     status of each prediction in this field.
