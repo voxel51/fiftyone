@@ -1080,21 +1080,23 @@ export const sampleModalFilter = selector({
 });
 
 const resolveFilter = ({ num, str }) => {
-  const defaultRange = num.range.every((r, i) => r === num.bounds[i]);
-  if (
-    defaultRange &&
-    num.none &&
-    (!str || (str.values === null && str.values.length === 0))
-  ) {
-    return null;
-  }
   const filter = {};
-  if (!defaultRange) {
-    filter.range = num.range;
-    filter.none = num.none;
-  }
-  if (defaultRange && !num.none) {
-    filter.none = num.none;
+  if (num) {
+    const defaultRange = num.range.every((r, i) => r === num.bounds[i]);
+    if (
+      defaultRange &&
+      num.none &&
+      (!str || (str.values === null && str.values.length === 0))
+    ) {
+      return null;
+    }
+    if (!defaultRange) {
+      filter.range = num.range;
+      filter.none = num.none;
+    }
+    if (defaultRange && !num.none) {
+      filter.none = num.none;
+    }
   }
   if (str) {
     if (str.values !== null && str.values.length > 0) {
@@ -1226,11 +1228,15 @@ export const filterStringFieldValues = selectorFamily({
   key: "filterStringFieldValues",
   get: (path) => ({ get }) => {
     const filter = get(filterStage(path));
-    return filter?.values ?? [];
+    return filter?.values?.include ?? [];
   },
-  set: (path) => ({ get, set }, range) => {
-    const values = get(numericFieldBounds(path));
-    const none = get(filterNumericFieldIncludeNone(path));
+  set: (path) => ({ get, set }, values) => {
+    const none = get(filterStringFieldIncludeNone(path));
+    const filter = resolveFilter({
+      num: null,
+      str: { values, none },
+    });
+    set(filterStage(path), filter);
   },
 });
 
@@ -1241,8 +1247,12 @@ export const filterStringFieldIncludeNone = selectorFamily({
     return filter?.none ?? true;
   },
   set: (path) => ({ get, set }, none) => {
-    const range = get(filterNumericFieldRange(path));
-    const bounds = get(numericFieldBounds(path));
+    const values = get(filterStringFieldValues(path));
+    const filter = resolveFilter({
+      num: null,
+      str: { values, none },
+    });
+    set(filterStage(path), filter);
   },
 });
 
