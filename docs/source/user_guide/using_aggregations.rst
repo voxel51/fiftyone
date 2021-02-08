@@ -305,8 +305,8 @@ collection:
 
 .. _aggregations-values:
 
-Slice values
-____________
+Values
+______
 
 You can use the
 :meth:`values() <fiftyone.core.collections.SampleCollection.values>`
