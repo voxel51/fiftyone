@@ -1086,75 +1086,60 @@ export const sampleModalFilter = selector({
   },
 });
 
-const resolveFilter = ({ num, str }) => {
-  const filter = {};
-  if (num) {
-    const defaultRange = num.range.every((r, i) => r === num.bounds[i]);
-    if (
-      defaultRange &&
-      num.none &&
-      (!str || (str.values === null && str.values.length === 0))
-    ) {
-      return null;
-    }
-    if (!defaultRange) {
-      filter.range = num.range;
-      filter.none = num.none;
-    }
-    if (defaultRange && !num.none) {
-      filter.none = num.none;
-    }
+const meetsDefault = (filter: object, path?: string) => {
+  const none = filter.none === true;
+  switch (filter._type) {
+    case "bool":
+      return filter.true === true && filter.false === false && none;
+    default:
+      throw Error("No Type");
   }
-  if (str) {
-    if (str.values !== null && str.values.length > 0) {
-      filter.values = {};
-      filter.values.include = str.values;
-    }
-    if (str.values.length > 0 || str.none === false) {
-      if (!filter.values) filter.values = {};
-      filter.values.none = str.none;
-    }
-  }
-  if (Object.keys(filter).length > 0) return filter;
-  return null;
 };
 
-export const filterIncludeLabels = selectorFamily({
+const filterDefaults = (filter, path = "") => {
+  Object.keys(filter).forEach((key) => {
+    if (filter[key]._type && !meetsDefault(filter[key], path)) {
+      delete filter[key];
+    } else {
+      filterDefaults(filter[key], path.length ? `${path}.${key}` : key);
+    }
+  });
+};
+
+export const updateFilter = (filter, path, args) => {
+  const keys = path.split(".");
+  let o = filter;
+  keys.array.forEach((key, idx) => {
+    !o[key] && (o[key] = {});
+    idx !== keys.length - 1 && (o = o[key]);
+    idx === keys.length - 1 && (o[key] = args);
+  });
+
+  return filterDefaults(filter);
+};
+
+export const filterIncludeLabels = selectorFamily<string[], string>({
   key: "filterIncludeLabels",
   get: (path) => ({ get }) => {
     const filter = get(filterStage(path));
     return filter?.values?.include ?? [];
   },
-  set: (path) => ({ get, set }, labels) => {
-    const bounds = get(labelConfidenceBounds(path));
-    const range = get(filterLabelConfidenceRange(path));
-    const none = get(filterLabelIncludeNoConfidence(path));
-    const noLabel = get(filterIncludeNoLabel(path));
-    const filter = resolveFilter({
-      num: { bounds, range, none },
-      str: { values: labels, none: noLabel, path: "label" },
-    });
-    set(filterStage(path), filter);
+  set: (path) => ({ get, set }, values) => {
+    const none = get(filterIncludeNoLabel(path));
+    set(filterStage(path + ".label"), { none, values });
   },
 });
 
-export const filterIncludeNoLabel = selectorFamily({
+export const filterIncludeNoLabel = selectorFamily<boolean, string>({
   key: "filterIncludeNoLabel",
   get: (path) => ({ get }) => {
     const filter = get(filterStage(path));
     const none = filter?.values?.none;
     return typeof none === "boolean" ? none : true;
   },
-  set: (path) => ({ get, set }, noLabel) => {
-    const bounds = get(labelConfidenceBounds(path));
-    const range = get(filterLabelConfidenceRange(path));
-    const none = get(filterLabelIncludeNoConfidence(path));
-    const labels = get(filterIncludeLabels(path));
-    const filter = resolveFilter({
-      num: { bounds, range, none },
-      str: { values: labels, none: noLabel, path: "label" },
-    });
-    set(filterStage(path), filter);
+  set: (path) => ({ get, set }, none) => {
+    const values = get(filterIncludeLabels(path));
+    set(filterStage(path + ".label"), { none, values });
   },
 });
 
