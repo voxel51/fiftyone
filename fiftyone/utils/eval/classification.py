@@ -74,12 +74,9 @@ def evaluate_classifications(
     #             sample[eval_field] = gt_label == pred_label
     #             sample.save()
 
-    if classes is None:
-        classes = set(ytrue) | set(ypred)
-        classes.discard(None)
-        classes = sorted(classes)
-
-    return ClassificationResults(ytrue, ypred, confs, classes, missing=missing)
+    return ClassificationResults(
+        ytrue, ypred, confs, classes=classes, missing=missing
+    )
 
 
 def evaluate_binary_classifications(
@@ -229,12 +226,13 @@ class ClassificationResults(object):
         ytrue: a list of ground truth labels
         ypred: a list of predicted labels
         confs: a list of confidences for the predictions
-        classes: the list of possible classes
+        classes (None): the list of possible classes. If not provided, the
+            observed ground truth/predicted labels are used
         missing ("none"): a missing label string. Any None-valued labels are
             replaced with this string
     """
 
-    def __init__(self, ytrue, ypred, confs, classes, missing="none"):
+    def __init__(self, ytrue, ypred, confs, classes=None, missing="none"):
         ytrue, ypred, classes = _parse_labels(ytrue, ypred, classes, missing)
 
         self.ytrue = ytrue
@@ -243,41 +241,56 @@ class ClassificationResults(object):
         self.classes = classes
         self.missing = missing
 
-    @property
-    def _labels(self):
+    def _get_labels(self, classes):
+        if classes is not None:
+            return classes
+
         return [l for l in self.classes if l != self.missing]
 
-    def report(self):
+    def report(self, classes=None):
         """Generates a classification report for the results via
         ``sklearn.metrics.classification_report``.
+
+        Args:
+            classes (None): an optional list of classes for which to compute
+                metrics
 
         Returns:
             a dict
         """
+        labels = self._get_labels(classes)
         return skm.classification_report(
-            self.ytrue, self.ypred, labels=self._labels, output_dict=True
+            self.ytrue,
+            self.ypred,
+            labels=labels,
+            output_dict=True,
+            zero_division=0,
         )
 
-    def metrics(self, average="micro", beta=1.0):
+    def metrics(self, classes=None, average="micro", beta=1.0):
         """Computes classification metrics for the results, including accuracy,
         precision, recall, and F-beta score.
 
         See ``sklearn.metrics.precision_recall_fscore_support`` for details.
 
         Args:
+            classes (None): an optional list of classes for which to compute
+                metrics
             average ("micro"): the averaging strategy to use
             beta (1.0): the F-beta value to use
 
         Returns:
             a dict
         """
+        labels = self._get_labels(classes)
         accuracy = skm.accuracy_score(self.ytrue, self.ypred, normalize=True)
         precision, recall, fscore, _ = skm.precision_recall_fscore_support(
             self.ytrue,
             self.ypred,
             average=average,
-            labels=self._labels,
+            labels=labels,
             beta=beta,
+            zero_division=0,
         )
 
         return {
@@ -287,20 +300,28 @@ class ClassificationResults(object):
             "fscore": fscore,
         }
 
-    def print_report(self, digits=2):
+    def print_report(self, classes=None, digits=2):
         """Prints a classification report for the results via
         ``sklearn.metrics.classification_report``.
 
         Args:
+            classes (None): an optional list of classes for which to compute
+                metrics
             digits (2): the number of digits of precision to print
         """
+        labels = self._get_labels(classes)
         report_str = skm.classification_report(
-            self.ytrue, self.ypred, labels=self._labels, digits=digits
+            self.ytrue,
+            self.ypred,
+            labels=labels,
+            digits=digits,
+            zero_division=0,
         )
         print(report_str)
 
     def plot_confusion_matrix(
         self,
+        classes=None,
         include_values=True,
         cmap="viridis",
         xticks_rotation=45.0,
@@ -311,6 +332,8 @@ class ClassificationResults(object):
         """Plots a confusion matrix for the results.
 
         Args:
+            classes (None): an optional list of classes for which to compute
+                metrics
             include_values (True): whether to include count values in the
                 confusion matrix cells
             cmap ("viridis"): a colormap recognized by ``matplotlib``
@@ -325,11 +348,12 @@ class ClassificationResults(object):
         Returns:
             the matplotlib axis containing the plot
         """
+        labels = self._get_labels(classes)
         confusion_matrix = skm.confusion_matrix(
-            self.ytrue, self.ypred, labels=self.classes
+            self.ytrue, self.ypred, labels=labels
         )
         display = skm.ConfusionMatrixDisplay(
-            confusion_matrix=confusion_matrix, display_labels=self.classes,
+            confusion_matrix=confusion_matrix, display_labels=labels,
         )
         display.plot(
             include_values=include_values,
@@ -356,12 +380,16 @@ class BinaryClassificationResults(ClassificationResults):
     """
 
     def __init__(self, ytrue, ypred, confs, classes):
-        super().__init__(ytrue, ypred, confs, classes, missing=classes[0])
+        super().__init__(
+            ytrue, ypred, confs, classes=classes, missing=classes[0]
+        )
         self._pos_label = classes[1]
         self.scores = _to_binary_scores(ypred, confs, self._pos_label)
 
-    @property
-    def _labels(self):
+    def _get_labels(self, classes):
+        if classes is not None:
+            return classes
+
         return self.classes
 
     def average_precision(self, average="micro"):
@@ -433,9 +461,14 @@ def _parse_labels(ytrue, ypred, classes, missing):
     ytrue, found_missing_true = _clean_labels(ytrue, missing)
     ypred, found_missing_pred = _clean_labels(ypred, missing)
 
+    if classes is None:
+        classes = sorted(set(ytrue) | set(ypred))
+    else:
+        classes = list(classes)
+
     found_missing = found_missing_true or found_missing_pred
     if found_missing and missing not in classes:
-        classes = list(classes) + [missing]
+        classes.append(missing)
 
     return ytrue, ypred, classes
 
