@@ -388,6 +388,38 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return "\n".join(elements)
 
+    def stats(self, compressed=False):
+        """Returns stats about the dataset's backing database collection(s).
+
+        Args:
+            compressed (False): whether to return the sizes of collections in
+                their compressed form on disk (True) or the logical
+                uncompressed size of  the collections (False)
+
+        Returns:
+            a stats dict
+        """
+        stats = {}
+
+        conn = foo.get_db_conn()
+
+        cs = conn.command("collstats", self._sample_collection_name)
+        samples_bytes = cs["storageSize"] if compressed else cs["size"]
+        stats["samples_count"] = cs["count"]
+        stats["samples_bytes"] = samples_bytes
+        total_bytes = samples_bytes
+
+        if self.media_type == fom.VIDEO:
+            cs = conn.command("collstats", self._frame_collection_name)
+            frames_bytes = cs["storageSize"] if compressed else cs["size"]
+            stats["frames_count"] = cs["count"]
+            stats["frames_bytes"] = frames_bytes
+            total_bytes += frames_bytes
+
+        stats["total_bytes"] = total_bytes
+
+        return stats
+
     def first(self):
         """Returns the first sample in the dataset.
 
