@@ -692,7 +692,13 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "tf1"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "tf1"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -730,7 +736,13 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "tf1"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "tf1"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -911,7 +923,13 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "tf1"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "tf1"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -949,7 +967,13 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "tf1"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "tf1"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -987,7 +1011,13 @@
                     "packages": ["tensorflow-gpu<2"]
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "tf1"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "tf1"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1199,7 +1229,13 @@
                     "packages": ["tensorflow-gpu|tensorflow>=2"]
                 }
             },
-            "tags": ["classification", "embeddings", "imagenet", "tf"],
+            "tags": [
+                "classification",
+                "embeddings",
+                "logits",
+                "imagenet",
+                "tf"
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
