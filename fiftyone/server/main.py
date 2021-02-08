@@ -1085,7 +1085,7 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
     return aggregations, fields, ticks
 
 
-def _make_range_expression(f, args):
+def _make_scalar_expression(f, args):
     expr = None
     if "range" in args:
         mn, mx = args["range"]
@@ -1093,7 +1093,7 @@ def _make_range_expression(f, args):
         expr = (f >= mn) & (f <= mx)
         if args.get("none", False):
             expr |= ~(f.exists())
-    elif "values" in args:
+    elif "values" in args and "include" in args["values"]:
         values = args["values"]
         expr = f.is_in(values["include"])
         if values.get("none", False):
@@ -1121,7 +1121,7 @@ def _make_filter_stages(dataset, filters):
             field = schema[path]
 
         if isinstance(field, fof.EmbeddedDocumentField):
-            expr = _make_range_expression(F("confidence"), args)
+            expr = _make_scalar_expression(F("confidence"), args)
             values = args["values"]
             labels_expr = None
             f = F("label")
@@ -1140,7 +1140,7 @@ def _make_filter_stages(dataset, filters):
 
             stages.append(fosg.FilterLabels(path, expr, only_matches=True))
         else:
-            expr = _make_range_expression(F(path), args)
+            expr = _make_scalar_expression(F(path), args)
             stages.append(fosg.Match(expr))
 
     return stages

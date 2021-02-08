@@ -923,6 +923,13 @@ export const fieldIsFiltered = selectorFamily({
   get: (field: string) => ({ get }): boolean => {
     const label = get(isLabel(field));
     const numeric = get(isNumericField(field));
+    const string = get(isStringField(field));
+    if (string) {
+      return (
+        !get(filterStringFieldIncludeNone(field)) ||
+        get(filterStringFieldValues(field))
+      );
+    }
     const range = get(
       label ? filterLabelConfidenceRange(field) : filterNumericFieldRange(field)
     );
@@ -1224,7 +1231,7 @@ export const filterNumericFieldIncludeNone = selectorFamily({
   },
 });
 
-export const filterStringFieldValues = selectorFamily({
+export const filterStringFieldValues = selectorFamily<string, string[]>({
   key: "filterStringFieldValues",
   get: (path) => ({ get }) => {
     const filter = get(filterStage(path));
@@ -1240,11 +1247,11 @@ export const filterStringFieldValues = selectorFamily({
   },
 });
 
-export const filterStringFieldIncludeNone = selectorFamily({
+export const filterStringFieldIncludeNone = selectorFamily<string, boolean>({
   key: "filterStringFieldIncludeNone",
   get: (path) => ({ get }) => {
     const filter = get(filterStage(path));
-    return filter?.none ?? true;
+    return filter?.values?.none ?? true;
   },
   set: (path) => ({ get, set }, none) => {
     const values = get(filterStringFieldValues(path));
@@ -1256,7 +1263,7 @@ export const filterStringFieldIncludeNone = selectorFamily({
   },
 });
 
-export const stringFieldValues = selectorFamily({
+export const stringFieldValues = selectorFamily<string, string[]>({
   key: "stringFieldValues",
   get: (fieldName) => ({ get }) => {
     const stats = get(datasetStats);
