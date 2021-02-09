@@ -1,6 +1,12 @@
-import { selector, selectorFamily } from "recoil";
+import { atomFamily, selector, selectorFamily } from "recoil";
 
 import { Range } from "./RangeSlider";
+import {
+  isBooleanField,
+  isLabelField,
+  isNumericField,
+  isStringField,
+} from "./utils";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 
@@ -13,13 +19,37 @@ const getRange = (
   return bounds; // todo;
 };
 
+export const modalFilterIncludeLabels = atomFamily<string[], string>({
+  key: "modalFilterIncludeLabels",
+  default: [],
+});
+
+export const modalFilterLabelConfidenceRange = atomFamily<Range, string>({
+  key: "modalFilterLabelConfidenceRange",
+  default: [null, null],
+});
+
+export const modalFilterLabelIncludeNoConfidence = atomFamily<boolean, string>({
+  key: "modalFilterLabelIncludeNoConfidence",
+  default: true,
+});
+
 export const confidenceRangeAtom = selectorFamily<Range, string>({
   key: "confidenceRangeAtom",
   get: ({ get }) => {},
   set: (path) => ({ get, set }, value) => {},
 });
 
-export const labelFilters = selector({
+interface Label {
+  confidence?: number;
+  label?: number;
+}
+
+type LabelFilters = {
+  [key: string]: (Label) => boolean;
+};
+
+export const labelFilters = selector<LabelFilters>({
   key: "labelFilters",
   get: ({ get }) => {
     const frameLabels = get(atoms.activeLabels("frame"));
@@ -49,7 +79,7 @@ export const labelFilters = selector({
   },
 });
 
-export const modalLabelFilters = selector({
+export const modalLabelFilters = selector<LabelFilters>({
   key: "modalLabelFilters",
   get: ({ get }) => {
     const frameLabels = get(atoms.modalActiveLabels("frame"));
@@ -89,7 +119,7 @@ export const modalLabelFilters = selector({
     set(atoms.modalActiveLabels("frame"), activeFrameLabels);
     for (const label of paths) {
       set(
-        atoms.modalFilterLabelConfidenceRange(label),
+        modalFilterLabelConfidenceRange(label),
         get(filterLabelConfidenceRange(label))
       );
 
@@ -155,7 +185,7 @@ export const sampleModalFilter = selector({
 export const modalFieldIsFiltered = selectorFamily({
   key: "modalFieldIsFiltered",
   get: (field: string) => ({ get }): boolean => {
-    const label = get(isLabel(field));
+    const label = get(isLabelField(field));
 
     if (!label) {
       return false;
@@ -255,4 +285,24 @@ export const updateFilter = (filter, path, args) => {
   });
 
   return filterDefaults(filter);
+};
+
+export const GLOBAL_ATOMS = {
+  colorByLabel: atoms.colorByLabel,
+  includeLabels: selectors.filterIncludeLabels,
+  includeNoLabel: selectors.filterIncludeNoLabel,
+  includeNoConfidence: selectors.filterLabelIncludeNoConfidence,
+  confidenceRange: selectors.filterLabelConfidenceRange,
+  confidenceBounds: selectors.labelConfidenceBounds,
+  fieldIsFiltered: selectors.fieldIsFiltered,
+};
+
+export const MODAL_ATOMS = {
+  colorByLabel: atoms.modalColorByLabel,
+  includeLabels: atoms.modalFilterIncludeLabels,
+  includeNoLabel: selectors.modalFilterIncludeNoLabel,
+  includeNoConfidence: atoms.modalFilterLabelIncludeNoConfidence,
+  confidenceRange: atoms.modalFilterLabelConfidenceRange,
+  confidenceBounds: selectors.labelConfidenceBounds,
+  fieldIsFiltered: selectors.modalFieldIsFiltered,
 };

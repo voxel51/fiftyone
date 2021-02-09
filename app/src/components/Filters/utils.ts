@@ -18,6 +18,16 @@ export const isBooleanField = selectorFamily<boolean, string>({
   },
 });
 
+export const isLabelField = selectorFamily<boolean, string>({
+  key: "isLabel",
+  get: (field) => ({ get }) => {
+    const names = get(selectors.labelNames("sample")).concat(
+      get(selectors.labelNames("frame")).map((l) => "frames." + l)
+    );
+    return names.includes(field);
+  },
+});
+
 export const isNumericField = selectorFamily<boolean, string>({
   key: "isNumericField",
   get: (name) => ({ get }) => {
