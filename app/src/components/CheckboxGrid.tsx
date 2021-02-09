@@ -10,7 +10,7 @@ import { useRecoilValue } from "recoil";
 import { animated, useSpring } from "react-spring";
 
 import * as atoms from "../recoil/atoms";
-import * as selectors from "../recoil/selectors";
+import { fieldIsFiltered } from "./Filters/LabelFieldFilters.state";
 import { isBooleanField, isNumericField, isStringField } from "./Filters/utils";
 import { SampleContext } from "../utils/context";
 import { labelTypeIsFilterable, LABEL_LISTS } from "../utils/labels";
@@ -136,10 +136,10 @@ type Props = {
 const Entry = ({ entry, onCheck, modal }) => {
   const [expanded, setExpanded] = useState(false);
   const theme = useContext(ThemeContext);
-  const fieldIsFiltered = useRecoilValue(fieldIsFiltered(entry.path, modal));
-  const isNumericField = useRecoilValue(isNumericField(entry.path));
-  const isStringField = useRecoilValue(isStringField(entry.path));
-  const isBooleanField = useRecoilValue(isBooleanField(entry.path));
+  const fieldFiltered = useRecoilValue(fieldIsFiltered(entry.path, modal));
+  const isNumeric = useRecoilValue(isNumericField(entry.path));
+  const isString = useRecoilValue(isStringField(entry.path));
+  const isBoolean = useRecoilValue(isBooleanField(entry.path));
 
   const handleCheck = (entry) => {
     if (onCheck) {
@@ -159,7 +159,7 @@ const Entry = ({ entry, onCheck, modal }) => {
   const checkboxClass = entry.hideCheckbox ? "no-checkbox" : "with-checkbox";
   const containerProps = useSpring({
     backgroundColor:
-      fieldIsFiltered || hasHiddenObjects
+      fieldFiltered || hasHiddenObjects
         ? "#6C757D"
         : entry.hideCheckbox || entry.selected
         ? theme.backgroundLight
@@ -183,8 +183,7 @@ const Entry = ({ entry, onCheck, modal }) => {
                 </span>
                 {!(entry.icon && !LABEL_LISTS.includes(entry.type)) &&
                 ((entry.type && labelTypeIsFilterable(entry.type)) ||
-                  ((isNumericField || isStringField || isBooleanField) &&
-                    !modal)) ? (
+                  ((isNumeric || isString || isBoolean) && !modal)) ? (
                   <ArrowType
                     onClick={(e) => {
                       e.preventDefault();
@@ -235,13 +234,9 @@ const Entry = ({ entry, onCheck, modal }) => {
           />
         }
       />
-      {isNumericField && (
-        <NumericFieldFilter expanded={expanded} entry={entry} />
-      )}
-      {isStringField && <StringFieldFilter expanded={expanded} entry={entry} />}
-      {isBooleanField && (
-        <BooleanFieldFilter expanded={expanded} entry={entry} />
-      )}
+      {isNumeric && <NumericFieldFilter expanded={expanded} entry={entry} />}
+      {isString && <StringFieldFilter expanded={expanded} entry={entry} />}
+      {isBoolean && <BooleanFieldFilter expanded={expanded} entry={entry} />}
       {entry.type && labelTypeIsFilterable(entry.type) ? (
         <LabelFieldFilter expanded={expanded} entry={entry} modal={modal} />
       ) : null}
