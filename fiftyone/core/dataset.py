@@ -389,7 +389,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return "\n".join(elements)
 
     def stats(self, include_media=False, compressed=False):
-        """Returns stats about the dataset's backing database collection(s).
+        """Returns stats about the dataset on disk.
+
+        The ``samples`` keys refer to the sample-level labels for the dataset
+        as they are stored in the database.
+
+        The ``media`` keys refer to the raw media associated with each sample
+        in the dataset on disk (only included if ``include_media`` is True).
+
+        The ``frames`` keys refer to the frame labels for the dataset as they
+        are stored in the database (video datasets only).
 
         Args:
             include_media (False): whether to include stats about the size of
@@ -409,7 +418,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         samples_bytes = cs["storageSize"] if compressed else cs["size"]
         stats["samples_count"] = cs["count"]
         stats["samples_bytes"] = samples_bytes
-        stats["sample_size"] = etau.to_human_bytes_str(samples_bytes)
+        stats["samples_size"] = etau.to_human_bytes_str(samples_bytes)
         total_bytes = samples_bytes
 
         if self.media_type == fom.VIDEO:
