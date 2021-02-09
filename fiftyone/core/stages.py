@@ -22,12 +22,10 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
+from fiftyone.core.odm.document import MongoEngineBaseDocument
 from fiftyone.core.odm.frame import DatasetFrameSampleDocument
 from fiftyone.core.odm.mixins import default_sample_fields
 from fiftyone.core.odm.sample import DatasetSampleDocument
-
-
-_FRAMES_PREFIX = "frames."
 
 
 class ViewStage(object):
@@ -332,9 +330,9 @@ class ExcludeFields(ViewStage):
                 DatasetFrameSampleDocument, include_private=True
             )
             excluded_fields = [
-                f[len(_FRAMES_PREFIX) :]
+                f[len(self._dataset._FRAMES_PREFIX) :]
                 for f in self.field_names
-                if f.startswith(_FRAMES_PREFIX)
+                if f.startswith(self._dataset._FRAMES_PREFIX)
             ]
         else:
             default_fields = default_sample_fields(
@@ -344,7 +342,9 @@ class ExcludeFields(ViewStage):
                 default_fields += ("frames",)
 
             excluded_fields = [
-                f for f in self.field_names if not f.startswith(_FRAMES_PREFIX)
+                f
+                for f in self.field_names
+                if not f.startswith(self._dataset._FRAMES_PREFIX)
             ]
 
         for field_name in excluded_fields:
@@ -383,14 +383,8 @@ class ExcludeFields(ViewStage):
         ]
 
     def validate(self, sample_collection):
-        import fiftyone.core.view as fov
-
-        if isinstance(sample_collection, fov.DatasetView):
-            self._dataset = sample_collection._dataset
-        else:
-            self._dataset = sample_collection
-
         # Using dataset here allows a field to be excluded multiple times
+        self._dataset = sample_collection._dataset
         self._dataset.validate_fields_exist(self.field_names)
 
 
@@ -1894,13 +1888,15 @@ def _make_set_field_pipeline(sample_collection, field, expr):
 
 
 def _parse_field_name(sample_collection, field_name):
-    path, is_frame_field, list_fields = sample_collection._parse_field_name(
+    path, is_frame_field, list_fields, _ = sample_collection._parse_field_name(
         field_name
     )
 
     if is_frame_field and path != "frames":
-        path = _FRAMES_PREFIX + path
-        list_fields = ["frames"] + [_FRAMES_PREFIX + lf for lf in list_fields]
+        path = sample_collection._FRAMES_PREFIX + path
+        list_fields = ["frames"] + [
+            sample_collection._FRAMES_PREFIX + lf for lf in list_fields
+        ]
 
     return path, list_fields
 
@@ -2036,6 +2032,10 @@ class SetField(ViewStage):
     """
 
     def __init__(self, field, expr):
+        if isinstance(expr, MongoEngineBaseDocument):
+            expr = expr.to_dict()
+            expr.pop("_id", None)
+
         self._field = field
         self._expr = expr
 
@@ -2538,9 +2538,9 @@ class SelectFields(ViewStage):
             )
 
             selected_fields = [
-                f[len(_FRAMES_PREFIX) :]
+                f[len(self._dataset._FRAMES_PREFIX) :]
                 for f in self.field_names
-                if f.startswith(_FRAMES_PREFIX)
+                if f.startswith(self._dataset._FRAMES_PREFIX)
             ]
         else:
             default_fields = default_sample_fields(
@@ -2550,7 +2550,9 @@ class SelectFields(ViewStage):
                 default_fields += ("frames",)
 
             selected_fields = [
-                f for f in self.field_names if not f.startswith(_FRAMES_PREFIX)
+                f
+                for f in self.field_names
+                if not f.startswith(self._dataset._FRAMES_PREFIX)
             ]
 
         return list(set(selected_fields) | set(default_fields))
@@ -2586,13 +2588,7 @@ class SelectFields(ViewStage):
                 )
 
     def validate(self, sample_collection):
-        import fiftyone.core.view as fov
-
-        if isinstance(sample_collection, fov.DatasetView):
-            self._dataset = sample_collection._dataset
-        else:
-            self._dataset = sample_collection
-
+        self._dataset = sample_collection._dataset
         sample_collection.validate_fields_exist(self.field_names)
 
 
@@ -3118,7 +3114,7 @@ def _get_field(sample_collection, field_path):
     is_frame_field = sample_collection._is_frame_field(field_path)
 
     if is_frame_field:
-        field_name = field_path[len(_FRAMES_PREFIX) :]
+        field_name = field_path[len(sample_collection._FRAMES_PREFIX) :]
         schema = sample_collection.get_frame_field_schema()
     else:
         field_name = field_path
