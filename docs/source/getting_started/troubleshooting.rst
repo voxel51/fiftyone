@@ -185,13 +185,15 @@ installation by adding `--force-reinstall` to the commands below.
 
     .. code-block:: shell
 
-      pip install --index https://pypi.voxel51.com fiftyone-db-ubuntu1604
+      # be sure you have libcurl3 installed
+      # apt install libcurl3
+      pip install fiftyone-db-ubuntu1604
 
   .. tab:: Debian 9
 
     .. code-block:: shell
 
-      pip install --index https://pypi.voxel51.com fiftyone-db-debian9
+      pip install fiftyone-db-debian9
 
 Manual installation
 ~~~~~~~~~~~~~~~~~~~

@@ -11,6 +11,8 @@ import numbers
 
 from bson import ObjectId
 
+import eta.core.utils as etau
+
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.media as fom
@@ -39,44 +41,55 @@ class DatasetView(foc.SampleCollection):
     :class:`fiftyone.core.sample.Sample` objects, since they may contain a
     subset of the sample's content.
 
-    Example use::
-
-        # Print paths for 5 random samples from the test split of a dataset
-        view = dataset.match_tags("test").take(5)
-        for sample in view:
-            print(sample.filepath)
+    See https://voxel51.com/docs/fiftyone/user_guide/using_views.html for an
+    overview of working with dataset views.
 
     Args:
         dataset: a :class:`fiftyone.core.dataset.Dataset`
     """
 
     def __init__(self, dataset):
-        self._dataset = dataset
+        self.__dataset__ = dataset
         self._stages = []
 
     def __len__(self):
         return self.count()
 
-    def __getitem__(self, sample_id):
-        if isinstance(sample_id, numbers.Integral):
+    def __getitem__(self, id_filepath_slice):
+        if isinstance(id_filepath_slice, numbers.Integral):
             raise KeyError(
                 "Accessing samples by numeric index is not supported. "
-                "Use sample IDs or slices"
+                "Use sample IDs, filepaths, or slices"
             )
 
-        if isinstance(sample_id, slice):
-            return self._slice(sample_id)
+        if isinstance(id_filepath_slice, slice):
+            return self._slice(id_filepath_slice)
 
-        view = self.match({"_id": ObjectId(sample_id)})
         try:
-            return view.first()
-        except ValueError:
-            raise KeyError("No sample found with ID '%s'" % sample_id)
+            oid = ObjectId(id_filepath_slice)
+            query = {"_id": oid}
+        except:
+            oid = None
+            query = {"filepath": id_filepath_slice}
+
+        view = self.match(query)
+
+        try:
+            return next(iter(view))
+        except StopIteration:
+            field = "ID" if oid is not None else "filepath"
+            raise KeyError(
+                "No sample found with %s '%s'" % (field, id_filepath_slice)
+            )
 
     def __copy__(self):
         view = self.__class__(self._dataset)
         view._stages = deepcopy(self._stages)
         return view
+
+    @property
+    def _dataset(self):
+        return self.__dataset__
 
     @property
     def media_type(self):
@@ -326,13 +339,20 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._clear_frame_field(field_name, view=self)
 
-    def save(self):
+    def save(self, fields=None):
         """Overwrites the underlying dataset with the contents of the view.
 
         **WARNING:** this will permanently delete any omitted, filtered, or
         otherwise modified contents of the dataset.
+
+        Args:
+            fields (None): an optional field or list of fields to save. If
+                specified, only these fields are overwritten
         """
-        self._dataset._save(view=self)
+        if etau.is_str(fields):
+            fields = [fields]
+
+        self._dataset._save(view=self, fields=fields)
 
     def clone(self, name=None):
         """Creates a new dataset containing only the contents of the view.

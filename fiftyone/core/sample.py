@@ -34,7 +34,7 @@ def get_default_sample_fields(include_private=False):
     )
 
 
-class _DatasetSample(Document):
+class _Sample(Document):
     def __getattr__(self, name):
         if name == "frames" and self.media_type == fomm.VIDEO:
             return self._frames._serve(self)
@@ -306,7 +306,7 @@ class _DatasetSample(Document):
                 )
 
 
-class Sample(_DatasetSample):
+class Sample(_Sample):
     """A sample in a :class:`fiftyone.core.dataset.Dataset`.
 
     Samples store all information associated with a particular piece of data in
@@ -467,7 +467,7 @@ class Sample(_DatasetSample):
         super()._set_backing_doc(doc, dataset=dataset)
 
 
-class SampleView(_DatasetSample):
+class SampleView(_Sample):
     """A view of a sample returned by a:class:`fiftyone.core.view.DatasetView`.
 
     SampleViews should never be created manually, only returned by dataset
