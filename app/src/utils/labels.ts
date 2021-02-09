@@ -59,6 +59,7 @@ export const LABEL_LISTS = [
 ];
 
 export const AGGS = {
+  BOUNDS: "Bounds",
   COUNT: "Count",
   DISTINCT: "Distinct",
 };

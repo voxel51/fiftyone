@@ -1,15 +1,17 @@
 import React, { useState } from "react";
-import { animated, useSpring } from "react-spring";
+import { animated } from "react-spring";
 import {
   DefaultValue,
   GetRecoilValue,
   selectorFamily,
+  SerializableParam,
   SetRecoilState,
 } from "recoil";
-import useMeasure from "react-use-measure";
 
 import * as selectors from "../../recoil/selectors";
 import { NamedRangeSlider, Range } from "./RangeSlider";
+import { useExpand } from "./utils";
+import { AGGS } from "../../utils/labels";
 
 type NumericFilter = {
   range: Range;
@@ -19,7 +21,7 @@ type NumericFilter = {
 const getFilter = (get: GetRecoilValue, path: string): NumericFilter => {
   return {
     ...{
-      range: [undefined, undefined],
+      range: [null, null],
       none: true,
     },
     ...get(selectors.filterStage(path)),
@@ -39,41 +41,90 @@ const setFilter = (
   });
 };
 
-const rangeAtom = selectorFamily<Range, string>({
+export const boundsAtom = selectorFamily<
+  Range,
+  {
+    path: string;
+    defaultRange?: Range;
+  }
+>({
+  key: "numericFieldBounds",
+  get: ({ path, defaultRange }) => ({ get }) => {
+    return (get(selectors.datasetStats) ?? []).reduce(
+      (acc, cur) => {
+        if (cur.name === path && cur._CLS === AGGS.BOUNDS) {
+          let { result: bounds } = cur;
+          if (defaultRange) {
+            const [minMax, maxMin] = defaultRange;
+            bounds = [
+              maxMin < bounds[0] ? maxMin : bounds[0],
+              minMax > bounds[1] ? minMax : bounds[1],
+            ];
+          }
+          return [
+            bounds[0] !== null && bounds[0] !== 0
+              ? Number((bounds[0] - 0.01).toFixed(2))
+              : bounds[0],
+            bounds[1] !== null && bounds[1] !== 1
+              ? Number((bounds[1] + 0.01).toFixed(2))
+              : bounds[1],
+          ];
+        }
+        return acc;
+      },
+      [null, null]
+    );
+  },
+});
+
+export const rangeAtom = selectorFamily<Range, string>({
   key: "filterNumericFieldRange",
   get: (path) => ({ get }) => getFilter(get, path).range,
   set: (path) => ({ get, set }, range) =>
     setFilter(get, set, path, "range", range),
 });
 
-const noneAtom = selectorFamily<boolean, string>({
+export const noneAtom = selectorFamily<boolean, string>({
   key: "filterNumericFieldNone",
   get: (path) => ({ get }) => getFilter(get, path).none,
   set: (path) => ({ get, set }, value) =>
     setFilter(get, set, path, "none", value),
 });
 
-const NumericFieldFilter = ({ expanded, entry }) => {
-  const [overflow, setOverflow] = useState("hidden");
+export const fieldIsFiltered = selectorFamily<
+  boolean,
+  {
+    path: string;
+    defaultRange?: Range;
+  }
+>({
+  key: "numericFieldIsFiltered",
+  get: ({ path, defaultRange }) => ({ get }) => {
+    const none = !get(noneAtom(path));
+    const range = get(rangeAtom(path));
+    const bounds = get(boundsAtom({ path, defaultRange }));
 
-  const [ref, { height }] = useMeasure();
-  const props = useSpring({
-    height: expanded ? height : 0,
-    from: {
-      height: 0,
-    },
-    onStart: () => !expanded && setOverflow("hidden"),
-    onRest: () => expanded && setOverflow("visible"),
-  });
+    return (
+      !none ||
+      (bounds.some(
+        (b, i) => range[i] !== b && b !== null && range[i] !== null
+      ) &&
+        bounds[0] !== bounds[1])
+    );
+  },
+});
+
+const NumericFieldFilter = ({ expanded, entry }) => {
+  const [ref, props] = useExpand(expanded);
 
   return (
-    <animated.div style={{ ...props, overflow }}>
+    <animated.div style={props}>
       <NamedRangeSlider
         color={entry.color}
         name={"Range"}
         valueName={"value"}
         noneAtom={noneAtom(entry.path)}
-        boundsAtom={selectors.numericFieldBounds(entry.path)}
+        boundsAtom={boundsAtom({ path: entry.path })}
         rangeAtom={rangeAtom(entry.path)}
         ref={ref}
       />

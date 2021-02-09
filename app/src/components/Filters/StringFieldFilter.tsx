@@ -5,12 +5,12 @@ import {
   selectorFamily,
   SetRecoilState,
 } from "recoil";
-import { animated, useSpring } from "react-spring";
-import useMeasure from "react-use-measure";
+import { animated } from "react-spring";
 
 import * as selectors from "../../recoil/selectors";
 import { NamedStringFilter } from "./StringFilter";
 import { AGGS } from "../../utils/labels";
+import { useExpand } from "./utils";
 
 type StringFilter = {
   values: string[];
@@ -47,14 +47,14 @@ export const selectedValuesAtom = selectorFamily<string[], string>({
     setFilter(get, set, path, "values", value),
 });
 
-const noneAtom = selectorFamily<boolean, string>({
+export const noneAtom = selectorFamily<boolean, string>({
   key: "filterStringFieldNone",
   get: (path) => ({ get }) => getFilter(get, path).none,
   set: (path) => ({ get, set }, value) =>
     setFilter(get, set, path, "none", value),
 });
 
-const valuesAtom = selectorFamily<string[], string>({
+export const valuesAtom = selectorFamily<string[], string>({
   key: "stringFieldValues",
   get: (fieldName) => ({ get }) => {
     return (get(selectors.datasetStats) ?? []).reduce((acc, cur) => {
@@ -66,21 +66,17 @@ const valuesAtom = selectorFamily<string[], string>({
   },
 });
 
-const StringFieldFilter = ({ expanded, entry }) => {
-  const [overflow, setOverflow] = useState("hidden");
+export const fieldIsFiltered = selectorFamily<boolean, string>({
+  key: "stringFieldIsFiltered",
+  get: (path) => ({ get }) =>
+    !get(noneAtom(path)) || Boolean(get(selectedValuesAtom(path)).length),
+});
 
-  const [ref, { height }] = useMeasure();
-  const props = useSpring({
-    height: expanded ? height : 0,
-    from: {
-      height: 0,
-    },
-    onStart: () => !expanded && setOverflow("hidden"),
-    onRest: () => expanded && setOverflow("visible"),
-  });
+const StringFieldFilter = ({ expanded, entry }) => {
+  const [ref, props] = useExpand(expanded);
 
   return (
-    <animated.div style={{ ...props, overflow }}>
+    <animated.div style={props}>
       <NamedStringFilter
         name={"Values"}
         valueName={"value"}

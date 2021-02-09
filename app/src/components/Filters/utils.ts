@@ -19,7 +19,7 @@ export const isBooleanField = selectorFamily<boolean, string>({
 });
 
 export const isLabelField = selectorFamily<boolean, string>({
-  key: "isLabel",
+  key: "isLabelField",
   get: (field) => ({ get }) => {
     const names = get(selectors.labelNames("sample")).concat(
       get(selectors.labelNames("frame")).map((l) => "frames." + l)

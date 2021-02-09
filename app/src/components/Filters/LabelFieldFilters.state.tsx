@@ -7,8 +7,11 @@ import {
   isNumericField,
   isStringField,
 } from "./utils";
+import * as numericField from "./NumericFieldFilter";
+import * as stringField from "./StringFieldFilter";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
+import { VALID_LIST_TYPES } from "../../utils/labels";
 
 const getRange = (
   get: GetRecoilValue,
@@ -34,19 +37,20 @@ export const modalFilterLabelIncludeNoConfidence = atomFamily<boolean, string>({
   default: true,
 });
 
-export const confidenceRangeAtom = selectorFamily<Range, string>({
-  key: "confidenceRangeAtom",
-  get: ({ get }) => {},
-  set: (path) => ({ get, set }, value) => {},
-});
-
 interface Label {
   confidence?: number;
   label?: number;
 }
 
 type LabelFilters = {
-  [key: string]: (Label) => boolean;
+  [key: string]: (label: Label) => boolean;
+};
+
+const getPathExtension = (type) => {
+  if (VALID_LIST_TYPES.includes(type)) {
+    return ".detections";
+  }
+  return "";
 };
 
 export const labelFilters = selector<LabelFilters>({
@@ -64,15 +68,19 @@ export const labelFilters = selector<LabelFilters>({
     };
     const filters = {};
     for (const label in labels) {
-      const range = get(filterLabelConfidenceRange(label));
-      const none = get(filterLabelIncludeNoConfidence(label));
-      const include = get(filterIncludeLabels(label));
+      const path = `${label}${getPathExtension(label)}`;
+      const cRange = get(numericField.rangeAtom(`${path}.confidence`));
+      const cNone = get(numericField.noneAtom(`${path}.confidence`));
+      const lValues = get(stringField.selectedValuesAtom(`${path}.label`));
+      const lNone = get(stringField.noneAtom(`${path}.label`));
       filters[label] = (s) => {
         const inRange =
-          range[0] - 0.005 <= s.confidence && s.confidence <= range[1] + 0.005;
-        const noConfidence = none && s.confidence === undefined;
-        const isIncluded = include.length === 0 || include.includes(s.label);
-        return (inRange || noConfidence) && isIncluded;
+          cRange[0] - 0.005 <= s.confidence &&
+          s.confidence <= cRange[1] + 0.005;
+        const noConfidence = cNone && s.confidence === undefined;
+        const isIncluded = lValues.length === 0 || lValues.includes(s.label);
+        const noLabel = lNone && s.label === undefined;
+        return (inRange || noConfidence) && (isIncluded || noLabel);
       };
     }
     return filters;
@@ -95,7 +103,10 @@ export const modalLabelFilters = selector<LabelFilters>({
     const hiddenObjects = get(atoms.hiddenObjects);
     const filters = {};
     for (const label in labels) {
-      const range = get(atoms.modalFilterLabelConfidenceRange(label));
+      const path = `${label}${getPathExtension(label)}`;
+      const range = get(
+        atoms.modalFilterLabelConfidenceRange(`${path}.confidence`)
+      );
       const none = get(atoms.modalFilterLabelIncludeNoConfidence(label));
       const include = get(atoms.modalFilterIncludeLabels(label));
       filters[label] = (s) => {
@@ -211,10 +222,10 @@ export const modalFieldIsFiltered = selectorFamily({
   },
 });
 
-export const fieldIsFiltered = selectorFamily({
+export const fieldIsFiltered = selectorFamily<boolean, string>({
   key: "fieldIsFiltered",
-  get: (field: string) => ({ get }): boolean => {
-    const label = get(isLabel(field));
+  get: (field) => ({ get }) => {
+    const label = get(isLabelField(field));
     const numeric = get(isNumericField(field));
     const string = get(isStringField(field));
     if (string) {

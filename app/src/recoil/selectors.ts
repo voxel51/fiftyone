@@ -633,8 +633,6 @@ export const scalarTypes = selectorFamily({
 });
 
 const COUNT_CLS = "Count";
-const BOUNDS_CLS = "Bounds";
-const CONFIDENCE_BOUNDS_CLS = "Bounds";
 
 export const labelsPath = selectorFamily({
   key: "labelsPath",
@@ -785,60 +783,6 @@ export const colorMap = selector({
         ...colorFrameLabelNames,
       ],
       seed
-    );
-  },
-});
-
-export const labelConfidenceBounds = selectorFamily({
-  key: "labelConfidenceBounds",
-  get: (label) => ({ get }) => {
-    return (get(datasetStats) ?? []).reduce(
-      (acc, cur) => {
-        if (
-          cur.name &&
-          cur.name.includes(label) &&
-          cur._CLS === CONFIDENCE_BOUNDS_CLS
-        ) {
-          let bounds = cur.result;
-          bounds = [
-            0 < bounds[0] ? 0 : bounds[0],
-            1 > bounds[1] ? 1 : bounds[1],
-          ];
-          return [
-            bounds[0] !== null && bounds[0] !== 0
-              ? Number((bounds[0] - 0.01).toFixed(2))
-              : bounds[0],
-            bounds[1] !== null && bounds[1] !== 1
-              ? Number((bounds[1] + 0.01).toFixed(2))
-              : bounds[1],
-          ];
-        }
-        return acc;
-      },
-      [null, null]
-    );
-  },
-});
-
-export const numericFieldBounds = selectorFamily({
-  key: "numericFieldBounds",
-  get: (label) => ({ get }) => {
-    return (get(datasetStats) ?? []).reduce(
-      (acc, cur) => {
-        if (cur.name === label && cur._CLS === BOUNDS_CLS) {
-          const { result: bounds } = cur;
-          return [
-            bounds[0] !== null && bounds[0] !== 0
-              ? Number((bounds[0] - 0.01).toFixed(2))
-              : bounds[0],
-            bounds[1] !== null && bounds[1] !== 1
-              ? Number((bounds[1] + 0.01).toFixed(2))
-              : bounds[1],
-          ];
-        }
-        return acc;
-      },
-      [null, null]
     );
   },
 });

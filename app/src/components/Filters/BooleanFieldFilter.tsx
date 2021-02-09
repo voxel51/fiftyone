@@ -5,11 +5,11 @@ import {
   selectorFamily,
   SetRecoilState,
 } from "recoil";
+import { animated } from "react-spring";
 
 import * as selectors from "../../recoil/selectors";
 import { NamedBooleanFilter } from "./BooleanFilter";
-import { animated, useSpring } from "react-spring";
-import useMeasure from "react-use-measure";
+import { useExpand } from "./utils";
 
 type BooleanFilter = {
   false: boolean;
@@ -62,20 +62,17 @@ const noneAtom = selectorFamily<boolean, string>({
     setFilter(get, set, path, "none", value),
 });
 
+export const fieldIsFiltered = selectorFamily<boolean, string>({
+  key: "booleanFieldIsFiltered",
+  get: (path) => ({ get }) =>
+    !(get(noneAtom(path)) || get(trueAtom(path)) || get(falseAtom(path))),
+});
+
 const BooleanFieldFilter = ({ expanded, entry }) => {
-  const [overflow, setOverflow] = useState("hidden");
-  const [ref, { height }] = useMeasure();
-  const props = useSpring({
-    height: expanded ? height : 0,
-    from: {
-      height: 0,
-    },
-    onStart: () => !expanded && setOverflow("hidden"),
-    onRest: () => expanded && setOverflow("visible"),
-  });
+  const [ref, props] = useExpand(expanded);
 
   return (
-    <animated.div style={{ ...props, overflow }}>
+    <animated.div style={props}>
       <NamedBooleanFilter
         color={entry.color}
         trueAtom={trueAtom(entry.path)}
