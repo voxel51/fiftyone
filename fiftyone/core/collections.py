@@ -65,14 +65,13 @@ view_stage = _make_registrar()
 aggregation = _make_registrar()
 
 
-_FRAMES_PREFIX = "frames."
-
-
 class SampleCollection(object):
     """Abstract class representing an ordered collection of
     :class:`fiftyone.core.sample.Sample` instances in a
     :class:`fiftyone.core.dataset.Dataset`.
     """
+
+    _FRAMES_PREFIX = "frames."
 
     def __str__(self):
         return repr(self)
@@ -99,6 +98,13 @@ class SampleCollection(object):
 
     def __iter__(self):
         return self.iter_samples()
+
+    @property
+    def _dataset(self):
+        """The underlying :class:`fiftyone.core.dataset.Dataset` for the
+        collection.
+        """
+        raise NotImplementedError("Subclass must implement _dataset")
 
     @property
     def name(self):
@@ -321,6 +327,33 @@ class SampleCollection(object):
 
         return field_name
 
+    def has_sample_field(self, field_name):
+        """Determines whether the collection has a sample field with the given
+        name.
+
+        Args:
+            field_name: the field name
+
+        Returns:
+            True/False
+        """
+        return field_name in self.get_field_schema()
+
+    def has_frame_field(self, field_name):
+        """Determines whether the collection has a frame-level field with the
+        given name.
+
+        Args:
+            field_name: the field name
+
+        Returns:
+            True/False
+        """
+        if self.media_type != fom.VIDEO:
+            return False
+
+        return field_name in self.get_frame_field_schema()
+
     def validate_fields_exist(self, field_or_fields):
         """Validates that the collection has fields with the given names.
 
@@ -341,10 +374,10 @@ class SampleCollection(object):
 
         if self.media_type == fom.VIDEO:
             frame_fields = list(
-                filter(lambda n: n.startswith(_FRAMES_PREFIX), fields)
+                filter(lambda n: n.startswith(self._FRAMES_PREFIX), fields)
             )
             fields = list(
-                filter(lambda n: not n.startswith(_FRAMES_PREFIX), fields)
+                filter(lambda n: not n.startswith(self._FRAMES_PREFIX), fields)
             )
         else:
             frame_fields = []
@@ -410,7 +443,7 @@ class SampleCollection(object):
                 expected type
         """
         if self._is_frame_field(field_name):
-            field_name = field_name[len(_FRAMES_PREFIX) :]
+            field_name = field_name[len(self._FRAMES_PREFIX) :]
 
             schema = self.get_frame_field_schema()
             if field_name not in schema:
@@ -458,6 +491,34 @@ class SampleCollection(object):
                     "Field '%s' must be an instance of %s; found %s"
                     % (field_name, ftype, field)
                 )
+
+    def set_values(self, field_name, values):
+        """Sets the field or embedded field on each sample in the collection to
+        the given values.
+
+        This function is an efficient implementation of the following loop::
+
+            for sample, value in zip(sample_collection, values):
+                sample.embedded.field.name = value
+                sample.save()
+
+        Args:
+            field_name: a field or ``embedded.field.name``
+            values: an iterable of values
+        """
+        if self._is_frame_field(field_name):
+            raise ValueError("set_values() only supports sample fields")
+
+        root = field_name.split(".", 1)[0]
+        if root not in self.get_field_schema():
+            raise ValueError(
+                "Field '%s' does not exist on collection '%s'"
+                % (root, self.name)
+            )
+
+        sample_ids = self._get_sample_ids()
+        updates = [{"$set": {field_name: value}} for value in values]
+        self._dataset._bulk_update(sample_ids, updates)
 
     def compute_metadata(self, overwrite=False, num_workers=None):
         """Populates the ``metadata`` field of all samples in the collection.
@@ -2815,6 +2876,92 @@ class SampleCollection(object):
         """
         return self.aggregate(foa.Sum(field_name, expr=expr))
 
+    @aggregation
+    def values(
+        self, field_name, expr=None, omit_missing=False, missing_value=None
+    ):
+        """Extracts the values of a field from all samples in the collection.
+
+        .. note::
+
+            Unlike other aggregations, :meth:`values` does not *automatically*
+            unwind top-level list fields and label list fields. This default
+            behavior ensures that there is a 1-1 correspondence between the
+            elements of the output list and the samples in the collection.
+
+            You can opt-in to unwinding list fields using the ``[]`` syntax.
+
+        Examples::
+
+            import fiftyone as fo
+            from fiftyone import ViewField as F
+
+            dataset = fo.Dataset()
+            dataset.add_samples(
+                [
+                    fo.Sample(
+                        filepath="/path/to/image1.png",
+                        numeric_field=1.0,
+                        numeric_list_field=[1, 2, 3],
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image2.png",
+                        numeric_field=4.0,
+                        numeric_list_field=[1, 2],
+                    ),
+                    fo.Sample(
+                        filepath="/path/to/image3.png",
+                        numeric_field=None,
+                        numeric_list_field=None,
+                    ),
+                ]
+            )
+
+            #
+            # Get all values of a field
+            #
+
+            values = dataset.values("numeric_field")
+            print(values)  # [1.0, 4.0, None]
+
+            #
+            # Get all values of a list field
+            #
+
+            values = dataset.values("numeric_list_field")
+            print(values)  # [[1, 2, 3], [1, 2], None]
+
+            #
+            # Get all values of transformed field
+            #
+
+            values = dataset.values("numeric_field", expr=2 * (F() + 1))
+            print(values)  # [4.0, 10.0, None]
+
+        Args:
+            field_name: the name of the field to operate on
+            expr (None): an optional
+                :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                to apply to the field before aggregating
+            omit_missing (False): whether to omit missing or ``None``-valued
+                fields from the output list
+            missing_value (None): a value to insert for missing or
+                ``None``-valued fields. Only applicable when ``omit_missing``
+                is ``False``
+
+        Returns:
+            the list of values
+        """
+        return self.aggregate(
+            foa.Values(
+                field_name,
+                expr=expr,
+                omit_missing=omit_missing,
+                missing_value=missing_value,
+            )
+        )
+
     def draw_labels(
         self,
         anno_dir,
@@ -3242,23 +3389,20 @@ class SampleCollection(object):
 
         Returns:
             an aggregation result or list of aggregation results corresponding
-            to the input aggregations
+            to the input aggregation(s)
         """
         scalar_result, aggregations, facets = self._build_aggregation(
             aggregations
         )
-        if len(aggregations) == 0:
+        if not aggregations:
             return []
 
-        # pylint: disable=no-member
         pipeline = self._pipeline(
             pipeline=facets, attach_frames=_attach_frames
         )
-        try:
-            # pylint: disable=no-member
-            result = next(self._dataset._sample_collection.aggregate(pipeline))
-        except StopIteration:
-            pass
+
+        result = self._dataset._sample_collection.aggregate(pipeline)
+        result = next(result)
 
         return self._process_aggregations(aggregations, result, scalar_result)
 
@@ -3291,6 +3435,17 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement _aggregate()")
 
+    def _get_sample_ids(self):
+        result = self._aggregate(
+            [{"$group": {"_id": None, "ids": {"$push": "$_id"}}}],
+            attach_frames=False,
+        )
+
+        try:
+            return next(result)["ids"]
+        except StopIteration:
+            return []
+
     def _attach_frames(self):
         # pylint: disable=no-member
         return [
@@ -3314,12 +3469,8 @@ class SampleCollection(object):
         # pylint: disable=no-member
         pipeline = self._pipeline(pipeline=facets)
 
-        try:
-            # pylint: disable=no-member
-            result = await sample_collection.aggregate(pipeline).to_list(1)
-            result = result[0]
-        except StopIteration:
-            pass
+        result = await sample_collection.aggregate(pipeline).to_list(1)
+        result = result[0]
 
         return self._process_aggregations(aggregations, result, scalar_result)
 
@@ -3344,9 +3495,10 @@ class SampleCollection(object):
     def _process_aggregations(self, aggregations, result, scalar_result):
         results = []
         for idx, agg in enumerate(aggregations):
-            try:
-                results.append(agg.parse_result(result[str(idx)][0]))
-            except:
+            _result = result[str(idx)]
+            if _result:
+                results.append(agg.parse_result(_result[0]))
+            else:
                 results.append(agg.default_result())
 
         return results[0] if scalar_result else results
@@ -3364,13 +3516,29 @@ class SampleCollection(object):
     def _serialize_schema(self, schema):
         return {field_name: str(field) for field_name, field in schema.items()}
 
-    def _parse_field_name(self, field_name):
-        return _parse_field_name(self, field_name)
+    def _parse_field_name(self, field_name, auto_unwind=True):
+        return _parse_field_name(self, field_name, auto_unwind)
 
     def _is_frame_field(self, field_name):
         return (self.media_type == fom.VIDEO) and (
-            field_name.startswith(_FRAMES_PREFIX) or field_name == "frames"
+            field_name.startswith(self._FRAMES_PREFIX)
+            or field_name == "frames"
         )
+
+    def _is_array_field(self, field_name):
+        return _is_array_field(self, field_name)
+
+    def _add_field_if_necessary(self, field_name, ftype, **kwargs):
+        # @todo if field exists, validate that `ftype` and `**kwargs` match
+        if self._is_frame_field(field_name):
+            field_name = field_name[len(self._FRAMES_PREFIX) :]
+            if not self.has_frame_field(field_name):
+                self._dataset.add_frame_field(field_name, ftype, **kwargs)
+
+            return
+
+        if not self.has_sample_field(field_name):
+            self._dataset.add_sample_field(field_name, ftype, **kwargs)
 
 
 def get_label_fields(
@@ -3633,23 +3801,24 @@ def _get_field_with_type(label_fields, label_cls):
     return None
 
 
-def _parse_field_name(sample_collection, field_name):
+def _parse_field_name(sample_collection, field_name, auto_unwind):
     is_frame_field = sample_collection._is_frame_field(field_name)
     if is_frame_field:
         if field_name == "frames":
-            return field_name, is_frame_field, []
+            return field_name, is_frame_field, [], []
 
         schema = sample_collection.get_frame_field_schema()
-        field_name = field_name[len(_FRAMES_PREFIX) :]
+        field_name = field_name[len(sample_collection._FRAMES_PREFIX) :]
     else:
         schema = sample_collection.get_field_schema()
 
-    list_fields = set()
+    unwind_list_fields = set()
+    other_list_fields = set()
 
     # Parse explicit array references
     chunks = field_name.split("[]")
     for idx in range(len(chunks) - 1):
-        list_fields.add("".join(chunks[: (idx + 1)]))
+        unwind_list_fields.add("".join(chunks[: (idx + 1)]))
 
     # Array references [] have been stripped
     field_name = "".join(chunks)
@@ -3667,9 +3836,11 @@ def _parse_field_name(sample_collection, field_name):
         )
 
     # Detect certain list fields automatically
-
     if isinstance(root_field, fof.ListField):
-        list_fields.add(root_field_name)
+        if auto_unwind:
+            unwind_list_fields.add(root_field_name)
+        elif root_field_name not in unwind_list_fields:
+            other_list_fields.add(root_field_name)
 
     if isinstance(root_field, fof.EmbeddedDocumentField):
         if root_field.document_type in fol._LABEL_LIST_FIELDS:
@@ -3679,13 +3850,61 @@ def _parse_field_name(sample_collection, field_name):
                 + root_field.document_type._LABEL_LIST_FIELD
             )
             if field_name.startswith(prefix):
-                list_fields.add(prefix)
+                if auto_unwind:
+                    unwind_list_fields.add(prefix)
+                elif prefix not in unwind_list_fields:
+                    other_list_fields.add(prefix)
 
     # sorting is important here because one must unwind field `x` before
     # embedded field `x.y`
-    list_fields = sorted(list_fields)
+    unwind_list_fields = sorted(unwind_list_fields)
+    other_list_fields = sorted(other_list_fields)
 
-    return field_name, is_frame_field, list_fields
+    return field_name, is_frame_field, unwind_list_fields, other_list_fields
+
+
+def _is_array_field(sample_collection, field_name):
+    is_frame_field = sample_collection._is_frame_field(field_name)
+    if is_frame_field:
+        if field_name == "frames":
+            return False
+
+        schema = sample_collection.get_frame_field_schema()
+        field_name = field_name[len(sample_collection._FRAMES_PREFIX) :]
+    else:
+        schema = sample_collection.get_field_schema()
+
+    if "." not in field_name:
+        root = field_name
+        field_path = None
+    else:
+        root, field_path = field_name.split(".", 1)
+
+    field = schema.get(root, None)
+    return _is_field_type(field, field_path, fof._ARRAY_FIELDS)
+
+
+def _is_field_type(field, field_path, types):
+    if isinstance(field, fof.ListField):
+        return _is_field_type(field.field, field_path, types)
+
+    if isinstance(field, fof.EmbeddedDocumentField):
+        return _is_field_type(field.document_type, field_path, types)
+
+    if not field_path:
+        return isinstance(field, types)
+
+    if "." not in field_path:
+        root, field_path = field_path, None
+    else:
+        root, field_path = field_path.split(".", 1)
+
+    try:
+        field = getattr(field, root)
+    except AttributeError:
+        return False
+
+    return _is_field_type(field, field_path, types)
 
 
 def _get_random_characters(n):

@@ -19,9 +19,10 @@ from .core.aggregations import (
     CountValues,
     Distinct,
     HistogramValues,
-    Sum,
     Mean,
     Std,
+    Sum,
+    Values,
 )
 from .core.config import AppConfig
 from .core.dataset import (
