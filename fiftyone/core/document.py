@@ -362,6 +362,10 @@ class Document(object):
         self._dataset = dataset
 
     def _reset_backing_doc(self):
+        """Resets the backing doc for the document.
+
+        The document will no longer belong to a dataset.
+        """
         self._doc = self.copy()._doc
         self._dataset = None
 
@@ -411,21 +415,43 @@ class Document(object):
             document._doc._data.pop(field_name, None)
 
     @classmethod
-    def _reload_docs(cls, collection_name):
+    def _reload_docs(cls, collection_name, doc_ids=None):
         """Reloads the backing documents for all in-memory documents in the
         collection.
 
+        Documents that are still in the collection will be reloaded, and
+        documents that are no longer in the collection will be reset.
+
         Args:
             collection_name: the name of the MongoDB collection
+            doc_ids (None): a list of IDs of documents that are still in the
+                collection. If not provided, all documents are assumed to still
+                be in the collection
         """
         if collection_name not in cls._instances:
             return
 
-        for document in cls._instances[collection_name].values():
-            document.reload()
+        dataset_instances = cls._instances[collection_name]
+
+        if doc_ids is None:
+            for document in dataset_instances.values():
+                document.reload()
+
+            return
+
+        reset_ids = set()
+        for document in dataset_instances.values():
+            if document.id in doc_ids:
+                document.reload()
+            else:
+                reset_ids.add(document.id)
+                document._reset_backing_doc()
+
+        for doc_id in reset_ids:
+            dataset_instances.pop(doc_id, None)
 
     @classmethod
-    def _reset_backing_docs(cls, collection_name, doc_ids=None):
+    def _reset_docs(cls, collection_name, doc_ids=None):
         """Resets the backing documents for in-memory documents in the
         collection.
 
@@ -452,32 +478,3 @@ class Document(object):
             document = dataset_instances.pop(doc_id, None)
             if document is not None:
                 document._reset_backing_doc()
-
-    @classmethod
-    def _refresh_backing_docs(cls, collection_name, doc_ids):
-        """Refreshes the backing documents for all in-memory documents in the
-        collection.
-
-        Documents that are still in the collection will be reloaded, and
-        documents that are no longer in the collection will be reset.
-
-        Args:
-            collection_name: the name of the MongoDB collection
-            doc_ids: a list of IDs of documents that are still in the
-                collection
-        """
-        if collection_name not in cls._instances:
-            return
-
-        dataset_instances = cls._instances[collection_name]
-
-        reset_ids = set()
-        for document in dataset_instances.values():
-            if document.id in doc_ids:
-                document.reload()
-            else:
-                reset_ids.add(document.id)
-                document._reset_backing_doc()
-
-        for doc_id in reset_ids:
-            dataset_instances.pop(doc_id, None)

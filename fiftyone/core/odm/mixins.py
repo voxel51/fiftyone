@@ -258,7 +258,7 @@ class DatasetMixin(object):
         )
 
     @classmethod
-    def add_implied_field(cls, field_name, value, **kwargs):
+    def add_implied_field(cls, field_name, value):
         """Adds the field to the sample, inferring the field type from the
         provided value.
 
@@ -270,7 +270,7 @@ class DatasetMixin(object):
         if field_name in cls._fields:
             raise ValueError("Field '%s' already exists" % field_name)
 
-        cls.add_field(field_name, **get_implied_field_kwargs(value, **kwargs))
+        cls.add_field(field_name, **get_implied_field_kwargs(value))
 
     def set_field(self, field_name, value, create=False):
         if field_name.startswith("_"):
@@ -1024,7 +1024,7 @@ def get_field_kwargs(field):
     return kwargs
 
 
-def get_implied_field_kwargs(value, **kwargs):
+def get_implied_field_kwargs(value):
     if isinstance(value, BaseEmbeddedDocument):
         return {
             "ftype": fof.EmbeddedDocumentField,

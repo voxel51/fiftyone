@@ -17,6 +17,7 @@ import string
 
 from bson import ObjectId
 import mongoengine.errors as moe
+from pymongo import UpdateOne
 from pymongo.errors import BulkWriteError
 
 import eta.core.serial as etas
@@ -197,8 +198,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     FiftyOne datasets ingest and store the labels for all samples internally;
     raw media is stored on disk and the dataset provides paths to the data.
 
-    See :doc:`this guide </user_guide/basics>` for an overview of the basics of
-    working with FiftyOne datasets.
+    See https://voxel51.com/docs/fiftyone/user_guide/basics.html for an
+    overview of working with FiftyOne datasets.
 
     Args:
         name (None): the name of the dataset. By default,
@@ -282,6 +283,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return super().__getattribute__(name)
 
     @property
+    def _dataset(self):
+        return self
+
+    @property
     def media_type(self):
         """The media type of the dataset."""
         return self._doc.media_type
@@ -353,10 +358,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def deleted(self):
         """Whether the dataset is deleted."""
         return self._deleted
-
-    @property
-    def _dataset(self):
-        return self
 
     def summary(self):
         """Returns a string summary of the dataset.
@@ -988,7 +989,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _add_samples_batch(self, samples, expand_schema):
         samples = [s.copy() if s._in_db else s for s in samples]
 
-        if self.media_type is None and len(samples) > 0:
+        if self.media_type is None and samples:
             self.media_type = samples[0].media_type
 
         if expand_schema:
@@ -1018,6 +1019,31 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 sample.frames._save(insert=True)
 
         return [str(d["_id"]) for d in dicts]
+
+    def _bulk_update(self, sample_ids, updates, ordered=False):
+        ops = [
+            UpdateOne({"_id": _id}, update)
+            for _id, update in zip(sample_ids, updates)
+        ]
+        self._bulk_write(ops, ordered=ordered)
+
+        # Equivalent with loops
+        # coll = self._sample_collection
+        # with fou.ProgressBar() as pb:
+        #     for _id, update in zip(pb(sample_ids), updates):
+        #         coll.update_one({"_id": _id}, update)
+
+        fos.Sample._reload_docs(self._sample_collection_name)
+
+    def _bulk_write(self, ops, ordered=False):
+        try:
+            for ops_batch in fou.iter_batches(ops, 100000):  # mongodb limit
+                self._sample_collection.bulk_write(
+                    list(ops_batch), ordered=ordered
+                )
+        except BulkWriteError as bwe:
+            msg = bwe.details["writeErrors"][0]["errmsg"]
+            raise ValueError(msg) from bwe
 
     def merge_samples(
         self,
@@ -1233,7 +1259,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._sample_collection.delete_one({"_id": ObjectId(sample_id)})
 
-        fos.Sample._reset_backing_docs(
+        fos.Sample._reset_docs(
             self._sample_collection_name, doc_ids=[sample_id]
         )
 
@@ -1261,7 +1287,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
         )
 
-        fos.Sample._reset_backing_docs(
+        fos.Sample._reset_docs(
             self._sample_collection_name, doc_ids=sample_ids
         )
 
@@ -1273,9 +1299,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._save()
 
-    def _save(self, view=None):
+    def _save(self, view=None, fields=None):
         if view is not None:
-            _save_view(view)
+            _save_view(view, fields)
 
         self._doc.save()
 
@@ -1310,11 +1336,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         updated such that ``sample.in_dataset == False``.
         """
         self._sample_doc_cls.drop_collection()
-        fos.Sample._reset_backing_docs(self._sample_collection_name)
+        fos.Sample._reset_docs(self._sample_collection_name)
 
         if self.media_type == fom.VIDEO:
             self._frame_doc_cls.drop_collection()
-            fos.Sample._reset_backing_docs(self._frame_collection_name)
+            fos.Sample._reset_docs(self._frame_collection_name)
 
     def delete(self):
         """Deletes the dataset.
@@ -2392,9 +2418,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if value is None:
                     continue
 
-                self._sample_doc_cls.add_implied_field(
-                    field_name, value, frame_doc_cls=self._frame_doc_cls,
-                )
+                self._sample_doc_cls.add_implied_field(field_name, value)
                 fields = self.get_field_schema(include_private=True)
 
         self._reload()
@@ -2413,9 +2437,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if value is None:
                     continue
 
-                self._frame_doc_cls.add_implied_field(
-                    field_name, value, frame_doc_cls=self._frame_doc_cls,
-                )
+                self._frame_doc_cls.add_implied_field(field_name, value)
                 fields = self.get_frame_field_schema(include_private=True)
 
         return fields
@@ -2590,6 +2612,7 @@ def _clone_dataset_or_view(dataset_or_view, name):
     dataset._doc.reload()
     dataset_doc = dataset._doc.copy()
     dataset_doc.name = name
+    dataset_doc.persistent = False
     dataset_doc.sample_collection_name = sample_collection_name
 
     if view is not None:
@@ -2616,24 +2639,33 @@ def _clone_dataset_or_view(dataset_or_view, name):
     _create_indexes(sample_collection_name, frames_collection_name)
 
 
-def _save_view(view):
+def _save_view(view, fields):
     dataset = view._dataset
-    dataset._sample_collection.aggregate(
-        view._pipeline(attach_frames=False)
-        + [{"$out": dataset._sample_collection_name}]
-    )
-
-    doc_ids = [str(_id) for _id in dataset._sample_collection.distinct("_id")]
-    fos.Sample._refresh_backing_docs(dataset._sample_collection_name, doc_ids)
-
-    for field_name in view._get_missing_fields():
-        dataset._sample_doc_cls._delete_field_schema(field_name, False)
 
     if dataset.media_type == fom.VIDEO:
         # @todo support this
         raise ValueError(
             "Saving views into video datasets is not yet supported"
         )
+
+    pipeline = view._pipeline(attach_frames=False)
+
+    merge = fields is not None
+
+    if merge:
+        pipeline.append({"$project": {f: True for f in fields}})
+        pipeline.append({"$merge": dataset._sample_collection_name})
+    else:
+        pipeline.append({"$out": dataset._sample_collection_name})
+
+    dataset._sample_collection.aggregate(pipeline)
+
+    doc_ids = [str(_id) for _id in dataset._get_sample_ids()]
+    fos.Sample._reload_docs(dataset._sample_collection_name, doc_ids=doc_ids)
+
+    if not merge:
+        for field_name in view._get_missing_fields():
+            dataset._sample_doc_cls._delete_field_schema(field_name, False)
 
 
 def _make_sample_collection_name():
@@ -2759,7 +2791,7 @@ def _get_sample_ids(samples_or_ids):
         return [samples_or_ids.id]
 
     if isinstance(samples_or_ids, foc.SampleCollection):
-        return [s.id for s in samples_or_ids.select_fields()]
+        return [str(_id) for _id in samples_or_ids._get_sample_ids()]
 
     if isinstance(next(iter(samples_or_ids)), (fos.Sample, fos.SampleView)):
         return [s.id for s in samples_or_ids]

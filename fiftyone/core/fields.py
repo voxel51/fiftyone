@@ -316,3 +316,6 @@ class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
             etau.get_class_name(self),
             etau.get_class_name(self.document_type),
         )
+
+
+_ARRAY_FIELDS = (VectorField, ArrayField)
