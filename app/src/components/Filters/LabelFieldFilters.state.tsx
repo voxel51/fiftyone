@@ -1,19 +1,13 @@
 import { atomFamily, selector, selectorFamily } from "recoil";
 
 import { Range } from "./RangeSlider";
-import {
-  isBooleanField,
-  isLabelField,
-  isNumericField,
-  isStringField,
-} from "./utils";
+import { isBooleanField, isNumericField, isStringField } from "./utils";
 import * as booleanField from "./BooleanFieldFilter";
 import * as numericField from "./NumericFieldFilter";
 import * as stringField from "./StringFieldFilter";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
-import { VALID_LIST_TYPES } from "../../utils/labels";
-import BooleanFieldFilter from "./BooleanFieldFilter";
+import { RESERVED_FIELDS, VALID_LIST_TYPES } from "../../utils/labels";
 
 export const modalFilterIncludeLabels = atomFamily<string[], string>({
   key: "modalFilterIncludeLabels",
@@ -39,20 +33,21 @@ type LabelFilters = {
   [key: string]: (label: Label) => boolean;
 };
 
-const getPathExtension = (type) => {
+export const getPathExtension = (type) => {
   if (VALID_LIST_TYPES.includes(type)) {
     return ".detections";
   }
   return "";
 };
 
-export const labelFilters = selector<LabelFilters>({
+export const labelFilters = selectorFamily<LabelFilters, boolean>({
   key: "labelFilters",
-  get: ({ get }) => {
-    const frameLabels = get(atoms.activeLabels("frame"));
+  get: (modal) => ({ get }) => {
+    const activeLabels = modal ? atoms.modalActiveLabels : atoms.activeLabels;
+    const frameLabels = activeLabels("frame");
     const labels = {
-      ...get(atoms.activeLabels("sample")),
-      ...Object.keys(frameLabels).reduce((acc, cur) => {
+      ...get(activeLabels("sample")),
+      ...Object.keys(get(frameLabels)).reduce((acc, cur) => {
         return {
           ...acc,
           ["frames." + cur]: frameLabels[cur],
@@ -62,10 +57,31 @@ export const labelFilters = selector<LabelFilters>({
     const filters = {};
     for (const label in labels) {
       const path = `${label}${getPathExtension(label)}`;
-      const cRange = get(numericField.rangeAtom(`${path}.confidence`));
-      const cNone = get(numericField.noneAtom(`${path}.confidence`));
-      const lValues = get(stringField.selectedValuesAtom(`${path}.label`));
-      const lNone = get(stringField.noneAtom(`${path}.label`));
+
+      const [cRangeAtom, cNoneAtom, lValuesAtom, lNoneAtom] = modal
+        ? [
+            numericField.rangeModalAtom,
+            numericField.noneModalAtom,
+            stringField.selectedValuesModalAtom,
+            stringField.noneModalAtom,
+          ]
+        : [
+            numericField.rangeAtom,
+            numericField.noneAtom,
+            stringField.selectedValuesAtom,
+            stringField.noneAtom,
+          ];
+
+      const cPath = `${path}.confidence`;
+      const lPath = `${path}.label`;
+
+      const [cRange, cNone, lValues, lNone] = [
+        get(cRangeAtom(cPath)),
+        get(cNoneAtom(cPath)),
+        get(lValuesAtom(lPath)),
+        get(lNoneAtom(lPath)),
+      ];
+
       filters[label] = (s) => {
         const inRange =
           cRange[0] - 0.005 <= s.confidence &&
@@ -78,50 +94,14 @@ export const labelFilters = selector<LabelFilters>({
     }
     return filters;
   },
-});
-
-export const modalLabelFilters = selector<LabelFilters>({
-  key: "modalLabelFilters",
-  get: ({ get }) => {
-    const frameLabels = get(atoms.modalActiveLabels("frame"));
-    const labels = {
-      ...get(atoms.modalActiveLabels("sample")),
-      ...Object.keys(frameLabels).reduce((acc, cur) => {
-        return {
-          ...acc,
-          ["frames." + cur]: frameLabels[cur],
-        };
-      }, {}),
-    };
-    const hiddenObjects = get(atoms.hiddenObjects);
-    const filters = {};
-    for (const label in labels) {
-      const path = `${label}${getPathExtension(label)}`;
-      const range = get(
-        atoms.modalFilterLabelConfidenceRange(`${path}.confidence`)
-      );
-      const none = get(atoms.modalFilterLabelIncludeNoConfidence(label));
-      const include = get(atoms.modalFilterIncludeLabels(label));
-      filters[label] = (s) => {
-        if (hiddenObjects[s.id]) {
-          return false;
-        }
-        const inRange =
-          range[0] - 0.005 <= s.confidence && s.confidence <= range[1] + 0.005;
-        const noConfidence = none && s.confidence === undefined;
-        const isIncluded = include.length === 0 || include.includes(s.label);
-        return labels[label] && (inRange || noConfidence) && isIncluded;
-      };
-    }
-    return filters;
-  },
-  set: ({ get, set }, _) => {
-    const paths = get(labelPaths);
+  set: (modal) => ({ get, set }, _) => {
+    const paths = get(selectors.labelPaths);
     const activeLabels = get(atoms.activeLabels("sample"));
     set(atoms.modalActiveLabels("sample"), activeLabels);
     const activeFrameLabels = get(atoms.activeLabels("frame"));
     set(atoms.modalActiveLabels("frame"), activeFrameLabels);
     for (const label of paths) {
+      const cPath = getPathExtension();
       set(
         modalFilterLabelConfidenceRange(label),
         get(filterLabelConfidenceRange(label))
@@ -145,7 +125,7 @@ export const modalLabelFilters = selector<LabelFilters>({
 export const sampleModalFilter = selector({
   key: "sampleModalFilter",
   get: ({ get }) => {
-    const filters = get(modalLabelFilters);
+    const filters = get(labelFilters(true));
     const frameLabels = get(atoms.modalActiveLabels("frame"));
     const activeLabels = {
       ...get(atoms.modalActiveLabels("sample")),

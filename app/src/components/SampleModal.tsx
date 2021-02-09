@@ -11,6 +11,10 @@ import SelectObjectsMenu from "./SelectObjectsMenu";
 import { Button, ModalFooter } from "./utils";
 import * as selectors from "../recoil/selectors";
 import * as atoms from "../recoil/atoms";
+import {
+  labelFilters,
+  sampleModalFilter,
+} from "./Filters/LabelFieldFilters.state";
 import { SampleContext } from "../utils/context";
 
 import {
@@ -229,7 +233,7 @@ const SampleModal = (
     height: "100%",
     width: "100%",
   });
-  const setModalFilters = useSetRecoilState(selectors.modalLabelFilters);
+  const setModalFilters = useSetRecoilState(labelFilters(true));
   const [showJSON, setShowJSON] = useState(false);
   const [enableJSONFilter, setEnableJSONFilter] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
@@ -240,7 +244,7 @@ const SampleModal = (
     atoms.modalActiveLabels("frame")
   );
   const mediaType = useRecoilValue(selectors.mediaType);
-  const filter = useRecoilValue(selectors.sampleModalFilter);
+  const filter = useRecoilValue(sampleModalFilter);
   const activeTags = useRecoilValue(atoms.modalActiveTags);
   const tagNames = useRecoilValue(selectors.tagNames);
   const fieldSchema = useRecoilValue(selectors.fieldSchema("sample"));
@@ -518,7 +522,7 @@ const SampleModal = (
               activeLabels={activeLabels}
               activeFrameLabels={activeFrameLabels}
               fieldSchema={fieldSchema}
-              filterSelector={selectors.modalLabelFilters}
+              filterSelector={labelFilters(true)}
               playerRef={playerRef}
               savedOverlayOptions={savedOverlayOptions}
               selectedObjects={selectedObjectIDs}

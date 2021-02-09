@@ -4,13 +4,15 @@ import { animated } from "react-spring";
 import styled from "styled-components";
 
 import { useExpand } from "./utils";
-import * as atoms from "../../recoil/atoms";
-import * as selectors from "../../recoil/selectors";
 import { SampleContext } from "../../utils/context";
 import { NamedRangeSlider } from "./RangeSlider";
 import { NamedStringFilter } from "./StringFilter";
 import { CONFIDENCE_LABELS } from "../../utils/labels";
 import { removeObjectIDsFromSelection } from "../../utils/selection";
+import { getPathExtension } from "./LabelFieldFilters.state";
+import * as atoms from "../../recoil/atoms";
+import * as numericField from "./NumericFieldFilter";
+import * as stringField from "./StringFieldFilter";
 
 const FilterHeader = styled.div`
   display: flex;
@@ -65,7 +67,17 @@ type Props = {
 
 const LabelFilter = ({ expanded, entry, modal }: Props) => {
   const [ref, props] = useExpand(expanded);
-  const atoms = modal ? MODAL_ATOMS : GLOBAL_ATOMS;
+  const path = `${entry.path}${getPathExtension(entry.type)}`;
+  const cPath = `${path}.confidence`;
+  const lPath = `${path}.label`;
+
+  const [selectedLabels, noneLabel] = modal
+    ? [stringField.selectedValuesModalAtom, stringField.noneModalAtom]
+    : [stringField.selectedValuesAtom, stringField.noneAtom];
+
+  const [confidenceRange, noConfidence] = modal
+    ? [numericField.rangeModalAtom, numericField.noneModalAtom]
+    : [numericField.rangeAtom, numericField.noneAtom];
 
   return (
     <animated.div style={{ ...props }}>
@@ -75,9 +87,9 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
             color={entry.color}
             name={"Labels"}
             valueName={"label"}
-            valuesAtom={selectors.labelClasses(entry.path)}
-            selectedValuesAtom={atoms.includeLabels(entry.path)}
-            noneAtom={atoms.includeNoLabel(entry.path)}
+            valuesAtom={stringField.valuesAtom(entry.path)}
+            selectedValuesAtom={selectedLabels(lPath)}
+            noneAtom={noneLabel(lPath)}
           />
           <HiddenObjectFilter entry={entry} />
           {CONFIDENCE_LABELS.includes(entry.type) && (
@@ -85,9 +97,12 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
               color={entry.color}
               name={"Confidence"}
               valueName={"confidence"}
-              noneAtom={atoms.includeNoConfidence(entry.path)}
-              boundsAtom={atoms.confidenceBounds(entry.path)}
-              rangeAtom={atoms.confidenceRange(entry.path)}
+              noneAtom={noConfidence(cPath)}
+              boundsAtom={numericField.boundsAtom({
+                path: cPath,
+                defaultRange: [0, 1],
+              })}
+              rangeAtom={confidenceRange(cPath)}
             />
           )}
         </div>
