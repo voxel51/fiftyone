@@ -102,21 +102,6 @@ export const currentSamples = atom({
   default: [],
 });
 
-export const modalFilterIncludeLabels = atomFamily({
-  key: "modalFilterIncludeLabels",
-  default: [],
-});
-
-export const modalFilterLabelConfidenceRange = atomFamily({
-  key: "modalFilterLabelConfidenceRange",
-  default: [null, null],
-});
-
-export const modalFilterLabelIncludeNoConfidence = atomFamily({
-  key: "modalFilterLabelIncludeNoConfidence",
-  default: true,
-});
-
 export const activeLabels = atomFamily({
   key: "activeLabels",
   default: {},

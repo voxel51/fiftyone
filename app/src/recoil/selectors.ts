@@ -328,6 +328,7 @@ export const filterStages = selector({
 export const filterStage = selectorFamily({
   key: "filterStage",
   get: (path) => ({ get }) => {
+    console.log(get(filterStages));
     return get(filterStages)?.[path] ?? {};
   },
   set: (path: string) => ({ get, set }, value) => {
@@ -785,16 +786,6 @@ export const colorMap = selector({
       ],
       seed
     );
-  },
-});
-
-export const isLabel = selectorFamily({
-  key: "isLabel",
-  get: (field) => ({ get }) => {
-    const names = get(labelNames("sample")).concat(
-      get(labelNames("frame")).map((l) => "frames." + l)
-    );
-    return names.includes(field);
   },
 });
 
