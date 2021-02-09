@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { animated } from "react-spring";
 import {
+  atomFamily,
   DefaultValue,
   GetRecoilValue,
   selectorFamily,
-  SerializableParam,
   SetRecoilState,
 } from "recoil";
 
@@ -84,6 +84,11 @@ export const rangeAtom = selectorFamily<Range, string>({
     setFilter(get, set, path, "range", range),
 });
 
+export const rangeModalAtom = atomFamily<Range, string>({
+  key: "modalFilterNumericFieldRange",
+  default: [null, null],
+});
+
 export const noneAtom = selectorFamily<boolean, string>({
   key: "filterNumericFieldNone",
   get: (path) => ({ get }) => getFilter(get, path).none,
@@ -91,17 +96,24 @@ export const noneAtom = selectorFamily<boolean, string>({
     setFilter(get, set, path, "none", value),
 });
 
+export const noneModalAtom = atomFamily<boolean, string>({
+  key: "modalFilterNumericFieldNone",
+  default: true,
+});
+
 export const fieldIsFiltered = selectorFamily<
   boolean,
   {
     path: string;
     defaultRange?: Range;
+    modal?: boolean;
   }
 >({
   key: "numericFieldIsFiltered",
-  get: ({ path, defaultRange }) => ({ get }) => {
-    const none = !get(noneAtom(path));
-    const range = get(rangeAtom(path));
+  get: ({ path, defaultRange, modal }) => ({ get }) => {
+    const [none, range] = modal
+      ? [noneModalAtom, rangeModalAtom]
+      : [noneAtom, rangeAtom];
     const bounds = get(boundsAtom({ path, defaultRange }));
 
     return (

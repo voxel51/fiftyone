@@ -7,20 +7,13 @@ import {
   isNumericField,
   isStringField,
 } from "./utils";
+import * as booleanField from "./BooleanFieldFilter";
 import * as numericField from "./NumericFieldFilter";
 import * as stringField from "./StringFieldFilter";
 import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { VALID_LIST_TYPES } from "../../utils/labels";
-
-const getRange = (
-  get: GetRecoilValue,
-  path: string,
-  range: Range | DefaultValue
-): Range => {
-  const bounds = get(selectors.numericFieldBounds(path));
-  return bounds; // todo;
-};
+import BooleanFieldFilter from "./BooleanFieldFilter";
 
 export const modalFilterIncludeLabels = atomFamily<string[], string>({
   key: "modalFilterIncludeLabels",
@@ -193,76 +186,54 @@ export const sampleModalFilter = selector({
   },
 });
 
-export const modalFieldIsFiltered = selectorFamily({
+export const modalFieldIsFiltered = selectorFamily<boolean, string>({
   key: "modalFieldIsFiltered",
-  get: (field: string) => ({ get }): boolean => {
-    const label = get(isLabelField(field));
-
-    if (!label) {
-      return false;
+  get: (path) => ({ get }) => {
+    const isArgs = { path, modal: true };
+    if (get(isBooleanField(path))) {
+      return booleanField.fieldIsFiltered(isArgs);
+    } else if (get(isNumericField(path))) {
+      return numericField.fieldIsFiltered(isArgs);
+    } else if (get(isStringField(path))) {
+      return stringField.fieldIsFiltered(isArgs);
     }
 
-    const range = get(atoms.modalFilterLabelConfidenceRange(field));
-    const bounds = get(labelConfidenceBounds(field));
-    const none = get(atoms.modalFilterLabelIncludeNoConfidence(field));
-    const include = get(atoms.modalFilterIncludeLabels(field));
-    const maxMin = label ? 0 : bounds[0];
-    const minMax = label ? 1 : bounds[1];
-    const stretchedBounds = [
-      maxMin < bounds[0] && bounds[1] !== bounds[0] ? maxMin : bounds[0],
-      minMax > bounds[1] && bounds[1] !== bounds[0] ? minMax : bounds[1],
-    ];
+    path = `${path}${getPathExtension(path)}`;
+    const cPath = `${path}.confidence`;
+    const lPath = `${path}.label`;
 
-    const rangeIsFiltered =
-      stretchedBounds.some(
-        (b, i) => range[i] !== b && b !== null && range[i] !== null
-      ) && bounds[0] !== bounds[1];
-
-    return Boolean(include.length) || rangeIsFiltered || !none;
+    return (
+      get(
+        numericField.fieldIsFiltered({
+          path: cPath,
+          defaultRange: [0, 1],
+          modal: true,
+        })
+      ) || get(stringField.fieldIsFiltered({ path: lPath, modal: true }))
+    );
   },
 });
 
 export const fieldIsFiltered = selectorFamily<boolean, string>({
   key: "fieldIsFiltered",
-  get: (field) => ({ get }) => {
-    const label = get(isLabelField(field));
-    const numeric = get(isNumericField(field));
-    const string = get(isStringField(field));
-    if (string) {
-      return (
-        !get(filterStringFieldIncludeNone(field)) ||
-        get(filterStringFieldValues(field)).length > 0
-      );
+  get: (path) => ({ get }) => {
+    if (get(isBooleanField(path))) {
+      return booleanField.fieldIsFiltered({ path });
+    } else if (get(isNumericField(path))) {
+      return numericField.fieldIsFiltered({ path });
+    } else if (get(isStringField(path))) {
+      return stringField.fieldIsFiltered({ path });
     }
-    const range = get(
-      label ? filterLabelConfidenceRange(field) : filterNumericFieldRange(field)
+
+    path = `${path}${getPathExtension(path)}`;
+    const cPath = `${path}.confidence`;
+    const lPath = `${path}.label`;
+
+    return (
+      get(
+        numericField.fieldIsFiltered({ path: cPath, defaultRange: [0, 1] })
+      ) || get(stringField.fieldIsFiltered({ path: lPath }))
     );
-    const bounds = get(
-      label ? labelConfidenceBounds(field) : numericFieldBounds(field)
-    );
-    const none = get(
-      label
-        ? filterLabelIncludeNoConfidence(field)
-        : filterNumericFieldIncludeNone(field)
-    );
-    const include = get(filterIncludeLabels(field));
-    const maxMin = label ? 0 : bounds[0];
-    const minMax = label ? 1 : bounds[1];
-    const stretchedBounds = [
-      maxMin < bounds[0] ? maxMin : bounds[0],
-      minMax > bounds[1] ? minMax : bounds[1],
-    ];
-
-    if (!label && !numeric) return false;
-
-    const rangeIsFiltered =
-      stretchedBounds.some(
-        (b, i) => range[i] !== b && b !== null && range[i] !== null
-      ) && bounds[0] !== bounds[1];
-
-    if (numeric) return rangeIsFiltered || !none;
-
-    return Boolean(include.length) || rangeIsFiltered || !none;
   },
 });
 

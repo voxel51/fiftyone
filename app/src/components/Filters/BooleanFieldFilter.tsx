@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React from "react";
 import {
+  atomFamily,
   DefaultValue,
   GetRecoilValue,
   selectorFamily,
@@ -48,11 +49,21 @@ const trueAtom = selectorFamily<boolean, string>({
     setFilter(get, set, path, "true", value),
 });
 
+export const trueModalAtom = atomFamily<boolean, string>({
+  key: "modalFilterBooleanFieldTrue",
+  default: true,
+});
+
 const falseAtom = selectorFamily<boolean, string>({
   key: "filterBooleanFieldFalse",
   get: (path) => ({ get }) => getFilter(get, path).false,
   set: (path) => ({ get, set }, value) =>
     setFilter(get, set, path, "false", value),
+});
+
+export const falseModalAtom = atomFamily<boolean, string>({
+  key: "modalFilterBooleanFieldFalse",
+  default: true,
 });
 
 const noneAtom = selectorFamily<boolean, string>({
@@ -62,10 +73,22 @@ const noneAtom = selectorFamily<boolean, string>({
     setFilter(get, set, path, "none", value),
 });
 
-export const fieldIsFiltered = selectorFamily<boolean, string>({
+const noneModalAtom = atomFamily<boolean, string>({
+  key: "modalFilterBooleanFieldNone",
+  default: true,
+});
+
+export const fieldIsFiltered = selectorFamily<
+  boolean,
+  { path: string; modal?: boolean }
+>({
   key: "booleanFieldIsFiltered",
-  get: (path) => ({ get }) =>
-    !(get(noneAtom(path)) || get(trueAtom(path)) || get(falseAtom(path))),
+  get: ({ path, modal }) => ({ get }) => {
+    const [none, trueValue, falseValue] = modal
+      ? [noneModalAtom, trueModalAtom, falseModalAtom]
+      : [noneAtom, trueAtom, falseAtom];
+    return !get(none(path)) || !get(trueValue(path)) || !get(falseValue(path));
+  },
 });
 
 const BooleanFieldFilter = ({ expanded, entry }) => {
