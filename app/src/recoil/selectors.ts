@@ -328,7 +328,6 @@ export const filterStages = selector({
 export const filterStage = selectorFamily({
   key: "filterStage",
   get: (path) => ({ get }) => {
-    console.log(get(filterStages));
     return get(filterStages)?.[path] ?? {};
   },
   set: (path: string) => ({ get, set }, value) => {
@@ -633,34 +632,6 @@ export const scalarTypes = selectorFamily({
 });
 
 const COUNT_CLS = "Count";
-
-export const labelsPath = selectorFamily({
-  key: "labelsPath",
-  get: (path: string) => ({ get }) => {
-    const isVideo = get(isVideoDataset);
-    const dimension =
-      isVideo && path.startsWith("frames.") ? "frame" : "sample";
-    const label = dimension === "frame" ? path.slice("frames.".length) : path;
-    const type = get(labelMap(dimension))[label];
-    if (VALID_LIST_TYPES.includes(type)) {
-      return `${path}.${type.toLowerCase()}.label`;
-    }
-    return `${path}.label`;
-  },
-});
-
-export const labelClasses = selectorFamily<string[], string>({
-  key: "labelClasses",
-  get: (label) => ({ get }) => {
-    const path = get(labelsPath(label));
-    return (get(datasetStats) ?? []).reduce((acc, cur) => {
-      if (cur.name === path && cur._CLS === AGGS.DISTINCT) {
-        return cur.result;
-      }
-      return acc;
-    }, []);
-  },
-});
 
 const catchLabelCount = (names, prefix, cur, acc) => {
   if (
