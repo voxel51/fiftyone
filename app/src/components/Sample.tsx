@@ -8,6 +8,7 @@ import Player51 from "./Player51";
 import Tag from "./Tags/Tag";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+import { labelFilters } from "./Filters/LabelFieldFilters.state";
 import { getLabelText, stringify } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
 import { useFastRerender, useVideoData } from "../utils/hooks";
@@ -113,7 +114,7 @@ const Sample = ({ sample, metadata, setView }) => {
   const id = sample._id;
   const src = `${http}/filepath${sample.filepath}?id=${id}`;
   const socket = useRecoilValue(selectors.socket);
-  const filter = useRecoilValue(selectors.labelFilters);
+  const filter = useRecoilValue(labelFilters(false));
   const colorMap = useRecoilValue(selectors.colorMap);
   const colorByLabel = useRecoilValue(atoms.colorByLabel);
   const activeLabels = useRecoilValue(atoms.activeLabels("sample"));
@@ -214,7 +215,7 @@ const Sample = ({ sample, metadata, setView }) => {
         activeFrameLabels={activeFrameLabels}
         colorByLabel={colorByLabel}
         {...eventHandlers}
-        filterSelector={selectors.labelFilters}
+        filterSelector={labelFilters(false)}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
       />

@@ -100,22 +100,26 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
     set(atoms.modalActiveLabels("sample"), activeLabels);
     const activeFrameLabels = get(atoms.activeLabels("frame"));
     set(atoms.modalActiveLabels("frame"), activeFrameLabels);
-    for (const label of paths) {
-      const cPath = getPathExtension();
+    for (const [label, type] of Object.entries(paths)) {
+      const path = getPathExtension(type);
+      const cPath = `${path}.confidence`;
+      const lPath = `${path}.label`;
       set(
-        modalFilterLabelConfidenceRange(label),
-        get(filterLabelConfidenceRange(label))
+        numericField.rangeModalAtom(cPath),
+        get(numericField.rangeAtom(cPath))
       );
 
       set(
-        atoms.modalFilterLabelIncludeNoConfidence(label),
-        get(filterLabelIncludeNoConfidence(label))
+        numericField.noneModalAtom(cPath),
+        get(numericField.noneModalAtom(cPath))
       );
 
       set(
-        atoms.modalFilterIncludeLabels(label),
-        get(filterIncludeLabels(label))
+        stringField.selectedValuesModalAtom(lPath),
+        get(stringField.selectedValuesAtom(lPath))
       );
+
+      set(stringField.noneModalAtom(lPath), get(stringField.noneAtom(lPath)));
 
       set(atoms.modalColorByLabel, get(atoms.colorByLabel));
     }

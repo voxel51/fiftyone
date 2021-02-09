@@ -596,6 +596,22 @@ export const labelPaths = selector({
   },
 });
 
+export const labelTypesMap = selector<{ [key: string]: string }>({
+  key: "labelTypesMap",
+  get: ({ get }) => {
+    const sampleLabels = get(labelNames("sample"));
+    const sampleLabelTypes = get(labelTypes("sample"));
+    const frameLabels = get(labelNames("frame"));
+    const frameLabelTypes = get(labelTypes("frame"));
+    const sampleTuples = sampleLabels.map((l, i) => [l, sampleLabelTypes[i]]);
+    const frameTuples = frameLabels.map((l, i) => [
+      `frames.${l}`,
+      frameLabelTypes[i],
+    ]);
+    return Object.fromEntries(sampleTuples.concat(frameTuples));
+  },
+});
+
 export const labelTypes = selectorFamily({
   key: "labelTypes",
   get: (dimension: string) => ({ get }) => {
