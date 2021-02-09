@@ -83,17 +83,19 @@ type Props = {
 };
 
 const RangeSlider = React.memo(({ rangeAtom, boundsAtom }: Props) => {
-  const [value, setValue] = useRecoilState<Range>(rangeAtom);
-  const bounds = useRecoilValue<Range>(boundsAtom);
+  const [value, setValue] = useRecoilState(rangeAtom);
+  const bounds = useRecoilValue(boundsAtom);
   const [localValue, setLocalValue] = useState<Range>([null, null]);
   useEffect(() => {
     JSON.stringify(value) !== JSON.stringify(localValue) &&
-      setLocalValue(value);
-  }, [value]);
+      setLocalValue([
+        value[0] === null ? bounds[0] : value[0],
+        value[1] === null ? bounds[1] : value[1],
+      ]);
+  }, [bounds, value]);
 
   const hasBounds = bounds.every((b) => b !== null);
-  const hasValue = value.every((v) => v !== null);
-  return hasBounds && hasValue ? (
+  return hasBounds ? (
     <SliderContainer>
       {bounds[0]}
       <Slider

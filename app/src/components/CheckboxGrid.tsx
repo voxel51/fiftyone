@@ -10,7 +10,10 @@ import { useRecoilValue } from "recoil";
 import { animated, useSpring } from "react-spring";
 
 import * as atoms from "../recoil/atoms";
-import { fieldIsFiltered } from "./Filters/LabelFieldFilters.state";
+import {
+  fieldIsFiltered,
+  modalFieldIsFiltered,
+} from "./Filters/LabelFieldFilters.state";
 import { isBooleanField, isNumericField, isStringField } from "./Filters/utils";
 import { SampleContext } from "../utils/context";
 import { labelTypeIsFilterable, LABEL_LISTS } from "../utils/labels";
@@ -136,7 +139,9 @@ type Props = {
 const Entry = ({ entry, onCheck, modal }) => {
   const [expanded, setExpanded] = useState(false);
   const theme = useContext(ThemeContext);
-  const fieldFiltered = useRecoilValue(fieldIsFiltered(entry.path, modal));
+  const fieldFiltered = useRecoilValue(
+    modal ? modalFieldIsFiltered(entry.path) : fieldIsFiltered(entry.path)
+  );
   const isNumeric = useRecoilValue(isNumericField(entry.path));
   const isString = useRecoilValue(isStringField(entry.path));
   const isBoolean = useRecoilValue(isBooleanField(entry.path));

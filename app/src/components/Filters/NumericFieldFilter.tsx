@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { animated } from "react-spring";
 import {
   atomFamily,
@@ -18,10 +18,14 @@ type NumericFilter = {
   none: boolean;
 };
 
-const getFilter = (get: GetRecoilValue, path: string): NumericFilter => {
+const getFilter = (
+  get: GetRecoilValue,
+  path: string,
+  defaultRange?: Range
+): NumericFilter => {
   return {
     ...{
-      range: [null, null],
+      range: get(boundsAtom({ path, defaultRange })),
       none: true,
     },
     ...get(selectors.filterStage(path)),
@@ -78,16 +82,29 @@ export const boundsAtom = selectorFamily<
   },
 });
 
-export const rangeAtom = selectorFamily<Range, string>({
+export const rangeAtom = selectorFamily<
+  Range,
+  {
+    path: string;
+    defaultRange?: Range;
+  }
+>({
   key: "filterNumericFieldRange",
-  get: (path) => ({ get }) => getFilter(get, path).range,
-  set: (path) => ({ get, set }, range) =>
+  get: ({ path, defaultRange }) => ({ get }) =>
+    getFilter(get, path, defaultRange).range,
+  set: ({ path }) => ({ get, set }, range) =>
     setFilter(get, set, path, "range", range),
 });
 
-export const rangeModalAtom = atomFamily<Range, string>({
+export const rangeModalAtom = atomFamily<
+  Range,
+  {
+    path: string;
+    defaultRange?: Range;
+  }
+>({
   key: "modalFilterNumericFieldRange",
-  default: [null, null],
+  default: rangeAtom,
 });
 
 export const noneAtom = selectorFamily<boolean, string>({
@@ -115,7 +132,10 @@ export const fieldIsFiltered = selectorFamily<
     const [noneValue, rangeValue] = modal
       ? [noneModalAtom, rangeModalAtom]
       : [noneAtom, rangeAtom];
-    const [none, range] = [get(noneValue(path)), get(rangeValue(path))];
+    const [none, range] = [
+      get(noneValue(path)),
+      get(rangeValue({ path, defaultRange })),
+    ];
     const bounds = get(boundsAtom({ path, defaultRange }));
 
     return (

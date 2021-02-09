@@ -33,9 +33,9 @@ type LabelFilters = {
   [key: string]: (label: Label) => boolean;
 };
 
-export const getPathExtension = (type) => {
+export const getPathExtension = (type: string): string => {
   if (VALID_LIST_TYPES.includes(type)) {
-    return ".detections";
+    return `.${type.toLocaleLowerCase()}`;
   }
   return "";
 };
@@ -76,7 +76,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
       const lPath = `${path}.label`;
 
       const [cRange, cNone, lValues, lNone] = [
-        get(cRangeAtom(cPath)),
+        get(cRangeAtom({ path: cPath, defaultRange: [0, 1] })),
         get(cNoneAtom(cPath)),
         get(lValuesAtom(lPath)),
         get(lNoneAtom(lPath)),
@@ -95,13 +95,13 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
     return filters;
   },
   set: (modal) => ({ get, set }, _) => {
-    const paths = get(selectors.labelPaths);
+    const paths = get(selectors.labelTypesMap);
     const activeLabels = get(atoms.activeLabels("sample"));
     set(atoms.modalActiveLabels("sample"), activeLabels);
     const activeFrameLabels = get(atoms.activeLabels("frame"));
     set(atoms.modalActiveLabels("frame"), activeFrameLabels);
     for (const [label, type] of Object.entries(paths)) {
-      const path = getPathExtension(type);
+      const path = `${label}${getPathExtension(type)}`;
       const cPath = `${path}.confidence`;
       const lPath = `${path}.label`;
       set(
@@ -209,7 +209,9 @@ export const fieldIsFiltered = selectorFamily<boolean, string>({
       return stringField.fieldIsFiltered({ path });
     }
 
-    path = `${path}${getPathExtension(path)}`;
+    const type = get(selectors.labelTypesMap)[path];
+
+    path = `${path}${getPathExtension(type)}`;
     const cPath = `${path}.confidence`;
     const lPath = `${path}.label`;
 

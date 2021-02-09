@@ -68,12 +68,13 @@ export const noneModalAtom = atomFamily<boolean, string>({
 export const valuesAtom = selectorFamily<string[], string>({
   key: "stringFieldValues",
   get: (path) => ({ get }) => {
-    return (get(selectors.datasetStats) ?? []).reduce((acc, cur) => {
+    const i = (get(selectors.datasetStats) ?? []).reduce((acc, cur) => {
       if (cur.name === path && cur._CLS === AGGS.DISTINCT) {
         return cur.result;
       }
       return acc;
     }, []);
+    return i;
   },
 });
 

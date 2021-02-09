@@ -1,5 +1,5 @@
 import React, { useContext } from "react";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { animated } from "react-spring";
 import styled from "styled-components";
 
@@ -87,7 +87,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
             color={entry.color}
             name={"Labels"}
             valueName={"label"}
-            valuesAtom={stringField.valuesAtom(entry.path)}
+            valuesAtom={stringField.valuesAtom(lPath)}
             selectedValuesAtom={selectedLabels(lPath)}
             noneAtom={noneLabel(lPath)}
           />
@@ -102,7 +102,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
                 path: cPath,
                 defaultRange: [0, 1],
               })}
-              rangeAtom={confidenceRange(cPath)}
+              rangeAtom={confidenceRange({ path: cPath, defaultRange: [0, 1] })}
             />
           )}
         </div>
