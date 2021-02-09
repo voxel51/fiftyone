@@ -303,6 +303,32 @@ collection:
     print(dataset.std("predictions.detections.confidence"))
     # 0.3184061813934825
 
+.. _aggregations-values:
+
+Values
+______
+
+You can use the
+:meth:`values() <fiftyone.core.collections.SampleCollection.values>`
+aggregation to extract a list containing the values of a field across all
+samples in a collection:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Extract the `uniqueness` values for all samples
+    uniqueness = dataset.values("uniqueness")
+    print(len(uniqueness))  # 200
+
+    # Extract the labels for all predictions
+    labels = dataset.values("predictions.detections.label")
+    print(len(labels))  # 200
+    print(labels[0]) # ['bird', ..., 'bear', 'sheep']
+
 .. _aggregations-advanced:
 
 Advanced usage
