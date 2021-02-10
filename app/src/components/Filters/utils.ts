@@ -44,6 +44,14 @@ export const isStringField = selectorFamily<boolean, string>({
   },
 });
 
+export const hasNoneField = selectorFamily<boolean, string>({
+  key: "hasNoneField",
+  get: (path) => ({ get }) => {
+    console.log(get(selectors.noneFieldCounts)[path]);
+    return get(selectors.noneFieldCounts)[path] > 0;
+  },
+});
+
 type Overflow = "hidden" | "visible";
 
 type ExpandStyle = {

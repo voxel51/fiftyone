@@ -813,6 +813,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             only (None): a client to restrict the message to
         """
         base_view = view
+        data = {"main": [], "none": []}
         if view is not None and (filters is None or len(filters)):
             if filters is not None and len(filters):
                 for stage in _make_filter_stages(view._dataset, filters):
@@ -829,7 +830,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             aggs = aggs[:start_none_idx]
             results = results[:start_none_idx]
 
-            data = {"main": [], "none": []}
             for a, r, k in [
                 (aggs, results, "main"),
                 (none_aggs, none_results, "none"),
@@ -842,8 +842,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
                             "name": agg.field_name,
                         }
                     )
-        else:
-            stats = []
 
         view = (
             base_view._serialize()
@@ -853,7 +851,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         message = {
             "type": "statistics",
-            "stats": stats,
+            "stats": data,
             "view": view,
             "filters": filters,
         }

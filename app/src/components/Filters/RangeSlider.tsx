@@ -142,6 +142,7 @@ const RangeSliderContainer = styled.div`
 type NamedProps = {
   rangeAtom: RecoilState<Range>;
   boundsAtom: RecoilValueReadOnly<Range>;
+  hasNoneAtom: RecoilValueReadOnly<boolean>;
   noneAtom: RecoilState<boolean>;
   name: string;
   valueName: string;
@@ -155,10 +156,18 @@ const isDefaultRange = (range, bounds) => {
 export const NamedRangeSlider = React.memo(
   React.forwardRef(
     (
-      { color, name, valueName, noneAtom, ...rangeSliderProps }: NamedProps,
+      {
+        color,
+        name,
+        valueName,
+        hasNoneAtom,
+        noneAtom,
+        ...rangeSliderProps
+      }: NamedProps,
       ref
     ) => {
       const theme = useContext(ThemeContext);
+      const hasNone = useRecoilValue(hasNoneAtom);
       const [includeNone, setIncludeNone] = useRecoilState(noneAtom);
       const [range, setRange] = useRecoilState(rangeSliderProps.rangeAtom);
       const bounds = useRecoilValue(rangeSliderProps.boundsAtom);
@@ -200,23 +209,25 @@ export const NamedRangeSlider = React.memo(
             {hasBounds && !isSingleValue && (
               <RangeSlider {...rangeSliderProps} />
             )}
-            <FormControlLabel
-              label={
-                <div style={{ lineHeight: "20px", fontSize: 14 }}>
-                  Filter no {valueName}
-                </div>
-              }
-              control={
-                <Checkbox
-                  checked={!includeNone}
-                  onChange={() => setIncludeNone(!includeNone)}
-                  style={{
-                    padding: "0 5px",
-                    color,
-                  }}
-                />
-              }
-            />
+            {hasNone && (
+              <FormControlLabel
+                label={
+                  <div style={{ lineHeight: "20px", fontSize: 14 }}>
+                    Filter no {valueName}
+                  </div>
+                }
+                control={
+                  <Checkbox
+                    checked={!includeNone}
+                    onChange={() => setIncludeNone(!includeNone)}
+                    style={{
+                      padding: "0 5px",
+                      color,
+                    }}
+                  />
+                }
+              />
+            )}
           </RangeSliderContainer>
         </NamedRangeSliderContainer>
       );

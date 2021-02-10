@@ -11,8 +11,7 @@ import { animated } from "react-spring";
 import * as selectors from "../../recoil/selectors";
 import { NamedStringFilter } from "./StringFilter";
 import { AGGS } from "../../utils/labels";
-import { useExpand } from "./utils";
-import { boundsAtom } from "./NumericFieldFilter";
+import { useExpand, hasNoneField } from "./utils";
 
 type StringFilter = {
   values: string[];
@@ -111,9 +110,10 @@ const StringFieldFilter = ({ expanded, entry }) => {
         name={"Values"}
         valueName={"value"}
         color={entry.color}
-        selectedValuesAtom={selectedValuesAtom(entry.path)}
         valuesAtom={valuesAtom(entry.path)}
+        selectedValuesAtom={selectedValuesAtom(entry.path)}
         noneAtom={noneAtom(entry.path)}
+        hasNoneAtom={hasNoneField(entry.path)}
         ref={ref}
       />
     </animated.div>

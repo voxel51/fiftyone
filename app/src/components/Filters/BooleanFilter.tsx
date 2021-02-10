@@ -1,5 +1,10 @@
 import React from "react";
-import { RecoilState, useRecoilState } from "recoil";
+import {
+  RecoilState,
+  RecoilValueReadOnly,
+  useRecoilState,
+  useRecoilValue,
+} from "recoil";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
 import styled from "styled-components";
 
@@ -81,6 +86,7 @@ const isDefault = (falseValue: boolean, trueValue: boolean, none: boolean) => {
 type NamedProps = {
   trueAtom: RecoilState<boolean>;
   falseAtom: RecoilState<boolean>;
+  hasNoneAtom: RecoilValueReadOnly<boolean>;
   noneAtom: RecoilState<boolean>;
   color: string;
   name?: string;
@@ -88,8 +94,12 @@ type NamedProps = {
 
 export const NamedBooleanFilter = React.memo(
   React.forwardRef(
-    ({ name, noneAtom, ...booleanFilterProps }: NamedProps, ref) => {
+    (
+      { name, hasNoneAtom, noneAtom, ...booleanFilterProps }: NamedProps,
+      ref
+    ) => {
       const [none, setNone] = useRecoilState(noneAtom);
+      const hasNone = useRecoilValue(hasNoneAtom);
       const [falseValue, setFalse] = useRecoilState(
         booleanFilterProps.falseAtom
       );
@@ -112,29 +122,31 @@ export const NamedBooleanFilter = React.memo(
               </a>
             ) : null}
           </NamedBooleanFilterHeader>
-          <BooleanFilterContainer>
-            <CheckboxContainer>
-              <BooleanFilter {...booleanFilterProps} />
+          {hasNone && (
+            <BooleanFilterContainer>
+              <CheckboxContainer>
+                <BooleanFilter {...booleanFilterProps} />
 
-              <FormControlLabel
-                label={
-                  <div style={{ lineHeight: "20px", fontSize: 14 }}>
-                    Filter no value
-                  </div>
-                }
-                control={
-                  <Checkbox
-                    checked={!none}
-                    onChange={() => setNone(!none)}
-                    style={{
-                      padding: "0 5px",
-                      color: booleanFilterProps.color,
-                    }}
-                  />
-                }
-              />
-            </CheckboxContainer>
-          </BooleanFilterContainer>
+                <FormControlLabel
+                  label={
+                    <div style={{ lineHeight: "20px", fontSize: 14 }}>
+                      Filter no value
+                    </div>
+                  }
+                  control={
+                    <Checkbox
+                      checked={!none}
+                      onChange={() => setNone(!none)}
+                      style={{
+                        padding: "0 5px",
+                        color: booleanFilterProps.color,
+                      }}
+                    />
+                  }
+                />
+              </CheckboxContainer>
+            </BooleanFilterContainer>
+          )}
         </NamedBooleanFilterContainer>
       );
     }

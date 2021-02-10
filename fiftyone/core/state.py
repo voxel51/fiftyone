@@ -155,7 +155,7 @@ class DatasetStatistics(object):
 
         default_fields = fosa.get_default_sample_fields()
         aggregations.append(foa.CountValues("tags"))
-        is_none = ~(fo.ViewField().exists())
+        is_none = (~(fo.ViewField().exists())).if_else(True, None)
         none_aggregations = []
         for prefix, schema in schemas:
             for field_name, field in schema.items():
@@ -184,16 +184,16 @@ class DatasetStatistics(object):
                         ]
                     )
                     none_aggregations.append(
-                        foa.Count(label_path), expr=is_none
+                        foa.Count(label_path, expr=is_none)
                     )
                     none_aggregations.append(
-                        foa.Count(confidence_path), expr=is_none
+                        foa.Count(confidence_path, expr=is_none)
                     )
                 else:
                     aggregations.append(foa.Count(field_name))
                     aggregations.append(foa.Count(field_name))
                     none_aggregations.append(
-                        foa.Count(field_name), expr=is_none
+                        foa.Count(field_name, expr=is_none)
                     )
 
                     if _meets_type(field, (fof.IntField, fof.FloatField)):

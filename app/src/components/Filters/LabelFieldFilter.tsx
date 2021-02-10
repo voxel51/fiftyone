@@ -1,9 +1,9 @@
 import React, { useContext } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState } from "recoil";
 import { animated } from "react-spring";
 import styled from "styled-components";
 
-import { useExpand } from "./utils";
+import { hasNoneField, useExpand } from "./utils";
 import { SampleContext } from "../../utils/context";
 import { NamedRangeSlider } from "./RangeSlider";
 import { NamedStringFilter } from "./StringFilter";
@@ -89,6 +89,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
             valueName={"label"}
             valuesAtom={stringField.valuesAtom(lPath)}
             selectedValuesAtom={selectedLabels(lPath)}
+            hasNoneAtom={hasNoneField(lPath)}
             noneAtom={noneLabel(lPath)}
           />
           <HiddenObjectFilter entry={entry} />
@@ -98,6 +99,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
               name={"Confidence"}
               valueName={"confidence"}
               noneAtom={noConfidence(cPath)}
+              hasNoneAtom={hasNoneField(cPath)}
               boundsAtom={numericField.boundsAtom({
                 path: cPath,
                 defaultRange: [0, 1],

@@ -10,7 +10,7 @@ import {
 
 import * as selectors from "../../recoil/selectors";
 import { NamedRangeSlider, Range } from "./RangeSlider";
-import { useExpand } from "./utils";
+import { hasNoneField, useExpand } from "./utils";
 import { AGGS } from "../../utils/labels";
 
 type NumericFilter = {
@@ -172,9 +172,10 @@ const NumericFieldFilter = ({ expanded, entry }) => {
         color={entry.color}
         name={"Range"}
         valueName={"value"}
-        noneAtom={noneAtom(entry.path)}
         boundsAtom={boundsAtom({ path: entry.path })}
-        rangeAtom={rangeAtom({ path: entry.path })}
+        hasNoneAtom={hasNoneField(entry.path)}
+        rangeAtom={rangeModalAtom(entry.path)}
+        noneAtom={noneModalAtom(entry.path)}
         ref={ref}
       />
     </animated.div>

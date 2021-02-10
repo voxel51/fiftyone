@@ -372,6 +372,7 @@ const CheckboxContainer = styled.div`
 type NamedProps = {
   valuesAtom: RecoilValueReadOnly<string[]>;
   selectedValuesAtom: RecoilState<string[]>;
+  hasNoneAtom: RecoilValueReadOnly<boolean>;
   noneAtom: RecoilState<boolean>;
   name: string;
   valueName: string;
@@ -380,8 +381,12 @@ type NamedProps = {
 
 export const NamedStringFilter = React.memo(
   React.forwardRef(
-    ({ color, name, noneAtom, ...stringFilterProps }: NamedProps, ref) => {
+    (
+      { color, name, hasNoneAtom, noneAtom, ...stringFilterProps }: NamedProps,
+      ref
+    ) => {
       const [includeNone, setIncludeNone] = useRecoilState(noneAtom);
+      const hasNone = useRecoilValue(hasNoneAtom);
       const [values, setValues] = useRecoilState(
         stringFilterProps.selectedValuesAtom
       );
@@ -404,25 +409,27 @@ export const NamedStringFilter = React.memo(
           </NamedStringFilterHeader>
           <StringFilterContainer>
             <StringFilter {...stringFilterProps} />
-            <CheckboxContainer>
-              <FormControlLabel
-                label={
-                  <div style={{ lineHeight: "20px", fontSize: 14 }}>
-                    Filter no {stringFilterProps.valueName}
-                  </div>
-                }
-                control={
-                  <Checkbox
-                    checked={!includeNone}
-                    onChange={() => setIncludeNone(!includeNone)}
-                    style={{
-                      padding: "0 5px",
-                      color,
-                    }}
-                  />
-                }
-              />
-            </CheckboxContainer>
+            {hasNone && (
+              <CheckboxContainer>
+                <FormControlLabel
+                  label={
+                    <div style={{ lineHeight: "20px", fontSize: 14 }}>
+                      Filter no {stringFilterProps.valueName}
+                    </div>
+                  }
+                  control={
+                    <Checkbox
+                      checked={!includeNone}
+                      onChange={() => setIncludeNone(!includeNone)}
+                      style={{
+                        padding: "0 5px",
+                        color,
+                      }}
+                    />
+                  }
+                />
+              </CheckboxContainer>
+            )}
           </StringFilterContainer>
         </NamedStringFilterContainer>
       );

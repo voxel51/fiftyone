@@ -10,7 +10,7 @@ import { animated } from "react-spring";
 
 import * as selectors from "../../recoil/selectors";
 import { NamedBooleanFilter } from "./BooleanFilter";
-import { useExpand } from "./utils";
+import { hasNoneField, useExpand } from "./utils";
 
 type BooleanFilter = {
   false: boolean;
@@ -108,9 +108,10 @@ const BooleanFieldFilter = ({ expanded, entry }) => {
     <animated.div style={props}>
       <NamedBooleanFilter
         color={entry.color}
-        trueAtom={trueAtom(entry.path)}
-        falseAtom={falseAtom(entry.path)}
-        noneAtom={noneAtom(entry.path)}
+        hasNoneAtom={hasNoneField(entry.path)}
+        trueAtom={trueModalAtom(entry.path)}
+        falseAtom={falseModalAtom(entry.path)}
+        noneAtom={noneModalAtom(entry.path)}
         ref={ref}
       />
     </animated.div>

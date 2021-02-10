@@ -349,9 +349,27 @@ export const datasetStats = selector({
       return null;
     }
     if (viewsAreEqual(raw.view, currentView)) {
-      return raw.stats;
+      return raw.stats.main;
     }
     return null;
+  },
+});
+
+export const noneFieldCounts = selector<{ [key: string]: number }>({
+  key: "noneFieldCounts",
+  get: ({ get }) => {
+    const raw = get(atoms.datasetStatsRaw);
+    const currentView = get(view);
+    if (!raw.view) {
+      return {};
+    }
+    if (viewsAreEqual(raw.view, currentView)) {
+      return raw.stats.none.reduce((acc, cur) => {
+        acc[cur.name] = cur.result;
+        return acc;
+      }, {});
+    }
+    return {};
   },
 });
 
@@ -381,7 +399,7 @@ export const extendedDatasetStats = selector({
       return null;
     }
 
-    return raw.stats;
+    return raw.stats.main;
   },
 });
 

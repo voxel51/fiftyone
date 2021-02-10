@@ -49,7 +49,10 @@ export const datasetStatsRaw = atom({
   key: "datasetStatsRaw",
   default: {
     view: null,
-    stats: [],
+    stats: {
+      main: [],
+      none: [],
+    },
   },
 });
 
@@ -57,7 +60,7 @@ export const extendedDatasetStatsRaw = atom({
   key: "extendedDatasetStatsRaw",
   default: {
     view: null,
-    stats: [],
+    stats: { main: [], none: [] },
     filters: null,
   },
 });
