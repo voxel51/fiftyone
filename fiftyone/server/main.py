@@ -1089,26 +1089,33 @@ _STR_FILTER = "str"
 
 def _make_scalar_expression(f, args):
     expr = None
-    cls = args["cls"]
+    cls = args["_CLS"]
     if cls == _BOOL_FILTER:
-        pass
+        true, false = args["true"], args["false"]
+        if not true:
+            expr = f != True
+
+        if not false:
+            if expr is not None:
+                expr &= f != False
+            else:
+                expr = f != False
+
     elif cls == _NUMERIC_FILTER:
         mn, mx = args["range"]
-        none = args["none"]
         expr = (f >= mn) & (f <= mx)
-        if args.get("none", False):
-            expr |= ~(f.exists())
     elif cls == _STR_FILTER:
         values = args["values"]
         expr = f.is_in(args["values"])
-        if values.get("none", False):
-            expr |= ~(f.exists())
-        elif "none" in args and not args["none"]:
-            expr = f.exists()
-    elif "none" in args:
-        if not args["none"]:
+
+    none = args["none"]
+    if not none:
+        if expr is not None:
+            expr &= f.exists()
+        else:
             expr = f.exists()
 
+    print(expr)
     return expr
 
 
@@ -1121,15 +1128,19 @@ def _make_filter_stages(dataset, filters):
 
     stages = []
     for path, args in filters.items():
+        keys = path.split(".")
+        path = keys[0]
         if path.startswith(dataset._FRAMES_PREFIX):
             schema = frame_field_schema
-            field = schema[path[len(dataset._FRAMES_PREFIX) :]]
+            field = schema[keys[1]]
         else:
             schema = field_schema
             field = schema[path]
 
         if isinstance(field, fof.EmbeddedDocumentField):
-            pass
+            expr = _make_scalar_expression(F(keys[-1]), args)
+            if expr is not None:
+                stages.append(fosg.FilterLabels(path, expr, only_matches=True))
         else:
             expr = _make_scalar_expression(F(path), args)
             if expr is not None:

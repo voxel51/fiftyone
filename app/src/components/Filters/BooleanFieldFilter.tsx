@@ -31,7 +31,7 @@ const getFilter = (get: GetRecoilValue, path: string): BooleanFilter => {
 };
 
 const meetsDefault = (filter: BooleanFilter) =>
-  filter.true === true && filter.false === false && filter.none === true;
+  filter.true === true && filter.false === true && filter.none === true;
 
 const setFilter = (
   get: GetRecoilValue,
