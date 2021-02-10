@@ -1082,21 +1082,28 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
     return aggregations, fields, ticks
 
 
+_BOOL_FILTER = "bool"
+_NUMERIC_FILTER = "numeric"
+_STR_FILTER = "str"
+
+
 def _make_scalar_expression(f, args):
     expr = None
-    if "range" in args:
+    cls = args["cls"]
+    if cls == _BOOL_FILTER:
+        pass
+    elif cls == _NUMERIC_FILTER:
         mn, mx = args["range"]
         none = args["none"]
         expr = (f >= mn) & (f <= mx)
         if args.get("none", False):
             expr |= ~(f.exists())
-    elif "values":
+    elif cls == _STR_FILTER:
         values = args["values"]
-        if "include" in args["values"]:
-            expr = f.is_in(values["include"])
-            if values.get("none", False):
-                expr |= ~(f.exists())
-        elif "none" in values and not values["none"]:
+        expr = f.is_in(args["values"])
+        if values.get("none", False):
+            expr |= ~(f.exists())
+        elif "none" in args and not args["none"]:
             expr = f.exists()
     elif "none" in args:
         if not args["none"]:
@@ -1122,27 +1129,11 @@ def _make_filter_stages(dataset, filters):
             field = schema[path]
 
         if isinstance(field, fof.EmbeddedDocumentField):
-            expr = _make_scalar_expression(F("confidence"), args)
-            values = args["values"]
-            labels_expr = None
-            f = F("label")
-            if "include" in values:
-                labels_expr = f.is_in(values["include"])
-                if values.get("none", False):
-                    labels_expr |= ~(f.exists())
-            elif "none" in values:
-                if not values["none"]:
-                    labels_expr = f.exists()
-
-            if expr is not None:
-                expr &= labels_expr
-            else:
-                expr = labels_expr
-
-            stages.append(fosg.FilterLabels(path, expr, only_matches=True))
+            pass
         else:
             expr = _make_scalar_expression(F(path), args)
-            stages.append(fosg.Match(expr))
+            if expr is not None:
+                stages.append(fosg.Match(expr))
 
     return stages
 

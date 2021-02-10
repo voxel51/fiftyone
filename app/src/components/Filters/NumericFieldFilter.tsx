@@ -42,6 +42,7 @@ const setFilter = (
   set(selectors.filterStage(path), {
     ...getFilter(get, path),
     [key]: value,
+    _cls: "numeric",
   });
 };
 

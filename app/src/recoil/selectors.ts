@@ -325,35 +325,34 @@ export const filterStages = selector({
   },
 });
 
-export const filterStage = selectorFamily({
+const meetsDefault = (get: GetRecoilState, filter: object, path?: string) => {
+  const none = filter.none === true;
+  switch (filter._type) {
+    case "bool":
+      return filter.true === true && filter.false === false && none;
+    case "numeric":
+      break;
+    case "str":
+      return filter.values.length === 0 && none;
+    default:
+      throw Error("No Type");
+  }
+};
+
+export const filterStage = selectorFamily<any, string>({
   key: "filterStage",
   get: (path) => ({ get }) => {
     return get(filterStages)?.[path] ?? {};
   },
-  set: (path: string) => ({ get, set }, value) => {
+  set: (path: string) => ({ get, set }, filter) => {
     const filters = Object.assign({}, get(filterStages));
-    if (!value && !filters[path]) return;
-    if (JSON.stringify(value) === JSON.stringify(filters[path])) return;
-    if (!value && path in filters) {
-      delete filters[path];
+    if (meetsDefault(get, filter, path)) {
+      delete filter[path];
     } else {
-      filters[path] = value;
+      filters[path] = filter;
     }
-    set(filterStages, filters);
-  },
-});
 
-export const paginatedFilterStages = selector({
-  key: "paginatedFilterStages",
-  get: ({ get }) => {
-    const scalars = get(scalarNames("sample"));
-    const filters = get(filterStages);
-    return Object.keys(filters).reduce((acc, cur) => {
-      if (scalars.includes(cur)) {
-        acc[cur] = filters[cur];
-      }
-      return acc;
-    }, {});
+    set(filterStages, filters);
   },
 });
 
