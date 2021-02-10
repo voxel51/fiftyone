@@ -651,7 +651,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._rename_frame_fields(field_mapping)
 
-    def _rename_sample_fields(self, field_mapping):
+    def _rename_sample_fields(self, field_mapping, view=None):
         (
             fields,
             new_fields,
@@ -666,12 +666,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         if embedded_fields:
+            sample_collection = self if view is None else view
             self._sample_doc_cls._rename_embedded_fields(
-                embedded_fields, embedded_new_fields
+                embedded_fields, embedded_new_fields, sample_collection
             )
             fos.Sample._reload_docs(self._sample_collection_name)
 
-    def _rename_frame_fields(self, field_mapping):
+    def _rename_frame_fields(self, field_mapping, view=None):
         if self.media_type != fom.VIDEO:
             raise ValueError("Only video datasets have frame fields")
 
@@ -691,8 +692,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         if embedded_fields:
+            sample_collection = self if view is None else view
             self._frame_doc_cls._rename_embedded_fields(
-                embedded_fields, embedded_new_fields
+                embedded_fields, embedded_new_fields, sample_collection
             )
             fofr.Frame._reload_docs(self._frame_collection_name)
 
@@ -846,7 +848,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._sample_doc_cls._clear_fields(fields, view)
 
         if embedded_fields:
-            self._sample_doc_cls._clear_embedded_fields(embedded_fields, view)
+            sample_collection = self if view is None else view
+            self._sample_doc_cls._clear_embedded_fields(
+                embedded_fields, sample_collection
+            )
 
         fos.Sample._reload_docs(self._sample_collection_name)
 
@@ -860,7 +865,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._frame_doc_cls._clear_fields(fields, view)
 
         if embedded_fields:
-            self._frame_doc_cls._clear_embedded_fields(embedded_fields, view)
+            sample_collection = self if view is None else view
+            self._frame_doc_cls._clear_embedded_fields(
+                embedded_fields, sample_collection
+            )
 
         fofr.Frame._reload_docs(self._frame_collection_name)
 

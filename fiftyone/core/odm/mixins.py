@@ -280,10 +280,7 @@ class DatasetMixin(object):
     def _rename_fields(
         cls, field_names, new_field_names, are_frame_fields=False
     ):
-        """Renames the fields of the sample(s).
-
-        If the sample is in a dataset, the fields will be renamed on all
-        samples in the dataset.
+        """Renames the fields of the samples in this collection.
 
         Args:
             field_names: an iterable of field names
@@ -311,26 +308,27 @@ class DatasetMixin(object):
         cls._rename_field_docs(field_names, new_field_names)
 
     @classmethod
-    def _rename_embedded_fields(cls, field_names, new_field_names):
-        """Renames the embedded field of the sample(s).
-
-        If the sample is in a dataset, the embedded field will be renamed on
-        all samples in the dataset.
+    def _rename_embedded_fields(
+        cls, field_names, new_field_names, sample_collection
+    ):
+        """Renames the embedded field of the samples in this collection.
 
         Args:
             field_names: an iterable of "embedded.field.names"
             new_field_names: an iterable of "new.embedded.field.names"
+            sample_collection: the
+                :class:`fiftyone.core.samples.SampleCollection` being operated
+                upon
         """
-        cls._rename_field_docs(field_names, new_field_names)
+        cls._rename_field_docs_collection(
+            field_names, new_field_names, sample_collection
+        )
 
     @classmethod
     def _clone_fields(
         cls, field_names, new_field_names, sample_collection=None
     ):
-        """Clones the field(s) of the sample(s).
-
-        If the sample is in a dataset, the fields will be cloned on all samples
-        in the dataset.
+        """Clones the field(s) of the samples in this collection.
 
         Args:
             field_names: an iterable of field names
@@ -358,10 +356,7 @@ class DatasetMixin(object):
     def _clone_embedded_fields(
         cls, field_names, new_field_names, sample_collection
     ):
-        """Clones the embedded field(s) of the sample(s).
-
-        If the sample is in a dataset, the embedded fields will be cloned on
-        all samples in the dataset.
+        """Clones the embedded field(s) of the samples in this collection.
 
         Args:
             field_names: an iterable of "embedded.field.names"
@@ -376,10 +371,7 @@ class DatasetMixin(object):
 
     @classmethod
     def _clear_fields(cls, field_names, sample_collection=None):
-        """Clears the field(s) on the sample(s).
-
-        If the sample is in a dataset, the fields will be cleared on all
-        samples in the dataset.
+        """Clears the field(s) of the samples in this collection.
 
         Args:
             field_names: an iterable of field names
@@ -393,29 +385,20 @@ class DatasetMixin(object):
             cls._clear_field_docs_collection(field_names, sample_collection)
 
     @classmethod
-    def _clear_embedded_fields(cls, field_names, sample_collection=None):
-        """Clears the embedded field(s) on the sample(s).
-
-        If the sample is in a dataset, the embedded fields will be cleared on
-        all samples in the dataset.
+    def _clear_embedded_fields(cls, field_names, sample_collection):
+        """Clears the embedded field(s) on the samples in this collection.
 
         Args:
             field_names: an iterable of "embedded.field.names"
-            sample_collection (None): the
+            sample_collection: the
                 :class:`fiftyone.core.samples.SampleCollection` being operated
                 upon
         """
-        if sample_collection is None:
-            cls._clear_field_docs(field_names)
-        else:
-            cls._clear_field_docs_collection(field_names, sample_collection)
+        cls._clear_field_docs_collection(field_names, sample_collection)
 
     @classmethod
     def _delete_fields(cls, field_names, are_frame_fields=False):
-        """Deletes the field(s) from the sample(s).
-
-        If the sample is in a dataset, the field(s) will be removed from all
-        samples in the dataset.
+        """Deletes the field(s) from the samples in this collection.
 
         Args:
             field_names: an iterable of field names
@@ -441,10 +424,7 @@ class DatasetMixin(object):
 
     @classmethod
     def _delete_embedded_fields(cls, field_names):
-        """Deletes the embedded field(s) from the sample(s).
-
-        If the sample is in a dataset, the embedded fields will be removed from
-        all samples in the dataset.
+        """Deletes the embedded field(s) from the samples in this collection.
 
         Args:
             field_names: an iterable of "embedded.field.names"
@@ -458,6 +438,32 @@ class DatasetMixin(object):
         collection_name = cls.__name__
         collection = get_db_conn()[collection_name]
         collection.update_many({}, {"$rename": rename_expr})
+
+    @classmethod
+    def _rename_field_docs_collection(
+        cls, field_names, new_field_names, sample_collection
+    ):
+        from fiftyone import ViewField as F
+
+        if cls._is_frames_doc():
+            prefix = sample_collection._FRAMES_PREFIX
+            field_names = [prefix + f for f in field_names]
+            new_field_names = [prefix + f for f in new_field_names]
+
+        field_roots = set()
+        view = sample_collection.view()
+        for field_name, new_field_name in zip(field_names, new_field_names):
+            field_roots.add(field_name.split(".", 1)[0])
+            field_roots.add(new_field_name.split(".", 1)[0])
+
+            new_base = new_field_name.rsplit(".", 1)[0]
+            base, leaf = field_name.rsplit(".", 1)
+            expr = F(leaf) if new_base == base else F("$" + field_name)
+            view = view.set_field(new_field_name, expr)
+
+        view = view.mongo([{"$unset": field_names}])
+
+        view.save(list(field_roots))
 
     @classmethod
     def _clone_field_docs(cls, field_names, new_field_names):
@@ -478,17 +484,17 @@ class DatasetMixin(object):
             field_names = [prefix + f for f in field_names]
             new_field_names = [prefix + f for f in new_field_names]
 
-        new_field_roots = []
+        new_field_roots = set()
         view = sample_collection.view()
         for field_name, new_field_name in zip(field_names, new_field_names):
-            new_field_roots.append(new_field_name.split(".", 1)[0])
+            new_field_roots.add(new_field_name.split(".", 1)[0])
 
             new_base = new_field_name.rsplit(".", 1)[0]
             base, leaf = field_name.rsplit(".", 1)
             expr = F(leaf) if new_base == base else F("$" + field_name)
             view = view.set_field(new_field_name, expr)
 
-        view.save(new_field_roots)
+        view.save(list(new_field_roots))
 
     @classmethod
     def _clone_field_docs_pipeline(
@@ -556,13 +562,13 @@ class DatasetMixin(object):
 
     @classmethod
     def _clear_field_docs_collection(cls, field_names, sample_collection):
-        field_roots = []
+        field_roots = set()
         view = sample_collection.view()
         for field_name in field_names:
-            field_roots.append(field_name.split(".", 1)[0])
+            field_roots.add(field_name.split(".", 1)[0])
             view = view.set_field(field_name, None)
 
-        view.save(field_roots)
+        view.save(list(field_roots))
 
     @classmethod
     def _clear_embedded_field_docs_pipeline(cls, field_names, pipeline):
