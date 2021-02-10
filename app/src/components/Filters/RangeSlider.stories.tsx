@@ -19,7 +19,7 @@ const noneAtom = atom<boolean>({
 });
 
 const hasNoneAtom = atom<boolean>({
-  key: "noneAtom",
+  key: "hasNoneAtom",
   default: true,
 });
 
