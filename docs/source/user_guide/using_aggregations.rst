@@ -47,9 +47,6 @@ explict loops over your dataset to compute a statistic:
     :linenos:
 
     from collections import defaultdict
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart")
 
     # Compute label histogram manually
     manual_counts = defaultdict(int)
@@ -61,6 +58,22 @@ explict loops over your dataset to compute a statistic:
     counts = dataset.count_values("ground_truth.detections.label")
     print(counts)  # same as `manual_counts` above
 
+You can even :ref:`aggregate on expressions <aggregations-expressions>` that
+transform the data in arbitrarily complex ways:
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone import ViewField as F
+
+    num_objects = F("detections").length()
+
+    # The `(min, max)` number of predictions per sample
+    print(dataset.bounds("predictions", expr=num_objects))
+
+    # The average number of predictions per sample
+    print(dataset.mean("predictions", expr=num_objects))
+
 The sections below discuss the available aggregations in more detail. You can
 also refer to the :mod:`fiftyone.core.aggregations` module documentation for
 detailed examples of using each aggregation.
@@ -70,8 +83,9 @@ detailed examples of using each aggregation.
     All aggregations can operate on embedded sample fields using the
     ``embedded.field.name`` syntax.
 
-    In addition, you can aggregate the elements of array fields using the
-    ``embedded.array[].field`` syntax. See
+    In addition, you can aggregate the elements of array fields. Some array
+    fields are automatically handled, but you can always manually unwind an
+    array using the ``embedded.array[].field`` syntax. See
     :ref:`this section <aggregations-list-fields>` for more details.
 
 .. _aggregations-bounds:
@@ -201,7 +215,6 @@ aggregation to compute the histograms of numeric fields of a collection:
 
     import fiftyone.zoo as foz
 
-
     def plot_hist(counts, edges):
         counts = np.asarray(counts)
         edges = np.asarray(edges)
@@ -209,20 +222,13 @@ aggregation to compute the histograms of numeric fields of a collection:
         widths = edges[1:] - edges[:-1]
         plt.bar(left_edges, counts, width=widths, align="edge")
 
-
     dataset = foz.load_zoo_dataset("quickstart")
 
     #
     # Compute a histogram of the `uniqueness` field
     #
 
-    # Compute bounds automatically
-    bounds = dataset.bounds("uniqueness")
-    limits = (bounds[0], bounds[1] + 1e-6)  # right interval is open
-
-    counts, edges, other = dataset.histogram_values(
-        "uniqueness", bins=50, range=limits
-    )
+    counts, edges, other = dataset.histogram_values("uniqueness", bins=50)
 
     plot_hist(counts, edges)
     plt.show(block=False)
@@ -250,9 +256,78 @@ compute the sum of the (non-``None``) values of a field in a collection:
     # Compute average confidence of detections in the `predictions` field
     print(
         dataset.sum("predictions.detections.confidence") /
-        dataset.count("predictions.detections")
+        dataset.count("predictions.detections.confidence")
     )
     # 0.34994137249820706
+
+.. _aggregations-mean:
+
+Mean values
+___________
+
+You can use the
+:meth:`mean() <fiftyone.core.collections.SampleCollection.mean>` aggregation to
+compute the arithmetic mean of the (non-``None``) values of a field in a
+collection:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Compute average confidence of detections in the `predictions` field
+    print(dataset.mean("predictions.detections.confidence"))
+    # 0.34994137249820706
+
+.. _aggregations-std:
+
+Standard deviation
+__________________
+
+You can use the
+:meth:`std() <fiftyone.core.collections.SampleCollection.std>` aggregation to
+compute the standard deviation of the (non-``None``) values of a field in a
+collection:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Compute standard deviation of the confidence of detections in the
+    # `predictions` field
+    print(dataset.std("predictions.detections.confidence"))
+    # 0.3184061813934825
+
+.. _aggregations-values:
+
+Values
+______
+
+You can use the
+:meth:`values() <fiftyone.core.collections.SampleCollection.values>`
+aggregation to extract a list containing the values of a field across all
+samples in a collection:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Extract the `uniqueness` values for all samples
+    uniqueness = dataset.values("uniqueness")
+    print(len(uniqueness))  # 200
+
+    # Extract the labels for all predictions
+    labels = dataset.values("predictions.detections.label")
+    print(len(labels))  # 200
+    print(labels[0]) # ['bird', ..., 'bear', 'sheep']
 
 .. _aggregations-advanced:
 
@@ -319,6 +394,137 @@ The example below demonstrates this capability:
     attribute; i.e., ``ground_truth.detections.label`` is automatically
     coerced to ``ground_truth.detections[].label``, if necessary.
 
+.. _aggregations-expressions:
+
+Aggregating expressions
+-----------------------
+
+Aggregations also support performing more complex computations on fields via
+the optional :class:`expr <fiftyone.core.aggregations.Aggregation>` argument,
+which is supported by all aggregations and allows you to specify a
+|ViewExpression| defining an arbitrary transformation of the field you're
+operating on prior to aggregating.
+
+The following examples demonstrate the power of aggregating with expressions:
+
+.. tabs::
+
+    .. tab:: Object statistics
+
+        The code sample below computes some statistics about the number of
+        predicted objects in a dataset:
+
+        .. code-block:: python
+            :linenos:
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Expression that computes the number of objects in a `Detections` field
+            num_objects = F("detections").length()
+
+            # The `(min, max)` number of predictions per sample
+            print(dataset.bounds("predictions", expr=num_objects))
+
+            # The average number of predictions per sample
+            print(dataset.mean("predictions", expr=num_objects))
+
+            # Two equivalent ways of computing the total number of predictions
+            print(dataset.sum("predictions", expr=num_objects))
+            print(dataset.count("predictions.detections"))
+
+    .. tab:: Normalized labels
+
+        The code sample below computes some statistics about predicted object
+        labels after doing some normalization:
+
+        .. code-block:: python
+            :linenos:
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            ANIMALS = [
+                "bear", "bird", "cat", "cow", "dog", "elephant", "giraffe",
+                "horse", "sheep", "zebra"
+            ]
+
+            # Expression that replaces all animal labels with "animal" and then
+            # capitalizes all labels
+            normed_labels = F("label").map_values({a: "animal" for a in ANIMALS}).upper()
+
+            # A histogram of normalized predicted labels
+            print(dataset.count_values("predictions.detections[]", expr=normed_labels))
+
+    .. tab:: Bounding box areas
+
+        The code sample below computes some statistics about the sizes of
+        ground truth and predicted bounding boxes in a dataset, in pixels:
+
+        .. code-block:: python
+            :linenos:
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            dataset.compute_metadata()
+
+            # Expression that computes the area of a bounding box, in pixels
+            # Bboxes are in [top-left-x, top-left-y, width, height] format
+            bbox_width = F("bounding_box")[2] * F("$metadata.width")
+            bbox_height = F("bounding_box")[3] * F("$metadata.height")
+            bbox_area = bbox_width * bbox_height
+
+            # Compute (min, max, mean) of ground truth bounding boxes
+            print(dataset.bounds("ground_truth.detections[]", expr=bbox_area))
+            print(dataset.mean("ground_truth.detections[]", expr=bbox_area))
+
+            # Compute same statistics for the predictions
+            print(dataset.bounds("predictions.detections[]", expr=bbox_area))
+            print(dataset.mean("predictions.detections[]", expr=bbox_area))
+
+.. note::
+
+    When aggregating with expressions, field names may contain list fields, and
+    such field paths are handled as
+    :ref:`explained above <aggregations-list-fields>`.
+
+    However, there is one important exception when expressions are involved:
+    fields paths that **end** in array fields are not automatically unwound,
+    you must specify that they should be unwound by appending ``[]``. This
+    change in default behavior allows for the possiblity that the
+    |ViewExpression| you provide is intended to operate on the array as a
+    whole.
+
+    .. code-block:: python
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        # Counts the number of predicted objects
+        # Here, ``predictions.detections`` is treated as ``predictions.detections[]``
+        print(dataset.count("predictions.detections"))
+
+        # Counts the number of predicted objects with confidence > 0.9
+        # Here, ``predictions.detections`` is not automatically unwound
+        print(
+            dataset.sum(
+                "predictions.detections",
+                expr=F().filter(F("confidence") > 0.9).length()
+            )
+        )
+
 .. _aggregations-batching:
 
 Batching aggregations
@@ -341,9 +547,7 @@ only to the parameters such as field name that define it.
     count_values = fo.CountValues("ground_truth.detections.label")
 
     # will compute a histogram of the `uniqueness` field
-    histogram_values = fo.HistogramValues(
-        "uniqueness", bins=50, range=(0, 1)
-    )
+    histogram_values = fo.HistogramValues("uniqueness", bins=50)
 
 Instantiating aggregations in this way allows you to execute multiple
 aggregations on a dataset or view efficiently in a batch via

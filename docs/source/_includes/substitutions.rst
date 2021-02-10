@@ -75,5 +75,6 @@
 .. |Model| replace:: :class:`Model <fiftyone.core.models.Model>`
 .. |ModelConfig| replace:: :class:`ModelConfig <fiftyone.core.models.ModelConfig>`
 
+.. |LogitsMixin| replace:: :class:`LogitsMixin <fiftyone.core.models.LogitsMixin>`
 .. |EmbeddingsMixin| replace:: :class:`EmbeddingsMixin <fiftyone.core.models.EmbeddingsMixin>`
 .. |TorchModelMixin| replace:: :class:`TorchModelMixin <fiftyone.core.models.TorchModelMixin>`

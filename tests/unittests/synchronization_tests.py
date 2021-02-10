@@ -9,7 +9,6 @@ import os
 import unittest
 
 import fiftyone as fo
-import fiftyone.core.dataset as fod
 
 from decorators import drop_datasets
 
@@ -194,7 +193,7 @@ class ScopedObjectsSynchronizationTests(unittest.TestCase):
         # Test Create
 
         def create_dataset():
-            with self.assertRaises(fod.DoesNotExistError):
+            with self.assertRaises(ValueError):
                 dataset = fo.load_dataset(dataset_name)
 
             dataset = fo.Dataset(dataset_name)
@@ -267,7 +266,7 @@ class ScopedObjectsSynchronizationTests(unittest.TestCase):
         delete_dataset()
 
         def check_delete_dataset():
-            with self.assertRaises(fod.DoesNotExistError):
+            with self.assertRaises(ValueError):
                 fo.load_dataset(dataset_name)
 
         check_delete_dataset()

@@ -10,9 +10,17 @@ from .database import (
     get_db_conn,
     get_async_db_conn,
     drop_database,
+    sync_database,
+    drop_orphan_collections,
+    list_collections,
+    stream_collection,
     ASC,
+    DESC,
 )
-from .dataset import SampleFieldDocument, DatasetDocument
+from .dataset import (
+    SampleFieldDocument,
+    DatasetDocument,
+)
 from .document import (
     Document,
     DynamicDocument,
@@ -25,10 +33,7 @@ from .frame import (
     DatasetFrameSampleDocument,
     NoDatasetFrameSampleDocument,
 )
-from .mixins import (
-    default_sample_fields,
-    get_implied_field_kwargs,
-)
+from .mixins import default_sample_fields
 from .sample import (
     DatasetSampleDocument,
     NoDatasetSampleDocument,

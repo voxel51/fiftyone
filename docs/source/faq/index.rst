@@ -513,6 +513,13 @@ Manually configuring a connection requires setting up port forwarding.
 
 `WWWW` and `ZZZZ` are any 4 digit ports on your local machine(s).
 
+.. _faq-downgrade:
+
+Can I downgrade to an older version of FiftyOne?
+------------------------------------------------
+
+Certainly, refer to :ref:`these instructions <downgrading-fiftyone>`.
+
 .. _faq-do-we-track:
 
 Does FiftyOne track me?

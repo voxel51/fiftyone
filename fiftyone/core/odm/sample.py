@@ -75,7 +75,6 @@ from .document import (
 from .mixins import (
     DatasetMixin,
     default_sample_fields,
-    get_implied_field_kwargs,
     NoDatasetMixin,
 )
 

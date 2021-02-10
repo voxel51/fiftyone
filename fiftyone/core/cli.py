@@ -7,7 +7,6 @@ Definition of the `fiftyone` command-line interface (CLI).
 """
 import argparse
 from collections import defaultdict
-import io
 import json
 import os
 import subprocess
@@ -26,6 +25,7 @@ import fiftyone.core.config as focg
 import fiftyone.core.dataset as fod
 import fiftyone.core.session as fos
 import fiftyone.core.utils as fou
+import fiftyone.migrations as fom
 import fiftyone.utils.data as foud
 import fiftyone.utils.image as foui
 import fiftyone.utils.quickstart as fouq
@@ -79,6 +79,7 @@ class FiftyOneCommand(Command):
         _register_command(subparsers, "constants", ConstantsCommand)
         _register_command(subparsers, "convert", ConvertCommand)
         _register_command(subparsers, "datasets", DatasetsCommand)
+        _register_command(subparsers, "migrate", MigrateCommand)
         _register_command(subparsers, "utils", UtilsCommand)
         _register_command(subparsers, "zoo", ZooCommand)
 
@@ -560,26 +561,8 @@ class DatasetsStreamCommand(Command):
 
     @staticmethod
     def execute(parser, args):
-        name = args.name
-
-        dataset = fod.load_dataset(name)
-
-        # @todo support Windows and other environments without `less`
-        # Look at pydoc.pager() for inspiration?
-        p = subprocess.Popen(
-            ["less", "-F", "-R", "-S", "-X", "-K"],
-            shell=True,
-            stdin=subprocess.PIPE,
-        )
-
-        try:
-            with io.TextIOWrapper(p.stdin, errors="backslashreplace") as pipe:
-                for sample in dataset:
-                    pipe.write(str(sample) + "\n")
-
-            p.wait()
-        except (KeyboardInterrupt, OSError):
-            pass
+        dataset = fod.load_dataset(args.name)
+        fou.stream_objects(dataset)
 
 
 class DatasetsExportCommand(Command):
@@ -2066,6 +2049,13 @@ class ModelZooApplyCommand(Command):
 
         # Apply the zoo model to the dataset
         fiftyone zoo models apply <model-name> <dataset-name> <label-field>
+
+        # Apply a zoo classifier with some customized parameters
+        fiftyone zoo models apply \\
+            <model-name> <dataset-name> <label-field> \\
+            --confidence-thresh 0.7 \\
+            --store-logits \\
+            --batch-size 32
     """
 
     @staticmethod
@@ -2108,6 +2098,12 @@ class ModelZooApplyCommand(Command):
             ),
         )
         parser.add_argument(
+            "-l",
+            "--store-logits",
+            action="store_true",
+            help="store logits for the predictions",
+        )
+        parser.add_argument(
             "-i",
             "--install",
             action="store_true",
@@ -2130,12 +2126,21 @@ class ModelZooApplyCommand(Command):
             install_requirements=args.install,
             error_level=args.error_level,
         )
+
         dataset = fod.load_dataset(args.dataset_name)
+
+        # Only pass if not None, since `apply_model()` has a non-None default
+        if args.confidence_thresh is not None:
+            kwargs = {"confidence_thresh": args.confidence_thresh}
+        else:
+            kwargs = {}
+
         dataset.apply_model(
             model,
             args.label_field,
-            confidence_thresh=args.confidence_thresh,
+            store_logits=args.store_logits,
             batch_size=args.batch_size,
+            **kwargs
         )
 
 
@@ -2223,6 +2228,118 @@ class ModelZooDeleteCommand(Command):
     def execute(parser, args):
         name = args.name
         fozm.delete_zoo_model(name)
+
+
+class MigrateCommand(Command):
+    """Tools for migrating the FiftyOne database.
+
+    Examples::
+
+        # Print information about the current revisions of all datasets
+        fiftyone migrate --info
+
+        # Migrates the database and all datasets to the current package version
+        fiftyone migrate --all
+
+        # Migrates to a specific revision
+        fiftyone migrate --all --version <VERSION>
+
+        # Migrates a specific dataset
+        fiftyone migrate ... --dataset-name <DATASET_NAME>
+
+        # Runs only the admin (database) migrations
+        fiftyone migrate ... --admin-only
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-i",
+            "--info",
+            action="store_true",
+            help="whether to print info about the current revisions",
+        )
+        parser.add_argument(
+            "-a",
+            "--all",
+            action="store_true",
+            help="whether to migrate the database and all datasets",
+        )
+        parser.add_argument(
+            "-v",
+            "--version",
+            metavar="VERSION",
+            help="the revision to migrate to",
+        )
+        parser.add_argument(
+            "-n",
+            "--dataset-name",
+            nargs="+",
+            metavar="DATASET_NAME",
+            help="the name of a specific dataset to migrate",
+        )
+        parser.add_argument(
+            "--admin-only",
+            action="store_true",
+            help="whether to run only admin (database) migrations",
+        )
+        parser.add_argument(
+            "--verbose",
+            action="store_true",
+            help="whether to log incremental migrations that are performed",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if args.info:
+            db_ver = fom.get_database_revision() or ""
+
+            if args.admin_only:
+                print(db_ver)
+                return
+
+            if args.dataset_name is not None:
+                for name in args.dataset_name:
+                    print(fom.get_dataset_revision(name))
+
+                return
+
+            dataset_vers = {
+                name: fom.get_dataset_revision(name)
+                for name in fod.list_datasets()
+            }
+
+            _print_migration_table(foc.VERSION, db_ver, dataset_vers)
+            return
+
+        if args.all:
+            fom.migrate_all(destination=args.version, verbose=args.verbose)
+            return
+
+        if args.admin_only:
+            fom.migrate_database_if_necessary(
+                destination=args.version, verbose=args.verbose
+            )
+            return
+
+        if args.dataset_name:
+            for name in args.dataset_name:
+                fom.migrate_dataset_if_necessary(
+                    name, destination=args.version, verbose=args.verbose
+                )
+
+            return
+
+        parser.print_help()
+
+
+def _print_migration_table(fo_ver, db_ver, dataset_vers):
+    print("FiftyOne package version: %s" % fo_ver)
+    print("Database version: %s" % db_ver)
+
+    if dataset_vers:
+        print("")
+        _print_dict_as_table(dataset_vers, headers=["dataset", "version"])
 
 
 class UtilsCommand(Command):
@@ -2504,11 +2621,12 @@ def _print_dict_as_json(d):
     print(json.dumps(d, indent=4))
 
 
-def _print_dict_as_table(d):
+def _print_dict_as_table(d, headers=None):
+    if headers is None:
+        headers = ["key", "value"]
+
     records = [(k, v) for k, v in d.items()]
-    table_str = tabulate(
-        records, headers=["key", "value"], tablefmt=_TABLE_FORMAT
-    )
+    table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
     print(table_str)
 
 

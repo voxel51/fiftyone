@@ -1,5 +1,5 @@
 """
-FiftyOne v0.7.1 revision
+FiftyOne v0.7.1 admin revision.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_

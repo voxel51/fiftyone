@@ -11,7 +11,6 @@ import os
 
 import fiftyone as fo
 from fiftyone import ViewField as F
-import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
 
 from decorators import drop_datasets
@@ -41,13 +40,13 @@ class DatasetTests(unittest.TestCase):
         name = dataset_names.pop(0)
         datasets[name].delete()
         self.assertListEqual(list_datasets(), dataset_names)
-        with self.assertRaises(fod.DoesNotExistError):
+        with self.assertRaises(ValueError):
             len(datasets[name])
 
         name = dataset_names.pop(0)
         fo.delete_dataset(name)
         self.assertListEqual(list_datasets(), dataset_names)
-        with self.assertRaises(fod.DoesNotExistError):
+        with self.assertRaises(ValueError):
             len(datasets[name])
 
         new_dataset = fo.Dataset(name)

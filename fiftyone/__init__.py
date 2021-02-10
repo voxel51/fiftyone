@@ -9,9 +9,6 @@ See https://voxel51.com/fiftyone for more information.
 """
 from pkgutil import extend_path as _extend_path
 import os as _os
-import threading as _threading
-
-import universal_analytics as _ua
 
 #
 # This statement allows multiple `fiftyone.XXX` packages to be installed in the
@@ -26,36 +23,10 @@ import fiftyone.constants as _foc
 __version__ = _foc.VERSION
 
 from fiftyone.__public__ import *
-from fiftyone.utils.uid import _get_user_id
-from fiftyone.core.context import _get_context
+from fiftyone.core.uid import log_import_if_allowed as _log_import
 from fiftyone.migrations import migrate_database_if_necessary as _migrate
-
-
-def _log_import_if_allowed():
-    if config.do_not_track:
-        return
-
-    uid, first_import = _get_user_id()
-
-    kind = "new" if first_import else "returning"
-
-    def send_import_event():
-        try:
-            with _ua.HTTPRequest() as http:
-                tracker = _ua.Tracker(_foc.UA_ID, http, client_id=uid)
-                tracker.send(
-                    "event",
-                    "import",
-                    kind,
-                    label="%s-%s" % (__version__, _get_context()),
-                )
-        except:
-            pass
-
-    th = _threading.Thread(target=send_import_event)
-    th.start()
 
 
 if _os.environ.get("FIFTYONE_DISABLE_SERVICES", "0") != "1":
     _migrate()
-    _log_import_if_allowed()
+    _log_import()
