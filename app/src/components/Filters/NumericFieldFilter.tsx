@@ -16,6 +16,7 @@ import { AGGS } from "../../utils/labels";
 type NumericFilter = {
   range: Range;
   none: boolean;
+  _CLS: string;
 };
 
 const getFilter = (
@@ -32,18 +33,31 @@ const getFilter = (
   };
 };
 
+const meetsDefault = (filter: NumericFilter, bounds: Range) => {
+  return filter.range.every((r, i) => r === bounds[i]) && filter.none === true;
+};
+
 const setFilter = (
   get: GetRecoilValue,
   set: SetRecoilState,
   path: string,
   key: string,
-  value: boolean | Range | DefaultValue
+  value: boolean | Range | DefaultValue,
+  defaultRange: Range | null = null
 ) => {
-  set(selectors.filterStage(path), {
+  const bounds = get(boundsAtom({ path, defaultRange }));
+  const filter = {
+    range: bounds,
     ...getFilter(get, path),
     [key]: value,
-    _cls: "numeric",
-  });
+    _CLS: "numeric",
+  };
+
+  if (meetsDefault(filter, bounds)) {
+    set(selectors.filterStage(path), null);
+  } else {
+    set(selectors.filterStage(path), filter);
+  }
 };
 
 export const boundsAtom = selectorFamily<
@@ -93,8 +107,8 @@ export const rangeAtom = selectorFamily<
   key: "filterNumericFieldRange",
   get: ({ path, defaultRange }) => ({ get }) =>
     getFilter(get, path, defaultRange).range,
-  set: ({ path }) => ({ get, set }, range) =>
-    setFilter(get, set, path, "range", range),
+  set: ({ path, defaultRange }) => ({ get, set }, range) =>
+    setFilter(get, set, path, "range", range, defaultRange),
 });
 
 export const rangeModalAtom = atomFamily<

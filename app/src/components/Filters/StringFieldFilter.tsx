@@ -12,10 +12,12 @@ import * as selectors from "../../recoil/selectors";
 import { NamedStringFilter } from "./StringFilter";
 import { AGGS } from "../../utils/labels";
 import { useExpand } from "./utils";
+import { boundsAtom } from "./NumericFieldFilter";
 
 type StringFilter = {
   values: string[];
   none: boolean;
+  _CLS: string;
 };
 
 const getFilter = (get: GetRecoilValue, path: string): StringFilter => {
@@ -28,6 +30,9 @@ const getFilter = (get: GetRecoilValue, path: string): StringFilter => {
   };
 };
 
+const meetsDefault = (filter: StringFilter) =>
+  filter.values.length === 0 && filter.none === true;
+
 const setFilter = (
   get: GetRecoilValue,
   set: SetRecoilState,
@@ -35,11 +40,16 @@ const setFilter = (
   key: string,
   value: boolean | string[] | DefaultValue
 ) => {
-  set(selectors.filterStage(path), {
+  const filter = {
     ...getFilter(get, path),
     [key]: value,
-    _cls: "str",
-  });
+    _CLS: "str",
+  };
+  if (meetsDefault(filter)) {
+    set(selectors.filterStage(path), null);
+  } else {
+    set(selectors.filterStage(path), filter);
+  }
 };
 
 export const selectedValuesAtom = selectorFamily<string[], string>({

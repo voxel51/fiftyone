@@ -16,6 +16,7 @@ type BooleanFilter = {
   false: boolean;
   true: boolean;
   none: boolean;
+  _CLS: string;
 };
 
 const getFilter = (get: GetRecoilValue, path: string): BooleanFilter => {
@@ -29,6 +30,9 @@ const getFilter = (get: GetRecoilValue, path: string): BooleanFilter => {
   };
 };
 
+const meetsDefault = (filter: BooleanFilter) =>
+  filter.true === true && filter.false === false && filter.none === true;
+
 const setFilter = (
   get: GetRecoilValue,
   set: SetRecoilState,
@@ -36,11 +40,16 @@ const setFilter = (
   key: string,
   value: boolean | DefaultValue
 ) => {
-  set(selectors.filterStage(path), {
+  const filter = {
     ...getFilter(get, path),
     [key]: value,
-    _cls: "bool",
-  });
+    _CLS: "bool",
+  };
+  if (meetsDefault(filter)) {
+    set(selectors.filterStage(path), null);
+  } else {
+    set(selectors.filterStage(path), filter);
+  }
 };
 
 const trueAtom = selectorFamily<boolean, string>({

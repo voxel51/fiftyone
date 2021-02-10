@@ -325,20 +325,6 @@ export const filterStages = selector({
   },
 });
 
-const meetsDefault = (get: GetRecoilState, filter: object, path?: string) => {
-  const none = filter.none === true;
-  switch (filter._cls) {
-    case "bool":
-      return filter.true === true && filter.false === false && none;
-    case "numeric":
-      break;
-    case "str":
-      return filter.values.length === 0 && none;
-    default:
-      throw new Error("No filter type");
-  }
-};
-
 export const filterStage = selectorFamily<any, string>({
   key: "filterStage",
   get: (path) => ({ get }) => {
@@ -346,12 +332,11 @@ export const filterStage = selectorFamily<any, string>({
   },
   set: (path: string) => ({ get, set }, filter) => {
     const filters = Object.assign({}, get(filterStages));
-    if (meetsDefault(get, filter, path)) {
-      delete filter[path];
+    if (filter === null) {
+      delete filters[path];
     } else {
       filters[path] = filter;
     }
-
     set(filterStages, filters);
   },
 });
