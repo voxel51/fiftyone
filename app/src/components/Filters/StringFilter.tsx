@@ -39,7 +39,6 @@ const stringFilterMachine = Machine({
     editing: {
       entry: [
         assign({
-          currentResult: null,
           errorId: null,
           currentResult: null,
         }),

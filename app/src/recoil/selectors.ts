@@ -8,7 +8,6 @@ import { isElectron } from "../utils/generic";
 import {
   RESERVED_FIELDS,
   VALID_LABEL_TYPES,
-  VALID_LIST_TYPES,
   VALID_SCALAR_TYPES,
   makeLabelNameGroups,
   labelTypeHasColor,
