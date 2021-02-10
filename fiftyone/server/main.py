@@ -914,7 +914,12 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         elif results is None:
 
             def filter(field):
-                if fos._meets_type(field, fof.BooleanField):
+                if field.name in {"filepath", "tags"} or field.name.startswith(
+                    "_"
+                ):
+                    return None
+
+                if fos._meets_type(field, (fof.BooleanField, fof.StringField)):
                     return field.name
 
                 return None
@@ -1107,8 +1112,7 @@ def _make_scalar_expression(f, args):
     elif cls == _NUMERIC_FILTER:
         mn, mx = args["range"]
         expr = (f >= mn) & (f <= mx)
-    elif cls == _STR_FILTER:
-        values = args["values"]
+    elif cls == _STR_FILTER and len(args["values"]):
         expr = f.is_in(args["values"])
 
     none = args["none"]
