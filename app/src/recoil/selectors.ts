@@ -327,7 +327,7 @@ export const filterStages = selector({
 
 const meetsDefault = (get: GetRecoilState, filter: object, path?: string) => {
   const none = filter.none === true;
-  switch (filter._type) {
+  switch (filter._cls) {
     case "bool":
       return filter.true === true && filter.false === false && none;
     case "numeric":
@@ -335,7 +335,7 @@ const meetsDefault = (get: GetRecoilState, filter: object, path?: string) => {
     case "str":
       return filter.values.length === 0 && none;
     default:
-      throw Error("No Type");
+      throw new Error("No filter type");
   }
 };
 
@@ -746,30 +746,43 @@ export const colorPool = selector({
 export const colorMap = selector({
   key: "colorMap",
   get: ({ get }) => {
+    const colorByLabel = get(atoms.colorByLabel);
     let pool = get(colorPool);
     pool = pool.length ? pool : [lightTheme.brand];
     const seed = get(atoms.colorSeed);
-    const colorLabelNames = get(labelTuples("sample"))
-      .filter(([name, type]) => labelTypeHasColor(type))
-      .map(([name]) => name);
-    const colorFrameLabelNames = get(labelTuples("frame"))
-      .filter(([name, type]) => labelTypeHasColor(type))
-      .map(([name]) => "frames." + name);
-    const scalarsList = [
-      ...get(scalarNames("sample")),
-      ...get(scalarNames("frame")),
-    ];
+    if (colorByLabel) {
+      let values = ["true", "false"];
+      const stats = get(datasetStats);
+      Object.values(stats).forEach(({ result, _CLS }) => {
+        if (_CLS === AGGS.DISTINCT) {
+          values = [...values, ...result];
+        }
+      });
+      values = [...get(tagNames), ...values];
+      return generateColorMap(pool, Array.from(new Set(values)), seed, false);
+    } else {
+      const colorLabelNames = get(labelTuples("sample"))
+        .filter(([name, type]) => labelTypeHasColor(type))
+        .map(([name]) => name);
+      const colorFrameLabelNames = get(labelTuples("frame"))
+        .filter(([name, type]) => labelTypeHasColor(type))
+        .map(([name]) => "frames." + name);
+      const scalarsList = [
+        ...get(scalarNames("sample")),
+        ...get(scalarNames("frame")),
+      ];
 
-    return generateColorMap(
-      pool,
-      [
-        ...get(tagNames),
-        ...scalarsList,
-        ...colorLabelNames,
-        ...colorFrameLabelNames,
-      ],
-      seed
-    );
+      return generateColorMap(
+        pool,
+        [
+          ...get(tagNames),
+          ...scalarsList,
+          ...colorLabelNames,
+          ...colorFrameLabelNames,
+        ],
+        seed
+      );
+    }
   },
 });
 

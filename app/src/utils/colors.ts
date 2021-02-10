@@ -5,6 +5,7 @@ import { RESERVED_FIELDS } from "./labels";
 let seedCache = 0;
 let mapCache = {};
 let poolCache = null;
+let colorByLabelCache = false;
 
 function shuffle(array: string[], seed: number) {
   let m = array.length,
@@ -34,9 +35,13 @@ type ColorMap = { [name: string]: Color };
 export function generateColorMap(
   colorPool: Color[],
   keys: string[],
-  seed: number
+  seed: number,
+  colorByLabel = false
 ): ColorMap {
-  if (JSON.stringify(poolCache) !== JSON.stringify(colorPool)) {
+  if (
+    JSON.stringify(poolCache) !== JSON.stringify(colorPool) ||
+    colorByLabelCache !== colorByLabel
+  ) {
     poolCache = colorPool;
     mapCache = {};
   }

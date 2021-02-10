@@ -12,6 +12,7 @@ import { labelFilters } from "./Filters/LabelFieldFilters.state";
 import { getLabelText, stringify } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
 import { useFastRerender, useVideoData } from "../utils/hooks";
+import { ThemeProvider } from "@material-ui/core";
 
 const SampleDiv = animated(styled.div`
   position: relative;
@@ -184,7 +185,13 @@ const Sample = ({ sample, metadata, setView }) => {
         key={"scalar-" + name}
         title={name}
         name={value}
-        color={colorByLabel ? value : colorMap[name]}
+        color={
+          colorByLabel
+            ? colorMap[value]
+              ? colorMap[value]
+              : "#000000"
+            : colorMap[name]
+        }
       />
     );
   };
