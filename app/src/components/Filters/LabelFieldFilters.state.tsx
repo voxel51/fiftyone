@@ -90,7 +90,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
         const noConfidence = cNone && s.confidence === undefined;
         const label = s.label ? s.label : s.value;
         const isIncluded = lValues.length === 0 || lValues.includes(label);
-        const noLabel = lNone && s.label === undefined;
+        const noLabel = lNone && label === undefined;
         return (inRange || noConfidence) && (isIncluded || noLabel);
       };
     }
