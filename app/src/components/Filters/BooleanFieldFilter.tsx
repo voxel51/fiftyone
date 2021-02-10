@@ -108,6 +108,7 @@ const BooleanFieldFilter = ({ expanded, entry }) => {
   return (
     <animated.div style={props}>
       <NamedBooleanFilter
+        name={"Boolean"}
         color={entry.color}
         hasNoneAtom={hasNoneField(entry.path)}
         trueAtom={trueAtom(entry.path)}
