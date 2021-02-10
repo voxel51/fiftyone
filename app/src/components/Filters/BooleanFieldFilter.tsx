@@ -5,6 +5,7 @@ import {
   GetRecoilValue,
   selectorFamily,
   SetRecoilState,
+  useRecoilValue,
 } from "recoil";
 import { animated } from "react-spring";
 
@@ -109,9 +110,9 @@ const BooleanFieldFilter = ({ expanded, entry }) => {
       <NamedBooleanFilter
         color={entry.color}
         hasNoneAtom={hasNoneField(entry.path)}
-        trueAtom={trueModalAtom(entry.path)}
-        falseAtom={falseModalAtom(entry.path)}
-        noneAtom={noneModalAtom(entry.path)}
+        trueAtom={trueAtom(entry.path)}
+        falseAtom={falseAtom(entry.path)}
+        noneAtom={noneAtom(entry.path)}
         ref={ref}
       />
     </animated.div>

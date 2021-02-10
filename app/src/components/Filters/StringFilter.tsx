@@ -287,7 +287,7 @@ const StringFilter = React.memo(
           <div ref={inputRef}>
             <StringInput
               value={inputValue}
-              placeholder={`+ add ${valueName}`}
+              placeholder={`+ filter by ${valueName}`}
               onFocus={() => state.matches("reading") && send("EDIT")}
               onBlur={() => {
                 state.matches("editing.searchResults.notHovering") &&

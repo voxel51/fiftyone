@@ -6,6 +6,7 @@ import {
   GetRecoilValue,
   selectorFamily,
   SetRecoilState,
+  useRecoilValue,
 } from "recoil";
 
 import * as selectors from "../../recoil/selectors";
@@ -105,8 +106,9 @@ export const rangeAtom = selectorFamily<
   }
 >({
   key: "filterNumericFieldRange",
-  get: ({ path, defaultRange }) => ({ get }) =>
-    getFilter(get, path, defaultRange).range,
+  get: ({ path, defaultRange }) => ({ get }) => {
+    return getFilter(get, path, defaultRange).range;
+  },
   set: ({ path, defaultRange }) => ({ get, set }, range) =>
     setFilter(get, set, path, "range", range, defaultRange),
 });
@@ -165,7 +167,6 @@ export const fieldIsFiltered = selectorFamily<
 
 const NumericFieldFilter = ({ expanded, entry }) => {
   const [ref, props] = useExpand(expanded);
-
   return (
     <animated.div style={props}>
       <NamedRangeSlider
@@ -174,8 +175,8 @@ const NumericFieldFilter = ({ expanded, entry }) => {
         valueName={"value"}
         boundsAtom={boundsAtom({ path: entry.path })}
         hasNoneAtom={hasNoneField(entry.path)}
-        rangeAtom={rangeModalAtom(entry.path)}
-        noneAtom={noneModalAtom(entry.path)}
+        rangeAtom={rangeAtom({ path: entry.path })}
+        noneAtom={noneAtom(entry.path)}
         ref={ref}
       />
     </animated.div>

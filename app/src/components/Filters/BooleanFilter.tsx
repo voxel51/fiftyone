@@ -122,11 +122,11 @@ export const NamedBooleanFilter = React.memo(
               </a>
             ) : null}
           </NamedBooleanFilterHeader>
-          {hasNone && (
-            <BooleanFilterContainer>
-              <CheckboxContainer>
-                <BooleanFilter {...booleanFilterProps} />
 
+          <BooleanFilterContainer>
+            <CheckboxContainer>
+              <BooleanFilter {...booleanFilterProps} />
+              {hasNone && (
                 <FormControlLabel
                   label={
                     <div style={{ lineHeight: "20px", fontSize: 14 }}>
@@ -144,9 +144,9 @@ export const NamedBooleanFilter = React.memo(
                     />
                   }
                 />
-              </CheckboxContainer>
-            </BooleanFilterContainer>
-          )}
+              )}
+            </CheckboxContainer>
+          </BooleanFilterContainer>
         </NamedBooleanFilterContainer>
       );
     }
