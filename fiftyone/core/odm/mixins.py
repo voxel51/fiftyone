@@ -457,7 +457,11 @@ class DatasetMixin(object):
             field_roots.add(new_field_name.split(".", 1)[0])
 
             new_base = new_field_name.rsplit(".", 1)[0]
-            base, leaf = field_name.rsplit(".", 1)
+            if "." in field_name:
+                base, leaf = field_name.rsplit(".", 1)
+            else:
+                base, leaf = field_name, ""
+
             expr = F(leaf) if new_base == base else F("$" + field_name)
             view = view.set_field(new_field_name, expr)
 
@@ -490,7 +494,11 @@ class DatasetMixin(object):
             new_field_roots.add(new_field_name.split(".", 1)[0])
 
             new_base = new_field_name.rsplit(".", 1)[0]
-            base, leaf = field_name.rsplit(".", 1)
+            if "." in field_name:
+                base, leaf = field_name.rsplit(".", 1)
+            else:
+                base, leaf = field_name, ""
+
             expr = F(leaf) if new_base == base else F("$" + field_name)
             view = view.set_field(new_field_name, expr)
 
