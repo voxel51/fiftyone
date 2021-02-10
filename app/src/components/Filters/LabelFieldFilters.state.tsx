@@ -172,55 +172,33 @@ export const sampleModalFilter = selector({
   },
 });
 
-export const modalFieldIsFiltered = selectorFamily<boolean, string>({
-  key: "modalFieldIsFiltered",
-  get: (path) => ({ get }) => {
-    const isArgs = { path, modal: true };
+export const fieldIsFiltered = selectorFamily<
+  boolean,
+  { path: string; modal: boolean }
+>({
+  key: "fieldIsFiltered",
+  get: ({ path, modal }) => ({ get }) => {
+    const isArgs = { path, modal };
     if (get(isBooleanField(path))) {
-      return booleanField.fieldIsFiltered(isArgs);
+      return get(booleanField.fieldIsFiltered(isArgs));
     } else if (get(isNumericField(path))) {
-      return numericField.fieldIsFiltered(isArgs);
+      return get(numericField.fieldIsFiltered(isArgs));
     } else if (get(isStringField(path))) {
-      return stringField.fieldIsFiltered(isArgs);
+      return get(stringField.fieldIsFiltered(isArgs));
     }
 
-    path = `${path}${getPathExtension(path)}`;
+    path = `${path}${getPathExtension(get(selectors.labelTypesMap)[path])}`;
     const cPath = `${path}.confidence`;
     const lPath = `${path}.label`;
 
     return (
       get(
         numericField.fieldIsFiltered({
+          ...isArgs,
           path: cPath,
           defaultRange: [0, 1],
-          modal: true,
         })
-      ) || get(stringField.fieldIsFiltered({ path: lPath, modal: true }))
-    );
-  },
-});
-
-export const fieldIsFiltered = selectorFamily<boolean, string>({
-  key: "fieldIsFiltered",
-  get: (path) => ({ get }) => {
-    if (get(isBooleanField(path))) {
-      return booleanField.fieldIsFiltered({ path });
-    } else if (get(isNumericField(path))) {
-      return numericField.fieldIsFiltered({ path });
-    } else if (get(isStringField(path))) {
-      return stringField.fieldIsFiltered({ path });
-    }
-
-    const type = get(selectors.labelTypesMap)[path];
-
-    path = `${path}${getPathExtension(type)}`;
-    const cPath = `${path}.confidence`;
-    const lPath = `${path}.label`;
-
-    return (
-      get(
-        numericField.fieldIsFiltered({ path: cPath, defaultRange: [0, 1] })
-      ) || get(stringField.fieldIsFiltered({ path: lPath }))
+      ) || get(stringField.fieldIsFiltered({ ...isArgs, path: lPath }))
     );
   },
 });
