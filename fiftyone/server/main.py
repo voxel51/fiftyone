@@ -1115,7 +1115,6 @@ def _make_scalar_expression(f, args):
         else:
             expr = f.exists()
 
-    print(expr)
     return expr
 
 
