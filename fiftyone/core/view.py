@@ -160,6 +160,14 @@ class DatasetView(foc.SampleCollection):
             ["%d. %s" % (idx, str(d)) for idx, d in enumerate(self._stages, 1)]
         )
 
+    def view(self):
+        """Returns a copy of this view.
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return copy(self)
+
     def iter_samples(self):
         """Returns an iterator over the samples in the view.
 
@@ -291,9 +299,22 @@ class DatasetView(foc.SampleCollection):
             field_name: the field name to clone
             new_field_name: the new field name to populate
         """
-        self._dataset._clone_sample_field(
-            field_name, new_field_name, view=self
+        self._dataset._clone_sample_fields(
+            {field_name: new_field_name}, view=self
         )
+
+    def clone_sample_fields(self, field_mapping):
+        """Clones the given sample fields of the view into new fields of the
+        dataset.
+
+        You can use dot notation (``embedded.field.name``) to clone embedded
+        fields.
+
+        Args:
+            field_mapping: a dict mapping field names to new field names into
+                which to clone each field
+        """
+        self._dataset._clone_sample_fields(field_mapping, view=self)
 
     def clone_frame_field(self, field_name, new_field_name):
         """Clones the frame-level field of the view into a new field.
@@ -304,10 +325,27 @@ class DatasetView(foc.SampleCollection):
         Only applicable to video datasets.
 
         Args:
-            field_name: the field name
-            new_field_name: the new field name
+            field_name: the field name to clone
+            new_field_name: the new field name to populate
         """
-        self._dataset._clone_frame_field(field_name, new_field_name, view=self)
+        self._dataset._clone_frame_fields(
+            {field_name: new_field_name}, view=self
+        )
+
+    def clone_frame_fields(self, field_mapping):
+        """Clones the frame-level fields of the view into new frame-level
+        fields of the dataset.
+
+        You can use dot notation (``embedded.field.name``) to clone embedded
+        frame fields.
+
+        Only applicable to video datasets.
+
+        Args:
+            field_mapping: a dict mapping field names to new field names into
+                which to clone each field
+        """
+        self._dataset._clone_frame_fields(field_mapping, view=self)
 
     def clear_sample_field(self, field_name):
         """Clears the values of the field from all samples in the view.
@@ -321,10 +359,25 @@ class DatasetView(foc.SampleCollection):
         Args:
             field_name: the field name
         """
-        self._dataset._clear_sample_field(field_name, view=self)
+        self._dataset._clear_sample_fields(field_name, view=self)
+
+    def clear_sample_fields(self, field_names):
+        """Clears the values of the fields from all samples in the view.
+
+        The fields will remain in the dataset's schema, and all samples in the
+        view will have the value ``None`` for the fields.
+
+        You can use dot notation (``embedded.field.name``) to clear embedded
+        fields.
+
+        Args:
+            field_names: the field name or iterable of field names
+        """
+        self._dataset._clear_sample_fields(field_names, view=self)
 
     def clear_frame_field(self, field_name):
-        """Clears the values of the frame field from all samples in the view.
+        """Clears the values of the frame-level field from all samples in the
+        view.
 
         The field will remain in the dataset's frame schema, and all frames in
         the view will have the value ``None`` for the field.
@@ -337,7 +390,24 @@ class DatasetView(foc.SampleCollection):
         Args:
             field_name: the field name
         """
-        self._dataset._clear_frame_field(field_name, view=self)
+        self._dataset._clear_frame_fields(field_name, view=self)
+
+    def clear_frame_fields(self, field_names):
+        """Clears the values of the frame-level fields from all samples in the
+        view.
+
+        The fields will remain in the dataset's frame schema, and all frames in
+        the view will have the value ``None`` for the fields.
+
+        You can use dot notation (``embedded.field.name``) to clear embedded
+        frame fields.
+
+        Only applicable to video datasets.
+
+        Args:
+            field_names: the field name or iterable of field names
+        """
+        self._dataset._clear_frame_fields(field_names, view=self)
 
     def save(self, fields=None):
         """Overwrites the underlying dataset with the contents of the view.

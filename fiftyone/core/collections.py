@@ -247,6 +247,15 @@ class SampleCollection(object):
 
         return sample
 
+    def view(self):
+        """Returns a :class:`fiftyone.core.view.DatasetView` containing the
+        collection.
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        raise NotImplementedError("Subclass must implement view()")
+
     def iter_samples(self):
         """Returns an iterator over the samples in the collection.
 
@@ -442,26 +451,20 @@ class SampleCollection(object):
             ValueError: if the field does not exist or does not have the
                 expected type
         """
-        if self._is_frame_field(field_name):
-            field_name = field_name[len(self._FRAMES_PREFIX) :]
-
+        field_name, is_frame_field = self._handle_frame_field(field_name)
+        if is_frame_field:
             schema = self.get_frame_field_schema()
-            if field_name not in schema:
-                raise ValueError(
-                    "Frame field '%s' does not exist on collection '%s'"
-                    % (field_name, self.name)
-                )
-
-            field = schema[field_name]
         else:
             schema = self.get_field_schema()
-            if field_name not in schema:
-                raise ValueError(
-                    "Field '%s' does not exist on collection '%s'"
-                    % (field_name, self.name)
-                )
 
-            field = schema[field_name]
+        if field_name not in schema:
+            ftype = "Frame field" if is_frame_field else "Field"
+            raise ValueError(
+                "%s '%s' does not exist on collection '%s'"
+                % (ftype, field_name, self.name)
+            )
+
+        field = schema[field_name]
 
         if embedded_doc_type is not None:
             if not isinstance(field, fof.EmbeddedDocumentField) or (
@@ -506,7 +509,8 @@ class SampleCollection(object):
             field_name: a field or ``embedded.field.name``
             values: an iterable of values
         """
-        if self._is_frame_field(field_name):
+        field_name, is_frame_field = self._handle_frame_field(field_name)
+        if is_frame_field:
             raise ValueError("set_values() only supports sample fields")
 
         root = field_name.split(".", 1)[0]
@@ -3520,19 +3524,23 @@ class SampleCollection(object):
     def _parse_field_name(self, field_name, auto_unwind=True):
         return _parse_field_name(self, field_name, auto_unwind)
 
-    def _is_frame_field(self, field_name):
-        return (self.media_type == fom.VIDEO) and (
+    def _handle_frame_field(self, field_name):
+        is_frame_field = (self.media_type == fom.VIDEO) and (
             field_name.startswith(self._FRAMES_PREFIX)
             or field_name == "frames"
         )
+        if is_frame_field:
+            field_name = field_name = field_name[len(self._FRAMES_PREFIX) :]
+
+        return field_name, is_frame_field
 
     def _is_array_field(self, field_name):
         return _is_array_field(self, field_name)
 
     def _add_field_if_necessary(self, field_name, ftype, **kwargs):
         # @todo if field exists, validate that `ftype` and `**kwargs` match
-        if self._is_frame_field(field_name):
-            field_name = field_name[len(self._FRAMES_PREFIX) :]
+        field_name, is_frame_field = self._handle_frame_field(field_name)
+        if is_frame_field:
             if not self.has_frame_field(field_name):
                 self._dataset.add_frame_field(field_name, ftype, **kwargs)
 
@@ -3803,13 +3811,14 @@ def _get_field_with_type(label_fields, label_cls):
 
 
 def _parse_field_name(sample_collection, field_name, auto_unwind):
-    is_frame_field = sample_collection._is_frame_field(field_name)
+    field_name, is_frame_field = sample_collection._handle_frame_field(
+        field_name
+    )
     if is_frame_field:
-        if field_name == "frames":
-            return field_name, is_frame_field, [], []
+        if not field_name:
+            return "frames", True, [], []
 
         schema = sample_collection.get_frame_field_schema()
-        field_name = field_name[len(sample_collection._FRAMES_PREFIX) :]
     else:
         schema = sample_collection.get_field_schema()
 
@@ -3865,13 +3874,14 @@ def _parse_field_name(sample_collection, field_name, auto_unwind):
 
 
 def _is_array_field(sample_collection, field_name):
-    is_frame_field = sample_collection._is_frame_field(field_name)
+    field_name, is_frame_field = sample_collection._handle_frame_field(
+        field_name
+    )
     if is_frame_field:
-        if field_name == "frames":
+        if not field_name:
             return False
 
         schema = sample_collection.get_frame_field_schema()
-        field_name = field_name[len(sample_collection._FRAMES_PREFIX) :]
     else:
         schema = sample_collection.get_field_schema()
 

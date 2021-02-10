@@ -6,7 +6,6 @@ Mixins and helpers for sample backing documents.
 |
 """
 from collections import OrderedDict
-from functools import wraps
 import json
 import numbers
 import six
@@ -16,11 +15,12 @@ from bson.binary import Binary
 import numpy as np
 
 import fiftyone as fo
+import fiftyone.core.fields as fof
+import fiftyone.core.utils as fou
+
 from .database import get_db_conn
 from .dataset import SampleFieldDocument, DatasetDocument
 from .document import Document, BaseEmbeddedDocument, SampleDocument
-import fiftyone.core.fields as fof
-import fiftyone.core.utils as fou
 
 
 def default_sample_fields(cls, include_private=False, include_id=False):
@@ -42,52 +42,12 @@ def default_sample_fields(cls, include_private=False, include_id=False):
     return fields
 
 
-def no_rename_default_field(func):
-    """Wrapper for :func:`SampleDocument.rename_field` that prevents renaming
-    default fields of :class:`SampleDocument`.
-
-    This is a decorator because the subclasses implement this as either an
-    instance or class method.
-    """
-
-    @wraps(func)
-    def wrapper(cls_or_self, field_name, *args, **kwargs):
-        # pylint: disable=no-member
-        if field_name in default_sample_fields(
-            cls_or_self.__bases__[0], include_private=True, include_id=True
-        ):
-            raise ValueError("Cannot rename default field '%s'" % field_name)
-
-        return func(cls_or_self, field_name, *args, **kwargs)
-
-    return wrapper
-
-
-def no_delete_default_field(func):
-    """Wrapper for :func:`SampleDocument.delete_field` that prevents deleting
-    default fields of :class:`SampleDocument`.
-
-    This is a decorator because the subclasses implement this as either an
-    instance or class method.
-    """
-
-    @wraps(func)
-    def wrapper(cls_or_self, field_name, *args, **kwargs):
-        # pylint: disable=no-member
-        if field_name in default_sample_fields(
-            cls_or_self.__bases__[0], include_private=True, include_id=True
-        ):
-            raise ValueError("Cannot delete default field '%s'" % field_name)
-
-        return func(cls_or_self, field_name, *args, **kwargs)
-
-    return wrapper
-
-
 class DatasetMixin(object):
     """Mixin for concrete :class:`fiftyone.core.odm.document.SampleDocument`
     subtypes that are backed by a dataset.
     """
+
+    _FRAME_COLLECTION_PREFIX = "frames."
 
     def __setattr__(self, name, value):
         # pylint: disable=no-member
@@ -120,16 +80,35 @@ class DatasetMixin(object):
         return self._get_fields_ordered(include_private=include_private)
 
     @classmethod
+    def _is_frames_doc(cls):
+        return cls.__name__.startswith(cls._FRAME_COLLECTION_PREFIX)
+
+    @classmethod
     def _sample_collection_name(cls):
-        return cls.__name__
+        name = cls.__name__
+        if name.startswith(cls._FRAME_COLLECTION_PREFIX):
+            name = name[len(cls._FRAME_COLLECTION_PREFIX) :]
+
+        return name
+
+    @classmethod
+    def _frame_collection_name(cls):
+        name = cls.__name__
+        if not name.startswith(cls._FRAME_COLLECTION_PREFIX):
+            name = cls._FRAME_COLLECTION_PREFIX + name
+
+        return name
+
+    @classmethod
+    def _dataset_doc(cls):
+        # pylint: disable=no-member
+        return DatasetDocument.objects.get(
+            sample_collection_name=cls._sample_collection_name()
+        )
 
     @classmethod
     def _dataset_doc_fields_col(cls):
         return "sample_fields"
-
-    @classmethod
-    def _frame_collection_name(cls):
-        return "frames." + cls.__name__
 
     @classmethod
     def get_field_schema(
@@ -298,233 +277,319 @@ class DatasetMixin(object):
         self.set_field(field_name, None, create=False)
 
     @classmethod
-    @no_rename_default_field
-    def _rename_field(cls, field_name, new_field_name, is_frame_field=False):
-        """Renames the field of the sample(s).
+    def _rename_fields(
+        cls, field_names, new_field_names, are_frame_fields=False
+    ):
+        """Renames the fields of the sample(s).
 
-        If the sample is in a dataset, the field will be renamed on all samples
-        in the dataset.
+        If the sample is in a dataset, the fields will be renamed on all
+        samples in the dataset.
 
         Args:
-            field_name: the field name
-            new_field_name: the new field name
-            is_frame_field (False): whether this is a frame-level field
+            field_names: an iterable of field names
+            new_field_names: an iterable of new field names
+            are_frame_fields (False): whether these are frame-level fields
         """
-        cls._rename_field_schema(field_name, new_field_name, is_frame_field)
-        cls._rename_field_docs(field_name, new_field_name)
+        default_fields = default_sample_fields(
+            cls.__bases__[0], include_private=True, include_id=True
+        )
+        for field_name in field_names:
+            if field_name in default_fields:
+                raise ValueError(
+                    "Cannot rename default field '%s'" % field_name
+                )
+
+            # pylint: disable=no-member
+            if field_name not in cls._fields:
+                raise AttributeError("Field '%s' does not exist" % field_name)
+
+        for field_name, new_field_name in zip(field_names, new_field_names):
+            cls._rename_field_schema(
+                field_name, new_field_name, are_frame_fields
+            )
+
+        cls._rename_field_docs(field_names, new_field_names)
 
     @classmethod
-    def _rename_embedded_field(cls, field_name, new_field_name):
+    def _rename_embedded_fields(cls, field_names, new_field_names):
         """Renames the embedded field of the sample(s).
 
         If the sample is in a dataset, the embedded field will be renamed on
         all samples in the dataset.
 
         Args:
-            field_name: the "embedded.field.name"
-            new_field_name: the "new.embedded.field.name"
+            field_names: an iterable of "embedded.field.names"
+            new_field_names: an iterable of "new.embedded.field.names"
         """
-        cls._rename_field_docs(field_name, new_field_name)
+        cls._rename_field_docs(field_names, new_field_names)
 
     @classmethod
-    def _clone_field(cls, field_name, new_field_name, pipeline=None):
-        """Clones the field of the sample(s).
+    def _clone_fields(
+        cls, field_names, new_field_names, sample_collection=None
+    ):
+        """Clones the field(s) of the sample(s).
 
-        If the sample is in a dataset, the field will be cloned on all samples
+        If the sample is in a dataset, the fields will be cloned on all samples
         in the dataset.
 
         Args:
-            field_name: the field name
-            new_field_name: the new field name
-            pipeline (None): an optional MongoDB aggregation pipeline defining
-                a view into the samples to clone
+            field_names: an iterable of field names
+            new_field_names: an iterable of new field names
+            sample_collection (None): the
+                :class:`fiftyone.core.samples.SampleCollection` being operated
+                upon
         """
-        cls._clone_field_schema(field_name, new_field_name)
+        for field_name in field_names:
+            # pylint: disable=no-member
+            if field_name not in cls._fields:
+                raise AttributeError("Field '%s' does not exist" % field_name)
 
-        if pipeline is not None:
-            cls._clone_field_docs_pipeline(
-                field_name, new_field_name, pipeline
-            )
+        for field_name, new_field_name in zip(field_names, new_field_names):
+            cls._clone_field_schema(field_name, new_field_name)
+
+        if sample_collection is None:
+            cls._clone_field_docs(field_names, new_field_names)
         else:
-            cls._clone_field_docs(field_name, new_field_name)
+            cls._clone_field_docs_collection(
+                field_names, new_field_names, sample_collection
+            )
 
     @classmethod
-    def _clone_embedded_field(cls, field_name, new_field_name, pipeline=None):
-        """Clones the embedded field of the sample(s).
+    def _clone_embedded_fields(
+        cls, field_names, new_field_names, sample_collection
+    ):
+        """Clones the embedded field(s) of the sample(s).
 
-        If the sample is in a dataset, the embedded field will be cloned on
+        If the sample is in a dataset, the embedded fields will be cloned on
         all samples in the dataset.
 
         Args:
-            field_name: the "embedded.field.name"
-            new_field_name: the "new.embedded.field.name"
-            pipeline (None): an optional MongoDB aggregation pipeline defining
-                a view into the samples to clone
+            field_names: an iterable of "embedded.field.names"
+            new_field_names: an iterable of "new.embedded.field.names"
+            sample_collection: the
+                :class:`fiftyone.core.samples.SampleCollection` being operated
+                upon
         """
-        if pipeline is not None:
-            cls._clone_embedded_field_docs_pipeline(
-                field_name, new_field_name, pipeline
-            )
-        else:
-            cls._clone_field_docs(field_name, new_field_name)
+        cls._clone_field_docs_collection(
+            field_names, new_field_names, sample_collection
+        )
 
     @classmethod
-    def _clear_field(cls, field_name, pipeline=None):
-        """Clears the field on the sample(s).
+    def _clear_fields(cls, field_names, sample_collection=None):
+        """Clears the field(s) on the sample(s).
 
-        If the sample is in a dataset, the field will be cleared on all samples
-        in the dataset.
-
-        Args:
-            field_name: the field name
-            pipeline (None): an optional MongoDB aggregation pipeline defining
-                a view into the samples to clear
-        """
-        if pipeline is not None:
-            cls._clear_field_docs_pipeline(field_name, pipeline)
-        else:
-            cls._clear_field_docs(field_name)
-
-    @classmethod
-    def _clear_embedded_field(cls, field_name, pipeline=None):
-        """Clears the embedded field on the sample(s).
-
-        If the sample is in a dataset, the embedded field will be cleared on
-        all samples in the dataset.
-
-        Args:
-            field_name: the "embedded.field.name"
-            pipeline (None): an optional MongoDB aggregation pipeline defining
-                a view into the samples to clear
-        """
-        if pipeline is not None:
-            cls._clear_embedded_field_docs_pipeline(field_name, pipeline)
-        else:
-            cls._clear_field_docs(field_name)
-
-    @classmethod
-    @no_delete_default_field
-    def _delete_field(cls, field_name, is_frame_field=False):
-        """Deletes the field from the sample(s).
-
-        If the sample is in a dataset, the field will be removed from all
+        If the sample is in a dataset, the fields will be cleared on all
         samples in the dataset.
 
         Args:
-            field_name: the field name
-            is_frame_field (False): whether this is a frame-level field
+            field_names: an iterable of field names
+            sample_collection (None): the
+                :class:`fiftyone.core.samples.SampleCollection` being operated
+                upon
         """
-        cls._delete_field_schema(field_name, is_frame_field)
-        cls._delete_field_docs(field_name)
+        if sample_collection is None:
+            cls._clear_field_docs(field_names)
+        else:
+            cls._clear_field_docs_collection(field_names, sample_collection)
 
     @classmethod
-    def _delete_embedded_field(cls, field_name):
-        """Deletes the embedded field from the sample(s).
+    def _clear_embedded_fields(cls, field_names, sample_collection=None):
+        """Clears the embedded field(s) on the sample(s).
 
-        If the sample is in a dataset, the embedded field will be removed from
+        If the sample is in a dataset, the embedded fields will be cleared on
         all samples in the dataset.
 
         Args:
-            field_name: the "embedded.field.name"
+            field_names: an iterable of "embedded.field.names"
+            sample_collection (None): the
+                :class:`fiftyone.core.samples.SampleCollection` being operated
+                upon
         """
-        cls._delete_field_docs(field_name)
+        if sample_collection is None:
+            cls._clear_field_docs(field_names)
+        else:
+            cls._clear_field_docs_collection(field_names, sample_collection)
 
     @classmethod
-    def _rename_field_docs(cls, field_name, new_field_name):
-        collection_name = cls.__name__
-        collection = get_db_conn()[collection_name]
-        collection.update_many({}, {"$rename": {field_name: new_field_name}})
+    def _delete_fields(cls, field_names, are_frame_fields=False):
+        """Deletes the field(s) from the sample(s).
+
+        If the sample is in a dataset, the field(s) will be removed from all
+        samples in the dataset.
+
+        Args:
+            field_names: an iterable of field names
+            are_frame_fields (False): whether these are frame-level fields
+        """
+        default_fields = default_sample_fields(
+            cls.__bases__[0], include_private=True, include_id=True
+        )
+        for field_name in field_names:
+            if field_name in default_fields:
+                raise ValueError(
+                    "Cannot delete default field '%s'" % field_name
+                )
+
+            # pylint: disable=no-member
+            if field_name not in cls._fields:
+                raise AttributeError("Field '%s' does not exist" % field_name)
+
+        for field_name in field_names:
+            cls._delete_field_schema(field_name, are_frame_fields)
+
+        cls._delete_field_docs(field_names)
 
     @classmethod
-    def _clone_field_docs(cls, field_name, new_field_name):
+    def _delete_embedded_fields(cls, field_names):
+        """Deletes the embedded field(s) from the sample(s).
+
+        If the sample is in a dataset, the embedded fields will be removed from
+        all samples in the dataset.
+
+        Args:
+            field_names: an iterable of "embedded.field.names"
+        """
+        cls._delete_field_docs(field_names)
+
+    @classmethod
+    def _rename_field_docs(cls, field_names, new_field_names):
+        rename_expr = {k: v for k, v in zip(field_names, new_field_names)}
+
         collection_name = cls.__name__
         collection = get_db_conn()[collection_name]
+        collection.update_many({}, {"$rename": rename_expr})
 
+    @classmethod
+    def _clone_field_docs(cls, field_names, new_field_names):
+        set_expr = {v: "$" + k for k, v in zip(field_names, new_field_names)}
+
+        collection_name = cls.__name__
+        collection = get_db_conn()[collection_name]
+        collection.update_many({}, [{"$set": set_expr}])
+
+    @classmethod
+    def _clone_field_docs_collection(
+        cls, field_names, new_field_names, sample_collection
+    ):
+        from fiftyone import ViewField as F
+
+        if cls._is_frames_doc():
+            prefix = sample_collection._FRAMES_PREFIX
+            field_names = [prefix + f for f in field_names]
+            new_field_names = [prefix + f for f in new_field_names]
+
+        new_field_roots = []
+        view = sample_collection.view()
+        for field_name, new_field_name in zip(field_names, new_field_names):
+            new_field_roots.append(new_field_name.split(".", 1)[0])
+
+            new_base = new_field_name.rsplit(".", 1)[0]
+            base, leaf = field_name.rsplit(".", 1)
+            expr = F(leaf) if new_base == base else F("$" + field_name)
+            view = view.set_field(new_field_name, expr)
+
+        view.save(new_field_roots)
+
+    @classmethod
+    def _clone_field_docs_pipeline(
+        cls, field_names, new_field_names, pipeline
+    ):
+        project_expr = {
+            v: "$" + k for k, v in zip(field_names, new_field_names)
+        }
+
+        collection_name = cls.__name__
+        collection = get_db_conn()[collection_name]
+        collection.aggregate(
+            pipeline
+            + [{"$project": project_expr}, {"$merge": collection_name}]
+        )
+
+    @classmethod
+    def _clone_embedded_field_docs_pipeline(
+        cls, field_names, new_field_names, pipeline
+    ):
+        #
+        # Ideally only the embedded field would be merged in, but the `$merge`
+        # operator will always overwrite top-level fields of each sample, so we
+        # limit the damage by projecting onto the base field
         #
         # Note: this will not do the right thing if `field_name` is an embedded
         # field of an array. In that case, we'd actually need to do something
         # like https://stackoverflow.com/q/60362503
         #
-        collection.update_many(
-            {}, [{"$set": {new_field_name: "$" + field_name}}]
-        )
+        set_expr = {v: "$" + k for k, v in zip(field_names, new_field_names)}
+        project_expr = {fn.split(".", 1)[0]: True for fn in new_field_names}
 
-    @classmethod
-    def _clone_field_docs_pipeline(cls, field_name, new_field_name, pipeline):
         collection_name = cls.__name__
         collection = get_db_conn()[collection_name]
         collection.aggregate(
             pipeline
             + [
-                {"$project": {new_field_name: "$" + field_name}},
-                {"$merge": collection_name},  # requires mongodb>=4.4
+                {"$set": set_expr},
+                {"$project": project_expr},
+                {"$merge": collection_name},
             ]
         )
 
     @classmethod
-    def _clone_embedded_field_docs_pipeline(
-        cls, field_name, new_field_name, pipeline
-    ):
+    def _clear_field_docs(cls, field_names):
         collection_name = cls.__name__
         collection = get_db_conn()[collection_name]
+        collection.update_many({}, {"$set": {k: None for k in field_names}})
 
+    @classmethod
+    def _clear_field_docs_pipeline(cls, field_names, pipeline):
+        project_expr = {k: True for k in field_names}
+        set_expr = {k: None for k in field_names}
+
+        collection_name = cls.__name__
+        collection = get_db_conn()[collection_name]
+        collection.aggregate(
+            pipeline
+            + [
+                {"$project": project_expr},
+                {"$set": set_expr},
+                {"$merge": collection_name},
+            ]
+        )
+
+    @classmethod
+    def _clear_field_docs_collection(cls, field_names, sample_collection):
+        field_roots = []
+        view = sample_collection.view()
+        for field_name in field_names:
+            field_roots.append(field_name.split(".", 1)[0])
+            view = view.set_field(field_name, None)
+
+        view.save(field_roots)
+
+    @classmethod
+    def _clear_embedded_field_docs_pipeline(cls, field_names, pipeline):
+        #
         # Ideally only the embedded field would be merged in, but the `$merge`
         # operator will always overwrite top-level fields of each sample, so we
         # limit the damage by projecting onto the base field
-        base_field = new_field_name.split(".", 1)[0]
+        #
+        project_expr = {fn.split(".", 1)[0]: True for fn in field_names}
+        set_expr = {k: None for k in field_names}
 
-        collection.aggregate(
-            pipeline
-            + [
-                {"$set": {new_field_name: "$" + field_name}},
-                {"$project": {base_field: True}},
-                {"$merge": collection_name},  # requires mongodb>=4.4
-            ]
-        )
-
-    @classmethod
-    def _clear_field_docs(cls, field_name):
-        collection_name = cls.__name__
-        collection = get_db_conn()[collection_name]
-        collection.update_many({}, {"$set": {field_name: None}})
-
-    @classmethod
-    def _clear_field_docs_pipeline(cls, field_name, pipeline):
         collection_name = cls.__name__
         collection = get_db_conn()[collection_name]
         collection.aggregate(
             pipeline
             + [
-                {"$project": {field_name: True}},
-                {"$set": {field_name: None}},
-                {"$merge": collection_name},  # requires mongodb>=4.4
+                {"$project": project_expr},
+                {"$set": set_expr},
+                {"$merge": collection_name},
             ]
         )
 
     @classmethod
-    def _clear_embedded_field_docs_pipeline(cls, field_name, pipeline):
+    def _delete_field_docs(cls, field_names):
         collection_name = cls.__name__
         collection = get_db_conn()[collection_name]
-
-        # Ideally only the embedded field would be merged in, but the `$merge`
-        # operator will always overwrite top-level fields of each sample, so we
-        # limit the damage by projecting onto the base field
-        base_field = field_name.split(".", 1)[0]
-
-        collection.aggregate(
-            pipeline
-            + [
-                {"$project": {base_field: True}},
-                {"$set": {field_name: None}},
-                {"$merge": collection_name},  # requires mongodb>=4.4
-            ]
-        )
-
-    @classmethod
-    def _delete_field_docs(cls, field_name):
-        collection_name = cls.__name__
-        collection = get_db_conn()[collection_name]
-        collection.update_many({}, [{"$unset": field_name}])
+        collection.update_many({}, [{"$unset": field_names}])
 
     @classmethod
     def _add_field_schema(
@@ -552,28 +617,22 @@ class DatasetMixin(object):
         cls._fields_ordered += (field_name,)
         try:
             if issubclass(cls, SampleDocument):
-                # Only set the attribute if it is a class
                 setattr(cls, field_name, field)
         except TypeError:
             # Instance, not class, so do not `setattr`
             pass
 
         if save:
-            dataset_doc = DatasetDocument.objects.get(
-                sample_collection_name=cls._sample_collection_name()
-            )
-
+            dataset_doc = cls._dataset_doc()
             field = cls._fields[field_name]
             sample_field = SampleFieldDocument.from_field(field)
             dataset_doc[cls._dataset_doc_fields_col()].append(sample_field)
             dataset_doc.save()
 
     @classmethod
-    def _rename_field_schema(cls, field_name, new_field_name, is_frame_field):
-        # pylint: disable=no-member
-        if field_name not in cls._fields:
-            raise AttributeError("Field '%s' does not exist" % field_name)
-
+    def _rename_field_schema(
+        cls, field_name, new_field_name, are_frame_fields
+    ):
         # pylint: disable=no-member
         field = cls._fields[field_name]
         field = _rename_field(field, new_field_name)
@@ -584,42 +643,29 @@ class DatasetMixin(object):
             for fn in cls._fields_ordered
         )
         delattr(cls, field_name)
+
         try:
             if issubclass(cls, Document):
-                # Only set the attribute if it is a class
                 setattr(cls, new_field_name, field)
         except TypeError:
             # Instance, not class, so do not `setattr`
             pass
 
-        if is_frame_field:
-            # @todo this hack assumes that
-            # frames_collection_name = "frames." + sample_collection_name
-            sample_collection_name = cls.__name__[7:]
-            dataset_doc = DatasetDocument.objects.get(
-                sample_collection_name=sample_collection_name
-            )
+        dataset_doc = cls._dataset_doc()
+
+        if are_frame_fields:
             for f in dataset_doc.frame_fields:
                 if f.name == field_name:
                     f.name = new_field_name
-
-            dataset_doc.save()
         else:
-            dataset_doc = DatasetDocument.objects.get(
-                sample_collection_name=cls.__name__
-            )
             for f in dataset_doc.sample_fields:
                 if f.name == field_name:
                     f.name = new_field_name
 
-            dataset_doc.save()
+        dataset_doc.save()
 
     @classmethod
     def _clone_field_schema(cls, field_name, new_field_name):
-        # pylint: disable=no-member
-        if field_name not in cls._fields:
-            raise AttributeError("Field '%s' does not exist" % field_name)
-
         # pylint: disable=no-member
         field = cls._fields[field_name]
         cls._add_field_schema(
@@ -627,11 +673,7 @@ class DatasetMixin(object):
         )
 
     @classmethod
-    def _delete_field_schema(cls, field_name, is_frame_field):
-        # pylint: disable=no-member
-        if field_name not in cls._fields:
-            raise AttributeError("Field '%s' does not exist" % field_name)
-
+    def _delete_field_schema(cls, field_name, are_frame_fields):
         # pylint: disable=no-member
         del cls._fields[field_name]
         cls._fields_ordered = tuple(
@@ -639,25 +681,18 @@ class DatasetMixin(object):
         )
         delattr(cls, field_name)
 
-        if is_frame_field:
-            # @todo this hack assumes that
-            # frames_collection_name = "frames." + sample_collection_name
-            sample_collection_name = cls.__name__[7:]
-            dataset_doc = DatasetDocument.objects.get(
-                sample_collection_name=sample_collection_name
-            )
+        dataset_doc = cls._dataset_doc()
+
+        if are_frame_fields:
             dataset_doc.frame_fields = [
                 f for f in dataset_doc.frame_fields if f.name != field_name
             ]
-            dataset_doc.save()
         else:
-            dataset_doc = DatasetDocument.objects.get(
-                sample_collection_name=cls.__name__
-            )
             dataset_doc.sample_fields = [
                 f for f in dataset_doc.sample_fields if f.name != field_name
             ]
-            dataset_doc.save()
+
+        dataset_doc.save()
 
     def _update(self, object_id, update_doc, filtered_fields=None, **kwargs):
         """Updates an existing document.
@@ -1067,13 +1102,16 @@ def _get_scalar_field_type(value):
 
 
 def _create_field(
-    field_name, ftype, embedded_doc_type=None, subfield=None, kwargs={}
+    field_name, ftype, embedded_doc_type=None, subfield=None, kwargs=None
 ):
     if not issubclass(ftype, fof.Field):
         raise ValueError(
             "Invalid field type '%s'; must be a subclass of '%s'"
             % (ftype, fof.Field)
         )
+
+    if kwargs is None:
+        kwargs = {}
 
     kwargs["db_field"] = field_name
     kwargs["null"] = True
