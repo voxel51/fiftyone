@@ -1147,12 +1147,13 @@ def _make_filter_stages(dataset, filters):
     stages = []
     for path, args in filters.items():
         keys = path.split(".")
-        path = keys[0]
         if path.startswith(dataset._FRAMES_PREFIX):
             schema = frame_field_schema
             field = schema[keys[1]]
+            path = ".".join(keys[:2])
         else:
             schema = field_schema
+            path = keys[0]
             field = schema[path]
 
         if isinstance(field, fof.EmbeddedDocumentField):
