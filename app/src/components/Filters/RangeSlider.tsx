@@ -88,11 +88,8 @@ const RangeSlider = React.memo(({ rangeAtom, boundsAtom }: Props) => {
   const [localValue, setLocalValue] = useState<Range>([null, null]);
   useEffect(() => {
     JSON.stringify(value) !== JSON.stringify(localValue) &&
-      setLocalValue([
-        value[0] === null ? bounds[0] : value[0],
-        value[1] === null ? bounds[1] : value[1],
-      ]);
-  }, [bounds, value]);
+      setLocalValue(value);
+  }, [value]);
 
   const hasBounds = bounds.every((b) => b !== null);
   return hasBounds ? (

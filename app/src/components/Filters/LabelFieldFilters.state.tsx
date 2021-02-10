@@ -55,8 +55,9 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
       }, {}),
     };
     const filters = {};
+    const typeMap = get(selectors.labelTypesMap);
     for (const label in labels) {
-      const path = `${label}${getPathExtension(label)}`;
+      const path = `${label}${getPathExtension(typeMap[label])}`;
 
       const [cRangeAtom, cNoneAtom, lValuesAtom, lNoneAtom] = modal
         ? [
@@ -94,7 +95,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
     }
     return filters;
   },
-  set: (modal) => ({ get, set }, _) => {
+  set: () => ({ get, set }, _) => {
     const paths = get(selectors.labelTypesMap);
     const activeLabels = get(atoms.activeLabels("sample"));
     set(atoms.modalActiveLabels("sample"), activeLabels);
@@ -105,8 +106,8 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
       const cPath = `${path}.confidence`;
       const lPath = `${path}.label`;
       set(
-        numericField.rangeModalAtom(cPath),
-        get(numericField.rangeAtom(cPath))
+        numericField.rangeModalAtom({ path: cPath, defaultRange: [0, 1] }),
+        get(numericField.rangeAtom({ path: cPath, defaultRange: [0, 1] }))
       );
 
       set(
