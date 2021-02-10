@@ -18,6 +18,11 @@ const noneAtom = atom<boolean>({
   default: true,
 });
 
+const hasNoneAtom = atom<boolean>({
+  key: "noneAtom",
+  default: true,
+});
+
 export default {
   component: RangeSlider,
   title: "RangeSlider",
@@ -30,6 +35,7 @@ export const named = () => {
     boundsAtom,
     rangeAtom,
     noneAtom,
+    hasNoneAtom,
     color: "pink",
     name: "Name",
     valueName: "Value Name",
