@@ -1092,14 +1092,17 @@ def _make_scalar_expression(f, args):
     cls = args["_CLS"]
     if cls == _BOOL_FILTER:
         true, false = args["true"], args["false"]
-        if not true:
-            expr = f != True
+        if true and false:
+            expr = f.is_in([True, False])
 
-        if not false:
-            if expr is not None:
-                expr &= f != False
-            else:
-                expr = f != False
+        if not true and false:
+            expr = f == False
+
+        if true and not false:
+            expr = f == True
+
+        if not true and not false:
+            expr = (f != True) & (f != False)
 
     elif cls == _NUMERIC_FILTER:
         mn, mx = args["range"]
@@ -1114,6 +1117,8 @@ def _make_scalar_expression(f, args):
             expr &= f.exists()
         else:
             expr = f.exists()
+    elif expr is not None:
+        expr |= ~(f.exists())
 
     return expr
 
