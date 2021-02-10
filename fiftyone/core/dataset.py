@@ -2877,6 +2877,6 @@ def _parse_field_mapping(field_mapping):
             embedded_new_fields.append(new_field)
         else:
             fields.append(field)
-            new_fields.append(new_fields)
+            new_fields.append(new_field)
 
     return fields, new_fields, embedded_fields, embedded_new_fields
