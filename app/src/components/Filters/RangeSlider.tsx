@@ -213,7 +213,7 @@ export const NamedRangeSlider = React.memo(
               <FormControlLabel
                 label={
                   <div style={{ lineHeight: "20px", fontSize: 14 }}>
-                    Filter no {valueName}
+                    Exclude <code style={{ color }}>None</code>
                   </div>
                 }
                 control={

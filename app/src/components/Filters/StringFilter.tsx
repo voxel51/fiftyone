@@ -414,7 +414,7 @@ export const NamedStringFilter = React.memo(
                 <FormControlLabel
                   label={
                     <div style={{ lineHeight: "20px", fontSize: 14 }}>
-                      Filter no {stringFilterProps.valueName}
+                      Exclude <code style={{ color }}>None</code>
                     </div>
                   }
                   control={

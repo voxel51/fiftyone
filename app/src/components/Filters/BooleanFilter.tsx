@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import {
   RecoilState,
   RecoilValueReadOnly,
@@ -6,7 +6,7 @@ import {
   useRecoilValue,
 } from "recoil";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
-import styled from "styled-components";
+import styled, { ThemeContext } from "styled-components";
 
 const BooleanFilterContainer = styled.div`
   position: relative;
@@ -47,7 +47,9 @@ const BooleanFilter = React.memo(({ trueAtom, falseAtom, color }: Props) => {
     <>
       <FormControlLabel
         label={
-          <div style={{ lineHeight: "20px", fontSize: 14 }}>Filter true</div>
+          <div style={{ lineHeight: "20px", fontSize: 14 }}>
+            Exclude <code style={{ color }}>True</code>
+          </div>
         }
         control={
           <Checkbox
@@ -62,7 +64,9 @@ const BooleanFilter = React.memo(({ trueAtom, falseAtom, color }: Props) => {
       />
       <FormControlLabel
         label={
-          <div style={{ lineHeight: "20px", fontSize: 14 }}>Filter false</div>
+          <div style={{ lineHeight: "20px", fontSize: 14 }}>
+            Exclude <code style={{ color }}>False</code>
+          </div>
         }
         control={
           <Checkbox
@@ -103,6 +107,7 @@ export const NamedBooleanFilter = React.memo(
       const [falseValue, setFalse] = useRecoilState(
         booleanFilterProps.falseAtom
       );
+      const theme = useContext(ThemeContext);
       const [trueValue, setTrue] = useRecoilState(booleanFilterProps.trueAtom);
 
       return (
@@ -130,7 +135,10 @@ export const NamedBooleanFilter = React.memo(
                 <FormControlLabel
                   label={
                     <div style={{ lineHeight: "20px", fontSize: 14 }}>
-                      Filter no value
+                      Exclude{" "}
+                      <code style={{ color: booleanFilterProps.color }}>
+                        None
+                      </code>
                     </div>
                   }
                   control={
