@@ -305,7 +305,7 @@ class DatasetMixin(object):
                 field_name, new_field_name, are_frame_fields
             )
 
-        cls._rename_field_docs(field_names, new_field_names)
+        cls._rename_fields_simple(field_names, new_field_names)
 
     @classmethod
     def _rename_embedded_fields(
@@ -320,7 +320,7 @@ class DatasetMixin(object):
                 :class:`fiftyone.core.samples.SampleCollection` being operated
                 upon
         """
-        cls._rename_field_docs_collection(
+        cls._rename_fields_collection(
             field_names, new_field_names, sample_collection
         )
 
@@ -346,9 +346,9 @@ class DatasetMixin(object):
             cls._clone_field_schema(field_name, new_field_name)
 
         if sample_collection is None:
-            cls._clone_field_docs(field_names, new_field_names)
+            cls._clone_fields_simple(field_names, new_field_names)
         else:
-            cls._clone_field_docs_collection(
+            cls._clone_fields_collection(
                 field_names, new_field_names, sample_collection
             )
 
@@ -365,7 +365,7 @@ class DatasetMixin(object):
                 :class:`fiftyone.core.samples.SampleCollection` being operated
                 upon
         """
-        cls._clone_field_docs_collection(
+        cls._clone_fields_collection(
             field_names, new_field_names, sample_collection
         )
 
@@ -380,9 +380,9 @@ class DatasetMixin(object):
                 upon
         """
         if sample_collection is None:
-            cls._clear_field_docs(field_names)
+            cls._clear_fields_simple(field_names)
         else:
-            cls._clear_field_docs_collection(field_names, sample_collection)
+            cls._clear_fields_collection(field_names, sample_collection)
 
     @classmethod
     def _clear_embedded_fields(cls, field_names, sample_collection):
@@ -394,7 +394,7 @@ class DatasetMixin(object):
                 :class:`fiftyone.core.samples.SampleCollection` being operated
                 upon
         """
-        cls._clear_field_docs_collection(field_names, sample_collection)
+        cls._clear_fields_collection(field_names, sample_collection)
 
     @classmethod
     def _delete_fields(cls, field_names, are_frame_fields=False):
@@ -420,7 +420,7 @@ class DatasetMixin(object):
         for field_name in field_names:
             cls._delete_field_schema(field_name, are_frame_fields)
 
-        cls._delete_field_docs(field_names)
+        cls._delete_fields_simple(field_names)
 
     @classmethod
     def _delete_embedded_fields(cls, field_names):
@@ -429,10 +429,10 @@ class DatasetMixin(object):
         Args:
             field_names: an iterable of "embedded.field.names"
         """
-        cls._delete_field_docs(field_names)
+        cls._delete_fields_simple(field_names)
 
     @classmethod
-    def _rename_field_docs(cls, field_names, new_field_names):
+    def _rename_fields_simple(cls, field_names, new_field_names):
         rename_expr = {k: v for k, v in zip(field_names, new_field_names)}
 
         collection_name = cls.__name__
@@ -440,7 +440,7 @@ class DatasetMixin(object):
         collection.update_many({}, {"$rename": rename_expr})
 
     @classmethod
-    def _rename_field_docs_collection(
+    def _rename_fields_collection(
         cls, field_names, new_field_names, sample_collection
     ):
         from fiftyone import ViewField as F
@@ -466,7 +466,7 @@ class DatasetMixin(object):
         view.save(list(field_roots))
 
     @classmethod
-    def _clone_field_docs(cls, field_names, new_field_names):
+    def _clone_fields_simple(cls, field_names, new_field_names):
         set_expr = {v: "$" + k for k, v in zip(field_names, new_field_names)}
 
         collection_name = cls.__name__
@@ -474,7 +474,7 @@ class DatasetMixin(object):
         collection.update_many({}, [{"$set": set_expr}])
 
     @classmethod
-    def _clone_field_docs_collection(
+    def _clone_fields_collection(
         cls, field_names, new_field_names, sample_collection
     ):
         from fiftyone import ViewField as F
@@ -494,105 +494,36 @@ class DatasetMixin(object):
             expr = F(leaf) if new_base == base else F("$" + field_name)
             view = view.set_field(new_field_name, expr)
 
-        view.save(list(new_field_roots))
-
-    @classmethod
-    def _clone_field_docs_pipeline(
-        cls, field_names, new_field_names, pipeline
-    ):
-        project_expr = {
-            v: "$" + k for k, v in zip(field_names, new_field_names)
-        }
-
-        collection_name = cls.__name__
-        collection = get_db_conn()[collection_name]
-        collection.aggregate(
-            pipeline
-            + [{"$project": project_expr}, {"$merge": collection_name}]
-        )
-
-    @classmethod
-    def _clone_embedded_field_docs_pipeline(
-        cls, field_names, new_field_names, pipeline
-    ):
         #
         # Ideally only the embedded field would be merged in, but the `$merge`
         # operator will always overwrite top-level fields of each sample, so we
-        # limit the damage by projecting onto the base field
+        # limit the damage by projecting onto the modified fields
         #
-        # Note: this will not do the right thing if `field_name` is an embedded
-        # field of an array. In that case, we'd actually need to do something
-        # like https://stackoverflow.com/q/60362503
-        #
-        set_expr = {v: "$" + k for k, v in zip(field_names, new_field_names)}
-        project_expr = {fn.split(".", 1)[0]: True for fn in new_field_names}
-
-        collection_name = cls.__name__
-        collection = get_db_conn()[collection_name]
-        collection.aggregate(
-            pipeline
-            + [
-                {"$set": set_expr},
-                {"$project": project_expr},
-                {"$merge": collection_name},
-            ]
-        )
+        view.save(list(new_field_roots))
 
     @classmethod
-    def _clear_field_docs(cls, field_names):
+    def _clear_fields_simple(cls, field_names):
         collection_name = cls.__name__
         collection = get_db_conn()[collection_name]
         collection.update_many({}, {"$set": {k: None for k in field_names}})
 
     @classmethod
-    def _clear_field_docs_pipeline(cls, field_names, pipeline):
-        project_expr = {k: True for k in field_names}
-        set_expr = {k: None for k in field_names}
-
-        collection_name = cls.__name__
-        collection = get_db_conn()[collection_name]
-        collection.aggregate(
-            pipeline
-            + [
-                {"$project": project_expr},
-                {"$set": set_expr},
-                {"$merge": collection_name},
-            ]
-        )
-
-    @classmethod
-    def _clear_field_docs_collection(cls, field_names, sample_collection):
+    def _clear_fields_collection(cls, field_names, sample_collection):
         field_roots = set()
         view = sample_collection.view()
         for field_name in field_names:
             field_roots.add(field_name.split(".", 1)[0])
             view = view.set_field(field_name, None)
 
-        view.save(list(field_roots))
-
-    @classmethod
-    def _clear_embedded_field_docs_pipeline(cls, field_names, pipeline):
         #
         # Ideally only the embedded field would be merged in, but the `$merge`
         # operator will always overwrite top-level fields of each sample, so we
-        # limit the damage by projecting onto the base field
+        # limit the damage by projecting onto the modified fields
         #
-        project_expr = {fn.split(".", 1)[0]: True for fn in field_names}
-        set_expr = {k: None for k in field_names}
-
-        collection_name = cls.__name__
-        collection = get_db_conn()[collection_name]
-        collection.aggregate(
-            pipeline
-            + [
-                {"$project": project_expr},
-                {"$set": set_expr},
-                {"$merge": collection_name},
-            ]
-        )
+        view.save(list(field_roots))
 
     @classmethod
-    def _delete_field_docs(cls, field_names):
+    def _delete_fields_simple(cls, field_names):
         collection_name = cls.__name__
         collection = get_db_conn()[collection_name]
         collection.update_many({}, [{"$unset": field_names}])

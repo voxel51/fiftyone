@@ -3200,7 +3200,7 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement list_indexes()")
 
-    def create_index(self, field, unique=False):
+    def create_index(self, field_name, unique=False):
         """Creates an index on the given field.
 
         If the given field already has a unique index, it will be retained
@@ -3212,16 +3212,16 @@ class SampleCollection(object):
         Indexes enable efficient sorting, merging, and other such operations.
 
         Args:
-            field: the field name or ``embedded.field.name``
+            field_name: the field name or ``embedded.field.name``
             unique (False): whether to add a uniqueness constraint to the index
         """
         raise NotImplementedError("Subclass must implement create_index()")
 
-    def drop_index(self, field):
+    def drop_index(self, field_name):
         """Drops the index on the given field.
 
         Args:
-            field: the field name or ``embedded.field.name``
+            field_name: the field name or ``embedded.field.name``
         """
         raise NotImplementedError("Subclass must implement drop_index()")
 
