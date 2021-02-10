@@ -7,8 +7,9 @@ Base evaluation utilities.
 """
 from copy import copy
 
-from eta.core.config import Config
 import eta.core.utils as etau
+
+from fiftyone.core.config import Config
 
 
 class EvaluationConfig(Config):
