@@ -17,6 +17,7 @@ import fiftyone.core.utils as fou
 
 from .base import (
     EvaluationConfig,
+    EvaluationResults,
     _get_eval_info,
     _record_eval_info,
     _delete_eval_info,
@@ -285,7 +286,7 @@ def clear_classification_evaluation(samples, eval_key):
     _delete_eval_info(samples, eval_key)
 
 
-class ClassificationResults(object):
+class ClassificationResults(EvaluationResults):
     """Class that stores the results of a classification evaluation.
 
     Args:

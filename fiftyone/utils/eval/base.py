@@ -36,6 +36,12 @@ class EvaluationConfig(Config):
         return config_cls(**d)
 
 
+class EvaluationResults(object):
+    """Base class for evaluation results."""
+
+    pass
+
+
 def list_evaluations(samples):
     """Returns a list of all evaluation keys for the given collection.
 

@@ -7,6 +7,7 @@ Evaluation utilities.
 """
 from .base import (
     EvaluationConfig,
+    EvaluationResults,
     list_evaluations,
     clear_evaluation,
     clear_evaluations,
