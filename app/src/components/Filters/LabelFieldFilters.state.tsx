@@ -88,7 +88,8 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
           cRange[0] - 0.005 <= s.confidence &&
           s.confidence <= cRange[1] + 0.005;
         const noConfidence = cNone && s.confidence === undefined;
-        const isIncluded = lValues.length === 0 || lValues.includes(s.label);
+        const label = s.label ? s.label : s.value;
+        const isIncluded = lValues.length === 0 || lValues.includes(label);
         const noLabel = lNone && s.label === undefined;
         return (inRange || noConfidence) && (isIncluded || noLabel);
       };
