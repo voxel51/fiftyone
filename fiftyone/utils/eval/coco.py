@@ -82,7 +82,7 @@ def _coco_evaluation(gts, preds, eval_key, config):
 
     if eval_key is None:
         # Don't save results on user's copy of the data
-        eval_key = ""
+        eval_key = "eval"
         gts = gts.copy()
         preds = preds.copy()
 
@@ -124,7 +124,7 @@ def _coco_evaluation(gts, preds, eval_key, config):
         for pred, gt_ious in zip(preds, ious):
             pred_ious[pred.id] = list(zip(gt_ids, gt_ious))
 
-    # Match preds to GT truth, highest confidence first
+    # Match preds to GT, highest confidence first
     for cat, objects in cats.items():
         gt_map = {gt.id: gt for gt in objects["gts"]}
 
@@ -147,20 +147,25 @@ def _coco_evaluation(gts, preds, eval_key, config):
 
                 if best_match:
                     gt = gt_map[best_match]
+                    gt[eval_key] = "tp"
                     gt[id_key] = pred.id
                     gt[iou_key] = best_match_iou
+                    pred[eval_key] = "tp"
                     pred[id_key] = best_match
                     pred[iou_key] = best_match_iou
                     matches.append((gt.label, pred.label))
                 else:
+                    pred[eval_key] = "fp"
                     matches.append((None, pred.label))
 
             elif pred.label == cat:
+                pred[eval_key] = "fp"
                 matches.append((None, pred.label))
 
         # Leftover GTs are false negatives
         for gt in objects["gts"]:
             if gt[id_key] == _NO_MATCH_ID:
+                gt[eval_key] = "fn"
                 matches.append((gt.label, None))
 
     return matches

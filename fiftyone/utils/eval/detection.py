@@ -75,19 +75,21 @@ def evaluate_detections(
     If an ``eval_key`` is provided, a number of fields are populated at the
     detection- and sample-level recording the results of the evaluation:
 
-    -   The fields listed below are populated on each individual
-        :class:`fiftyone.core.labels.Detection` instance; these fields tabulate
-        the ID of the matching object (if any) as well as the matching IoU::
-
-            ID:  detection.<eval_key>_id
-            IoU: detection.<eval_key>_iou
-
     -   True positive (TP), false positive (FP), and false negative (FN) counts
         for the each sample are saved in top-level fields of each sample::
 
             TP: sample.<eval_key>_tp
             FP: sample.<eval_key>_fp
             FN: sample.<eval_key>_fn
+
+    -   The fields listed below are populated on each individual
+        :class:`fiftyone.core.labels.Detection` instance; these fields tabulate
+        the TP/FP/FN status of the object, the ID of the matching object
+        (if any), and the matching IoU::
+
+            TP/FP/FN: detection.<eval_key>
+                  ID: detection.<eval_key>_id
+                 IoU: detection.<eval_key>_iou
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
