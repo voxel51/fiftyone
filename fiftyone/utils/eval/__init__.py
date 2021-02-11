@@ -16,14 +16,14 @@ from .base import (
 from .classification import (
     evaluate_classifications,
     evaluate_binary_classifications,
-    evaluate_top_k_classifications,
     ClassificationEvaluationConfig,
+    ClassificationEvaluationMethod,
     ClassificationResults,
     BinaryClassificationResults,
 )
 from .detection import (
-    list_detection_methods,
     evaluate_detections,
     DetectionEvaluationConfig,
+    DetectionEvaluationMethod,
     DetectionResults,
 )

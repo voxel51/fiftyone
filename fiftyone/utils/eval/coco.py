@@ -65,7 +65,7 @@ class COCOEvaluation(DetectionEvaluationMethod):
             eval_key (None): an evaluation key for this evaluation
 
         Returns:
-            a list of matched ``(gt_label, pred_label)`` pairs
+            a list of matched ``(gt_label, pred_label)`` tuples
         """
         return _coco_evaluation(gts, pred, eval_key, self.config)
 

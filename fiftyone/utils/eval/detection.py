@@ -39,9 +39,6 @@ class DetectionEvaluationMethod(EvaluationMethod):
         config: a :class:`DetectionEvaluationConfig`
     """
 
-    def __init__(self, config):
-        self.config = config
-
     def evaluate_image(self, gts, preds, eval_key=None):
         """Evaluates the ground truth and predicted objects in an image.
 
@@ -53,19 +50,9 @@ class DetectionEvaluationMethod(EvaluationMethod):
             eval_key (None): an evaluation key for this evaluation
 
         Returns:
-            a list of matched ``(gt_label, pred_label)`` pairs
+            a list of matched ``(gt_label, pred_label)`` tuples
         """
-        raise NotImplementedError("subclass must implement evaluate_image")
-
-
-def list_detection_methods():
-    """Lists the available evaluation methods that can be passed in the
-    ``method`` argument of :meth:`evaluate_detections`.
-
-    Returns:
-         a list of methods
-    """
-    return ["coco"]
+        raise NotImplementedError("subclass must implement evaluate_image()")
 
 
 def evaluate_detections(
@@ -80,8 +67,7 @@ def evaluate_detections(
     **kwargs
 ):
     """Evaluates the predicted detections in the given samples with respect to
-    the specified ground truth detections using the specified Intersection over
-    Union (IoU) threshold to determine matches.
+    the specified ground truth detections.
 
     By default, this methos uses COCO-style evaluation, but this can be
     configued via the ``method`` and ``config`` parameters.
@@ -89,20 +75,19 @@ def evaluate_detections(
     If an ``eval_key`` is provided, a number of fields are populated at the
     detection- and sample-level recording the results of the evaluation:
 
-    The fields listed below are populated on each individual
-    :class:`fiftyone.core.labels.Detection` instance; these fields tabulate the
-    ID of the matching object (if any) as well as the matching IoU::
+    -   The fields listed below are populated on each individual
+        :class:`fiftyone.core.labels.Detection` instance; these fields tabulate
+        the ID of the matching object (if any) as well as the matching IoU::
 
-        ID:  detection.<eval_key>_id
-        IoU: detection.<eval_key>_iou
+            ID:  detection.<eval_key>_id
+            IoU: detection.<eval_key>_iou
 
-    Finally, true positive (TP), false positive (FP), and false negative (FN)
-    counts for the each sample are saved in the following top-level fields of
-    each sample::
+    -   True positive (TP), false positive (FP), and false negative (FN) counts
+        for the each sample are saved in top-level fields of each sample::
 
-        TP: sample.<eval_key>_tp
-        FP: sample.<eval_key>_fp
-        FN: sample.<eval_key>_fn
+            TP: sample.<eval_key>_tp
+            FP: sample.<eval_key>_fp
+            FN: sample.<eval_key>_fn
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
@@ -115,12 +100,12 @@ def evaluate_detections(
             observed ground truth/predicted labels are used
         missing ("none"): a missing label string. Any unmatched objects are
             given this label for evaluation purposes
-        method (None): an evaluation method to use from
-            :meth:`list_detection_methods`
-        config (None): an :class:`EvaluationConfig` specifying the evaluation
-            method to use. If a ``config`` is provided, ``method`` is ignored
-        **kwargs: optional keyword arguments for the :class:`EvaluationConfig`
-            constructor being used
+        method (None): a string specifying the evaluation method to use
+        config (None): an :class:`DetectionEvaluationConfig` specifying the
+            evaluation method to use. If a ``config`` is provided, ``method``
+            is ignored
+        **kwargs: optional keyword arguments for the constructor of the
+            :class:`DetectionEvaluationConfig` being used
 
     Returns:
         a :class:`DetectionResults`
