@@ -448,7 +448,7 @@ export const NamedStringFilter = React.memo(
               <FormControlLabel
                 label={
                   <div style={{ lineHeight: "20px", fontSize: 14 }}>
-                    Exclude selected
+                    Exclude {name.toLowerCase()}
                   </div>
                 }
                 control={

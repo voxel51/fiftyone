@@ -211,17 +211,17 @@ export const NamedRangeSlider = React.memo(
             {hasBounds && !isSingleValue && (
               <RangeSlider {...rangeSliderProps} />
             )}
-            {hasNone && (
+            {hasNone && hasDefaultRange && (
               <FormControlLabel
                 label={
                   <div style={{ lineHeight: "20px", fontSize: 14 }}>
-                    Include{" "}
+                    Exclude{" "}
                     <code style={{ color: rangeSliderProps.color }}>None</code>
                   </div>
                 }
                 control={
                   <Checkbox
-                    checked={includeNone}
+                    checked={!includeNone}
                     onChange={() => setIncludeNone(!includeNone)}
                     style={{
                       padding: "0 5px",

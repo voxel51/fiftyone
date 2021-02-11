@@ -6,7 +6,6 @@ import {
   GetRecoilValue,
   selectorFamily,
   SetRecoilState,
-  useRecoilValue,
 } from "recoil";
 
 import * as selectors from "../../recoil/selectors";
@@ -25,13 +24,18 @@ const getFilter = (
   path: string,
   defaultRange?: Range
 ): NumericFilter => {
-  return {
+  const bounds = get(boundsAtom({ path, defaultRange }));
+  const result = {
     ...{
-      range: get(boundsAtom({ path, defaultRange })),
+      range: bounds,
       none: true,
     },
     ...get(selectors.filterStage(path)),
   };
+  if (!meetsDefault({ ...result, none: true }, bounds)) {
+    return { ...result, none: false };
+  }
+  return result;
 };
 
 const meetsDefault = (filter: NumericFilter, bounds: Range) => {

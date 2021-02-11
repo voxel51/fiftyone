@@ -1122,14 +1122,25 @@ def _make_scalar_expression(f, args):
     elif cls == _NUMERIC_FILTER:
         mn, mx = args["range"]
         expr = (f >= mn) & (f <= mx)
-    elif cls == _STR_FILTER and len(args["values"]):
+    elif cls == _STR_FILTER:
         values = args["values"]
+        if not values:
+            return None
+
         none = any(map(lambda v: v is None, values))
         values = filter(lambda v: v is not None, values)
         expr = f.is_in(values)
+        exclude = args["exclude"]
+
+        if exclude and expr:
+            # pylint: disable=invalid-unary-operand-type
+            expr = ~expr
 
         if none:
-            expr |= ~(f.exists())
+            if exclude:
+                expr &= f.exists()
+            else:
+                expr |= ~(f.exists())
 
         return expr
 
