@@ -33,6 +33,8 @@ def evaluate_detections(
     classes=None,
     missing="none",
     method=None,
+    iou=0.75,
+    classwise=True,
     config=None,
     **kwargs
 ):
@@ -73,6 +75,9 @@ def evaluate_detections(
         missing ("none"): a missing label string. Any unmatched objects are
             given this label for evaluation purposes
         method (None): a string specifying the evaluation method to use
+        iou (0.75): the IoU threshold to use to determine matches
+        classwise (True): whether to only match objects with the same class
+            label (True) or allow matches between classes (False)
         config (None): an :class:`DetectionEvaluationConfig` specifying the
             evaluation method to use. If a ``config`` is provided, ``method``
             is ignored
@@ -82,7 +87,9 @@ def evaluate_detections(
     Returns:
         a :class:`DetectionResults`
     """
-    config = _parse_config(config, method, **kwargs)
+    config = _parse_config(
+        config, method, iou=iou, classwise=classwise, **kwargs
+    )
     eval_method = config.build()
 
     processing_frames = (
@@ -158,9 +165,17 @@ def clear_detection_evaluation(samples, eval_key):
 
 class DetectionEvaluationConfig(EvaluationConfig):
     """Base class for configuring :class:`DetectionEvaluationMethod` instances.
+
+    Args:
+        iou (None): the IoU threshold to use to determine matches
+        classwise (None): whether to only match objects with the same class
+            label (True) or allow matches between classes (False)
     """
 
-    pass
+    def __init__(self, iou=None, classwise=None, **kwargs):
+        super().__init__(**kwargs)
+        self.iou = iou
+        self.classwise = classwise
 
 
 class DetectionEvaluationMethod(EvaluationMethod):

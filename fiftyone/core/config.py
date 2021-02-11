@@ -23,12 +23,31 @@ logger = logging.getLogger(__name__)
 
 
 class Config(etac.Config):
+    """Base class for JSON serializable config classes."""
+
     def __repr__(self):
         return self.__str__()
 
 
 class Configurable(etac.Configurable):
-    pass
+    """Base class for classes that can be initialized with a :class:`Config`
+    instance that configures their behavior.
+
+    :class:`Configurable` subclasses must obey the following rules:
+
+        (a) Configurable class ``Foo`` has an associated Config class
+            ``FooConfig`` that is importable from the same namespace as ``Foo``
+
+        (b) Configurable class ``Foo`` must be initializable via the syntax
+            ``Foo(config)``, where config is a ``FooConfig`` instance
+
+    Args:
+        config: a :class:`Config`
+    """
+
+    def __init__(self, config):
+        self.validate(config)
+        self.config = config
 
 
 class EnvConfig(etac.EnvConfig):

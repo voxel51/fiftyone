@@ -86,8 +86,7 @@ class EvaluationMethod(Configurable):
         config: an :class:`EvaluationConfig`
     """
 
-    def __init__(self, config):
-        self.config = config
+    pass
 
 
 class EvaluationResults(object):

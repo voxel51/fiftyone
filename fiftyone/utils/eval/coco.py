@@ -18,16 +18,14 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
     """COCO-style evaluation config.
 
     Args:
-        iou (0.75): the IoU threshold to use to determine matches
-        classwise (True): whether to only match objects with the same class
+        iou (None): the IoU threshold to use to determine matches
+        classwise (None): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
         iscrowd ("iscrowd"): the name of the crowd attribute
     """
 
-    def __init__(self, iou=0.75, classwise=True, iscrowd="iscrowd", **kwargs):
+    def __init__(self, iscrowd="iscrowd", **kwargs):
         super().__init__(**kwargs)
-        self.iou = iou
-        self.classwise = classwise
         self.iscrowd = iscrowd
 
     @property
@@ -41,6 +39,21 @@ class COCOEvaluation(DetectionEvaluationMethod):
     Args:
         config: a :class:`COCOEvaluationConfig`
     """
+
+    def __init__(self, config):
+        super().__init__(config)
+
+        if config.iou is None:
+            raise ValueError(
+                "You must specify an `iou` threshold in order to run COCO "
+                "evaluation"
+            )
+
+        if config.classwise is None:
+            raise ValueError(
+                "You must specify a `classwise` value in order to run COCO "
+                "evaluation"
+            )
 
     def evaluate_image(
         self, sample_or_frame, gt_field, pred_field, eval_key=None
