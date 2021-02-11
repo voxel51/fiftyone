@@ -71,9 +71,9 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
   const cPath = `${path}.confidence`;
   const lPath = `${path}.label`;
 
-  const [selectedLabels, noneLabel] = modal
-    ? [stringField.selectedValuesModalAtom, stringField.noneModalAtom]
-    : [stringField.selectedValuesAtom, stringField.noneAtom];
+  const selectedLabels = modal
+    ? stringField.selectedValuesModalAtom
+    : stringField.selectedValuesAtom;
 
   const [confidenceRange, noConfidence] = modal
     ? [numericField.rangeModalAtom, numericField.noneModalAtom]
@@ -89,8 +89,6 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
             valueName={"label"}
             valuesAtom={stringField.valuesAtom(lPath)}
             selectedValuesAtom={selectedLabels(lPath)}
-            hasNoneAtom={hasNoneField(lPath)}
-            noneAtom={noneLabel(lPath)}
           />
           <HiddenObjectFilter entry={entry} />
           {CONFIDENCE_LABELS.includes(entry.type) && (

@@ -19,18 +19,18 @@ type StringFilter = {
   _CLS: string;
 };
 
+type Value = string | null;
+
 const getFilter = (get: GetRecoilValue, path: string): StringFilter => {
   return {
     ...{
       values: [],
-      none: true,
     },
     ...get(selectors.filterStage(path)),
   };
 };
 
-const meetsDefault = (filter: StringFilter) =>
-  filter.values.length === 0 && filter.none === true;
+const meetsDefault = (filter: StringFilter) => filter.values.length === 0;
 
 const setFilter = (
   get: GetRecoilValue,
@@ -51,39 +51,30 @@ const setFilter = (
   }
 };
 
-export const selectedValuesAtom = selectorFamily<string[], string>({
+export const selectedValuesAtom = selectorFamily<Value[], string>({
   key: "filterStringFieldValues",
   get: (path) => ({ get }) => getFilter(get, path).values,
   set: (path) => ({ get, set }, value) =>
     setFilter(get, set, path, "values", value),
 });
 
-export const selectedValuesModalAtom = atomFamily<string[], string>({
+export const selectedValuesModalAtom = atomFamily<Value[], string>({
   key: "modalFilterStringFieldValues",
   default: [],
 });
 
-export const noneAtom = selectorFamily<boolean, string>({
-  key: "filterStringFieldNone",
-  get: (path) => ({ get }) => getFilter(get, path).none,
-  set: (path) => ({ get, set }, value) =>
-    setFilter(get, set, path, "none", value),
-});
-
-export const noneModalAtom = atomFamily<boolean, string>({
-  key: "modalFilterStringFieldNone",
-  default: true,
-});
-
-export const valuesAtom = selectorFamily<string[], string>({
+export const valuesAtom = selectorFamily<Value[], string>({
   key: "stringFieldValues",
   get: (path) => ({ get }) => {
-    const i = (get(selectors.datasetStats) ?? []).reduce((acc, cur) => {
+    let i = (get(selectors.datasetStats) ?? []).reduce((acc, cur) => {
       if (cur.name === path && cur._CLS === AGGS.DISTINCT) {
         return cur.result;
       }
       return acc;
     }, []);
+    if (get(hasNoneField(path))) {
+      return [null, ...i];
+    }
     return i;
   },
 });
@@ -94,10 +85,8 @@ export const fieldIsFiltered = selectorFamily<
 >({
   key: "stringFieldIsFiltered",
   get: ({ path, modal }) => ({ get }) => {
-    const [none, values] = modal
-      ? [noneModalAtom, selectedValuesModalAtom]
-      : [noneAtom, selectedValuesAtom];
-    return !get(none(path)) || Boolean(get(values(path)).length);
+    const values = modal ? selectedValuesModalAtom : selectedValuesAtom;
+    return Boolean(get(values(path)).length);
   },
 });
 
@@ -112,8 +101,6 @@ const StringFieldFilter = ({ expanded, entry }) => {
         color={entry.color}
         valuesAtom={valuesAtom(entry.path)}
         selectedValuesAtom={selectedValuesAtom(entry.path)}
-        noneAtom={noneAtom(entry.path)}
-        hasNoneAtom={hasNoneField(entry.path)}
         ref={ref}
       />
     </animated.div>

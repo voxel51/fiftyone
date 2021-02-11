@@ -16,10 +16,11 @@ interface SearchResultProps {
   result: string;
   isActive: boolean;
   send: any;
+  highlight?: string;
 }
 
 const SearchResult = React.memo(
-  ({ result, isActive, send }: SearchResultProps) => {
+  ({ result, isActive, send, highlight }: SearchResultProps) => {
     const ref = useRef(null);
     const theme = useContext(ThemeContext);
     const [props, set] = useSpring(() => ({
@@ -56,7 +57,11 @@ const SearchResult = React.memo(
         style={props}
         data-result={result}
       >
-        {result}
+        {[null, undefined].includes(result) ? (
+          <code style={{ color: highlight }}>None</code>
+        ) : (
+          result
+        )}
       </SearchResultDiv>
     );
   }
@@ -90,10 +95,20 @@ const SearchResultsDiv = animated(styled.div`
 type SearchResultsProps = {
   results: Array<string>;
   send: any;
+  highlight?: string;
 };
 
 const SearchResults = React.memo(
-  ({ results, send, currentResult, barRef, followRef, bestMatch, ...rest }) => {
+  ({
+    results,
+    send,
+    currentResult,
+    barRef,
+    followRef,
+    bestMatch,
+    highlight,
+    ...rest
+  }: SearchResultsProps) => {
     const [props, set] = useSpring(() => {
       const obj = followRef
         ? {
@@ -128,6 +143,7 @@ const SearchResults = React.memo(
             result={result}
             isActive={currentResult === i || bestMatch === result}
             send={send}
+            highlight={highlight}
           />
         ))}
       </SearchResultsDiv>

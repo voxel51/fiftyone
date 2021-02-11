@@ -59,28 +59,25 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
     for (const label in labels) {
       const path = `${label}${getPathExtension(typeMap[label])}`;
 
-      const [cRangeAtom, cNoneAtom, lValuesAtom, lNoneAtom] = modal
+      const [cRangeAtom, cNoneAtom, lValuesAtom] = modal
         ? [
             numericField.rangeModalAtom,
             numericField.noneModalAtom,
             stringField.selectedValuesModalAtom,
-            stringField.noneModalAtom,
           ]
         : [
             numericField.rangeAtom,
             numericField.noneAtom,
             stringField.selectedValuesAtom,
-            stringField.noneAtom,
           ];
 
       const cPath = `${path}.confidence`;
       const lPath = `${path}.label`;
 
-      const [cRange, cNone, lValues, lNone] = [
+      const [cRange, cNone, lValues] = [
         get(cRangeAtom({ path: cPath, defaultRange: [0, 1] })),
         get(cNoneAtom(cPath)),
         get(lValuesAtom(lPath)),
-        get(lNoneAtom(lPath)),
       ];
 
       filters[label] = (s) => {
@@ -88,12 +85,11 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
           cRange[0] - 0.005 <= s.confidence &&
           s.confidence <= cRange[1] + 0.005;
         const noConfidence = cNone && s.confidence === undefined;
-        const label = s.label ? s.label : s.value;
-        const isIncluded =
-          (lValues.length === 0 && label !== undefined) ||
-          lValues.includes(label);
-        const noLabel = lNone && label === undefined;
-        return (inRange || noConfidence) && (isIncluded || noLabel);
+        let label = s.label ? s.label : s.value;
+        if (label === undefined) {
+          label = null;
+        }
+        return (inRange || noConfidence) && lValues.includes(label);
       };
     }
     return filters;
@@ -122,8 +118,6 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
         stringField.selectedValuesModalAtom(lPath),
         get(stringField.selectedValuesAtom(lPath))
       );
-
-      set(stringField.noneModalAtom(lPath), get(stringField.noneAtom(lPath)));
 
       set(atoms.modalColorByLabel, get(atoms.colorByLabel));
     }

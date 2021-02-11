@@ -5,7 +5,6 @@ import {
   useRecoilState,
   useRecoilValue,
 } from "recoil";
-import { Checkbox, FormControlLabel } from "@material-ui/core";
 import styled, { ThemeContext } from "styled-components";
 import { Machine, assign } from "xstate";
 import { useMachine } from "@xstate/react";
@@ -13,6 +12,18 @@ import uuid from "uuid-v4";
 
 import SearchResults from "../ViewBar/ViewStage/SearchResults";
 import { useOutsideClick } from "../../utils/hooks";
+
+const NONE = [null, undefined];
+
+const translateNone = (values) => {
+  return values.map((v) => (NONE.includes(v) ? [v, "none"] : [v, v]));
+};
+
+const matchValues = (values, value) => {
+  return translateNone(values)
+    .filter((c) => c[1].toLowerCase().includes(value))
+    .map((v) => v[0]);
+};
 
 const stringFilterMachine = Machine({
   id: "stringFilter",
@@ -117,7 +128,7 @@ const stringFilterMachine = Machine({
               }),
             ],
             cond: ({ values }, { value }) => {
-              return values.some((c) => c === value);
+              return translateNone(values).some((c) => c === value);
             },
           },
           {
@@ -135,10 +146,7 @@ const stringFilterMachine = Machine({
           actions: [
             assign({
               inputValue: (_, { value }) => value,
-              results: ({ values }, { value }) =>
-                values.filter((c) =>
-                  c.toLowerCase().includes(value.toLowerCase())
-                ),
+              results: ({ values }, { value }) => matchValues(values, value),
               prevValue: ({ inputValue }) => inputValue,
             }),
           ],
@@ -169,22 +177,13 @@ const stringFilterMachine = Machine({
         assign({
           values: (_, { values }) => (values ? values : []),
           results: ({ inputValue }, { values }) =>
-            values
-              ? values.filter((c) =>
-                  c.toLowerCase().includes(inputValue.toLowerCase())
-                )
-              : [],
+            matchValues(values, inputValue),
         }),
       ],
     },
     SET_SELECTED: {
       actions: assign({
         selected: (_, { selected }) => selected,
-      }),
-    },
-    SET_INVERT: {
-      actions: assign({
-        invert: (_, { invert }) => invert,
       }),
     },
   },
@@ -241,10 +240,11 @@ type Props = {
   valuesAtom: RecoilValueReadOnly<string[]>;
   selectedValuesAtom: RecoilState<string[]>;
   valueName: string;
+  color?: string;
 };
 
 const StringFilter = React.memo(
-  ({ valuesAtom, selectedValuesAtom, valueName }: Props) => {
+  ({ valuesAtom, selectedValuesAtom, valueName, color }: Props) => {
     const theme = useContext(ThemeContext);
     const values = useRecoilValue(valuesAtom);
     const [selectedValues, setSelectedValues] = useRecoilState(
@@ -259,7 +259,7 @@ const StringFilter = React.memo(
     }, [values, selectedValues]);
 
     useEffect(() => {
-      send({ type: "SET_VALUES", values });
+      send({ type: "SET_VALUES", values: values });
     }, [values]);
 
     useOutsideClick(inputRef, () => send("BLUR"));
@@ -277,7 +277,7 @@ const StringFilter = React.memo(
         state.event.type === "REMOVE" ||
         state.event.type === "CLEAR"
       ) {
-        setSelectedValues(state.context.selected);
+        setSelectedValues(state.context.selected.filter((v) => v !== null));
       }
     }, [state.event]);
 
@@ -318,6 +318,7 @@ const StringFilter = React.memo(
                 results={results.filter((r) => !selected.includes(r)).sort()}
                 send={send}
                 currentResult={currentResult}
+                higlight={color}
                 style={{
                   position: "absolute",
                   top: "0.25rem",
@@ -360,81 +361,39 @@ const NamedStringFilterHeader = styled.div`
   justify-content: space-between;
 `;
 
-const CheckboxContainer = styled.div`
-  background: ${({ theme }) => theme.backgroundDark};
-  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
-  border: 1px solid #191c1f;
-  border-radius: 2px;
-  color: ${({ theme }) => theme.fontDark};
-  margin-top: 0.25rem;
-`;
-
 type NamedProps = {
   valuesAtom: RecoilValueReadOnly<string[]>;
   selectedValuesAtom: RecoilState<string[]>;
-  hasNoneAtom: RecoilValueReadOnly<boolean>;
-  noneAtom: RecoilState<boolean>;
   name: string;
   valueName: string;
   color: string;
 };
 
 export const NamedStringFilter = React.memo(
-  React.forwardRef(
-    (
-      { color, name, hasNoneAtom, noneAtom, ...stringFilterProps }: NamedProps,
-      ref
-    ) => {
-      const [includeNone, setIncludeNone] = useRecoilState(noneAtom);
-      const hasNone = useRecoilValue(hasNoneAtom);
-      const [values, setValues] = useRecoilState(
-        stringFilterProps.selectedValuesAtom
-      );
+  React.forwardRef(({ name, ...stringFilterProps }: NamedProps, ref) => {
+    const [values, setValues] = useRecoilState(
+      stringFilterProps.selectedValuesAtom
+    );
 
-      return (
-        <NamedStringFilterContainer ref={ref}>
-          <NamedStringFilterHeader>
-            {name}
-            {values.length || !includeNone ? (
-              <a
-                style={{ cursor: "pointer", textDecoration: "underline" }}
-                onClick={() => {
-                  setValues([]);
-                  setIncludeNone(true);
-                }}
-              >
-                reset
-              </a>
-            ) : null}
-          </NamedStringFilterHeader>
-          <StringFilterContainer>
-            <StringFilter {...stringFilterProps} />
-            {hasNone && (
-              <CheckboxContainer>
-                <FormControlLabel
-                  label={
-                    <div style={{ lineHeight: "20px", fontSize: 14 }}>
-                      Exclude <code style={{ color }}>None</code>
-                    </div>
-                  }
-                  control={
-                    <Checkbox
-                      checked={!includeNone}
-                      onChange={() => setIncludeNone(!includeNone)}
-                      style={{
-                        padding: "0 5px",
-                        color,
-                      }}
-                    />
-                  }
-                />
-              </CheckboxContainer>
-            )}
-          </StringFilterContainer>
-        </NamedStringFilterContainer>
-      );
-    }
-  )
+    return (
+      <NamedStringFilterContainer ref={ref}>
+        <NamedStringFilterHeader>
+          {name}
+          {values.length > 0 ? (
+            <a
+              style={{ cursor: "pointer", textDecoration: "underline" }}
+              onClick={() => setValues([])}
+            >
+              reset
+            </a>
+          ) : null}
+        </NamedStringFilterHeader>
+        <StringFilterContainer>
+          <StringFilter {...stringFilterProps} />
+        </StringFilterContainer>
+      </NamedStringFilterContainer>
+    );
+  })
 );
 
 export default StringFilter;
