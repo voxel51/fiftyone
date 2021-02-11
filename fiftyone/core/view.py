@@ -586,7 +586,7 @@ class DatasetView(foc.SampleCollection):
 
         return False
 
-    def _pipeline(self, pipeline=None, attach_frames=True):
+    def _pipeline(self, pipeline=None, attach_frames=True, frames_only=False):
         _pipeline = []
         for s in self._stages:
             _pipeline.extend(s.to_mongo(self))
@@ -594,10 +594,13 @@ class DatasetView(foc.SampleCollection):
         if pipeline is not None:
             _pipeline.extend(pipeline)
 
-        attach_frames = self._needs_frames()
+        if not attach_frames:
+            attach_frames = self._needs_frames()
 
         return self._dataset._pipeline(
-            pipeline=_pipeline, attach_frames=attach_frames,
+            pipeline=_pipeline,
+            attach_frames=attach_frames,
+            frames_only=frames_only,
         )
 
     def _aggregate(self, pipeline=None, attach_frames=True):

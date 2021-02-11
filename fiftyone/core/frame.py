@@ -384,13 +384,6 @@ class Frame(Document):
         self.set_field(field_name, value=value)
 
     @property
-    def sample_id(self):
-        """The ID of the parent sample of the document, or ``None`` if it has
-        not been added to the database.
-        """
-        return str(self._sample_id) if self._in_db else None
-
-    @property
     def _skip_iter_field_names(self):
         return ("frame_number",)
 
@@ -429,7 +422,7 @@ class Frame(Document):
 
         try:
             # Get instance if exists
-            frame = cls._instances[doc.collection_name][doc.sample_id][
+            frame = cls._instances[doc.collection_name][str(doc._sample_id)][
                 doc.frame_number
             ]
         except KeyError:
@@ -450,7 +443,7 @@ class Frame(Document):
 
         self._doc = doc
 
-        frames = self._instances[doc.collection_name][self.sample_id]
+        frames = self._instances[doc.collection_name][str(self._sample_id)]
         if self.frame_number not in frames:
             frames[self.frame_number] = self
 

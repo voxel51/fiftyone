@@ -2461,7 +2461,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _add_view_stage(self, stage):
         return self.view().add_stage(stage)
 
-    def _pipeline(self, pipeline=None, attach_frames=True):
+    def _pipeline(self, pipeline=None, attach_frames=True, frames_only=False):
+        if frames_only:
+            attach_frames = True
+
         if attach_frames and (self.media_type == fom.VIDEO):
             _pipeline = self._attach_frames()
         else:
@@ -2469,6 +2472,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if pipeline is not None:
             _pipeline += pipeline
+
+        if frames_only:
+            _pipeline += [
+                {"$project": {"frames": True}},
+                {"$unwind": "$frames"},
+                {"$replaceRoot": {"newRoot": "$frames"}},
+            ]
 
         return _pipeline
 
@@ -2725,14 +2735,9 @@ def _clone_dataset_or_view(dataset_or_view, name):
     # Clone samples
     #
 
-    if view is not None:
-        pipeline = view._pipeline(attach_frames=False)
-    else:
-        pipeline = [{"$match": {}}]
-
-    dataset._sample_collection.aggregate(
-        pipeline + [{"$out": sample_collection_name}]
-    )
+    pipeline = dataset_or_view._pipeline(attach_frames=False)
+    pipeline += [{"$out": sample_collection_name}]
+    dataset._sample_collection.aggregate(pipeline)
 
     #
     # Clone frames
@@ -2740,15 +2745,12 @@ def _clone_dataset_or_view(dataset_or_view, name):
 
     if dataset.media_type == fom.VIDEO:
         if view is not None:
-            # @todo support this
-            raise ValueError(
-                "Cloning views into video datasets is not yet supported"
-            )
-
-        frames_pipeline = [{"$match": {}}]
-        dataset._frame_collection.aggregate(
-            frames_pipeline + [{"$out": frames_collection_name}]
-        )
+            pipeline = view._pipeline(frames_only=True)
+            pipeline += [{"$out": frames_collection_name}]
+            dataset._sample_collection.aggregate(pipeline)
+        else:
+            pipeline = [{"$out": frames_collection_name}]
+            dataset._frame_collection.aggregate(pipeline)
 
     #
     # Clone dataset document
@@ -2788,6 +2790,8 @@ def _save_view(view, fields):
     dataset = view._dataset
 
     merge = fields is not None
+    if fields is None:
+        fields = []
 
     if dataset.media_type == fom.VIDEO:
         sample_fields = []
@@ -2801,32 +2805,6 @@ def _save_view(view, fields):
     else:
         sample_fields = fields
         frame_fields = []
-
-    #
-    # Save frames
-    #
-
-    if dataset.media_type == fom.VIDEO:
-        pipeline = view._pipeline(attach_frames=True)
-
-        pipeline += [
-            {"$project": {"frames", True}},
-            {"$unwind": "frames"},
-            {"$replaceRoot": {"newRoot": "$frames"}},
-        ]
-
-        if merge:
-            if frame_fields:
-                pipeline.append({"$project": {f: True for f in frame_fields}})
-                pipeline.append({"$merge": dataset._frame_collection_name})
-                dataset._sample_collection.aggregate(pipeline)
-        else:
-            pipeline.append({"$out": dataset._frame_collection_name})
-            dataset._sample_collection.aggregate(pipeline)
-
-        if not merge:
-            for field_name in view._get_missing_fields(frames=True):
-                dataset._frame_doc_cls._delete_field_schema(field_name, False)
 
     #
     # Save samples
@@ -2843,9 +2821,27 @@ def _save_view(view, fields):
         pipeline.append({"$out": dataset._sample_collection_name})
         dataset._sample_collection.aggregate(pipeline)
 
-    if not merge:
         for field_name in view._get_missing_fields():
             dataset._sample_doc_cls._delete_field_schema(field_name, False)
+
+    #
+    # Save frames
+    #
+
+    if dataset.media_type == fom.VIDEO:
+        pipeline = view._pipeline(frames_only=True)
+
+        if merge:
+            if frame_fields:
+                pipeline.append({"$project": {f: True for f in frame_fields}})
+                pipeline.append({"$merge": dataset._frame_collection_name})
+                dataset._sample_collection.aggregate(pipeline)
+        else:
+            pipeline.append({"$out": dataset._frame_collection_name})
+            dataset._sample_collection.aggregate(pipeline)
+
+            for field_name in view._get_missing_fields(frames=True):
+                dataset._frame_doc_cls._delete_field_schema(field_name, False)
 
     #
     # Reload in-memory documents
