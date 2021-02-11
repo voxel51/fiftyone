@@ -59,25 +59,28 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
     for (const label in labels) {
       const path = `${label}${getPathExtension(typeMap[label])}`;
 
-      const [cRangeAtom, cNoneAtom, lValuesAtom] = modal
+      const [cRangeAtom, cNoneAtom, lValuesAtom, lExcludeAtom] = modal
         ? [
             numericField.rangeModalAtom,
             numericField.noneModalAtom,
             stringField.selectedValuesModalAtom,
+            stringField.excludeModalAtom,
           ]
         : [
             numericField.rangeAtom,
             numericField.noneAtom,
             stringField.selectedValuesAtom,
+            stringField.excludeAtom,
           ];
 
       const cPath = `${path}.confidence`;
       const lPath = `${path}.label`;
 
-      const [cRange, cNone, lValues] = [
+      const [cRange, cNone, lValues, lExclude] = [
         get(cRangeAtom({ path: cPath, defaultRange: [0, 1] })),
         get(cNoneAtom(cPath)),
         get(lValuesAtom(lPath)),
+        get(lExcludeAtom(lPath)),
       ];
 
       filters[label] = (s) => {
@@ -89,10 +92,11 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
         if (label === undefined) {
           label = null;
         }
-        return (
-          (inRange || noConfidence) &&
-          (lValues.includes(label) || lValues.length === 0)
-        );
+        let included = lValues.includes(label);
+        if (lExclude) {
+          included = !included;
+        }
+        return (inRange || noConfidence) && (included || lValues.length === 0);
       };
     }
     return filters;
@@ -120,6 +124,11 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
       set(
         stringField.selectedValuesModalAtom(lPath),
         get(stringField.selectedValuesAtom(lPath))
+      );
+
+      set(
+        stringField.excludeModalAtom(lPath),
+        get(stringField.excludeAtom(lPath))
       );
 
       set(atoms.modalColorByLabel, get(atoms.colorByLabel));

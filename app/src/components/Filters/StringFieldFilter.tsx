@@ -69,7 +69,7 @@ export const excludeAtom = selectorFamily<boolean, string>({
   key: "filterStringFieldExclude",
   get: (path) => ({ get }) => getFilter(get, path).exclude,
   set: (path) => ({ get, set }, value) =>
-    setFilter(get, set, path, "values", value),
+    setFilter(get, set, path, "exclude", value),
 });
 
 export const excludeModalAtom = atomFamily<boolean, string>({
@@ -100,7 +100,8 @@ export const fieldIsFiltered = selectorFamily<
   key: "stringFieldIsFiltered",
   get: ({ path, modal }) => ({ get }) => {
     const values = modal ? selectedValuesModalAtom : selectedValuesAtom;
-    return Boolean(get(values(path)).length);
+    const exclude = modal ? excludeModalAtom : excludeAtom;
+    return get(values(path)).length > 0 || exclude(path);
   },
 });
 
