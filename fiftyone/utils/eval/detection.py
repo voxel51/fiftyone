@@ -32,7 +32,7 @@ def evaluate_detections(
     eval_key=None,
     classes=None,
     missing="none",
-    method=None,
+    method="coco",
     iou=0.75,
     classwise=True,
     config=None,
@@ -74,13 +74,14 @@ def evaluate_detections(
             observed ground truth/predicted labels are used
         missing ("none"): a missing label string. Any unmatched objects are
             given this label for evaluation purposes
-        method (None): a string specifying the evaluation method to use
+        method ("coco"): a string specifying the evaluation method to use
         iou (0.75): the IoU threshold to use to determine matches
         classwise (True): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
         config (None): an :class:`DetectionEvaluationConfig` specifying the
-            evaluation method to use. If a ``config`` is provided, ``method``
-            is ignored
+            evaluation method to use. If a ``config`` is provided, the
+            ``method``, ``iou``, ``classwise``, and ``kwargs`` parameters are
+            ignored
         **kwargs: optional keyword arguments for the constructor of the
             :class:`DetectionEvaluationConfig` being used
 

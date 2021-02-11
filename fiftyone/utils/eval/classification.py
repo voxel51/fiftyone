@@ -34,7 +34,7 @@ def evaluate_classifications(
     eval_key=None,
     classes=None,
     missing="none",
-    method=None,
+    method="simple",
     config=None,
     **kwargs,
 ):
@@ -59,10 +59,10 @@ def evaluate_classifications(
             observed ground truth/predicted labels are used
         missing ("none"): a missing label string. Any None-valued labels are
             given this label for evaluation purposes
-        method (None): a string specifying the evaluation method to use
+        method ("simple"): a string specifying the evaluation method to use
         config (None): an :class:`ClassificationEvaluationConfig` specifying
-            the evaluation method to use. If a ``config`` is provided,
-            ``method`` is ignored
+            the evaluation method to use. If a ``config`` is provided, the
+            ``method`` and ``kwargs`` parameters are ignored
         **kwargs: optional keyword arguments for the constructor of the
             :class:`ClassificationEvaluationConfig` being used
 
