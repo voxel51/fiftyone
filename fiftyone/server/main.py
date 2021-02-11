@@ -1123,7 +1123,7 @@ def _make_filter_stages(dataset, filters):
                 else:
                     expr = labels_expr
 
-            stages.append(fosg.FilterLabels(path, expr, only_matches=True))
+            stages.append(fosg.FilterLabels(path, expr))
         else:
             expr = _make_range_expression(F(path), args)
             stages.append(fosg.Match(expr))
