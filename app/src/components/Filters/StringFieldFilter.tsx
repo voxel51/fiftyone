@@ -15,7 +15,7 @@ import { useExpand, hasNoneField } from "./utils";
 
 type StringFilter = {
   values: string[];
-  none: boolean;
+  exclude: boolean;
   _CLS: string;
 };
 
@@ -25,12 +25,14 @@ const getFilter = (get: GetRecoilValue, path: string): StringFilter => {
   return {
     ...{
       values: [],
+      exclude: false,
     },
     ...get(selectors.filterStage(path)),
   };
 };
 
-const meetsDefault = (filter: StringFilter) => filter.values.length === 0;
+const meetsDefault = (filter: StringFilter) =>
+  filter.values.length === 0 && filter.exclude === false;
 
 const setFilter = (
   get: GetRecoilValue,
@@ -61,6 +63,18 @@ export const selectedValuesAtom = selectorFamily<Value[], string>({
 export const selectedValuesModalAtom = atomFamily<Value[], string>({
   key: "modalFilterStringFieldValues",
   default: [],
+});
+
+export const excludeAtom = selectorFamily<boolean, string>({
+  key: "filterStringFieldExclude",
+  get: (path) => ({ get }) => getFilter(get, path).exclude,
+  set: (path) => ({ get, set }, value) =>
+    setFilter(get, set, path, "values", value),
+});
+
+export const excludeModalAtom = atomFamily<boolean, string>({
+  key: "modalFilterStringFieldExclude",
+  default: false,
 });
 
 export const valuesAtom = selectorFamily<Value[], string>({
@@ -101,6 +115,7 @@ const StringFieldFilter = ({ expanded, entry }) => {
         color={entry.color}
         valuesAtom={valuesAtom(entry.path)}
         selectedValuesAtom={selectedValuesAtom(entry.path)}
+        excludeAtom={excludeAtom(entry.path)}
         ref={ref}
       />
     </animated.div>

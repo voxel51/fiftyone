@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useRef } from "react";
+import { Checkbox, FormControlLabel } from "@material-ui/core";
 import {
   RecoilState,
   RecoilValueReadOnly,
@@ -405,36 +406,57 @@ const NamedStringFilterHeader = styled.div`
 type NamedProps = {
   valuesAtom: RecoilValueReadOnly<string[]>;
   selectedValuesAtom: RecoilState<string[]>;
+  excludeAtom: RecoilState<boolean>;
   name: string;
   valueName: string;
   color: string;
 };
 
 export const NamedStringFilter = React.memo(
-  React.forwardRef(({ name, ...stringFilterProps }: NamedProps, ref) => {
-    const [values, setValues] = useRecoilState(
-      stringFilterProps.selectedValuesAtom
-    );
+  React.forwardRef(
+    ({ name, excludeAtom, ...stringFilterProps }: NamedProps, ref) => {
+      const [values, setValues] = useRecoilState(
+        stringFilterProps.selectedValuesAtom
+      );
+      const [exclude, setExclude] = useRecoilState(excludeAtom);
 
-    return (
-      <NamedStringFilterContainer ref={ref}>
-        <NamedStringFilterHeader>
-          {name}
-          {values.length > 0 ? (
-            <a
-              style={{ cursor: "pointer", textDecoration: "underline" }}
-              onClick={() => setValues([])}
-            >
-              reset
-            </a>
-          ) : null}
-        </NamedStringFilterHeader>
-        <StringFilterContainer>
-          <StringFilter {...stringFilterProps} />
-        </StringFilterContainer>
-      </NamedStringFilterContainer>
-    );
-  })
+      return (
+        <NamedStringFilterContainer ref={ref}>
+          <NamedStringFilterHeader>
+            {name}
+            {values.length > 0 ? (
+              <a
+                style={{ cursor: "pointer", textDecoration: "underline" }}
+                onClick={() => setValues([])}
+              >
+                reset
+              </a>
+            ) : null}
+          </NamedStringFilterHeader>
+          <StringFilterContainer>
+            <StringFilter {...stringFilterProps} />
+            <FormControlLabel
+              label={
+                <div style={{ lineHeight: "20px", fontSize: 14 }}>
+                  Exclude selected
+                </div>
+              }
+              control={
+                <Checkbox
+                  checked={exclude}
+                  onChange={() => setExclude(!exclude)}
+                  style={{
+                    padding: "0 5px",
+                    color: stringFilterProps.color,
+                  }}
+                />
+              }
+            />
+          </StringFilterContainer>
+        </NamedStringFilterContainer>
+      );
+    }
+  )
 );
 
 export default StringFilter;
