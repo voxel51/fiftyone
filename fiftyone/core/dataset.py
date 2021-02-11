@@ -2745,10 +2745,13 @@ def _clone_dataset_or_view(dataset_or_view, name):
 
     if dataset.media_type == fom.VIDEO:
         if view is not None:
+            # The view may modify the frames, so we route the frames though
+            # the sample collection
             pipeline = view._pipeline(frames_only=True)
             pipeline += [{"$out": frames_collection_name}]
             dataset._sample_collection.aggregate(pipeline)
         else:
+            # Here we can directly aggregate on the frame collection
             pipeline = [{"$out": frames_collection_name}]
             dataset._frame_collection.aggregate(pipeline)
 
@@ -2829,6 +2832,8 @@ def _save_view(view, fields):
     #
 
     if dataset.media_type == fom.VIDEO:
+        # The view may modify the frames, so we route the frames though th
+        # sample collection
         pipeline = view._pipeline(frames_only=True)
 
         if merge:
