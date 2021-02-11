@@ -74,7 +74,7 @@ class COCOEvaluation(DetectionEvaluationMethod):
 
         Args:
             sample_or_frame: a :class:`fiftyone.core.Sample` or
-                :class:`fiftyone.core.frames.Frame`
+                :class:`fiftyone.core.frame.Frame`
             pred_field: the name of the field containing the predicted
                 :class:`fiftyone.core.labels.Detections` instances
             gt_field: the name of the field containing the ground truth
