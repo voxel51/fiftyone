@@ -105,8 +105,12 @@ const stringFilterMachine = Machine({
               return Math.min(currentResult + 1, results.length - 1);
             },
             inputValue: ({ currentResult, results }) => {
-              if (currentResult === null) return results[0];
-              return results[Math.min(currentResult + 1, results.length - 1)];
+              let result =
+                results[Math.min(currentResult + 1, results.length - 1)];
+              if (currentResult === null) {
+                result = results[0];
+              }
+              return NONE.includes(result) ? "None" : result;
             },
           }),
         },
@@ -119,7 +123,8 @@ const stringFilterMachine = Machine({
             inputValue: ({ currentResult, prevValue, results }) => {
               if (currentResult === 0 || currentResult === null)
                 return prevValue;
-              return results[currentResult - 1];
+              const result = results[currentResult - 1];
+              return NONE.includes(result) ? "None" : result;
             },
           }),
         },
@@ -130,8 +135,21 @@ const stringFilterMachine = Machine({
           {
             actions: [
               assign({
-                selected: ({ selected }, { value }) => {
-                  value = NONE.includes(value) ? null : value;
+                selected: ({ selected, values }, { value }) => {
+                  console.log(
+                    values
+                      .filter((v) => !selected.includes(v))
+                      .some((c) => c === value)
+                  );
+                  if (
+                    (typeof value === "string" &&
+                      !values
+                        .filter((v) => !selected.includes(v))
+                        .some((c) => c === value)) ||
+                    NONE.includes(value)
+                  ) {
+                    value = null;
+                  }
                   return [...new Set([...selected, value])].sort(NONE_SORT);
                 },
                 inputValue: "",
@@ -142,7 +160,7 @@ const stringFilterMachine = Machine({
             cond: ({ values }, { value }) => {
               return (
                 (NONE.includes(value) && values.includes(null)) ||
-                values.some((c) => c === value)
+                translateNone(values).some((c) => c[1] === value.toLowerCase())
               );
             },
           },
