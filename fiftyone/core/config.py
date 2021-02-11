@@ -27,6 +27,10 @@ class Config(etac.Config):
         return self.__str__()
 
 
+class Configurable(etac.Configurable):
+    pass
+
+
 class EnvConfig(etac.EnvConfig):
     def __repr__(self):
         return self.__str__()

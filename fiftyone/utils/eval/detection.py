@@ -14,6 +14,7 @@ import fiftyone.core.utils as fou
 
 from .base import (
     EvaluationConfig,
+    EvaluationMethod,
     _get_eval_info,
     _record_eval_info,
     _delete_eval_info,
@@ -25,12 +26,36 @@ logger = logging.getLogger(__name__)
 
 
 class DetectionEvaluationConfig(EvaluationConfig):
-    """Base class for detection evaluation configs."""
+    """Base class for configuring :class:`DetectionEvaluationMethod` instances.
+    """
 
-    @property
-    def evaluate_image_fcn(self):
-        """The fully-qualified name of the evaluate image function."""
-        raise NotImplementedError("subclass must implement evaluate_image_fcn")
+    pass
+
+
+class DetectionEvaluationMethod(EvaluationMethod):
+    """Base class for detection evaluation methods.
+
+    Args:
+        config: a :class:`DetectionEvaluationConfig`
+    """
+
+    def __init__(self, config):
+        self.config = config
+
+    def evaluate_image(self, gts, preds, eval_key=None):
+        """Evaluates the ground truth and predicted objects in an image.
+
+        Args:
+            gts: a :class:`fiftyone.core.labels.Detections` instance containing
+                the ground truth objects
+            preds: a :class:`fiftyone.core.labels.Detections` instance
+                containing the predicted objects
+            eval_key (None): an evaluation key for this evaluation
+
+        Returns:
+            a list of matched ``(gt_label, pred_label)`` pairs
+        """
+        raise NotImplementedError("subclass must implement evaluate_image")
 
 
 def list_detection_methods():
@@ -101,7 +126,7 @@ def evaluate_detections(
         a :class:`DetectionResults`
     """
     config = _parse_config(config, method, **kwargs)
-    evaluate_image = etau.get_function(config.evaluate_image_fcn)
+    eval_method = config.build()
 
     processing_frames = (
         samples.media_type == fom.VIDEO
@@ -123,8 +148,8 @@ def evaluate_detections(
             for image in images:
                 gts = image[gt_field]
                 preds = image[pred_field]
-                image_matches = evaluate_image(
-                    gts, preds, eval_key=eval_key, config=config
+                image_matches = eval_method.evaluate_image(
+                    gts, preds, eval_key=eval_key
                 )
                 matches.extend(image_matches)
                 tp, fp, fn = _tally_matches(image_matches)

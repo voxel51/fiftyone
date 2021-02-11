@@ -11,7 +11,7 @@ import numpy as np
 
 import eta.core.utils as etau
 
-from .detection import DetectionEvaluationConfig
+from .detection import DetectionEvaluationConfig, DetectionEvaluationMethod
 
 
 class COCOEvaluationConfig(DetectionEvaluationConfig):
@@ -33,42 +33,48 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
     def method(self):
         return "coco"
 
-    @property
-    def evaluate_image_fcn(self):
-        return etau.get_function_name(coco_evaluation)
+
+class COCOEvaluation(DetectionEvaluationMethod):
+    """COCO-style evaluation.
+
+    Args:
+        config: a :class:`COCOEvaluationConfig`
+    """
+
+    def evaluate_image(self, gts, pred, eval_key=None):
+        """Performs COCO-style evaluation of the ground truth and predicted
+        objects in an image.
+
+        Predicted objects are matched to ground truth objects in descending
+        order of confidence, with matches requiring a minimum IoU of
+        ``self.config.iou``.
+
+        The ``self.config.classwise`` parameter controls whether to only match
+        objects with the same class label (True) or allow matches between
+        classes (False).
+
+        If a ground truth object has its ``self.config.iscrowd`` attribute set,
+        then the object can have multiple true positive predictions matched to
+        it.
+
+        Args:
+            gts: a :class:`fiftyone.core.labels.Detections` instance containing
+                ground truth objects
+            preds: a :class:`fiftyone.core.labels.Detections` instance
+                containing predicted objects
+            eval_key (None): an evaluation key for this evaluation
+
+        Returns:
+            a list of matched ``(gt_label, pred_label)`` pairs
+        """
+        return _coco_evaluation(gts, pred, eval_key, self.config)
 
 
 _NO_MATCH_ID = ""
 _NO_MATCH_IOU = -1
 
 
-def coco_evaluation(gts, preds, eval_key=None, config=None):
-    """Performs COCO-style evaluation of the ground truth and predicted
-    objects in an image.
-
-    Predicted objects are matched to ground truth objects in descending order
-    of confidence, with matches requiring a minimum IoU of ``config.iou``.
-
-    The ``config.classwise`` parameter controls whether to only match objects
-    with the same class label (True) or allow matches between classes (False).
-
-    If a ground truth object has its ``config.iscrowd`` attribute set, then the
-    object can have multiple true positive predictions matched to it.
-
-    Args:
-        gts: a :class:`fiftyone.core.labels.Detections` instance containing the
-            ground truth objects
-        preds: a :class:`fiftyone.core.labels.Detections` instance containing
-            predicted objects
-        eval_key (None): an evaluation key for this evaluation
-        config (None): a :class:`COCOEvaluationConfig` to use
-
-    Returns:
-        a list of matched ``(gt_label, pred_label)`` pairs
-    """
-    if config is None:
-        config = COCOEvaluationConfig()
-
+def _coco_evaluation(gts, preds, eval_key, config):
     iou_thresh = min(config.iou, 1 - 1e-10)
     classwise = config.classwise
     iscrowd = _make_iscrowd_fcn(config.iscrowd)

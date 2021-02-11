@@ -9,11 +9,11 @@ from copy import copy
 
 import eta.core.utils as etau
 
-from fiftyone.core.config import Config
+from fiftyone.core.config import Config, Configurable
 
 
 class EvaluationConfig(Config):
-    """Base class for evaluation configs."""
+    """Base class for configuring :class:`EvaluationMethod` instances."""
 
     @property
     def method(self):
@@ -25,15 +25,53 @@ class EvaluationConfig(Config):
         """The fully-qualified name of this :class:`EvaluationConfig` class."""
         return etau.get_class_name(self)
 
+    @property
+    def method_cls(self):
+        """The :class:`EvaluationMethod` class associated with this config."""
+        return etau.get_class(self.cls[: -len("Config")])
+
+    def build(self):
+        """Builds the :class:`EvaluationMethod` associated with this config.
+
+        Returns:
+            an :class:`EvaluationMethod` instance
+        """
+        return self.method_cls(self)
+
     def attributes(self):
+        """Returns the list of class attributes that will be serialized by
+        :meth:`serialize`.
+
+        Returns:
+            a list of attributes
+        """
         return ["method", "cls"] + super().attributes()
 
     @classmethod
     def from_dict(cls, d):
+        """Constructs an :class:`EvaluationConfig` from a serialized JSON dict
+        representation of it.
+
+        Args:
+            d: a JSON dict
+
+        Returns:
+            an :class:`EvaluationConfig`
+        """
         d = copy(d)
         d.pop("method")
         config_cls = etau.get_class(d.pop("cls"))
         return config_cls(**d)
+
+
+class EvaluationMethod(Configurable):
+    """Base class for evaluation methods.
+
+    Args:
+        config: an :class:`EvaluationConfig`
+    """
+
+    pass
 
 
 class EvaluationResults(object):

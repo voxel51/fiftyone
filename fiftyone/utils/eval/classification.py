@@ -72,32 +72,19 @@ def evaluate_classifications(
         [foa.Values(gt), foa.Values(pred), foa.Values(pred_conf)]
     )
 
-    if eval_key:
-        samples._add_field_if_necessary(eval_key, fof.BooleanField)
-        samples.set_field(eval_key, F(gt) == F(pred)).save(eval_key)
-
-    # Equivalent with loops
-    # ytrue = []
-    # ypred = []
-    # confs = []
-    # with fou.ProgressBar() as pb:
-    #     for sample in pb(samples.select_fields([pred_field, gt_field])):
-    #         gt_label = sample[gt_field].label
-    #         pred_label = sample[pred_field].label
-    #         pred_conf = sample[pred_field].confidence
-    #         ytrue.append(gt_label)
-    #         ypred.append(pred_label)
-    #         confs.append(pred_conf)
-    #         if eval_key:
-    #             sample[eval_key] = gt_label == pred_label
-    #             sample.save()
-
-    if eval_key is not None:
-        _record_eval_info(samples, eval_key, pred_field, gt_field, config)
-
-    return ClassificationResults(
+    results = ClassificationResults(
         ytrue, ypred, confs, classes=classes, missing=missing
     )
+
+    if eval_key is None:
+        return results
+
+    samples._add_field_if_necessary(eval_key, fof.BooleanField)
+    samples.set_field(eval_key, F(gt) == F(pred)).save(eval_key)
+
+    _record_eval_info(samples, eval_key, pred_field, gt_field, config)
+
+    return results
 
 
 class BinaryEvaluationConfig(ClassificationEvaluationConfig):
@@ -145,55 +132,37 @@ def evaluate_binary_classifications(
         [foa.Values(gt), foa.Values(pred), foa.Values(pred_conf)]
     )
 
-    if eval_key is not None:
-        samples._add_field_if_necessary(eval_key, fof.StringField)
-        samples.set_field(
-            eval_key,
-            F().switch(
-                {
-                    (F(gt) == pos_label) & (F(pred) == pos_label): "TP",
-                    (F(gt) == pos_label) & (F(pred) != pos_label): "FN",
-                    (F(gt) != pos_label) & (F(pred) != pos_label): "TN",
-                    (F(gt) != pos_label) & (F(pred) == pos_label): "FP",
-                }
-            ),
-        ).save(eval_key)
+    results = BinaryClassificationResults(ytrue, ypred, confs, classes)
 
-    # Equivalent with loops
-    # ytrue = []
-    # ypred = []
-    # confs = []
-    # with fou.ProgressBar() as pb:
-    #     for sample in pb(samples.select_fields([pred_field, gt_field])):
-    #         gt_label = sample[gt_field].label
-    #         pred_label = sample[pred_field].label
-    #         pred_conf = sample[pred_field].confidence
-    #         ytrue.append(gt_label)
-    #         ypred.append(pred_label)
-    #         confs.append(pred_conf)
-    #         if eval_key:
-    #             if gt_label == pos_label:
-    #                 eval_label = "TP" if pred_label == pos_label else "FN"
-    #             else:
-    #                 eval_label = "TN" if pred_label != pos_label else "FP"
-    #
-    #             sample[eval_key] = fol.Classification(label=eval_label)
-    #             sample.save()
+    if eval_key is None:
+        return results
 
-    if eval_key is not None:
-        _record_eval_info(samples, eval_key, pred_field, gt_field, config)
+    samples._add_field_if_necessary(eval_key, fof.StringField)
+    samples.set_field(
+        eval_key,
+        F().switch(
+            {
+                (F(gt) == pos_label) & (F(pred) == pos_label): "TP",
+                (F(gt) == pos_label) & (F(pred) != pos_label): "FN",
+                (F(gt) != pos_label) & (F(pred) != pos_label): "TN",
+                (F(gt) != pos_label) & (F(pred) == pos_label): "FP",
+            }
+        ),
+    ).save(eval_key)
 
-    return BinaryClassificationResults(ytrue, ypred, confs, classes)
+    _record_eval_info(samples, eval_key, pred_field, gt_field, config)
+
+    return results
 
 
 class TopKEvaluationConfig(ClassificationEvaluationConfig):
     """Top-k evaluation config.
 
     Args:
-        k: the top-k value to use when assessing accuracy
+        k (5): the top-k value to use when assessing accuracy
     """
 
-    def __init__(self, k):
+    def __init__(self, k=5):
         self.k = k
 
     @property
@@ -249,26 +218,13 @@ def evaluate_top_k_classifications(
 
     top_k_accuracy = np.mean(correct)
 
-    if eval_key is not None:
-        samples._add_field_if_necessary(eval_key, fof.BooleanField)
-        samples.set_values(eval_key, correct)
+    if eval_key is None:
+        return top_k_accuracy
 
-    # Equivalent with loops
-    # num_correct = 0
-    # with fou.ProgressBar() as pb:
-    #     for sample in pb(samples.select_fields([gt_field, pred_field])):
-    #         idx = targets_map[sample[gt_field].label]
-    #         logits = sample[pred_field].logits
-    #         in_top_k = idx in np.argpartition(logits, -k)[-k:]
-    #         num_correct += int(in_top_k)
-    #         if eval_key:
-    #             sample[eval_key] = in_top_k
-    #             sample.save()
-    #
-    # top_k_accuracy = num_correct / len(samples)
+    samples._add_field_if_necessary(eval_key, fof.BooleanField)
+    samples.set_values(eval_key, correct)
 
-    if eval_key is not None:
-        _record_eval_info(samples, eval_key, pred_field, gt_field, config)
+    _record_eval_info(samples, eval_key, pred_field, gt_field, config)
 
     return top_k_accuracy
 
@@ -281,7 +237,7 @@ def clear_classification_evaluation(samples, eval_key):
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         eval_key: the ``eval_key`` value for the evaluation
     """
-    _get_eval_info(samples, eval_key)  # ensure `eval_key` exists
+    _get_eval_info(samples, eval_key)  # ensures `eval_key` is valid
     samples.delete_sample_field(eval_key)
     _delete_eval_info(samples, eval_key)
 
