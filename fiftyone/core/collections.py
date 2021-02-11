@@ -872,7 +872,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Exists(field, bool=bool))
 
     @view_stage
-    def filter_field(self, field, filter, only_matches=False):
+    def filter_field(self, field, filter, only_matches=True):
         """Filters the values of a given sample (or embedded document) field
         of each sample in the collection.
 
@@ -919,17 +919,15 @@ class SampleCollection(object):
             # Only include samples whose `numeric_field` value is positive
             #
 
-            view = dataset.filter_field(
-                "numeric_field", F() > 0, only_matches=True
-            )
+            view = dataset.filter_field("numeric_field", F() > 0)
 
         Args:
             field: the name of the field to filter
             filter: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that returns a boolean describing the filter to apply
-            only_matches (False): whether to only include samples that match
-                the filter
+            only_matches (True): whether to only include samples that match
+                the filter (True) or include all samples (False)
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -939,7 +937,7 @@ class SampleCollection(object):
         )
 
     @view_stage
-    def filter_labels(self, field, filter, only_matches=False):
+    def filter_labels(self, field, filter, only_matches=True):
         """Filters the :class:`fiftyone.core.labels.Label` field of each
         sample in the collection.
 
@@ -997,14 +995,11 @@ class SampleCollection(object):
 
             #
             # Only include classifications in the `predictions` field whose
-            # `label` is "cat" or "dog", and only show samples with at least
-            # one classification after filtering
+            # `label` is "cat" or "dog"
             #
 
             view = dataset.filter_labels(
-                "predictions",
-                F("label").is_in(["cat", "dog"]),
-                only_matches=True,
+                "predictions", F("label").is_in(["cat", "dog"])
             )
 
         Detections Examples::
@@ -1073,14 +1068,11 @@ class SampleCollection(object):
 
             #
             # Only include detections in the `predictions` field whose `label`
-            # is "cat" or "dog", and only show samples with at least one
-            # detection after filtering
+            # is "cat" or "dog"
             #
 
             view = dataset.filter_labels(
-                "predictions",
-                F("label").is_in(["cat", "dog"]),
-                only_matches=True,
+                "predictions", F("label").is_in(["cat", "dog"])
             )
 
             #
@@ -1150,13 +1142,10 @@ class SampleCollection(object):
 
             #
             # Only include polylines in the `predictions` field whose `label`
-            # is "lane", and only show samples with at least one polyline after
-            # filtering
+            # is "lane"
             #
 
-            view = dataset.filter_labels(
-                "predictions", F("label") == "lane", only_matches=True
-            )
+            view = dataset.filter_labels("predictions", F("label") == "lane")
 
             #
             # Only include polylines in the `predictions` field with at least
@@ -1164,9 +1153,7 @@ class SampleCollection(object):
             #
 
             num_vertices = F("points").map(F().length()).sum()
-            view = dataset.filter_labels(
-                "predictions", num_vertices >= 3, only_matches=True
-            )
+            view = dataset.filter_labels("predictions", num_vertices >= 3)
 
         Keypoints Examples::
 
@@ -1199,30 +1186,25 @@ class SampleCollection(object):
 
             #
             # Only include keypoints in the `predictions` field whose `label`
-            # is "house", and only show samples with at least one keypoint
-            # after filtering
+            # is "house"
             #
 
-            view = dataset.filter_labels(
-                "predictions", F("label") == "house", only_matches=True
-            )
+            view = dataset.filter_labels("predictions", F("label") == "house")
 
             #
             # Only include keypoints in the `predictions` field with less than
             # four points
             #
 
-            view = dataset.filter_labels(
-                "predictions", F("points").length() < 4
-            )
+            view = dataset.filter_labels("predictions", F("points").length() < 4)
 
         Args:
             field: the labels field to filter
             filter: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that returns a boolean describing the filter to apply
-            only_matches (False): whether to only include samples with at least
-                one label after filtering
+            only_matches (True): whether to only include samples with at least
+                one label after filtering (True) or include all samples (False)
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -1233,7 +1215,7 @@ class SampleCollection(object):
 
     @deprecated(reason="Use filter_labels() instead")
     @view_stage
-    def filter_classifications(self, field, filter, only_matches=False):
+    def filter_classifications(self, field, filter, only_matches=True):
         """Filters the :class:`fiftyone.core.labels.Classification` elements in
         the specified :class:`fiftyone.core.labels.Classifications` field of
         each sample in the collection.
@@ -1249,8 +1231,9 @@ class SampleCollection(object):
             filter: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that returns a boolean describing the filter to apply
-            only_matches (False): whether to only include samples with at least
-                one classification after filtering
+            only_matches (True): whether to only include samples with at least
+                one classification after filtering (True) or include all
+                samples (False)
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -1261,7 +1244,7 @@ class SampleCollection(object):
 
     @deprecated(reason="Use filter_labels() instead")
     @view_stage
-    def filter_detections(self, field, filter, only_matches=False):
+    def filter_detections(self, field, filter, only_matches=True):
         """Filters the :class:`fiftyone.core.labels.Detection` elements in the
         specified :class:`fiftyone.core.labels.Detections` field of each sample
         in the collection.
@@ -1276,8 +1259,9 @@ class SampleCollection(object):
             filter: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that returns a boolean describing the filter to apply
-            only_matches (False): whether to only include samples with at least
-                one detection after filtering
+            only_matches (True): whether to only include samples with at least
+                one detection after filtering (True) or include all samples
+                (False)
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -1288,7 +1272,7 @@ class SampleCollection(object):
 
     @deprecated(reason="Use filter_labels() instead")
     @view_stage
-    def filter_polylines(self, field, filter, only_matches=False):
+    def filter_polylines(self, field, filter, only_matches=True):
         """Filters the :class:`fiftyone.core.labels.Polyline` elements in the
         specified :class:`fiftyone.core.labels.Polylines` field of each sample
         in the collection.
@@ -1303,8 +1287,9 @@ class SampleCollection(object):
             filter: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that returns a boolean describing the filter to apply
-            only_matches (False): whether to only include samples with at least
-                one polyline after filtering
+            only_matches (True): whether to only include samples with at least
+                one polyline after filtering (True) or include all samples
+                (False)
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -1315,7 +1300,7 @@ class SampleCollection(object):
 
     @deprecated(reason="Use filter_labels() instead")
     @view_stage
-    def filter_keypoints(self, field, filter, only_matches=False):
+    def filter_keypoints(self, field, filter, only_matches=True):
         """Filters the :class:`fiftyone.core.labels.Keypoint` elements in the
         specified :class:`fiftyone.core.labels.Keypoints` field of each sample
         in the collection.
@@ -1330,8 +1315,9 @@ class SampleCollection(object):
             filter: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that returns a boolean describing the filter to apply
-            only_matches (False): whether to only include samples with at least
-                one keypoint after filtering
+            only_matches (True): whether to only include samples with at least
+                one keypoint after filtering (True) or include all samples
+                (False)
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`

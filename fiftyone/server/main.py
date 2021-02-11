@@ -1178,7 +1178,7 @@ def _make_filter_stages(dataset, filters):
         if isinstance(field, fof.EmbeddedDocumentField):
             expr = _make_scalar_expression(F(keys[-1]), args)
             if expr is not None:
-                stages.append(fosg.FilterLabels(path, expr, only_matches=True))
+                stages.append(fosg.FilterLabels(path, expr))
         else:
             expr = _make_scalar_expression(F(path), args)
             if expr is not None:
