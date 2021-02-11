@@ -19,12 +19,12 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
 
     Args:
         iou (0.75): the IoU threshold to use to determine matches
-        classwise (False): whether to only match objects with the same class
+        classwise (True): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
         iscrowd ("iscrowd"): the name of the crowd attribute
     """
 
-    def __init__(self, iou=0.75, classwise=False, iscrowd="iscrowd", **kwargs):
+    def __init__(self, iou=0.75, classwise=True, iscrowd="iscrowd", **kwargs):
         super().__init__(**kwargs)
         self.iou = iou
         self.classwise = classwise
