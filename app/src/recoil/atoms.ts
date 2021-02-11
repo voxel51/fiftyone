@@ -49,7 +49,10 @@ export const datasetStatsRaw = atom({
   key: "datasetStatsRaw",
   default: {
     view: null,
-    stats: [],
+    stats: {
+      main: [],
+      none: [],
+    },
   },
 });
 
@@ -57,7 +60,7 @@ export const extendedDatasetStatsRaw = atom({
   key: "extendedDatasetStatsRaw",
   default: {
     view: null,
-    stats: [],
+    stats: { main: [], none: [] },
     filters: null,
   },
 });
@@ -100,21 +103,6 @@ export const sidebarVisible = atom({
 export const currentSamples = atom({
   key: "currentSamples",
   default: [],
-});
-
-export const modalFilterIncludeLabels = atomFamily({
-  key: "modalFilterIncludeLabels",
-  default: [],
-});
-
-export const modalFilterLabelConfidenceRange = atomFamily({
-  key: "modalFilterLabelConfidenceRange",
-  default: [null, null],
-});
-
-export const modalFilterLabelIncludeNoConfidence = atomFamily({
-  key: "modalFilterLabelIncludeNoConfidence",
-  default: true,
 });
 
 export const activeLabels = atomFamily({

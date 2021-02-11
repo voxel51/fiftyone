@@ -130,4 +130,20 @@ from .core.utils import (
     ProgressBar,
 )
 from .core.view import DatasetView
+from .utils.eval.base import (
+    EvaluationResults,
+    list_evaluations,
+    clear_evaluation,
+    clear_evaluations,
+)
+from .utils.eval.classification import (
+    evaluate_classifications,
+    evaluate_binary_classifications,
+    ClassificationResults,
+    BinaryClassificationResults,
+)
+from .utils.eval.detection import (
+    evaluate_detections,
+    DetectionResults,
+)
 from .utils.quickstart import quickstart

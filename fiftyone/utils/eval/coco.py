@@ -18,16 +18,14 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
     """COCO-style evaluation config.
 
     Args:
-        iou (0.75): the IoU threshold to use to determine matches
-        classwise (True): whether to only match objects with the same class
+        iou (None): the IoU threshold to use to determine matches
+        classwise (None): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
         iscrowd ("iscrowd"): the name of the crowd attribute
     """
 
-    def __init__(self, iou=0.75, classwise=True, iscrowd="iscrowd", **kwargs):
+    def __init__(self, iscrowd="iscrowd", **kwargs):
         super().__init__(**kwargs)
-        self.iou = iou
-        self.classwise = classwise
         self.iscrowd = iscrowd
 
     @property
@@ -42,9 +40,25 @@ class COCOEvaluation(DetectionEvaluationMethod):
         config: a :class:`COCOEvaluationConfig`
     """
 
-    def evaluate_image(self, gts, pred, eval_key=None):
-        """Performs COCO-style evaluation of the ground truth and predicted
-        objects in an image.
+    def __init__(self, config):
+        super().__init__(config)
+
+        if config.iou is None:
+            raise ValueError(
+                "You must specify an `iou` threshold in order to run COCO "
+                "evaluation"
+            )
+
+        if config.classwise is None:
+            raise ValueError(
+                "You must specify a `classwise` value in order to run COCO "
+                "evaluation"
+            )
+
+    def evaluate_image(
+        self, sample_or_frame, gt_field, pred_field, eval_key=None
+    ):
+        """Performs COCO-style evaluation on the given image.
 
         Predicted objects are matched to ground truth objects in descending
         order of confidence, with matches requiring a minimum IoU of
@@ -59,16 +73,28 @@ class COCOEvaluation(DetectionEvaluationMethod):
         it.
 
         Args:
-            gts: a :class:`fiftyone.core.labels.Detections` instance containing
-                ground truth objects
-            preds: a :class:`fiftyone.core.labels.Detections` instance
-                containing predicted objects
+            sample_or_frame: a :class:`fiftyone.core.Sample` or
+                :class:`fiftyone.core.frames.Frame`
+            pred_field: the name of the field containing the predicted
+                :class:`fiftyone.core.labels.Detections` instances
+            gt_field: the name of the field containing the ground truth
+                :class:`fiftyone.core.labels.Detections` instances
             eval_key (None): an evaluation key for this evaluation
 
         Returns:
-            a list of matched ``(gt_label, pred_label)`` tuples
+            a list of matched ``(gt_label, pred_label, pred_confidence)``
+            tuples
         """
-        return _coco_evaluation(gts, pred, eval_key, self.config)
+        gts = sample_or_frame[gt_field]
+        preds = sample_or_frame[pred_field]
+
+        if eval_key is None:
+            # Don't save results on user's copy of the data
+            eval_key = "eval"
+            gts = gts.copy()
+            preds = preds.copy()
+
+        return _coco_evaluation(gts, preds, eval_key, self.config)
 
 
 _NO_MATCH_ID = ""
@@ -79,12 +105,6 @@ def _coco_evaluation(gts, preds, eval_key, config):
     iou_thresh = min(config.iou, 1 - 1e-10)
     classwise = config.classwise
     iscrowd = _make_iscrowd_fcn(config.iscrowd)
-
-    if eval_key is None:
-        # Don't save results on user's copy of the data
-        eval_key = "eval"
-        gts = gts.copy()
-        preds = preds.copy()
 
     id_key = "%s_id" % eval_key
     iou_key = "%s_iou" % eval_key
@@ -153,20 +173,20 @@ def _coco_evaluation(gts, preds, eval_key, config):
                     pred[eval_key] = "tp"
                     pred[id_key] = best_match
                     pred[iou_key] = best_match_iou
-                    matches.append((gt.label, pred.label))
+                    matches.append((gt.label, pred.label, pred.confidence))
                 else:
                     pred[eval_key] = "fp"
-                    matches.append((None, pred.label))
+                    matches.append((None, pred.label, pred.confidence))
 
             elif pred.label == cat:
                 pred[eval_key] = "fp"
-                matches.append((None, pred.label))
+                matches.append((None, pred.label, pred.confidence))
 
         # Leftover GTs are false negatives
         for gt in objects["gts"]:
             if gt[id_key] == _NO_MATCH_ID:
                 gt[eval_key] = "fn"
-                matches.append((gt.label, None))
+                matches.append((gt.label, None, None))
 
     return matches
 
@@ -203,6 +223,9 @@ def _make_iscrowd_fcn(iscrowd_attr):
         if iscrowd_attr in detection.attributes:
             return bool(detection.attributes[iscrowd_attr].value)
 
-        return False
+        try:
+            return bool(detection[iscrowd_attr])
+        except KeyError:
+            return False
 
     return _iscrowd

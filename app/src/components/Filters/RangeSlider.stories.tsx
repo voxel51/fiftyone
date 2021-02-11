@@ -13,8 +13,13 @@ const rangeAtom = atom<Range>({
   default: [0, 1],
 });
 
-const includeNoneAtom = atom<boolean>({
-  key: "includeNoneAtom",
+const noneAtom = atom<boolean>({
+  key: "noneAtom",
+  default: true,
+});
+
+const hasNoneAtom = atom<boolean>({
+  key: "hasNoneAtom",
   default: true,
 });
 
@@ -29,7 +34,8 @@ export const named = () => {
   const props = {
     boundsAtom,
     rangeAtom,
-    includeNoneAtom,
+    noneAtom,
+    hasNoneAtom,
     color: "pink",
     name: "Name",
     valueName: "Value Name",
