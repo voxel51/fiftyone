@@ -10,8 +10,8 @@ from .base import (
     EvaluationMethod,
     EvaluationResults,
     list_evaluations,
-    clear_evaluation,
-    clear_evaluations,
+    delete_evaluation,
+    delete_evaluations,
 )
 from .classification import (
     evaluate_classifications,

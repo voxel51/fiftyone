@@ -108,8 +108,8 @@ def list_evaluations(samples):
     return sorted(eval_info.keys())
 
 
-def clear_evaluation(samples, eval_key):
-    """Clears the evaluation results associated with the given evaluation key
+def delete_evaluation(samples, eval_key):
+    """Deletes the evaluation results associated with the given evaluation key
     from the collection.
 
     Args:
@@ -120,31 +120,31 @@ def clear_evaluation(samples, eval_key):
 
     from .classification import (
         ClassificationEvaluationConfig,
-        clear_classification_evaluation,
+        delete_classification_evaluation,
     )
     from .detection import (
         DetectionEvaluationConfig,
-        clear_detection_evaluation,
+        delete_detection_evaluation,
     )
 
     if isinstance(config, ClassificationEvaluationConfig):
-        clear_classification_evaluation(samples, eval_key)
+        delete_classification_evaluation(samples, eval_key)
     elif isinstance(config, DetectionEvaluationConfig):
-        clear_detection_evaluation(samples, eval_key)
+        delete_detection_evaluation(samples, eval_key)
     else:
         raise ValueError(
             "Unrecognized EvaluationConfig class %s" % config.__class__
         )
 
 
-def clear_evaluations(samples):
-    """Clears all evaluation results from the collection.
+def delete_evaluations(samples):
+    """Deletes all evaluation results from the collection.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
     """
     for eval_key in list_evaluations(samples):
-        clear_evaluation(samples, eval_key)
+        delete_evaluation(samples, eval_key)
 
 
 def _get_eval_info(samples, eval_key):
