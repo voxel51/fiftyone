@@ -223,6 +223,9 @@ def _make_iscrowd_fcn(iscrowd_attr):
         if iscrowd_attr in detection.attributes:
             return bool(detection.attributes[iscrowd_attr].value)
 
-        return False
+        try:
+            return bool(detection[iscrowd_attr])
+        except KeyError:
+            return False
 
     return _iscrowd
