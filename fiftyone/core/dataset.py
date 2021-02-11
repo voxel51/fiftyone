@@ -2641,26 +2641,67 @@ def _clone_dataset_or_view(dataset_or_view, name):
 
 def _save_view(view, fields):
     dataset = view._dataset
-
-    if dataset.media_type == fom.VIDEO:
-        # @todo support this
-        raise ValueError(
-            "Saving views into video datasets is not yet supported"
-        )
-
-    pipeline = view._pipeline(attach_frames=False)
+    doc_ids = [str(_id) for _id in dataset._get_sample_ids()]
 
     merge = fields is not None
 
+    if dataset.media_type == fom.VIDEO:
+        sample_fields = []
+        frame_fields = []
+        for field in fields:
+            field, is_frame_field = view._handle_frame_field(field)
+            if is_frame_field:
+                frame_fields.append(field)
+            else:
+                sample_fields.append(field)
+    else:
+        sample_fields = fields
+        frame_fields = []
+
+    #
+    # Save frames
+    #
+
+    if dataset.media_type == fom.VIDEO:
+        pipeline = view._pipeline(attach_frames=True)
+
+        pipeline += [
+            {"$project": {"frames", True}},
+            {"$unwind": "frames"},
+            {"$replaceRoot": {"newRoot": "$frames"}},
+        ]
+
+        if merge:
+            if frame_fields:
+                pipeline.append({"$project": {f: True for f in frame_fields}})
+                pipeline.append({"$merge": dataset._frame_collection_name})
+                dataset._sample_collection.aggregate(pipeline)
+        else:
+            pipeline.append({"$out": dataset._frame_collection_name})
+            dataset._sample_collection.aggregate(pipeline)
+
+        # @todo handle doc_ids
+        fofr.Frame._reload_docs(dataset._frame_collection_name)
+
+        if not merge:
+            for field_name in view._get_missing_fields(frames=True):
+                dataset._frame_doc_cls._delete_field_schema(field_name, False)
+
+    #
+    # Save samples
+    #
+
+    pipeline = view._pipeline(attach_frames=False)
+
     if merge:
-        pipeline.append({"$project": {f: True for f in fields}})
-        pipeline.append({"$merge": dataset._sample_collection_name})
+        if sample_fields:
+            pipeline.append({"$project": {f: True for f in sample_fields}})
+            pipeline.append({"$merge": dataset._sample_collection_name})
+            dataset._sample_collection.aggregate(pipeline)
     else:
         pipeline.append({"$out": dataset._sample_collection_name})
+        dataset._sample_collection.aggregate(pipeline)
 
-    dataset._sample_collection.aggregate(pipeline)
-
-    doc_ids = [str(_id) for _id in dataset._get_sample_ids()]
     fos.Sample._reload_docs(dataset._sample_collection_name, doc_ids=doc_ids)
 
     if not merge:
