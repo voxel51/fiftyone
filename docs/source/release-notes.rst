@@ -5,6 +5,31 @@ FiftyOne Release Notes
 
 .. _release-notes-v0.7.2:
 
+FiftyOne 0.7.3
+--------------
+*Released February 12, 2021*
+
+App
+^^^
+- Added filtering widgest to the Fields Sidebar for
+  :class:`StringFields <fiftyone.core.fields.StringField>` and
+  :class:`BooleanFields <fiftyone.core.fields.BooleanField>`
+- Added histogram plots for
+  :class:`StringFields <fiftyone.core.fields.StringField>` and
+  :class:`BooleanFields <fiftyone.core.fields.BooleanField>` in the `Scalars`
+  tab
+- Moved `None` selection for
+  :class:`StringFields <fiftyone.core.fields.StringField>` to the input format
+  in the Fields Sidebar
+- All `None` options are now only present when `None` values exist for a
+  supported :class:`Field <fiftyone.core.fields.Field>` in the Fields Sidebar
+- Added `Color by label` support for
+  :class:`Classification <fiftyone.core.labels.Classification>`,
+  :class:`Classifications <fiftyone.core.labels.Classifications>`,
+  :class:`BooleanField <fiftyone.core.fields.BooleanField>`, and
+  :class:`StringField <fiftyone.core.fields.StringField>`
+- Various style and interaction improvements in the Fields Sidebar
+
 FiftyOne 0.7.2
 --------------
 *Released January 28, 2021*
