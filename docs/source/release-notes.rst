@@ -35,6 +35,24 @@ App
 
 Core
 ^^^^
+- Added support for evaluating classifications via a new
+  :mod:`fiftyone.utils.eval.classification` module. The module currently
+  supports
+  :meth:`multiclass classification <fiftyone.utils.eval.classification.evaluate_classifications>`,
+  :meth:`binary classification <fiftyone.utils.eval.classification.evaluate_binary_classifications>`,
+  :meth:`top-k accuracy <fiftyone.utils.eval.classification.evaluate_top_k_classifications>`
+  computations
+- Added support for storing logits when using
+  :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
+- Added :meth:`one() <fiftyone.core.collections.SampleCollection>` for retrieving
+  one matched |Sample| in a |Dataset| or |DatasetView|
+- Added support for indexing samples on a |Dataset| or |DatasetView| via
+  filepath, i.e. `dataset[filepath]`
+- Added support for allowing |Sample| and any |Sample| iterable, e.g.
+  |DatasetView|, to methods like
+  :meth:`remove_samples() <fiftyone.core.dataset.Dataset.remove_samples>`,
+  :meth:`exclude() <fiftyone.core.collections.SampleCollection.exclude>`,
+  :meth:`exclude() <fiftyone.core.collections.SampleCollection.select>`,  etc.
 - Changed the default value for `only_matches` for
   :meth:`filter_classifications() <fiftyone.core.collections.SampleCollection.filter_classifications>`,
   :meth:`filter_detections() <fiftyone.core.collections.SampleCollection.filter_detections>`,
@@ -47,6 +65,11 @@ Core
 - Added a :meth:`stats() <fiftyone.core.dataset.Dataset>` for listing helpful
   info about the size of various entities of a dataset
 
+CLI
+^^^
+- Added a :ref:`Migration API <cli-fiftyone-migrate>` to ensure one has the
+  ability to manually downgrade the data model before downgrading the
+  `fiftyone` package
 
 Docs
 ^^^^
@@ -126,7 +149,7 @@ Zoo
 
 CLI
 ^^^
-- Added a :ref:`fiftyone app config <cli-fiftyone-zpp-config>` command for
+- Added a :ref:`fiftyone app config <cli-fiftyone-app-config>` command for
   inspecting the default :ref:`App config <configuring-fiftyone-app>`
 - Improved `ctrl + c` exit handling for CLI commands
 
