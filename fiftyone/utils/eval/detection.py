@@ -204,23 +204,16 @@ class DetectionResults(ClassificationResults):
 
 
 def _parse_config(config, method, **kwargs):
-    if config is None:
-        if method is None:
-            method = "coco"
+    if config is not None:
+        return config
 
-        config = _get_default_config(method)
+    if method is None:
+        method = "coco"
 
-    for k, v in kwargs.items():
-        setattr(config, k, v)
-
-    return config
-
-
-def _get_default_config(method):
     if method == "coco":
         from .coco import COCOEvaluationConfig
 
-        return COCOEvaluationConfig()
+        return COCOEvaluationConfig(**kwargs)
 
     raise ValueError("Unsupported evaluation method '%s'" % method)
 

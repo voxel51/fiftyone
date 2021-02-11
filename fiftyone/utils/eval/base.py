@@ -12,8 +12,23 @@ import eta.core.utils as etau
 from fiftyone.core.config import Config, Configurable
 
 
+_EVAL_INFO_KEY = "evaluations"
+
+
 class EvaluationConfig(Config):
-    """Base class for configuring :class:`EvaluationMethod` instances."""
+    """Base class for configuring :class:`EvaluationMethod` instances.
+
+    Args:
+        **kwargs: any leftover keyword arguments after subclasses have done
+            their parsing
+    """
+
+    def __init__(self, **kwargs):
+        if kwargs:
+            raise ValueError(
+                "%s has no parameters %s"
+                % (self.__class__, set(kwargs.keys()))
+            )
 
     @property
     def method(self):
@@ -90,7 +105,7 @@ def list_evaluations(samples):
     Returns:
         a list of evaluation keys
     """
-    eval_info = samples._dataset.info.get("eval", {})
+    eval_info = samples._dataset.info.get(_EVAL_INFO_KEY, {})
     return sorted(eval_info.keys())
 
 
@@ -134,7 +149,8 @@ def clear_evaluations(samples):
 
 
 def _get_eval_info(samples, eval_key):
-    eval_info = samples._dataset.info.get("eval", {}).get(eval_key, None)
+    evaluations = samples._dataset.info.get(_EVAL_INFO_KEY, {})
+    eval_info = evaluations.get(eval_key, None)
     if eval_info is None:
         raise ValueError(
             "Evaluation '%s' not found on collection '%s'"
@@ -144,20 +160,21 @@ def _get_eval_info(samples, eval_key):
     pred_field = eval_info["pred_field"]
     gt_field = eval_info["gt_field"]
     config = EvaluationConfig.from_dict(eval_info["config"])
+
     return pred_field, gt_field, config
 
 
 def _record_eval_info(samples, eval_key, pred_field, gt_field, config):
-    eval_info = samples._dataset.info.get("eval", {})
+    eval_info = samples._dataset.info.get(_EVAL_INFO_KEY, {})
     eval_info[eval_key] = {
         "pred_field": pred_field,
         "gt_field": gt_field,
         "config": config.serialize(),
     }
-    samples._dataset.info["eval"] = eval_info
+    samples._dataset.info[_EVAL_INFO_KEY] = eval_info
     samples._dataset.save()
 
 
 def _delete_eval_info(samples, eval_key):
-    samples._dataset.info["eval"].pop(eval_key)
+    samples._dataset.info[_EVAL_INFO_KEY].pop(eval_key)
     samples._dataset.save()

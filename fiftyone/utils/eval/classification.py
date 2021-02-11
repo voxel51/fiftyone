@@ -69,9 +69,7 @@ def evaluate_classifications(
     Returns:
         a :class:`ClassificationResults`
     """
-    config = _parse_config(
-        config, method, classes=classes, missing=missing, **kwargs
-    )
+    config = _parse_config(config, method, classes=classes, **kwargs)
     eval_method = config.build()
 
     ytrue, ypred, confs = eval_method.evaluate_samples(
@@ -236,7 +234,8 @@ class TopKEvaluationConfig(ClassificationEvaluationConfig):
             logits
     """
 
-    def __init__(self, k=5, classes=None):
+    def __init__(self, k=5, classes=None, **kwargs):
+        super().__init__(**kwargs)
         if classes is None:
             raise ValueError(
                 "You must provide the list of classes corresponding to your "
@@ -295,7 +294,7 @@ class TopKEvaluation(ClassificationEvaluationMethod):
                 top_k = np.argpartition(_logits, -k)[-k:]
                 if target in top_k:
                     # Truth is in top-k; use it
-                    ypred[idx] = ytrue
+                    ypred[idx] = _ytrue
                     logit = _logits[target]
                     _correct = True
                 else:
@@ -555,25 +554,18 @@ class BinaryClassificationResults(ClassificationResults):
         return display.ax_
 
 
-def _parse_config(config, method, **kwargs):
-    if config is None:
-        if method is None:
-            method = "simple"
+def _parse_config(config, method, classes=None, **kwargs):
+    if config is not None:
+        return config
 
-        config = _get_default_config(method)
+    if method is None:
+        method = "simple"
 
-    for k, v in kwargs.items():
-        setattr(config, k, v)
-
-    return config
-
-
-def _get_default_config(method):
     if method == "simple":
-        return SimpleEvaluationConfig()
+        return SimpleEvaluationConfig(**kwargs)
 
     if method == "top-k":
-        return TopKEvaluationConfig()
+        return TopKEvaluationConfig(classes=classes, **kwargs)
 
     raise ValueError("Unsupported evaluation method '%s'" % method)
 

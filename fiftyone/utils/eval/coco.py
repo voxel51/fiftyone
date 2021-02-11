@@ -24,7 +24,8 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         iscrowd ("iscrowd"): the name of the crowd attribute
     """
 
-    def __init__(self, iou=0.75, classwise=False, iscrowd="iscrowd"):
+    def __init__(self, iou=0.75, classwise=False, iscrowd="iscrowd", **kwargs):
+        super().__init__(**kwargs)
         self.iou = iou
         self.classwise = classwise
         self.iscrowd = iscrowd
