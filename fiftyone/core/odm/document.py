@@ -59,14 +59,14 @@ class SerializableDocument(object):
             ):
                 continue
 
-            if f in kwargs:
-                d[f] = kwargs[f]
-            elif not f.startswith("_"):
+            if not f.startswith("_"):
                 value = getattr(self, f)
                 if isinstance(value, ObjectId):
                     d[f] = str(value)
                 else:
                     d[f] = value
+
+        d.update(kwargs)
 
         doc_name = class_name or self.__class__.__name__
         doc_str = fou.pformat(d)

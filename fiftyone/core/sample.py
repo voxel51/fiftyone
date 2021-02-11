@@ -341,7 +341,7 @@ class Sample(_Sample):
     def __repr__(self):
         kwargs = {}
         if self.media_type == fomm.VIDEO:
-            kwargs["frames"] = self._frames._serve(self).__repr__()
+            kwargs["frames"] = self._frames._serve(self)
 
         return self._doc.fancy_repr(
             class_name=self.__class__.__name__, **kwargs
@@ -527,14 +527,14 @@ class SampleView(_Sample):
         return repr(self)
 
     def __repr__(self):
-        kwargs = {}
-        if self.media_type == fomm.VIDEO:
-            kwargs["frames"] = self._frames._serve(self).__repr__()
-
         if self._selected_fields is not None:
             select_fields = ("id", "media_type") + tuple(self._selected_fields)
         else:
             select_fields = None
+
+        kwargs = {}
+        if self.media_type == fomm.VIDEO:
+            kwargs["frames"] = self._frames._serve(self)
 
         return self._doc.fancy_repr(
             class_name=self.__class__.__name__,

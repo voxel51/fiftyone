@@ -46,11 +46,15 @@ class Frames(object):
         return "<%s: %s>" % (self.__class__.__name__, fou.pformat(dict(self)))
 
     def __repr__(self):
-        num_frames = len(self)
-        plural = "s" if num_frames != 1 else ""
-        return "{ <%d frame%s> }" % (num_frames, plural)
+        return "<%s: %s>" % (self.__class__.__name__, len(self))
+
+    def __bool__(self):
+        return len(self) > 0
 
     def __len__(self):
+        if not self._in_db:
+            return len(self._replacements)
+
         self._save_replacements()
         return self._frame_collection.find(
             {"_sample_id": self._sample._id}
@@ -196,6 +200,19 @@ class Frames(object):
         except:
             return ("frame_number",)
 
+    def first(self):
+        """Returns the first :class:`Frame` for the sample.
+
+        Returns:
+            a :class:`Frame`
+        """
+        try:
+            return next(self.values())
+        except StopIteration:
+            raise ValueError(
+                "Sample '%s' has no frame labels" % self._sample._id
+            )
+
     def keys(self):
         """Returns an iterator over the frame numbers with labels in the
         sample.
@@ -306,27 +323,29 @@ class Frames(object):
         return self._sample._dataset._frame_collection
 
     def _iter_frames(self):
-        if self._in_db:
-            repl_fns = sorted(self._replacements.keys())
-            repl_fn = repl_fns[0] if repl_fns else None
-            find_d = {"_sample_id": self._sample._id}
-            for d in self._frame_collection.find(find_d):
-                if repl_fn is not None and d["frame_number"] >= repl_fn:
-                    self._iter_frame = self._replacements[repl_fn]
-                    repl_fn += 1
-                else:
-                    self._iter_frame = Frame.from_doc(
-                        self._sample._dataset._frame_dict_to_doc(d),
-                        dataset=self._sample._dataset,
-                    )
-
-                self._set_replacement(self._iter_frame)
-                yield self._iter_frame
-        else:
+        if not self._in_db:
             for frame_number in sorted(self._replacements.keys()):
                 self._iter_frame = self._replacements[frame_number]
                 self._set_replacement(self._iter_frame)
                 yield self._iter_frame
+
+            return
+
+        repl_fns = sorted(self._replacements.keys())
+        repl_fn = repl_fns[0] if repl_fns else None
+        find_d = {"_sample_id": self._sample._id}
+        for d in self._frame_collection.find(find_d):
+            if repl_fn is not None and d["frame_number"] >= repl_fn:
+                self._iter_frame = self._replacements[repl_fn]
+                repl_fn += 1
+            else:
+                self._iter_frame = Frame.from_doc(
+                    self._sample._dataset._frame_dict_to_doc(d),
+                    dataset=self._sample._dataset,
+                )
+
+            self._set_replacement(self._iter_frame)
+            yield self._iter_frame
 
     def _to_frames_dict(self):
         return {
