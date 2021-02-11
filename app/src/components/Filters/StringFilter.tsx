@@ -15,6 +15,16 @@ import { useOutsideClick } from "../../utils/hooks";
 
 const NONE = [null, undefined];
 
+const NONE_SORT = (a, b) => {
+  if (a === null) {
+    return -1;
+  }
+  if (b === null) {
+    return 1;
+  }
+  return a - b;
+};
+
 const translateNone = (values) => {
   return values.map((v) => (NONE.includes(v) ? [v, "none"] : [v, v]));
 };
@@ -120,15 +130,20 @@ const stringFilterMachine = Machine({
           {
             actions: [
               assign({
-                selected: ({ selected }, { value }) =>
-                  [...new Set([...selected, value])].sort(),
+                selected: ({ selected }, { value }) => {
+                  value = NONE.includes(value) ? null : value;
+                  return [...new Set([...selected, value])].sort(NONE_SORT);
+                },
                 inputValue: "",
                 valid: true,
                 results: ({ values }) => values,
               }),
             ],
             cond: ({ values }, { value }) => {
-              return translateNone(values).some((c) => c === value);
+              return (
+                (NONE.includes(value) && values.includes(null)) ||
+                values.some((c) => c === value)
+              );
             },
           },
           {
@@ -277,7 +292,7 @@ const StringFilter = React.memo(
         state.event.type === "REMOVE" ||
         state.event.type === "CLEAR"
       ) {
-        setSelectedValues(state.context.selected.filter((v) => v !== null));
+        setSelectedValues(state.context.selected);
       }
     }, [state.event]);
 
@@ -315,10 +330,12 @@ const StringFilter = React.memo(
             />
             {state.matches("editing") && (
               <SearchResults
-                results={results.filter((r) => !selected.includes(r)).sort()}
+                results={results
+                  .filter((r) => !selected.includes(r))
+                  .sort(NONE_SORT)}
                 send={send}
                 currentResult={currentResult}
-                higlight={color}
+                highlight={color}
                 style={{
                   position: "absolute",
                   top: "0.25rem",
@@ -338,7 +355,7 @@ const StringFilter = React.memo(
                     send({ type: "REMOVE", value: s });
                   }}
                 >
-                  {s + " "}
+                  {s === null ? <code style={{ color }}>None </code> : s + " "}
                   <a style={{ color: theme.fontDark }}>x</a>
                 </StringButton>
               ))}

@@ -80,9 +80,11 @@ export type Range = [RangeValue, RangeValue];
 type Props = {
   rangeAtom: RecoilState<Range>;
   boundsAtom: RecoilValueReadOnly<Range>;
+  color: string;
 };
 
-const RangeSlider = React.memo(({ rangeAtom, boundsAtom }: Props) => {
+const RangeSlider = React.memo(({ rangeAtom, boundsAtom, color }: Props) => {
+  const theme = useContext(ThemeContext);
   const [value, setValue] = useRecoilState(rangeAtom);
   const bounds = useRecoilValue(boundsAtom);
   const [localValue, setLocalValue] = useState<Range>([null, null]);
@@ -113,6 +115,7 @@ const RangeSlider = React.memo(({ rangeAtom, boundsAtom }: Props) => {
         max={bounds[1]}
         min={bounds[0]}
         step={(bounds[1] - bounds[0]) / 100}
+        theme={{ ...theme, brand: color }}
       />
       {bounds[1]}
     </SliderContainer>
@@ -157,7 +160,6 @@ export const NamedRangeSlider = React.memo(
   React.forwardRef(
     (
       {
-        color,
         name,
         valueName,
         hasNoneAtom,
@@ -213,7 +215,8 @@ export const NamedRangeSlider = React.memo(
               <FormControlLabel
                 label={
                   <div style={{ lineHeight: "20px", fontSize: 14 }}>
-                    Exclude <code style={{ color }}>None</code>
+                    Exclude{" "}
+                    <code style={{ color: rangeSliderProps.color }}>None</code>
                   </div>
                 }
                 control={
@@ -222,7 +225,7 @@ export const NamedRangeSlider = React.memo(
                     onChange={() => setIncludeNone(!includeNone)}
                     style={{
                       padding: "0 5px",
-                      color,
+                      color: rangeSliderProps.color,
                     }}
                   />
                 }

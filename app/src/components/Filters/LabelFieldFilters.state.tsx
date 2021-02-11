@@ -89,7 +89,10 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
         if (label === undefined) {
           label = null;
         }
-        return (inRange || noConfidence) && lValues.includes(label);
+        return (
+          (inRange || noConfidence) &&
+          (lValues.includes(label) || lValues.length === 0)
+        );
       };
     }
     return filters;

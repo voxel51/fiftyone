@@ -1123,7 +1123,15 @@ def _make_scalar_expression(f, args):
         mn, mx = args["range"]
         expr = (f >= mn) & (f <= mx)
     elif cls == _STR_FILTER and len(args["values"]):
-        expr = f.is_in(args["values"])
+        values = args["values"]
+        none = any(map(lambda v: v is None, values))
+        values = filter(lambda v: v is not None, values)
+        expr = f.is_in(values)
+
+        if none:
+            expr |= ~(f.exists())
+
+        return expr
 
     none = args["none"]
     if not none:
