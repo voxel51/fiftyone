@@ -631,7 +631,7 @@ class FilterField(ViewStage):
         # Only include samples whose `numeric_field` value is positive
         #
 
-        stage = fo.FilterField("numeric_field", F() > 0, only_matches=True)
+        stage = fo.FilterField("numeric_field", F() > 0)
         view = dataset.add_stage(stage)
 
     Args:
@@ -639,11 +639,11 @@ class FilterField(ViewStage):
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
-        only_matches (False): whether to only include samples that match the
-            filter
+        only_matches (True): whether to only include samples that match the
+            filter (True) or include all samples (False)
     """
 
-    def __init__(self, field, filter, only_matches=False):
+    def __init__(self, field, filter, only_matches=True):
         self._field = field
         self._filter = filter
         self._hide_result = False
@@ -722,8 +722,8 @@ class FilterField(ViewStage):
             {
                 "name": "only_matches",
                 "type": "bool",
-                "default": "False",
-                "placeholder": "only matches (default=False)",
+                "default": "True",
+                "placeholder": "only matches (default=True)",
             },
         ]
 
@@ -745,7 +745,7 @@ class FilterField(ViewStage):
 
 
 def _get_filter_field_pipeline(
-    filter_field, new_field, filter_arg, only_matches=False, hide_result=False
+    filter_field, new_field, filter_arg, only_matches=True, hide_result=False
 ):
     cond = _get_field_mongo_filter(filter_arg, prefix=filter_field)
 
@@ -775,7 +775,7 @@ def _get_filter_field_pipeline(
 
 
 def _get_filter_frames_field_pipeline(
-    filter_field, new_field, filter_arg, only_matches=False, hide_result=False,
+    filter_field, new_field, filter_arg, only_matches=True, hide_result=False,
 ):
     cond = _get_field_mongo_filter(filter_arg, prefix="$frame." + filter_field)
 
@@ -915,13 +915,10 @@ class FilterLabels(FilterField):
 
         #
         # Only include classifications in the `predictions` field whose `label`
-        # is "cat" or "dog", and only show samples with at least one
-        # classification after filtering
+        # is "cat" or "dog"
         #
 
-        stage = fo.FilterLabels(
-            "predictions", F("label").is_in(["cat", "dog"]), only_matches=True
-        )
+        stage = fo.FilterLabels("predictions", F("label").is_in(["cat", "dog"]))
         view = dataset.add_stage(stage)
 
     Detections Examples::
@@ -991,13 +988,10 @@ class FilterLabels(FilterField):
 
         #
         # Only include detections in the `predictions` field whose `label` is
-        # "cat" or "dog", and only show samples with at least one detection
-        # after filtering
+        # "cat" or "dog"
         #
 
-        stage = fo.FilterLabels(
-            "predictions", F("label").is_in(["cat", "dog"]), only_matches=True
-        )
+        stage = fo.FilterLabels("predictions", F("label").is_in(["cat", "dog"]))
         view = dataset.add_stage(stage)
 
         #
@@ -1069,13 +1063,10 @@ class FilterLabels(FilterField):
 
         #
         # Only include polylines in the `predictions` field whose `label` is
-        # "lane", and only show samples with at least one polyline after
-        # filtering
+        # "lane"
         #
 
-        stage = fo.FilterLabels(
-            "predictions", F("label") == "lane", only_matches=True
-        )
+        stage = fo.FilterLabels("predictions", F("label") == "lane")
         view = dataset.add_stage(stage)
 
         #
@@ -1084,9 +1075,7 @@ class FilterLabels(FilterField):
         #
 
         num_vertices = F("points").map(F().length()).sum()
-        stage = fo.FilterLabels(
-            "predictions", num_vertices >= 3, only_matches=True
-        )
+        stage = fo.FilterLabels("predictions", num_vertices >= 3)
         view = dataset.add_stage(stage)
 
     Keypoints Examples::
@@ -1120,13 +1109,10 @@ class FilterLabels(FilterField):
 
         #
         # Only include keypoints in the `predictions` field whose `label` is
-        # "house", and only show samples with at least one keypoint after
-        # filtering
+        # "house"
         #
 
-        stage = fo.FilterLabels(
-            "predictions", F("label") == "house", only_matches=True
-        )
+        stage = fo.FilterLabels("predictions", F("label") == "house")
         view = dataset.add_stage(stage)
 
         #
@@ -1142,11 +1128,11 @@ class FilterLabels(FilterField):
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
-        only_matches (False): whether to only include samples with at least
-            one label after filtering
+        only_matches (True): whether to only include samples with at least
+            one label after filtering (True) or include all samples (False)
     """
 
-    def __init__(self, field, filter, only_matches=False):
+    def __init__(self, field, filter, only_matches=True):
         self._field = field
         self._filter = filter
         self._only_matches = only_matches
@@ -1226,7 +1212,7 @@ class FilterLabels(FilterField):
 
 
 def _get_filter_list_field_pipeline(
-    filter_field, new_field, filter_arg, only_matches=False, hide_result=False
+    filter_field, new_field, filter_arg, only_matches=True, hide_result=False
 ):
     cond = _get_list_field_mongo_filter(filter_arg)
 
@@ -1261,7 +1247,7 @@ def _get_filter_list_field_pipeline(
 
 
 def _get_filter_frames_list_field_pipeline(
-    filter_field, new_field, filter_arg, only_matches=False, hide_result=False,
+    filter_field, new_field, filter_arg, only_matches=True, hide_result=False,
 ):
     cond = _get_list_field_mongo_filter(filter_arg)
     label_field, labels_list = new_field.split(".")
@@ -1407,8 +1393,9 @@ class FilterClassifications(_FilterListField):
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
-        only_matches (False): whether to only include samples with at least
-            one classification after filtering
+        only_matches (True): whether to only include samples with at least
+            one classification after filtering (True) or include all samples
+            (False)
     """
 
     @property
@@ -1440,8 +1427,8 @@ class FilterDetections(_FilterListField):
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
-        only_matches (False): whether to only include samples with at least
-            one detection after filtering
+        only_matches (True): whether to only include samples with at least
+            one detection after filtering (True) or include all samples (False)
     """
 
     @property
@@ -1473,8 +1460,8 @@ class FilterPolylines(_FilterListField):
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
-        only_matches (False): whether to only include samples with at least
-            one polyline after filtering
+        only_matches (True): whether to only include samples with at least
+            one polyline after filtering (True) or include all samples (False)
     """
 
     @property
@@ -1506,8 +1493,8 @@ class FilterKeypoints(_FilterListField):
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
-        only_matches (False): whether to only include samples with at least
-            one keypoint after filtering
+        only_matches (True): whether to only include samples with at least
+            one keypoint after filtering (True) or include all samples (False)
     """
 
     @property

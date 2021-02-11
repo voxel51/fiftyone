@@ -5,7 +5,7 @@ import { Checkbox, FormControlLabel } from "@material-ui/core";
 import { useRecoilValue } from "recoil";
 
 import { Button, ModalFooter, scrollbarStyles } from "./utils";
-import * as selectors from "../recoil/selectors";
+import { sampleModalFilter } from "./Filters/LabelFieldFilters.state";
 
 type Props = {
   object: object;
@@ -52,7 +52,7 @@ const Body = styled.div`
 `;
 
 const JSONView = ({ object, enableFilter, filterJSON }: Props) => {
-  const filter = useRecoilValue(selectors.sampleModalFilter);
+  const filter = useRecoilValue(sampleModalFilter);
   const str = JSON.stringify(filterJSON ? filter(object) : object, null, 4);
 
   return (

@@ -10,30 +10,15 @@ import { useRecoilValue } from "recoil";
 import { animated, useSpring } from "react-spring";
 
 import * as atoms from "../recoil/atoms";
-import * as selectors from "../recoil/selectors";
+import { fieldIsFiltered } from "./Filters/LabelFieldFilters.state";
+import { isBooleanField, isNumericField, isStringField } from "./Filters/utils";
 import { SampleContext } from "../utils/context";
 import { labelTypeIsFilterable, LABEL_LISTS } from "../utils/labels";
 
-import Filter from "./Filter";
-import NumericFieldFilter from "./NumericFieldFilter";
-
-const GLOBAL_ATOMS = {
-  colorByLabel: atoms.colorByLabel,
-  includeLabels: selectors.filterIncludeLabels,
-  includeNoConfidence: selectors.filterLabelIncludeNoConfidence,
-  confidenceRange: selectors.filterLabelConfidenceRange,
-  confidenceBounds: selectors.labelConfidenceBounds,
-  fieldIsFiltered: selectors.fieldIsFiltered,
-};
-
-const MODAL_ATOMS = {
-  colorByLabel: atoms.modalColorByLabel,
-  includeLabels: atoms.modalFilterIncludeLabels,
-  includeNoConfidence: atoms.modalFilterLabelIncludeNoConfidence,
-  confidenceRange: atoms.modalFilterLabelConfidenceRange,
-  confidenceBounds: selectors.labelConfidenceBounds,
-  fieldIsFiltered: selectors.modalFieldIsFiltered,
-};
+import LabelFieldFilter from "./Filters/LabelFieldFilter";
+import NumericFieldFilter from "./Filters/NumericFieldFilter";
+import StringFieldFilter from "./Filters/StringFieldFilter";
+import BooleanFieldFilter from "./Filters/BooleanFieldFilter";
 
 const Body = styled.div`
   vertical-align: middle;
@@ -151,11 +136,12 @@ type Props = {
 const Entry = ({ entry, onCheck, modal }) => {
   const [expanded, setExpanded] = useState(false);
   const theme = useContext(ThemeContext);
-  const filterAtoms = modal ? MODAL_ATOMS : GLOBAL_ATOMS;
-  const fieldIsFiltered = useRecoilValue(
-    filterAtoms.fieldIsFiltered(entry.path)
+  const fieldFiltered = useRecoilValue(
+    fieldIsFiltered({ path: entry.path, modal: Boolean(modal) })
   );
-  const isNumericField = useRecoilValue(selectors.isNumericField(entry.path));
+  const isNumeric = useRecoilValue(isNumericField(entry.path));
+  const isString = useRecoilValue(isStringField(entry.path));
+  const isBoolean = useRecoilValue(isBooleanField(entry.path));
 
   const handleCheck = (entry) => {
     if (onCheck) {
@@ -167,7 +153,7 @@ const Entry = ({ entry, onCheck, modal }) => {
   const hiddenObjects = useRecoilValue(atoms.hiddenObjects);
   const hasHiddenObjects = sample
     ? Object.entries(hiddenObjects).some(
-        ([object_id, data]) =>
+        ([_, data]) =>
           data.sample_id === sample._id && data.field === entry.name
       )
     : false;
@@ -175,7 +161,7 @@ const Entry = ({ entry, onCheck, modal }) => {
   const checkboxClass = entry.hideCheckbox ? "no-checkbox" : "with-checkbox";
   const containerProps = useSpring({
     backgroundColor:
-      fieldIsFiltered || hasHiddenObjects
+      fieldFiltered || hasHiddenObjects
         ? "#6C757D"
         : entry.hideCheckbox || entry.selected
         ? theme.backgroundLight
@@ -199,7 +185,7 @@ const Entry = ({ entry, onCheck, modal }) => {
                 </span>
                 {!(entry.icon && !LABEL_LISTS.includes(entry.type)) &&
                 ((entry.type && labelTypeIsFilterable(entry.type)) ||
-                  (isNumericField && !modal)) ? (
+                  ((isNumeric || isString || isBoolean) && !modal)) ? (
                   <ArrowType
                     onClick={(e) => {
                       e.preventDefault();
@@ -250,11 +236,11 @@ const Entry = ({ entry, onCheck, modal }) => {
           />
         }
       />
-      {isNumericField ? (
-        <NumericFieldFilter expanded={expanded} entry={entry} />
-      ) : null}
+      {isNumeric && <NumericFieldFilter expanded={expanded} entry={entry} />}
+      {isString && <StringFieldFilter expanded={expanded} entry={entry} />}
+      {isBoolean && <BooleanFieldFilter expanded={expanded} entry={entry} />}
       {entry.type && labelTypeIsFilterable(entry.type) ? (
-        <Filter expanded={expanded} entry={entry} {...filterAtoms} />
+        <LabelFieldFilter expanded={expanded} entry={entry} modal={modal} />
       ) : null}
     </CheckboxContainer>
   );
