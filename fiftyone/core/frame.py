@@ -209,9 +209,8 @@ class Frames(object):
         try:
             return next(self.values())
         except StopIteration:
-            raise ValueError(
-                "Sample '%s' has no frame labels" % self._sample._id
-            )
+            id_str = " '%s'" % self._sample._id if self._sample._id else ""
+            raise ValueError("Sample%s has no frame labels" % id_str)
 
     def keys(self):
         """Returns an iterator over the frame numbers with labels in the
