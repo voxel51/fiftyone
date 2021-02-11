@@ -17,6 +17,7 @@ import numpy as np
 from pymongo.errors import DuplicateKeyError
 
 import fiftyone as fo
+from fiftyone import ViewField as F
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 
@@ -552,6 +553,20 @@ class VideoSampleTests(unittest.TestCase):
         d.add_sample(s)
         s_copy = s.copy()
         self.assertEqual(s_copy[1]["label"], "label")
+
+    def test_frames_view(self):
+        dataset = self._make_dataset()
+
+        sample = dataset.first()
+        sample.frames[1]["foo"] = fo.Detections(
+            detections=[fo.Detection(label="foo"), fo.Detection(label="bar"),]
+        )
+        sample.save()
+        view = dataset.filter_labels("frames.foo", F("label") == "bar")
+
+        detections = view.first().frames.first().foo.detections
+        self.assertEqual(len(detections), 1)
+        self.assertEqual(detections[0].label, "bar")
 
 
 class SampleFieldTests(unittest.TestCase):
