@@ -544,7 +544,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             .to_list(page_length + 1)
         )
         convert(samples)
-
         more = False
         if len(samples) > page_length:
             samples = samples[:page_length]
@@ -814,25 +813,35 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             only (None): a client to restrict the message to
         """
         base_view = view
+        data = {"main": [], "none": []}
         if view is not None and (filters is None or len(filters)):
             if filters is not None and len(filters):
                 for stage in _make_filter_stages(view._dataset, filters):
                     view = view.add_stage(stage)
 
-            aggs = fos.DatasetStatistics(view).aggregations
-            stats = [
-                {
-                    "result": result,
-                    "_CLS": agg.__class__.__name__,
-                    "name": agg.field_name,
-                }
-                for agg, result in zip(
-                    aggs,
-                    await view._async_aggregate(cls.sample_collection(), aggs),
-                )
-            ]
-        else:
-            stats = []
+            stats = fos.DatasetStatistics(view)
+            aggs = stats.aggregations
+            results = await view._async_aggregate(
+                cls.sample_collection(), aggs
+            )
+            start_none_idx = len(aggs) - stats._none_len
+            none_aggs = aggs[start_none_idx:]
+            none_results = results[start_none_idx:]
+            aggs = aggs[:start_none_idx]
+            results = results[:start_none_idx]
+
+            for a, r, k in [
+                (aggs, results, "main"),
+                (none_aggs, none_results, "none"),
+            ]:
+                for agg, result in zip(a, r):
+                    data[k].append(
+                        {
+                            "result": result,
+                            "_CLS": agg.__class__.__name__,
+                            "name": agg.field_name,
+                        }
+                    )
 
         view = (
             base_view._serialize()
@@ -842,7 +851,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         message = {
             "type": "statistics",
-            "stats": stats,
+            "stats": data,
             "view": view,
             "filters": filters,
         }
@@ -915,7 +924,12 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         elif results is None:
 
             def filter(field):
-                if fos._meets_type(field, fof.BooleanField):
+                if field.name in {"filepath", "tags"} or field.name.startswith(
+                    "_"
+                ):
+                    return None
+
+                if fos._meets_type(field, (fof.BooleanField, fof.StringField)):
                     return field.name
 
                 return None
@@ -1083,17 +1097,61 @@ async def _numeric_histograms(coll, view, schema, prefix=""):
     return aggregations, fields, ticks
 
 
-def _make_range_expression(f, args):
+_BOOL_FILTER = "bool"
+_NUMERIC_FILTER = "numeric"
+_STR_FILTER = "str"
+
+
+def _make_scalar_expression(f, args):
     expr = None
-    if "range" in args:
+    cls = args["_CLS"]
+    if cls == _BOOL_FILTER:
+        true, false = args["true"], args["false"]
+        if true and false:
+            expr = f.is_in([True, False])
+
+        if not true and false:
+            expr = f == False
+
+        if true and not false:
+            expr = f == True
+
+        if not true and not false:
+            expr = (f != True) & (f != False)
+
+    elif cls == _NUMERIC_FILTER:
         mn, mx = args["range"]
-        none = args["none"]
         expr = (f >= mn) & (f <= mx)
-        if args.get("none", False):
-            expr |= ~(f.exists())
-    elif "none" in args:
-        if not args["none"]:
+    elif cls == _STR_FILTER:
+        values = args["values"]
+        if not values:
+            return None
+
+        none = any(map(lambda v: v is None, values))
+        values = filter(lambda v: v is not None, values)
+        expr = f.is_in(values)
+        exclude = args["exclude"]
+
+        if exclude and expr:
+            # pylint: disable=invalid-unary-operand-type
+            expr = ~expr
+
+        if none:
+            if exclude:
+                expr &= f.exists()
+            else:
+                expr |= ~(f.exists())
+
+        return expr
+
+    none = args["none"]
+    if not none:
+        if expr is not None:
+            expr &= f.exists()
+        else:
             expr = f.exists()
+    elif expr is not None:
+        expr |= ~(f.exists())
 
     return expr
 
@@ -1107,26 +1165,24 @@ def _make_filter_stages(dataset, filters):
 
     stages = []
     for path, args in filters.items():
+        keys = path.split(".")
         if path.startswith(dataset._FRAMES_PREFIX):
             schema = frame_field_schema
-            field = schema[path[len(dataset._FRAMES_PREFIX) :]]
+            field = schema[keys[1]]
+            path = ".".join(keys[:2])
         else:
             schema = field_schema
+            path = keys[0]
             field = schema[path]
 
         if isinstance(field, fof.EmbeddedDocumentField):
-            expr = _make_range_expression(F("confidence"), args)
-            if "labels" in args:
-                labels_expr = F("label").is_in(args["labels"])
-                if expr is not None:
-                    expr &= labels_expr
-                else:
-                    expr = labels_expr
-
-            stages.append(fosg.FilterLabels(path, expr, only_matches=True))
+            expr = _make_scalar_expression(F(keys[-1]), args)
+            if expr is not None:
+                stages.append(fosg.FilterLabels(path, expr, only_matches=True))
         else:
-            expr = _make_range_expression(F(path), args)
-            stages.append(fosg.Match(expr))
+            expr = _make_scalar_expression(F(path), args)
+            if expr is not None:
+                stages.append(fosg.Match(expr))
 
     return stages
 

@@ -8,6 +8,7 @@ import Samples from "../components/Samples";
 import ViewBar from "../components/ViewBar/ViewBar";
 import { scrollbarStyles } from "../components/utils";
 
+import { labelFilters } from "../components/Filters/LabelFieldFilters.state";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 
@@ -52,9 +53,9 @@ const FieldsWrapper = () => {
   const tagNames = useRecoilValue(selectors.tagNames);
   const tagSampleCounts = useRecoilValue(selectors.tagSampleCounts);
 
-  const filters = useRecoilValue(selectors.labelFilters);
+  const filters = useRecoilValue(labelFilters(false));
   const colorByLabel = useRecoilValue(atoms.colorByLabel);
-  const setModalFilters = useSetRecoilState(selectors.modalLabelFilters);
+  const setModalFilters = useSetRecoilState(labelFilters(true));
   const labelNameGroups = useRecoilValue(selectors.labelNameGroups("sample"));
 
   const frameLabelNameGroups = useRecoilValue(

@@ -8,9 +8,11 @@ import Player51 from "./Player51";
 import Tag from "./Tags/Tag";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+import { labelFilters } from "./Filters/LabelFieldFilters.state";
 import { getLabelText, stringify } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
 import { useFastRerender, useVideoData } from "../utils/hooks";
+import { ThemeProvider } from "@material-ui/core";
 
 const SampleDiv = animated(styled.div`
   position: relative;
@@ -113,7 +115,7 @@ const Sample = ({ sample, metadata, setView }) => {
   const id = sample._id;
   const src = `${http}/filepath${sample.filepath}?id=${id}`;
   const socket = useRecoilValue(selectors.socket);
-  const filter = useRecoilValue(selectors.labelFilters);
+  const filter = useRecoilValue(labelFilters(false));
   const colorMap = useRecoilValue(selectors.colorMap);
   const colorByLabel = useRecoilValue(atoms.colorByLabel);
   const activeLabels = useRecoilValue(atoms.activeLabels("sample"));
@@ -183,7 +185,13 @@ const Sample = ({ sample, metadata, setView }) => {
         key={"scalar-" + name}
         title={name}
         name={value}
-        color={colorByLabel ? value : colorMap[name]}
+        color={
+          colorByLabel
+            ? colorMap[value]
+              ? colorMap[value]
+              : "#000000"
+            : colorMap[name]
+        }
       />
     );
   };
@@ -214,7 +222,7 @@ const Sample = ({ sample, metadata, setView }) => {
         activeFrameLabels={activeFrameLabels}
         colorByLabel={colorByLabel}
         {...eventHandlers}
-        filterSelector={selectors.labelFilters}
+        filterSelector={labelFilters(false)}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
       />

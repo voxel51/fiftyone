@@ -1,6 +1,11 @@
 import React, { useContext, useEffect, useState } from "react";
 import styled, { ThemeContext } from "styled-components";
-import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
+import {
+  RecoilState,
+  RecoilValueReadOnly,
+  useRecoilState,
+  useRecoilValue,
+} from "recoil";
 import { Checkbox, FormControlLabel } from "@material-ui/core";
 
 import { Slider as SliderUnstyled } from "@material-ui/core";
@@ -74,14 +79,14 @@ export type Range = [RangeValue, RangeValue];
 
 type Props = {
   rangeAtom: RecoilState<Range>;
-  boundsAtom: RecoilState<Range>;
-  maxMin?: number;
-  minMax?: number;
+  boundsAtom: RecoilValueReadOnly<Range>;
+  color: string;
 };
 
-const RangeSlider = ({ rangeAtom, boundsAtom, maxMin, minMax }: Props) => {
-  const [value, setValue] = useRecoilState<Range>(rangeAtom);
-  const bounds = useRecoilValue<Range>(boundsAtom);
+const RangeSlider = React.memo(({ rangeAtom, boundsAtom, color }: Props) => {
+  const theme = useContext(ThemeContext);
+  const [value, setValue] = useRecoilState(rangeAtom);
+  const bounds = useRecoilValue(boundsAtom);
   const [localValue, setLocalValue] = useState<Range>([null, null]);
   useEffect(() => {
     JSON.stringify(value) !== JSON.stringify(localValue) &&
@@ -89,8 +94,7 @@ const RangeSlider = ({ rangeAtom, boundsAtom, maxMin, minMax }: Props) => {
   }, [value]);
 
   const hasBounds = bounds.every((b) => b !== null);
-  const hasValue = value.every((v) => v !== null);
-  return hasBounds && hasValue ? (
+  return hasBounds ? (
     <SliderContainer>
       {bounds[0]}
       <Slider
@@ -111,11 +115,12 @@ const RangeSlider = ({ rangeAtom, boundsAtom, maxMin, minMax }: Props) => {
         max={bounds[1]}
         min={bounds[0]}
         step={(bounds[1] - bounds[0]) / 100}
+        theme={{ ...theme, brand: color }}
       />
       {bounds[1]}
     </SliderContainer>
   ) : null;
-};
+});
 
 const NamedRangeSliderContainer = styled.div`
   padding-bottom: 0.5rem;
@@ -139,10 +144,9 @@ const RangeSliderContainer = styled.div`
 
 type NamedProps = {
   rangeAtom: RecoilState<Range>;
-  boundsAtom: RecoilState<Range>;
-  includeNoneAtom: RecoilState<boolean>;
-  maxMin?: number;
-  minMax?: number;
+  boundsAtom: RecoilValueReadOnly<Range>;
+  hasNoneAtom: RecoilValueReadOnly<boolean>;
+  noneAtom: RecoilState<boolean>;
   name: string;
   valueName: string;
   color: string;
@@ -152,78 +156,86 @@ const isDefaultRange = (range, bounds) => {
   return bounds.every((b, i) => b === range[i]);
 };
 
-export const NamedRangeSlider = React.forwardRef(
-  (
-    {
-      color,
-      name,
-      valueName,
-      includeNoneAtom,
-      ...rangeSliderProps
-    }: NamedProps,
-    ref
-  ) => {
-    const theme = useContext(ThemeContext);
-    const [includeNone, setIncludeNone] = useRecoilState(includeNoneAtom);
-    const [range, setRange] = useRecoilState(rangeSliderProps.rangeAtom);
-    const bounds = useRecoilValue(rangeSliderProps.boundsAtom);
-    const hasDefaultRange = isDefaultRange(range, bounds);
-    const hasBounds = bounds.every((b) => b !== null);
-    const isSingleValue = hasBounds && bounds[0] === bounds[1];
+export const NamedRangeSlider = React.memo(
+  React.forwardRef(
+    (
+      {
+        name,
+        valueName,
+        hasNoneAtom,
+        noneAtom,
+        ...rangeSliderProps
+      }: NamedProps,
+      ref
+    ) => {
+      const theme = useContext(ThemeContext);
+      const hasNone = useRecoilValue(hasNoneAtom);
+      const [includeNone, setIncludeNone] = useRecoilState(noneAtom);
+      const [range, setRange] = useRecoilState(rangeSliderProps.rangeAtom);
+      const bounds = useRecoilValue(rangeSliderProps.boundsAtom);
+      const hasDefaultRange = isDefaultRange(range, bounds);
+      const hasBounds = bounds.every((b) => b !== null);
+      const isSingleValue = hasBounds && bounds[0] === bounds[1];
 
-    return (
-      <NamedRangeSliderContainer ref={ref}>
-        <NamedRangeSliderHeader>
-          {name}
-          {!hasDefaultRange || !includeNone ? (
-            <a
-              style={{ cursor: "pointer", textDecoration: "underline" }}
-              onClick={() => {
-                setRange(bounds);
-                setIncludeNone(true);
-              }}
-            >
-              reset
-            </a>
-          ) : null}
-        </NamedRangeSliderHeader>
-        <RangeSliderContainer>
-          {isSingleValue && (
-            <span
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                padding: "0 6px",
-              }}
-            >
-              Only one non-none value exists:{" "}
-              <span style={{ color: theme.font }}>
-                {bounds[0].toLocaleString()}
-              </span>
-            </span>
-          )}
-          {hasBounds && !isSingleValue && <RangeSlider {...rangeSliderProps} />}
-          <FormControlLabel
-            label={
-              <div style={{ lineHeight: "20px", fontSize: 14 }}>
-                Filter no {valueName}
-              </div>
-            }
-            control={
-              <Checkbox
-                checked={!includeNone}
-                onChange={() => setIncludeNone(!includeNone)}
-                style={{
-                  padding: "0 5px",
-                  color,
+      return (
+        <NamedRangeSliderContainer ref={ref}>
+          <NamedRangeSliderHeader>
+            {name}
+            {!hasDefaultRange || !includeNone ? (
+              <a
+                style={{ cursor: "pointer", textDecoration: "underline" }}
+                onClick={() => {
+                  setRange(bounds);
+                  setIncludeNone(true);
                 }}
+              >
+                reset
+              </a>
+            ) : null}
+          </NamedRangeSliderHeader>
+          <RangeSliderContainer>
+            {isSingleValue && (
+              <span
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: "0 6px",
+                }}
+              >
+                Only one non-none value exists:{" "}
+                <span style={{ color: theme.font }}>
+                  {bounds[0].toLocaleString()}
+                </span>
+              </span>
+            )}
+            {hasBounds && !isSingleValue && (
+              <RangeSlider {...rangeSliderProps} />
+            )}
+            {hasNone && hasDefaultRange && (
+              <FormControlLabel
+                label={
+                  <div style={{ lineHeight: "20px", fontSize: 14 }}>
+                    Exclude{" "}
+                    <code style={{ color: rangeSliderProps.color }}>None</code>
+                  </div>
+                }
+                control={
+                  <Checkbox
+                    checked={!includeNone}
+                    onChange={() => setIncludeNone(!includeNone)}
+                    style={{
+                      padding: "0 5px",
+                      color: rangeSliderProps.color,
+                    }}
+                  />
+                }
               />
-            }
-          />
-        </RangeSliderContainer>
-      </NamedRangeSliderContainer>
-    );
-  }
+            )}
+          </RangeSliderContainer>
+        </NamedRangeSliderContainer>
+      );
+    }
+  )
 );
 
 export default RangeSlider;
