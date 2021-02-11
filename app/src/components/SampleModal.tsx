@@ -613,7 +613,7 @@ const SampleModal = (
                 activeLabels,
                 true
               )}
-              onSelectScalar={handleSetDisplayOption(setActiveLabels)}
+              onSelectScalar={() => {}}
               unsupported={getDisplayOptions(
                 labelNameGroups.unsupported,
                 otherSampleValues,
