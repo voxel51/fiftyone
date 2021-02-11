@@ -35,6 +35,35 @@ const matchValues = (values, value) => {
     .map((v) => v[0]);
 };
 
+const updateSelected = ({ selected, values }, { value, click }) => {
+  if (
+    (typeof value === "string" &&
+      !values.filter((v) => !selected.includes(v)).some((c) => c === value)) ||
+    NONE.includes(value)
+  ) {
+    value = null;
+  }
+  return [...new Set([...selected, value])].sort(NONE_SORT);
+};
+
+const canCommit = ({ values }, { value }) => {
+  return (
+    (NONE.includes(value) && values.includes(null)) ||
+    translateNone(values).some((c) => c[1] === value.toLowerCase())
+  );
+};
+
+const commitActions = {
+  actions: [
+    assign({
+      selected: updateSelected,
+      inputValue: "",
+      valid: true,
+      results: ({ values }) => values,
+    }),
+  ],
+};
+
 const stringFilterMachine = Machine({
   id: "stringFilter",
   initial: "init",
@@ -133,36 +162,13 @@ const stringFilterMachine = Machine({
         },
         COMMIT: [
           {
-            actions: [
-              assign({
-                selected: ({ selected, values }, { value }) => {
-                  console.log(
-                    values
-                      .filter((v) => !selected.includes(v))
-                      .some((c) => c === value)
-                  );
-                  if (
-                    (typeof value === "string" &&
-                      !values
-                        .filter((v) => !selected.includes(v))
-                        .some((c) => c === value)) ||
-                    NONE.includes(value)
-                  ) {
-                    value = null;
-                  }
-                  return [...new Set([...selected, value])].sort(NONE_SORT);
-                },
-                inputValue: "",
-                valid: true,
-                results: ({ values }) => values,
-              }),
-            ],
-            cond: ({ values }, { value }) => {
-              return (
-                (NONE.includes(value) && values.includes(null)) ||
-                translateNone(values).some((c) => c[1] === value.toLowerCase())
-              );
-            },
+            target: "reading",
+            cond: (ctx, event) => event.click && canCommit(ctx, event),
+            ...commitActions,
+          },
+          {
+            cond: canCommit,
+            ...commitActions,
           },
           {
             actions: assign({

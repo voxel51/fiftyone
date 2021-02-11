@@ -46,7 +46,7 @@ const SearchResult = React.memo(
       set({ backgroundColor: theme.backgroundDark, color: theme.fontDark });
 
     const setResult = (e) =>
-      send({ type: "COMMIT", value: e.target.dataset.result });
+      send({ type: "COMMIT", value: e.target.dataset.result, click: true });
 
     return (
       <SearchResultDiv
