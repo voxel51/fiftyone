@@ -5,5 +5,25 @@ Evaluation utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from .classification import *
-from .coco import *
+from .base import (
+    EvaluationConfig,
+    EvaluationMethod,
+    EvaluationResults,
+    list_evaluations,
+    clear_evaluation,
+    clear_evaluations,
+)
+from .classification import (
+    evaluate_classifications,
+    evaluate_binary_classifications,
+    ClassificationEvaluationConfig,
+    ClassificationEvaluationMethod,
+    ClassificationResults,
+    BinaryClassificationResults,
+)
+from .detection import (
+    evaluate_detections,
+    DetectionEvaluationConfig,
+    DetectionEvaluationMethod,
+    DetectionResults,
+)

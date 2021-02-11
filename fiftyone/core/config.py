@@ -22,6 +22,15 @@ import fiftyone.constants as foc
 logger = logging.getLogger(__name__)
 
 
+class Config(etac.Config):
+    def __repr__(self):
+        return self.__str__()
+
+
+class Configurable(etac.Configurable):
+    pass
+
+
 class EnvConfig(etac.EnvConfig):
     def __repr__(self):
         return self.__str__()
