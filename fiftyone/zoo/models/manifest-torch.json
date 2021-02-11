@@ -313,7 +313,8 @@
                     "entrypoint_fcn": "torchvision.models.detection.faster_rcnn.fasterrcnn_resnet50_fpn",
                     "entrypoint_args": { "pretrained": true },
                     "output_processor_cls": "fiftyone.utils.torch.DetectorOutputProcessor",
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
+                    "confidence_thresh": 0.3
                 }
             },
             "requirements": {
@@ -516,7 +517,8 @@
                             [15, 13, 11, 12, 14, 16]
                         ]
                     },
-                    "labels_string": "other,person"
+                    "labels_string": "other,person",
+                    "confidence_thresh": 0.3
                 }
             },
             "requirements": {
@@ -1024,7 +1026,8 @@
                     "entrypoint_fcn": "torchvision.models.detection.retinanet.retinanet_resnet50_fpn",
                     "entrypoint_args": { "pretrained": true },
                     "output_processor_cls": "fiftyone.utils.torch.DetectorOutputProcessor",
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
+                    "confidence_thresh": 0.3
                 }
             },
             "requirements": {
