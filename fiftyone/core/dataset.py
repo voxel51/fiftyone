@@ -293,7 +293,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @media_type.setter
     def media_type(self, media_type):
-        if len(self) != 0:
+        if self:
             raise ValueError("Cannot set media type of a non-empty dataset")
 
         if media_type not in fom.MEDIA_TYPES:
@@ -1394,6 +1394,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._sample_collection_name, doc_ids=[sample_id]
         )
 
+        if self.media_type == fom.VIDEO:
+            fofr.Frame._reset_docs(
+                self._frame_collection_name, sample_ids=[sample_id]
+            )
+
     def remove_samples(self, samples_or_ids):
         """Removes the given samples from the dataset.
 
@@ -1421,6 +1426,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fos.Sample._reset_docs(
             self._sample_collection_name, doc_ids=sample_ids
         )
+
+        if self.media_type == fom.VIDEO:
+            fofr.Frame._reset_docs(
+                self._frame_collection_name, sample_ids=sample_ids
+            )
 
     def save(self):
         """Saves the dataset to the database.
@@ -1471,7 +1481,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if self.media_type == fom.VIDEO:
             self._frame_doc_cls.drop_collection()
-            fos.Sample._reset_docs(self._frame_collection_name)
+            fofr.Frame._reset_docs(self._frame_collection_name)
 
     def delete(self):
         """Deletes the dataset.
@@ -2776,7 +2786,6 @@ def _clone_dataset_or_view(dataset_or_view, name):
 
 def _save_view(view, fields):
     dataset = view._dataset
-    doc_ids = [str(_id) for _id in dataset._get_sample_ids()]
 
     merge = fields is not None
 
@@ -2815,9 +2824,6 @@ def _save_view(view, fields):
             pipeline.append({"$out": dataset._frame_collection_name})
             dataset._sample_collection.aggregate(pipeline)
 
-        # @todo handle doc_ids
-        fofr.Frame._reload_docs(dataset._frame_collection_name)
-
         if not merge:
             for field_name in view._get_missing_fields(frames=True):
                 dataset._frame_doc_cls._delete_field_schema(field_name, False)
@@ -2837,11 +2843,23 @@ def _save_view(view, fields):
         pipeline.append({"$out": dataset._sample_collection_name})
         dataset._sample_collection.aggregate(pipeline)
 
-    fos.Sample._reload_docs(dataset._sample_collection_name, doc_ids=doc_ids)
-
     if not merge:
         for field_name in view._get_missing_fields():
             dataset._sample_doc_cls._delete_field_schema(field_name, False)
+
+    #
+    # Reload in-memory documents
+    #
+
+    # The samples now in the collection
+    doc_ids = [str(_id) for _id in dataset._get_sample_ids()]
+
+    if dataset.media_type == fom.VIDEO:
+        fofr.Frame._reload_docs(
+            dataset._frame_collection_name, sample_ids=doc_ids
+        )
+
+    fos.Sample._reload_docs(dataset._sample_collection_name, doc_ids=doc_ids)
 
 
 def _make_sample_collection_name():

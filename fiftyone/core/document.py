@@ -348,16 +348,14 @@ class Document(object):
             dataset (None): the :class:`fiftyone.core.dataset.Dataset` to which
                 the document belongs, if any
         """
-        # Ensure the doc is saved to the database
         if not doc.id:
             doc.save()
 
         self._doc = doc
 
-        # Save weak reference
-        dataset_instances = self._instances[doc.collection_name]
-        if self.id not in dataset_instances:
-            dataset_instances[self.id] = self
+        samples = self._instances[doc.collection_name]
+        if self.id not in samples:
+            samples[self.id] = self
 
         self._dataset = dataset
 
@@ -436,24 +434,25 @@ class Document(object):
         if collection_name not in cls._instances:
             return
 
-        dataset_instances = cls._instances[collection_name]
+        documents = cls._instances[collection_name]
 
+        # Reload all docs
         if doc_ids is None:
-            for document in dataset_instances.values():
+            for document in documents.values():
                 document.reload()
 
-            return
+        # Reload docs with `doc_ids`, reset others
+        if doc_ids is not None:
+            reset_ids = set()
+            for document in documents.values():
+                if document.id in doc_ids:
+                    document.reload()
+                else:
+                    reset_ids.add(document.id)
+                    document._reset_backing_doc()
 
-        reset_ids = set()
-        for document in dataset_instances.values():
-            if document.id in doc_ids:
-                document.reload()
-            else:
-                reset_ids.add(document.id)
-                document._reset_backing_doc()
-
-        for doc_id in reset_ids:
-            dataset_instances.pop(doc_id, None)
+            for doc_id in reset_ids:
+                documents.pop(doc_id, None)
 
     @classmethod
     def _reset_docs(cls, collection_name, doc_ids=None):
@@ -470,16 +469,17 @@ class Document(object):
         if collection_name not in cls._instances:
             return
 
+        # Reset all docs
         if doc_ids is None:
-            dataset_instances = cls._instances.pop(collection_name)
-            for document in dataset_instances.values():
+            documents = cls._instances.pop(collection_name)
+            for document in documents.values():
                 document._reset_backing_doc()
 
-            return
+        # Reset docs with `doc_ids`
+        if doc_ids is not None:
+            documents = cls._instances[collection_name]
 
-        dataset_instances = cls._instances[collection_name]
-
-        for doc_id in doc_ids:
-            document = dataset_instances.pop(doc_id, None)
-            if document is not None:
-                document._reset_backing_doc()
+            for doc_id in doc_ids:
+                document = documents.pop(doc_id, None)
+                if document is not None:
+                    document._reset_backing_doc()
