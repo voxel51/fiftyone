@@ -28,7 +28,31 @@ App
   :class:`Classifications <fiftyone.core.labels.Classifications>`,
   :class:`BooleanField <fiftyone.core.fields.BooleanField>`, and
   :class:`StringField <fiftyone.core.fields.StringField>`
+- Added support excluding selected values for a 
+  :class:`StringField <fiftyone.core.fields.StringField>` in the Fields
+  Sidebar
 - Various style and interaction improvements in the Fields Sidebar
+
+Core
+^^^^
+- Changed the default value for `only_matches` for
+  :meth:`filter_classifications() <fiftyone.core.collections.SampleCollection.filter_classifications>`,
+  :meth:`filter_detections() <fiftyone.core.collections.SampleCollection.filter_detections>`,
+  :meth:`filter_field() <fiftyone.core.collections.SampleCollection.filter_field>`,
+  :meth:`filter_labels() <fiftyone.core.collections.SampleCollection.filter_labels>`,
+  :meth:`filter_keypoints() <fiftyone.core.collections.SampleCollection.filter_keypoints>`,
+  and
+  :meth:`filter_polylines() <fiftyone.core.collections.SampleCollection.filter_polylines>`
+  to `True` from `False`
+- Added a :meth:`stats() <fiftyone.core.dataset.Dataset>` for listing helpful
+  info about the size of various entities of a dataset
+
+
+Docs
+^^^^
+- Removed legacy `--index` flags from the install instructions from the
+  :ref:`troubleshooting page <alternative-builds>` which prevented a valid
+  installation
 
 FiftyOne 0.7.2
 --------------
