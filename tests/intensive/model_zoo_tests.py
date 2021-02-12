@@ -203,7 +203,7 @@ def _apply_person_keypoint_models(model_names):
     )
 
     person_samples = dataset.filter_labels(
-        "ground_truth", F("label") == "person", only_matches=True
+        "ground_truth", F("label") == "person"
     ).limit(5)
 
     for idx, model_name in enumerate(model_names, 1):
