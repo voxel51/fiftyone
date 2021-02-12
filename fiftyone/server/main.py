@@ -1195,6 +1195,8 @@ class FileHandler(tornado.web.StaticFileHandler):
         self.set_header("content-length", self.get_content_size())
         self.set_header("x-colab-notebook-cache-control", "no-cache")
 
+
+class MediaHandler(FileHandler):
     @classmethod
     def get_absolute_path(cls, root, path):
         return path
@@ -1226,7 +1228,7 @@ class Application(tornado.web.Application):
             (r"/fiftyone", FiftyOneHandler),
             (r"/polling", PollingHandler),
             (r"/feedback", FeedbackHandler),
-            (r"/filepath/(.*)", FileHandler, {"path": ""},),
+            (r"/filepath/(.*)", MediaHandler, {"path": ""},),
             (r"/notebook", NotebookHandler),
             (r"/stages", StagesHandler),
             (r"/state", StateHandler),
