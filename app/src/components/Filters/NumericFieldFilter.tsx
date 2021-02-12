@@ -74,31 +74,36 @@ export const boundsAtom = selectorFamily<
 >({
   key: "numericFieldBounds",
   get: ({ path, defaultRange }) => ({ get }) => {
-    return (get(selectors.datasetStats) ?? []).reduce(
+    let bounds = (get(selectors.datasetStats) ?? []).reduce(
       (acc, cur) => {
         if (cur.name === path && cur._CLS === AGGS.BOUNDS) {
-          let { result: bounds } = cur;
-          let [maxMin, minMax]: Range = [null, null];
-          if (defaultRange) {
-            [maxMin, minMax] = defaultRange;
-            bounds = [
-              maxMin < bounds[0] ? maxMin : bounds[0],
-              minMax > bounds[1] ? minMax : bounds[1],
-            ];
-          }
-          return [
-            bounds[0] !== null && bounds[0] !== maxMin
-              ? Number((bounds[0] - 0.01).toFixed(2))
-              : bounds[0],
-            bounds[1] !== null && bounds[1] !== minMax
-              ? Number((bounds[1] + 0.01).toFixed(2))
-              : bounds[1],
-          ];
+          return cur.result;
         }
         return acc;
       },
       [null, null]
     );
+
+    if (bounds.every((b) => b === null)) {
+      return bounds;
+    }
+
+    let [maxMin, minMax]: Range = [null, null];
+    if (defaultRange) {
+      [maxMin, minMax] = defaultRange;
+      bounds = [
+        maxMin < bounds[0] ? maxMin : bounds[0],
+        minMax > bounds[1] ? minMax : bounds[1],
+      ];
+    }
+    return [
+      bounds[0] !== null && bounds[0] !== maxMin
+        ? Number((bounds[0] - 0.01).toFixed(2))
+        : bounds[0],
+      bounds[1] !== null && bounds[1] !== minMax
+        ? Number((bounds[1] + 0.01).toFixed(2))
+        : bounds[1],
+    ];
   },
 });
 
