@@ -769,16 +769,16 @@ class SampleCollection(object):
             classwise (True): whether to only match objects with the same class
                 label (True) or allow matches between classes (False)
             config (None): a
-                :class:`fiftyone.utils.eval.DetectionEvaluationConfig`
+                :class:`fiftyone.utils.eval.detection.DetectionEvaluationConfig`
                 specifying the evaluation method to use. If a ``config`` is
                 provided, the ``method``, ``iou``, ``classwise``, and
                 ``kwargs`` parameters are ignored
             **kwargs: optional keyword arguments for the constructor of the
-                :class:`fiftyone.utils.eval.DetectionEvaluationConfig` being
-                used
+                :class:`fiftyone.utils.eval.detection.DetectionEvaluationConfig`
+                being used
 
         Returns:
-            a :class:`fiftyone.utils.eval.DetectionResults`
+            a :class:`fiftyone.utils.eval.detection.DetectionResults`
         """
         return foue.evaluate_detections(
             self,
@@ -810,7 +810,7 @@ class SampleCollection(object):
             eval_key: an evaluation key
 
         Returns:
-            an :class:`fiftyone.utils.eval.EvaluationInfo`
+            an :class:`fiftyone.utils.eval.base.EvaluationInfo`
         """
         return foue.get_evaluation_info(self, eval_key)
 
