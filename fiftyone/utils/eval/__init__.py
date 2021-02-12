@@ -6,12 +6,13 @@ Evaluation utilities.
 |
 """
 from .base import (
+    Evaluation,
     EvaluationConfig,
     EvaluationInfo,
-    EvaluationMethod,
     EvaluationResults,
     list_evaluations,
     get_evaluation_info,
+    save_evaluation_info,
     load_evaluation_view,
     delete_evaluation,
     delete_evaluations,
@@ -19,14 +20,14 @@ from .base import (
 from .classification import (
     evaluate_classifications,
     evaluate_binary_classifications,
+    ClassificationEvaluation,
     ClassificationEvaluationConfig,
-    ClassificationEvaluationMethod,
     ClassificationResults,
     BinaryClassificationResults,
 )
 from .detection import (
     evaluate_detections,
+    DetectionEvaluation,
     DetectionEvaluationConfig,
-    DetectionEvaluationMethod,
     DetectionResults,
 )

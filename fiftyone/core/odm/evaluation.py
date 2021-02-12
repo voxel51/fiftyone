@@ -13,8 +13,8 @@ from .document import EmbeddedDocument
 class EvaluationDocument(EmbeddedDocument):
     """Description of an evaluation result."""
 
-    name = StringField()
-    gt_field = StringField()
+    eval_key = StringField()
     pred_field = StringField()
+    gt_field = StringField()
     config = DictField()
     view_stages = ListField(StringField())
