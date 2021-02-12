@@ -17,4 +17,4 @@ class EvaluationDocument(EmbeddedDocument):
     gt_field = StringField()
     pred_field = StringField()
     config = DictField()
-    view = ListField(DictField())
+    view_stages = ListField(StringField())

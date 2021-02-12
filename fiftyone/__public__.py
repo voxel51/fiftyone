@@ -131,8 +131,10 @@ from .core.utils import (
 )
 from .core.view import DatasetView
 from .utils.eval.base import (
+    EvaluationInfo,
     EvaluationResults,
     list_evaluations,
+    get_evaluation_info,
     load_evaluation_view,
     delete_evaluation,
     delete_evaluations,

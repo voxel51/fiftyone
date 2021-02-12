@@ -15,7 +15,7 @@ import fiftyone.core.utils as fou
 from .base import (
     EvaluationConfig,
     EvaluationMethod,
-    _get_evaluation,
+    get_evaluation_info,
     _record_evaluation,
     _delete_evaluation,
 )
@@ -140,12 +140,9 @@ def delete_detection_evaluation(samples, eval_key):
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         eval_key: the ``eval_key`` value for the evaluation
     """
-    evaluation = _get_evaluation(samples, eval_key)
-    pred_field = evaluation.pred_field
-    gt_field = evaluation.gt_field
-
-    pred_field, is_frame_field = samples._handle_frame_field(pred_field)
-    gt_field, _ = samples._handle_frame_field(gt_field)
+    info = get_evaluation_info(samples, eval_key)
+    pred_field, is_frame_field = samples._handle_frame_field(info.pred_field)
+    gt_field, _ = samples._handle_frame_field(info.gt_field)
 
     fields = [
         "%s.detections.%s_id" % (pred_field, eval_key),

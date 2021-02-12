@@ -6,12 +6,39 @@ Base evaluation utilities.
 |
 """
 from copy import copy
+import json
 
 import eta.core.utils as etau
 
 from fiftyone.core.config import Config, Configurable
 from fiftyone.core.odm.evaluation import EvaluationDocument
 import fiftyone.core.view as fov
+
+
+class EvaluationInfo(Config):
+    """Information about an evaluation that has been run on a dataset.
+
+    Args:
+        name: the name of the evaluation
+        gt_field: the name of the ground truth field
+        pred_field: the name of the predicted field
+        config: the :class:`EvaluationConfig` for the evaluation
+    """
+
+    def __init__(self, name, gt_field, pred_field, config):
+        self.name = name
+        self.gt_field = gt_field
+        self.pred_field = pred_field
+        self.config = config
+
+    @classmethod
+    def _from_doc(cls, doc):
+        return cls(
+            name=doc.name,
+            gt_field=doc.gt_field,
+            pred_field=doc.pred_field,
+            config=EvaluationConfig.from_dict(doc.config),
+        )
 
 
 class EvaluationConfig(Config):
@@ -106,6 +133,21 @@ def list_evaluations(samples):
     return sorted(samples._dataset._doc.evaluations.keys())
 
 
+def get_evaluation_info(samples, eval_key):
+    """Returns an :class:`EvaluationInfo` instance describing the evaluation
+    with the given key.
+
+    Args:
+        samples: a :class:`fiftyone.core.collections.SampleCollection`
+        eval_key: the ``eval_key`` value for the evaluation
+
+    Returns:
+        an :class:`EvaluationInfo`
+    """
+    evaluation = _get_evaluation(samples, eval_key)
+    return EvaluationInfo._from_doc(evaluation)
+
+
 def load_evaluation_view(samples, eval_key):
     """Loads the :class:`fiftyone.core.view.DatasetView` on which the specified
     evaluation was performed.
@@ -118,7 +160,8 @@ def load_evaluation_view(samples, eval_key):
         a :class:`fiftyone.core.view.DatasetView`
     """
     evaluation = _get_evaluation(samples, eval_key)
-    return fov.DatasetView._build(samples._dataset, evaluation.view)
+    stage_dicts = [json.loads(s) for s in evaluation.view_stages]
+    return fov.DatasetView._build(samples._dataset, stage_dicts)
 
 
 def delete_evaluation(samples, eval_key):
@@ -129,8 +172,8 @@ def delete_evaluation(samples, eval_key):
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         eval_key: the ``eval_key`` value for the evaluation
     """
-    evaluation = _get_evaluation(samples, eval_key)
-    config = EvaluationConfig.from_dict(evaluation.config)
+    eval_info = get_evaluation_info(samples, eval_key)
+    config = eval_info.config
 
     from .classification import (
         ClassificationEvaluationConfig,
@@ -173,12 +216,13 @@ def _get_evaluation(samples, eval_key):
 
 
 def _record_evaluation(samples, eval_key, pred_field, gt_field, config):
+    view_stages = [json.dumps(s) for s in samples.view()._serialize()]
     samples._dataset._doc.evaluations[eval_key] = EvaluationDocument(
         name=eval_key,
         pred_field=pred_field,
         gt_field=gt_field,
         config=config.serialize(),
-        view=samples.view()._serialize(),
+        view_stages=view_stages,
     )
     samples._dataset.save()
 

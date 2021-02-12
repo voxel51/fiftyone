@@ -21,7 +21,7 @@ from .base import (
     EvaluationConfig,
     EvaluationMethod,
     EvaluationResults,
-    _get_evaluation,
+    get_evaluation_info,
     _record_evaluation,
     _delete_evaluation,
 )
@@ -152,7 +152,7 @@ def delete_classification_evaluation(samples, eval_key):
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         eval_key: the ``eval_key`` value for the evaluation
     """
-    _get_evaluation(samples, eval_key)  # ensures `eval_key` is valid
+    get_evaluation_info(samples, eval_key)  # ensures `eval_key` is valid
     samples.delete_sample_field(eval_key)
     _delete_evaluation(samples, eval_key)
 
