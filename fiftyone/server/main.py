@@ -556,12 +556,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             r["height"] = h
             # default to image
 
-        for r in results:
-            s = r["sample"]
-            s["filepath"] = (
-                s["filepath"].replace(os.sep, posixpath.sep).split(":")[-1]
-            )
-
         message = {
             "type": "page",
             "page": page,
@@ -1199,12 +1193,15 @@ class FileHandler(tornado.web.StaticFileHandler):
         self.set_header("content-length", self.get_content_size())
         self.set_header("x-colab-notebook-cache-control", "no-cache")
 
+    @classmethod
+    def get_absolute_path(cls, root, path):
+        return path
+
 
 class Application(tornado.web.Application):
     """FiftyOne Tornado Application"""
 
     def __init__(self, **settings):
-        static_path = "C:/" if os.name == "nt" else "/"
         server_path = os.path.dirname(os.path.abspath(__file__))
         rel_web_path = "static"
         web_path = os.path.join(server_path, rel_web_path)
@@ -1212,7 +1209,7 @@ class Application(tornado.web.Application):
             (r"/fiftyone", FiftyOneHandler),
             (r"/polling", PollingHandler),
             (r"/feedback", FeedbackHandler),
-            (r"/filepath/(.*)", FileHandler, {"path": static_path},),
+            (r"/filepath/(.*)", FileHandler, {"path": ""},),
             (r"/notebook", NotebookHandler),
             (r"/stages", StagesHandler),
             (r"/state", StateHandler),
