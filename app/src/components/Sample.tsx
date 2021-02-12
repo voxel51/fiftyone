@@ -113,7 +113,7 @@ const useHoverLoad = (socket, sample) => {
 const Sample = ({ sample, metadata, setView }) => {
   const http = useRecoilValue(selectors.http);
   const id = sample._id;
-  const src = `${http}/filepath${sample.filepath}?id=${id}`;
+  const src = `${http}/filepath${encodeURI(sample.filepath)}?id=${id}`;
   const socket = useRecoilValue(selectors.socket);
   const filter = useRecoilValue(labelFilters(false));
   const colorMap = useRecoilValue(selectors.colorMap);
