@@ -670,8 +670,9 @@ class SampleCollection(object):
         respect to the specified ground truth labels.
 
         By default, this method simply compares the ground truth and prediction
-        for each sample, but other strategies such as top-k matching can be
-        configured via the ``method`` and ``config`` parameters.
+        for each sample, but other strategies such as binary evaluation and
+        top-k matching can be configured via the ``method`` and ``config``
+        parameters.
 
         If an ``eval_key`` is specified, this method will record whether each
         prediction is correct in this field.
@@ -685,10 +686,12 @@ class SampleCollection(object):
             eval_key (None): an evaluation key to use to refer to this
                 evaluation
             classes (None): the list of possible classes. If not provided, the
-                observed ground truth/predicted labels are used
+                observed ground truth/predicted labels are used for results
+                purposes
             missing ("none"): a missing label string. Any None-valued labels
-                are given this label for evaluation purposes
-            method ("simple"): a string specifying the evaluation method to use
+                are given this label for results purposes
+            method ("simple"): a string specifying the evaluation method to use.
+                Supported values are ``("simple", "binary", "top-k")``
             config (None): an :class:`ClassificationEvaluationConfig`
                 specifying the evaluation method to use. If a ``config`` is
                 provided, the ``method`` and ``kwargs`` parameters are ignored
@@ -708,36 +711,6 @@ class SampleCollection(object):
             method=method,
             config=config,
             **kwargs,
-        )
-
-    def evaluate_binary_classifications(
-        self, pred_field, classes, gt_field="ground_truth", eval_key=None
-    ):
-        """Evaluates the specified binary classification predictions in this
-        collection with respect to the specified ground truth labels.
-
-        Any missing ground truth or prediction labels are assumed to be
-        examples of the negative class (with zero confidence, for predictions).
-
-        If an ``eval_key`` is specified, this method will record the
-        TP/FP/FN/TN status of each prediction in this field.
-
-        Args:
-            pred_field: the name of the field containing the predicted
-                :class:`fiftyone.core.labels.Classification` instances to
-                evaluate
-            classes: the ``(neg_label, pos_label)`` label strings for the task
-            gt_field ("ground_truth"): the name of the field containing the
-                ground truth :class:`fiftyone.core.labels.Classification`
-                instances
-            eval_key (None): an evaluation key to use to refer to this
-                evaluation
-
-        Returns:
-            a :class:`fiftyone.utils.eval.BinaryClassificationResults`
-        """
-        return foue.evaluate_binary_classifications(
-            self, pred_field, classes, gt_field=gt_field, eval_key=eval_key,
         )
 
     def evaluate_detections(
@@ -790,7 +763,8 @@ class SampleCollection(object):
                 observed ground truth/predicted labels are used
             missing ("none"): a missing label string. Any unmatched objects are
                 given this label for evaluation purposes
-            method ("coco"): a string specifying the evaluation method to use
+            method ("coco"): a string specifying the evaluation method to use.
+                Supported values are ``("coco")``
             iou (0.75): the IoU threshold to use to determine matches
             classwise (True): whether to only match objects with the same class
                 label (True) or allow matches between classes (False)

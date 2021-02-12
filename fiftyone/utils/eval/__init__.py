@@ -6,8 +6,6 @@ Evaluation utilities.
 |
 """
 from .base import (
-    Evaluation,
-    EvaluationConfig,
     EvaluationInfo,
     EvaluationResults,
     list_evaluations,
@@ -19,15 +17,10 @@ from .base import (
 )
 from .classification import (
     evaluate_classifications,
-    evaluate_binary_classifications,
-    ClassificationEvaluation,
-    ClassificationEvaluationConfig,
     ClassificationResults,
     BinaryClassificationResults,
 )
 from .detection import (
     evaluate_detections,
-    DetectionEvaluation,
-    DetectionEvaluationConfig,
     DetectionResults,
 )

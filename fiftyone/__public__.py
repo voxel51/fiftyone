@@ -141,7 +141,6 @@ from .utils.eval.base import (
 )
 from .utils.eval.classification import (
     evaluate_classifications,
-    evaluate_binary_classifications,
     ClassificationResults,
     BinaryClassificationResults,
 )

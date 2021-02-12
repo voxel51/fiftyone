@@ -71,10 +71,12 @@ def evaluate_detections(
             truth :class:`fiftyone.core.labels.Detections`
         eval_key (None): an evaluation key to use to refer to this evaluation
         classes (None): the list of possible classes. If not provided, the
-            observed ground truth/predicted labels are used
+            observed ground truth/predicted labels are used for results
+            purposes
         missing ("none"): a missing label string. Any unmatched objects are
-            given this label for evaluation purposes
-        method ("coco"): a string specifying the evaluation method to use
+            given this label for results purposes
+        method ("coco"): a string specifying the evaluation method to use.
+            Supported values are ``("coco")``
         iou (0.75): the IoU threshold to use to determine matches
         classwise (True): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
