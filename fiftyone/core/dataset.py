@@ -2832,7 +2832,7 @@ def _save_view(view, fields):
     #
 
     if dataset.media_type == fom.VIDEO:
-        # The view may modify the frames, so we route the frames though th
+        # The view may modify the frames, so we route the frames through the
         # sample collection
         pipeline = view._pipeline(frames_only=True)
 
