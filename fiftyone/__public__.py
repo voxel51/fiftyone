@@ -133,6 +133,7 @@ from .core.view import DatasetView
 from .utils.eval.base import (
     EvaluationResults,
     list_evaluations,
+    load_evaluation_view,
     delete_evaluation,
     delete_evaluations,
 )

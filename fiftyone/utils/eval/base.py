@@ -10,9 +10,8 @@ from copy import copy
 import eta.core.utils as etau
 
 from fiftyone.core.config import Config, Configurable
-
-
-_EVAL_INFO_KEY = "evaluations"
+from fiftyone.core.odm.evaluation import EvaluationDocument
+import fiftyone.core.view as fov
 
 
 class EvaluationConfig(Config):
@@ -104,8 +103,22 @@ def list_evaluations(samples):
     Returns:
         a list of evaluation keys
     """
-    eval_info = samples._dataset.info.get(_EVAL_INFO_KEY, {})
-    return sorted(eval_info.keys())
+    return sorted(samples._dataset._doc.evaluations.keys())
+
+
+def load_evaluation_view(samples, eval_key):
+    """Loads the :class:`fiftyone.core.view.DatasetView` on which the specified
+    evaluation was performed.
+
+    Args:
+        samples: a :class:`fiftyone.core.collections.SampleCollection`
+        eval_key: the ``eval_key`` value for the evaluation
+
+    Returns:
+        a :class:`fiftyone.core.view.DatasetView`
+    """
+    evaluation = _get_evaluation(samples, eval_key)
+    return fov.DatasetView._build(samples._dataset, evaluation.view)
 
 
 def delete_evaluation(samples, eval_key):
@@ -116,7 +129,8 @@ def delete_evaluation(samples, eval_key):
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         eval_key: the ``eval_key`` value for the evaluation
     """
-    _, _, config = _get_eval_info(samples, eval_key)
+    evaluation = _get_evaluation(samples, eval_key)
+    config = EvaluationConfig.from_dict(evaluation.config)
 
     from .classification import (
         ClassificationEvaluationConfig,
@@ -147,33 +161,28 @@ def delete_evaluations(samples):
         delete_evaluation(samples, eval_key)
 
 
-def _get_eval_info(samples, eval_key):
-    evaluations = samples._dataset.info.get(_EVAL_INFO_KEY, {})
-    eval_info = evaluations.get(eval_key, None)
-    if eval_info is None:
+def _get_evaluation(samples, eval_key):
+    evaluation = samples._dataset._doc.evaluations.get(eval_key, None)
+    if evaluation is None:
         raise ValueError(
             "Evaluation '%s' not found on collection '%s'"
             % (eval_key, samples.name)
         )
 
-    pred_field = eval_info["pred_field"]
-    gt_field = eval_info["gt_field"]
-    config = EvaluationConfig.from_dict(eval_info["config"])
-
-    return pred_field, gt_field, config
+    return evaluation
 
 
-def _record_eval_info(samples, eval_key, pred_field, gt_field, config):
-    eval_info = samples._dataset.info.get(_EVAL_INFO_KEY, {})
-    eval_info[eval_key] = {
-        "pred_field": pred_field,
-        "gt_field": gt_field,
-        "config": config.serialize(),
-    }
-    samples._dataset.info[_EVAL_INFO_KEY] = eval_info
+def _record_evaluation(samples, eval_key, pred_field, gt_field, config):
+    samples._dataset._doc.evaluations[eval_key] = EvaluationDocument(
+        name=eval_key,
+        pred_field=pred_field,
+        gt_field=gt_field,
+        config=config.serialize(),
+        view=samples.view()._serialize(),
+    )
     samples._dataset.save()
 
 
-def _delete_eval_info(samples, eval_key):
-    samples._dataset.info[_EVAL_INFO_KEY].pop(eval_key)
+def _delete_evaluation(samples, eval_key):
+    samples._dataset._doc.evaluations.pop(eval_key, None)
     samples._dataset.save()

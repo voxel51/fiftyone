@@ -15,9 +15,9 @@ import fiftyone.core.utils as fou
 from .base import (
     EvaluationConfig,
     EvaluationMethod,
-    _get_eval_info,
-    _record_eval_info,
-    _delete_eval_info,
+    _get_evaluation,
+    _record_evaluation,
+    _delete_evaluation,
 )
 from .classification import ClassificationResults
 
@@ -127,7 +127,7 @@ def evaluate_detections(
                 sample.save()
 
     if eval_key is not None:
-        _record_eval_info(samples, eval_key, pred_field, gt_field, config)
+        _record_evaluation(samples, eval_key, pred_field, gt_field, config)
 
     return DetectionResults(matches, classes=classes, missing=missing)
 
@@ -140,7 +140,9 @@ def delete_detection_evaluation(samples, eval_key):
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         eval_key: the ``eval_key`` value for the evaluation
     """
-    pred_field, gt_field, _ = _get_eval_info(samples, eval_key)
+    evaluation = _get_evaluation(samples, eval_key)
+    pred_field = evaluation.pred_field
+    gt_field = evaluation.gt_field
 
     pred_field, is_frame_field = samples._handle_frame_field(pred_field)
     gt_field, _ = samples._handle_frame_field(gt_field)
@@ -161,7 +163,7 @@ def delete_detection_evaluation(samples, eval_key):
         ["%s_tp" % eval_key, "%s_fp" % eval_key, "%s_fn" % eval_key]
     )
 
-    _delete_eval_info(samples, eval_key)
+    _delete_evaluation(samples, eval_key)
 
 
 class DetectionEvaluationConfig(EvaluationConfig):

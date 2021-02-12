@@ -21,9 +21,9 @@ from .base import (
     EvaluationConfig,
     EvaluationMethod,
     EvaluationResults,
-    _get_eval_info,
-    _record_eval_info,
-    _delete_eval_info,
+    _get_evaluation,
+    _record_evaluation,
+    _delete_evaluation,
 )
 
 
@@ -77,7 +77,7 @@ def evaluate_classifications(
     )
 
     if eval_key is not None:
-        _record_eval_info(samples, eval_key, pred_field, gt_field, config)
+        _record_evaluation(samples, eval_key, pred_field, gt_field, config)
 
     return ClassificationResults(
         ytrue, ypred, confs, classes=classes, missing=missing
@@ -139,7 +139,7 @@ def evaluate_binary_classifications(
         ),
     ).save(eval_key)
 
-    _record_eval_info(samples, eval_key, pred_field, gt_field, config)
+    _record_evaluation(samples, eval_key, pred_field, gt_field, config)
 
     return results
 
@@ -152,9 +152,9 @@ def delete_classification_evaluation(samples, eval_key):
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         eval_key: the ``eval_key`` value for the evaluation
     """
-    _get_eval_info(samples, eval_key)  # ensures `eval_key` is valid
+    _get_evaluation(samples, eval_key)  # ensures `eval_key` is valid
     samples.delete_sample_field(eval_key)
-    _delete_eval_info(samples, eval_key)
+    _delete_evaluation(samples, eval_key)
 
 
 class ClassificationEvaluationConfig(EvaluationConfig):
