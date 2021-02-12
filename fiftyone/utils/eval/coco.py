@@ -11,7 +11,7 @@ import numpy as np
 
 import eta.core.utils as etau
 
-from .detection import DetectionEvaluationConfig, DetectionEvaluationMethod
+from .detection import DetectionEvaluation, DetectionEvaluationConfig
 
 
 class COCOEvaluationConfig(DetectionEvaluationConfig):
@@ -33,7 +33,7 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         return "coco"
 
 
-class COCOEvaluation(DetectionEvaluationMethod):
+class COCOEvaluation(DetectionEvaluation):
     """COCO-style evaluation.
 
     Args:
@@ -82,7 +82,7 @@ class COCOEvaluation(DetectionEvaluationMethod):
             eval_key (None): an evaluation key for this evaluation
 
         Returns:
-            a list of matched ``(gt_label, pred_label, pred_confidence)``
+            a list of matched ``(gt_label, pred_label, iou, pred_confidence)``
             tuples
         """
         gts = sample_or_frame[gt_field]
@@ -173,20 +173,22 @@ def _coco_evaluation(gts, preds, eval_key, config):
                     pred[eval_key] = "tp"
                     pred[id_key] = best_match
                     pred[iou_key] = best_match_iou
-                    matches.append((gt.label, pred.label, pred.confidence))
+                    matches.append(
+                        (gt.label, pred.label, best_match_iou, pred.confidence)
+                    )
                 else:
                     pred[eval_key] = "fp"
-                    matches.append((None, pred.label, pred.confidence))
+                    matches.append((None, pred.label, None, pred.confidence))
 
             elif pred.label == cat:
                 pred[eval_key] = "fp"
-                matches.append((None, pred.label, pred.confidence))
+                matches.append((None, pred.label, None, pred.confidence))
 
         # Leftover GTs are false negatives
         for gt in objects["gts"]:
             if gt[id_key] == _NO_MATCH_ID:
                 gt[eval_key] = "fn"
-                matches.append((gt.label, None, None))
+                matches.append((gt.label, None, None, None))
 
     return matches
 

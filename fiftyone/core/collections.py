@@ -31,6 +31,7 @@ import fiftyone.core.utils as fou
 
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
+foue = fou.lazy_import("fiftyone.utils.eval")
 foum = fou.lazy_import("fiftyone.utils.metadata")
 
 
@@ -653,6 +654,190 @@ class SampleCollection(object):
             force_square=force_square,
             alpha=alpha,
         )
+
+    def evaluate_classifications(
+        self,
+        pred_field,
+        gt_field="ground_truth",
+        eval_key=None,
+        classes=None,
+        missing="none",
+        method="simple",
+        config=None,
+        **kwargs,
+    ):
+        """Evaluates the classification predictions in this collection with
+        respect to the specified ground truth labels.
+
+        By default, this method simply compares the ground truth and prediction
+        for each sample, but other strategies such as binary evaluation and
+        top-k matching can be configured via the ``method`` and ``config``
+        parameters.
+
+        If an ``eval_key`` is specified, this method will record whether each
+        prediction is correct in this field.
+
+        Args:
+            pred_field: the name of the field containing the predicted
+                :class:`fiftyone.core.labels.Classification` instances
+            gt_field ("ground_truth"): the name of the field containing the
+                ground truth :class:`fiftyone.core.labels.Classification`
+                instances
+            eval_key (None): an evaluation key to use to refer to this
+                evaluation
+            classes (None): the list of possible classes. If not provided, the
+                observed ground truth/predicted labels are used for results
+                purposes
+            missing ("none"): a missing label string. Any None-valued labels
+                are given this label for results purposes
+            method ("simple"): a string specifying the evaluation method to use.
+                Supported values are ``("simple", "binary", "top-k")``
+            config (None): an :class:`ClassificationEvaluationConfig`
+                specifying the evaluation method to use. If a ``config`` is
+                provided, the ``method`` and ``kwargs`` parameters are ignored
+            **kwargs: optional keyword arguments for the constructor of the
+                :class:`ClassificationEvaluationConfig` being used
+
+        Returns:
+            a :class:`ClassificationResults`
+        """
+        return foue.evaluate_classifications(
+            self,
+            pred_field,
+            gt_field=gt_field,
+            eval_key=eval_key,
+            classes=classes,
+            missing=missing,
+            method=method,
+            config=config,
+            **kwargs,
+        )
+
+    def evaluate_detections(
+        self,
+        pred_field,
+        gt_field="ground_truth",
+        eval_key=None,
+        classes=None,
+        missing="none",
+        method="coco",
+        iou=0.75,
+        classwise=True,
+        config=None,
+        **kwargs,
+    ):
+        """Evaluates the specified predicted detections in this collection with
+        respect to the specified ground truth detections.
+
+        By default, this method uses COCO-style evaluation, but this can be
+        configued via the ``method`` and ``config`` parameters.
+
+        If an ``eval_key`` is provided, a number of fields are populated at the
+        detection- and sample-level recording the results of the evaluation:
+
+        -   True positive (TP), false positive (FP), and false negative (FN)
+            counts for the each sample are saved in top-level fields of each
+            sample::
+
+                TP: sample.<eval_key>_tp
+                FP: sample.<eval_key>_fp
+                FN: sample.<eval_key>_fn
+
+        -   The fields listed below are populated on each individual
+            :class:`fiftyone.core.labels.Detection` instance; these fields
+            tabulate the TP/FP/FN status of the object, the ID of the matching
+            object (if any), and the matching IoU::
+
+                TP/FP/FN: detection.<eval_key>
+                      ID: detection.<eval_key>_id
+                     IoU: detection.<eval_key>_iou
+
+        Args:
+            pred_field: the name of the field containing the predicted
+                :class:`fiftyone.core.labels.Detections` to evaluate
+            gt_field ("ground_truth"): the name of the field containing the
+                ground truth :class:`fiftyone.core.labels.Detections`
+            eval_key (None): an evaluation key to use to refer to this
+                evaluation
+            classes (None): the list of possible classes. If not provided, the
+                observed ground truth/predicted labels are used
+            missing ("none"): a missing label string. Any unmatched objects are
+                given this label for evaluation purposes
+            method ("coco"): a string specifying the evaluation method to use.
+                Supported values are ``("coco")``
+            iou (0.75): the IoU threshold to use to determine matches
+            classwise (True): whether to only match objects with the same class
+                label (True) or allow matches between classes (False)
+            config (None): a
+                :class:`fiftyone.utils.eval.DetectionEvaluationConfig`
+                specifying the evaluation method to use. If a ``config`` is
+                provided, the ``method``, ``iou``, ``classwise``, and
+                ``kwargs`` parameters are ignored
+            **kwargs: optional keyword arguments for the constructor of the
+                :class:`fiftyone.utils.eval.DetectionEvaluationConfig` being
+                used
+
+        Returns:
+            a :class:`fiftyone.utils.eval.DetectionResults`
+        """
+        return foue.evaluate_detections(
+            self,
+            pred_field,
+            gt_field=gt_field,
+            eval_key=eval_key,
+            classes=classes,
+            missing=missing,
+            method=method,
+            iou=iou,
+            classwise=classwise,
+            config=config,
+            **kwargs,
+        )
+
+    def list_evaluations(self):
+        """Returns a list of all evaluation keys on this collection.
+
+        Returns:
+            a list of evaluation keys
+        """
+        return foue.list_evaluations(self)
+
+    def get_evaluation_info(self, eval_key):
+        """Returns information about the evaluation with the given key on this
+        collection.
+
+        Args:
+            eval_key: an evaluation key
+
+        Returns:
+            an :class:`fiftyone.utils.eval.EvaluationInfo`
+        """
+        return foue.get_evaluation_info(self, eval_key)
+
+    def load_evaluation_view(self, eval_key):
+        """Loads the :class:`fiftyone.core.view.DatasetView` on which the
+        specified evaluation was performed on this collection.
+
+        Args:
+            eval_key: an evaluation key
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return foue.load_evaluation_view(self, eval_key)
+
+    def delete_evaluation(self, eval_key):
+        """Deletes the evaluation results associated with the given evaluation
+        key from this collection.
+
+        Args:
+            eval_key: an evaluation key
+        """
+        foue.delete_evaluation(self, eval_key)
+
+    def delete_evaluations(self):
+        """Deletes all evaluation results from this collection."""
+        foue.delete_evaluations(self)
 
     @classmethod
     def list_view_stages(cls):
@@ -3025,7 +3210,7 @@ class SampleCollection(object):
         frame_labels_prefix=None,
         frame_labels_dict=None,
         overwrite=False,
-        **kwargs
+        **kwargs,
     ):
         """Exports the samples in the collection to disk.
 

@@ -6,24 +6,21 @@ Evaluation utilities.
 |
 """
 from .base import (
-    EvaluationConfig,
-    EvaluationMethod,
+    EvaluationInfo,
     EvaluationResults,
     list_evaluations,
-    clear_evaluation,
-    clear_evaluations,
+    get_evaluation_info,
+    save_evaluation_info,
+    load_evaluation_view,
+    delete_evaluation,
+    delete_evaluations,
 )
 from .classification import (
     evaluate_classifications,
-    evaluate_binary_classifications,
-    ClassificationEvaluationConfig,
-    ClassificationEvaluationMethod,
     ClassificationResults,
     BinaryClassificationResults,
 )
 from .detection import (
     evaluate_detections,
-    DetectionEvaluationConfig,
-    DetectionEvaluationMethod,
     DetectionResults,
 )

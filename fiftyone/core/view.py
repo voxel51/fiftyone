@@ -17,6 +17,7 @@ import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
+import fiftyone.core.stages as fost
 
 
 class DatasetView(foc.SampleCollection):
@@ -615,6 +616,15 @@ class DatasetView(foc.SampleCollection):
 
     def _serialize(self):
         return [s._serialize() for s in self._stages]
+
+    @staticmethod
+    def _build(dataset, stage_dicts):
+        view = dataset.view()
+        for stage_dict in stage_dicts:
+            stage = fost.ViewStage._from_dict(stage_dict)
+            view = view.add_stage(stage)
+
+        return view
 
     def _slice(self, s):
         if s.step is not None and s.step != 1:

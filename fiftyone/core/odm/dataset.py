@@ -8,6 +8,7 @@ Documents that track datasets and their sample schemas in the database.
 from mongoengine import (
     BooleanField,
     DictField,
+    EmbeddedDocumentField,
     EmbeddedDocumentListField,
     ListField,
     StringField,
@@ -16,10 +17,11 @@ from mongoengine import (
 import eta.core.utils as etau
 
 from .document import Document, EmbeddedDocument
+from .evaluation import EvaluationDocument
 
 
 class SampleFieldDocument(EmbeddedDocument):
-    """Backing document for sample fields."""
+    """Description of a sample field."""
 
     name = StringField()
     ftype = StringField()
@@ -28,7 +30,7 @@ class SampleFieldDocument(EmbeddedDocument):
 
     @classmethod
     def from_field(cls, field):
-        """Creates a :class:`SampleFieldDocument` from a MongoEngine field.
+        """Creates a :class:`SampleFieldDocument` for a field.
 
         Args:
             field: a :class:``fiftyone.core.fields.Field`` instance
@@ -102,6 +104,9 @@ class DatasetDocument(Document):
     sample_collection_name = StringField(unique=True, required=True)
     persistent = BooleanField(default=False)
     info = DictField(default=dict)
+    evaluations = DictField(
+        EmbeddedDocumentField(document_type=EvaluationDocument), default=dict
+    )
     sample_fields = EmbeddedDocumentListField(
         document_type=SampleFieldDocument
     )
