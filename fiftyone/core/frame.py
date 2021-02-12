@@ -442,23 +442,28 @@ class Frame(Document):
         return sample
 
     @classmethod
-    def _rename_field(cls, collection_name, field_name, new_field_name):
+    def _rename_fields(cls, collection_name, field_names, new_field_names):
         for samples in cls._instances[collection_name].values():
             for document in samples.values():
                 data = document._doc._data
-                data[new_field_name] = data.pop(field_name, None)
+                for field_name, new_field_name in zip(
+                    field_names, new_field_names
+                ):
+                    data[new_field_name] = data.pop(field_name, None)
 
     @classmethod
-    def _clear_field(cls, collection_name, field_name):
+    def _clear_fields(cls, collection_name, field_names):
         for samples in cls._instances[collection_name].values():
             for document in samples.values():
-                document._doc._data[field_name] = None
+                for field_name in field_names:
+                    document._doc._data[field_name] = None
 
     @classmethod
-    def _purge_field(cls, collection_name, field_name):
+    def _purge_fields(cls, collection_name, field_names):
         for samples in cls._instances[collection_name].values():
             for document in samples.values():
-                document._doc._data.pop(field_name, None)
+                for field_name in field_names:
+                    document._doc._data.pop(field_name, None)
 
     @classmethod
     def _reload_docs(cls, collection_name):

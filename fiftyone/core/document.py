@@ -370,49 +370,54 @@ class Document(object):
         self._dataset = None
 
     @classmethod
-    def _rename_field(cls, collection_name, field_name, new_field_name):
+    def _rename_fields(cls, collection_name, field_names, new_field_names):
         """Renames the field on all in-memory documents in the collection.
 
         Args:
             collection_name: the name of the MongoDB collection
-            field_name: the name of the field to rename
-            new_field_name: the new field name
+            field_names: an iterable of field names
+            new_field_names: an iterable of new field names
         """
         if collection_name not in cls._instances:
             return
 
         for document in cls._instances[collection_name].values():
             data = document._doc._data
-            data[new_field_name] = data.pop(field_name, None)
+            for field_name, new_field_name in zip(
+                field_names, new_field_names
+            ):
+                data[new_field_name] = data.pop(field_name, None)
 
     @classmethod
-    def _clear_field(cls, collection_name, field_name):
-        """Clears the values for the given field (i.e., sets it to None) on all
-        in-memory documents in the collection.
+    def _clear_fields(cls, collection_name, field_names):
+        """Clears the values for the given field(s) (i.e., sets them to None)
+        on all in-memory documents in the collection.
 
         Args:
             collection_name: the name of the MongoDB collection
-            field_name: the name of the field to purge
+            field_names: an iterable of field names
         """
         if collection_name not in cls._instances:
             return
 
         for document in cls._instances[collection_name].values():
-            document._doc._data[field_name] = None
+            for field_name in field_names:
+                document._doc._data[field_name] = None
 
     @classmethod
-    def _purge_field(cls, collection_name, field_name):
-        """Removes the field from all in-memory documents in the collection.
+    def _purge_fields(cls, collection_name, field_names):
+        """Removes the field(s) from all in-memory documents in the collection.
 
         Args:
             collection_name: the name of the MongoDB collection
-            field_name: the name of the field to purge
+            field_names: an iterable of field names
         """
         if collection_name not in cls._instances:
             return
 
         for document in cls._instances[collection_name].values():
-            document._doc._data.pop(field_name, None)
+            for field_name in field_names:
+                document._doc._data.pop(field_name, None)
 
     @classmethod
     def _reload_docs(cls, collection_name, doc_ids=None):
