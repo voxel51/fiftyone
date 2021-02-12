@@ -481,7 +481,7 @@ class SampleView(_Sample):
 
     Args:
         doc: a :class:`fiftyone.core.odm.DatasetSampleDocument`
-        dataset: the :class:`fiftyone.core.dataset.Dataset` that the sample
+        view: the :class:`fiftyone.core.view.DatasetView` that the sample
             belongs to
         selected_fields (None): a set of field names that this sample view is
             restricted to
@@ -494,7 +494,7 @@ class SampleView(_Sample):
     def __init__(
         self,
         doc,
-        dataset,
+        view,
         selected_fields=None,
         excluded_fields=None,
         filtered_fields=None,
@@ -513,6 +513,7 @@ class SampleView(_Sample):
             excluded_fields = None
 
         self._doc = doc
+        self._view = view
         self._selected_fields = selected_fields
         self._excluded_fields = excluded_fields
         self._filtered_fields = filtered_fields
@@ -521,7 +522,7 @@ class SampleView(_Sample):
             self._frames = fofr.Frames()
             self._frames._serve(self)
 
-        super().__init__(dataset=dataset)
+        super().__init__(dataset=view._dataset)
 
     def __str__(self):
         return repr(self)

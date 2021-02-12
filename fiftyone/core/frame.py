@@ -60,6 +60,10 @@ class Frames(object):
             {"_sample_id": self._sample._id}
         ).count()
 
+    @property
+    def _view(self):
+        return getattr(self._sample, "_view", None)
+
     def _set_replacement(self, frame):
         self._replacements[frame.frame_number] = frame
 
@@ -69,7 +73,9 @@ class Frames(object):
             if d["frame_number"] in self._replacements:
                 continue
             frame = Frame.from_doc(
-                frame_dict_to_doc(d), dataset=self._sample._dataset
+                frame_dict_to_doc(d),
+                dataset=self._sample._dataset,
+                view=self._view,
             )
             self._replacements[frame.frame_number] = frame
 
@@ -157,6 +163,7 @@ class Frames(object):
             frame = Frame.from_doc(
                 self._sample._dataset._frame_dict_to_doc(d),
                 dataset=self._sample._dataset,
+                view=self._view,
             )
             self._set_replacement(frame)
         else:
@@ -341,6 +348,7 @@ class Frames(object):
                 self._iter_frame = Frame.from_doc(
                     self._sample._dataset._frame_dict_to_doc(d),
                     dataset=self._sample._dataset,
+                    view=self._view,
                 )
 
             self._set_replacement(self._iter_frame)
@@ -420,7 +428,7 @@ class Frame(Document):
         return self.__class__(**kwargs)
 
     @classmethod
-    def from_doc(cls, doc, dataset=None):
+    def from_doc(cls, doc, dataset=None, view=None):
         """Creates an instance of the :class:`Frame` class backed by the given
         document.
 
@@ -428,6 +436,8 @@ class Frame(Document):
             doc: a :class:`fiftyone.core.odm.SampleDocument`
             dataset (None): the :class:`fiftyone.core.dataset.Dataset` that the
                 frame belongs to
+            view (None): the :class:`fiftyone.core.view.DatasetView` that the
+                frame belongs to, if any
 
         Returns:
             a :class:`Frame`
@@ -440,9 +450,11 @@ class Frame(Document):
 
         try:
             # Get instance if exists
-            frame = cls._instances[doc.collection_name][str(doc._sample_id)][
-                doc.frame_number
-            ]
+            key = str(doc._sample_id)
+            if view is not None:
+                key = "%s%s" % (key, view._serialize())
+
+            frame = cls._instances[doc.collection_name][key][doc.frame_number]
         except KeyError:
             frame = cls.__new__(cls)
             frame._doc = None  # prevents recursion

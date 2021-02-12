@@ -564,9 +564,17 @@ class VideoSampleTests(unittest.TestCase):
         sample.save()
         view = dataset.filter_labels("frames.foo", F("label") == "bar")
 
+        detections = dataset.first().frames.first().foo.detections
+        self.assertEqual(len(detections), 2)
+        self.assertEqual(detections[0].label, "foo")
+
         detections = view.first().frames.first().foo.detections
         self.assertEqual(len(detections), 1)
         self.assertEqual(detections[0].label, "bar")
+
+        detections = dataset.first().frames.first().foo.detections
+        self.assertEqual(len(detections), 2)
+        self.assertEqual(detections[0].label, "foo")
 
 
 class SampleFieldTests(unittest.TestCase):
