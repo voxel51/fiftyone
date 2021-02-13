@@ -1132,7 +1132,7 @@ def _make_scalar_expression(f, args):
         expr = f.is_in(values)
         exclude = args["exclude"]
 
-        if exclude and expr:
+        if exclude:
             # pylint: disable=invalid-unary-operand-type
             expr = ~expr
 
