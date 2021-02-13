@@ -449,7 +449,7 @@ export const NamedStringFilter = React.memo(
                     style={{ cursor: "pointer", textDecoration: "underline" }}
                     onClick={() => setExclude(!exclude)}
                   >
-                    {exclude ? "exclude " : "include "}instead
+                    {exclude ? "include " : "exclude "}instead
                   </a>
                 </>
               )}
