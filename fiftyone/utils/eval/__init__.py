@@ -24,3 +24,7 @@ from .detection import (
     evaluate_detections,
     DetectionResults,
 )
+from .segmentation import (
+    evaluate_segmentations,
+    SegmentationResults,
+)
