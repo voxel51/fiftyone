@@ -5,5 +5,22 @@ Evaluation utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from .classification import *
-from .coco import *
+from .base import (
+    EvaluationInfo,
+    EvaluationResults,
+    list_evaluations,
+    get_evaluation_info,
+    save_evaluation_info,
+    load_evaluation_view,
+    delete_evaluation,
+    delete_evaluations,
+)
+from .classification import (
+    evaluate_classifications,
+    ClassificationResults,
+    BinaryClassificationResults,
+)
+from .detection import (
+    evaluate_detections,
+    DetectionResults,
+)

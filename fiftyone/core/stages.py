@@ -667,17 +667,20 @@ class FilterField(ViewStage):
         return self._only_matches
 
     def to_mongo(self, sample_collection):
+        field_name, is_frame_field = sample_collection._handle_frame_field(
+            self._field
+        )
         new_field = self._get_new_field(sample_collection)
-        if sample_collection._is_frame_field(self._field):
+        if is_frame_field:
             return _get_filter_frames_field_pipeline(
-                self._field,
+                field_name,
                 new_field,
                 self._filter,
                 only_matches=self._only_matches,
             )
 
         return _get_filter_field_pipeline(
-            self._field,
+            field_name,
             new_field,
             self._filter,
             only_matches=self._only_matches,
@@ -694,9 +697,7 @@ class FilterField(ViewStage):
         return _get_field_mongo_filter(self._filter, prefix=self._field)
 
     def _get_new_field(self, sample_collection):
-        field = self._field
-        if sample_collection._is_frame_field(field):
-            field = field.split(".", 1)[1]  # remove `frames`
+        field, _ = sample_collection._handle_frame_field(self._field)
 
         if self._hide_result:
             return "__" + field
@@ -704,7 +705,7 @@ class FilterField(ViewStage):
         return field
 
     def _needs_frames(self, sample_collection):
-        return sample_collection._is_frame_field(self._field)
+        return sample_collection._handle_frame_field(self._field)[1]
 
     def _kwargs(self):
         return [
@@ -738,7 +739,9 @@ class FilterField(ViewStage):
             raise ValueError("Cannot filter required field `filepath`")
 
         sample_collection.validate_fields_exist(self._field)
-        self._is_frame_field = sample_collection._is_frame_field(self._field)
+
+        _, is_frame_field = sample_collection._handle_frame_field(self._field)
+        self._is_frame_field = is_frame_field
 
 
 def _get_filter_field_pipeline(
@@ -774,7 +777,6 @@ def _get_filter_field_pipeline(
 def _get_filter_frames_field_pipeline(
     filter_field, new_field, filter_arg, only_matches=True, hide_result=False,
 ):
-    filter_field = filter_field.split(".", 1)[1]  # remove `frames`
     cond = _get_field_mongo_filter(filter_arg, prefix="$frame." + filter_field)
 
     pipeline = [
@@ -1149,37 +1151,24 @@ class FilterLabels(FilterField):
 
     def to_mongo(self, sample_collection):
         self._get_labels_field(sample_collection)
+
+        labels_field, is_frame_field = sample_collection._handle_frame_field(
+            self._labels_field
+        )
         new_field = self._get_new_field(sample_collection)
 
-        if sample_collection._is_frame_field(self._labels_field):
+        if is_frame_field:
             if self._is_labels_list_field:
-                return _get_filter_frames_list_field_pipeline(
-                    self._labels_field,
-                    new_field,
-                    self._filter,
-                    only_matches=self._only_matches,
-                    hide_result=self._hide_result,
-                )
+                _make_pipeline = _get_filter_frames_list_field_pipeline
+            else:
+                _make_pipeline = _get_filter_frames_field_pipeline
+        elif self._is_labels_list_field:
+            _make_pipeline = _get_filter_list_field_pipeline
+        else:
+            _make_pipeline = _get_filter_field_pipeline
 
-            return _get_filter_frames_field_pipeline(
-                self._labels_field,
-                new_field,
-                self._filter,
-                only_matches=self._only_matches,
-                hide_result=self._hide_result,
-            )
-
-        if self._is_labels_list_field:
-            return _get_filter_list_field_pipeline(
-                self._labels_field,
-                new_field,
-                self._filter,
-                only_matches=self._only_matches,
-                hide_result=self._hide_result,
-            )
-
-        return _get_filter_field_pipeline(
-            self._labels_field,
+        return _make_pipeline(
+            labels_field,
             new_field,
             self._filter,
             only_matches=self._only_matches,
@@ -1187,7 +1176,7 @@ class FilterLabels(FilterField):
         )
 
     def _needs_frames(self, sample_collection):
-        return sample_collection._is_frame_field(self._labels_field)
+        return sample_collection._handle_frame_field(self._labels_field)[1]
 
     def _get_mongo_filter(self):
         if self._is_labels_list_field:
@@ -1211,9 +1200,7 @@ class FilterLabels(FilterField):
         self._is_frame_field = is_frame_field
 
     def _get_new_field(self, sample_collection):
-        field = self._labels_field
-        if sample_collection._is_frame_field(field):
-            field = field.split(".", 1)[1]  # remove `frames`
+        field, _ = sample_collection._handle_frame_field(self._labels_field)
 
         if self._hide_result:
             return "__%s" % field
@@ -1262,7 +1249,6 @@ def _get_filter_list_field_pipeline(
 def _get_filter_frames_list_field_pipeline(
     filter_field, new_field, filter_arg, only_matches=True, hide_result=False,
 ):
-    filter_field = filter_field.split(".", 1)[1]  # remove `frames`
     cond = _get_list_field_mongo_filter(filter_arg)
     label_field, labels_list = new_field.split(".")
 
@@ -1365,18 +1351,18 @@ class _FilterListField(FilterField):
         return [self._filter_field]
 
     def to_mongo(self, sample_collection):
+        filter_field, is_frame_field = sample_collection._handle_frame_field(
+            self._filter_field
+        )
         new_field = self._get_new_field(sample_collection)
-        if sample_collection._is_frame_field(self._filter_field):
-            return _get_filter_frames_list_field_pipeline(
-                self._filter_field,
-                new_field,
-                self._filter,
-                only_matches=self._only_matches,
-                hide_result=self._hide_result,
-            )
 
-        return _get_filter_list_field_pipeline(
-            self._filter_field,
+        if is_frame_field:
+            _make_pipeline = _get_filter_frames_list_field_pipeline
+        else:
+            _make_pipeline = _get_filter_list_field_pipeline
+
+        return _make_pipeline(
+            filter_field,
             new_field,
             self._filter,
             only_matches=self._only_matches,
@@ -3098,13 +3084,13 @@ def _get_labels_list_field(sample_collection, field_path):
 
 
 def _get_field(sample_collection, field_path):
-    is_frame_field = sample_collection._is_frame_field(field_path)
+    field_name, is_frame_field = sample_collection._handle_frame_field(
+        field_path
+    )
 
     if is_frame_field:
-        field_name = field_path[len(sample_collection._FRAMES_PREFIX) :]
         schema = sample_collection.get_frame_field_schema()
     else:
-        field_name = field_path
         schema = sample_collection.get_field_schema()
 
     if field_name not in schema:

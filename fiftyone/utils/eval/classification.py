@@ -5,6 +5,8 @@ Classification evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import warnings
+
 import matplotlib.pyplot as plt
 import numpy as np
 import sklearn.metrics as skm
@@ -15,211 +17,340 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 
+from .base import (
+    Evaluation,
+    EvaluationConfig,
+    EvaluationInfo,
+    EvaluationResults,
+    save_evaluation_info,
+    validate_evaluation,
+)
+
 
 def evaluate_classifications(
     samples,
     pred_field,
     gt_field="ground_truth",
-    eval_field=None,
+    eval_key=None,
     classes=None,
     missing="none",
+    method="simple",
+    config=None,
+    **kwargs,
 ):
-    """Evaluates the classification predictions in the given samples with
+    """Evaluates the classification predictions in the given collection with
     respect to the specified ground truth labels.
 
-    If an ``eval_field`` is specified, this method will record whether each
+    By default, this method simply compares the ground truth and prediction for
+    each sample, but other strategies such as binary evaluation and top-k
+    matching can be configured via the ``method`` and ``config`` parameters.
+
+    If an ``eval_key`` is specified, this method will record whether each
     prediction is correct in this field.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         pred_field: the name of the field containing the predicted
-            :class:`fiftyone.core.labels.Classification` instances to evaluate
+            :class:`fiftyone.core.labels.Classification` instances
         gt_field ("ground_truth"): the name of the field containing the ground
             truth :class:`fiftyone.core.labels.Classification` instances
-        eval_field (None): the name of a field in which to record whether each
-            prediction is correct
+        eval_key (None): an evaluation key to use to refer to this evaluation
         classes (None): the list of possible classes. If not provided, the
-            observed ground truth/predicted labels are used
+            observed ground truth/predicted labels are used for results
+            purposes
         missing ("none"): a missing label string. Any None-valued labels are
-            replaced with this string
+            given this label for results purposes
+        method ("simple"): a string specifying the evaluation method to use.
+            Supported values are ``("simple", "binary", "top-k")``
+        config (None): an :class:`ClassificationEvaluationConfig` specifying
+            the evaluation method to use. If a ``config`` is provided, the
+            ``method`` and ``kwargs`` parameters are ignored
+        **kwargs: optional keyword arguments for the constructor of the
+            :class:`ClassificationEvaluationConfig` being used
 
     Returns:
         a :class:`ClassificationResults`
     """
-    gt = gt_field + ".label"
-    pred = pred_field + ".label"
-    pred_conf = pred_field + ".confidence"
+    config = _parse_config(config, method, **kwargs)
+    eval_info = EvaluationInfo(eval_key, pred_field, gt_field, config)
+    validate_evaluation(samples, eval_info)
+    eval_method = config.build()
 
-    ytrue, ypred, confs = samples.aggregate(
-        [foa.Values(gt), foa.Values(pred), foa.Values(pred_conf)]
+    results = eval_method.evaluate_samples(
+        samples,
+        pred_field,
+        gt_field,
+        eval_key=eval_key,
+        classes=classes,
+        missing=missing,
     )
 
-    if eval_field:
-        samples._add_field_if_necessary(eval_field, fof.BooleanField)
-        samples.set_field(eval_field, F(gt) == F(pred)).save(eval_field)
+    if eval_key is not None:
+        save_evaluation_info(samples, eval_info)
 
-    # Equivalent with loops
-    # ytrue = []
-    # ypred = []
-    # confs = []
-    # with fou.ProgressBar() as pb:
-    #     for sample in pb(samples.select_fields([pred_field, gt_field])):
-    #         gt_label = sample[gt_field].label
-    #         pred_label = sample[pred_field].label
-    #         pred_conf = sample[pred_field].confidence
-    #         ytrue.append(gt_label)
-    #         ypred.append(pred_label)
-    #         confs.append(pred_conf)
-    #         if eval_field:
-    #             sample[eval_field] = gt_label == pred_label
-    #             sample.save()
-
-    return ClassificationResults(
-        ytrue, ypred, confs, classes=classes, missing=missing
-    )
+    return results
 
 
-def evaluate_binary_classifications(
-    samples, classes, pred_field, gt_field="ground_truth", eval_field=None,
-):
-    """Evaluates the binary classification predictions in the given samples
+class ClassificationEvaluationConfig(EvaluationConfig):
+    """Base class for configuring :class:`ClassificationEvaluation`
+    instances.
+    """
+
+    pass
+
+
+class ClassificationEvaluation(Evaluation):
+    """Base class for classification evaluation methods.
+
+    Args:
+        config: a :class:`ClassificationEvaluationConfig`
+    """
+
+    def evaluate_samples(
+        self,
+        samples,
+        pred_field,
+        gt_field,
+        eval_key=None,
+        classes=None,
+        missing=None,
+    ):
+        """Evaluates the predicted classifications in the given samples with
+        respect to the specified ground truth labels.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            pred_field: the name of the field containing the predicted
+                :class:`fiftyone.core.labels.Classification` instances
+            gt_field: the name of the field containing the ground truth
+                :class:`fiftyone.core.labels.Classification` instances
+            eval_key (None): an evaluation key for this evaluation
+            classes (None): the list of possible classes. If not provided, the
+                observed ground truth/predicted labels are used for results
+                purposes
+            missing ("none"): a missing label string. Any None-valued labels
+                are given this label for results purposes
+
+        Returns:
+            a tuple of:
+
+            -   ytrue: ground truth labels
+            -   ypred: predicted labels
+            -   confs: prediction confidences
+        """
+        raise NotImplementedError("subclass must implement evaluate_samples()")
+
+    def cleanup(self, samples, eval_key):
+        samples._dataset.delete_sample_field(eval_key)
+
+
+class SimpleEvaluationConfig(ClassificationEvaluationConfig):
+    """Simple classification evaluation config."""
+
+    @property
+    def method(self):
+        return "simple"
+
+
+class SimpleEvaluation(ClassificationEvaluation):
+    """Standard classification evaluation.
+
+    Args:
+        config: a :class:`SimpleClassificationEvaluationConfig`
+    """
+
+    def evaluate_samples(
+        self,
+        samples,
+        pred_field,
+        gt_field,
+        eval_key=None,
+        classes=None,
+        missing=None,
+    ):
+        gt = gt_field + ".label"
+        pred = pred_field + ".label"
+        pred_conf = pred_field + ".confidence"
+
+        ytrue, ypred, confs = samples.aggregate(
+            [foa.Values(gt), foa.Values(pred), foa.Values(pred_conf)]
+        )
+
+        if eval_key is not None:
+            samples._add_field_if_necessary(eval_key, fof.BooleanField)
+            samples.set_field(eval_key, F(gt) == F(pred)).save(eval_key)
+
+        return ClassificationResults(
+            ytrue, ypred, confs, classes=classes, missing=missing
+        )
+
+
+class TopKEvaluationConfig(ClassificationEvaluationConfig):
+    """Top-k classification evaluation config.
+
+    Args:
+        k (5): the top-k value to use when assessing accuracy
+    """
+
+    def __init__(self, k=5, **kwargs):
+        super().__init__(**kwargs)
+        self.k = k
+
+    @property
+    def method(self):
+        return "top-k"
+
+
+class TopKEvaluation(ClassificationEvaluation):
+    """Top-k classification evaluation.
+
+    This method requires the ``logits`` field of each predicted object to be
+    populated, and the list of class labels corresponding to these logits must
+    be provided.
+
+    Args:
+        config: a :class:`TopKEvaluationConfig`
+    """
+
+    def evaluate_samples(
+        self,
+        samples,
+        pred_field,
+        gt_field,
+        eval_key=None,
+        classes=None,
+        missing=None,
+    ):
+        if classes is None:
+            raise ValueError(
+                "You must provide the list of classes corresponding to your "
+                "logits in order to run top-k classification evaluation"
+            )
+
+        k = self.config.k
+
+        # This extracts a `num_samples x num_classes` array of logits
+        ytrue, ypred, logits = samples.aggregate(
+            [
+                foa.Values(gt_field + ".label"),
+                foa.Values(pred_field + ".label"),
+                foa.Values(pred_field + ".logits"),
+            ]
+        )
+
+        targets_map = {label: idx for idx, label in enumerate(classes)}
+
+        confs = []
+        correct = []
+        for idx, (_ytrue, _logits) in enumerate(zip(ytrue, logits)):
+            if _logits is None:
+                # No logits = no prediction
+                ypred[idx] = None
+                _conf = None
+                _correct = None
+                msg = (
+                    "Found sample(s) with no logits. Logits are required to "
+                    + "compute top-k accuracy"
+                )
+                warnings.warn(msg)
+            else:
+                target = targets_map[_ytrue]
+                top_k = np.argpartition(_logits, -k)[-k:]
+                if target in top_k:
+                    # Truth is in top-k; use it
+                    ypred[idx] = _ytrue
+                    logit = _logits[target]
+                    _correct = True
+                else:
+                    # Truth is not in top-k; retain actual prediction
+                    logit = _logits[targets_map[ypred[idx]]]
+                    _correct = False
+
+                _conf = np.exp(logit) / np.sum(np.exp(_logits))
+
+            confs.append(_conf)
+            correct.append(_correct)
+
+        if eval_key is not None:
+            samples._add_field_if_necessary(eval_key, fof.BooleanField)
+            samples.set_values(eval_key, correct)
+
+        return ClassificationResults(
+            ytrue, ypred, confs, classes=classes, missing=missing
+        )
+
+
+class BinaryEvaluationConfig(ClassificationEvaluationConfig):
+    """Binary evaluation config."""
+
+    @property
+    def method(self):
+        return "binary"
+
+
+class BinaryEvaluation(ClassificationEvaluation):
+    """Binary classification evaluation.
+
+    Evaluates the binary classification predictions in the given collection
     with respect to the specified ground truth labels.
 
     Any missing ground truth or prediction labels are assumed to be examples of
     the negative class (with zero confidence, for predictions).
 
-    If an ``eval_field`` is specified, this method will record the TP/FP/FN/TN
+    If an ``eval_key`` is specified, this method will record the TP/FP/FN/TN
     status of each prediction in this field.
 
-    Args:
-        samples: a :class:`fiftyone.core.collections.SampleCollection`
-        classes: the ``(neg_label, pos_label)`` label strings for the task
-        pred_field: the name of the field containing the predicted
-            :class:`fiftyone.core.labels.Classification` instances to evaluate
-        gt_field ("ground_truth"): the name of the field containing the ground
-            truth :class:`fiftyone.core.labels.Classification` instances
-        eval_field (None): the name of a field in which to record whether each
-            prediction is correct
-
-    Returns:
-        a :class:`BinaryClassificationResults`
-    """
-    pos_label = classes[-1]
-
-    gt = gt_field + ".label"
-    pred = pred_field + ".label"
-    pred_conf = pred_field + ".confidence"
-
-    ytrue, ypred, confs = samples.aggregate(
-        [foa.Values(gt), foa.Values(pred), foa.Values(pred_conf)]
-    )
-
-    if eval_field:
-        samples._add_field_if_necessary(eval_field, fof.StringField)
-        samples.set_field(
-            eval_field,
-            F().switch(
-                {
-                    (F(gt) == pos_label) & (F(pred) == pos_label): "TP",
-                    (F(gt) == pos_label) & (F(pred) != pos_label): "FN",
-                    (F(gt) != pos_label) & (F(pred) != pos_label): "TN",
-                    (F(gt) != pos_label) & (F(pred) == pos_label): "FP",
-                }
-            ),
-        ).save(eval_field)
-
-    # Equivalent with loops
-    # ytrue = []
-    # ypred = []
-    # confs = []
-    # with fou.ProgressBar() as pb:
-    #     for sample in pb(samples.select_fields([pred_field, gt_field])):
-    #         gt_label = sample[gt_field].label
-    #         pred_label = sample[pred_field].label
-    #         pred_conf = sample[pred_field].confidence
-    #         ytrue.append(gt_label)
-    #         ypred.append(pred_label)
-    #         confs.append(pred_conf)
-    #         if eval_field:
-    #             if gt_label == pos_label:
-    #                 eval_label = "TP" if pred_label == pos_label else "FN"
-    #             else:
-    #                 eval_label = "TN" if pred_label != pos_label else "FP"
-    #
-    #             sample[eval_field] = fol.Classification(label=eval_label)
-    #             sample.save()
-
-    return BinaryClassificationResults(ytrue, ypred, confs, classes)
-
-
-def evaluate_top_k_classifications(
-    samples, k, classes, pred_field, gt_field="ground_truth", eval_field=None,
-):
-    """Evaluates the top-k accuracy of the classification predictions in the
-    given samples with respect to the specified ground truth labels.
-
-    The predictions in ``pred_field`` must have their ``logits`` populated.
-
-    If an ``eval_field`` is specified, this method will record whether each
-    prediction is top-k correct in this field.
+    This method requires that the ``(neg_label, pos_label)`` label strings for
+    the task are provided via the ``classes`` argument.
 
     Args:
-        samples: a :class:`fiftyone.core.collections.SampleCollection`
-        k: the top-k value to use when assessing accuracy
-        classes: the list of class labels corresponding to the predicted logits
-        pred_field: the name of the field containing the predicted
-            :class:`fiftyone.core.labels.Classification` instances to evaluate.
-            This field must have its ``logits`` populated
-        gt_field ("ground_truth"): the name of the field containing the ground
-            truth :class:`fiftyone.core.labels.Classification` instances
-        eval_field (None): the name of a field in which to record whether each
-            prediction is top-k correct
-
-    Returns:
-        the top-k accuracy in ``[0, 1]``
+        config: a :class:`BinaryEvaluationConfig`
     """
-    targets_map = {label: idx for idx, label in enumerate(classes)}
 
-    # This extracts a `num_samples x num_classes` array of logits
-    ytrue, logits = samples.aggregate(
-        [foa.Values(gt_field + ".label"), foa.Values(pred_field + ".logits")]
-    )
+    def evaluate_samples(
+        self,
+        samples,
+        pred_field,
+        gt_field,
+        eval_key=None,
+        classes=None,
+        missing=None,
+    ):
+        if classes is None or len(classes) != 2:
+            raise ValueError(
+                "You must provide the ``(neg_label, pos_label)`` labels for "
+                "your task via the ``classes`` argument in order to run "
+                "binary evaluation"
+            )
 
-    correct = []
-    for _label, _logits in zip(ytrue, logits):
-        if _logits is not None:
-            target = targets_map[_label]
-            top_k = np.argpartition(_logits, -k)[-k:]
-            _correct = target in top_k
-        else:
-            _correct = False
+        pos_label = classes[-1]
 
-        correct.append(_correct)
+        gt = gt_field + ".label"
+        pred = pred_field + ".label"
+        pred_conf = pred_field + ".confidence"
 
-    if eval_field:
-        samples._add_field_if_necessary(eval_field, fof.BooleanField)
-        samples.set_values(eval_field, correct)
+        ytrue, ypred, confs = samples.aggregate(
+            [foa.Values(gt), foa.Values(pred), foa.Values(pred_conf)]
+        )
 
-    top_k_accuracy = np.mean(correct)
+        if eval_key is not None:
+            samples._add_field_if_necessary(eval_key, fof.StringField)
+            samples.set_field(
+                eval_key,
+                F().switch(
+                    {
+                        (F(gt) == pos_label) & (F(pred) == pos_label): "TP",
+                        (F(gt) == pos_label) & (F(pred) != pos_label): "FN",
+                        (F(gt) != pos_label) & (F(pred) != pos_label): "TN",
+                        (F(gt) != pos_label) & (F(pred) == pos_label): "FP",
+                    }
+                ),
+            ).save(eval_key)
 
-    # Equivalent with loops
-    # num_correct = 0
-    # with fou.ProgressBar() as pb:
-    #     for sample in pb(samples.select_fields([gt_field, pred_field])):
-    #         idx = targets_map[sample[gt_field].label]
-    #         logits = sample[pred_field].logits
-    #         in_top_k = idx in np.argpartition(logits, -k)[-k:]
-    #         num_correct += int(in_top_k)
-    #         if eval_field:
-    #             sample[eval_field] = in_top_k
-    #             sample.save()
-    #
-    # top_k_accuracy = num_correct / len(samples)
-
-    return top_k_accuracy
+        return BinaryClassificationResults(ytrue, ypred, confs, classes)
 
 
-class ClassificationResults(object):
+class ClassificationResults(EvaluationResults):
     """Class that stores the results of a classification evaluation.
 
     Args:
@@ -229,7 +360,7 @@ class ClassificationResults(object):
         classes (None): the list of possible classes. If not provided, the
             observed ground truth/predicted labels are used
         missing ("none"): a missing label string. Any None-valued labels are
-            replaced with this string
+            given this label for evaluation purposes
     """
 
     def __init__(self, ytrue, ypred, confs, classes=None, missing="none"):
@@ -245,7 +376,7 @@ class ClassificationResults(object):
         if classes is not None:
             return classes
 
-        return [l for l in self.classes if l != self.missing]
+        return self.classes
 
     def report(self, classes=None):
         """Generates a classification report for the results via
@@ -327,7 +458,7 @@ class ClassificationResults(object):
         xticks_rotation=45.0,
         ax=None,
         block=False,
-        **kwargs
+        **kwargs,
     ):
         """Plots a confusion matrix for the results.
 
@@ -360,7 +491,7 @@ class ClassificationResults(object):
             cmap=cmap,
             xticks_rotation=xticks_rotation,
             ax=ax,
-            **kwargs
+            **kwargs,
         )
         plt.show(block=block)
         return display.ax_
@@ -385,12 +516,6 @@ class BinaryClassificationResults(ClassificationResults):
         )
         self._pos_label = classes[1]
         self.scores = _to_binary_scores(ypred, confs, self._pos_label)
-
-    def _get_labels(self, classes):
-        if classes is not None:
-            return classes
-
-        return self.classes
 
     def average_precision(self, average="micro"):
         """Computes the average precision for the results via
@@ -457,14 +582,35 @@ class BinaryClassificationResults(ClassificationResults):
         return display.ax_
 
 
-def _parse_labels(ytrue, ypred, classes, missing):
-    ytrue, found_missing_true = _clean_labels(ytrue, missing)
-    ypred, found_missing_pred = _clean_labels(ypred, missing)
+def _parse_config(config, method, **kwargs):
+    if config is not None:
+        return config
 
+    if method is None:
+        method = "simple"
+
+    if method == "simple":
+        return SimpleEvaluationConfig(**kwargs)
+
+    if method == "binary":
+        return BinaryEvaluationConfig(**kwargs)
+
+    if method == "top-k":
+        return TopKEvaluationConfig(**kwargs)
+
+    raise ValueError("Unsupported evaluation method '%s'" % method)
+
+
+def _parse_labels(ytrue, ypred, classes, missing):
     if classes is None:
-        classes = sorted(set(ytrue) | set(ypred))
+        classes = set(ytrue) | set(ypred)
+        classes.discard(None)
+        classes = sorted(classes)
     else:
         classes = list(classes)
+
+    ytrue, found_missing_true = _clean_labels(ytrue, missing)
+    ypred, found_missing_pred = _clean_labels(ypred, missing)
 
     found_missing = found_missing_true or found_missing_pred
     if found_missing and missing not in classes:

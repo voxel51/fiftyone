@@ -13,11 +13,11 @@ import multiprocessing
 import numpy as np
 from PIL import Image
 
-from eta.core.config import Config
 import eta.core.learning as etal
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.config as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fomm
 import fiftyone.core.models as fom
@@ -438,7 +438,7 @@ class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
         raise NotImplementedError("subclasses must implement _predict_all()")
 
 
-class TorchImageModelConfig(Config):
+class TorchImageModelConfig(foc.Config):
     """Configuration for running a :class:`TorchImageModel`.
 
     Args:

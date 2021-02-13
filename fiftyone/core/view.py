@@ -17,6 +17,7 @@ import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
+import fiftyone.core.stages as fost
 
 
 class DatasetView(foc.SampleCollection):
@@ -160,6 +161,14 @@ class DatasetView(foc.SampleCollection):
             ["%d. %s" % (idx, str(d)) for idx, d in enumerate(self._stages, 1)]
         )
 
+    def view(self):
+        """Returns a copy of this view.
+
+        Returns:
+            a :class:`DatasetView`
+        """
+        return copy(self)
+
     def iter_samples(self):
         """Returns an iterator over the samples in the view.
 
@@ -247,39 +256,6 @@ class DatasetView(foc.SampleCollection):
 
         return self._get_filtered_schema(field_schema, frames=True)
 
-    def list_indexes(self):
-        """Returns the fields of the dataset that are indexed.
-
-        Returns:
-            a list of field names
-        """
-        return self._dataset.list_indexes()
-
-    def create_index(self, field, unique=False):
-        """Creates an index on the given field.
-
-        If the given field already has a unique index, it will be retained
-        regardless of the ``unique`` value you specify.
-
-        If the given field already has a non-unique index but you requested a
-        unique index, the existing index will be dropped.
-
-        Indexes enable efficient sorting, merging, and other such operations.
-
-        Args:
-            field: the field name or ``embedded.field.name``
-            unique (False): whether to add a uniqueness constraint to the index
-        """
-        self._dataset.create_index(field, unique=unique)
-
-    def drop_index(self, field):
-        """Drops the index on the given field.
-
-        Args:
-            field: the field name or ``embedded.field.name``
-        """
-        self._dataset.drop_index(field)
-
     def clone_sample_field(self, field_name, new_field_name):
         """Clones the given sample field of the view into a new field of the
         dataset.
@@ -287,13 +263,54 @@ class DatasetView(foc.SampleCollection):
         You can use dot notation (``embedded.field.name``) to clone embedded
         fields.
 
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+
+        .. warning::
+
+            If ``new_field_name`` is an embedded field, be aware that this
+            operation will save the entire top-level field of
+            ``new_field_name`` after performing the clone, which may result in
+            data modification/loss if this view modifies this field in any
+            other ways.
+
         Args:
-            field_name: the field name to clone
-            new_field_name: the new field name to populate
+            field_name: the field name or ``embedded.field.name``
+            new_field_name: the new field name or ``embedded.field.name``
         """
-        self._dataset._clone_sample_field(
-            field_name, new_field_name, view=self
+        self._dataset._clone_sample_fields(
+            {field_name: new_field_name}, view=self
         )
+
+    def clone_sample_fields(self, field_mapping):
+        """Clones the given sample fields of the view into new fields of the
+        dataset.
+
+        You can use dot notation (``embedded.field.name``) to clone embedded
+        fields.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+
+        .. warning::
+
+            If any of the new field names to specify are embedded fields, be
+            aware that this operation will save the entire top-level new
+            fields after performing the clone, which may result in data
+            modification/loss if this view modifies these fields in any other
+            ways.
+
+        Args:
+            field_mapping: a dict mapping field names to new field names into
+                which to clone each field
+        """
+        self._dataset._clone_sample_fields(field_mapping, view=self)
 
     def clone_frame_field(self, field_name, new_field_name):
         """Clones the frame-level field of the view into a new field.
@@ -303,11 +320,56 @@ class DatasetView(foc.SampleCollection):
 
         Only applicable to video datasets.
 
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+
+        .. warning::
+
+            If ``new_field_name`` is an embedded field, be aware that this
+            operation will save the entire top-level field of
+            ``new_field_name`` after performing the clone, which may result in
+            data modification/loss if this view modifies this field in any
+            other ways.
+
         Args:
-            field_name: the field name
-            new_field_name: the new field name
+            field_name: the field name or ``embedded.field.name``
+            new_field_name: the new field name or ``embedded.field.name``
         """
-        self._dataset._clone_frame_field(field_name, new_field_name, view=self)
+        self._dataset._clone_frame_fields(
+            {field_name: new_field_name}, view=self
+        )
+
+    def clone_frame_fields(self, field_mapping):
+        """Clones the frame-level fields of the view into new frame-level
+        fields of the dataset.
+
+        You can use dot notation (``embedded.field.name``) to clone embedded
+        frame fields.
+
+        Only applicable to video datasets.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+
+        .. warning::
+
+            If any of the new field names to specify are embedded fields, be
+            aware that this operation will save the entire top-level new
+            fields after performing the clone, which may result in data
+            modification/loss if this view modifies these fields in any other
+            ways.
+
+        Args:
+            field_mapping: a dict mapping field names to new field names into
+                which to clone each field
+        """
+        self._dataset._clone_frame_fields(field_mapping, view=self)
 
     def clear_sample_field(self, field_name):
         """Clears the values of the field from all samples in the view.
@@ -318,13 +380,54 @@ class DatasetView(foc.SampleCollection):
         You can use dot notation (``embedded.field.name``) to clear embedded
         fields.
 
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+
+        .. warning::
+
+            If the field name you specify is an embedded field, be aware that
+            this operation will save the entire top-level field after clearing
+            the field, which may result in data modification/loss if this view
+            modifies the field in any other ways.
+
         Args:
-            field_name: the field name
+            field_name: the field name or ``embedded.field.name``
         """
-        self._dataset._clear_sample_field(field_name, view=self)
+        self._dataset._clear_sample_fields(field_name, view=self)
+
+    def clear_sample_fields(self, field_names):
+        """Clears the values of the fields from all samples in the view.
+
+        The fields will remain in the dataset's schema, and all samples in the
+        view will have the value ``None`` for the fields.
+
+        You can use dot notation (``embedded.field.name``) to clear embedded
+        fields.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+
+        .. warning::
+
+            If any of the field names you specify are embedded fields, be aware
+            that this operation will save the entire top-level field after
+            clearing the fields, which may result in data modification/loss if
+            this view modifies these fields in any other ways.
+
+        Args:
+            field_names: the field name or iterable of field names
+        """
+        self._dataset._clear_sample_fields(field_names, view=self)
 
     def clear_frame_field(self, field_name):
-        """Clears the values of the frame field from all samples in the view.
+        """Clears the values of the frame-level field from all samples in the
+        view.
 
         The field will remain in the dataset's frame schema, and all frames in
         the view will have the value ``None`` for the field.
@@ -334,16 +437,61 @@ class DatasetView(foc.SampleCollection):
 
         Only applicable to video datasets.
 
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+
+        .. warning::
+
+            If the field name you specify is an embedded field, be aware that
+            this operation will save the entire top-level field after clearing
+            the field, which may result in data modification/loss if this view
+            modifies the field in any other ways.
+
         Args:
-            field_name: the field name
+            field_name: the field name or ``embedded.field.name``
         """
-        self._dataset._clear_frame_field(field_name, view=self)
+        self._dataset._clear_frame_fields(field_name, view=self)
+
+    def clear_frame_fields(self, field_names):
+        """Clears the values of the frame-level fields from all samples in the
+        view.
+
+        The fields will remain in the dataset's frame schema, and all frames in
+        the view will have the value ``None`` for the fields.
+
+        You can use dot notation (``embedded.field.name``) to clear embedded
+        frame fields.
+
+        Only applicable to video datasets.
+
+        .. note::
+
+            This method is not a :class:`fiftyone.core.stages.ViewStage`;
+            it immediately writes the requested changes to the underlying
+            dataset.
+
+        .. warning::
+
+            If any of the field names you specify are embedded fields, be aware
+            that this operation will save the entire top-level field after
+            clearing the fields, which may result in data modification/loss if
+            this view modifies these fields in any other ways.
+
+        Args:
+            field_names: the field name or iterable of field names
+        """
+        self._dataset._clear_frame_fields(field_names, view=self)
 
     def save(self, fields=None):
         """Overwrites the underlying dataset with the contents of the view.
 
-        **WARNING:** this will permanently delete any omitted, filtered, or
-        otherwise modified contents of the dataset.
+        .. warning::
+
+            This will permanently delete any omitted, filtered, or otherwise
+            modified contents of the dataset.
 
         Args:
             fields (None): an optional field or list of fields to save. If
@@ -365,6 +513,39 @@ class DatasetView(foc.SampleCollection):
             the new :class:`Dataset`
         """
         return self._dataset._clone(name=name, view=self)
+
+    def list_indexes(self):
+        """Returns the fields of the dataset that are indexed.
+
+        Returns:
+            a list of field names
+        """
+        return self._dataset.list_indexes()
+
+    def create_index(self, field_name, unique=False):
+        """Creates an index on the given field.
+
+        If the given field already has a unique index, it will be retained
+        regardless of the ``unique`` value you specify.
+
+        If the given field already has a non-unique index but you requested a
+        unique index, the existing index will be dropped.
+
+        Indexes enable efficient sorting, merging, and other such operations.
+
+        Args:
+            field_name: the field name or ``embedded.field.name``
+            unique (False): whether to add a uniqueness constraint to the index
+        """
+        self._dataset.create_index(field_name, unique=unique)
+
+    def drop_index(self, field_name):
+        """Drops the index on the given field.
+
+        Args:
+            field_name: the field name or ``embedded.field.name``
+        """
+        self._dataset.drop_index(field_name)
 
     def to_dict(self, rel_dir=None, frame_labels_dir=None, pretty_print=False):
         """Returns a JSON dictionary representation of the view.
@@ -426,6 +607,15 @@ class DatasetView(foc.SampleCollection):
 
     def _serialize(self):
         return [s._serialize() for s in self._stages]
+
+    @staticmethod
+    def _build(dataset, stage_dicts):
+        view = dataset.view()
+        for stage_dict in stage_dicts:
+            stage = fost.ViewStage._from_dict(stage_dict)
+            view = view.add_stage(stage)
+
+        return view
 
     def _slice(self, s):
         if s.step is not None and s.step != 1:
