@@ -279,14 +279,22 @@ const StringFilterContainer = styled.div`
 type Props = {
   valuesAtom: RecoilValueReadOnly<string[]>;
   selectedValuesAtom: RecoilState<string[]>;
+  excludeAtom: RecoilState<boolean>;
   valueName: string;
   color?: string;
 };
 
 const StringFilter = React.memo(
-  ({ valuesAtom, selectedValuesAtom, valueName, color }: Props) => {
+  ({
+    valuesAtom,
+    selectedValuesAtom,
+    excludeAtom,
+    valueName,
+    color,
+  }: Props) => {
     const theme = useContext(ThemeContext);
     const values = useRecoilValue(valuesAtom);
+    const [exclude, setExclude] = useRecoilState(excludeAtom);
     const [selectedValues, setSelectedValues] = useRecoilState(
       selectedValuesAtom
     );
@@ -371,6 +379,31 @@ const StringFilter = React.memo(
               />
             )}
           </div>
+          {selected.length > 0 ? (
+            exclude ? (
+              <>
+                <a
+                  style={{ cursor: "pointer" }}
+                  onClick={() => setExclude(!exclude)}
+                >
+                  show
+                </a>
+                <span style={{ padding: "0 0.25rem" }}>|</span>
+                <a style={{ textDecoration: "underline" }}>excluding</a>
+              </>
+            ) : (
+              <>
+                <a style={{ textDecoration: "underline" }}>showing</a>
+                <span style={{ padding: "0 0.25rem" }}>|</span>
+                <a
+                  style={{ cursor: "pointer" }}
+                  onClick={() => setExclude(!exclude)}
+                >
+                  exclude
+                </a>
+              </>
+            )
+          ) : null}
           {selected.length ? (
             <Selected>
               {selected.map((s) => (
@@ -415,53 +448,38 @@ const CheckboxContainer = styled.div`
 type NamedProps = {
   valuesAtom: RecoilValueReadOnly<string[]>;
   selectedValuesAtom: RecoilState<string[]>;
-  excludeAtom: RecoilState<boolean>;
   name: string;
   valueName: string;
   color: string;
 };
 
 export const NamedStringFilter = React.memo(
-  React.forwardRef(
-    ({ name, excludeAtom, ...stringFilterProps }: NamedProps, ref) => {
-      const [values, setValues] = useRecoilState(
-        stringFilterProps.selectedValuesAtom
-      );
-      const [exclude, setExclude] = useRecoilState(excludeAtom);
+  React.forwardRef(({ name, ...stringFilterProps }: NamedProps, ref) => {
+    const [values, setValues] = useRecoilState(
+      stringFilterProps.selectedValuesAtom
+    );
 
-      return (
-        <NamedStringFilterContainer ref={ref}>
-          <NamedStringFilterHeader>
-            {name}
-            <div>
-              {values.length > 0 ? (
-                <a
-                  style={{ cursor: "pointer", textDecoration: "underline" }}
-                  onClick={() => setValues([])}
-                >
-                  reset
-                </a>
-              ) : null}
-              {values.length > 0 && (
-                <>
-                  <span style={{ padding: "0 0.25rem" }}>|</span>
-                  <a
-                    style={{ cursor: "pointer", textDecoration: "underline" }}
-                    onClick={() => setExclude(!exclude)}
-                  >
-                    {exclude ? "include " : "exclude "}instead
-                  </a>
-                </>
-              )}
-            </div>
-          </NamedStringFilterHeader>
-          <StringFilterContainer>
-            <StringFilter {...stringFilterProps} />
-          </StringFilterContainer>
-        </NamedStringFilterContainer>
-      );
-    }
-  )
+    return (
+      <NamedStringFilterContainer ref={ref}>
+        <NamedStringFilterHeader>
+          {name}
+          <div>
+            {values.length > 0 ? (
+              <a
+                style={{ cursor: "pointer", textDecoration: "underline" }}
+                onClick={() => setValues([])}
+              >
+                reset
+              </a>
+            ) : null}
+          </div>
+        </NamedStringFilterHeader>
+        <StringFilterContainer>
+          <StringFilter {...stringFilterProps} />
+        </StringFilterContainer>
+      </NamedStringFilterContainer>
+    );
+  })
 );
 
 export default StringFilter;
