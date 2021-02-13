@@ -433,36 +433,30 @@ export const NamedStringFilter = React.memo(
         <NamedStringFilterContainer ref={ref}>
           <NamedStringFilterHeader>
             {name}
-            {values.length > 0 ? (
-              <a
-                style={{ cursor: "pointer", textDecoration: "underline" }}
-                onClick={() => setValues([])}
-              >
-                reset
-              </a>
-            ) : null}
+            <div>
+              {values.length > 0 ? (
+                <a
+                  style={{ cursor: "pointer", textDecoration: "underline" }}
+                  onClick={() => setValues([])}
+                >
+                  reset
+                </a>
+              ) : null}
+              {values.length > 0 && (
+                <>
+                  <span style={{ padding: "0 0.25rem" }}>|</span>
+                  <a
+                    style={{ cursor: "pointer", textDecoration: "underline" }}
+                    onClick={() => setExclude(!exclude)}
+                  >
+                    {exclude ? "exclude " : "include "}instead
+                  </a>
+                </>
+              )}
+            </div>
           </NamedStringFilterHeader>
           <StringFilterContainer>
             <StringFilter {...stringFilterProps} />
-            <CheckboxContainer>
-              <FormControlLabel
-                label={
-                  <div style={{ lineHeight: "20px", fontSize: 14 }}>
-                    Exclude {name.toLowerCase()}
-                  </div>
-                }
-                control={
-                  <Checkbox
-                    checked={exclude}
-                    onChange={() => setExclude(!exclude)}
-                    style={{
-                      padding: "0 5px",
-                      color: stringFilterProps.color,
-                    }}
-                  />
-                }
-              />
-            </CheckboxContainer>
           </StringFilterContainer>
         </NamedStringFilterContainer>
       );
