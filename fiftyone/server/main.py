@@ -12,6 +12,7 @@ import math
 import os
 import posixpath
 import traceback
+import urllib
 
 from bson import ObjectId
 import tornado.escape
@@ -19,6 +20,7 @@ import tornado.ioloop
 import tornado.iostream
 import tornado.options
 import tornado.web
+from tornado.web import HTTPError
 import tornado.websocket
 
 import eta.core.labels as etal
@@ -555,12 +557,6 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             r["width"] = w
             r["height"] = h
             # default to image
-
-        for r in results:
-            s = r["sample"]
-            s["filepath"] = (
-                s["filepath"].replace(os.sep, posixpath.sep).split(":")[-1]
-            )
 
         message = {
             "type": "page",
@@ -1200,11 +1196,31 @@ class FileHandler(tornado.web.StaticFileHandler):
         self.set_header("x-colab-notebook-cache-control", "no-cache")
 
 
+class MediaHandler(FileHandler):
+    @classmethod
+    def get_absolute_path(cls, root, path):
+        return path
+
+    def validate_absolute_path(self, root, absolute_path):
+        if os.path.isdir(absolute_path) and self.default_filename is not None:
+            if not self.request.path.endswith("/"):
+                self.redirect(self.request.path + "/", permanent=True)
+                return None
+
+            absolute_path = os.path.join(absolute_path, self.default_filename)
+        if not os.path.exists(absolute_path):
+            raise HTTPError(404)
+
+        if not os.path.isfile(absolute_path):
+            raise HTTPError(403, "%s is not a file", self.path)
+
+        return absolute_path
+
+
 class Application(tornado.web.Application):
     """FiftyOne Tornado Application"""
 
     def __init__(self, **settings):
-        static_path = "C:/" if os.name == "nt" else "/"
         server_path = os.path.dirname(os.path.abspath(__file__))
         rel_web_path = "static"
         web_path = os.path.join(server_path, rel_web_path)
@@ -1212,7 +1228,7 @@ class Application(tornado.web.Application):
             (r"/fiftyone", FiftyOneHandler),
             (r"/polling", PollingHandler),
             (r"/feedback", FeedbackHandler),
-            (r"/filepath/(.*)", FileHandler, {"path": static_path},),
+            (r"/filepath/(.*)", MediaHandler, {"path": ""},),
             (r"/notebook", NotebookHandler),
             (r"/stages", StagesHandler),
             (r"/state", StateHandler),
