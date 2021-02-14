@@ -133,14 +133,26 @@ export const rangeModalAtom = atomFamily<
   default: rangeAtom,
 });
 
-export const noneAtom = selectorFamily<boolean, string>({
+export const noneAtom = selectorFamily<
+  boolean,
+  {
+    path: string;
+    defaultRange?: Range;
+  }
+>({
   key: "filterNumericFieldNone",
-  get: (path) => ({ get }) => getFilter(get, path).none,
-  set: (path) => ({ get, set }, value) =>
-    setFilter(get, set, path, "none", value),
+  get: ({ path }) => ({ get }) => getFilter(get, path).none,
+  set: ({ path, defaultRange }) => ({ get, set }, value) =>
+    setFilter(get, set, path, "none", value, defaultRange),
 });
 
-export const noneModalAtom = atomFamily<boolean, string>({
+export const noneModalAtom = atomFamily<
+  boolean,
+  {
+    path: string;
+    defaultRange?: Range;
+  }
+>({
   key: "modalFilterNumericFieldNone",
   default: true,
 });
@@ -159,7 +171,7 @@ export const fieldIsFiltered = selectorFamily<
       ? [noneModalAtom, rangeModalAtom]
       : [noneAtom, rangeAtom];
     const [none, range] = [
-      get(noneValue(path)),
+      get(noneValue({ path, defaultRange })),
       get(rangeValue({ path, defaultRange })),
     ];
     const bounds = get(boundsAtom({ path, defaultRange }));

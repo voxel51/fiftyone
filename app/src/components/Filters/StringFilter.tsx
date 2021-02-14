@@ -436,18 +436,10 @@ const NamedStringFilterHeader = styled.div`
   justify-content: space-between;
 `;
 
-const CheckboxContainer = styled.div`
-  background: ${({ theme }) => theme.backgroundDark};
-  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
-  border: 1px solid #191c1f;
-  border-radius: 2px;
-  color: ${({ theme }) => theme.fontDark};
-  margin-top: 0.25rem;
-`;
-
 type NamedProps = {
   valuesAtom: RecoilValueReadOnly<string[]>;
   selectedValuesAtom: RecoilState<string[]>;
+  excludeAtom: RecoilState<boolean>;
   name: string;
   valueName: string;
   color: string;
