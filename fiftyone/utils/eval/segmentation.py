@@ -232,6 +232,8 @@ class SimpleEvaluation(SegmentationEvaluation):
                         image[pre_field] = fpre
                         image[rec_field] = frec
 
+                confusion_matrix += sample_conf_mat
+
                 # Record sample stats, if requested
                 if eval_key is not None:
                     sacc, spre, srec = _compute_accuracy_precision_recall(
@@ -240,9 +242,7 @@ class SimpleEvaluation(SegmentationEvaluation):
                     sample[acc_field] = sacc
                     sample[pre_field] = spre
                     sample[rec_field] = srec
-
-                confusion_matrix += sample_conf_mat
-                sample.save()
+                    sample.save()
 
         missing = classes[0] if values[0] == 0 else None
         return SegmentationResults(confusion_matrix, classes, missing=missing)

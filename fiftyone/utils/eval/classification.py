@@ -249,7 +249,7 @@ class TopKEvaluation(ClassificationEvaluation):
         correct = []
         for idx, (_ytrue, _logits) in enumerate(zip(ytrue, logits)):
             if _logits is None:
-                # No logits = no prediction
+                # No logits; no prediction
                 ypred[idx] = None
                 _conf = None
                 _correct = None
@@ -417,7 +417,8 @@ class ClassificationResults(EvaluationResults):
         """Computes classification metrics for the results, including accuracy,
         precision, recall, and F-beta score.
 
-        See ``sklearn.metrics.precision_recall_fscore_support`` for details.
+        See ``sklearn.metrics.accuracy_score`` and
+        ``sklearn.metrics.precision_recall_fscore_support`` for details.
 
         Args:
             classes (None): an optional list of classes for which to compute
@@ -566,6 +567,12 @@ class BinaryClassificationResults(ClassificationResults):
         )
         self._pos_label = classes[1]
         self.scores = _to_binary_scores(ypred, confs, self._pos_label)
+
+    def _get_labels(self, classes):
+        if classes is not None:
+            return classes
+
+        return self.classes
 
     def average_precision(self, average="micro"):
         """Computes the average precision for the results via
