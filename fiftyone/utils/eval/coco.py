@@ -22,11 +22,13 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         classwise (None): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
         iscrowd ("iscrowd"): the name of the crowd attribute
+        iou_threshs([0.5::0.05::0.95]): 10 IoU thresholds used to compute mAP
     """
 
     def __init__(self, iscrowd="iscrowd", **kwargs):
         super().__init__(**kwargs)
         self.iscrowd = iscrowd
+        self.iou_threshs = np.arange(0.5, 1, 0.05)
 
     @property
     def method(self):
@@ -94,22 +96,188 @@ class COCOEvaluation(DetectionEvaluation):
             gts = gts.copy()
             preds = preds.copy()
 
-        return _coco_evaluation(gts, preds, eval_key, self.config)
+        return _coco_evaluation_single_iou(gts, preds, eval_key, self.config)
+
+    def evaluate_samples(
+        self,
+        samples,
+        gt_field,
+        pred_field,
+        matches=None,
+        classes=None,
+        missing="none",
+    ):
+        """Generates aggregate results on the dataset.
+        
+        Performs COCO-style evaluation to compute AP on samples.
+
+        Predicted objects are matched to ground truth objects in descending
+        order of confidence, over a sweep of IoU values [0.5::0.05::0.95].
+
+        The ``self.config.classwise`` parameter controls whether to only match
+        objects with the same class label (True) or allow matches between
+        classes (False).
+
+        If a ground truth object has its ``self.config.iscrowd`` attribute set,
+        then the object can have multiple true positive predictions matched to
+        it.
+
+        Args:
+            sample_or_frame: a :class:`fiftyone.core.Sample` or
+                :class:`fiftyone.core.frame.Frame`
+            pred_field: the name of the field containing the predicted
+                :class:`fiftyone.core.labels.Detections` instances
+            gt_field: the name of the field containing the ground truth
+                :class:`fiftyone.core.labels.Detections` instances
+            matches: (None) a list of matched ``(gt_label, pred_label, iou, pred_confidence)``
+                tuples
+            classes (None): the list of possible classes. If not provided, the
+                observed ground truth/predicted labels are used for results
+                purposes
+            missing ("none"): a missing label string. Any unmatched objects are
+                given this label for results purposes
+
+
+        Returns:
+            a list of matched ``(gt_label, pred_label, iou, pred_confidence)``
+            tuples
+        """
+        iou_threshs = list(self.config.iou_threshs)
+        matches = {t: {} for t in iou_threshs}
+        if not classes:
+            classes = []
+        for sample in samples:
+            gts = sample[gt_field].copy()
+            preds = sample[pred_field].copy()
+
+            sample_matches = _coco_evaluation_iou_sweep(
+                gts, preds, self.config
+            )
+            for t, ms in sample_matches.items():
+                for m in ms:
+                    # m = (gt_label, pred_label, iou, confidence)
+                    c = m[0] if m[0] != None else m[1]
+                    if c not in classes:
+                        classes.append(c)
+                    if c not in matches[t]:
+                        matches[t][c] = {"tp": [], "fp": [], "num_gt": 0}
+                    if m[0] == m[1]:
+                        matches[t][c]["tp"].append(m)
+                    elif m[1]:
+                        matches[t][c]["fp"].append(m)
+                    if m[0]:
+                        matches[t][c]["num_gt"] += 1
+
+        import matplotlib.pyplot as plt
+
+        precision = -np.ones((len(matches.keys()), len(classes), 101))
+        for t in matches.keys():
+            for c in matches[t].keys():
+                # Adapted from pycocotools
+                # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/cocoeval.py
+                tp = matches[t][c]["tp"]
+                fp = matches[t][c]["fp"]
+                num_gt = matches[t][c]["num_gt"]
+                if num_gt == 0:
+                    continue
+
+                tp_fp = [1] * len(tp) + [0] * len(fp)
+                confs = [p[3] for p in tp] + [p[3] for p in fp]
+                inds = np.argsort(-np.array(confs), kind="mergesort")
+                tp_fp = np.array(tp_fp)[inds][:100]
+                tp_sum = np.cumsum(tp_fp).astype(dtype=np.float)
+                total = np.arange(1, len(tp_fp) + 1).astype(dtype=np.float)
+
+                pre = tp_sum / total
+                rec = tp_sum / num_gt
+
+                q = np.zeros((101,))
+                for i in range(len(pre) - 1, 0, -1):
+                    if pre[i] > pre[i - 1]:
+                        pre[i - 1] = pre[i]
+                inds = np.searchsorted(
+                    rec, np.linspace(0, 1, 101), side="left"
+                )
+                try:
+                    for ri, pi in enumerate(inds):
+                        q[ri] = pre[pi]
+                except:
+                    pass
+                # plt.plot(q, np.linspace(0,1,101))
+                # plt.title(c+"_"+str(t))
+                # plt.show()
+                precision[iou_threshs.index(t)][classes.index(c)] = q
+
+        if len(precision[precision > -1]) == 0:
+            mAP = -1
+        else:
+            mAP = np.mean(precision[precision > -1])
+
+        print(mAP)
+        import pdb
+
+        pdb.set_trace()
 
 
 _NO_MATCH_ID = ""
 _NO_MATCH_IOU = -1
 
 
-def _coco_evaluation(gts, preds, eval_key, config):
-    iou_thresh = min(config.iou, 1 - 1e-10)
-    classwise = config.classwise
-    iscrowd = _make_iscrowd_fcn(config.iscrowd)
-
+def _coco_evaluation_single_iou(gts, preds, eval_key, config):
     id_key = "%s_id" % eval_key
     iou_key = "%s_iou" % eval_key
+    iscrowd = _make_iscrowd_fcn(config.iscrowd)
+    iou_thresh = min(config.iou, 1 - 1e-10)
 
-    matches = []
+    cats, pred_ious = _coco_evaluation_setup(
+        gts, preds, id_key, iou_key, config
+    )
+
+    matches = _compute_matches(
+        cats,
+        pred_ious,
+        iou_thresh,
+        iscrowd,
+        eval_key=eval_key,
+        id_key=id_key,
+        iou_key=iou_key,
+    )
+
+    return matches
+
+
+def _coco_evaluation_iou_sweep(gts, preds, config):
+    id_key = "eval_id"
+    iou_key = "eval_iou"
+    iscrowd = _make_iscrowd_fcn(config.iscrowd)
+
+    # Perform classwise matching over 10 IoUs [0.5::0.05::0.95]
+
+    cats, pred_ious = _coco_evaluation_setup(
+        gts, preds, id_key, iou_key, config
+    )
+
+    iou_threshs = config.iou_threshs
+
+    matches = {
+        i: _compute_matches(
+            cats,
+            pred_ious,
+            i,
+            iscrowd,
+            eval_key="eval",
+            id_key=id_key,
+            iou_key=iou_key,
+        )
+        for i in iou_threshs
+    }
+
+    return matches
+
+
+def _coco_evaluation_setup(gts, preds, id_key, iou_key, config):
+    iscrowd = _make_iscrowd_fcn(config.iscrowd)
+    classwise = config.classwise
 
     # Organize preds and GT by category
     cats = defaultdict(lambda: defaultdict(list))
@@ -144,6 +312,13 @@ def _coco_evaluation(gts, preds, eval_key, config):
         for pred, gt_ious in zip(preds, ious):
             pred_ious[pred.id] = list(zip(gt_ids, gt_ious))
 
+    return cats, pred_ious
+
+
+def _compute_matches(
+    cats, pred_ious, iou_thresh, iscrowd, eval_key, id_key, iou_key
+):
+    matches = []
     # Match preds to GT, highest confidence first
     for cat, objects in cats.items():
         gt_map = {gt.id: gt for gt in objects["gts"]}
@@ -167,15 +342,22 @@ def _coco_evaluation(gts, preds, eval_key, config):
 
                 if best_match:
                     gt = gt_map[best_match]
-                    gt[eval_key] = "tp"
                     gt[id_key] = pred.id
                     gt[iou_key] = best_match_iou
-                    pred[eval_key] = "tp"
                     pred[id_key] = best_match
                     pred[iou_key] = best_match_iou
                     matches.append(
                         (gt.label, pred.label, best_match_iou, pred.confidence)
                     )
+                    if gt.label == pred.label:
+                        gt[eval_key] = "tp"
+                        pred[eval_key] = "tp"
+                    else:
+                        # If classwise = False, matched gt and pred could have
+                        # different labels
+                        gt[eval_key] = "fp"
+                        pred[eval_key] = "fp"
+
                 else:
                     pred[eval_key] = "fp"
                     matches.append((None, pred.label, None, pred.confidence))

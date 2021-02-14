@@ -133,6 +133,15 @@ def evaluate_detections(
     if eval_key is not None:
         save_evaluation_info(samples, eval_info)
 
+    results = eval_method.evaluate_samples(
+        samples,
+        gt_field,
+        pred_field,
+        matches=matches,
+        classes=classes,
+        missing=missing,
+    )
+
     return DetectionResults(matches, classes=classes, missing=missing)
 
 
