@@ -3,11 +3,11 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
-.. _release-notes-v0.7.2:
+.. _release-notes-v0.7.3:
 
 FiftyOne 0.7.3
 --------------
-*Released February 12, 2021*
+*Released February 16, 2021*
 
 App
 ^^^
@@ -120,7 +120,7 @@ Core
   |ViewExpression| methods including powerful transformations like
   :meth:`map_values() <fiftyone.core.expressions.ViewExpression.map_values>`,
   :meth:`reduce() <fiftyone.core.expressions.ViewExpression.reduce>`, and
-  :meth:`sort_by() <fiftyone.core.expressions.ViewExpression.sort_by>`
+  :meth:`sort() <fiftyone.core.expressions.ViewExpression.sort>`
 - Exposed all :class:`Aggregtaions <fiftyone.core.aggregations.Aggregation>` as
   single execution methods on the |SampleCollection| interface, e.g.,
   :meth:`distinct() <fiftyone.core.collections.SampleCollection.distinct>`
