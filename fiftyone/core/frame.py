@@ -383,9 +383,7 @@ class Frame(Document):
     """
 
     # Instance references keyed by [collection_name][sample_id][frame_number]
-    _instances = defaultdict(
-        lambda: defaultdict(lambda: defaultdict(weakref.WeakValueDictionary))
-    )
+    _instances = defaultdict(lambda: defaultdict(weakref.WeakValueDictionary))
 
     _COLL_CLS = DatasetFrameSampleDocument
     _NO_COLL_CLS = NoDatasetFrameSampleDocument
@@ -450,13 +448,18 @@ class Frame(Document):
             frame._doc = doc
             return frame
 
-        try:
-            # Get instance if exists
-            key = str(doc._sample_id)
-            frame = cls._instances[doc.collection_name][view][key][
-                doc.frame_number
-            ]
-        except KeyError:
+        frame = None
+        if view is None:
+            try:
+                # Get instance if exists
+                key = str(doc._sample_id)
+                frame = cls._instances[doc.collection_name][key][
+                    doc.frame_number
+                ]
+            except KeyError:
+                pass
+
+        if frame is None:
             frame = cls.__new__(cls)
             frame._doc = None  # prevents recursion
             if dataset is None:
