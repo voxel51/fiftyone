@@ -676,8 +676,18 @@ class SampleCollection(object):
         top-k matching can be configured via the ``method`` and ``config``
         parameters.
 
-        If an ``eval_key`` is specified, this method will record whether each
-        prediction is correct in this field.
+        If an ``eval_key`` is specified, then this method will record some
+        statistics on each sample:
+
+        -   When evaluating sample-level fields, an ``eval_key`` field will be
+            populated on each sample recording whether that sample's prediction
+            is correct.
+
+        -   When evaluating frame-level fields, an ``eval_key`` field will be
+            populated on each frame recording whether that frame's prediction
+            is correct. In addition, an ``eval_key`` field will be populated on
+            each sample that records the average accuracy of the frame
+            predictions of the sample.
 
         Args:
             pred_field: the name of the field containing the predicted
@@ -744,6 +754,13 @@ class SampleCollection(object):
                 TP: sample.<eval_key>_tp
                 FP: sample.<eval_key>_fp
                 FN: sample.<eval_key>_fn
+
+            In addition, when evaluating frame-level objects, TP/FP/FN counts
+            are recorded for each frame::
+
+                TP: frame.<eval_key>_tp
+                FP: frame.<eval_key>_fp
+                FN: frame.<eval_key>_fn
 
         -   The fields listed below are populated on each individual
             :class:`fiftyone.core.labels.Detection` instance; these fields
@@ -813,11 +830,19 @@ class SampleCollection(object):
         it is resized to match the ground truth.
 
         If an ``eval_key`` is provided, the accuracy, precision, and recall of
-        each sample is recorded in top-level fields of the samples::
+        each sample is recorded in top-level fields of each sample::
 
              Accuracy: sample.<eval_key>_accuracy
             Precision: sample.<eval_key>_precision
                Recall: sample.<eval_key>_recall
+
+       In addition, when evaluating frame-level masks, the accuracy, precision,
+       and recall of each frame if recorded in the following frame-level
+       fields::
+
+             Accuracy: frame.<eval_key>_accuracy
+            Precision: frame.<eval_key>_precision
+               Recall: frame.<eval_key>_recall
 
         .. note::
 

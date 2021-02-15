@@ -45,11 +45,18 @@ def evaluate_segmentations(
     is resized to match the ground truth.
 
     If an ``eval_key`` is provided, the accuracy, precision, and recall of each
-    sample is recorded in top-level fields of the samples::
+    sample is recorded in top-level fields of each sample::
 
          Accuracy: sample.<eval_key>_accuracy
         Precision: sample.<eval_key>_precision
            Recall: sample.<eval_key>_recall
+
+   In addition, when evaluating frame-level masks, the accuracy, precision, and
+   recall of each frame if recorded in the following frame-level fields::
+
+         Accuracy: frame.<eval_key>_accuracy
+        Precision: frame.<eval_key>_precision
+           Recall: frame.<eval_key>_recall
 
     .. note::
 

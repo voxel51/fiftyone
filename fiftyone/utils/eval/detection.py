@@ -51,6 +51,13 @@ def evaluate_detections(
             FP: sample.<eval_key>_fp
             FN: sample.<eval_key>_fn
 
+        In addition, when evaluating frame-level objects, TP/FP/FN counts are
+        recorded for each frame::
+
+            TP: frame.<eval_key>_tp
+            FP: frame.<eval_key>_fp
+            FN: frame.<eval_key>_fn
+
     -   The fields listed below are populated on each individual
         :class:`fiftyone.core.labels.Detection` instance; these fields tabulate
         the TP/FP/FN status of the object, the ID of the matching object

@@ -5,6 +5,7 @@ Classification evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import itertools
 import warnings
 
 import matplotlib.pyplot as plt
@@ -43,8 +44,18 @@ def evaluate_classifications(
     each sample, but other strategies such as binary evaluation and top-k
     matching can be configured via the ``method`` and ``config`` parameters.
 
-    If an ``eval_key`` is specified, this method will record whether each
-    prediction is correct in this field.
+    If an ``eval_key`` is specified, then this method will record some
+    statistics on each sample:
+
+    -   When evaluating sample-level fields, an ``eval_key`` field will be
+        populated on each sample recording whether that sample's prediction is
+        correct.
+
+    -   When evaluating frame-level fields, an ``eval_key`` field will be
+        populated on each frame recording whether that frame's prediction is
+        correct. In addition, an ``eval_key`` field will be populated on each
+        sample that records the average accuracy of the frame predictions of
+        the sample.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
@@ -135,7 +146,10 @@ class ClassificationEvaluation(Evaluation):
         raise NotImplementedError("subclass must implement evaluate_samples()")
 
     def cleanup(self, samples, eval_key):
+        eval_info = samples.get_evaluation_info(eval_key)
         samples._dataset.delete_sample_field(eval_key)
+        if samples._is_frame_field(eval_info.gt_field):
+            samples._dataset.delete_frame_field(eval_key)
 
 
 class SimpleEvaluationConfig(ClassificationEvaluationConfig):
@@ -162,10 +176,7 @@ class SimpleEvaluation(ClassificationEvaluation):
         classes=None,
         missing=None,
     ):
-        if samples._is_frame_field(pred_field):
-            raise ValueError(
-                "Frame-level classifications are not yet supported"
-            )
+        is_frame_field = samples._is_frame_field(gt_field)
 
         gt = gt_field + ".label"
         pred = pred_field + ".label"
@@ -175,13 +186,39 @@ class SimpleEvaluation(ClassificationEvaluation):
             [foa.Values(gt), foa.Values(pred), foa.Values(pred_conf)]
         )
 
-        if eval_key is not None:
+        if is_frame_field:
+            ytrue = list(itertools.chain.from_iterable(ytrue))
+            ypred = list(itertools.chain.from_iterable(ypred))
+            confs = list(itertools.chain.from_iterable(confs))
+
+        results = ClassificationResults(
+            ytrue, ypred, confs, classes=classes, missing=missing
+        )
+
+        if eval_key is None:
+            return results
+
+        if is_frame_field:
+            eval_frame = samples._FRAMES_PREFIX + eval_key
+            gt = gt[len(samples._FRAMES_PREFIX) :]
+            pred = pred[len(samples._FRAMES_PREFIX) :]
+
+            # Save sample-level accuracies
+            samples._add_field_if_necessary(eval_key, fof.FloatField)
+            samples.set_field(
+                eval_key,
+                F("frames").map((F(gt) == F(pred)).to_double()).mean(),
+            ).save(eval_key)
+
+            # Save per-frame accuracies
+            samples._add_field_if_necessary(eval_frame, fof.BooleanField)
+            samples.set_field(eval_frame, F(gt) == F(pred)).save(eval_frame)
+        else:
+            # Save per-sample accuracies
             samples._add_field_if_necessary(eval_key, fof.BooleanField)
             samples.set_field(eval_key, F(gt) == F(pred)).save(eval_key)
 
-        return ClassificationResults(
-            ytrue, ypred, confs, classes=classes, missing=missing
-        )
+        return results
 
 
 class TopKEvaluationConfig(ClassificationEvaluationConfig):
@@ -233,7 +270,7 @@ class TopKEvaluation(ClassificationEvaluation):
 
         k = self.config.k
 
-        # This extracts a `num_samples x num_classes` array of logits
+        # This extracts a potentially huge number of logits
         # @todo consider sample iteration for very large datasets
         ytrue, ypred, logits = samples.aggregate(
             [
@@ -321,17 +358,14 @@ class BinaryEvaluation(ClassificationEvaluation):
         classes=None,
         missing=None,
     ):
-        if samples._is_frame_field(pred_field):
-            raise ValueError(
-                "Frame-level classifications are not yet supported"
-            )
-
         if classes is None or len(classes) != 2:
             raise ValueError(
                 "You must provide the ``(neg_label, pos_label)`` labels for "
                 "your task via the ``classes`` argument in order to run "
                 "binary evaluation"
             )
+
+        is_frame_field = samples._is_frame_field(gt_field)
 
         pos_label = classes[-1]
 
@@ -343,7 +377,43 @@ class BinaryEvaluation(ClassificationEvaluation):
             [foa.Values(gt), foa.Values(pred), foa.Values(pred_conf)]
         )
 
-        if eval_key is not None:
+        if is_frame_field:
+            ytrue = list(itertools.chain.from_iterable(ytrue))
+            ypred = list(itertools.chain.from_iterable(ypred))
+            confs = list(itertools.chain.from_iterable(confs))
+
+        results = BinaryClassificationResults(ytrue, ypred, confs, classes)
+
+        if eval_key is None:
+            return results
+
+        if is_frame_field:
+            eval_frame = samples._FRAMES_PREFIX + eval_key
+            gt = gt[len(samples._FRAMES_PREFIX) :]
+            pred = pred[len(samples._FRAMES_PREFIX) :]
+
+            # Save sample-level accuracies
+            samples._add_field_if_necessary(eval_key, fof.FloatField)
+            samples.set_field(
+                eval_key,
+                F("frames").map((F(gt) == F(pred)).to_double()).mean(),
+            ).save(eval_key)
+
+            # Save per-frame accuracies
+            samples._add_field_if_necessary(eval_frame, fof.StringField)
+            samples.set_field(
+                eval_frame,
+                F().switch(
+                    {
+                        (F(gt) == pos_label) & (F(pred) == pos_label): "TP",
+                        (F(gt) == pos_label) & (F(pred) != pos_label): "FN",
+                        (F(gt) != pos_label) & (F(pred) != pos_label): "TN",
+                        (F(gt) != pos_label) & (F(pred) == pos_label): "FP",
+                    }
+                ),
+            ).save(eval_frame)
+        else:
+            # Save per-sample accuracies
             samples._add_field_if_necessary(eval_key, fof.StringField)
             samples.set_field(
                 eval_key,
@@ -357,7 +427,7 @@ class BinaryEvaluation(ClassificationEvaluation):
                 ),
             ).save(eval_key)
 
-        return BinaryClassificationResults(ytrue, ypred, confs, classes)
+        return results
 
 
 class ClassificationResults(EvaluationResults):
