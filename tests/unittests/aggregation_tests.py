@@ -275,11 +275,6 @@ class DatasetTests(unittest.TestCase):
         )
 
         self.assertListEqual(
-            d.values("predictions.detections.label", omit_missing=True),
-            [["cat", "dog"], ["cat", "rabbit", "squirrel"], ["elephant"]],
-        )
-
-        self.assertListEqual(
             d.values("predictions.detections.label", missing_value="missing"),
             [
                 ["cat", "dog"],
@@ -293,11 +288,6 @@ class DatasetTests(unittest.TestCase):
         self.assertListEqual(
             d.values("predictions.detections[].label"),
             ["cat", "dog", "cat", "rabbit", "squirrel", "elephant", None],
-        )
-
-        self.assertListEqual(
-            d.values("predictions.detections[].label", omit_missing=True),
-            ["cat", "dog", "cat", "rabbit", "squirrel", "elephant"],
         )
 
         self.assertListEqual(
