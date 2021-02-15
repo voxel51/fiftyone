@@ -795,6 +795,70 @@ class SampleCollection(object):
             **kwargs,
         )
 
+    def evaluate_segmentations(
+        self,
+        pred_field,
+        gt_field="ground_truth",
+        eval_key=None,
+        mask_index=None,
+        method="simple",
+        config=None,
+        **kwargs,
+    ):
+        """Evaluates the specified semantic segmentation masks in this
+        collection with respect to the specified ground truth masks.
+
+        If the size of a predicted mask does not match the ground truth mask,
+        it is resized to match the ground truth.
+
+        If an ``eval_key`` is provided, the accuracy, precision, and recall of
+        each sample is recorded in top-level fields of the samples::
+
+             Accuracy: sample.<eval_key>_accuracy
+            Precision: sample.<eval_key>_precision
+               Recall: sample.<eval_key>_recall
+
+        .. note::
+
+            The mask value ``0`` is treated as a background class for the
+            purposes of computing evaluation metrics like precision and recall.
+
+        Args:
+            pred_field: the name of the field containing the predicted
+                :class:`fiftyone.core.labels.Segmentation` instances
+            gt_field ("ground_truth"): the name of the field containing the
+                ground truth :class:`fiftyone.core.labels.Segmentation`
+                instances
+            eval_key (None): an evaluation key to use to refer to this
+                evaluation
+            mask_index (None): a dict mapping mask values to labels. May
+                contain a subset of the possible classes if you wish to
+                evaluate a subset of the semantic classes. By default, the
+                observed mask values are used as labels
+            method ("simple"): a string specifying the evaluation method to
+                use. Supported values are ``("simple")``
+            config (None): a
+                :class:`fiftyone.utils.eval.segmentation.SegmentationEvaluationConfig`
+                specifying the evaluation method to use. If a ``config`` is
+                provided, the ``method`` and ``kwargs`` parameters are ignored
+            **kwargs: optional keyword arguments for the constructor of the
+                :class:`fiftyone.utils.eval.segmentation.SegmentationEvaluationConfig`
+                being used
+
+        Returns:
+            a :class:`fiftyone.utils.eval.segmentation.SegmentationResults`
+        """
+        return foue.evaluate_segmentations(
+            self,
+            pred_field,
+            gt_field=gt_field,
+            eval_key=eval_key,
+            mask_index=mask_index,
+            method=method,
+            config=config,
+            **kwargs,
+        )
+
     def list_evaluations(self):
         """Returns a list of all evaluation keys on this collection.
 
@@ -3688,14 +3752,17 @@ class SampleCollection(object):
         return _parse_field_name(self, field_name, auto_unwind)
 
     def _handle_frame_field(self, field_name):
-        is_frame_field = (self.media_type == fom.VIDEO) and (
-            field_name.startswith(self._FRAMES_PREFIX)
-            or field_name == "frames"
-        )
+        is_frame_field = self._is_frame_field(field_name)
         if is_frame_field:
             field_name = field_name = field_name[len(self._FRAMES_PREFIX) :]
 
         return field_name, is_frame_field
+
+    def _is_frame_field(self, field_name):
+        return (self.media_type == fom.VIDEO) and (
+            field_name.startswith(self._FRAMES_PREFIX)
+            or field_name == "frames"
+        )
 
     def _is_array_field(self, field_name):
         return _is_array_field(self, field_name)

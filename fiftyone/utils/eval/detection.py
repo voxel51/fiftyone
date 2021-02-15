@@ -7,9 +7,6 @@ Detection evaluation.
 """
 import logging
 
-import eta.core.utils as etau
-
-import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
 from .base import (
@@ -97,15 +94,18 @@ def evaluate_detections(
     validate_evaluation(samples, eval_info)
     eval_method = config.build()
 
-    processing_frames = (
-        samples.media_type == fom.VIDEO
-        and pred_field.startswith(samples._FRAMES_PREFIX)
-    )
+    pred_field, processing_frames = samples._handle_frame_field(pred_field)
+    gt_field, _ = samples._handle_frame_field(gt_field)
+
+    if not processing_frames:
+        iter_samples = samples.select_fields([gt_field, pred_field])
+    else:
+        iter_samples = samples
 
     matches = []
     logger.info("Evaluating detections...")
     with fou.ProgressBar() as pb:
-        for sample in pb(samples.select_fields([gt_field, pred_field])):
+        for sample in pb(iter_samples):
             if processing_frames:
                 images = sample.frames.values()
             else:
