@@ -155,7 +155,9 @@ class COCOEvaluation(DetectionEvaluation):
             )
             for t, ms in sample_matches.items():
                 for m in ms:
-                    # m = (gt_label, pred_label, iou, confidence)
+                    # m = (gt_label, pred_label, iou, confidence, iscrowd)
+                    if m[-1]:
+                        continue
                     c = m[0] if m[0] != None else m[1]
                     if c not in classes:
                         classes.append(c)
@@ -184,7 +186,7 @@ class COCOEvaluation(DetectionEvaluation):
                 tp_fp = [1] * len(tp) + [0] * len(fp)
                 confs = [p[3] for p in tp] + [p[3] for p in fp]
                 inds = np.argsort(-np.array(confs), kind="mergesort")
-                tp_fp = np.array(tp_fp)[inds][:100]
+                tp_fp = np.array(tp_fp)[inds]
                 tp_sum = np.cumsum(tp_fp).astype(dtype=np.float)
                 total = np.arange(1, len(tp_fp) + 1).astype(dtype=np.float)
 
@@ -230,34 +232,36 @@ def _coco_evaluation_single_iou(gts, preds, eval_key, config):
     iou_thresh = min(config.iou, 1 - 1e-10)
 
     cats, pred_ious = _coco_evaluation_setup(
-        gts, preds, id_key, iou_key, config
+        gts, preds, [id_key], iou_key, config
     )
 
-    matches = _compute_matches(
-        cats,
-        pred_ious,
-        iou_thresh,
-        iscrowd,
-        eval_key=eval_key,
-        id_key=id_key,
-        iou_key=iou_key,
-    )
+    matches = [
+        m[:4]
+        for m in _compute_matches(
+            cats,
+            pred_ious,
+            iou_thresh,
+            iscrowd,
+            eval_key=eval_key,
+            id_key=id_key,
+            iou_key=iou_key,
+        )
+    ]
 
     return matches
 
 
 def _coco_evaluation_iou_sweep(gts, preds, config):
-    id_key = "eval_id"
+    iou_threshs = config.iou_threshs
+    id_keys = ["eval_id_%s" % str(i).replace(".", "_") for i in iou_threshs]
     iou_key = "eval_iou"
     iscrowd = _make_iscrowd_fcn(config.iscrowd)
 
     # Perform classwise matching over 10 IoUs [0.5::0.05::0.95]
 
     cats, pred_ious = _coco_evaluation_setup(
-        gts, preds, id_key, iou_key, config
+        gts, preds, id_keys, iou_key, config
     )
-
-    iou_threshs = config.iou_threshs
 
     matches = {
         i: _compute_matches(
@@ -266,30 +270,32 @@ def _coco_evaluation_iou_sweep(gts, preds, config):
             i,
             iscrowd,
             eval_key="eval",
-            id_key=id_key,
+            id_key=k,
             iou_key=iou_key,
         )
-        for i in iou_threshs
+        for i, k in zip(iou_threshs, id_keys)
     }
 
     return matches
 
 
-def _coco_evaluation_setup(gts, preds, id_key, iou_key, config):
+def _coco_evaluation_setup(gts, preds, id_keys, iou_key, config):
     iscrowd = _make_iscrowd_fcn(config.iscrowd)
     classwise = config.classwise
 
     # Organize preds and GT by category
     cats = defaultdict(lambda: defaultdict(list))
     for det in preds.detections:
-        det[id_key] = _NO_MATCH_ID
+        for id_key in id_keys:
+            det[id_key] = _NO_MATCH_ID
         det[iou_key] = _NO_MATCH_IOU
 
         label = det.label if classwise else "all"
         cats[label]["preds"].append(det)
 
     for det in gts.detections:
-        det[id_key] = _NO_MATCH_ID
+        for id_key in id_keys:
+            det[id_key] = _NO_MATCH_ID
         det[iou_key] = _NO_MATCH_IOU
 
         label = det.label if classwise else "all"
@@ -302,7 +308,9 @@ def _coco_evaluation_setup(gts, preds, id_key, iou_key, config):
         preds = objects["preds"]
 
         # Highest confidence predictions first
-        preds = sorted(preds, key=lambda p: p.confidence or -1, reverse=True)
+        preds = sorted(preds, key=lambda p: p.confidence or -1, reverse=True)[
+            :100
+        ]
         objects["preds"] = preds
 
         # Compute ``num_preds x num_gts`` IoUs
@@ -347,7 +355,13 @@ def _compute_matches(
                     pred[id_key] = best_match
                     pred[iou_key] = best_match_iou
                     matches.append(
-                        (gt.label, pred.label, best_match_iou, pred.confidence)
+                        (
+                            gt.label,
+                            pred.label,
+                            best_match_iou,
+                            pred.confidence,
+                            iscrowd(gt),
+                        )
                     )
                     if gt.label == pred.label:
                         gt[eval_key] = "tp"
@@ -360,17 +374,19 @@ def _compute_matches(
 
                 else:
                     pred[eval_key] = "fp"
-                    matches.append((None, pred.label, None, pred.confidence))
+                    matches.append(
+                        (None, pred.label, None, pred.confidence, None)
+                    )
 
             elif pred.label == cat:
                 pred[eval_key] = "fp"
-                matches.append((None, pred.label, None, pred.confidence))
+                matches.append((None, pred.label, None, pred.confidence, None))
 
         # Leftover GTs are false negatives
         for gt in objects["gts"]:
             if gt[id_key] == _NO_MATCH_ID:
                 gt[eval_key] = "fn"
-                matches.append((gt.label, None, None, None))
+                matches.append((gt.label, None, None, None, iscrowd(gt)))
 
     return matches
 
