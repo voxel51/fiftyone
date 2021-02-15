@@ -1940,6 +1940,14 @@ class SetField(ViewStage):
         """The expression to apply."""
         return self._expr
 
+    def _needs_frames(self, sample_collection):
+        if sample_collection.media_type != fom.VIDEO:
+            return False
+
+        is_frame_field = sample_collection._is_frame_field(self._field)
+        is_frame_expr = _is_frames_expr(self._get_mongo_expr())
+        return is_frame_field or is_frame_expr
+
     def to_mongo(self, sample_collection, **_):
         return sample_collection._make_set_field_pipeline(
             self._field, self._expr, embedded_root=True
@@ -3051,6 +3059,19 @@ def _make_label_filter_stage(label_schema, field, label_filter):
     msg = "Ignoring unsupported field '%s' (%s)" % (field, label_type)
     warnings.warn(msg)
     return None
+
+
+def _is_frames_expr(val):
+    if etau.is_str(val):
+        return val == "$frames" or val.startswith("$frames.")
+
+    if isinstance(val, dict):
+        return {_is_frames_expr(k): _is_frames_expr(v) for k, v in val.items()}
+
+    if isinstance(val, list):
+        return [_is_frames_expr(v) for v in val]
+
+    return False
 
 
 class _ViewStageRepr(reprlib.Repr):
