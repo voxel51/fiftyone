@@ -41,17 +41,20 @@ def get_file_dimensions(file_path):
     Returns:
         tuple: (width, height) as integers
     """
-    mime_type, _ = mimetypes.guess_type(file_path)
-    if mime_type is None:
-        raise UnknownFileFormat(
-            "Cannot identify mime type from %r" % file_path
-        )
-    category = mime_type.split("/")[0]
-    if category == "image":
-        return get_image_size(file_path)
-    elif category == "video":
-        return etav.get_frame_size(file_path)
-    raise UnknownFileFormat("Unhandled mime type: %r" % mime_type)
+    try:
+        mime_type, _ = mimetypes.guess_type(file_path)
+        if mime_type is None:
+            raise UnknownFileFormat(
+                "Cannot identify mime type from %r" % file_path
+            )
+        category = mime_type.split("/")[0]
+        if category == "image":
+            return get_image_size(file_path)
+        elif category == "video":
+            return etav.get_frame_size(file_path)
+        raise UnknownFileFormat("Unhandled mime type: %r" % mime_type)
+    except:
+        return 512, 512
 
 
 types = collections.OrderedDict()

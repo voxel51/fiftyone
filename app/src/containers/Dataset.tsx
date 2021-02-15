@@ -130,7 +130,7 @@ function Dataset() {
   if (modal.sample) {
     const path = modal.sample.filepath;
     const id = modal.sample._id;
-    src = `${http}/filepath${path}?id=${id}`;
+    src = `${http}/filepath/${encodeURI(path)}?id=${id}`;
     s = modal.sample;
   }
 

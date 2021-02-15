@@ -655,7 +655,7 @@ class ViewExpression(object):
             # Only contains predictions whose bounding box center is a distance
             # of at most 0.02 from the center of the image
             view = dataset.select_fields("predictions").filter_labels(
-                "predictions", center_dist < 0.02, only_matches=True
+                "predictions", center_dist < 0.02
             )
 
             session = fo.launch_app(view=view)
@@ -710,7 +710,7 @@ class ViewExpression(object):
             view = (
                 dataset
                 .select_fields("predictions")
-                .filter_labels("predictions", rectangleness <= 1, only_matches=True)
+                .filter_labels("predictions", rectangleness <= 1)
             )
 
             session = fo.launch_app(view=view)
@@ -746,7 +746,7 @@ class ViewExpression(object):
             view = (
                 dataset
                 .select_fields("predictions")
-                .filter_labels("predictions", aspect_ratio > 2, only_matches=True)
+                .filter_labels("predictions", aspect_ratio > 2)
             )
 
             session = fo.launch_app(view=view)
@@ -994,7 +994,7 @@ class ViewExpression(object):
             # Only contains predictions whose bounding box center is a distance
             # of at most 0.02 from the center of the image
             view = dataset.select_fields("predictions").filter_labels(
-                "predictions", center_dist < 0.02, only_matches=True
+                "predictions", center_dist < 0.02
             )
 
             session = fo.launch_app(view=view)
@@ -1028,7 +1028,7 @@ class ViewExpression(object):
             # Only contains predictions whose bounding box center is a distance
             # of at most 0.02 from the center of the image
             view = dataset.select_fields("predictions").filter_labels(
-                "predictions", center_dist < 0.02, only_matches=True
+                "predictions", center_dist < 0.02
             )
 
             session = fo.launch_app(view=view)

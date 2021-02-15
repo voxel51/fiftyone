@@ -631,7 +631,7 @@ class FilterField(ViewStage):
         # Only include samples whose `numeric_field` value is positive
         #
 
-        stage = fo.FilterField("numeric_field", F() > 0, only_matches=True)
+        stage = fo.FilterField("numeric_field", F() > 0)
         view = dataset.add_stage(stage)
 
     Args:
@@ -639,11 +639,11 @@ class FilterField(ViewStage):
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
-        only_matches (False): whether to only include samples that match the
-            filter
+        only_matches (True): whether to only include samples that match the
+            filter (True) or include all samples (False)
     """
 
-    def __init__(self, field, filter, only_matches=False):
+    def __init__(self, field, filter, only_matches=True):
         self._field = field
         self._filter = filter
         self._hide_result = False
@@ -667,17 +667,20 @@ class FilterField(ViewStage):
         return self._only_matches
 
     def to_mongo(self, sample_collection):
+        field_name, is_frame_field = sample_collection._handle_frame_field(
+            self._field
+        )
         new_field = self._get_new_field(sample_collection)
-        if sample_collection._is_frame_field(self._field):
+        if is_frame_field:
             return _get_filter_frames_field_pipeline(
-                self._field,
+                field_name,
                 new_field,
                 self._filter,
                 only_matches=self._only_matches,
             )
 
         return _get_filter_field_pipeline(
-            self._field,
+            field_name,
             new_field,
             self._filter,
             only_matches=self._only_matches,
@@ -694,9 +697,7 @@ class FilterField(ViewStage):
         return _get_field_mongo_filter(self._filter, prefix=self._field)
 
     def _get_new_field(self, sample_collection):
-        field = self._field
-        if sample_collection._is_frame_field(field):
-            field = field.split(".", 1)[1]  # remove `frames`
+        field, _ = sample_collection._handle_frame_field(self._field)
 
         if self._hide_result:
             return "__" + field
@@ -704,7 +705,7 @@ class FilterField(ViewStage):
         return field
 
     def _needs_frames(self, sample_collection):
-        return sample_collection._is_frame_field(self._field)
+        return sample_collection._handle_frame_field(self._field)[1]
 
     def _kwargs(self):
         return [
@@ -721,8 +722,8 @@ class FilterField(ViewStage):
             {
                 "name": "only_matches",
                 "type": "bool",
-                "default": "False",
-                "placeholder": "only matches (default=False)",
+                "default": "True",
+                "placeholder": "only matches (default=True)",
             },
         ]
 
@@ -738,11 +739,13 @@ class FilterField(ViewStage):
             raise ValueError("Cannot filter required field `filepath`")
 
         sample_collection.validate_fields_exist(self._field)
-        self._is_frame_field = sample_collection._is_frame_field(self._field)
+
+        _, is_frame_field = sample_collection._handle_frame_field(self._field)
+        self._is_frame_field = is_frame_field
 
 
 def _get_filter_field_pipeline(
-    filter_field, new_field, filter_arg, only_matches=False, hide_result=False
+    filter_field, new_field, filter_arg, only_matches=True, hide_result=False
 ):
     cond = _get_field_mongo_filter(filter_arg, prefix=filter_field)
 
@@ -772,9 +775,8 @@ def _get_filter_field_pipeline(
 
 
 def _get_filter_frames_field_pipeline(
-    filter_field, new_field, filter_arg, only_matches=False, hide_result=False,
+    filter_field, new_field, filter_arg, only_matches=True, hide_result=False,
 ):
-    filter_field = filter_field.split(".", 1)[1]  # remove `frames`
     cond = _get_field_mongo_filter(filter_arg, prefix="$frame." + filter_field)
 
     pipeline = [
@@ -913,13 +915,10 @@ class FilterLabels(FilterField):
 
         #
         # Only include classifications in the `predictions` field whose `label`
-        # is "cat" or "dog", and only show samples with at least one
-        # classification after filtering
+        # is "cat" or "dog"
         #
 
-        stage = fo.FilterLabels(
-            "predictions", F("label").is_in(["cat", "dog"]), only_matches=True
-        )
+        stage = fo.FilterLabels("predictions", F("label").is_in(["cat", "dog"]))
         view = dataset.add_stage(stage)
 
     Detections Examples::
@@ -989,13 +988,10 @@ class FilterLabels(FilterField):
 
         #
         # Only include detections in the `predictions` field whose `label` is
-        # "cat" or "dog", and only show samples with at least one detection
-        # after filtering
+        # "cat" or "dog"
         #
 
-        stage = fo.FilterLabels(
-            "predictions", F("label").is_in(["cat", "dog"]), only_matches=True
-        )
+        stage = fo.FilterLabels("predictions", F("label").is_in(["cat", "dog"]))
         view = dataset.add_stage(stage)
 
         #
@@ -1067,13 +1063,10 @@ class FilterLabels(FilterField):
 
         #
         # Only include polylines in the `predictions` field whose `label` is
-        # "lane", and only show samples with at least one polyline after
-        # filtering
+        # "lane"
         #
 
-        stage = fo.FilterLabels(
-            "predictions", F("label") == "lane", only_matches=True
-        )
+        stage = fo.FilterLabels("predictions", F("label") == "lane")
         view = dataset.add_stage(stage)
 
         #
@@ -1082,9 +1075,7 @@ class FilterLabels(FilterField):
         #
 
         num_vertices = F("points").map(F().length()).sum()
-        stage = fo.FilterLabels(
-            "predictions", num_vertices >= 3, only_matches=True
-        )
+        stage = fo.FilterLabels("predictions", num_vertices >= 3)
         view = dataset.add_stage(stage)
 
     Keypoints Examples::
@@ -1118,13 +1109,10 @@ class FilterLabels(FilterField):
 
         #
         # Only include keypoints in the `predictions` field whose `label` is
-        # "house", and only show samples with at least one keypoint after
-        # filtering
+        # "house"
         #
 
-        stage = fo.FilterLabels(
-            "predictions", F("label") == "house", only_matches=True
-        )
+        stage = fo.FilterLabels("predictions", F("label") == "house")
         view = dataset.add_stage(stage)
 
         #
@@ -1140,11 +1128,11 @@ class FilterLabels(FilterField):
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
-        only_matches (False): whether to only include samples with at least
-            one label after filtering
+        only_matches (True): whether to only include samples with at least
+            one label after filtering (True) or include all samples (False)
     """
 
-    def __init__(self, field, filter, only_matches=False):
+    def __init__(self, field, filter, only_matches=True):
         self._field = field
         self._filter = filter
         self._only_matches = only_matches
@@ -1163,37 +1151,24 @@ class FilterLabels(FilterField):
 
     def to_mongo(self, sample_collection):
         self._get_labels_field(sample_collection)
+
+        labels_field, is_frame_field = sample_collection._handle_frame_field(
+            self._labels_field
+        )
         new_field = self._get_new_field(sample_collection)
 
-        if sample_collection._is_frame_field(self._labels_field):
+        if is_frame_field:
             if self._is_labels_list_field:
-                return _get_filter_frames_list_field_pipeline(
-                    self._labels_field,
-                    new_field,
-                    self._filter,
-                    only_matches=self._only_matches,
-                    hide_result=self._hide_result,
-                )
+                _make_pipeline = _get_filter_frames_list_field_pipeline
+            else:
+                _make_pipeline = _get_filter_frames_field_pipeline
+        elif self._is_labels_list_field:
+            _make_pipeline = _get_filter_list_field_pipeline
+        else:
+            _make_pipeline = _get_filter_field_pipeline
 
-            return _get_filter_frames_field_pipeline(
-                self._labels_field,
-                new_field,
-                self._filter,
-                only_matches=self._only_matches,
-                hide_result=self._hide_result,
-            )
-
-        if self._is_labels_list_field:
-            return _get_filter_list_field_pipeline(
-                self._labels_field,
-                new_field,
-                self._filter,
-                only_matches=self._only_matches,
-                hide_result=self._hide_result,
-            )
-
-        return _get_filter_field_pipeline(
-            self._labels_field,
+        return _make_pipeline(
+            labels_field,
             new_field,
             self._filter,
             only_matches=self._only_matches,
@@ -1201,7 +1176,7 @@ class FilterLabels(FilterField):
         )
 
     def _needs_frames(self, sample_collection):
-        return sample_collection._is_frame_field(self._labels_field)
+        return sample_collection._handle_frame_field(self._labels_field)[1]
 
     def _get_mongo_filter(self):
         if self._is_labels_list_field:
@@ -1225,9 +1200,7 @@ class FilterLabels(FilterField):
         self._is_frame_field = is_frame_field
 
     def _get_new_field(self, sample_collection):
-        field = self._labels_field
-        if sample_collection._is_frame_field(field):
-            field = field.split(".", 1)[1]  # remove `frames`
+        field, _ = sample_collection._handle_frame_field(self._labels_field)
 
         if self._hide_result:
             return "__%s" % field
@@ -1239,7 +1212,7 @@ class FilterLabels(FilterField):
 
 
 def _get_filter_list_field_pipeline(
-    filter_field, new_field, filter_arg, only_matches=False, hide_result=False
+    filter_field, new_field, filter_arg, only_matches=True, hide_result=False
 ):
     cond = _get_list_field_mongo_filter(filter_arg)
 
@@ -1274,9 +1247,8 @@ def _get_filter_list_field_pipeline(
 
 
 def _get_filter_frames_list_field_pipeline(
-    filter_field, new_field, filter_arg, only_matches=False, hide_result=False,
+    filter_field, new_field, filter_arg, only_matches=True, hide_result=False,
 ):
-    filter_field = filter_field.split(".", 1)[1]  # remove `frames`
     cond = _get_list_field_mongo_filter(filter_arg)
     label_field, labels_list = new_field.split(".")
 
@@ -1379,18 +1351,18 @@ class _FilterListField(FilterField):
         return [self._filter_field]
 
     def to_mongo(self, sample_collection):
+        filter_field, is_frame_field = sample_collection._handle_frame_field(
+            self._filter_field
+        )
         new_field = self._get_new_field(sample_collection)
-        if sample_collection._is_frame_field(self._filter_field):
-            return _get_filter_frames_list_field_pipeline(
-                self._filter_field,
-                new_field,
-                self._filter,
-                only_matches=self._only_matches,
-                hide_result=self._hide_result,
-            )
 
-        return _get_filter_list_field_pipeline(
-            self._filter_field,
+        if is_frame_field:
+            _make_pipeline = _get_filter_frames_list_field_pipeline
+        else:
+            _make_pipeline = _get_filter_list_field_pipeline
+
+        return _make_pipeline(
+            filter_field,
             new_field,
             self._filter,
             only_matches=self._only_matches,
@@ -1421,8 +1393,9 @@ class FilterClassifications(_FilterListField):
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
-        only_matches (False): whether to only include samples with at least
-            one classification after filtering
+        only_matches (True): whether to only include samples with at least
+            one classification after filtering (True) or include all samples
+            (False)
     """
 
     @property
@@ -1454,8 +1427,8 @@ class FilterDetections(_FilterListField):
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
-        only_matches (False): whether to only include samples with at least
-            one detection after filtering
+        only_matches (True): whether to only include samples with at least
+            one detection after filtering (True) or include all samples (False)
     """
 
     @property
@@ -1487,8 +1460,8 @@ class FilterPolylines(_FilterListField):
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
-        only_matches (False): whether to only include samples with at least
-            one polyline after filtering
+        only_matches (True): whether to only include samples with at least
+            one polyline after filtering (True) or include all samples (False)
     """
 
     @property
@@ -1520,8 +1493,8 @@ class FilterKeypoints(_FilterListField):
         filter: a :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that returns a boolean describing the filter to apply
-        only_matches (False): whether to only include samples with at least
-            one keypoint after filtering
+        only_matches (True): whether to only include samples with at least
+            one keypoint after filtering (True) or include all samples (False)
     """
 
     @property
@@ -3111,13 +3084,13 @@ def _get_labels_list_field(sample_collection, field_path):
 
 
 def _get_field(sample_collection, field_path):
-    is_frame_field = sample_collection._is_frame_field(field_path)
+    field_name, is_frame_field = sample_collection._handle_frame_field(
+        field_path
+    )
 
     if is_frame_field:
-        field_name = field_path[len(sample_collection._FRAMES_PREFIX) :]
         schema = sample_collection.get_frame_field_schema()
     else:
-        field_name = field_path
         schema = sample_collection.get_field_schema()
 
     if field_name not in schema:

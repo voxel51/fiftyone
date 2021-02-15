@@ -116,12 +116,9 @@ class StateDescription(etas.Serializable):
         if dataset is not None:
             dataset = fod.load_dataset(dataset.get("name"))
 
-        stages = d.get("view", [])
+        stages = d.get("view", None)
         if dataset is not None and stages:
-            view = fov.DatasetView(dataset)
-            for stage_dict in stages:
-                stage = fost.ViewStage._from_dict(stage_dict)
-                view = view.add_stage(stage)
+            view = fov.DatasetView._build(dataset, stages)
         else:
             view = None
 
@@ -155,6 +152,8 @@ class DatasetStatistics(object):
 
         default_fields = fosa.get_default_sample_fields()
         aggregations.append(foa.CountValues("tags"))
+        is_none = (~(fo.ViewField().exists())).if_else(True, None)
+        none_aggregations = []
         for prefix, schema in schemas:
             for field_name, field in schema.items():
                 if field_name in default_fields or (
@@ -181,18 +180,26 @@ class DatasetStatistics(object):
                             foa.Bounds(confidence_path),
                         ]
                     )
+                    none_aggregations.append(
+                        foa.Count(label_path, expr=is_none)
+                    )
+                    none_aggregations.append(
+                        foa.Count(confidence_path, expr=is_none)
+                    )
                 else:
                     aggregations.append(foa.Count(field_name))
+                    aggregations.append(foa.Count(field_name))
+                    none_aggregations.append(
+                        foa.Count(field_name, expr=is_none)
+                    )
 
-                    if _meets_type(
-                        field,
-                        (fof.BooleanField, fof.IntField, fof.StringField),
-                    ):
-                        aggregations.append(foa.CountValues(field_name))
-                    elif _meets_type(field, (fof.IntField, fof.FloatField)):
+                    if _meets_type(field, (fof.IntField, fof.FloatField)):
                         aggregations.append(foa.Bounds(field_name))
+                    elif _meets_type(field, fof.StringField):
+                        aggregations.append(foa.Distinct(field_name))
 
-        self._aggregations = aggregations
+        self._aggregations = aggregations + none_aggregations
+        self._none_len = len(none_aggregations)
 
     @property
     def aggregations(self):

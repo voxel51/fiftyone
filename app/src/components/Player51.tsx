@@ -348,6 +348,7 @@ export default ({
   onSelectObject,
   savedOverlayOptions,
 }) => {
+  const isVideo = useRecoilValue(selectors.isVideoDataset);
   const filter = useRecoilValue(filterSelector);
   const fps = useRecoilValue(atoms.sampleFrameRate(sample._id));
   const overlayOptions = useRecoilValue(selectors.playerOverlayOptions);
@@ -458,16 +459,22 @@ export default ({
     setError(
       <>
         <p>
-          This video failed to load. Its type ({mimetype}) may be unsupported.
+          This {isVideo ? "video" : "image"} failed to load. The file may not
+          exist, or its type ({mimetype}) may be unsupported.
         </p>
         <p>
-          You can use{" "}
-          <code>
-            <ExternalLink href="https://voxel51.com/docs/fiftyone/api/fiftyone.utils.video.html#fiftyone.utils.video.reencode_videos">
-              fiftyone.utils.video.reencode_videos()
-            </ExternalLink>
-          </code>{" "}
-          to re-encode videos in a supported format.
+          {isVideo && (
+            <>
+              {" "}
+              You can use{" "}
+              <code>
+                <ExternalLink href="https://voxel51.com/docs/fiftyone/api/fiftyone.utils.video.html#fiftyone.utils.video.reencode_videos">
+                  fiftyone.utils.video.reencode_videos()
+                </ExternalLink>
+              </code>{" "}
+              to re-encode videos in a supported format.
+            </>
+          )}
         </p>
       </>
     )

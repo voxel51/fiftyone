@@ -348,7 +348,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @media_type.setter
     def media_type(self, media_type):
-        if len(self) != 0:
+        if self:
             raise ValueError("Cannot set media type of a non-empty dataset")
 
         if media_type not in fom.MEDIA_TYPES:
@@ -718,19 +718,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fields.
 
         Args:
-            field_name: the field name
-            new_field_name: the new field name
+            field_name: the field name or ``embedded.field.name``
+            new_field_name: the new field name or ``embedded.field.name``
         """
-        if "." in field_name:
-            self._sample_doc_cls._rename_embedded_field(
-                field_name, new_field_name
-            )
-            fos.Sample._reload_docs(self._sample_collection_name)
-        else:
-            self._sample_doc_cls._rename_field(field_name, new_field_name)
-            fos.Sample._rename_field(
-                self._sample_collection_name, field_name, new_field_name
-            )
+        self._rename_sample_fields({field_name: new_field_name})
+
+    def rename_sample_fields(self, field_mapping):
+        """Renames the sample fields to the given new names.
+
+        You can use dot notation (``embedded.field.name``) to rename embedded
+        fields.
+
+        Args:
+            field_mapping: a dict mapping field names to new field names
+        """
+        self._rename_sample_fields(field_mapping)
 
     def rename_frame_field(self, field_name, new_field_name):
         """Renames the frame-level field to the given new name.
@@ -741,24 +743,68 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Only applicable to video datasets.
 
         Args:
-            field_name: the field name
-            new_field_name: the new field name
+            field_name: the field name or ``embedded.field.name``
+            new_field_name: the new field name or ``embedded.field.name``
         """
+        self._rename_frame_fields({field_name: new_field_name})
+
+    def rename_frame_fields(self, field_mapping):
+        """Renames the frame-level fields to the given new names.
+
+        You can use dot notation (``embedded.field.name``) to rename embedded
+        frame fields.
+
+        Args:
+            field_mapping: a dict mapping field names to new field names
+        """
+        self._rename_frame_fields(field_mapping)
+
+    def _rename_sample_fields(self, field_mapping, view=None):
+        (
+            fields,
+            new_fields,
+            embedded_fields,
+            embedded_new_fields,
+        ) = _parse_field_mapping(field_mapping)
+
+        if fields:
+            self._sample_doc_cls._rename_fields(fields, new_fields)
+            fos.Sample._rename_fields(
+                self._sample_collection_name, fields, new_fields
+            )
+
+        if embedded_fields:
+            sample_collection = self if view is None else view
+            self._sample_doc_cls._rename_embedded_fields(
+                embedded_fields, embedded_new_fields, sample_collection
+            )
+            fos.Sample._reload_docs(self._sample_collection_name)
+
+    def _rename_frame_fields(self, field_mapping, view=None):
         if self.media_type != fom.VIDEO:
             raise ValueError("Only video datasets have frame fields")
 
-        if "." in field_name:
-            self._frame_doc_cls._rename_embedded_field(
-                field_name, new_field_name
+        (
+            fields,
+            new_fields,
+            embedded_fields,
+            embedded_new_fields,
+        ) = _parse_field_mapping(field_mapping)
+
+        if fields:
+            self._frame_doc_cls._rename_fields(
+                fields, new_fields, are_frame_fields=True
+            )
+            fofr.Frame._rename_fields(
+                self._frame_collection_name, fields, new_fields
+            )
+
+        if embedded_fields:
+            sample_collection = self if view is None else view
+            self._frame_doc_cls._rename_embedded_fields(
+                embedded_fields, embedded_new_fields, sample_collection
             )
             fofr.Frame._reload_docs(self._frame_collection_name)
-        else:
-            self._frame_doc_cls._rename_field(
-                field_name, new_field_name, is_frame_field=True
-            )
-            fofr.Frame._rename_field(
-                self._frame_collection_name, field_name, new_field_name
-            )
 
     def clone_sample_field(self, field_name, new_field_name):
         """Clones the given sample field into a new field of the dataset.
@@ -767,10 +813,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fields.
 
         Args:
-            field_name: the field name to clone
-            new_field_name: the new field name to populate
+            field_name: the field name or ``embedded.field.name``
+            new_field_name: the new field name or ``embedded.field.name``
         """
-        self._clone_sample_field(field_name, new_field_name)
+        self._clone_sample_fields({field_name: new_field_name})
+
+    def clone_sample_fields(self, field_mapping):
+        """Clones the given sample fields into new fields of the dataset.
+
+        You can use dot notation (``embedded.field.name``) to clone embedded
+        fields.
+
+        Args:
+            field_mapping: a dict mapping field names to new field names into
+                which to clone each field
+        """
+        self._clone_sample_fields(field_mapping)
 
     def clone_frame_field(self, field_name, new_field_name):
         """Clones the frame-level field into a new field.
@@ -781,47 +839,62 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Only applicable to video datasets.
 
         Args:
-            field_name: the field name
-            new_field_name: the new field name
+            field_name: the field name or ``embedded.field.name``
+            new_field_name: the new field name or ``embedded.field.name``
         """
-        self._clone_frame_field(field_name, new_field_name)
+        self._clone_frame_fields({field_name: new_field_name})
 
-    def _clone_sample_field(self, field_name, new_field_name, view=None):
-        if view is not None:
-            pipeline = view._pipeline(attach_frames=False)
-        else:
-            pipeline = None
+    def clone_frame_fields(self, field_mapping):
+        """Clones the frame-level fields into new fields.
 
-        if "." in field_name:
-            self._sample_doc_cls._clone_embedded_field(
-                field_name, new_field_name, pipeline=pipeline
-            )
-        else:
-            self._sample_doc_cls._clone_field(
-                field_name, new_field_name, pipeline=pipeline
+        You can use dot notation (``embedded.field.name``) to clone embedded
+        frame fields.
+
+        Only applicable to video datasets.
+
+        Args:
+            field_mapping: a dict mapping field names to new field names into
+                which to clone each field
+        """
+        self._clone_frame_fields(field_mapping)
+
+    def _clone_sample_fields(self, field_mapping, view=None):
+        (
+            fields,
+            new_fields,
+            embedded_fields,
+            embedded_new_fields,
+        ) = _parse_field_mapping(field_mapping)
+
+        if fields:
+            self._sample_doc_cls._clone_fields(fields, new_fields, view)
+
+        if embedded_fields:
+            sample_collection = self if view is None else view
+            self._sample_doc_cls._clone_embedded_fields(
+                embedded_fields, embedded_new_fields, sample_collection
             )
 
         fos.Sample._reload_docs(self._sample_collection_name)
 
-    def _clone_frame_field(self, field_name, new_field_name, view=None):
+    def _clone_frame_fields(self, field_mapping, view=None):
         if self.media_type != fom.VIDEO:
             raise ValueError("Only video datasets have frame fields")
 
-        if view is not None:
-            # @todo support this
-            raise ValueError(
-                "Cloning frame fields of a view is not yet supported"
-            )
-        else:
-            pipeline = None
+        (
+            fields,
+            new_fields,
+            embedded_fields,
+            embedded_new_fields,
+        ) = _parse_field_mapping(field_mapping)
 
-        if "." in field_name:
-            self._frame_doc_cls._clone_embedded_field(
-                field_name, new_field_name, pipeline=pipeline
-            )
-        else:
-            self._frame_doc_cls._clone_field(
-                field_name, new_field_name, pipeline=pipeline
+        if fields:
+            self._frame_doc_cls._clone_fields(fields, new_fields, view)
+
+        if embedded_fields:
+            sample_collection = self if view is None else view
+            self._frame_doc_cls._clone_embedded_fields(
+                embedded_fields, embedded_new_fields, sample_collection
             )
 
         fofr.Frame._reload_docs(self._frame_collection_name)
@@ -832,62 +905,90 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         The field will remain in the dataset's schema, and all samples will
         have the value ``None`` for the field.
 
-        Args:
-            field_name: the field name
+        You can use dot notation (``embedded.field.name``) to clone embedded
+        frame fields.
 
-        Raises:
-            AttributeError: if the field does not exist
+        Args:
+            field_name: the field name or ``embedded.field.name``
         """
-        self._clear_sample_field(field_name)
+        self._clear_sample_fields(field_name)
+
+    def clear_sample_fields(self, field_names):
+        """Clears the values of the fields from all samples in the dataset.
+
+        The field will remain in the dataset's schema, and all samples will
+        have the value ``None`` for the field.
+
+        You can use dot notation (``embedded.field.name``) to clone embedded
+        frame fields.
+
+        Args:
+            field_names: the field name or iterable of field names
+        """
+        self._clear_sample_fields(field_names)
 
     def clear_frame_field(self, field_name):
-        """Clears the values of the frame field from all samples in the
+        """Clears the values of the frame-level field from all samples in the
         dataset.
 
         The field will remain in the dataset's frame schema, and all frames
         will have the value ``None`` for the field.
 
+        You can use dot notation (``embedded.field.name``) to clone embedded
+        frame fields.
+
+        Only applicable to video datasets.
+
         Args:
-            field_name: the field name
-
-        Raises:
-            AttributeError: if the field does not exist
+            field_name: the field name or ``embedded.field.name``
         """
-        self._clear_frame_field(field_name)
+        self._clear_frame_fields(field_name)
 
-    def _clear_sample_field(self, field_name, view=None):
-        if view is not None:
-            pipeline = view._pipeline(attach_frames=False)
-        else:
-            pipeline = None
+    def clear_frame_fields(self, field_names):
+        """Clears the values of the frame-level fields from all samples in the
+        dataset.
 
-        if "." in field_name:
-            self._sample_doc_cls._clear_embedded_field(
-                field_name, pipeline=pipeline
+        The fields will remain in the dataset's frame schema, and all frames
+        will have the value ``None`` for the field.
+
+        You can use dot notation (``embedded.field.name``) to clone embedded
+        frame fields.
+
+        Only applicable to video datasets.
+
+        Args:
+            field_names: the field name or iterable of field names
+        """
+        self._clear_frame_fields(field_names)
+
+    def _clear_sample_fields(self, field_names, view=None):
+        fields, embedded_fields = _parse_fields(field_names)
+
+        if fields:
+            self._sample_doc_cls._clear_fields(fields, view)
+
+        if embedded_fields:
+            sample_collection = self if view is None else view
+            self._sample_doc_cls._clear_embedded_fields(
+                embedded_fields, sample_collection
             )
-        else:
-            self._sample_doc_cls._clear_field(field_name, pipeline=pipeline)
 
         fos.Sample._reload_docs(self._sample_collection_name)
 
-    def _clear_frame_field(self, field_name, view=None):
+    def _clear_frame_fields(self, field_names, view=None):
         if self.media_type != fom.VIDEO:
             raise ValueError("Only video datasets have frame fields")
 
-        if view is not None:
-            # @todo support this
-            raise ValueError(
-                "Clearing frame fields of a view is not yet supported"
-            )
-        else:
-            pipeline = None
+        fields, embedded_fields = _parse_fields(field_names)
 
-        if "." in field_name:
-            self._frame_doc_cls._clear_embedded_field(
-                field_name, pipeline=pipeline
+        if fields:
+            self._frame_doc_cls._clear_fields(fields, view)
+
+        if embedded_fields:
+            sample_collection = self if view is None else view
+            self._frame_doc_cls._clear_embedded_fields(
+                embedded_fields, sample_collection
             )
-        else:
-            self._frame_doc_cls._clear_field(field_name, pipeline=pipeline)
 
         fofr.Frame._reload_docs(self._frame_collection_name)
 
@@ -898,17 +999,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fields.
 
         Args:
-            field_name: the field name
-
-        Raises:
-            AttributeError: if the field does not exist
+            field_name: the field name or ``embedded.field.name``
         """
-        if "." in field_name:
-            self._sample_doc_cls._delete_embedded_field(field_name)
-            fos.Sample._reload_docs(self._sample_collection_name)
-        else:
-            self._sample_doc_cls._delete_field(field_name)
-            fos.Sample._purge_field(self._sample_collection_name, field_name)
+        self._delete_sample_fields(field_name)
+
+    def delete_sample_fields(self, field_names):
+        """Deletes the fields from all samples in the dataset.
+
+        You can use dot notation (``embedded.field.name``) to delete embedded
+        fields.
+
+        Args:
+            field_names: the field name or iterable of field names
+        """
+        self._delete_sample_fields(field_names)
 
     def delete_frame_field(self, field_name):
         """Deletes the frame-level field from all samples in the dataset.
@@ -919,20 +1023,47 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Only applicable to video datasets.
 
         Args:
-            field_name: the field name
-
-        Raises:
-            AttributeError: if the field does not exist
+            field_name: the field name or ``embedded.field.name``
         """
+        self._delete_frame_fields(field_name)
+
+    def delete_frame_fields(self, field_names):
+        """Deletes the frame-level fields from all samples in the dataset.
+
+        You can use dot notation (``embedded.field.name``) to delete embedded
+        frame fields.
+
+        Only applicable to video datasets.
+
+        Args:
+            field_names: a field name of iterable of field names
+        """
+        self._delete_frame_fields(field_names)
+
+    def _delete_sample_fields(self, field_names):
+        fields, embedded_fields = _parse_fields(field_names)
+
+        if fields:
+            self._sample_doc_cls._delete_fields(fields)
+            fos.Sample._purge_fields(self._sample_collection_name, fields)
+
+        if embedded_fields:
+            self._sample_doc_cls._delete_embedded_fields(embedded_fields)
+            fos.Sample._reload_docs(self._sample_collection_name)
+
+    def _delete_frame_fields(self, field_names):
         if self.media_type != fom.VIDEO:
             raise ValueError("Only video datasets have frame fields")
 
-        if "." in field_name:
-            self._frame_doc_cls._delete_embedded_field(field_name)
+        fields, embedded_fields = _parse_fields(field_names)
+
+        if fields:
+            self._frame_doc_cls._delete_fields(fields, are_frame_fields=True)
+            fofr.Frame._purge_fields(self._frame_collection_name, fields)
+
+        if embedded_fields:
+            self._frame_doc_cls._delete_embedded_fields(embedded_fields)
             fofr.Frame._reload_docs(self._frame_collection_name)
-        else:
-            self._frame_doc_cls._delete_field(field_name, is_frame_field=True)
-            fofr.Frame._purge_field(self._frame_collection_name, field_name)
 
     def iter_samples(self):
         """Returns an iterator over the samples in the dataset.
@@ -1318,6 +1449,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._sample_collection_name, doc_ids=[sample_id]
         )
 
+        if self.media_type == fom.VIDEO:
+            fofr.Frame._reset_docs(
+                self._frame_collection_name, sample_ids=[sample_id]
+            )
+
     def remove_samples(self, samples_or_ids):
         """Removes the given samples from the dataset.
 
@@ -1345,6 +1481,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fos.Sample._reset_docs(
             self._sample_collection_name, doc_ids=sample_ids
         )
+
+        if self.media_type == fom.VIDEO:
+            fofr.Frame._reset_docs(
+                self._frame_collection_name, sample_ids=sample_ids
+            )
 
     def save(self):
         """Saves the dataset to the database.
@@ -1395,7 +1536,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if self.media_type == fom.VIDEO:
             self._frame_doc_cls.drop_collection()
-            fos.Sample._reset_docs(self._frame_collection_name)
+            fofr.Frame._reset_docs(self._frame_collection_name)
 
     def delete(self):
         """Deletes the dataset.
@@ -2212,7 +2353,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         index_fields = [v["key"][0][0] for v in index_info.values()]
         return [f for f in index_fields if not f.startswith("_")]
 
-    def create_index(self, field, unique=False):
+    def create_index(self, field_name, unique=False):
         """Creates an index on the given field.
 
         If the given field already has a unique index, it will be retained
@@ -2224,43 +2365,47 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Indexes enable efficient sorting, merging, and other such operations.
 
         Args:
-            field: the field name or ``embedded.field.name``
+            field_name: the field name or ``embedded.field.name``
             unique (False): whether to add a uniqueness constraint to the index
         """
-        if ("." not in field) and (field not in self.get_field_schema()):
-            raise ValueError("Dataset has no field '%s'" % field)
+        if ("." not in field_name) and (
+            field_name not in self.get_field_schema()
+        ):
+            raise ValueError("Dataset has no field '%s'" % field_name)
 
         index_info = self._sample_collection.index_information()
         index_map = {
             v["key"][0][0]: v.get("unique", False) for v in index_info.values()
         }
-        if field in index_map:
-            _unique = index_map[field]
+        if field_name in index_map:
+            _unique = index_map[field_name]
             if _unique or (unique == _unique):
                 # Satisfactory index already exists
                 return
 
             # Must drop existing index
-            self.drop_index(field)
+            self.drop_index(field_name)
 
-        self._sample_collection.create_index(field, unique=unique)
+        self._sample_collection.create_index(field_name, unique=unique)
 
-    def drop_index(self, field):
+    def drop_index(self, field_name):
         """Drops the index on the given field.
 
         Args:
-            field: the field name or ``embedded.field.name``
+            field_name: the field name or ``embedded.field.name``
         """
         index_info = self._sample_collection.index_information()
         index_map = {v["key"][0][0]: k for k, v in index_info.items()}
 
-        if field not in index_map:
-            if ("." not in field) and (field not in self.get_field_schema()):
-                raise ValueError("Dataset has no field '%s'" % field)
+        if field_name not in index_map:
+            if ("." not in field_name) and (
+                field_name not in self.get_field_schema()
+            ):
+                raise ValueError("Dataset has no field '%s'" % field_name)
 
-            raise ValueError("Dataset field '%s' is not indexed" % field)
+            raise ValueError("Dataset field '%s' is not indexed" % field_name)
 
-        self._sample_collection.drop_index(index_map[field])
+        self._sample_collection.drop_index(index_map[field_name])
 
     @classmethod
     def from_dict(cls, d, name=None, rel_dir=None, frame_labels_dir=None):
@@ -2371,7 +2516,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _add_view_stage(self, stage):
         return self.view().add_stage(stage)
 
-    def _pipeline(self, pipeline=None, attach_frames=True):
+    def _pipeline(self, pipeline=None, attach_frames=True, frames_only=False):
+        if frames_only:
+            attach_frames = True
+
         if attach_frames and (self.media_type == fom.VIDEO):
             _pipeline = self._attach_frames()
         else:
@@ -2379,6 +2527,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if pipeline is not None:
             _pipeline += pipeline
+
+        if frames_only:
+            _pipeline += [
+                {"$project": {"frames": True}},
+                {"$unwind": "$frames"},
+                {"$replaceRoot": {"newRoot": "$frames"}},
+            ]
 
         return _pipeline
 
@@ -2635,14 +2790,9 @@ def _clone_dataset_or_view(dataset_or_view, name):
     # Clone samples
     #
 
-    if view is not None:
-        pipeline = view._pipeline(attach_frames=False)
-    else:
-        pipeline = [{"$match": {}}]
-
-    dataset._sample_collection.aggregate(
-        pipeline + [{"$out": sample_collection_name}]
-    )
+    pipeline = dataset_or_view._pipeline(attach_frames=False)
+    pipeline += [{"$out": sample_collection_name}]
+    dataset._sample_collection.aggregate(pipeline)
 
     #
     # Clone frames
@@ -2650,15 +2800,15 @@ def _clone_dataset_or_view(dataset_or_view, name):
 
     if dataset.media_type == fom.VIDEO:
         if view is not None:
-            # @todo support this
-            raise ValueError(
-                "Cloning views into video datasets is not yet supported"
-            )
-
-        frames_pipeline = [{"$match": {}}]
-        dataset._frame_collection.aggregate(
-            frames_pipeline + [{"$out": frames_collection_name}]
-        )
+            # The view may modify the frames, so we route the frames though
+            # the sample collection
+            pipeline = view._pipeline(frames_only=True)
+            pipeline += [{"$out": frames_collection_name}]
+            dataset._sample_collection.aggregate(pipeline)
+        else:
+            # Here we can directly aggregate on the frame collection
+            pipeline = [{"$out": frames_collection_name}]
+            dataset._frame_collection.aggregate(pipeline)
 
     #
     # Clone dataset document
@@ -2697,30 +2847,75 @@ def _clone_dataset_or_view(dataset_or_view, name):
 def _save_view(view, fields):
     dataset = view._dataset
 
+    merge = fields is not None
+    if fields is None:
+        fields = []
+
     if dataset.media_type == fom.VIDEO:
-        # @todo support this
-        raise ValueError(
-            "Saving views into video datasets is not yet supported"
-        )
+        sample_fields = []
+        frame_fields = []
+        for field in fields:
+            field, is_frame_field = view._handle_frame_field(field)
+            if is_frame_field:
+                frame_fields.append(field)
+            else:
+                sample_fields.append(field)
+    else:
+        sample_fields = fields
+        frame_fields = []
+
+    #
+    # Save samples
+    #
 
     pipeline = view._pipeline(attach_frames=False)
 
-    merge = fields is not None
-
     if merge:
-        pipeline.append({"$project": {f: True for f in fields}})
-        pipeline.append({"$merge": dataset._sample_collection_name})
+        if sample_fields:
+            pipeline.append({"$project": {f: True for f in sample_fields}})
+            pipeline.append({"$merge": dataset._sample_collection_name})
+            dataset._sample_collection.aggregate(pipeline)
     else:
         pipeline.append({"$out": dataset._sample_collection_name})
+        dataset._sample_collection.aggregate(pipeline)
 
-    dataset._sample_collection.aggregate(pipeline)
-
-    doc_ids = [str(_id) for _id in dataset._get_sample_ids()]
-    fos.Sample._reload_docs(dataset._sample_collection_name, doc_ids=doc_ids)
-
-    if not merge:
         for field_name in view._get_missing_fields():
             dataset._sample_doc_cls._delete_field_schema(field_name, False)
+
+    #
+    # Save frames
+    #
+
+    if dataset.media_type == fom.VIDEO:
+        # The view may modify the frames, so we route the frames through the
+        # sample collection
+        pipeline = view._pipeline(frames_only=True)
+
+        if merge:
+            if frame_fields:
+                pipeline.append({"$project": {f: True for f in frame_fields}})
+                pipeline.append({"$merge": dataset._frame_collection_name})
+                dataset._sample_collection.aggregate(pipeline)
+        else:
+            pipeline.append({"$out": dataset._frame_collection_name})
+            dataset._sample_collection.aggregate(pipeline)
+
+            for field_name in view._get_missing_fields(frames=True):
+                dataset._frame_doc_cls._delete_field_schema(field_name, False)
+
+    #
+    # Reload in-memory documents
+    #
+
+    # The samples now in the collection
+    doc_ids = [str(_id) for _id in dataset._get_sample_ids()]
+
+    if dataset.media_type == fom.VIDEO:
+        fofr.Frame._reload_docs(
+            dataset._frame_collection_name, sample_ids=doc_ids
+        )
+
+    fos.Sample._reload_docs(dataset._sample_collection_name, doc_ids=doc_ids)
 
 
 def _make_sample_collection_name():
@@ -2852,3 +3047,28 @@ def _get_sample_ids(samples_or_ids):
         return [s.id for s in samples_or_ids]
 
     return list(samples_or_ids)
+
+
+def _parse_fields(field_names):
+    if etau.is_str(field_names):
+        field_names = [field_names]
+
+    fields = [f for f in field_names if "." not in f]
+    embedded_fields = [f for f in field_names if "." in f]
+    return fields, embedded_fields
+
+
+def _parse_field_mapping(field_mapping):
+    fields = []
+    new_fields = []
+    embedded_fields = []
+    embedded_new_fields = []
+    for field, new_field in field_mapping.items():
+        if "." in field or "." in new_field:
+            embedded_fields.append(field)
+            embedded_new_fields.append(new_field)
+        else:
+            fields.append(field)
+            new_fields.append(new_field)
+
+    return fields, new_fields, embedded_fields, embedded_new_fields

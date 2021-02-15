@@ -97,7 +97,8 @@
                     "type": "eta.detectors.EfficientDet",
                     "config": {
                         "architecture_name": "efficientdet-d0",
-                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
+                        "confidence_thresh": 0.3
                     }
                 }
             },
@@ -135,7 +136,8 @@
                     "type": "eta.detectors.EfficientDet",
                     "config": {
                         "architecture_name": "efficientdet-d1",
-                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
+                        "confidence_thresh": 0.3
                     }
                 }
             },
@@ -173,7 +175,8 @@
                     "type": "eta.detectors.EfficientDet",
                     "config": {
                         "architecture_name": "efficientdet-d2",
-                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
+                        "confidence_thresh": 0.3
                     }
                 }
             },
@@ -211,7 +214,8 @@
                     "type": "eta.detectors.EfficientDet",
                     "config": {
                         "architecture_name": "efficientdet-d3",
-                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
+                        "confidence_thresh": 0.3
                     }
                 }
             },
@@ -249,7 +253,8 @@
                     "type": "eta.detectors.EfficientDet",
                     "config": {
                         "architecture_name": "efficientdet-d4",
-                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
+                        "confidence_thresh": 0.3
                     }
                 }
             },
@@ -287,7 +292,8 @@
                     "type": "eta.detectors.EfficientDet",
                     "config": {
                         "architecture_name": "efficientdet-d5",
-                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
+                        "confidence_thresh": 0.3
                     }
                 }
             },
@@ -325,7 +331,8 @@
                     "type": "eta.detectors.EfficientDet",
                     "config": {
                         "architecture_name": "efficientdet-d6",
-                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
+                        "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
+                        "confidence_thresh": 0.3
                     }
                 }
             },
@@ -360,7 +367,8 @@
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
-                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
                     }
                 }
             },
@@ -395,7 +403,8 @@
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
-                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
                     }
                 }
             },
@@ -430,7 +439,8 @@
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
-                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
                     }
                 }
             },
@@ -465,7 +475,8 @@
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
-                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
                     }
                 }
             },
@@ -500,7 +511,8 @@
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
-                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
                     }
                 }
             },
@@ -535,7 +547,8 @@
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
-                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
                     }
                 }
             },
@@ -570,7 +583,8 @@
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
-                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
                     }
                 }
             },
@@ -605,7 +619,8 @@
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
-                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
                     }
                 }
             },
@@ -640,7 +655,8 @@
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
-                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
                     }
                 }
             },
@@ -1038,7 +1054,8 @@
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
-                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
                     }
                 }
             },
@@ -1073,7 +1090,8 @@
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
-                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
                     }
                 }
             },
@@ -1108,7 +1126,8 @@
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
-                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
                     }
                 }
             },
@@ -1143,7 +1162,8 @@
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
-                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
                     }
                 }
             },
@@ -1178,7 +1198,8 @@
                 "config": {
                     "type": "eta.detectors.TFModelsDetector",
                     "config": {
-                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
                     }
                 }
             },
@@ -1257,7 +1278,8 @@
                     "type": "eta.detectors.YOLODetector",
                     "config": {
                         "config_dir": "{{eta}}/tensorflow/darkflow/cfg/",
-                        "config_path": "{{eta}}/tensorflow/darkflow/cfg/yolo.cfg"
+                        "config_path": "{{eta}}/tensorflow/darkflow/cfg/yolo.cfg",
+                        "confidence_thresh": 0.3
                     }
                 }
             },
@@ -1294,7 +1316,8 @@
                 "config": {
                     "type": "eta.detectors.TF2ModelsDetector",
                     "config": {
-                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt"
+                        "labels_path": "{{eta}}/tensorflow/models/research/object_detection/data/mscoco_complete_label_map.pbtxt",
+                        "confidence_thresh": 0.3
                     }
                 }
             },
