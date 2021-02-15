@@ -17,6 +17,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.aggregations as foa
+import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -3116,9 +3117,7 @@ class SampleCollection(object):
         return self.aggregate(foa.Sum(field_name, expr=expr))
 
     @aggregation
-    def values(
-        self, field_name, expr=None, omit_missing=False, missing_value=None
-    ):
+    def values(self, field_name, expr=None, missing_value=None):
         """Extracts the values of a field from all samples in the collection.
 
         .. note::
@@ -3183,22 +3182,14 @@ class SampleCollection(object):
                 :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 to apply to the field before aggregating
-            omit_missing (False): whether to omit missing or ``None``-valued
-                fields from the output list
             missing_value (None): a value to insert for missing or
-                ``None``-valued fields. Only applicable when ``omit_missing``
-                is ``False``
+                ``None``-valued fields
 
         Returns:
             the list of values
         """
         return self.aggregate(
-            foa.Values(
-                field_name,
-                expr=expr,
-                omit_missing=omit_missing,
-                missing_value=missing_value,
-            )
+            foa.Values(field_name, expr=expr, missing_value=missing_value)
         )
 
     def draw_labels(
@@ -3788,6 +3779,9 @@ class SampleCollection(object):
         if not self.has_sample_field(field_name):
             self._dataset.add_sample_field(field_name, ftype, **kwargs)
 
+    def _make_set_field_pipeline(self, field, expr, embedded_root=False):
+        return _make_set_field_pipeline(self, field, expr, embedded_root)
+
 
 def get_label_fields(
     sample_collection,
@@ -4109,6 +4103,13 @@ def _parse_field_name(sample_collection, field_name, auto_unwind):
     unwind_list_fields = sorted(unwind_list_fields)
     other_list_fields = sorted(other_list_fields)
 
+    if is_frame_field and not auto_unwind:
+        prefix = sample_collection._FRAMES_PREFIX
+        field_name = prefix + field_name
+        unwind_list_fields = [prefix + f for f in unwind_list_fields]
+        other_list_fields = [prefix + f for f in other_list_fields]
+        other_list_fields.insert(0, "frames")
+
     return field_name, is_frame_field, unwind_list_fields, other_list_fields
 
 
@@ -4155,6 +4156,89 @@ def _is_field_type(field, field_path, types):
         return False
 
     return _is_field_type(field, field_path, types)
+
+
+def _make_set_field_pipeline(sample_collection, field, expr, embedded_root):
+    path, is_frame_field, list_fields, _ = sample_collection._parse_field_name(
+        field
+    )
+
+    if is_frame_field and path != "frames":
+        path = sample_collection._FRAMES_PREFIX + path
+        list_fields = ["frames"] + [
+            sample_collection._FRAMES_PREFIX + lf for lf in list_fields
+        ]
+
+    # Don't unroll terminal lists unless explicitly requested
+    list_fields = [lf for lf in list_fields if lf != field]
+
+    # Case 1: no list fields
+    if not list_fields:
+        path_expr = _render_expr(expr, path, embedded_root)
+        return [{"$set": {path: path_expr}}]
+
+    # Case 2: one list field
+    if len(list_fields) == 1:
+        list_field = list_fields[0]
+        subfield = path[len(list_field) + 1 :]
+        expr = _set_terminal_list_field(
+            list_field, subfield, expr, embedded_root
+        )
+        return [{"$set": {list_field: expr.to_mongo()}}]
+
+    # Case 3: multiple list fields
+
+    # Handle last list field
+    last_list_field = list_fields[-1]
+    terminal_prefix = last_list_field[len(list_fields[-2]) + 1 :]
+    subfield = path[len(last_list_field) + 1 :]
+    expr = _set_terminal_list_field(
+        terminal_prefix, subfield, expr, embedded_root
+    )
+
+    for list_field1, list_field2 in zip(
+        reversed(list_fields[:-1]), reversed(list_fields[1:])
+    ):
+        inner_list_field = list_field2[len(list_field1) + 1 :]
+        expr = foe.ViewField().map(
+            foe.ViewField().set_field(inner_list_field, expr)
+        )
+
+    expr = expr.to_mongo(prefix="$" + list_fields[0])
+
+    return [{"$set": {list_fields[0]: expr}}]
+
+
+def _set_terminal_list_field(list_field, subfield, expr, embedded_root):
+    map_path = "$this"
+    if subfield:
+        map_path += "." + subfield
+
+    map_expr = _render_expr(expr, map_path, embedded_root)
+
+    if subfield:
+        map_expr = foe.ViewField().set_field(subfield, map_expr)
+    else:
+        map_expr = foe.ViewExpression(map_expr)
+
+    return foe.ViewField(list_field).map(map_expr)
+
+
+def _render_expr(expr, path, embedded_root):
+    if not isinstance(expr, foe.ViewExpression):
+        return expr
+
+    if not embedded_root:
+        prefix = path
+    elif "." in path:
+        prefix = path.rsplit(".", 1)[0]
+    else:
+        prefix = None
+
+    if prefix:
+        prefix = "$" + prefix
+
+    return expr.to_mongo(prefix=prefix)
 
 
 def _get_random_characters(n):
