@@ -2466,7 +2466,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             attach_frames = True
 
         if attach_frames and (self.media_type == fom.VIDEO):
-            _pipeline = self._attach_frames()
+            _pipeline = [
+                {
+                    "$lookup": {
+                        "from": self._frame_collection_name,
+                        "localField": "_id",
+                        "foreignField": "_sample_id",
+                        "as": "frames",
+                    }
+                }
+            ]
         else:
             _pipeline = []
 

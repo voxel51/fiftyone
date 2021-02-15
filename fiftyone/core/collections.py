@@ -511,6 +511,7 @@ class SampleCollection(object):
             field_name: a field or ``embedded.field.name``
             values: an iterable of values
         """
+        # @todo support frame fields
         field_name, is_frame_field = self._handle_frame_field(field_name)
         if is_frame_field:
             raise ValueError("set_values() only supports sample fields")
@@ -3677,19 +3678,6 @@ class SampleCollection(object):
             return next(result)["ids"]
         except StopIteration:
             return []
-
-    def _attach_frames(self):
-        # pylint: disable=no-member
-        return [
-            {
-                "$lookup": {
-                    "from": self._frame_collection_name,
-                    "localField": "_id",
-                    "foreignField": "_sample_id",
-                    "as": "frames",
-                }
-            }
-        ]
 
     async def _async_aggregate(self, sample_collection, aggregations):
         scalar_result, aggregations, facets = self._build_aggregation(

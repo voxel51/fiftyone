@@ -705,7 +705,7 @@ class FilterField(ViewStage):
         return field
 
     def _needs_frames(self, sample_collection):
-        return sample_collection._handle_frame_field(self._field)[1]
+        return sample_collection._is_frame_field(self._field)
 
     def _kwargs(self):
         return [
@@ -1176,7 +1176,7 @@ class FilterLabels(FilterField):
         )
 
     def _needs_frames(self, sample_collection):
-        return sample_collection._handle_frame_field(self._labels_field)[1]
+        return sample_collection._is_frame_field(self._labels_field)
 
     def _get_mongo_filter(self):
         if self._is_labels_list_field:
