@@ -83,12 +83,7 @@ class Service(object):
     def __del__(self):
         """Stops the service."""
         if not self._disabled:
-            try:
-                self.stop()
-            except:
-                # something probably failed due to interpreter shutdown, which
-                # will be handled by service/main.py
-                pass
+            self.stop()
 
     @property
     def command(self):
@@ -162,7 +157,7 @@ class Service(object):
 
         @retry(
             wait_fixed=250,
-            stop_max_delay=timeout * 1000,
+            stop_max_delay=timeout * 2000,
             retry_on_exception=lambda e: isinstance(e, ServiceListenTimeout),
         )
         def find_port():
@@ -231,7 +226,6 @@ class MultiClientService(Service):
 
             except IOError:
                 logger.warning("%s did not respond", desc)
-
         super().start()
 
     def stop(self):

@@ -5,13 +5,7 @@ Documents that track datasets and their sample schemas in the database.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from mongoengine import (
-    BooleanField,
-    EmbeddedDocumentField,
-    EmbeddedDocumentListField,
-    ListField,
-    StringField,
-)
+import mongoengine as moe
 
 import eta.core.utils as etau
 
@@ -23,11 +17,11 @@ from .fields import DictField, LabelTargetsField, TargetsField
 class SampleFieldDocument(EmbeddedDocument):
     """Description of a sample field."""
 
-    name = StringField()
-    ftype = StringField()
-    subfield = StringField(null=True)
-    embedded_doc_type = StringField(null=True)
-    targets_name = StringField(null=True)
+    name = moe.StringField()
+    ftype = moe.StringField()
+    subfield = moe.StringField(null=True)
+    embedded_doc_type = moe.StringField(null=True)
+    targets_name = moe.StringField(null=True)
 
     @classmethod
     def from_field(cls, field):
@@ -100,18 +94,21 @@ class DatasetDocument(Document):
 
     meta = {"collection": "datasets"}
 
-    media_type = StringField()
-    name = StringField(unique=True, required=True)
-    sample_collection_name = StringField(unique=True, required=True)
-    persistent = BooleanField(default=False)
+    media_type = moe.StringField()
+    name = moe.StringField(unique=True, required=True)
+    sample_collection_name = moe.StringField(unique=True, required=True)
+    persistent = moe.BooleanField(default=False)
     info = DictField(default=dict)
-    evaluations = DictField(
-        EmbeddedDocumentField(document_type=EvaluationDocument), default=dict
+    evaluations = moe.DictField(
+        moe.EmbeddedDocumentField(document_type=EvaluationDocument),
+        default=dict,
     )
-    sample_fields = EmbeddedDocumentListField(
+    sample_fields = moe.EmbeddedDocumentListField(
         document_type=SampleFieldDocument
     )
     default_targets = TargetsField(null=True)
     label_targets = LabelTargetsField(default=dict)
-    frame_fields = EmbeddedDocumentListField(document_type=SampleFieldDocument)
-    version = StringField(required=True, null=True)
+    frame_fields = moe.EmbeddedDocumentListField(
+        document_type=SampleFieldDocument
+    )
+    version = moe.StringField(required=True, null=True)
