@@ -65,6 +65,15 @@ Core
 - Added a :meth:`stats() <fiftyone.core.dataset.Dataset>` for listing helpful
   info about the size of various entities of a dataset
 
+Utils
+^^^^^
+- Added an evaluation API that supports evaluating
+  :meth:`classification (simple, binary, top-k) <fiftyone.core.collections.SampleCollection.evaluate_classifications>`,
+  :meth:`detection (coco) <fiftyone.core.collections.SampleCollection.evaluate_detections>`,
+  and
+  :meth:`segmentation <fiftyone.core.collections.SampleCollection.evaluate_segmentations>`
+  labels.
+
 CLI
 ^^^
 - Added a :ref:`Migration API <cli-fiftyone-migrate>` to ensure one has the
