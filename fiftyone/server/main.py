@@ -1199,6 +1199,9 @@ class FileHandler(tornado.web.StaticFileHandler):
 class MediaHandler(FileHandler):
     @classmethod
     def get_absolute_path(cls, root, path):
+        if os.name != "nt":
+            path = os.path.join("/", path)
+
         return path
 
     def validate_absolute_path(self, root, absolute_path):
