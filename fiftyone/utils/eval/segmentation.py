@@ -328,7 +328,8 @@ def _compute_pixel_confusion_matrix(
             gt_mask.ravel(), pred_mask.ravel(), labels=values
         )
     except ValueError:
-        # Assume that no `values` appear in `gt_mask`, which is not allowed
+        # Assume that no `values` appear in `gt_mask`, which causes
+        # `skm.confusion_matrix` to raise an error
         num_classes = len(values)
         return np.zeros((num_classes, num_classes), dtype=int)
 
