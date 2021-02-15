@@ -11,7 +11,7 @@ FiftyOne 0.7.3
 
 App
 ^^^
-- Added filtering widgest to the Fields Sidebar for
+- Added filtering widgets to the Fields Sidebar for
   :class:`StringFields <fiftyone.core.fields.StringField>` and
   :class:`BooleanFields <fiftyone.core.fields.BooleanField>`
 - Added histogram plots for
@@ -21,7 +21,7 @@ App
 - Moved `None` selection for
   :class:`StringFields <fiftyone.core.fields.StringField>` to the input format
   in the Fields Sidebar
-- All `None` options are now only present when `None` values exist for a
+- Changed `None` options to only be present when `None` values exist for a
   supported :class:`Field <fiftyone.core.fields.Field>` in the Fields Sidebar
 - Added `Color by label` support for
   :class:`Classification <fiftyone.core.labels.Classification>`,
