@@ -9,7 +9,6 @@ import numpy as np
 
 import eta.core.utils as etau
 
-import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
@@ -1203,11 +1202,11 @@ def _make_extract_values_pipeline(path, list_fields, missing_value):
 
 def _extract_list_values(subfield, expr):
     if subfield:
-        map_expr = foe.ViewField(subfield).apply(expr)
+        map_expr = F(subfield).apply(expr)
     else:
         map_expr = expr
 
-    return foe.ViewField().map(map_expr)
+    return F().map(map_expr)
 
 
 def _parse_field_and_expr(sample_collection, field_name, auto_unwind, expr):
