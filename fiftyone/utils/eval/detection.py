@@ -51,6 +51,13 @@ def evaluate_detections(
             FP: sample.<eval_key>_fp
             FN: sample.<eval_key>_fn
 
+        In addition, when evaluating frame-level objects, TP/FP/FN counts are
+        recorded for each frame::
+
+            TP: frame.<eval_key>_tp
+            FP: frame.<eval_key>_fp
+            FN: frame.<eval_key>_fn
+
     -   The fields listed below are populated on each individual
         :class:`fiftyone.core.labels.Detection` instance; these fields tabulate
         the TP/FP/FN status of the object, the ID of the matching object
@@ -124,6 +131,11 @@ def evaluate_detections(
                 sample_fp += fp
                 sample_fn += fn
 
+                if processing_frames and eval_key is not None:
+                    image["%s_tp" % eval_key] = tp
+                    image["%s_fp" % eval_key] = fp
+                    image["%s_fn" % eval_key] = fn
+
             if eval_key is not None:
                 sample["%s_tp" % eval_key] = sample_tp
                 sample["%s_fp" % eval_key] = sample_fp
@@ -134,27 +146,6 @@ def evaluate_detections(
         save_evaluation_info(samples, eval_info)
 
     return DetectionResults(matches, classes=classes, missing=missing)
-
-
-def _cleanup_evaluate_detections(samples, pred_field, gt_field, eval_key):
-    pred_field, is_frame_field = samples._handle_frame_field(pred_field)
-    gt_field, _ = samples._handle_frame_field(gt_field)
-
-    fields = [
-        "%s.detections.%s_id" % (pred_field, eval_key),
-        "%s.detections.%s_iou" % (pred_field, eval_key),
-        "%s.detections.%s_id" % (gt_field, eval_key),
-        "%s.detections.%s_iou" % (gt_field, eval_key),
-    ]
-
-    if is_frame_field:
-        samples._dataset.delete_frame_fields(fields)
-    else:
-        samples._dataset.delete_sample_fields(fields)
-
-    samples._dataset.delete_sample_fields(
-        ["%s_tp" % eval_key, "%s_fp" % eval_key, "%s_fn" % eval_key]
-    )
 
 
 class DetectionEvaluationConfig(EvaluationConfig):
@@ -199,14 +190,59 @@ class DetectionEvaluation(Evaluation):
         """
         raise NotImplementedError("subclass must implement evaluate_image()")
 
+    def get_fields(self, samples, eval_key):
+        eval_info = samples.get_evaluation_info(eval_key)
+
+        eval_fields = [
+            "%s_tp" % eval_key,
+            "%s_fp" % eval_key,
+            "%s_fn" % eval_key,
+            "%s.detections.%s" % (eval_info.pred_field, eval_key),
+            "%s.detections.%s_id" % (eval_info.pred_field, eval_key),
+            "%s.detections.%s_iou" % (eval_info.pred_field, eval_key),
+            "%s.detections.%s" % (eval_info.gt_field, eval_key),
+            "%s.detections.%s_id" % (eval_info.gt_field, eval_key),
+            "%s.detections.%s_iou" % (eval_info.gt_field, eval_key),
+        ]
+
+        if samples._is_frame_field(eval_info.gt_field):
+            eval_fields.extend(
+                [
+                    "frames.%s_tp" % eval_key,
+                    "frames.%s_fp" % eval_key,
+                    "frames.%s_fn" % eval_key,
+                ]
+            )
+
+        return eval_fields
+
     def cleanup(self, samples, eval_key):
         eval_info = samples.get_evaluation_info(eval_key)
-        _cleanup_evaluate_detections(
-            samples,
-            eval_info.pred_field,
-            eval_info.gt_field,
-            eval_info.eval_key,
+
+        pred_field, is_frame_field = samples._handle_frame_field(
+            eval_info.pred_field
         )
+        gt_field, _ = samples._handle_frame_field(eval_info.gt_field)
+
+        fields = [
+            "%s_tp" % eval_key,
+            "%s_fp" % eval_key,
+            "%s_fn" % eval_key,
+            "%s.detections.%s" % (pred_field, eval_key),
+            "%s.detections.%s_id" % (pred_field, eval_key),
+            "%s.detections.%s_iou" % (pred_field, eval_key),
+            "%s.detections.%s" % (gt_field, eval_key),
+            "%s.detections.%s_id" % (gt_field, eval_key),
+            "%s.detections.%s_iou" % (gt_field, eval_key),
+        ]
+
+        if is_frame_field:
+            samples._dataset.delete_sample_fields(
+                ["%s_tp" % eval_key, "%s_fp" % eval_key, "%s_fn" % eval_key]
+            )
+            samples._dataset.delete_frame_fields(fields)
+        else:
+            samples._dataset.delete_sample_fields(fields)
 
 
 class DetectionResults(ClassificationResults):
