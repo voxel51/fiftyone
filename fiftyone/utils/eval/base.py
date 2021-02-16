@@ -264,28 +264,39 @@ def load_evaluation_view(samples, eval_key, select_fields=False):
     view = fov.DatasetView._build(samples._dataset, stage_dicts)
 
     if select_fields:
-        select = []
+        # Select evaluation fields
+        gt_field = eval_doc.gt_field
+        pred_field = eval_doc.pred_field
+        select = [gt_field, pred_field]
+        prefixes = (gt_field + ".", pred_field + ".")
+        for field in _get_eval_fields(samples, eval_key):
+            # We don't need to select embedded fields of gt/pred
+            if not field.startswith(prefixes):
+                select.append(field)
+
+        view = view.select_fields(select)
+
+        # Hide any ancillary evaluations on the same fields
         exclude = []
         for _eval_key in list_evaluations(samples):
-            eval_info = get_evaluation_info(samples, _eval_key)
-            eval_method = eval_info.config.build()
-            eval_fields = eval_method.get_fields(samples, _eval_key)
             if _eval_key == eval_key:
-                gt = eval_info.gt_field
-                pred = eval_info.pred_field
-                select.extend([gt, pred])
+                continue
 
-                # We don't need to select embedded fields of `gt` and `pred`
-                skip_prefixes = (pred + ".", gt + ".")
-                for field in eval_fields:
-                    if not field.startswith(skip_prefixes):
-                        select.append(field)
-            else:
-                exclude.extend(eval_fields)
+            for field in _get_eval_fields(samples, _eval_key):
+                # We only need to select embedded fields of gt/pred
+                if field.startswith(prefixes):
+                    exclude.append(field)
 
-        view = view.exclude_fields(exclude).select_fields(select)
+        if exclude:
+            view = view.exclude_fields(exclude)
 
     return view
+
+
+def _get_eval_fields(samples, eval_key):
+    eval_info = get_evaluation_info(samples, eval_key)
+    eval_method = eval_info.config.build()
+    return eval_method.get_fields(samples, eval_key)
 
 
 def delete_evaluation(samples, eval_key):

@@ -197,8 +197,10 @@ class DetectionEvaluation(Evaluation):
             "%s_tp" % eval_key,
             "%s_fp" % eval_key,
             "%s_fn" % eval_key,
+            "%s.detections.%s" % (eval_info.pred_field, eval_key),
             "%s.detections.%s_id" % (eval_info.pred_field, eval_key),
             "%s.detections.%s_iou" % (eval_info.pred_field, eval_key),
+            "%s.detections.%s" % (eval_info.gt_field, eval_key),
             "%s.detections.%s_id" % (eval_info.gt_field, eval_key),
             "%s.detections.%s_iou" % (eval_info.gt_field, eval_key),
         ]
@@ -226,8 +228,10 @@ class DetectionEvaluation(Evaluation):
             "%s_tp" % eval_key,
             "%s_fp" % eval_key,
             "%s_fn" % eval_key,
+            "%s.detections.%s" % (pred_field, eval_key),
             "%s.detections.%s_id" % (pred_field, eval_key),
             "%s.detections.%s_iou" % (pred_field, eval_key),
+            "%s.detections.%s" % (gt_field, eval_key),
             "%s.detections.%s_id" % (gt_field, eval_key),
             "%s.detections.%s_iou" % (gt_field, eval_key),
         ]
