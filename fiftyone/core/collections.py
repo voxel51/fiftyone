@@ -4273,7 +4273,7 @@ def _make_set_values_pipeline(field_name, value, list_fields):
 
     if len(list_fields) > 1:
         raise ValueError(
-            "At most one nested array field can be unwound when setting values"
+            "At most one array field can be unwound when setting values"
         )
 
     root = list_fields[0]
