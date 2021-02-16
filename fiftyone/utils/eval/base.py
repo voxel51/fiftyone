@@ -263,32 +263,41 @@ def load_evaluation_view(samples, eval_key, select_fields=False):
     stage_dicts = [json.loads(s) for s in eval_doc.view_stages]
     view = fov.DatasetView._build(samples._dataset, stage_dicts)
 
-    if select_fields:
-        # Select evaluation fields
-        gt_field = eval_doc.gt_field
-        pred_field = eval_doc.pred_field
-        select = [gt_field, pred_field]
-        prefixes = (gt_field + ".", pred_field + ".")
-        for field in _get_eval_fields(samples, eval_key):
-            # We don't need to select embedded fields of gt/pred
-            if not field.startswith(prefixes):
-                select.append(field)
+    if not select_fields:
+        return view
 
-        view = view.select_fields(select)
+    #
+    # Select evaluation fields
+    #
 
-        # Hide any ancillary evaluations on the same fields
-        exclude = []
-        for _eval_key in list_evaluations(samples):
-            if _eval_key == eval_key:
-                continue
+    gt_field = eval_doc.gt_field
+    pred_field = eval_doc.pred_field
 
-            for field in _get_eval_fields(samples, _eval_key):
-                # We only need to select embedded fields of gt/pred
-                if field.startswith(prefixes):
-                    exclude.append(field)
+    select = [gt_field, pred_field]
+    prefixes = (gt_field + ".", pred_field + ".")
+    for field in _get_eval_fields(samples, eval_key):
+        # We don't need to select embedded fields of gt/pred
+        if not field.startswith(prefixes):
+            select.append(field)
 
-        if exclude:
-            view = view.exclude_fields(exclude)
+    view = view.select_fields(select)
+
+    #
+    # Hide any ancillary evaluations on the same fields
+    #
+
+    exclude = []
+    for _eval_key in list_evaluations(samples):
+        if _eval_key == eval_key:
+            continue
+
+        for field in _get_eval_fields(samples, _eval_key):
+            # We only need to select embedded fields of gt/pred
+            if field.startswith(prefixes):
+                exclude.append(field)
+
+    if exclude:
+        view = view.exclude_fields(exclude)
 
     return view
 
