@@ -142,7 +142,7 @@ def evaluate_detections(
         missing=missing,
     )
 
-    return DetectionResults(matches, classes=classes, missing=missing)
+    return results
 
 
 def _cleanup_evaluate_detections(samples, pred_field, gt_field, eval_key):

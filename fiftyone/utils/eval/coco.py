@@ -7,11 +7,19 @@ COCO-style detection evaluation.
 """
 from collections import defaultdict
 
+import matplotlib.pyplot as plt
 import numpy as np
+import sklearn.metrics as skm
+
+import pycocotools.mask as maskUtils
 
 import eta.core.utils as etau
 
-from .detection import DetectionEvaluation, DetectionEvaluationConfig
+from .detection import (
+    DetectionEvaluation,
+    DetectionEvaluationConfig,
+    DetectionResults,
+)
 
 
 class COCOEvaluationConfig(DetectionEvaluationConfig):
@@ -28,7 +36,7 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
     def __init__(self, iscrowd="iscrowd", **kwargs):
         super().__init__(**kwargs)
         self.iscrowd = iscrowd
-        self.iou_threshs = np.arange(0.5, 1, 0.05)
+        self.iou_threshs = [x / 100 for x in range(50, 100, 5)]
 
     @property
     def method(self):
@@ -143,7 +151,13 @@ class COCOEvaluation(DetectionEvaluation):
             tuples
         """
         iou_threshs = list(self.config.iou_threshs)
-        matches = {t: {} for t in iou_threshs}
+
+        save_matches = False
+        if not matches:
+            save_matches = True
+            matches = []
+
+        thresh_matches = {t: {} for t in iou_threshs}
         if not classes:
             classes = []
         for sample in samples:
@@ -153,33 +167,40 @@ class COCOEvaluation(DetectionEvaluation):
             sample_matches = _coco_evaluation_iou_sweep(
                 gts, preds, self.config
             )
+
+            if save_matches:
+                matches += sample_matches[0.5]
+
             for t, ms in sample_matches.items():
                 for m in ms:
                     # m = (gt_label, pred_label, iou, confidence, iscrowd)
-                    if m[-1]:
+                    if m[4]:
                         continue
                     c = m[0] if m[0] != None else m[1]
                     if c not in classes:
                         classes.append(c)
-                    if c not in matches[t]:
-                        matches[t][c] = {"tp": [], "fp": [], "num_gt": 0}
+                    if c not in thresh_matches[t]:
+                        thresh_matches[t][c] = {
+                            "tp": [],
+                            "fp": [],
+                            "num_gt": 0,
+                        }
                     if m[0] == m[1]:
-                        matches[t][c]["tp"].append(m)
+                        thresh_matches[t][c]["tp"].append(m)
                     elif m[1]:
-                        matches[t][c]["fp"].append(m)
+                        thresh_matches[t][c]["fp"].append(m)
                     if m[0]:
-                        matches[t][c]["num_gt"] += 1
+                        thresh_matches[t][c]["num_gt"] += 1
 
-        import matplotlib.pyplot as plt
-
-        precision = -np.ones((len(matches.keys()), len(classes), 101))
-        for t in matches.keys():
-            for c in matches[t].keys():
+        precision = -np.ones((len(iou_threshs), len(classes), 101))
+        recall = np.linspace(0, 1, 101)
+        for t in thresh_matches.keys():
+            for c in thresh_matches[t].keys():
                 # Adapted from pycocotools
                 # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/cocoeval.py
-                tp = matches[t][c]["tp"]
-                fp = matches[t][c]["fp"]
-                num_gt = matches[t][c]["num_gt"]
+                tp = thresh_matches[t][c]["tp"]
+                fp = thresh_matches[t][c]["fp"]
+                num_gt = thresh_matches[t][c]["num_gt"]
                 if num_gt == 0:
                     continue
 
@@ -197,28 +218,23 @@ class COCOEvaluation(DetectionEvaluation):
                 for i in range(len(pre) - 1, 0, -1):
                     if pre[i] > pre[i - 1]:
                         pre[i - 1] = pre[i]
-                inds = np.searchsorted(
-                    rec, np.linspace(0, 1, 101), side="left"
-                )
+                inds = np.searchsorted(rec, recall, side="left")
                 try:
                     for ri, pi in enumerate(inds):
                         q[ri] = pre[pi]
                 except:
                     pass
-                # plt.plot(q, np.linspace(0,1,101))
-                # plt.title(c+"_"+str(t))
-                # plt.show()
                 precision[iou_threshs.index(t)][classes.index(c)] = q
 
-        if len(precision[precision > -1]) == 0:
-            mAP = -1
-        else:
-            mAP = np.mean(precision[precision > -1])
+        results = COCODetectionResults(
+            precision,
+            recall,
+            matches=matches,
+            classes=classes,
+            missing=missing,
+        )
 
-        print(mAP)
-        import pdb
-
-        pdb.set_trace()
+        return results
 
 
 _NO_MATCH_ID = ""
@@ -313,6 +329,17 @@ def _coco_evaluation_setup(gts, preds, id_keys, iou_key, config):
         ]
         objects["preds"] = preds
 
+        # Sort ground truth so crowds are last
+        gts_crowd = []
+        gts_no_crowd = []
+        for g in gts:
+            if iscrowd(g):
+                gts_crowd.append(g)
+            else:
+                gts_no_crowd.append(g)
+
+        gts = gts_no_crowd + gts_crowd
+
         # Compute ``num_preds x num_gts`` IoUs
         ious = _compute_iou(preds, gts, iscrowd)
 
@@ -342,6 +369,16 @@ def _compute_matches(
                     if gt[id_key] != _NO_MATCH_ID and not iscrowd(gt):
                         continue
 
+                    # Crowds are last in order of gts
+                    # If we already matched a non-crowd and are on a crowd,
+                    # break
+                    if (
+                        best_match
+                        and not iscrowd(gt_map[best_match])
+                        and iscrowd(gt)
+                    ):
+                        break
+
                     if iou < best_match_iou:
                         continue
 
@@ -366,6 +403,7 @@ def _compute_matches(
                     if gt.label == pred.label:
                         gt[eval_key] = "tp"
                         pred[eval_key] = "tp"
+
                     else:
                         # If classwise = False, matched gt and pred could have
                         # different labels
@@ -429,3 +467,120 @@ def _make_iscrowd_fcn(iscrowd_attr):
             return False
 
     return _iscrowd
+
+
+class COCODetectionResults(DetectionResults):
+    """Class that stores the results of a COCO detection evaluation.
+
+    This differs from standard detection evaluation by adding COCO-style
+    calculated mAP and PR curves.
+
+    Args:
+        matches: a list of ``(gt_label, pred_label, iou, pred_confidence)``
+            matches. Either label can be ``None`` to indicate an unmatched
+            object
+        precision: a Numpy array of shape ``(IoU thresholds,
+            classes, len(recall))`` containing precision curves over a range of
+            recall scores for every class and IoU threshold 
+        classes (None): the list of possible classes. If not provided, the
+            observed ground truth/predicted labels are used
+        missing ("none"): a missing label string. Any unmatched objects are
+            given this label for evaluation purposes
+    """
+
+    def __init__(
+        self,
+        precision,
+        recall,
+        matches,
+        iou_threshs=None,
+        classes=None,
+        missing="none",
+    ):
+        super().__init__(matches, classes=classes, missing=missing)
+        self.precision = precision
+        self.recall = recall
+        self.mAP, self.classwise_AP = self._compute_mAP(self.precision)
+        self.iou_threshs = iou_threshs
+        if not self.iou_threshs:
+            self.iou_threshs = [x / 100 for x in range(50, 100, 5)]
+
+    def _compute_mAP(self, precision):
+        classwise_AP = np.mean(precision, axis=(0, 2))
+        existing_classes = classwise_AP > -1
+
+        if len(existing_classes) == 0:
+            mAP = -1
+        else:
+            mAP = np.mean(classwise_AP[existing_classes])
+
+        return mAP, classwise_AP
+
+    def plot_pr_curves(self, classes=None, ax=None, block=False, **kwargs):
+        """Plot precision-recall (PR) curves for COCO detection results.
+
+        Args:
+            classes (None): the classes to generate plots for, by default will
+                plot the top 3 AP class
+            average ("micro"): the averaging strategy to use when computing
+                average precision
+            ax (None): an optional matplotlib axis to plot in
+            block (False): whether to block execution when the plot is
+                displayed via ``matplotlib.pyplot.show(block=block)``
+            **kwargs: optional keyword arguments for
+                ``sklearn.metrics.PrecisionRecallDisplay.plot(**kwargs)``
+
+        Returns:
+            the matplotlib axis containing the plot
+        """
+        if not classes:
+            print(
+                "No classes specified, plotting PR curve of highest AP class"
+            )
+            max_class_inds = np.argsort(self.classwise_AP)[::-1][:3]
+            classes = list(np.array(self.classes)[max_class_inds])
+
+        displays = []
+        for c in classes:
+            class_ind = self.classes.index(c)
+            precision = np.mean(self.precision[:, class_ind], axis=0)
+            recall = self.recall
+            avg_precision = np.mean(precision)
+            display = skm.PrecisionRecallDisplay(
+                precision=precision, recall=recall
+            )
+            label = "AP = %.2f, class = %s" % (avg_precision, c)
+            display.plot(ax=ax, label=label, **kwargs)
+            plt.show(block=block)
+            displays.append(display.ax_)
+
+        return displays
+
+    def metrics(self, classes=None, average="micro", beta=1.0):
+        """Computes classification metrics for the results, including accuracy,
+        precision, recall, and F-beta score.
+
+        See ``sklearn.metrics.precision_recall_fscore_support`` for details.
+
+        Args:
+            classes (None): an optional list of classes for which to compute
+                metrics
+            average ("micro"): the averaging strategy to use
+            beta (1.0): the F-beta value to use
+
+        Returns:
+            a dict
+        """
+
+        results_dict = super(COCODetectionResults, self).metrics(
+            classes=classes, average=average, beta=beta
+        )
+
+        if classes != None:
+            class_inds = [self.classes.index(c) for c in classes]
+            mAP = np.mean(np.array(self.classwise_AP)[class_inds])
+        else:
+            mAP = self.mAP
+
+        results_dict.update({"mAP": mAP})
+        return results_dict
