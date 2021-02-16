@@ -38,14 +38,14 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         iscrowd ("iscrowd"): the name of the crowd attribute
         iou_threshs ([0.5::0.05::0.95]): a list of IoU thresholds to use when
             computing mAP and PR curves
-        maxDets (100): the maximum number of detections to evaluate per image
+        max_dets (100): the maximum number of detections to evaluate per image
     """
 
     def __init__(
         self,
         iscrowd="iscrowd",
         iou_threshs=None,
-        maxDets=None,
+        max_dets=None,
         compute_mAP=False,
         **kwargs
     ):
@@ -54,10 +54,10 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         self.iou_threshs = iou_threshs
         if not self.iou_threshs:
             self.iou_threshs = [x / 100 for x in range(50, 100, 5)]
-        self.maxDets = maxDets
+        self.max_dets = max_dets
         self.compute_mAP = compute_mAP
-        if self.compute_mAP and not self.maxDets:
-            self.maxDets = 100
+        if self.compute_mAP and not self.max_dets:
+            self.max_dets = 100
 
     @property
     def method(self):
@@ -275,7 +275,7 @@ def _coco_evaluation_single_iou(gts, preds, eval_key, config):
     iou_thresh = min(config.iou, 1 - 1e-10)
 
     cats, pred_ious = _coco_evaluation_setup(
-        gts, preds, [id_key], iou_key, config
+        gts, preds, [id_key], iou_key, config,
     )
 
     matches = [
@@ -296,6 +296,7 @@ def _coco_evaluation_single_iou(gts, preds, eval_key, config):
 
 def _coco_evaluation_iou_sweep(gts, preds, config):
     iou_threshs = config.iou_threshs
+    max_dets = config.max_dets
     id_keys = ["eval_id_%s" % str(i).replace(".", "_") for i in iou_threshs]
     iou_key = "eval_iou"
     iscrowd = _make_iscrowd_fcn(config.iscrowd)
@@ -303,7 +304,7 @@ def _coco_evaluation_iou_sweep(gts, preds, config):
     # Perform classwise matching over 10 IoUs [0.5::0.05::0.95]
 
     cats, pred_ious = _coco_evaluation_setup(
-        gts, preds, id_keys, iou_key, config
+        gts, preds, id_keys, iou_key, config, max_dets=max_dets
     )
 
     matches = {
@@ -322,10 +323,11 @@ def _coco_evaluation_iou_sweep(gts, preds, config):
     return matches
 
 
-def _coco_evaluation_setup(gts, preds, id_keys, iou_key, config):
+def _coco_evaluation_setup(
+    gts, preds, id_keys, iou_key, config, max_dets=None
+):
     iscrowd = _make_iscrowd_fcn(config.iscrowd)
     classwise = config.classwise
-    maxDets = config.maxDets
 
     # Organize preds and GT by category
     cats = defaultdict(lambda: defaultdict(list))
@@ -354,8 +356,8 @@ def _coco_evaluation_setup(gts, preds, id_keys, iou_key, config):
         # Highest confidence predictions first
         preds = sorted(preds, key=lambda p: p.confidence or -1, reverse=True)
 
-        if maxDets:
-            preds = preds[:maxDets]
+        if max_dets:
+            preds = preds[:max_dets]
 
         objects["preds"] = preds
 
