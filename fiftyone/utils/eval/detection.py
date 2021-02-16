@@ -131,6 +131,11 @@ def evaluate_detections(
                 sample_fp += fp
                 sample_fn += fn
 
+                if processing_frames and eval_key is not None:
+                    image["%s_tp" % eval_key] = tp
+                    image["%s_fp" % eval_key] = fp
+                    image["%s_fn" % eval_key] = fn
+
             if eval_key is not None:
                 sample["%s_tp" % eval_key] = sample_tp
                 sample["%s_fp" % eval_key] = sample_fp
@@ -148,6 +153,9 @@ def _cleanup_evaluate_detections(samples, pred_field, gt_field, eval_key):
     gt_field, _ = samples._handle_frame_field(gt_field)
 
     fields = [
+        "%s_tp" % eval_key,
+        "%s_fp" % eval_key,
+        "%s_fn" % eval_key,
         "%s.detections.%s_id" % (pred_field, eval_key),
         "%s.detections.%s_iou" % (pred_field, eval_key),
         "%s.detections.%s_id" % (gt_field, eval_key),
@@ -155,13 +163,12 @@ def _cleanup_evaluate_detections(samples, pred_field, gt_field, eval_key):
     ]
 
     if is_frame_field:
+        samples._dataset.delete_sample_fields(
+            ["%s_tp" % eval_key, "%s_fp" % eval_key, "%s_fn" % eval_key]
+        )
         samples._dataset.delete_frame_fields(fields)
     else:
         samples._dataset.delete_sample_fields(fields)
-
-    samples._dataset.delete_sample_fields(
-        ["%s_tp" % eval_key, "%s_fp" % eval_key, "%s_fn" % eval_key]
-    )
 
 
 class DetectionEvaluationConfig(EvaluationConfig):
