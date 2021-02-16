@@ -27,6 +27,7 @@ def evaluate_detections(
     pred_field,
     gt_field="ground_truth",
     eval_key=None,
+    compute_mAP=False,
     classes=None,
     missing="none",
     method="coco",
@@ -74,6 +75,9 @@ def evaluate_detections(
         gt_field ("ground_truth"): the name of the field containing the ground
             truth :class:`fiftyone.core.labels.Detections`
         eval_key (None): an evaluation key to use to refer to this evaluation
+        compute_mAP (False): a boolean indicating whether to compute mAP which
+            is often more computationally expensive than sample-wise TP/FP/FN
+            calculation
         classes (None): the list of possible classes. If not provided, the
             observed ground truth/predicted labels are used for results
             purposes
@@ -95,7 +99,12 @@ def evaluate_detections(
         a :class:`DetectionResults`
     """
     config = _parse_config(
-        config, method, iou=iou, classwise=classwise, **kwargs
+        config,
+        method,
+        iou=iou,
+        classwise=classwise,
+        compute_mAP=compute_mAP,
+        **kwargs
     )
     eval_info = EvaluationInfo(eval_key, pred_field, gt_field, config)
     validate_evaluation(samples, eval_info)

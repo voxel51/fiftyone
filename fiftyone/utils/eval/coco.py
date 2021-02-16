@@ -39,6 +39,9 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         iou_threshs ([0.5::0.05::0.95]): a list of IoU thresholds to use when
             computing mAP and PR curves
         max_dets (100): the maximum number of detections to evaluate per image
+        compute_mAP (False): a boolean indicating whether to compute mAP which
+            is often more computationally expensive than sample-wise TP/FP/FN
+            calculation
     """
 
     def __init__(
