@@ -502,18 +502,11 @@ class COCODetectionResults(DetectionResults):
         super().__init__(matches, classes=classes, missing=missing)
         self.precision = precision
         self.recall = recall
-        self.mAP, self.classwise_AP = self._compute_mAP(self.precision)
+        self.classwise_AP = self._compute_classwise_mAP(self.precision)
 
-    def _compute_mAP(self, precision):
+    def _compute_classwise_mAP(self, precision):
         classwise_AP = np.mean(precision, axis=(0, 2))
-        existing_classes = classwise_AP > -1
-
-        if len(existing_classes) == 0:
-            mAP = -1
-        else:
-            mAP = np.mean(classwise_AP[existing_classes])
-
-        return mAP, classwise_AP
+        return classwise_AP
 
     def plot_pr_curves(self, classes=None, ax=None, block=False, **kwargs):
         """Plot precision-recall (PR) curves for COCO detection results.
@@ -530,16 +523,15 @@ class COCODetectionResults(DetectionResults):
                 ``sklearn.metrics.PrecisionRecallDisplay.plot(**kwargs)``
 
         Returns:
-            a list of the matplotlib axes containing the plots
+            the matplotlib axis containing the plots
         """
         if not classes:
             print(
-                "No classes specified, plotting PR curve of highest AP class"
+                "No classes specified, plotting PR curve of the 3 highest AP classes"
             )
             max_class_inds = np.argsort(self.classwise_AP)[::-1][:3]
             classes = list(np.array(self.classes)[max_class_inds])
 
-        displays = []
         for c in classes:
             class_ind = self.classes.index(c)
             precision = np.mean(self.precision[:, class_ind], axis=0)
@@ -550,36 +542,35 @@ class COCODetectionResults(DetectionResults):
             )
             label = "AP = %.2f, class = %s" % (avg_precision, c)
             display.plot(ax=ax, label=label, **kwargs)
-            plt.show(block=block)
-            displays.append(display.ax_)
+            ax = display.ax_
+        plt.show(block=block)
 
-        return displays
+        return ax
 
-    def metrics(self, classes=None, average="micro", beta=1.0):
-        """Computes classification metrics for the results, including accuracy,
-        precision, recall, and F-beta score.
+    def mAP(self, classes=None):
+        """Computes mAP for provided classes.
 
-        See ``sklearn.metrics.precision_recall_fscore_support`` for details.
+        mAP is the average of classwise AP as computed in pycocotools.
+        https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/cocoeval.py
 
         Args:
             classes (None): an optional list of classes for which to compute
-                metrics
-            average ("micro"): the averaging strategy to use
-            beta (1.0): the F-beta value to use
+                mAP
 
         Returns:
-            a dict
+            mAP floating point value 
         """
-
-        results_dict = super(COCODetectionResults, self).metrics(
-            classes=classes, average=average, beta=beta
-        )
-
         if classes != None:
             class_inds = [self.classes.index(c) for c in classes]
-            mAP = np.mean(np.array(self.classwise_AP)[class_inds])
+            classwise_AP = np.array(self.classwise_AP)[class_inds]
         else:
-            mAP = self.mAP
+            classwise_AP = np.array(self.classwise_AP)
 
-        results_dict.update({"mAP": mAP})
-        return results_dict
+        existing_classes = classwise_AP > -1
+
+        if len(existing_classes) == 0:
+            mAP = -1
+        else:
+            mAP = np.mean(classwise_AP[existing_classes])
+
+        return mAP
