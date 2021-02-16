@@ -5,6 +5,7 @@ COCO-style detection evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
 from collections import defaultdict
 
 import matplotlib.pyplot as plt
@@ -15,11 +16,16 @@ import pycocotools.mask as maskUtils
 
 import eta.core.utils as etau
 
+import fiftyone.core.utils as fou
+
 from .detection import (
     DetectionEvaluation,
     DetectionEvaluationConfig,
     DetectionResults,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class COCOEvaluationConfig(DetectionEvaluationConfig):
@@ -131,11 +137,10 @@ class COCOEvaluation(DetectionEvaluation):
         it.
 
         Args:
-            sample_or_frame: a :class:`fiftyone.core.Sample` or
-                :class:`fiftyone.core.frame.Frame`
-            pred_field: the name of the field containing the predicted
-                :class:`fiftyone.core.labels.Detections` instances
+            samples: a :class:`fiftyone.core.SampleCollection`
             gt_field: the name of the field containing the ground truth
+                :class:`fiftyone.core.labels.Detections` instances
+            pred_field: the name of the field containing the predicted
                 :class:`fiftyone.core.labels.Detections` instances
             matches: (None) a list of matched ``(gt_label, pred_label, iou, pred_confidence)``
                 tuples
@@ -147,8 +152,7 @@ class COCOEvaluation(DetectionEvaluation):
 
 
         Returns:
-            a list of matched ``(gt_label, pred_label, iou, pred_confidence)``
-            tuples
+            a :class:`COCODetectionResults` 
         """
         iou_threshs = list(self.config.iou_threshs)
 
@@ -160,37 +164,39 @@ class COCOEvaluation(DetectionEvaluation):
         thresh_matches = {t: {} for t in iou_threshs}
         if not classes:
             classes = []
-        for sample in samples:
-            gts = sample[gt_field].copy()
-            preds = sample[pred_field].copy()
+        logger.info("Computing mAP...")
+        with fou.ProgressBar() as pb:
+            for sample in pb(samples):
+                gts = sample[gt_field].copy()
+                preds = sample[pred_field].copy()
 
-            sample_matches = _coco_evaluation_iou_sweep(
-                gts, preds, self.config
-            )
+                sample_matches = _coco_evaluation_iou_sweep(
+                    gts, preds, self.config
+                )
 
-            if save_matches:
-                matches += sample_matches[0.5]
+                if save_matches:
+                    matches += sample_matches[0.5]
 
-            for t, ms in sample_matches.items():
-                for m in ms:
-                    # m = (gt_label, pred_label, iou, confidence, iscrowd)
-                    if m[4]:
-                        continue
-                    c = m[0] if m[0] != None else m[1]
-                    if c not in classes:
-                        classes.append(c)
-                    if c not in thresh_matches[t]:
-                        thresh_matches[t][c] = {
-                            "tp": [],
-                            "fp": [],
-                            "num_gt": 0,
-                        }
-                    if m[0] == m[1]:
-                        thresh_matches[t][c]["tp"].append(m)
-                    elif m[1]:
-                        thresh_matches[t][c]["fp"].append(m)
-                    if m[0]:
-                        thresh_matches[t][c]["num_gt"] += 1
+                for t, ms in sample_matches.items():
+                    for m in ms:
+                        # m = (gt_label, pred_label, iou, confidence, iscrowd)
+                        if m[4]:
+                            continue
+                        c = m[0] if m[0] != None else m[1]
+                        if c not in classes:
+                            classes.append(c)
+                        if c not in thresh_matches[t]:
+                            thresh_matches[t][c] = {
+                                "tp": [],
+                                "fp": [],
+                                "num_gt": 0,
+                            }
+                        if m[0] == m[1]:
+                            thresh_matches[t][c]["tp"].append(m)
+                        elif m[1]:
+                            thresh_matches[t][c]["fp"].append(m)
+                        if m[0]:
+                            thresh_matches[t][c]["num_gt"] += 1
 
         precision = -np.ones((len(iou_threshs), len(classes), 101))
         recall = np.linspace(0, 1, 101)
@@ -371,7 +377,7 @@ def _compute_matches(
 
                     # Crowds are last in order of gts
                     # If we already matched a non-crowd and are on a crowd,
-                    # break
+                    # then break
                     if (
                         best_match
                         and not iscrowd(gt_map[best_match])
@@ -482,6 +488,8 @@ class COCODetectionResults(DetectionResults):
         precision: a Numpy array of shape ``(IoU thresholds,
             classes, len(recall))`` containing precision curves over a range of
             recall scores for every class and IoU threshold 
+        recall: a 1D array containing recall values related to the given
+            precision
         classes (None): the list of possible classes. If not provided, the
             observed ground truth/predicted labels are used
         missing ("none"): a missing label string. Any unmatched objects are
@@ -489,21 +497,12 @@ class COCODetectionResults(DetectionResults):
     """
 
     def __init__(
-        self,
-        precision,
-        recall,
-        matches,
-        iou_threshs=None,
-        classes=None,
-        missing="none",
+        self, precision, recall, matches, classes=None, missing="none",
     ):
         super().__init__(matches, classes=classes, missing=missing)
         self.precision = precision
         self.recall = recall
         self.mAP, self.classwise_AP = self._compute_mAP(self.precision)
-        self.iou_threshs = iou_threshs
-        if not self.iou_threshs:
-            self.iou_threshs = [x / 100 for x in range(50, 100, 5)]
 
     def _compute_mAP(self, precision):
         classwise_AP = np.mean(precision, axis=(0, 2))
@@ -531,7 +530,7 @@ class COCODetectionResults(DetectionResults):
                 ``sklearn.metrics.PrecisionRecallDisplay.plot(**kwargs)``
 
         Returns:
-            the matplotlib axis containing the plot
+            a list of the matplotlib axes containing the plots
         """
         if not classes:
             print(
