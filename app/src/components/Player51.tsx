@@ -2,7 +2,7 @@ import mime from "mime-types";
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import uuid from "react-uuid";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import { Warning } from "@material-ui/icons";
 
@@ -57,13 +57,14 @@ export default ({
   playerRef,
   selectedObjects,
   onSelectObject,
-  savedOverlayOptions,
 }) => {
   const isVideo = useRecoilValue(selectors.isVideoDataset);
   const filter = useRecoilValue(filterSelector);
   const fps = useRecoilValue(atoms.sampleFrameRate(sample._id));
   const overlayOptions = useRecoilValue(selectors.playerOverlayOptions);
-
+  const [savedOverlayOptions, setSavedOverlayOptions] = useRecoilState(
+    atoms.savedPlayerOverlayOptions
+  );
   const colorMap = useRecoilValue(selectors.colorMap);
   if (overlay === null) {
     overlay = convertSampleToETA(sample, fieldSchema);
@@ -198,6 +199,16 @@ export default ({
       onSelectObject({ id, name });
     }
   });
+  useEventHandler(
+    player,
+    "options",
+    ({ data: { showAttrs, showConfidence } }) => {
+      setSavedOverlayOptions({
+        showAttrs,
+        showConfidence,
+      });
+    }
+  );
 
   return (
     <div id={id} style={style} {...props}>

@@ -258,9 +258,6 @@ const SampleModal = (
   const [requested, requestLabels] = useVideoData(socket, sample);
   const frameData = useRecoilValue(atoms.sampleFrameData(sample._id));
   const videoLabels = useRecoilValue(atoms.sampleVideoLabels(sample._id));
-  const defaultOverlayOptions = useRecoilValue(
-    selectors.defaultPlayerOverlayOptions
-  );
   useEffect(() => {
     mediaType === "video" && requested !== viewCounter && requestLabels();
   }, [requested]);
@@ -281,9 +278,6 @@ const SampleModal = (
   // save overlay options when navigating - these are restored by passing them
   // in defaultOverlayOptions when the new player is created
   const playerRef = useRef();
-  const [savedOverlayOptions, setSavedOverlayOptions] = useRecoilState(
-    atoms.savedPlayerOverlayOptions
-  );
   const wrapNavigationFunc = (callback) => {
     if (callback) {
       return () => {
@@ -294,18 +288,6 @@ const SampleModal = (
       };
     }
   };
-  useEffect(() => {
-    setSavedOverlayOptions({
-      ...savedOverlayOptions,
-      showAttrs: defaultOverlayOptions.showAttrs,
-    });
-  }, [defaultOverlayOptions.showAttrs]);
-  useEffect(() => {
-    setSavedOverlayOptions({
-      ...savedOverlayOptions,
-      showConfidence: defaultOverlayOptions.showConfidence,
-    });
-  }, [defaultOverlayOptions.showConfidence]);
   const onPrevious = wrapNavigationFunc(rest.onPrevious);
   const onNext = wrapNavigationFunc(rest.onNext);
 
@@ -524,7 +506,6 @@ const SampleModal = (
               fieldSchema={fieldSchema}
               filterSelector={labelFilters(true)}
               playerRef={playerRef}
-              savedOverlayOptions={savedOverlayOptions}
               selectedObjects={selectedObjectIDs}
               onSelectObject={({ id, name }) => {
                 toggleSelectedObject(id, {
