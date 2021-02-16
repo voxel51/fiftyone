@@ -1553,12 +1553,12 @@ class ViewExpression(object):
             }
         )
 
-    def set_field(self, field, value_or_expr):
+    def set_field(self, field, value_or_expr, relative=True):
         """Sets the specified field or embedded field of this expression, which
         must resolve to a document, to the given value or expression.
 
-        The provided expression is computed by applying it to this expression
-        via ``self.apply(value_or_expr)``.
+        By default, the provided expression is computed by applying it to this
+        expression via ``self.apply(value_or_expr)``.
 
         Examples::
 
@@ -1591,12 +1591,15 @@ class ViewExpression(object):
             field: the "field" or "embedded.field.name" to set
             value_or_expr: a literal value or :class:`ViewExpression` defining
                 the field to set
+            relative (True): whether to compute ``value_or_expr`` by applying
+                it to this expression (True), or to use it untouched (False)
 
         Returns:
             a :class:`ViewExpression`
         """
         if (
             isinstance(value_or_expr, ViewExpression)
+            and relative
             and not value_or_expr.is_frozen
         ):
             value = self.apply(value_or_expr)

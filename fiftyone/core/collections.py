@@ -5,6 +5,7 @@ Base classes for collections of samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import itertools
 import inspect
 import logging
 import os
@@ -18,6 +19,7 @@ import eta.core.utils as etau
 
 import fiftyone.core.aggregations as foa
 import fiftyone.core.expressions as foe
+from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -498,24 +500,64 @@ class SampleCollection(object):
                 )
 
     def set_values(self, field_name, values):
-        """Sets the field or embedded field on each sample in the collection to
-        the given values.
+        """Sets the field or embedded field on each sample or frame in the
+        collection to the given values.
 
-        This function is an efficient implementation of the following loop::
+        When setting a sample field ``embedded.field.name``, this function is
+        an efficient implementation of the following loop::
 
             for sample, value in zip(sample_collection, values):
                 sample.embedded.field.name = value
                 sample.save()
 
+        When modifying a sample field that contains an array, say
+        ``embedded.array.field.name``, this function is an efficient
+        implementation of the following loop::
+
+            for sample, array_values in zip(sample_collection, values):
+                for doc, value in zip(sample.embedded.array):
+                    doc.field.name = value
+
+                sample.save()
+
+        When setting a frame field ``frames.embedded.field.name``, this
+        function is an efficient implementation of the following loop::
+
+            for sample, frame_values in zip(sample_collection, values):
+                for frame, value in zip(sample.frames.values(), frame_values):
+                    frame.embedded.field.name = value
+
+                sample.save()
+
+        When modifying a frame field that contains an array, say
+        ``frames.embedded.array.field.name``, this function is an efficient
+        implementation of the following loop::
+
+            for sample, frame_values in zip(sample_collection, values):
+                for frame, array_values in zip(sample.frames.values(), frame_values):
+                    for doc, value in zip(frame.embedded.array, array_values):
+                        doc.field.name = value
+
+                sample.save()
+
         Args:
             field_name: a field or ``embedded.field.name``
-            values: an iterable of values
+            values: an iterable of values, one for each sample in the
+                collection. When setting frame fields, each element should be
+                an iterable of values, one for each frame of the sample. If
+                ``field_name`` contains array fields, the corresponding entries
+                of ``values`` must be arrays of the same lengths
         """
-        # @todo support frame fields
-        field_name, is_frame_field = self._handle_frame_field(field_name)
-        if is_frame_field:
-            raise ValueError("set_values() only supports sample fields")
+        field_name, is_frame_field, list_fields, _ = self._parse_field_name(
+            field_name
+        )
 
+        if is_frame_field:
+            self._set_frame_values(field_name, values, list_fields)
+        else:
+            self._set_sample_values(field_name, values, list_fields)
+
+    def _set_sample_values(self, field_name, values, list_fields):
         root = field_name.split(".", 1)[0]
         if root not in self.get_field_schema():
             raise ValueError(
@@ -524,8 +566,35 @@ class SampleCollection(object):
             )
 
         sample_ids = self._get_sample_ids()
-        updates = [{"$set": {field_name: value}} for value in values]
+
+        updates = [
+            _make_set_values_pipeline(field_name, value, list_fields)
+            for value in values
+        ]
+
         self._dataset._bulk_update(sample_ids, updates)
+
+    def _set_frame_values(self, field_name, values, list_fields):
+        root = field_name.split(".", 1)[0]
+        if root not in self.get_frame_field_schema():
+            raise ValueError(
+                "Frame field '%s' does not exist on collection '%s'"
+                % (root, self.name)
+            )
+
+        frame_ids = self._get_frame_ids()
+
+        frame_ids = list(itertools.chain.from_iterable(frame_ids))
+        values = list(itertools.chain.from_iterable(values))
+
+        _make_set_pipeline = None
+
+        updates = [
+            _make_set_values_pipeline(field_name, value, list_fields)
+            for value in values
+        ]
+
+        self._dataset._bulk_update(frame_ids, updates, frames=True)
 
     def compute_metadata(self, overwrite=False, num_workers=None):
         """Populates the ``metadata`` field of all samples in the collection.
@@ -3695,12 +3764,64 @@ class SampleCollection(object):
 
     def _get_sample_ids(self):
         result = self._aggregate(
-            [{"$group": {"_id": None, "ids": {"$push": "$_id"}}}],
+            [{"$group": {"_id": None, "result": {"$push": "$_id"}}}],
             attach_frames=False,
         )
 
         try:
-            return next(result)["ids"]
+            return next(result)["result"]
+        except StopIteration:
+            return []
+
+    def _get_frame_ids(self):
+        if self.media_type != fom.VIDEO:
+            return []
+
+        result = self._aggregate(
+            [
+                {
+                    "$project": {
+                        "frames": {
+                            "$map": {
+                                "input": "$frames",
+                                "as": "this",
+                                "in": "$$this._id",
+                            }
+                        }
+                    }
+                },
+                {"$group": {"_id": None, "result": {"$push": "$frames"}}},
+            ],
+            attach_frames=True,
+        )
+
+        """
+        result = self._dataset._frame_collection.aggregate(
+            [
+                {
+                    "$group": {
+                        "_id": "$_sample_id",
+                        "sample_id": {"$first": "$_sample_id"},
+                        "frame_ids": {"$push": "$_id"},
+                    }
+                },
+                {
+                    "$group": {
+                        "_id": None,
+                        "result": {
+                            "$push": {
+                                "sample_id": "$sample_id",
+                                "frame_ids": "$frame_ids",
+                            }
+                        }
+                    }
+                }
+            ]
+        )
+        """
+
+        try:
+            return next(result)["result"]
         except StopIteration:
             return []
 
@@ -4171,6 +4292,23 @@ def _is_field_type(field, field_path, types):
     return _is_field_type(field, field_path, types)
 
 
+def _make_set_values_pipeline(field_name, value, list_fields):
+    if not list_fields:
+        return [{"$set": {field_name: value}}]
+
+    if len(list_fields) > 1:
+        raise ValueError(
+            "At most one nested array field can be unwound when setting values"
+        )
+
+    root = list_fields[0]
+    leaf = field_name[len(root) + 1 :]
+    expr = F.zip(F(root), value).map(
+        F()[0].set_field(leaf, F()[1], relative=False)
+    )
+    return [{"$set": {root: expr.to_mongo()}}]
+
+
 def _make_set_field_pipeline(sample_collection, field, expr, embedded_root):
     path, is_frame_field, list_fields, _ = sample_collection._parse_field_name(
         field
@@ -4201,7 +4339,6 @@ def _make_set_field_pipeline(sample_collection, field, expr, embedded_root):
 
     # Case 3: multiple list fields
 
-    # Handle last list field
     last_list_field = list_fields[-1]
     terminal_prefix = last_list_field[len(list_fields[-2]) + 1 :]
     subfield = path[len(last_list_field) + 1 :]
@@ -4213,9 +4350,7 @@ def _make_set_field_pipeline(sample_collection, field, expr, embedded_root):
         reversed(list_fields[:-1]), reversed(list_fields[1:])
     ):
         inner_list_field = list_field2[len(list_field1) + 1 :]
-        expr = foe.ViewField().map(
-            foe.ViewField().set_field(inner_list_field, expr)
-        )
+        expr = F().map(F().set_field(inner_list_field, expr))
 
     expr = expr.to_mongo(prefix="$" + list_fields[0])
 
@@ -4230,11 +4365,11 @@ def _set_terminal_list_field(list_field, subfield, expr, embedded_root):
     map_expr = _render_expr(expr, map_path, embedded_root)
 
     if subfield:
-        map_expr = foe.ViewField().set_field(subfield, map_expr)
+        map_expr = F().set_field(subfield, map_expr)
     else:
         map_expr = foe.ViewExpression(map_expr)
 
-    return foe.ViewField(list_field).map(map_expr)
+    return F(list_field).map(map_expr)
 
 
 def _render_expr(expr, path, embedded_root):
