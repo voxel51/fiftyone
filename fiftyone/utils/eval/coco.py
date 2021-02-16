@@ -42,7 +42,12 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
     """
 
     def __init__(
-        self, iscrowd="iscrowd", iou_threshs=None, maxDets=100, **kwargs
+        self,
+        iscrowd="iscrowd",
+        iou_threshs=None,
+        maxDets=None,
+        compute_mAP=False,
+        **kwargs
     ):
         super().__init__(**kwargs)
         self.iscrowd = iscrowd
@@ -50,6 +55,9 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         if not self.iou_threshs:
             self.iou_threshs = [x / 100 for x in range(50, 100, 5)]
         self.maxDets = maxDets
+        self.compute_mAP = compute_mAP
+        if self.compute_mAP and not self.maxDets:
+            self.maxDets = 100
 
     @property
     def method(self):
@@ -161,91 +169,97 @@ class COCOEvaluation(DetectionEvaluation):
         Returns:
             a :class:`COCODetectionResults` 
         """
-        iou_threshs = list(self.config.iou_threshs)
+        if self.config.compute_mAP:
+            iou_threshs = list(self.config.iou_threshs)
 
-        save_matches = False
-        if not matches:
-            save_matches = True
-            matches = []
+            save_matches = False
+            if not matches:
+                save_matches = True
+                matches = []
 
-        thresh_matches = {t: {} for t in iou_threshs}
-        if not classes:
-            classes = []
-        logger.info("Computing mAP...")
-        with fou.ProgressBar() as pb:
-            for sample in pb(samples):
-                gts = sample[gt_field].copy()
-                preds = sample[pred_field].copy()
+            thresh_matches = {t: {} for t in iou_threshs}
+            if not classes:
+                classes = []
+            logger.info("Computing mAP...")
+            with fou.ProgressBar() as pb:
+                for sample in pb(samples):
+                    gts = sample[gt_field].copy()
+                    preds = sample[pred_field].copy()
 
-                sample_matches = _coco_evaluation_iou_sweep(
-                    gts, preds, self.config
-                )
+                    sample_matches = _coco_evaluation_iou_sweep(
+                        gts, preds, self.config
+                    )
 
-                if save_matches:
-                    matches += sample_matches[0.5]
+                    if save_matches:
+                        matches += sample_matches[0.5]
 
-                for t, ms in sample_matches.items():
-                    for m in ms:
-                        # m = (gt_label, pred_label, iou, confidence, iscrowd)
-                        if m[4]:
-                            continue
-                        c = m[0] if m[0] != None else m[1]
-                        if c not in classes:
-                            classes.append(c)
-                        if c not in thresh_matches[t]:
-                            thresh_matches[t][c] = {
-                                "tp": [],
-                                "fp": [],
-                                "num_gt": 0,
-                            }
-                        if m[0] == m[1]:
-                            thresh_matches[t][c]["tp"].append(m)
-                        elif m[1]:
-                            thresh_matches[t][c]["fp"].append(m)
-                        if m[0]:
-                            thresh_matches[t][c]["num_gt"] += 1
+                    for t, ms in sample_matches.items():
+                        for m in ms:
+                            # m = (gt_label, pred_label, iou, confidence, iscrowd)
+                            if m[4]:
+                                continue
+                            c = m[0] if m[0] != None else m[1]
+                            if c not in classes:
+                                classes.append(c)
+                            if c not in thresh_matches[t]:
+                                thresh_matches[t][c] = {
+                                    "tp": [],
+                                    "fp": [],
+                                    "num_gt": 0,
+                                }
+                            if m[0] == m[1]:
+                                thresh_matches[t][c]["tp"].append(m)
+                            elif m[1]:
+                                thresh_matches[t][c]["fp"].append(m)
+                            if m[0]:
+                                thresh_matches[t][c]["num_gt"] += 1
 
-        precision = -np.ones((len(iou_threshs), len(classes), 101))
-        recall = np.linspace(0, 1, 101)
-        for t in thresh_matches.keys():
-            for c in thresh_matches[t].keys():
-                # Adapted from pycocotools
-                # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/cocoeval.py
-                tp = thresh_matches[t][c]["tp"]
-                fp = thresh_matches[t][c]["fp"]
-                num_gt = thresh_matches[t][c]["num_gt"]
-                if num_gt == 0:
-                    continue
+            precision = -np.ones((len(iou_threshs), len(classes), 101))
+            recall = np.linspace(0, 1, 101)
+            for t in thresh_matches.keys():
+                for c in thresh_matches[t].keys():
+                    # Adapted from pycocotools
+                    # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/cocoeval.py
+                    tp = thresh_matches[t][c]["tp"]
+                    fp = thresh_matches[t][c]["fp"]
+                    num_gt = thresh_matches[t][c]["num_gt"]
+                    if num_gt == 0:
+                        continue
 
-                tp_fp = [1] * len(tp) + [0] * len(fp)
-                confs = [p[3] for p in tp] + [p[3] for p in fp]
-                inds = np.argsort(-np.array(confs), kind="mergesort")
-                tp_fp = np.array(tp_fp)[inds]
-                tp_sum = np.cumsum(tp_fp).astype(dtype=np.float)
-                total = np.arange(1, len(tp_fp) + 1).astype(dtype=np.float)
+                    tp_fp = [1] * len(tp) + [0] * len(fp)
+                    confs = [p[3] for p in tp] + [p[3] for p in fp]
+                    inds = np.argsort(-np.array(confs), kind="mergesort")
+                    tp_fp = np.array(tp_fp)[inds]
+                    tp_sum = np.cumsum(tp_fp).astype(dtype=np.float)
+                    total = np.arange(1, len(tp_fp) + 1).astype(dtype=np.float)
 
-                pre = tp_sum / total
-                rec = tp_sum / num_gt
+                    pre = tp_sum / total
+                    rec = tp_sum / num_gt
 
-                q = np.zeros((101,))
-                for i in range(len(pre) - 1, 0, -1):
-                    if pre[i] > pre[i - 1]:
-                        pre[i - 1] = pre[i]
-                inds = np.searchsorted(rec, recall, side="left")
-                try:
-                    for ri, pi in enumerate(inds):
-                        q[ri] = pre[pi]
-                except:
-                    pass
-                precision[iou_threshs.index(t)][classes.index(c)] = q
+                    q = np.zeros((101,))
+                    for i in range(len(pre) - 1, 0, -1):
+                        if pre[i] > pre[i - 1]:
+                            pre[i - 1] = pre[i]
+                    inds = np.searchsorted(rec, recall, side="left")
+                    try:
+                        for ri, pi in enumerate(inds):
+                            q[ri] = pre[pi]
+                    except:
+                        pass
+                    precision[iou_threshs.index(t)][classes.index(c)] = q
 
-        results = COCODetectionResults(
-            precision,
-            recall,
-            matches=matches,
-            classes=classes,
-            missing=missing,
-        )
+            results = COCODetectionResults(
+                precision,
+                recall,
+                matches=matches,
+                classes=classes,
+                missing=missing,
+            )
+
+        else:
+            results = DetectionResults(
+                matches, classes=classes, missing=missing
+            )
 
         return results
 
@@ -338,9 +352,11 @@ def _coco_evaluation_setup(gts, preds, id_keys, iou_key, config):
         preds = objects["preds"]
 
         # Highest confidence predictions first
-        preds = sorted(preds, key=lambda p: p.confidence or -1, reverse=True)[
-            :maxDets
-        ]
+        preds = sorted(preds, key=lambda p: p.confidence or -1, reverse=True)
+
+        if maxDets:
+            preds = preds[:maxDets]
+
         objects["preds"] = preds
 
         # Sort ground truth so crowds are last
