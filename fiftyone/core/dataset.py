@@ -1151,27 +1151,27 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return [str(d["_id"]) for d in dicts]
 
-    def _bulk_update(self, sample_ids, updates, ordered=False):
+    def _bulk_update(self, ids, updates, frames=False, ordered=False):
         ops = [
             UpdateOne({"_id": _id}, update)
-            for _id, update in zip(sample_ids, updates)
+            for _id, update in zip(ids, updates)
         ]
-        self._bulk_write(ops, ordered=ordered)
+        self._bulk_write(ops, frames=frames, ordered=ordered)
 
-        # Equivalent with loops
-        # coll = self._sample_collection
-        # with fou.ProgressBar() as pb:
-        #     for _id, update in zip(pb(sample_ids), updates):
-        #         coll.update_one({"_id": _id}, update)
+        if frames:
+            fofr.Frame._reload_docs(self._frame_collection_name)
+        else:
+            fos.Sample._reload_docs(self._sample_collection_name)
 
-        fos.Sample._reload_docs(self._sample_collection_name)
+    def _bulk_write(self, ops, frames=False, ordered=False):
+        if frames:
+            coll = self._frame_collection
+        else:
+            coll = self._sample_collection
 
-    def _bulk_write(self, ops, ordered=False):
         try:
             for ops_batch in fou.iter_batches(ops, 100000):  # mongodb limit
-                self._sample_collection.bulk_write(
-                    list(ops_batch), ordered=ordered
-                )
+                coll.bulk_write(list(ops_batch), ordered=ordered)
         except BulkWriteError as bwe:
             msg = bwe.details["writeErrors"][0]["errmsg"]
             raise ValueError(msg) from bwe
@@ -2466,7 +2466,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             attach_frames = True
 
         if attach_frames and (self.media_type == fom.VIDEO):
-            _pipeline = self._attach_frames()
+            _pipeline = [
+                {
+                    "$lookup": {
+                        "from": self._frame_collection_name,
+                        "localField": "_id",
+                        "foreignField": "_sample_id",
+                        "as": "frames",
+                    }
+                }
+            ]
         else:
             _pipeline = []
 
