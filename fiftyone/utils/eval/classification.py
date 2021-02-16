@@ -257,17 +257,13 @@ class TopKEvaluation(ClassificationEvaluation):
         classes=None,
         missing=None,
     ):
-        if samples._is_frame_field(pred_field):
-            raise ValueError(
-                "Frame-level classifications are not yet supported"
-            )
-
         if classes is None:
             raise ValueError(
                 "You must provide the list of classes corresponding to your "
                 "logits in order to run top-k classification evaluation"
             )
 
+        is_frame_field = samples._is_frame_field(gt_field)
         k = self.config.k
 
         # This extracts a potentially huge number of logits
@@ -282,44 +278,81 @@ class TopKEvaluation(ClassificationEvaluation):
 
         targets_map = {label: idx for idx, label in enumerate(classes)}
 
-        confs = []
-        correct = []
-        for idx, (_ytrue, _logits) in enumerate(zip(ytrue, logits)):
-            if _logits is None:
-                # No logits; no prediction
-                ypred[idx] = None
-                _conf = None
-                _correct = None
-                msg = (
-                    "Found sample(s) with no logits. Logits are required to "
-                    + "compute top-k accuracy"
+        if is_frame_field:
+            confs = []
+            correct = []
+            for _ytrue, _ypred, _logits in zip(ytrue, ypred, logits):
+                _confs, _correct = _evaluate_top_k(
+                    _ytrue, _ypred, _logits, k, targets_map
                 )
-                warnings.warn(msg)
-            else:
-                target = targets_map[_ytrue]
-                top_k = np.argpartition(_logits, -k)[-k:]
-                if target in top_k:
-                    # Truth is in top-k; use it
-                    ypred[idx] = _ytrue
-                    logit = _logits[target]
-                    _correct = True
-                else:
-                    # Truth is not in top-k; retain actual prediction
-                    logit = _logits[targets_map[ypred[idx]]]
-                    _correct = False
+                confs.append(_confs)
+                correct.append(_correct)
 
-                _conf = np.exp(logit) / np.sum(np.exp(_logits))
+            ytrue = list(itertools.chain.from_iterable(ytrue))
+            ypred = list(itertools.chain.from_iterable(ypred))
+            confs = list(itertools.chain.from_iterable(confs))
+        else:
+            confs, correct = _evaluate_top_k(
+                ytrue, ypred, logits, k, targets_map
+            )
 
-            confs.append(_conf)
-            correct.append(_correct)
+        results = ClassificationResults(
+            ytrue, ypred, confs, classes=classes, missing=missing
+        )
 
-        if eval_key is not None:
+        if eval_key is None:
+            return results
+
+        if is_frame_field:
+            eval_frame = samples._FRAMES_PREFIX + eval_key
+
+            # Save sample-level accuracies
+            samples._add_field_if_necessary(eval_key, fof.FloatField)
+            samples.set_values(eval_key, [np.mean(c) for c in correct])
+
+            # Save per-frame accuracies
+            samples._add_field_if_necessary(eval_frame, fof.BooleanField)
+            samples.set_values(eval_frame, correct)
+        else:
             samples._add_field_if_necessary(eval_key, fof.BooleanField)
             samples.set_values(eval_key, correct)
 
-        return ClassificationResults(
-            ytrue, ypred, confs, classes=classes, missing=missing
-        )
+        return results
+
+
+def _evaluate_top_k(ytrue, ypred, logits, k, targets_map):
+    confs = []
+    correct = []
+    for idx, (_ytrue, _logits) in enumerate(zip(ytrue, logits)):
+        if _logits is None:
+            # No logits; no prediction
+            ypred[idx] = None
+            _conf = None
+            _correct = False
+            msg = (
+                "Found sample(s) with no logits. Logits are required to "
+                + "compute top-k accuracy"
+            )
+            warnings.warn(msg)
+        else:
+            target = targets_map[_ytrue]
+            top_k = np.argpartition(_logits, -k)[-k:]
+            if target in top_k:
+                # Truth is in top-k; use it
+                ypred[idx] = _ytrue
+                logit = _logits[target]
+                _correct = True
+            else:
+                # Truth is not in top-k; retain actual prediction
+                logit = _logits[targets_map[ypred[idx]]]
+                _correct = False
+
+            _conf = np.exp(logit) / np.sum(np.exp(_logits))
+
+        confs.append(_conf)
+        correct.append(_correct)
+
+    return confs, correct
 
 
 class BinaryEvaluationConfig(ClassificationEvaluationConfig):
