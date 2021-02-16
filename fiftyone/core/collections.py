@@ -3795,31 +3795,6 @@ class SampleCollection(object):
             attach_frames=True,
         )
 
-        """
-        result = self._dataset._frame_collection.aggregate(
-            [
-                {
-                    "$group": {
-                        "_id": "$_sample_id",
-                        "sample_id": {"$first": "$_sample_id"},
-                        "frame_ids": {"$push": "$_id"},
-                    }
-                },
-                {
-                    "$group": {
-                        "_id": None,
-                        "result": {
-                            "$push": {
-                                "sample_id": "$sample_id",
-                                "frame_ids": "$frame_ids",
-                            }
-                        }
-                    }
-                }
-            ]
-        )
-        """
-
         try:
             return next(result)["result"]
         except StopIteration:
