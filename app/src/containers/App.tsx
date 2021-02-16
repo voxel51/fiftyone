@@ -3,15 +3,12 @@ import { useRecoilState, useSetRecoilState, useRecoilValue } from "recoil";
 import { ErrorBoundary } from "react-error-boundary";
 import NotificationHub from "../components/NotificationHub";
 
-import styled from "styled-components";
-
 import Header from "../components/Header";
 import Dataset from "./Dataset";
 
 import {
   useEventHandler,
   useMessageHandler,
-  useGA,
   useSendMessage,
 } from "../utils/hooks";
 import * as atoms from "../recoil/atoms";
@@ -19,15 +16,9 @@ import * as selectors from "../recoil/selectors";
 import { convertSelectedObjectsListToMap } from "../utils/selection";
 
 import Error from "./Error";
-import { scrollbarStyles } from "../components/utils";
 import Setup from "./Setup";
 import "player51/src/css/player51.css";
 import "../app.global.css";
-
-const GA = () => {
-  useGA();
-  return null;
-};
 
 function App() {
   const addNotification = useRef(null);
@@ -80,7 +71,6 @@ function App() {
       <Header addNotification={addNotification} />
       {connected && (
         <Suspense fallback={Setup}>
-          <GA />
           <Dataset />
         </Suspense>
       )}

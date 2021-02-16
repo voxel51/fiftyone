@@ -19,6 +19,7 @@ import {
   useOutsideClick,
   useSendMessage,
   useScreenshot,
+  useGA,
 } from "../utils/hooks";
 import Loading from "../components/Loading";
 
@@ -61,6 +62,7 @@ function Dataset() {
   const setExtendedDatasetStats = useSetRecoilState(
     atoms.extendedDatasetStatsRaw
   );
+  useGA();
   const setDatasetStats = useSetRecoilState(atoms.datasetStatsRaw);
   const [activeLabels, setActiveLabels] = useRecoilState(
     atoms.activeLabels("sample")
