@@ -51,11 +51,10 @@ class RouteTests(TestCase):
     def test_filepath(self):
         data = {"hello": "world"}
         with etau.TempDir() as tmp:
-            path = os.path.join(tmp, "data.json")
+            path = os.path.join(tmp, "data%20.json")
             etas.write_json(data, path)
             response = self.fetch_and_parse(
-                "/filepath%s"
-                % path.replace(os.sep, posixpath.sep).split(":")[-1]
+                "/filepath/%s" % urllib.parse.quote(path, safe="")
             )
 
         self.assertEqual(response, data)
@@ -77,7 +76,7 @@ class StateTests(TestCase):
     image_url = "https://user-images.githubusercontent.com/3719547/74191434-8fe4f500-4c21-11ea-8d73-555edfce0854.png"
     test_one = os.path.abspath("./test_one.png")
     test_two = os.path.abspath("./test_two.png")
-    dataset = fo.Dataset("test")
+    dataset = fo.Dataset()
     sample1 = fo.Sample(filepath=test_one)
     sample2 = fo.Sample(filepath=test_two)
 

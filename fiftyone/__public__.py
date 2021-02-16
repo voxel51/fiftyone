@@ -148,4 +148,8 @@ from .utils.eval.detection import (
     evaluate_detections,
     DetectionResults,
 )
+from .utils.eval.segmentation import (
+    evaluate_segmentations,
+    SegmentationResults,
+)
 from .utils.quickstart import quickstart

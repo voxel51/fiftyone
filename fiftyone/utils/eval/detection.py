@@ -7,9 +7,6 @@ Detection evaluation.
 """
 import logging
 
-import eta.core.utils as etau
-
-import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 
 from .base import (
@@ -54,6 +51,13 @@ def evaluate_detections(
             FP: sample.<eval_key>_fp
             FN: sample.<eval_key>_fn
 
+        In addition, when evaluating frame-level objects, TP/FP/FN counts are
+        recorded for each frame::
+
+            TP: frame.<eval_key>_tp
+            FP: frame.<eval_key>_fp
+            FN: frame.<eval_key>_fn
+
     -   The fields listed below are populated on each individual
         :class:`fiftyone.core.labels.Detection` instance; these fields tabulate
         the TP/FP/FN status of the object, the ID of the matching object
@@ -97,15 +101,18 @@ def evaluate_detections(
     validate_evaluation(samples, eval_info)
     eval_method = config.build()
 
-    processing_frames = (
-        samples.media_type == fom.VIDEO
-        and pred_field.startswith(samples._FRAMES_PREFIX)
-    )
+    pred_field, processing_frames = samples._handle_frame_field(pred_field)
+    gt_field, _ = samples._handle_frame_field(gt_field)
+
+    if not processing_frames:
+        iter_samples = samples.select_fields([gt_field, pred_field])
+    else:
+        iter_samples = samples
 
     matches = []
     logger.info("Evaluating detections...")
     with fou.ProgressBar() as pb:
-        for sample in pb(samples.select_fields([gt_field, pred_field])):
+        for sample in pb(iter_samples):
             if processing_frames:
                 images = sample.frames.values()
             else:
@@ -123,6 +130,11 @@ def evaluate_detections(
                 sample_tp += tp
                 sample_fp += fp
                 sample_fn += fn
+
+                if processing_frames and eval_key is not None:
+                    image["%s_tp" % eval_key] = tp
+                    image["%s_fp" % eval_key] = fp
+                    image["%s_fn" % eval_key] = fn
 
             if eval_key is not None:
                 sample["%s_tp" % eval_key] = sample_tp
@@ -143,27 +155,6 @@ def evaluate_detections(
     )
 
     return results
-
-
-def _cleanup_evaluate_detections(samples, pred_field, gt_field, eval_key):
-    pred_field, is_frame_field = samples._handle_frame_field(pred_field)
-    gt_field, _ = samples._handle_frame_field(gt_field)
-
-    fields = [
-        "%s.detections.%s_id" % (pred_field, eval_key),
-        "%s.detections.%s_iou" % (pred_field, eval_key),
-        "%s.detections.%s_id" % (gt_field, eval_key),
-        "%s.detections.%s_iou" % (gt_field, eval_key),
-    ]
-
-    if is_frame_field:
-        samples._dataset.delete_frame_fields(fields)
-    else:
-        samples._dataset.delete_sample_fields(fields)
-
-    samples._dataset.delete_sample_fields(
-        ["%s_tp" % eval_key, "%s_fp" % eval_key, "%s_fn" % eval_key]
-    )
 
 
 class DetectionEvaluationConfig(EvaluationConfig):
@@ -208,14 +199,59 @@ class DetectionEvaluation(Evaluation):
         """
         raise NotImplementedError("subclass must implement evaluate_image()")
 
+    def get_fields(self, samples, eval_key):
+        eval_info = samples.get_evaluation_info(eval_key)
+
+        eval_fields = [
+            "%s_tp" % eval_key,
+            "%s_fp" % eval_key,
+            "%s_fn" % eval_key,
+            "%s.detections.%s" % (eval_info.pred_field, eval_key),
+            "%s.detections.%s_id" % (eval_info.pred_field, eval_key),
+            "%s.detections.%s_iou" % (eval_info.pred_field, eval_key),
+            "%s.detections.%s" % (eval_info.gt_field, eval_key),
+            "%s.detections.%s_id" % (eval_info.gt_field, eval_key),
+            "%s.detections.%s_iou" % (eval_info.gt_field, eval_key),
+        ]
+
+        if samples._is_frame_field(eval_info.gt_field):
+            eval_fields.extend(
+                [
+                    "frames.%s_tp" % eval_key,
+                    "frames.%s_fp" % eval_key,
+                    "frames.%s_fn" % eval_key,
+                ]
+            )
+
+        return eval_fields
+
     def cleanup(self, samples, eval_key):
         eval_info = samples.get_evaluation_info(eval_key)
-        _cleanup_evaluate_detections(
-            samples,
-            eval_info.pred_field,
-            eval_info.gt_field,
-            eval_info.eval_key,
+
+        pred_field, is_frame_field = samples._handle_frame_field(
+            eval_info.pred_field
         )
+        gt_field, _ = samples._handle_frame_field(eval_info.gt_field)
+
+        fields = [
+            "%s_tp" % eval_key,
+            "%s_fp" % eval_key,
+            "%s_fn" % eval_key,
+            "%s.detections.%s" % (pred_field, eval_key),
+            "%s.detections.%s_id" % (pred_field, eval_key),
+            "%s.detections.%s_iou" % (pred_field, eval_key),
+            "%s.detections.%s" % (gt_field, eval_key),
+            "%s.detections.%s_id" % (gt_field, eval_key),
+            "%s.detections.%s_iou" % (gt_field, eval_key),
+        ]
+
+        if is_frame_field:
+            samples._dataset.delete_sample_fields(
+                ["%s_tp" % eval_key, "%s_fp" % eval_key, "%s_fn" % eval_key]
+            )
+            samples._dataset.delete_frame_fields(fields)
+        else:
+            samples._dataset.delete_sample_fields(fields)
 
 
 class DetectionResults(ClassificationResults):

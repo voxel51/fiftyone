@@ -184,7 +184,7 @@ class DatasetView(foc.SampleCollection):
                 doc = self._dataset._sample_dict_to_doc(d)
                 sample = fos.SampleView(
                     doc,
-                    self._dataset,
+                    self,
                     selected_fields=selected_fields,
                     excluded_fields=excluded_fields,
                     filtered_fields=filtered_fields,
@@ -580,19 +580,28 @@ class DatasetView(foc.SampleCollection):
         d["samples"] = samples
         return d
 
-    def _pipeline(self, pipeline=None, attach_frames=True):
-        _pipeline = []
+    def _needs_frames(self):
+        for s in self._stages:
+            if s._needs_frames(self):
+                return True
 
+        return False
+
+    def _pipeline(self, pipeline=None, attach_frames=True, frames_only=False):
+        _pipeline = []
         for s in self._stages:
             _pipeline.extend(s.to_mongo(self))
-            if s._needs_frames(self):
-                attach_frames = True
 
         if pipeline is not None:
             _pipeline.extend(pipeline)
 
+        if not attach_frames:
+            attach_frames = self._needs_frames()
+
         return self._dataset._pipeline(
-            pipeline=_pipeline, attach_frames=attach_frames,
+            pipeline=_pipeline,
+            attach_frames=attach_frames,
+            frames_only=frames_only,
         )
 
     def _aggregate(self, pipeline=None, attach_frames=True):
