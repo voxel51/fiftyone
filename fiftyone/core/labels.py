@@ -207,7 +207,6 @@ class Classification(ImageLabel, _HasID):
         label (None): the label string
         confidence (None): a confidence in ``[0, 1]`` for the classification
         logits (None): logits associated with the labels
-        target (None): an integer in the range ``[0, 255]``
     """
 
     meta = {"allow_inheritance": True}
@@ -215,7 +214,6 @@ class Classification(ImageLabel, _HasID):
     label = fof.StringField()
     confidence = fof.FloatField()
     logits = fof.VectorField()
-    target = fof.TargetField()
 
     def to_image_labels(self, name=None):
         """Returns an ``eta.core.image.ImageLabels`` representation of this
@@ -230,10 +228,7 @@ class Classification(ImageLabel, _HasID):
         image_labels = etai.ImageLabels()
         image_labels.add_attribute(
             etad.CategoricalAttribute(
-                name,
-                self.label,
-                confidence=self.confidence,
-                target=self.target,
+                name, self.label, confidence=self.confidence,
             )
         )
         return image_labels
@@ -250,7 +245,7 @@ class Classification(ImageLabel, _HasID):
         Returns:
             a :class:`Classification`
         """
-        classification = cls(label=str(attr.value), target=attr.target)
+        classification = cls(label=str(attr.value))
 
         try:
             classification.confidence = attr.confidence
@@ -294,7 +289,6 @@ class Classifications(ImageLabel, _HasLabelList):
                     name,
                     classification.label,
                     confidence=classification.confidence,
-                    target=classification.target,
                 )
             )
 
@@ -340,7 +334,6 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
             array
         confidence (None): a confidence in ``[0, 1]`` for the detection
         index (None): an index for the object
-        target (None): an integer in the range ``[0, 255]``
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
     """
@@ -352,7 +345,6 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
     mask = fof.ArrayField()
     confidence = fof.FloatField()
     index = fof.IntField()
-    target = fof.TargetField()
 
     def to_polyline(self, tolerance=2, filled=True):
         """Returns a :class:`Polyline` representation of this instance.
@@ -407,7 +399,6 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
             mask=mask,
             confidence=confidence,
             name=name,
-            target=self.target,
             attrs=attrs,
         )
 
@@ -447,7 +438,6 @@ class Detection(ImageLabel, _HasID, _HasAttributes):
             confidence=dobj.confidence,
             index=dobj.index,
             mask=dobj.mask,
-            target=dobj.target,
             attributes=attributes,
         )
 
@@ -538,7 +528,6 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
             be drawn from the last vertex to the first vertex of each shape
         filled (False): whether the polyline represents polygons, i.e., shapes
             that should be filled when rendering them
-        target (None): an integer in the range ``[0, 255]``
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances for the polyline
     """
@@ -551,7 +540,6 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
     index = fof.IntField()
     closed = fof.BooleanField(default=False)
     filled = fof.BooleanField(default=False)
-    target = fof.TargetField()
 
     def to_detection(self, mask_size=None):
         """Returns a :class:`Detection` representation of this instance whose
@@ -583,7 +571,6 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
             confidence=self.confidence,
             mask=mask,
             index=self.index,
-            target=self.target,
             attributes=self.attributes,
         )
 
@@ -608,7 +595,6 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
             points=self.points,
             closed=self.closed,
             filled=self.filled,
-            target=self.target,
             attrs=attrs,
         )
 
@@ -646,7 +632,6 @@ class Polyline(ImageLabel, _HasID, _HasAttributes):
             index=polyline.index,
             closed=polyline.closed,
             filled=polyline.filled,
-            target=polyline.target,
             attributes=attributes,
         )
 
@@ -727,7 +712,6 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
         points (None): a list of ``(x, y)`` keypoints in ``[0, 1] x [0, 1]``
         confidence (None): a confidence in ``[0, 1]`` for the points
         index (None): an index for the keypoints
-        target (None): an integer in the range ``[0, 255]``
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
     """
@@ -738,7 +722,6 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
     points = fof.KeypointsField()
     confidence = fof.FloatField()
     index = fof.IntField()
-    target = fof.TargetField()
 
     def to_eta_keypoints(self, name=None):
         """Returns an ``eta.core.keypoints.Keypoints`` representation of this
@@ -759,7 +742,6 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
             confidence=self.confidence,
             index=self.index,
             points=self.points,
-            target=self.target,
             attrs=attrs,
         )
 
@@ -795,7 +777,6 @@ class Keypoint(ImageLabel, _HasID, _HasAttributes):
             points=keypoints.points,
             confidence=keypoints.confidence,
             index=keypoints.index,
-            target=keypoints.target,
             attributes=attributes,
         )
 
