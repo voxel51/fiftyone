@@ -344,15 +344,7 @@ def _coco_evaluation_setup(gts, preds, id_keys, iou_key, config):
         objects["preds"] = preds
 
         # Sort ground truth so crowds are last
-        gts_crowd = []
-        gts_no_crowd = []
-        for g in gts:
-            if iscrowd(g):
-                gts_crowd.append(g)
-            else:
-                gts_no_crowd.append(g)
-
-        gts = gts_no_crowd + gts_crowd
+        gts = sorted(gts, key=lambda d: iscrowd(d))
 
         # Compute ``num_preds x num_gts`` IoUs
         ious = _compute_iou(preds, gts, iscrowd)
