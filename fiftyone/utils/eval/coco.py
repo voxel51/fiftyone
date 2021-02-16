@@ -39,10 +39,12 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         iou_threshs([0.5::0.05::0.95]): 10 IoU thresholds used to compute mAP
     """
 
-    def __init__(self, iscrowd="iscrowd", **kwargs):
+    def __init__(self, iscrowd="iscrowd", iou_threshs=None, **kwargs):
         super().__init__(**kwargs)
         self.iscrowd = iscrowd
-        self.iou_threshs = [x / 100 for x in range(50, 100, 5)]
+        self.iou_threshs = iou_threshs
+        if not self.iou_threshs:
+            self.iou_threshs = [x / 100 for x in range(50, 100, 5)]
 
     @property
     def method(self):
