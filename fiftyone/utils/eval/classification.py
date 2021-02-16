@@ -342,9 +342,12 @@ def _evaluate_top_k(ytrue, ypred, logits, k, targets_map):
                 ypred[idx] = _ytrue
                 logit = _logits[target]
                 _correct = True
-            else:
+            elif ypred[idx] is not None:
                 # Truth is not in top-k; retain actual prediction
                 logit = _logits[targets_map[ypred[idx]]]
+                _correct = False
+            else:
+                logit = -np.inf
                 _correct = False
 
             _conf = np.exp(logit) / np.sum(np.exp(_logits))
