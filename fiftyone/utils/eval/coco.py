@@ -36,7 +36,8 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         classwise (None): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
         iscrowd ("iscrowd"): the name of the crowd attribute
-        iou_threshs([0.5::0.05::0.95]): 10 IoU thresholds used to compute mAP
+        iou_threshs ([0.5::0.05::0.95]): a list of IoU thresholds to use when
+            computing mAP and PR curves
     """
 
     def __init__(self, iscrowd="iscrowd", iou_threshs=None, **kwargs):
