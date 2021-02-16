@@ -78,3 +78,5 @@
 .. |LogitsMixin| replace:: :class:`LogitsMixin <fiftyone.core.models.LogitsMixin>`
 .. |EmbeddingsMixin| replace:: :class:`EmbeddingsMixin <fiftyone.core.models.EmbeddingsMixin>`
 .. |TorchModelMixin| replace:: :class:`TorchModelMixin <fiftyone.core.models.TorchModelMixin>`
+
+.. |EvaluationResults| replace:: :class:`EvaluationResults <fiftyone.utils.evaluation.base.EvaluationResults>`
