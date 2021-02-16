@@ -974,17 +974,24 @@ class SampleCollection(object):
         """
         return foue.get_evaluation_info(self, eval_key)
 
-    def load_evaluation_view(self, eval_key):
+    def load_evaluation_view(self, eval_key, select_fields=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` on which the
         specified evaluation was performed on this collection.
 
         Args:
             eval_key: an evaluation key
+            select_fields (False): whether to select only the fields involved
+                in the evaluation. If true, only the predicted and ground truth
+                fields involved in the evaluation will be selected, and any
+                ancillary fields populated on those samples by other
+                evaluations will be excluded
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return foue.load_evaluation_view(self, eval_key)
+        return foue.load_evaluation_view(
+            self, eval_key, select_fields=select_fields
+        )
 
     def delete_evaluation(self, eval_key):
         """Deletes the evaluation results associated with the given evaluation

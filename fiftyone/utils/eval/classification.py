@@ -145,6 +145,15 @@ class ClassificationEvaluation(Evaluation):
         """
         raise NotImplementedError("subclass must implement evaluate_samples()")
 
+    def get_fields(self, samples, eval_key):
+        eval_info = samples.get_evaluation_info(eval_key)
+
+        eval_fields = [eval_key]
+        if samples._is_frame_field(eval_info.gt_field):
+            return eval_fields.append(samples._FRAMES_PREFIX + eval_key)
+
+        return eval_fields
+
     def cleanup(self, samples, eval_key):
         eval_info = samples.get_evaluation_info(eval_key)
         samples._dataset.delete_sample_field(eval_key)
