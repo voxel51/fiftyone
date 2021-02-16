@@ -797,3 +797,39 @@ export const labelNameGroups = selectorFamily({
       get(labelTypes(dimension))
     ),
 });
+
+export const defaultTargets = selector({
+  key: "defaultTargets",
+  get: ({ get }) => {
+    const targets = get(atoms.stateDescription).dataset?.default_targets || {};
+    return Object.fromEntries(
+      Object.entries(targets).map(([k, v]) => [parseInt(k, 10), v])
+    );
+  },
+});
+
+export const targets = selector({
+  key: "targets",
+  get: ({ get }) => {
+    const defaults = get(atoms.stateDescription).dataset?.default_targets || {};
+    const labelTargets =
+      get(atoms.stateDescription).dataset?.label_targets || {};
+    return {
+      defaults,
+      fields: labelTargets,
+    };
+  },
+});
+
+export const getTarget = selector({
+  key: "getTarget",
+  get: ({ get }) => {
+    const { defaults, fields } = get(targets);
+    return (field, target) => {
+      if (field in fields) {
+        return fields[field][target];
+      }
+      return defaults[target];
+    };
+  },
+});

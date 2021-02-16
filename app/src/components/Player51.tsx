@@ -48,7 +48,10 @@ const TooltipDiv = animated(styled(ContentDiv)`
   pointer-events: none;
 `);
 
-const computeCoordinates = ([x, y], ref) => {
+const computeCoordinates = (
+  [x, y]: [number, number],
+  ref: { current: HTMLElement | null }
+): { bottom?: string | number; top?: string | number; left?: number } => {
   if (!ref.current) {
     return {};
   }
@@ -56,8 +59,8 @@ const computeCoordinates = ([x, y], ref) => {
     x < window.innerWidth / 2
       ? 24
       : -24 - ref.current.getBoundingClientRect().width;
-  let top = y,
-    bottom = "unset";
+  let top: string | number = y,
+    bottom: string | number = "unset";
   if (y > window.innerHeight / 2) {
     bottom = window.innerHeight - y;
     top = "unset";
@@ -129,11 +132,7 @@ const TargetItems = ({ target, field }) => {
   return (
     <>
       <ContentItem key={"target"} name={"target"} value={target} />
-      <ContentItem
-        key={"target-value"}
-        name={"target value"}
-        value={targetValue}
-      />
+      <ContentItem key={"target-value"} name={"label"} value={targetValue} />
     </>
   );
 };
@@ -141,7 +140,6 @@ const TargetItems = ({ target, field }) => {
 const ClassificationInfo = ({ info }) => {
   return (
     <ContentBlock style={{ borderColor: info.color }}>
-      <ContentItem key={"id"} name={"id"} value={info.id} />
       <ContentItem key={"field"} name={"field"} value={info.field} />
       <ContentItem key={"label"} name={"label"} value={info.label} />
       <ConfidenceItem confidence={info.confidence} />
@@ -152,21 +150,10 @@ const ClassificationInfo = ({ info }) => {
 };
 
 const MaskInfo = ({ info }) => {
-  const coord = info.coordinates;
   return (
     <ContentBlock style={{ borderColor: info.color }}>
       <ContentItem key={"field"} name={"field"} value={info.field} />
       <TargetItems field={info.field} target={info.target} />
-      <ContentItem
-        key={"coordinates"}
-        name={"coordinates"}
-        value={`${coord[0]}, ${coord[1]}`}
-      />
-      <ContentItem
-        key={"dimensions"}
-        name={"dimensions"}
-        value={`${info.shape[1]}, ${info.shape[0]}`}
-      />
     </ContentBlock>
   );
 };
@@ -200,7 +187,6 @@ const AttrInfo = ({ attrs }) => {
 const DetectionInfo = ({ info }) => {
   return (
     <ContentBlock style={{ borderColor: info.color }}>
-      <ContentItem key={"id"} name={"id"} value={info.id} />
       <ContentItem key={"field"} name={"field"} value={info.field} />
       <ContentItem key={"label"} name={"label"} value={info.label} />
       <ConfidenceItem confidence={info.confidence} />
@@ -223,7 +209,6 @@ const DetectionInfo = ({ info }) => {
 const KeypointInfo = ({ info }) => {
   return (
     <ContentBlock style={{ borderColor: info.color }}>
-      <ContentItem key={"id"} name={"id"} value={info.id} />
       <ContentItem key={"field"} name={"field"} value={info.field} />
       <ContentItem key={"label"} name={"label"} value={info.label} />
       <ContentItem
@@ -246,7 +231,6 @@ const KeypointInfo = ({ info }) => {
 const PolylineInfo = ({ info }) => {
   return (
     <ContentBlock style={{ borderColor: info.color }}>
-      <ContentItem key={"id"} name={"id"} value={info.id} />
       <ContentItem key={"field"} name={"field"} value={info.field} />
       <ContentItem key={"label"} name={"label"} value={info.label} />
       <ConfidenceItem confidence={info.confidence} />
@@ -268,35 +252,27 @@ const OVERLAY_INFO = {
 };
 
 const TooltipInfo = ({ player, moveRef }) => {
-  const [hovering, setHovering] = useState(false);
   const [display, setDisplay] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0, bottom: "unset" });
+  const position = display
+    ? coords
+    : { top: -1000, left: -1000, bottom: "unset" };
   const coordsProps = useSpring({
-    ...coords,
+    ...position,
     config: {
       duration: 0,
     },
-    onRest: () => {
-      !display && setDisplay(true);
-    },
   });
   const [overlays, setOverlays] = useState([]);
-  const showProps = useSpring({
-    display: display ? "block" : "none",
-    opacity: display ? 1 : 0,
-  });
   const [point, setPoint] = useState([0, 0]);
-  const ref = useRef(null);
+  const ref = useRef<HTMLDivElement>(null);
 
   useEventHandler(player, "tooltipinfo", (e) => {
     setOverlays(e.data.overlays);
     setPoint(e.data.point);
   });
-  useEventHandler(player, "mouseenter", () => setHovering(true));
-  useEventHandler(player, "mouseleave", () => {
-    setHovering(false);
-    setDisplay(false);
-  });
+  useEventHandler(player, "mouseenter", () => setDisplay(true));
+  useEventHandler(player, "mouseleave", () => setDisplay(false));
 
   useEffect(() => {
     moveRef.current = ({ values }) => {
@@ -304,16 +280,24 @@ const TooltipInfo = ({ player, moveRef }) => {
     };
   });
 
-  let more = 0;
+  let more;
   let limitedOverlays = overlays ? overlays : [];
   if (limitedOverlays.length > 3) {
     more = limitedOverlays.length - 3;
     limitedOverlays = limitedOverlays.slice(0, 3);
   }
 
+  const showProps = useSpring({
+    display: display ? "block" : "none",
+    opacity: display && limitedOverlays.length ? 1 : 0,
+  });
+
   return limitedOverlays.length
     ? ReactDOM.createPortal(
-        <TooltipDiv style={{ ...coordsProps, ...showProps }} ref={ref}>
+        <TooltipDiv
+          style={{ ...coordsProps, ...showProps, position: "fixed" }}
+          ref={ref}
+        >
           <ContentHeader key="header">
             {point[0]}, {point[1]}
           </ContentHeader>
