@@ -65,6 +65,7 @@ const computeCoordinates = (
     bottom = window.innerHeight - y;
     top = "unset";
   }
+
   return {
     bottom,
     top,
