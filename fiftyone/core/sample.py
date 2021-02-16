@@ -18,6 +18,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
+import fiftyone.utils.metadata as foum
 
 
 def get_default_sample_fields(include_private=False):
@@ -107,14 +108,7 @@ class _Sample(Document):
 
     def compute_metadata(self):
         """Populates the ``metadata`` field of the sample."""
-        if self.media_type == fomm.IMAGE:
-            self.metadata = fom.ImageMetadata.build_for(self.filepath)
-        elif self.media_type == fomm.VIDEO:
-            self.metadata = fom.VideoMetadata.build_for(self.filepath)
-        else:
-            self.metadata = fom.Metadata.build_for(self.filepath)
-
-        self.save()
+        foum.compute_sample_metadata(self)
 
     def add_labels(self, labels, label_field, confidence_thresh=None):
         """Adds the given labels to the sample.

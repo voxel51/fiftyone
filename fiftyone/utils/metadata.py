@@ -34,6 +34,18 @@ def compute_metadata(sample_collection, overwrite=False, num_workers=None):
         )
 
 
+def compute_sample_metadata(sample):
+    """Populates the ``metadata`` field of the sample.
+
+    Args:
+        sample: a :class:`fiftyone.core.sample.Sample`
+    """
+    sample.metadata = _compute_sample_metadata(
+        sample.filepath, sample.media_type
+    )
+    sample.save()
+
+
 def _compute_metadata(sample_collection, overwrite=False):
     if not overwrite:
         _compute_new_metadata(sample_collection)
@@ -92,7 +104,11 @@ def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
 
 def _do_compute_metadata(args):
     sample_id, filepath, media_type = args
+    metadata = _compute_sample_metadata(filepath, media_type)
+    return sample_id, metadata
 
+
+def _compute_sample_metadata(filepath, media_type):
     if media_type == fomm.IMAGE:
         metadata = fom.ImageMetadata.build_for(filepath)
     elif media_type == fomm.VIDEO:
@@ -100,4 +116,4 @@ def _do_compute_metadata(args):
     else:
         metadata = fom.Metadata.build_for(filepath)
 
-    return sample_id, metadata
+    return metadata
