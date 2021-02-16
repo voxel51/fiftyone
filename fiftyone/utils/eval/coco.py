@@ -38,14 +38,18 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         iscrowd ("iscrowd"): the name of the crowd attribute
         iou_threshs ([0.5::0.05::0.95]): a list of IoU thresholds to use when
             computing mAP and PR curves
+        maxDets (100): the maximum number of detections to evaluate per image
     """
 
-    def __init__(self, iscrowd="iscrowd", iou_threshs=None, **kwargs):
+    def __init__(
+        self, iscrowd="iscrowd", iou_threshs=None, maxDets=100, **kwargs
+    ):
         super().__init__(**kwargs)
         self.iscrowd = iscrowd
         self.iou_threshs = iou_threshs
         if not self.iou_threshs:
             self.iou_threshs = [x / 100 for x in range(50, 100, 5)]
+        self.maxDets = maxDets
 
     @property
     def method(self):
@@ -307,6 +311,7 @@ def _coco_evaluation_iou_sweep(gts, preds, config):
 def _coco_evaluation_setup(gts, preds, id_keys, iou_key, config):
     iscrowd = _make_iscrowd_fcn(config.iscrowd)
     classwise = config.classwise
+    maxDets = config.maxDets
 
     # Organize preds and GT by category
     cats = defaultdict(lambda: defaultdict(list))
@@ -334,7 +339,7 @@ def _coco_evaluation_setup(gts, preds, id_keys, iou_key, config):
 
         # Highest confidence predictions first
         preds = sorted(preds, key=lambda p: p.confidence or -1, reverse=True)[
-            :100
+            :maxDets
         ]
         objects["preds"] = preds
 
