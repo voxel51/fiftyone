@@ -379,9 +379,9 @@ def test_evaluate_segmentations():
 
     results.print_report()
 
-    print(dataset.values("%s_accuracy" % EVAL_KEY))
-    print(dataset.values("%s_precision" % EVAL_KEY))
-    print(dataset.values("%s_recall" % EVAL_KEY))
+    print(dataset.bounds("%s_accuracy" % EVAL_KEY))
+    print(dataset.bounds("%s_precision" % EVAL_KEY))
+    print(dataset.bounds("%s_recall" % EVAL_KEY))
     print(dataset.get_evaluation_info(EVAL_KEY))
 
     #
@@ -400,9 +400,9 @@ def test_evaluate_segmentations():
 
     results.print_report()
 
-    print(dataset.values("%s_accuracy" % EVAL_KEY_BW))
-    print(dataset.values("%s_precision" % EVAL_KEY_BW))
-    print(dataset.values("%s_recall" % EVAL_KEY_BW))
+    print(dataset.bounds("%s_accuracy" % EVAL_KEY_BW))
+    print(dataset.bounds("%s_precision" % EVAL_KEY_BW))
+    print(dataset.bounds("%s_recall" % EVAL_KEY_BW))
     print(dataset.get_evaluation_info(EVAL_KEY_BW))
 
     #
