@@ -72,7 +72,7 @@ def test_evaluate_classifications():
 
     TOP_K_EVAL_KEY = "eval_top_k"
 
-    results = view.evaluate_classifications(
+    top_k_results = view.evaluate_classifications(
         "predictions",
         gt_field="ground_truth",
         eval_key=TOP_K_EVAL_KEY,
@@ -82,7 +82,7 @@ def test_evaluate_classifications():
         k=5,
     )
 
-    results.print_report(classes=classes)
+    top_k_results.print_report(classes=classes)
 
     print(view.count_values(TOP_K_EVAL_KEY))
     print(view.get_evaluation_info(TOP_K_EVAL_KEY))
@@ -111,6 +111,8 @@ def test_evaluate_classifications():
         method="binary",
         classes=[neg_label, pos_label],
     )
+
+    binary_results.print_report()
 
     print(view.count_values(BINARY_EVAL_KEY))
     print(view.get_evaluation_info(BINARY_EVAL_KEY))
@@ -155,6 +157,8 @@ def test_evaluate_classifications_frames():
         eval_key=SIMPLE_EVAL_KEY,
     )
 
+    results.print_report()
+
     print(dataset.bounds(SIMPLE_EVAL_KEY))
     print(dataset.count_values("frames." + SIMPLE_EVAL_KEY))
     print(dataset.get_evaluation_info(SIMPLE_EVAL_KEY))
@@ -165,7 +169,7 @@ def test_evaluate_classifications_frames():
 
     TOP_K_EVAL_KEY = "eval_top_k"
 
-    results = dataset.evaluate_classifications(
+    top_k_results = dataset.evaluate_classifications(
         "frames.pred_animal",
         gt_field="frames.gt_animal",
         eval_key=TOP_K_EVAL_KEY,
@@ -173,6 +177,8 @@ def test_evaluate_classifications_frames():
         classes=_ANIMALS,
         k=2,
     )
+
+    top_k_results.print_report()
 
     print(dataset.bounds(TOP_K_EVAL_KEY))
     print(dataset.count_values("frames." + TOP_K_EVAL_KEY))
@@ -199,6 +205,8 @@ def test_evaluate_classifications_frames():
         method="binary",
         classes=["other", "cat"],
     )
+
+    binary_results.print_report()
 
     print(dataset.bounds(BINARY_EVAL_KEY))
     print(dataset.count_values("frames." + BINARY_EVAL_KEY))
