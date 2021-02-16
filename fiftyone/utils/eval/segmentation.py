@@ -45,11 +45,18 @@ def evaluate_segmentations(
     is resized to match the ground truth.
 
     If an ``eval_key`` is provided, the accuracy, precision, and recall of each
-    sample is recorded in top-level fields of the samples::
+    sample is recorded in top-level fields of each sample::
 
          Accuracy: sample.<eval_key>_accuracy
         Precision: sample.<eval_key>_precision
            Recall: sample.<eval_key>_recall
+
+   In addition, when evaluating frame-level masks, the accuracy, precision, and
+   recall of each frame if recorded in the following frame-level fields::
+
+         Accuracy: frame.<eval_key>_accuracy
+        Precision: frame.<eval_key>_precision
+           Recall: frame.<eval_key>_recall
 
     .. note::
 
@@ -133,8 +140,35 @@ class SegmentationEvaluation(Evaluation):
         """
         pass
 
+    def get_fields(self, samples, eval_key):
+        eval_info = samples.get_evaluation_info(eval_key)
+
+        eval_fields = [
+            "%s_tp" % eval_key,
+            "%s_fp" % eval_key,
+            "%s_fn" % eval_key,
+        ]
+
+        if samples._is_frame_field(eval_info.gt_field):
+            prefix = samples._FRAMES_PREFIX + eval_key
+            eval_fields.extend(
+                ["%s_tp" % prefix, "%s_fp" % prefix, "%s_fn" % prefix]
+            )
+
+        return eval_fields
+
     def cleanup(self, samples, eval_key):
-        pass
+        eval_info = samples.get_evaluation_info(eval_key)
+
+        fields = [
+            "%s_accuracy" % eval_key,
+            "%s_precision" % eval_key,
+            "%s_recall" % eval_key,
+        ]
+
+        samples._dataset.delete_sample_fields(fields)
+        if samples._is_frame_field(eval_info.gt_field):
+            samples._dataset.delete_frame_fields(fields)
 
 
 class SimpleEvaluationConfig(SegmentationEvaluationConfig):
@@ -246,19 +280,6 @@ class SimpleEvaluation(SegmentationEvaluation):
 
         missing = classes[0] if values[0] == 0 else None
         return SegmentationResults(confusion_matrix, classes, missing=missing)
-
-    def cleanup(self, samples, eval_key):
-        eval_info = samples.get_evaluation_info(eval_key)
-
-        fields = [
-            "%s_accuracy" % eval_key,
-            "%s_precision" % eval_key,
-            "%s_recall" % eval_key,
-        ]
-
-        samples._dataset.delete_sample_fields(fields)
-        if samples._is_frame_field(eval_info.pred_field):
-            samples._dataset.delete_frame_fields(fields)
 
 
 class SegmentationResults(ClassificationResults):

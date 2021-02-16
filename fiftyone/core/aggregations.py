@@ -1149,17 +1149,10 @@ class Values(Aggregation):
         Returns:
             the list of field values
         """
-        if not self._found_array_field:
-            return d["values"]
+        if self._found_array_field:
+            return _deserialize_arrays(d["values"])
 
-        values = []
-        for value in d["values"]:
-            if value is not None:
-                values.append(fou.deserialize_numpy_array(value))
-            else:
-                values.append(None)
-
-        return values
+        return d["values"]
 
     def to_mongo(self, sample_collection):
         path, pipeline, other_list_fields = self._parse_field_and_expr(
@@ -1248,3 +1241,13 @@ def _parse_field_and_expr(sample_collection, field_name, auto_unwind, expr):
     pipeline.append({"$project": {root: True}})
 
     return path, pipeline, other_list_fields
+
+
+def _deserialize_arrays(value):
+    if value is None:
+        return None
+
+    if isinstance(value, list):
+        return [_deserialize_arrays(v) for v in value]
+
+    return fou.deserialize_numpy_array(value)
