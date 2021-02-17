@@ -6,7 +6,7 @@ import uuid from "react-uuid";
 import { useRecoilValue } from "recoil";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import { Warning } from "@material-ui/icons";
-import { animated, useChain, useSpring } from "react-spring";
+import { animated, useSpring } from "react-spring";
 
 import { ContentDiv, ContentHeader, ContentBlock } from "./utils";
 import ExternalLink from "./ExternalLink";
@@ -17,7 +17,6 @@ import { useMove } from "react-use-gesture";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { activeLabels } from "./Filters/utils";
 
 const InfoWrapper = styled.div`
   display: flex;

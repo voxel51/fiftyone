@@ -9,6 +9,7 @@ import ViewBar from "../components/ViewBar/ViewBar";
 import { scrollbarStyles } from "../components/utils";
 
 import { labelFilters } from "../components/Filters/LabelFieldFilters.state";
+import * as labelAtoms from "../components/Filters/utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 
@@ -27,16 +28,14 @@ const ContentColumn = styled.div`
 `;
 
 const FieldsWrapper = () => {
-  const [activeTags, setActiveTags] = useRecoilState(atoms.activeTags);
+  const [activeTags, setActiveTags] = useRecoilState(labelAtoms.activeTags);
   const [activeLabels, setActiveLabels] = useRecoilState(
-    atoms.activeLabels("sample")
+    labelAtoms.activeLabels("sample")
   );
   const [activeFrameLabels, setActiveFrameLabels] = useRecoilState(
-    atoms.activeLabels("frame")
+    labelAtoms.activeLabels("frame")
   );
-  const [activeOther, setActiveOther] = useRecoilState(
-    atoms.activeOther("sample")
-  );
+  const [activeOther, setActiveOther] = useRecoilState(labelAtoms.activeOther);
 
   const labelSampleCounts = useRecoilValue(
     selectors.labelSampleCounts("sample")
@@ -73,14 +72,16 @@ const FieldsWrapper = () => {
       type,
       totalCount: totalCounts ? totalCounts[name] : null,
       filteredCount: filteredCounts ? filteredCounts[name] : null,
-      selected: Boolean(selected[name]),
+      selected: selected.includes(name),
     }));
   };
   const handleSetDisplayOption = (setSelected) => (entry) => {
-    setSelected((selected) => ({
-      ...selected,
-      [entry.name]: entry.selected,
-    }));
+    setSelected((selected) => {
+      if (entry.selected) {
+        return [...selected, entry.name];
+      }
+      return selected.filter((s) => s !== entry.name);
+    });
   };
 
   return (

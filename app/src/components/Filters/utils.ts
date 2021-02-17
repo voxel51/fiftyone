@@ -102,6 +102,16 @@ export const modalActiveLabels = atomFamily<string[], string>({
   default: activeLabels,
 });
 
+export const activeOther = atom<string[]>({
+  key: "activeOther",
+  default: [],
+});
+
+export const modalActiveOther = atom<string[]>({
+  key: "modalActiveOther",
+  default: [],
+});
+
 export const activeTags = atom<string[]>({
   key: "activeTags",
   default: [],
