@@ -136,7 +136,7 @@ export const sampleModalFilter = selector({
   key: "sampleModalFilter",
   get: ({ get }) => {
     const filters = get(labelFilters(true));
-    const labels = activeLabelPaths(true);
+    const labels = get(activeLabelPaths(true));
     return (sample) => {
       return Object.entries(sample).reduce((acc, [key, value]) => {
         if (key === "tags") {

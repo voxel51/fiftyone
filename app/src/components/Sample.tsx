@@ -9,6 +9,7 @@ import Tag from "./Tags/Tag";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { labelFilters } from "./Filters/LabelFieldFilters.state";
+import * as labelAtoms from "./Filters/utils";
 import { getLabelText, stringify } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
 import { useFastRerender, useVideoData } from "../utils/hooks";
@@ -143,10 +144,9 @@ const Sample = ({ sample, metadata }) => {
   const filter = useRecoilValue(labelFilters(false));
   const colorMap = useRecoilValue(selectors.colorMap);
   const colorByLabel = useRecoilValue(atoms.colorByLabel);
-  const activeLabels = useRecoilValue(atoms.activeLabels("sample"));
-  const activeFrameLabels = useRecoilValue(atoms.activeLabels("frame"));
-  const activeTags = useRecoilValue(atoms.activeTags);
-  const activeOther = useRecoilValue(selectors.activeOther("sample"));
+  const activeLabels = useRecoilValue(labelAtoms.activeLabels("sample"));
+  const activeTags = useRecoilValue(labelAtoms.activeTags);
+  const activeOther = useRecoilValue(labelAtoms.activeOther);
   const [stateDescription, setStateDescription] = useRecoilState(
     atoms.stateDescription
   );
@@ -173,7 +173,7 @@ const Sample = ({ sample, metadata }) => {
     setStateDescription({ ...stateDescription, selected: [...newSelected] });
   };
   const renderLabel = ({ name, label, idx }) => {
-    if (!activeLabels[name] || !label) {
+    if (!activeLabels.includes(name) || !label) {
       return null;
     }
     let value = getLabelText(label);
@@ -274,8 +274,7 @@ const Sample = ({ sample, metadata }) => {
           sample={sample}
           metadata={metadata}
           thumbnail={true}
-          activeLabels={activeLabels}
-          activeFrameLabels={activeFrameLabels}
+          activeLabelsAtom={labelAtoms.activeLabelPaths(false)}
           colorByLabel={colorByLabel}
           filterSelector={labelFilters(false)}
           onMouseEnter={onMouseEnter}
