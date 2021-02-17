@@ -104,36 +104,6 @@ export const currentSamples = atom({
   default: [],
 });
 
-export const activeLabels = atomFamily({
-  key: "activeLabels",
-  default: {},
-});
-
-export const modalActiveLabels = atomFamily({
-  key: "modalActiveLabels",
-  default: {},
-});
-
-export const activeOther = atomFamily({
-  key: "activeOther",
-  default: {},
-});
-
-export const modalActiveOther = atomFamily({
-  key: "modalActiveOther",
-  default: {},
-});
-
-export const activeTags = atom({
-  key: "activeTags",
-  default: {},
-});
-
-export const modalActiveTags = atom({
-  key: "modalActiveTags",
-  default: {},
-});
-
 export const sampleVideoLabels = atomFamily({
   key: "sampleVideoLabels",
   default: null,

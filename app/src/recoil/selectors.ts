@@ -16,6 +16,7 @@ import {
 import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
 import { lightTheme } from "../shared/colors";
+import { string } from "prop-types";
 
 class HTTPSSocket {
   location: string;
@@ -570,17 +571,21 @@ export const fieldPaths = selector({
   },
 });
 
-const labels = selectorFamily({
+const labels = selectorFamily<
+  { name: string; embedded_doc_type: string }[],
+  string
+>({
   key: "labels",
   get: (dimension: string) => ({ get }) => {
     const fieldsValue = get(selectedFields(dimension));
     return Object.keys(fieldsValue)
       .map((k) => fieldsValue[k])
-      .filter(labelFilter);
+      .filter(labelFilter)
+      .sort((a, b) => a.name - b.name);
   },
 });
 
-export const labelNames = selectorFamily({
+export const labelNames = selectorFamily<string[], string>({
   key: "labelNames",
   get: (dimension: string) => ({ get }) => {
     const l = get(labels(dimension));
@@ -588,7 +593,7 @@ export const labelNames = selectorFamily({
   },
 });
 
-export const labelPaths = selector({
+export const labelPaths = selector<string[]>({
   key: "labelPaths",
   get: ({ get }) => {
     const sampleLabels = get(labelNames("sample"));
@@ -613,9 +618,9 @@ export const labelTypesMap = selector<{ [key: string]: string }>({
   },
 });
 
-export const labelTypes = selectorFamily({
+export const labelTypes = selectorFamily<string[], string>({
   key: "labelTypes",
-  get: (dimension: string) => ({ get }) => {
+  get: (dimension) => ({ get }) => {
     return get(labels(dimension)).map((l) => {
       return l.embedded_doc_type.split(".").slice(-1)[0];
     });

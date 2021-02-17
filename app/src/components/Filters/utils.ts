@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useSpring } from "react-spring";
-import { selectorFamily } from "recoil";
+import { atom, atomFamily, selectorFamily } from "recoil";
 import useMeasure from "react-use-measure";
 
 import * as selectors from "../../recoil/selectors";
@@ -80,3 +80,23 @@ export const useExpand = (
     },
   ];
 };
+
+export const activeLabels = atomFamily<string[], string>({
+  key: "activeLabels",
+  default: [],
+});
+
+export const modalActiveLabels = atomFamily<string[], string>({
+  key: "modalActiveLabels",
+  default: [],
+});
+
+export const activeTags = atom<string[]>({
+  key: "activeTags",
+  default: [],
+});
+
+export const modalActiveTags = atom<string[]>({
+  key: "modalActiveTags",
+  default: [],
+});

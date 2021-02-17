@@ -146,7 +146,7 @@ const Sample = ({ sample, metadata }) => {
   const activeLabels = useRecoilValue(atoms.activeLabels("sample"));
   const activeFrameLabels = useRecoilValue(atoms.activeLabels("frame"));
   const activeTags = useRecoilValue(atoms.activeTags);
-  const activeOther = useRecoilValue(atoms.activeOther("sample"));
+  const activeOther = useRecoilValue(selectors.activeOther("sample"));
   const [stateDescription, setStateDescription] = useRecoilState(
     atoms.stateDescription
   );
@@ -287,10 +287,7 @@ const Sample = ({ sample, metadata }) => {
         ))}
       </div>
       <SampleChin>
-        <SampleInfo>
-          {bubbles}
-          <Tag key={"filepath"} name={sample.filepath} color={"transparent"} />
-        </SampleInfo>
+        <SampleInfo>{bubbles}</SampleInfo>
         <SelectedDiv>
           <Checkbox
             checked={selectedSamples.has(id)}

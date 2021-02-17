@@ -40,54 +40,22 @@ const Body = styled.div`
   overflow: hidden;
 `;
 
-const applyActiveLabels = (tuples, current, setter) => {
-  const newSelection = { ...current };
-  for (const [label, type] of tuples) {
-    if (newSelection[label] === undefined && VALID_LABEL_TYPES.includes(type)) {
-      newSelection[label] = true;
-    }
-  }
-  setter(newSelection);
-};
-
 function Dataset() {
   const [modal, setModal] = useRecoilState(atoms.modal);
   const http = useRecoilValue(selectors.http);
   const hasDataset = useRecoilValue(selectors.hasDataset);
   const colorMap = useRecoilValue(selectors.colorMap);
-  const datasetName = useRecoilValue(selectors.datasetName);
   const currentSamples = useRecoilValue(atoms.currentSamples);
-  const labelTuples = useRecoilValue(selectors.labelTuples("sample"));
-  const frameLabelTuples = useRecoilValue(selectors.labelTuples("frame"));
   const setExtendedDatasetStats = useSetRecoilState(
     atoms.extendedDatasetStatsRaw
   );
   useGA();
   const setDatasetStats = useSetRecoilState(atoms.datasetStatsRaw);
-  const [activeLabels, setActiveLabels] = useRecoilState(
-    atoms.activeLabels("sample")
-  );
-  const [activeFrameLabels, setActiveFrameLabels] = useRecoilState(
-    atoms.activeLabels("frame")
-  );
-  const activeOther = useRecoilValue(atoms.activeOther("sample"));
-  const activeFrameOther = useRecoilValue(atoms.activeOther("frame"));
 
   useMessageHandler("statistics", ({ stats, view, filters }) => {
     filters && setExtendedDatasetStats({ stats, view, filters });
     !filters && setDatasetStats({ stats, view });
   });
-
-  // select any new labels by default
-
-  useEffect(() => {
-    applyActiveLabels(labelTuples, activeLabels, setActiveLabels);
-    applyActiveLabels(
-      frameLabelTuples,
-      activeFrameLabels,
-      setActiveFrameLabels
-    );
-  }, [datasetName, labelTuples, frameLabelTuples]);
 
   // reset selected/hidden objects when the modal closes (subject to change) -
   // the socket update is needed here because SampleModal and SelectObjectsMenu
@@ -95,7 +63,7 @@ function Dataset() {
   const resetSelectedObjects = useResetRecoilState(atoms.selectedObjects);
   const resetHiddenObjects = useResetRecoilState(atoms.hiddenObjects);
   const handleHideModal = () => {
-    setModal({ visible: false, sample: null });
+    setModal({ visible: false, sample: null, metadata: null });
     resetSelectedObjects();
     resetHiddenObjects();
   };
