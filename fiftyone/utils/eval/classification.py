@@ -654,6 +654,7 @@ class ClassificationResults(EvaluationResults):
             ax=ax,
             **kwargs,
         )
+        plt.tight_layout()
         plt.show(block=block)
         return display.ax_
 
