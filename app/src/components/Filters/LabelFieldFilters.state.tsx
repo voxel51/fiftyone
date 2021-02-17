@@ -50,10 +50,10 @@ export const getPathExtension = (type: string): string => {
 export const labelFilters = selectorFamily<LabelFilters, boolean>({
   key: "labelFilters",
   get: (modal) => ({ get }) => {
-    const labels = activeLabelPaths(true);
+    const labels = get(activeLabelPaths(true));
     const filters = {};
     const typeMap = get(selectors.labelTypesMap);
-    for (const label in labels) {
+    for (const label of labels) {
       const path = `${label}${getPathExtension(typeMap[label])}`;
 
       const [cRangeAtom, cNoneAtom, lValuesAtom, lExcludeAtom] = modal
