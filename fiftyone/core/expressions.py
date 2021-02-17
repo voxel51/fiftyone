@@ -148,7 +148,9 @@ class ViewExpression(object):
         return super().__hash__()
 
     def __deepcopy__(self, memo):
-        return self.__class__(deepcopy(self._expr, memo))
+        obj = self.__class__(deepcopy(self._expr, memo))
+        obj._prefix = deepcopy(self._prefix)
+        return obj
 
     def _freeze_prefix(self, prefix):
         _do_freeze_prefix(self, prefix)
