@@ -390,17 +390,17 @@ def _coco_evaluation_setup(
     # Organize preds and GT by category
     cats = defaultdict(lambda: defaultdict(list))
     for det in preds.detections:
+        det[iou_key] = _NO_MATCH_IOU
         for id_key in id_keys:
             det[id_key] = _NO_MATCH_ID
-        det[iou_key] = _NO_MATCH_IOU
 
         label = det.label if classwise else "all"
         cats[label]["preds"].append(det)
 
     for det in gts.detections:
+        det[iou_key] = _NO_MATCH_IOU
         for id_key in id_keys:
             det[id_key] = _NO_MATCH_ID
-        det[iou_key] = _NO_MATCH_IOU
 
         label = det.label if classwise else "all"
         cats[label]["gts"].append(det)
@@ -447,14 +447,16 @@ def _compute_matches(
                 best_match = None
                 best_match_iou = iou_thresh
                 for gt_id, iou in pred_ious[pred.id]:
-                    # Only iscrowd GTs can have multiple matches
                     gt = gt_map[gt_id]
-                    if gt[id_key] != _NO_MATCH_ID and not iscrowd(gt):
+                    gt_iscrowd = iscrowd(gt)
+
+                    # Only iscrowd GTs can have multiple matches
+                    if gt[id_key] != _NO_MATCH_ID and not gt_iscrowd:
                         continue
 
                     # If matching classwise=False
                     # Only objects with the same class can match a crowd
-                    if iscrowd(gt) and gt.label != pred.label:
+                    if gt_iscrowd and gt.label != pred.label:
                         continue
 
                     # Crowds are last in order of gts
@@ -463,7 +465,7 @@ def _compute_matches(
                     if (
                         best_match
                         and not iscrowd(gt_map[best_match])
-                        and iscrowd(gt)
+                        and gt_iscrowd
                     ):
                         break
 
@@ -475,8 +477,11 @@ def _compute_matches(
 
                 if best_match:
                     gt = gt_map[best_match]
+                    tag = "tp" if gt.label == pred.label else "fp"
+                    gt[eval_key] = tag
                     gt[id_key] = pred.id
                     gt[iou_key] = best_match_iou
+                    pred[eval_key] = tag
                     pred[id_key] = best_match
                     pred[iou_key] = best_match_iou
                     matches.append(
@@ -488,16 +493,6 @@ def _compute_matches(
                             iscrowd(gt),
                         )
                     )
-
-                    if gt.label == pred.label:
-                        gt[eval_key] = "tp"
-                        pred[eval_key] = "tp"
-                    else:
-                        # If classwise = False, matched gt and pred could have
-                        # different labels
-                        gt[eval_key] = "fp"
-                        pred[eval_key] = "fp"
-
                 else:
                     pred[eval_key] = "fp"
                     matches.append(
