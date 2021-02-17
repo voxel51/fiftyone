@@ -309,6 +309,7 @@ class Document(object):
 
     def reload(self):
         """Reloads the document from the database."""
+        # only reload attrs that are in our schema
         self._doc.reload(*list(self._doc))
 
     def _delete(self):
@@ -446,7 +447,6 @@ class Document(object):
             reset_ids = set()
             for document in documents.values():
                 if document.id in doc_ids:
-                    print(document)
                     document.reload()
                 else:
                     reset_ids.add(document.id)

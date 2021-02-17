@@ -576,6 +576,18 @@ class VideoSampleTests(unittest.TestCase):
         self.assertEqual(len(detections), 2)
         self.assertEqual(detections[0].label, "foo")
 
+    def test_reload(self):
+        dataset = self._make_dataset()
+
+        sample = dataset.first()
+        sample.frames[1]["foo"] = fo.Detections(
+            detections=[fo.Detection(label="foo"), fo.Detection(label="bar"),]
+        )
+        sample.save()
+        dataset.filter_labels("frames.foo", F("label") == "foo").save()
+
+        self.assertEqual(len(sample.frames[1].foo.detections), 1)
+
 
 class SampleFieldTests(unittest.TestCase):
     @drop_datasets
