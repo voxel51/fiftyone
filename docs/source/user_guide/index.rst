@@ -30,13 +30,13 @@ on your data quickly and easily.
 
 .. customcalloutitem::
     :header: Using datasets
-    :description: Take a deep dive into FiftyOne datasets and how to use to store your data.
+    :description: Take a deep dive into FiftyOne datasets and how to use them to manage your data.
     :button_text: Learn more about using datasets
     :button_link: using_datasets.html
 
 .. customcalloutitem::
     :header: Dataset views
-    :description: See FiftyOne shine with this powerful interface that lets you search, sort, and filter your data.
+    :description: Use FiftyOne's powerful dataset view interface to search, sort, and filter your data.
     :button_text: Learn more about using dataset views
     :button_link: using_views.html
 
@@ -51,6 +51,12 @@ on your data quickly and easily.
     :description: Efficiently compute aggregate statistics about your FiftyOne datasets and views.
     :button_text: Learn more about using aggregations
     :button_link: using_aggregations.html
+
+.. customcalloutitem::
+    :header: Evaluating models
+    :description: Use FiftyOne's builtin methods to evaluate your models and analyze their strengths and weaknesses.
+    :button_text: Learn more about evaluating models
+    :button_link: evaluation.html
 
 .. customcalloutitem::
     :header: Exporting datasets
@@ -107,6 +113,7 @@ on your data quickly and easily.
     Dataset views <using_views>
     Using the App <app>
     Using aggregations <using_aggregations>
+    Evaluating models <evaluation>
     Exporting datasets <export_datasets>
     Drawing labels on samples <draw_labels>
     FiftyOne Dataset Zoo <dataset_zoo/index>
