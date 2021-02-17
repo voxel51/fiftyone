@@ -446,7 +446,6 @@ class Document(object):
             reset_ids = set()
             for document in documents.values():
                 if document.id in doc_ids:
-                    print(document)
                     document.reload()
                 else:
                     reset_ids.add(document.id)
