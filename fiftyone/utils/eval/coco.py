@@ -34,21 +34,33 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
         iscrowd ("iscrowd"): the name of the crowd attribute
         compute_mAP (False): whether to perform the necessary computations so
             that mAP and PR curves can be generated
-        iou_threshs ([0.5::0.05::0.95]): a list of IoU thresholds to use when
-            computing mAP and PR curves
+        iou_threshs (None): a list of IoU thresholds to use when computing mAP
+            and PR curves. Only applicable when ``compute_mAP`` is True
+        max_preds (None): the maximum number of predicted objects to evaluate
+            when computing mAP and PR curves. Only applicable when
+            ``compute_mAP`` is True
     """
 
     def __init__(
-        self, iscrowd="iscrowd", compute_mAP=False, iou_threshs=None, **kwargs
+        self,
+        iscrowd="iscrowd",
+        compute_mAP=False,
+        iou_threshs=None,
+        max_preds=None,
+        **kwargs
     ):
         super().__init__(**kwargs)
 
         if compute_mAP and iou_threshs is None:
             iou_threshs = [x / 100 for x in range(50, 100, 5)]
 
+        if compute_mAP and max_preds is None:
+            max_preds = 100
+
         self.iscrowd = iscrowd
         self.compute_mAP = compute_mAP
         self.iou_threshs = iou_threshs
+        self.max_preds = max_preds
 
     @property
     def method(self):
@@ -362,7 +374,7 @@ def _coco_evaluation_iou_sweep(gts, preds, config):
     iou_key = "eval_iou"
 
     cats, pred_ious, iscrowd = _coco_evaluation_setup(
-        gts, preds, id_keys, iou_key, config, max_preds=100
+        gts, preds, id_keys, iou_key, config, max_preds=config.max_preds
     )
 
     matches = {

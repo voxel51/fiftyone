@@ -499,7 +499,7 @@ COCO-style evaluation (default)
 
 By default,
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
-will use `COCO-style evaluation <https://cocodataset.org/#format-data>`_ to
+will use `COCO-style evaluation <https://cocodataset.org/#detection-eval>`_ to
 analyze predictions. This means that:
 
 -   Predicted and ground truth objects are matched using a specified IoU
@@ -599,6 +599,49 @@ The example below demonstrates COCO-style detection evaluation on the
 
 .. image:: ../images/evaluation/quickstart_evaluate_detections.png
    :alt: quickstart-evaluate-detections
+   :align: center
+
+Computing mAP and PR curves
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can also compute mean average precision (mAP) and precision-recall (PR)
+curves for your detections by passing the ``compute_mAP=True`` flag to
+:meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`:
+
+.. note::
+
+    All mAP calculations are performed according to the
+    `COCO evaluation protocol <https://cocodataset.org/#detection-eval>`_
+    (same IoU thesholds, PR samplings, and so on).
+
+    You can customize this behavior by passing additional keyword arguments for
+    |COCOEvaluationConfig| to
+    :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    print(dataset)
+
+    # Performs an IoU sweep so that mAP and PR curves can be computed
+    results = dataset.evaluate_detections(
+        "predictions",
+        gt_field="ground_truth",
+        eval_key="eval_coco",
+        compute_mAP=True,
+    )
+
+    print(results.mAP())
+    # 0.3957...
+
+    results.plot_pr_curves(classes=["person"])
+
+.. image:: ../images/evaluation/coco_pr_curve.png
+   :alt: coco-pr-curve
    :align: center
 
 .. _evaluating-segmentations:
