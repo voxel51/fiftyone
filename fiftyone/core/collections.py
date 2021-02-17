@@ -802,7 +802,7 @@ class SampleCollection(object):
         classes=None,
         missing="none",
         method="coco",
-        iou=0.75,
+        iou=0.50,
         classwise=True,
         config=None,
         **kwargs,
@@ -853,7 +853,7 @@ class SampleCollection(object):
                 given this label for evaluation purposes
             method ("coco"): a string specifying the evaluation method to use.
                 Supported values are ``("coco")``
-            iou (0.75): the IoU threshold to use to determine matches
+            iou (0.50): the IoU threshold to use to determine matches
             classwise (True): whether to only match objects with the same class
                 label (True) or allow matches between classes (False)
             config (None): a
