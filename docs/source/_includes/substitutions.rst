@@ -79,8 +79,8 @@
 .. |EmbeddingsMixin| replace:: :class:`EmbeddingsMixin <fiftyone.core.models.EmbeddingsMixin>`
 .. |TorchModelMixin| replace:: :class:`TorchModelMixin <fiftyone.core.models.TorchModelMixin>`
 
-.. |EvaluationResults| replace:: :class:`EvaluationResults <fiftyone.utils.evaluation.base.EvaluationResults>`
-.. |ClassificationResults| replace:: :class:`ClassificationResults <fiftyone.utils.evaluation.classification.ClassificationResults>`
-.. |BinaryClassificationResults| replace:: :class:`BinaryClassificationResults <fiftyone.utils.evaluation.classification.BinaryClassificationResults>`
-.. |DetectionResults| replace:: :class:`DetectionResults <fiftyone.utils.evaluation.detection.DetectionResults>`
-.. |SegmentationResults| replace:: :class:`SegmentationResults <fiftyone.utils.evaluation.segmentation.SegmentationResults>`
+.. |EvaluationResults| replace:: :class:`EvaluationResults <fiftyone.utils.eval.base.EvaluationResults>`
+.. |ClassificationResults| replace:: :class:`ClassificationResults <fiftyone.utils.eval.classification.ClassificationResults>`
+.. |BinaryClassificationResults| replace:: :class:`BinaryClassificationResults <fiftyone.utils.eval.classification.BinaryClassificationResults>`
+.. |DetectionResults| replace:: :class:`DetectionResults <fiftyone.utils.eval.detection.DetectionResults>`
+.. |SegmentationResults| replace:: :class:`SegmentationResults <fiftyone.utils.eval.segmentation.SegmentationResults>`
