@@ -83,12 +83,23 @@ export const useExpand = (
 
 export const activeLabels = atomFamily<string[], string>({
   key: "activeLabels",
-  default: [],
+  default: selectors.labelNames,
+});
+
+export const activeLabelPaths = selectorFamily<string[], boolean>({
+  key: "activeLabelPaths",
+  get: (modal) => ({ get }) => {
+    const node = modal ? modalActiveLabels : activeLabels;
+    return [
+      ...get(node("sample")),
+      ...get(node("frames")).map((l) => "frames." + l),
+    ];
+  },
 });
 
 export const modalActiveLabels = atomFamily<string[], string>({
   key: "modalActiveLabels",
-  default: [],
+  default: activeLabels,
 });
 
 export const activeTags = atom<string[]>({

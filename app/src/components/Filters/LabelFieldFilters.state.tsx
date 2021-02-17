@@ -1,7 +1,14 @@
 import { atomFamily, selector, selectorFamily } from "recoil";
 
 import { Range } from "./RangeSlider";
-import { isBooleanField, isNumericField, isStringField } from "./utils";
+import {
+  activeLabels,
+  activeLabelPaths,
+  modalActiveLabels,
+  isBooleanField,
+  isNumericField,
+  isStringField,
+} from "./utils";
 import * as booleanField from "./BooleanFieldFilter";
 import * as numericField from "./NumericFieldFilter";
 import * as stringField from "./StringFieldFilter";
@@ -43,17 +50,7 @@ export const getPathExtension = (type: string): string => {
 export const labelFilters = selectorFamily<LabelFilters, boolean>({
   key: "labelFilters",
   get: (modal) => ({ get }) => {
-    const activeLabels = modal ? atoms.modalActiveLabels : atoms.activeLabels;
-    const frameLabels = activeLabels("frame");
-    const labels = {
-      ...get(activeLabels("sample")),
-      ...Object.keys(get(frameLabels)).reduce((acc, cur) => {
-        return {
-          ...acc,
-          ["frames." + cur]: frameLabels[cur],
-        };
-      }, {}),
-    };
+    const labels = activeLabelPaths(true);
     const filters = {};
     const typeMap = get(selectors.labelTypesMap);
     for (const label in labels) {
@@ -103,10 +100,9 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
   },
   set: () => ({ get, set }, _) => {
     const paths = get(selectors.labelTypesMap);
-    const activeLabels = get(atoms.activeLabels("sample"));
-    set(atoms.modalActiveLabels("sample"), activeLabels);
-    const activeFrameLabels = get(atoms.activeLabels("frame"));
-    set(atoms.modalActiveLabels("frame"), activeFrameLabels);
+    set(modalActiveLabels("sample"), get(activeLabels("sample")));
+    const activeFrameLabels = get(activeLabels("frame"));
+    set(modalActiveLabels("frame"), activeFrameLabels);
     for (const [label, type] of Object.entries(paths)) {
       const path = `${label}${getPathExtension(type)}`;
       const cPath = `${path}.confidence`;
@@ -140,16 +136,7 @@ export const sampleModalFilter = selector({
   key: "sampleModalFilter",
   get: ({ get }) => {
     const filters = get(labelFilters(true));
-    const frameLabels = get(atoms.modalActiveLabels("frame"));
-    const activeLabels = {
-      ...get(atoms.modalActiveLabels("sample")),
-      ...Object.keys(frameLabels).reduce((acc, cur) => {
-        return {
-          ...acc,
-          ["frames." + cur]: frameLabels[cur],
-        };
-      }, {}),
-    };
+    const labels = activeLabelPaths(true);
     return (sample) => {
       return Object.entries(sample).reduce((acc, [key, value]) => {
         if (key === "tags") {
@@ -170,7 +157,7 @@ export const sampleModalFilter = selector({
           acc[key] = value;
         } else if (
           ["string", "number", "null"].includes(typeof value) &&
-          activeLabels[key]
+          labels.includes(key)
         ) {
           acc[key] = value;
         }
