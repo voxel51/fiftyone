@@ -11,6 +11,7 @@ import SelectObjectsMenu from "./SelectObjectsMenu";
 import { Button, ModalFooter } from "./utils";
 import * as selectors from "../recoil/selectors";
 import * as atoms from "../recoil/atoms";
+import * as labelAtoms from "./Filters/utils";
 import {
   labelFilters,
   sampleModalFilter,
@@ -238,14 +239,14 @@ const SampleModal = (
   const [enableJSONFilter, setEnableJSONFilter] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const [activeLabels, setActiveLabels] = useRecoilState(
-    atoms.modalActiveLabels("sample")
+    labelAtoms.modalActiveLabels("sample")
   );
   const [activeFrameLabels, setActiveFrameLabels] = useRecoilState(
-    atoms.modalActiveLabels("frame")
+    labelAtoms.modalActiveLabels("frame")
   );
   const mediaType = useRecoilValue(selectors.mediaType);
   const filter = useRecoilValue(sampleModalFilter);
-  const activeTags = useRecoilValue(atoms.modalActiveTags);
+  const activeTags = useRecoilValue(labelAtoms.modalActiveTags);
   const tagNames = useRecoilValue(selectors.tagNames);
   const fieldSchema = useRecoilValue(selectors.fieldSchema("sample"));
   const labelNameGroups = useRecoilValue(selectors.labelNameGroups("sample"));

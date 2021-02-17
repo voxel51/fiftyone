@@ -17,6 +17,7 @@ import { useMove } from "react-use-gesture";
 
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+import { activeLabels } from "./Filters/utils";
 
 const InfoWrapper = styled.div`
   display: flex;
@@ -323,8 +324,7 @@ export default ({
   onMouseEnter = () => {},
   onMouseLeave = () => {},
   keep = false,
-  activeLabels,
-  activeFrameLabels,
+  activeLabelsAtom,
   colorByLabel,
   fieldSchema = {},
   filterSelector,
@@ -350,15 +350,7 @@ export default ({
     (sample.metadata && sample.metadata.mime_type) ||
     mime.lookup(sample.filepath) ||
     "image/jpg";
-  const playerActiveLabels = {
-    ...activeLabels,
-    ...Object.keys(activeFrameLabels).reduce((acc, cur) => {
-      return {
-        ...acc,
-        ["frames." + cur]: activeFrameLabels[cur],
-      };
-    }, {}),
-  };
+  const activeLabelPaths = useRecoilValue(activeLabelsAtom);
 
   const [player] = useState(() => {
     try {
@@ -369,7 +361,7 @@ export default ({
         },
         overlay,
         colorMap,
-        activeLabels: playerActiveLabels,
+        activeLabels: activeLabelPaths,
         filter,
         enableOverlayOptions: {
           attrRenderMode: false,
@@ -405,7 +397,7 @@ export default ({
       setInitLoad(true);
     } else {
       player.updateOptions({
-        activeLabels: playerActiveLabels,
+        activeLabels: activeLabelPaths,
         colorByLabel,
         filter,
         colorMap,
@@ -420,7 +412,7 @@ export default ({
     player,
     filter,
     overlay,
-    playerActiveLabels,
+    activeLabelPaths,
     colorMap,
     colorByLabel,
     fps,
