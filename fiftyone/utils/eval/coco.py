@@ -12,8 +12,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sklearn.metrics as skm
 
-import pycocotools.mask as maskUtils
-
 import eta.core.utils as etau
 
 import fiftyone.core.utils as fou
@@ -394,6 +392,11 @@ def _compute_matches(
                     # Only iscrowd GTs can have multiple matches
                     gt = gt_map[gt_id]
                     if gt[id_key] != _NO_MATCH_ID and not iscrowd(gt):
+                        continue
+
+                    # If matching classwise=False
+                    # Only objects with the same class can match a crowd
+                    if iscrowd(gt) and gt.label != pred.label:
                         continue
 
                     # Crowds are last in order of gts
