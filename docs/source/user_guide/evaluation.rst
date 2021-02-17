@@ -8,10 +8,10 @@ predictions, including classifications, detections, and semantic segmentations,
 on both image and video datasets.
 
 When you evaluate a model in FiftyOne, you get access to the standard aggregate
-statistics such as classification reports, confusion matrices, PR curves, mAP,
-etc. for your model. In addition, FiftyOne can also record fine-grained
-statistics like accuracy and false positive counts at the sample-level, which
-you can leverage via :ref:`dataset views <using-views>` and the
+metrics such as classification reports, confusion matrices, and PR curves
+for your model. In addition, FiftyOne can also record fine-grained statistics
+like accuracy and false positive counts at the sample-level, which you can
+leverage via :ref:`dataset views <using-views>` and the
 :ref:`FiftyOne App <fiftyone-app>` to interactively explore the strengths and
 weaknesses of your models on individual data samples.
 
@@ -20,7 +20,8 @@ improve your datasets and models. For example, viewing the samples with the
 most false positive predictions can reveal errors in your annotation schema.
 Or, viewing the cluster of samples with the lowest accuracy can reveal gaps in
 your training dataset that you need to address in order to improve your model's
-performance.
+performance. A key goal of FiftyOne is to help you uncover these insights on
+your data!
 
 .. note::
 
@@ -37,7 +38,7 @@ FiftyOne's evaluation methods are conveniently exposed as methods on all
 datasets or specific views into them via the same syntax.
 
 Let's illustrate the basic workflow by loading the
-:ref:`quickstart dataset <dataset-zoo-quickstart>` from the model zoo and
+:ref:`quickstart dataset <dataset-zoo-quickstart>` from the Dataset Zoo and
 analyzing the object detections in its `predictions` field using the
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
 method:
@@ -48,6 +49,7 @@ method:
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart")
+    print(dataset)
 
     # Evaluate the detections in the `predictions` field with respect to the
     # objects in the `ground_truth` field
@@ -96,14 +98,15 @@ your dataset.
 Sample metrics
 --------------
 
-In addition to standard aggregate metrics, when you pass an ``eval_key`` value
-to the evaluation routine, FiftyOne will populate helpful task-specific
-information about your model's predictions on each sample, such as false
-negative/positive counts or per-sample accuracies.
+In addition to standard aggregate metrics, when you pass an ``eval_key``
+parameter to the evaluation routine, FiftyOne will populate helpful
+task-specific information about your model's predictions on each sample, such
+as false negative/positive counts and per-sample accuracies.
 
-Continuing with our example, let's leverage :ref:`dataset views <using-views>`
-and the :ref:`FiftyOne App <fiftyone-app>` to investigate the samples with the
-most false positive predictions in more detail:
+Continuing with our example, let's use :ref:`dataset views <using-views>` and
+the :ref:`FiftyOne App <fiftyone-app>` to leverage these sample metrics to
+investigate the samples with the most false positive predictions in the
+dataset:
 
 .. code-block:: python
     :linenos:
@@ -111,8 +114,8 @@ most false positive predictions in more detail:
     import fiftyone as fo
     from fiftyone import ViewField as F
 
-    # Show samples with the most false positives first, and only include false
-    # positive boxes in the `predictions` field
+    # Create a view that has samples with the most false positives first, and
+    # only includes false positive boxes in the `predictions` field
     view = (
         dataset
         .sort_by("eval_predictions_fp", reverse=True)
@@ -131,10 +134,10 @@ carrots where the entire plate has been boxed as a single example in the ground
 truth while the model is generating predictions for individual carrots!
 
 If you're familiar with `COCO format <https://cocodataset.org/#format-data>`_
-(which is respected by default by the
+(which recognized by
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
-method), you'll recognize that the issue here is that the `iscrowd` attribute
-of this particular ground truth annotation has been incorrectly set to `0`.
+by default), you'll recognize that the issue here is that the ``iscrowd``
+attribute of this ground truth annotation has been incorrectly set to ``0``.
 Resolving mistakes like these will provide a much more accurate picture of the
 real performance of a model.
 
@@ -143,7 +146,8 @@ Managing evaluations
 
 When you run an evaluation with an ``eval_key`` argument, the evaluation is
 recorded on the dataset and you can retrieve information about it later, delete
-it, or even :ref:`retrieve the view you evaluated on <load-evaluation-view>`:
+it, or even :ref:`retrieve the view <load-evaluation-view>` that you evaluated
+on:
 
 .. code-block:: python
     :linenos:
@@ -175,14 +179,24 @@ By default, the classifications will be treated as a generic multiclass
 classification task, but you can specify other evaluation strategies such as
 top-k accuracy or binary evaluation.
 
-Simple (default)
-----------------
+Invoking
+:meth:`evaluate_classifications() <fiftyone.core.collections.SampleCollection.evaluate_classifications>`
+returns a |ClassificationResults| instance that provides a variety of methods
+for generating various aggregate evaluation reports about your model.
+
+In addition, when you specify an ``eval_key`` parameter, a number of helpful
+fields will be populated on each sample that you can leverage via the
+:ref:`FiftyOne App <fiftyone-app>` to interactively explore the strengths and
+weaknesses of your model on individual samples.
+
+Simple evaluation (default)
+---------------------------
 
 By default,
 :meth:`evaluate_classifications() <fiftyone.core.collections.SampleCollection.evaluate_classifications>`
 will treat your classifications as generic multiclass predictions, and it will
-evaluate each prediction by directly comparing its ``label`` to the ``label``
-of the associated ground truth prediction.
+evaluate each prediction by directly comparing its ``label`` to the associated
+ground truth prediction.
 
 You can explicitly request that simple evaluation be used by setting the
 ``method`` parameter to ``"simple"``.
@@ -191,13 +205,14 @@ When you specify an ``eval_key`` parameter, a boolean ``eval_key`` field will
 be populated on each sample that records whether that sample's prediction is
 correct.
 
-The example below demonstrates simple evaluation on an image dataset from the
-:ref:`Dataset Zoo <fiftyone-model-zoo>`, adds some predictions via a
-pre-trained model from the :ref:`Model Zoo <fiftyone-model-zoo>` to a subset of
-the dataset, and then evaluates the predictions:
+The example below demonstrates simple evaluation on the
+:ref:`CIFAR-10 dataset <dataset-zoo-cifar10>` from the Dataset Zoo with some
+fake predictions added to it to demonstrate the workflow:
 
 .. code-block:: python
     :linenos:
+
+    import random
 
     import fiftyone as fo
     import fiftyone.zoo as foz
@@ -205,35 +220,74 @@ the dataset, and then evaluates the predictions:
 
     # Load a small sample from the ImageNet dataset
     dataset = foz.load_zoo_dataset(
-        "imagenet-sample",
-        dataset_name=fo.get_default_dataset_name()
+        "cifar10",
+        split="test",
+        max_samples=1000,
+        shuffle=True,
     )
 
-    # Add predictions to 25 random samples
-    predictions_view = dataset.take(25)
-    model = foz.load_zoo_model("resnet50-imagenet-torch")
-    predictions_view.apply_model(model, "predictions")
+    #
+    # Create some test predictions by copying the ground truth labels into a
+    # new `predictions` field and then perturbing 10% of the labels at random
+    #
+
+    classes = dataset.distinct("ground_truth.label")
+
+    def jitter(val):
+        if random.random() < 0.10:
+            return random.choice(classes)
+
+        return val
+
+    dataset.clone_sample_field("ground_truth", "predictions")
+
+    gt_labels = dataset.values("ground_truth.label")
+    pred_labels = [jitter(label) for label in gt_labels]
+
+    dataset.set_values("predictions.label", pred_labels)
 
     # Evaluate the predictions in the `predictions` field with respect to the
     # labels in the `ground_truth` field
-    results = predictions_view.evaluate_classifications(
+    results = dataset.evaluate_classifications(
         "predictions",
         gt_field="ground_truth",
         eval_key="eval_simple",
     )
 
-    # Get the 10 most common classes in the view
-    counts = predictions_view.count_values("ground_truth.label")
-    classes = sorted(counts, key=counts.get, reverse=True)[:10]
+    # Print a classification report
+    results.print_report()
 
-    # Print a classification report for the top-10 classes
-    results.print_report(classes=classes)
+    # Plot a confusion matrix
+    results.plot_confusion_matrix()
 
     # Launch the App to explore
     session = fo.launch_app(dataset)
 
     # View only the incorrect predictions in the App
     session.view = predictions_view.match(F("eval_simple") == False)
+
+.. code-block:: text
+
+                  precision    recall  f1-score   support
+
+        airplane       0.93      0.91      0.92        94
+      automobile       0.92      0.93      0.93       105
+            bird       0.93      0.92      0.92       107
+             cat       0.96      0.87      0.92       111
+            deer       0.89      0.88      0.88       109
+             dog       0.87      0.93      0.90        82
+            frog       0.87      0.84      0.85       101
+           horse       0.88      0.88      0.88       103
+            ship       0.84      0.92      0.88        95
+           truck       0.89      0.92      0.91        93
+
+        accuracy                           0.90      1000
+       macro avg       0.90      0.90      0.90      1000
+    weighted avg       0.90      0.90      0.90      1000
+
+.. image:: ../images/evaluation/cifar10_simple_confusion_matrix.png
+   :alt: cifar10-simple-confusion-matrix
+   :align: center
 
 Top-k evaluation
 ----------------
@@ -256,9 +310,12 @@ correct.
     labels via the ``classes`` parameter of
     :meth:`evaluate_classifications() <fiftyone.core.collections.SampleCollection.evaluate_classifications>`.
 
+    Did you know? Many models from the :ref:`Model Zoo <model-zoo>`
+    provide support for storing logits for their predictions!
+
 The example below demonstrates top-k evaluation on an image dataset from the
-:ref:`Dataset Zoo <fiftyone-model-zoo>` with predictions from a pre-trained
-model from the :ref:`Model Zoo <fiftyone-model-zoo>`:
+:ref:`Dataset Zoo <dataset-zoo>` with predictions from a pre-trained model from
+the :ref:`Model Zoo <model-zoo>`:
 
 .. code-block:: python
     :linenos:
@@ -269,8 +326,7 @@ model from the :ref:`Model Zoo <fiftyone-model-zoo>`:
 
     # Load a small sample from the ImageNet dataset
     dataset = foz.load_zoo_dataset(
-        "imagenet-sample",
-        dataset_name=fo.get_default_dataset_name()
+        "imagenet-sample", dataset_name="top-k-eval-demo"
     )
 
     # We need the list of class labels corresponding to the logits
@@ -282,7 +338,7 @@ model from the :ref:`Model Zoo <fiftyone-model-zoo>`:
     predictions_view.apply_model(model, "predictions", store_logits=True)
 
     # Evaluate the predictions in the `predictions` field with respect to the
-    # labels in the `ground_truth` field using top-5 matching
+    # labels in the `ground_truth` field using top-5 accuracy
     results = predictions_view.evaluate_classifications(
         "predictions",
         gt_field="ground_truth",
@@ -302,8 +358,16 @@ model from the :ref:`Model Zoo <fiftyone-model-zoo>`:
     # Launch the App to explore
     session = fo.launch_app(dataset)
 
-    # View only the incorrect predictions in the App
-    session.view = predictions_view.match(F("eval_top_k") == False)
+    # View only the incorrect predictions for the 10 most common classes
+    session.view = (
+        predictions_view
+        .match(F("ground_truth.label").is_in(classes))
+        .match(F("eval_top_k") == False)
+    )
+
+.. image:: ../images/evaluation/imagenet_top_k_eval.png
+   :alt: imagenet-top-k-eval
+   :align: center
 
 Binary evaluation
 -----------------
@@ -323,6 +387,80 @@ false positive, true negative, or false negative.
     ``(neg_label, pos_label)`` for your model via the ``classes`` parameter of
     :meth:`evaluate_classifications() <fiftyone.core.collections.SampleCollection.evaluate_classifications>`.
 
+The example below demonstrates binary evaluation on the
+:ref:`CIFAR-10 dataset <dataset-zoo-cifar10>` from the Dataset Zoo with some
+fake binary predictions added to it to demonstrate the workflow:
+
+.. code-block:: python
+    :linenos:
+
+    import random
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    # Load a small sample from the ImageNet dataset
+    dataset = foz.load_zoo_dataset(
+        "cifar10",
+        split="test",
+        max_samples=1000,
+        shuffle=True,
+    )
+
+    #
+    # Binarize the ground truth labels to `cat` and `other`, and add
+    # predictions that are correct proportionally to their confidence
+    #
+
+    classes = ["other", "cat"]
+
+    for sample in dataset:
+        gt_label = "cat" if sample.ground_truth.label == "cat" else "other"
+
+        confidence = random.random()
+        if random.random() > confidence:
+            pred_label = "cat" if gt_label == "other" else "other"
+        else:
+            pred_label = gt_label
+
+        sample.ground_truth.label = gt_label
+        sample["predictions"] = fo.Classification(
+            label=pred_label, confidence=confidence
+        )
+
+        sample.save()
+
+    # Evaluate the predictions in the `predictions` field with respect to the
+    # labels in the `ground_truth` field
+    results = dataset.evaluate_classifications(
+        "predictions",
+        gt_field="ground_truth",
+        eval_key="eval_binary",
+        method="binary",
+        classes=classes,
+    )
+
+    # Print a classification report
+    results.print_report()
+
+    # Plot a PR curve
+    results.plot_pr_curve()
+
+.. code-block:: text
+
+                  precision    recall  f1-score   support
+
+           other       0.92      0.52      0.66       912
+             cat       0.09      0.51      0.16        88
+
+        accuracy                           0.52      1000
+       macro avg       0.50      0.51      0.41      1000
+    weighted avg       0.84      0.52      0.62      1000
+
+.. image:: ../images/evaluation/cifar10_binary_pr_curve.png
+   :alt: cifar10-binary-pr-curve
+   :align: center
+
 .. _evaluating-detections:
 
 Detections
@@ -332,6 +470,17 @@ You can use the
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
 method to evaluate the predictions of an object detection model.
 
+Invoking
+:meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+returns a |DetectionResults| instance that provides a variety of methods for
+generating various aggregate evaluation reports about your model.
+
+In addition, when you specify an ``eval_key`` parameter, a number of helpful
+fields will be populated on each sample and its predicted/ground truth
+objects that you can leverage via the :ref:`FiftyOne App <fiftyone-app>` to
+interactively explore the strengths and weaknesses of your model on individual
+samples.
+
 .. note::
 
     Currently, COCO-style evaluation is the only option, but additional methods
@@ -340,7 +489,111 @@ method to evaluate the predictions of an object detection model.
 COCO-style evaluation (default)
 -------------------------------
 
-.. _evaluating-detections:
+By default,
+:meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+will use `COCO-style evaluation <https://cocodataset.org/#format-data>`_ to
+analyze predictions. This means that:
+
+-   Predicted and ground truth objects are matched using a specified IoU
+    threshold (default = 0.50). This threshold can be customized via the
+    ``iou`` parameter.
+-   Predictions are matched in descending order of confidence.
+-   By default, only objects with the same ``label`` will be matched. Classwise
+    matching can be disabled via the ``classwise`` parameter.
+-   Ground truth objects can have an `iscrowd` attribute that indicates whether
+    the annotation contains a crowd of objects. Multiple predictions can be
+    matched to crowd ground truth objects. The name of this attribute can be
+    customized via the ``iscrowd`` attribute.
+
+You can explicitly request that COCO-style evaluation be used by setting the
+``method`` parameter to ``"coco"``.
+
+When you specify an ``eval_key`` parameter, a number of helpful fields will be
+populated on each sample and its predicted/ground truth objects:
+
+-   True positive (TP), false positive (FP), and false negative (FN) counts
+    for the each sample are saved in top-level fields of each sample::
+
+        TP: sample.<eval_key>_tp
+        FP: sample.<eval_key>_fp
+        FN: sample.<eval_key>_fn
+
+-   The fields listed below are populated on each individual |Detection|
+    instance; these fields tabulate the TP/FP/FN status of the object, the ID
+    of the matching object (if any), and the matching IoU::
+
+        TP/FP/FN: detection.<eval_key>
+              ID: detection.<eval_key>_id
+             IoU: detection.<eval_key>_iou
+
+The example below demonstrates COCO-style detection evaluation on the
+:ref:`quickstart dataset <dataset-zoo-quickstart>` from the Dataset Zoo:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    print(dataset)
+
+    # Evaluate the detections in the `predictions` field with respect to the
+    # objects in the `ground_truth` field
+    results = dataset.evaluate_detections(
+        "predictions",
+        gt_field="ground_truth",
+        eval_key="eval_coco",
+    )
+
+    # Get the 10 most common classes in the dataset
+    counts = dataset.count_values("ground_truth.detections.label")
+    classes = sorted(counts, key=counts.get, reverse=True)[:10]
+
+    # Print a classification report for the top-10 classes
+    results.print_report(classes=classes)
+
+    # Print some statistics about the total TP/FP/FN counts
+    print(dataset.sum("eval_coco_tp"))
+    print(dataset.sum("eval_coco_fp"))
+    print(dataset.sum("eval_coco_fn"))
+
+    # Create a view that has samples with the most false positives first, and
+    # only includes false positive boxes in the `predictions` field
+    view = (
+        dataset
+        .sort_by("eval_coco_fp", reverse=True)
+        .filter_labels("predictions", F("eval_coco") == "fp")
+    )
+
+    # Visualize results in the App
+    session = fo.launch_app(view=view)
+
+.. code-block:: text
+
+                   precision    recall  f1-score   support
+
+           person       0.45      0.74      0.56       783
+             kite       0.55      0.72      0.62       156
+              car       0.12      0.54      0.20        61
+             bird       0.63      0.67      0.65       126
+           carrot       0.06      0.49      0.11        47
+             boat       0.05      0.24      0.08        37
+        surfboard       0.10      0.43      0.17        30
+         airplane       0.29      0.67      0.40        24
+    traffic light       0.22      0.54      0.31        24
+            bench       0.10      0.30      0.15        23
+
+        micro avg       0.32      0.68      0.43      1311
+        macro avg       0.26      0.54      0.32      1311
+     weighted avg       0.42      0.68      0.50      1311
+
+.. image:: ../images/evaluation/quickstart_evaluate_detections.png
+   :alt: quickstart-evaluate-detections
+   :align: center
+
+.. _evaluating-segmentations:
 
 Semantic segmentations
 ______________________
@@ -349,8 +602,111 @@ You can use the
 :meth:`evaluate_segmentations() <fiftyone.core.collections.SampleCollection.evaluate_segmentations>`
 method to evaluate the predictions of a semantic segmentation model.
 
-Simple (default)
-----------------
+By default, the full segmentation masks will be evaluated at a pixel level, but
+you can specify other evaluation strategies such as evaluating only boundary
+pixels.
+
+Invoking
+:meth:`evaluate_segmentations() <fiftyone.core.collections.SampleCollection.evaluate_segmentations>`
+returns a |SegmentationResults| instance that provides a variety of methods for
+generating various aggregate evaluation reports about your model.
+
+In addition, when you specify an ``eval_key`` parameter, a number of helpful
+fields will be populated on each sample that you can leverage via the
+:ref:`FiftyOne App <fiftyone-app>` to interactively explore the strengths and
+weaknesses of your model on individual samples.
+
+Simple evaluation (default)
+---------------------------
+
+By default,
+:meth:`evaluate_segmentations() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+will perform pixelwise evaluation of the segmentation masks, treating each
+pixel as a multiclass classification.
+
+Here are some things to keep in mind:
+
+-   If the size of a predicted mask does not match the ground truth mask, it is
+    resized to match the ground truth.
+-   You can specify the optional ``bandwidth`` parameter to evaluate only along
+    the contours of the ground truth masks. By default, the entire masks are
+    evaluated.
+
+You can explicitly request that this strategy be used by setting the ``method``
+parameter to ``"simple"``.
+
+When you specify an ``eval_key`` parameter, the accuracy, precision, and recall
+of each sample is recorded in top-level fields of each sample:
+
+.. code-block:: text
+
+     Accuracy: sample.<eval_key>_accuracy
+    Precision: sample.<eval_key>_precision
+       Recall: sample.<eval_key>_recall
+
+.. note::
+
+    The mask value ``0`` is treated as a background class for the purposes of
+    computing evaluation metrics like precision and recall.
+
+The example below demonstrates segmentation evaluation by comparing the
+masks generated by two DeepLabv3 models (with
+:ref:`ResNet50 <model-zoo-deeplabv3-resnet50-coco-torch>` and
+:ref:`ResNet101 <model-zoo-deeplabv3-resnet101-coco-torch>` backbones):
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    # Load a few samples from COCO-2017
+    dataset = foz.load_zoo_dataset(
+        "quickstart",
+        dataset_name="segmentation-eval-demo",
+        max_samples=10,
+        shuffle=True,
+    )
+
+    # Add DeepLabv3-ResNet101 predictions to dataset
+    model = foz.load_zoo_model("deeplabv3-resnet101-coco-torch")
+    dataset.apply_model(model, "resnet101")
+
+    # Add DeepLabv3-ResNet50 predictions to dataset
+    model = foz.load_zoo_model("deeplabv3-resnet50-coco-torch")
+    dataset.apply_model(model, "resnet50")
+
+    # The models are trained on the VOC classes
+    CLASSES = (
+        "background,aeroplane,bicycle,bird,boat,bottle,bus,car,cat,chair,cow," +
+        "diningtable,dog,horse,motorbike,person,pottedplant,sheep,sofa,train," +
+        "tvmonitor"
+    )
+    mask_index = {idx: label for idx, label in enumerate(CLASSES.split(","))}
+
+    # Evaluate the masks w/ ResNet50 backbone, treating the masks w/ ResNet101
+    # backbone as "ground truth"
+    results = dataset.evaluate_segmentations(
+        "resnet50",
+        gt_field="resnet101",
+        eval_key="eval_simple",
+        mask_index=mask_index,
+    )
+
+    # Get a sense for the per-sample variation in likeness
+    print(dataset.bounds("eval_simple_accuracy"))
+    print(dataset.bounds("eval_simple_precision"))
+    print(dataset.bounds("eval_simple_recall"))
+
+    # Print a classification report
+    results.print_report()
+
+    # Visualize results in the App
+    session = fo.launch_app(dataset)
+
+.. image:: ../images/evaluation/evaluate_segmentations.gif
+   :alt: evaluate-segmentations
+   :align: center
 
 .. _evaluation-advanced:
 
@@ -376,10 +732,7 @@ dataset:
     import fiftyone.zoo as foz
     from fiftyone import ViewField as F
 
-    dataset = foz.load_zoo_dataset(
-        "quickstart",
-        dataset_name=fo.get_default_dataset_name(),
-    )
+    dataset = foz.load_zoo_dataset("quickstart", dataset_name="eval-demo")
     dataset.compute_metadata()
 
     # Create an expression that will match objects whose bounding boxes have
@@ -453,7 +806,6 @@ to retrieve the exact view on which you evaluated:
     in the App:
 
     .. code-block:: python
-        :linenos:
 
         import fiftyone as fo
 
@@ -463,29 +815,28 @@ to retrieve the exact view on which you evaluated:
         # hides all other evaluation data
         eval1_view = dataset.load_evaluation_view("my_eval1", select_fields=True)
 
-        fo.launch_app(view=eval1_view)
+        session = fo.launch_app(view=eval1_view)
 
-.. _evaluating-frame-labels:
+.. _evaluating-videos:
 
-Evaluating frame labels
------------------------
+Evaluating videos
+-----------------
 
 All evaluation methods can be applied to frame-level labels in addition to
 sample-level labels.
 
-In order to evaluate frame-level labels of a video dataset, simply prepend
-``frames.`` to the names of the relevant fields.
-
 You can evaluate frame-level labels of a video dataset by adding the ``frames``
 prefix to the relevant prediction and ground truth frame fields.
-
-The example below demonstrates
 
 .. note::
 
     When evaluating frame-level labels, helpful statistics are tabulated at
     both the sample- and frame-levels of your dataset. Refer to the
     documentation of the relevant evaluation method for more details.
+
+The example below demonstrates evaluating (mocked) frame-level detections on
+the :ref:`quickstart-video dataset <dataset-zoo-quickstart-video>` from the
+Dataset Zoo:
 
 .. code-block:: python
     :linenos:
@@ -496,19 +847,16 @@ The example below demonstrates
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset(
-        "quickstart-video",
-        dataset_name=fo.get_default_dataset_name()
+        "quickstart-video", dataset_name="video-eval-demo"
     )
 
     dataset.rename_frame_field("ground_truth_detections", "ground_truth")
 
     #
     # Create some test predictions by copying the ground truth objects into a
-    # new `predictions` field of the frames and then perterbing 10% of the
+    # new `predictions` field of the frames and then perturbing 10% of the
     # labels at random
     #
-
-    dataset.clone_frame_field("ground_truth", "predictions")
 
     classes = dataset.distinct("frames.ground_truth.detections.label")
 
@@ -521,14 +869,15 @@ The example below demonstrates
 
         return val
 
-    values = dataset.values("frames.ground_truth.detections.label")
-    dataset.set_values("frames.predictions.detections.label", jitter(values))
+    dataset.clone_frame_field("ground_truth", "predictions")
 
-    #
+    gt_labels = dataset.values("frames.ground_truth.detections.label")
+    pred_labels = jitter(gt_labels)
+
+    dataset.set_values("frames.predictions.detections.label", pred_labels)
+
     # Evaluate the frame-level `predictions` against the frame-level
     # `ground_truth` objects
-    #
-
     results = dataset.evaluate_detections(
         "frames.predictions",
         gt_field="frames.ground_truth",
