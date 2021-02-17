@@ -631,12 +631,11 @@ curves for your detections by passing the ``compute_mAP=True`` flag to
     results = dataset.evaluate_detections(
         "predictions",
         gt_field="ground_truth",
-        eval_key="eval_coco",
         compute_mAP=True,
     )
 
     print(results.mAP())
-    # 0.3957...
+    # 0.3957
 
     results.plot_pr_curves(classes=["person"])
 
