@@ -134,9 +134,9 @@ carrots where the entire plate has been boxed as a single example in the ground
 truth while the model is generating predictions for individual carrots!
 
 If you're familiar with `COCO format <https://cocodataset.org/#format-data>`_
-(which recognized by
+(which is recognized by
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
-by default), you'll recognize that the issue here is that the ``iscrowd``
+by default), you'll notice that the issue here is that the ``iscrowd``
 attribute of this ground truth annotation has been incorrectly set to ``0``.
 Resolving mistakes like these will provide a much more accurate picture of the
 real performance of a model.
@@ -173,11 +173,12 @@ _______________
 
 You can use the
 :meth:`evaluate_classifications() <fiftyone.core.collections.SampleCollection.evaluate_classifications>`
-method to evaluate the predictions of a classifier.
+method to evaluate the predictions of a classifier stored in a
+|Classification| field of your dataset.
 
 By default, the classifications will be treated as a generic multiclass
 classification task, but you can specify other evaluation strategies such as
-top-k accuracy or binary evaluation.
+top-k accuracy or binary evaluation via the ``method`` parameter.
 
 Invoking
 :meth:`evaluate_classifications() <fiftyone.core.collections.SampleCollection.evaluate_classifications>`
@@ -474,7 +475,8 @@ __________
 
 You can use the
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
-method to evaluate the predictions of an object detection model.
+method to evaluate the predictions of an object detection model stored in a
+|Detections| field of your dataset.
 
 Invoking
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
@@ -606,11 +608,12 @@ ______________________
 
 You can use the
 :meth:`evaluate_segmentations() <fiftyone.core.collections.SampleCollection.evaluate_segmentations>`
-method to evaluate the predictions of a semantic segmentation model.
+method to evaluate the predictions of a semantic segmentation model stored in a
+|Segmentation| field of your dataset.
 
 By default, the full segmentation masks will be evaluated at a pixel level, but
 you can specify other evaluation strategies such as evaluating only boundary
-pixels.
+pixels (see below for details).
 
 Invoking
 :meth:`evaluate_segmentations() <fiftyone.core.collections.SampleCollection.evaluate_segmentations>`
