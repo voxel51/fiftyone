@@ -206,9 +206,9 @@ def validate_evaluation(samples, eval_info):
         eval_info: an :class:`EvaluationInfo`
     """
     eval_key = eval_info.eval_key
-    if not eval_key.isidentifier():
+    if not etau.is_str(eval_key) or not eval_key.isidentifier():
         raise ValueError(
-            "Invalid eval_key '%s'; evaluation keys must be valid variable "
+            "Invalid eval_key '%s'. Evaluation keys must be valid variable "
             "names" % eval_key
         )
 
