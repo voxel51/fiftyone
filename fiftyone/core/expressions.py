@@ -335,16 +335,19 @@ class ViewExpression(object):
         """
         return ViewExpression({"$lt": [self, other]})
 
-    def exists(self):
+    def exists(self, bool=True):
         """Determines whether this expression, which must resolve to a field,
         exists and is not None.
 
         Examples::
 
+            import fiftyone as fo
             import fiftyone.zoo as foz
             from fiftyone import ViewField as F
 
-            dataset = foz.load_zoo_dataset("quickstart")
+            dataset = foz.load_zoo_dataset(
+                "quickstart", dataset_name=fo.get_default_dataset_name()
+            )
 
             # Add a new field to one sample
             sample = dataset.first()
@@ -356,11 +359,20 @@ class ViewExpression(object):
 
             print(len(view))
 
+        Args:
+            bool (True): whether to determine whether this expression exists
+                (True) or is None or non-existent (False)
+
         Returns:
             a :class:`ViewExpression`
         """
         # https://stackoverflow.com/a/25515046
-        return ViewExpression({"$gt": [self, None]})
+        expr = ViewExpression({"$gt": [self, None]})
+
+        if not bool:
+            expr = ~expr
+
+        return expr
 
     # Logical operators #######################################################
 

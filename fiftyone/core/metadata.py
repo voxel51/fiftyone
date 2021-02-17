@@ -5,6 +5,8 @@ Metadata stored in dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
+import multiprocessing
 import os
 
 import eta.core.image as etai
@@ -13,6 +15,11 @@ import eta.core.video as etav
 
 from fiftyone.core.odm.document import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
+import fiftyone.core.media as fom
+import fiftyone.core.utils as fou
+
+
+logger = logging.getLogger(__name__)
 
 
 class Metadata(DynamicEmbeddedDocument):
@@ -132,3 +139,122 @@ class VideoMetadata(Metadata):
             duration=m.duration,
             encoding_str=m.encoding_str,
         )
+
+
+def compute_sample_metadata(sample, skip_failures=False):
+    """Populates the ``metadata`` field of the sample.
+
+    Args:
+        sample: a :class:`fiftyone.core.sample.Sample`
+        skip_failures (False): whether to gracefully continue without raising
+            an error if metadata cannot be computed
+    """
+    sample.metadata = _compute_sample_metadata(
+        sample.filepath, sample.media_type, skip_failures=skip_failures
+    )
+    sample.save()
+
+
+def compute_metadata(
+    sample_collection, overwrite=False, num_workers=None, skip_failures=True
+):
+    """Populates the ``metadata`` field of all samples in the collection.
+
+    Any samples with existing metadata are skipped, unless
+    ``overwrite == True``.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        overwrite (False): whether to overwrite existing metadata
+        num_workers (None): the number of processes to use. By default,
+            ``multiprocessing.cpu_count()`` is used
+        skip_failures (True): whether to gracefully continue without raising an
+            error if metadata cannot be computed for a sample
+    """
+    if num_workers is None:
+        num_workers = multiprocessing.cpu_count()
+
+    if num_workers == 1:
+        _compute_metadata(sample_collection, overwrite=overwrite)
+    else:
+        _compute_metadata_multi(
+            sample_collection, num_workers, overwrite=overwrite,
+        )
+
+    num_missing = len(sample_collection.exists("metadata", False))
+    if num_missing > 0:
+        msg = (
+            "Failed to populate metadata on %d samples. "
+            + 'Use `dataset.exists("metadata", False)` to retrieve them'
+        ) % num_missing
+
+        if skip_failures:
+            logger.warning(msg)
+        else:
+            raise ValueError(msg)
+
+
+def _compute_metadata(sample_collection, overwrite=False):
+    if not overwrite:
+        sample_collection = sample_collection.exists("metadata", False)
+
+    num_samples = len(sample_collection)
+    if num_samples == 0:
+        return
+
+    with fou.ProgressBar(total=num_samples) as pb:
+        for sample in pb(sample_collection.select_fields()):
+            compute_sample_metadata(sample, skip_failures=True)
+
+
+def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
+    if not overwrite:
+        sample_collection = sample_collection.exists("metadata", False)
+
+    inputs = [
+        (sample.id, sample.filepath, sample.media_type)
+        for sample in sample_collection.select_fields()
+    ]
+
+    num_samples = len(inputs)
+    if num_samples == 0:
+        return
+
+    with fou.ProgressBar(total=num_samples) as pb:
+        with multiprocessing.Pool(processes=num_workers) as pool:
+            for sample_id, metadata in pb(
+                pool.imap_unordered(_do_compute_metadata, inputs)
+            ):
+                sample = sample_collection[sample_id]
+                sample.metadata = metadata
+                sample.save()
+
+
+def _do_compute_metadata(args):
+    sample_id, filepath, media_type = args
+    metadata = _compute_sample_metadata(
+        filepath, media_type, skip_failures=True
+    )
+    return sample_id, metadata
+
+
+def _compute_sample_metadata(filepath, media_type, skip_failures=False):
+    if not skip_failures:
+        return _get_metadata(filepath, media_type)
+
+    try:
+        return _get_metadata(filepath, media_type)
+    except:
+        return None
+
+
+def _get_metadata(filepath, media_type):
+    if media_type == fom.IMAGE:
+        metadata = ImageMetadata.build_for(filepath)
+    elif media_type == fom.VIDEO:
+        metadata = VideoMetadata.build_for(filepath)
+    else:
+        metadata = Metadata.build_for(filepath)
+
+    return metadata
