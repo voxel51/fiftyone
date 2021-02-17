@@ -26,7 +26,7 @@ module.exports = {
       },
     ],
   ],
-  exclude: ["**/*.@(test|stories).@(ts|tsx)", "src/player51/**/*"],
+  exclude: ["**/*.@(test|stories).@(ts|tsx)"],
   installOptions: {
     polyfillNode: true,
   },
