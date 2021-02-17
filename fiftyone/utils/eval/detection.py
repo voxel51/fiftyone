@@ -27,7 +27,6 @@ def evaluate_detections(
     pred_field,
     gt_field="ground_truth",
     eval_key=None,
-    compute_mAP=False,
     classes=None,
     missing="none",
     method="coco",
@@ -75,9 +74,6 @@ def evaluate_detections(
         gt_field ("ground_truth"): the name of the field containing the ground
             truth :class:`fiftyone.core.labels.Detections`
         eval_key (None): an evaluation key to use to refer to this evaluation
-        compute_mAP (False): a boolean indicating whether to compute mAP which
-            is often more computationally expensive than sample-wise TP/FP/FN
-            calculation
         classes (None): the list of possible classes. If not provided, the
             observed ground truth/predicted labels are used for results
             purposes
@@ -99,12 +95,7 @@ def evaluate_detections(
         a :class:`DetectionResults`
     """
     config = _parse_config(
-        config,
-        method,
-        iou=iou,
-        classwise=classwise,
-        compute_mAP=compute_mAP,
-        **kwargs
+        config, method, iou=iou, classwise=classwise, **kwargs
     )
     eval_info = EvaluationInfo(eval_key, pred_field, gt_field, config)
     validate_evaluation(samples, eval_info)
@@ -132,7 +123,7 @@ def evaluate_detections(
             sample_fn = 0
             for image in images:
                 image_matches = eval_method.evaluate_image(
-                    image, gt_field, pred_field, eval_key=eval_key
+                    image, pred_field, gt_field, eval_key=eval_key
                 )
                 matches.extend(image_matches)
                 tp, fp, fn = _tally_matches(image_matches)
@@ -151,17 +142,18 @@ def evaluate_detections(
                 sample["%s_fn" % eval_key] = sample_fn
                 sample.save()
 
-    if eval_key is not None:
-        save_evaluation_info(samples, eval_info)
-
-    results = eval_method.evaluate_samples(
+    results = eval_method.generate_results(
         samples,
-        gt_field,
         pred_field,
-        matches=matches,
+        gt_field,
+        matches,
+        eval_key=eval_key,
         classes=classes,
         missing=missing,
     )
+
+    if eval_key is not None:
+        save_evaluation_info(samples, eval_info)
 
     return results
 
@@ -189,7 +181,7 @@ class DetectionEvaluation(Evaluation):
     """
 
     def evaluate_image(
-        self, sample_or_frame, gt_field, pred_field, eval_key=None
+        self, sample_or_frame, pred_field, gt_field, eval_key=None
     ):
         """Evaluates the ground truth and predicted objects in an image.
 
@@ -200,13 +192,49 @@ class DetectionEvaluation(Evaluation):
                 :class:`fiftyone.core.labels.Detections` instances
             gt_field: the name of the field containing the ground truth
                 :class:`fiftyone.core.labels.Detections` instances
-            eval_key (None): an evaluation key for this evaluation
+            eval_key (None): the evaluation key for this evaluation
 
         Returns:
             a list of matched ``(gt_label, pred_label, iou, pred_confidence)``
             tuples
         """
         raise NotImplementedError("subclass must implement evaluate_image()")
+
+    def generate_results(
+        self,
+        samples,
+        pred_field,
+        gt_field,
+        matches,
+        eval_key=None,
+        classes=None,
+        missing=None,
+    ):
+        """Generates aggregate evaluation results for the samples.
+
+        Subclasses may perform additional computations here such as IoU sweeps
+        in order to generate mAP, PR curves, etc.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            pred_field: the name of the field containing the predicted
+                :class:`fiftyone.core.labels.Detections`
+            gt_field ("ground_truth"): the name of the field containing the
+                ground truth :class:`fiftyone.core.labels.Detections`
+            matches: a list of ``(gt_label, pred_label, iou, pred_confidence)``
+                matches. Either label can be ``None`` to indicate an unmatched
+                object
+            eval_key (None): the evaluation key for this evaluation
+            classes (None): the list of possible classes. If not provided, the
+                observed ground truth/predicted labels are used for results
+                purposes
+            missing ("none"): a missing label string. Any unmatched objects are
+                given this label for results purposes
+
+        Returns:
+            a :class:`DetectionResults`
+        """
+        return DetectionResults(matches, classes=classes, missing=missing)
 
     def get_fields(self, samples, eval_key):
         eval_info = samples.get_evaluation_info(eval_key)
