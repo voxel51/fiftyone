@@ -78,7 +78,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
 
       const [cRange, cNone, lValues, lExclude] = [
         get(cRangeAtom({ path: cPath, defaultRange: [0, 1] })),
-        get(cNoneAtom(cPath)),
+        get(cNoneAtom({ path: cPath, defaultRange: [0, 1] })),
         get(lValuesAtom(lPath)),
         get(lExcludeAtom(lPath)),
       ];
@@ -117,8 +117,8 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
       );
 
       set(
-        numericField.noneModalAtom(cPath),
-        get(numericField.noneModalAtom(cPath))
+        numericField.noneModalAtom({ path: cPath, defaultRange: [0, 1] }),
+        get(numericField.noneModalAtom({ path: cPath, defaultRange: [0, 1] }))
       );
 
       set(
