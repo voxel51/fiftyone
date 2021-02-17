@@ -1,5 +1,5 @@
 """
-Base classes for collections of samples.
+Interface for sample collections.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -23,6 +23,7 @@ from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
 from fiftyone.core.odm.frame import DatasetFrameSampleDocument
 from fiftyone.core.odm.sample import (
@@ -35,21 +36,12 @@ import fiftyone.core.utils as fou
 foua = fou.lazy_import("fiftyone.utils.annotations")
 foud = fou.lazy_import("fiftyone.utils.data")
 foue = fou.lazy_import("fiftyone.utils.eval")
-foum = fou.lazy_import("fiftyone.utils.metadata")
 
 
 logger = logging.getLogger(__name__)
 
 
 def _make_registrar():
-    """Makes a decorator that keeps a registry of all functions decorated by
-    it.
-
-    Usage::
-
-        my_decorator = _make_registrar()
-        my_decorator.all  # dictionary mapping names to functions
-    """
     registry = {}
 
     def registrar(func):
@@ -596,7 +588,9 @@ class SampleCollection(object):
 
         self._dataset._bulk_update(frame_ids, updates, frames=True)
 
-    def compute_metadata(self, overwrite=False, num_workers=None):
+    def compute_metadata(
+        self, overwrite=False, num_workers=None, skip_failures=True
+    ):
         """Populates the ``metadata`` field of all samples in the collection.
 
         Any samples with existing metadata are skipped, unless
@@ -606,9 +600,14 @@ class SampleCollection(object):
             overwrite (False): whether to overwrite existing metadata
             num_workers (None): the number of processes to use. By default,
                 ``multiprocessing.cpu_count()`` is used
+            skip_failures (True): whether to gracefully continue without
+                raising an error if metadata cannot be computed for a sample
         """
-        foum.compute_metadata(
-            self, overwrite=overwrite, num_workers=num_workers
+        fomt.compute_metadata(
+            self,
+            overwrite=overwrite,
+            num_workers=num_workers,
+            skip_failures=skip_failures,
         )
 
     def apply_model(
@@ -802,7 +801,7 @@ class SampleCollection(object):
         classes=None,
         missing="none",
         method="coco",
-        iou=0.75,
+        iou=0.50,
         classwise=True,
         config=None,
         **kwargs,
@@ -853,7 +852,7 @@ class SampleCollection(object):
                 given this label for evaluation purposes
             method ("coco"): a string specifying the evaluation method to use.
                 Supported values are ``("coco")``
-            iou (0.75): the IoU threshold to use to determine matches
+            iou (0.50): the IoU threshold to use to determine matches
             classwise (True): whether to only match objects with the same class
                 label (True) or allow matches between classes (False)
             config (None): a
@@ -1200,6 +1199,7 @@ class SampleCollection(object):
                         ground_truth=None,
                         predictions=None,
                     ),
+                    fo.Sample(filepath="/path/to/image4.png"),
                 ]
             )
 

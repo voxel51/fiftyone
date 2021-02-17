@@ -105,16 +105,14 @@ class _Sample(Document):
 
         super().clear_field(field_name)
 
-    def compute_metadata(self):
-        """Populates the ``metadata`` field of the sample."""
-        if self.media_type == fomm.IMAGE:
-            self.metadata = fom.ImageMetadata.build_for(self.filepath)
-        elif self.media_type == fomm.VIDEO:
-            self.metadata = fom.VideoMetadata.build_for(self.filepath)
-        else:
-            self.metadata = fom.Metadata.build_for(self.filepath)
+    def compute_metadata(self, skip_failures=False):
+        """Populates the ``metadata`` field of the sample.
 
-        self.save()
+        Args:
+            skip_failures (False): whether to gracefully continue without
+                raising an error if metadata cannot be computed
+        """
+        fom.compute_sample_metadata(self, skip_failures=skip_failures)
 
     def add_labels(self, labels, label_field, confidence_thresh=None):
         """Adds the given labels to the sample.
