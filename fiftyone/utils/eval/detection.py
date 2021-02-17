@@ -30,7 +30,7 @@ def evaluate_detections(
     classes=None,
     missing="none",
     method="coco",
-    iou=0.75,
+    iou=0.50,
     classwise=True,
     config=None,
     **kwargs
@@ -81,7 +81,7 @@ def evaluate_detections(
             given this label for results purposes
         method ("coco"): a string specifying the evaluation method to use.
             Supported values are ``("coco")``
-        iou (0.75): the IoU threshold to use to determine matches
+        iou (0.50): the IoU threshold to use to determine matches
         classwise (True): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
         config (None): an :class:`DetectionEvaluationConfig` specifying the
