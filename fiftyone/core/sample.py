@@ -18,7 +18,6 @@ import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
-import fiftyone.utils.metadata as foum
 
 
 def get_default_sample_fields(include_private=False):
@@ -106,9 +105,14 @@ class _Sample(Document):
 
         super().clear_field(field_name)
 
-    def compute_metadata(self):
-        """Populates the ``metadata`` field of the sample."""
-        foum.compute_sample_metadata(self)
+    def compute_metadata(self, skip_failures=False):
+        """Populates the ``metadata`` field of the sample.
+
+        Args:
+            skip_failures (False): whether to gracefully continue without
+                raising an error if metadata cannot be computed
+        """
+        fom.compute_sample_metadata(self, skip_failures=skip_failures)
 
     def add_labels(self, labels, label_field, confidence_thresh=None):
         """Adds the given labels to the sample.

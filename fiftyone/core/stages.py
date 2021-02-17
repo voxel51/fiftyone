@@ -18,6 +18,7 @@ from pymongo import ASCENDING, DESCENDING
 import eta.core.utils as etau
 
 import fiftyone.core.expressions as foe
+from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -470,7 +471,7 @@ class ExcludeObjects(ViewStage):
 
         pipeline = []
         for field, object_ids in self._object_ids.items():
-            label_filter = ~foe.ViewField("_id").is_in(
+            label_filter = ~F("_id").is_in(
                 [foe.ObjectId(oid) for oid in object_ids]
             )
             stage = _make_label_filter_stage(label_schema, field, label_filter)
@@ -512,6 +513,7 @@ class Exists(ViewStage):
                     ground_truth=None,
                     predictions=None,
                 ),
+                fo.Sample(filepath="/path/to/image4.png"),
             ]
         )
 
@@ -553,19 +555,8 @@ class Exists(ViewStage):
         return self._bool
 
     def to_mongo(self, _, **__):
-        if self._bool:
-            return [{"$match": {self._field: {"$exists": True, "$ne": None}}}]
-
-        return [
-            {
-                "$match": {
-                    "$or": [
-                        {self._field: {"$exists": False}},
-                        {self._field: {"$eq": None}},
-                    ]
-                }
-            }
-        ]
+        expr = F(self._field).exists(self._bool)
+        return [{"$match": {"$expr": expr.to_mongo()}}]
 
     def _kwargs(self):
         return [["field", self._field], ["bool", self._bool]]
@@ -765,7 +756,7 @@ def _get_filter_field_pipeline(
 
     if only_matches:
         pipeline.append(
-            {"$match": {new_field: {"$exists": True, "$ne": None}}}
+            {"$match": {"$expr": F(new_field).exists().to_mongo()}}
         )
 
     if hide_result:
@@ -1795,7 +1786,7 @@ class MapLabels(ViewStage):
         )
 
         label_path = labels_field + ".label"
-        expr = foe.ViewField().map_values(self._map)
+        expr = F().map_values(self._map)
         return sample_collection._make_set_field_pipeline(label_path, expr)
 
     def _kwargs(self):
@@ -2590,7 +2581,7 @@ class SelectObjects(ViewStage):
         pipeline.extend(stage.to_mongo(sample_collection))
 
         for field, object_ids in self._object_ids.items():
-            label_filter = foe.ViewField("_id").is_in(
+            label_filter = F("_id").is_in(
                 [foe.ObjectId(oid) for oid in object_ids]
             )
             stage = _make_label_filter_stage(label_schema, field, label_filter)
