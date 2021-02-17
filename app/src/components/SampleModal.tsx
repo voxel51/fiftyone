@@ -226,9 +226,10 @@ const Row = ({ name, renderedName, value, children, ...rest }) => (
 );
 
 const SampleModal = (
-  { sample, sampleUrl, metadata, colorMap = {}, onClose, port, ...rest }: Props,
+  { sampleUrl, colorMap = {}, onClose, port, ...rest }: Props,
   ref
 ) => {
+  const { metadata, sample } = useRecoilValue(atoms.modal);
   const playerContainerRef = useRef();
   const [playerStyle, setPlayerStyle] = useState({
     height: "100%",
@@ -265,13 +266,6 @@ const SampleModal = (
   useEffect(() => {
     mediaType === "video" && requested !== viewCounter && requestLabels();
   }, [requested]);
-
-  useEffect(() => {
-    setActiveLabels(rest.activeLabels);
-  }, [rest.activeLabels]);
-  useEffect(() => {
-    setActiveFrameLabels(rest.activeFrameLabels);
-  }, [rest.activeFrameLabels]);
   useEffect(() => {
     setModalFilters(null);
   }, []);

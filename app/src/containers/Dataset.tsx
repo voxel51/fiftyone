@@ -127,11 +127,7 @@ function Dataset() {
       {modal.visible ? (
         <ModalWrapper>
           <SampleModal
-            activeLabels={modal.activeLabels}
-            activeFrameLabels={modal.activeFrameLabels}
             colorMap={colorMap}
-            sample={modal.sample}
-            metadata={modal.metadata}
             sampleUrl={src}
             onClose={handleHideModal}
             {...modalProps}
