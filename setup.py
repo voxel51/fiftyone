@@ -17,7 +17,7 @@ class BdistWheelCustom(bdist_wheel):
         # make just the wheel require these packages, since they aren't needed
         # for a development installation
         self.distribution.install_requires += [
-            "fiftyone-brain>=0.2,<0.3",
+            "fiftyone-brain>=0.3,<0.4",
             "fiftyone-db>=0.2.1,<0.3",
         ]
 
