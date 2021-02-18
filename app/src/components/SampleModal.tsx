@@ -364,13 +364,14 @@ const SampleModal = (
     }));
   };
 
-  const handleSetDisplayOption = (setSelected) => (entry) =>
+  const handleSetDisplayOption = (setSelected) => (entry) => {
     setSelected((selected) => {
       if (entry.selected) {
-        return [entry.name, ...selected];
+        return [];
       }
-      return selected.filter((e) => e !== entry.name);
+      return [];
     });
+  };
 
   const tagSampleExists = tagNames.reduce(
     (acc, tag) => ({
@@ -579,7 +580,6 @@ const SampleModal = (
                 activeLabels,
                 true
               )}
-              onSelectScalar={() => {}}
               unsupported={getDisplayOptions(
                 labelNameGroups.unsupported,
                 otherSampleValues,

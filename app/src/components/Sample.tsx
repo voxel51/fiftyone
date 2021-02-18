@@ -135,29 +135,6 @@ const SelectedDiv = styled.div`
   border-left-style: solid;
 `;
 
-const getModalLabelsSetter = (sample, metadata) => {
-  const setModal = useSetRecoilState(atoms.modal);
-  const setOther = useSetRecoilState(labelAtoms.modalActiveOther);
-  const setLabels = useSetRecoilState(labelAtoms.modalActiveLabels("sample"));
-  const setFramesLabels = useSetRecoilState(
-    labelAtoms.modalActiveLabels("frames")
-  );
-  const setTags = useSetRecoilState(labelAtoms.modalActiveTags);
-
-  const other = useRecoilValue(labelAtoms.activeOther);
-  const labels = useRecoilValue(labelAtoms.activeLabels("sample"));
-  const frameLabels = useRecoilValue(labelAtoms.activeLabels("frame"));
-  const tags = useRecoilValue(labelAtoms.activeTags);
-
-  return useCallback(() => {
-    setOther(other);
-    setTags(tags);
-    setFramesLabels(frameLabels);
-    setLabels(labels);
-    setModal({ visible: true, sample, metadata });
-  }, [labels, frameLabels, other, tags, sample, metadata]);
-};
-
 const Sample = ({ sample, metadata }) => {
   const http = useRecoilValue(selectors.http);
   const id = sample._id;

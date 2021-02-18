@@ -27,15 +27,6 @@ export type Entry = {
   path: string;
 };
 
-type Props = {
-  tags: Entry[];
-  labels: Entry[];
-  frameLabels: Entry[];
-  scalars: Entry[];
-  unsupported: Entry[];
-  onSelectTag: (entry: Entry) => void;
-};
-
 const Button = animated(styled.div`
   cursor: pointer;
   width: 100%;
@@ -218,102 +209,87 @@ const makeData = (filteredCount, totalCount) => {
   return totalCount;
 };
 
-const FieldsSidebar = React.forwardRef(
-  (
-    {
-      modal = false,
-      tags = [],
-      labels = [],
-      frameLabels = [],
-      scalars = [],
-      unsupported = [],
-      onSelectTag,
-      onSelectLabel,
-      onSelectFrameLabel,
-      onSelectScalar,
-      colorByLabelAtom,
-      ...rest
-    }: Props,
-    ref
-  ) => {
-    const [colorByLabel, setColorByLabel] = useRecoilState(colorByLabelAtom);
-    const theme = useContext(ThemeContext);
-    const colorMap = useRecoilValue(selectors.colorMap);
-    const cellRest = { modal };
-    const mediaType = useRecoilValue(selectors.mediaType);
-    const isVideo = mediaType === "video";
+type Props = {
+  modal: boolean;
+};
 
-    return (
-      <Container ref={ref} {...rest}>
+const FieldsSidebar = React.forwardRef(({ modal = false }: Props, ref) => {
+  const [colorByLabel, setColorByLabel] = useRecoilState(colorByLabelAtom);
+  const theme = useContext(ThemeContext);
+  const colorMap = useRecoilValue(selectors.colorMap);
+  const mediaType = useRecoilValue(selectors.mediaType);
+  const isVideo = mediaType === "video";
+
+  return (
+    <Container ref={ref} {...rest}>
+      <Cell
+        colorMap={colorMap}
+        label="Tags"
+        icon={<PhotoLibrary />}
+        entries={tags}
+        onSelect={onSelectTag}
+        modal={modal}
+      />
+      <Cell
+        colorMap={colorMap}
+        label="Labels"
+        icon={<Label style={{ transform: "rotate(180deg)" }} />}
+        entries={labels}
+        onSelect={onSelectLabel}
+        modal={modal}
+      />
+      {isVideo && (
         <Cell
           colorMap={colorMap}
-          label="Tags"
+          label="Frame Labels"
           icon={<PhotoLibrary />}
-          entries={tags}
-          onSelect={onSelectTag}
-          {...cellRest}
+          entries={frameLabels}
+          onSelect={onSelectFrameLabel}
+          modal={modal}
+          prefix="frames."
         />
+      )}
+      <Cell
+        colorMap={colorMap}
+        label="Scalars"
+        icon={<BarChart />}
+        entries={scalars}
+        onSelect={onSelectScalar}
+        modal={modal}
+      />
+      {unsupported.length ? (
         <Cell
-          colorMap={colorMap}
-          label="Labels"
-          icon={<Label style={{ transform: "rotate(180deg)" }} />}
-          entries={labels}
-          onSelect={onSelectLabel}
-          {...cellRest}
+          label="Unsupported"
+          title="These fields cannot currently be displayed in the app"
+          icon={<Help />}
+          colorMap={{}}
+          entries={unsupported.map((entry) => ({
+            ...entry,
+            selected: false,
+            disabled: true,
+          }))}
+          modal={modal}
         />
-        {isVideo && (
-          <Cell
-            colorMap={colorMap}
-            label="Frame Labels"
-            icon={<PhotoLibrary />}
-            entries={frameLabels}
-            onSelect={onSelectFrameLabel}
-            {...cellRest}
-            prefix="frames."
-          />
-        )}
-        <Cell
-          colorMap={colorMap}
-          label="Scalars"
-          icon={<BarChart />}
-          entries={scalars}
-          onSelect={onSelectScalar}
-          {...cellRest}
-        />
-        {unsupported.length ? (
-          <Cell
-            label="Unsupported"
-            title="These fields cannot currently be displayed in the app"
-            icon={<Help />}
-            colorMap={{}}
-            entries={unsupported.map((entry) => ({
-              ...entry,
-              selected: false,
-              disabled: true,
-            }))}
-            {...cellRest}
-          />
-        ) : null}
-        <Cell
-          label="Options"
-          title="Field options"
-          icon={<Settings />}
-          onSelect={() => setColorByLabel(!colorByLabel)}
-          colorMap={{
-            "Color by label": theme.brand,
-          }}
-          entries={[
-            {
-              name: "Color by label",
-              selected: colorByLabel,
-              icon: <Brush />,
-            },
-          ]}
-          {...cellRest}
-        />
-      </Container>
-    );
-  }
-);
+      ) : null}
+      <Cell
+        label="Options"
+        title="Field options"
+        icon={<Settings />}
+        onSelect={() => setColorByLabel(!colorByLabel)}
+        colorMap={{
+          "Color by label": theme.brand,
+        }}
+        entries={[
+          {
+            name: "Color by label",
+            selected: colorByLabel,
+            icon: <Brush />,
+          },
+        ]}
+        modal={modal}
+      />
+    </Container>
+  );
+});
 
 export default FieldsSidebar;

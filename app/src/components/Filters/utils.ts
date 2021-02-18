@@ -98,7 +98,7 @@ export const activeLabelPaths = selectorFamily<string[], boolean>({
 
 export const modalActiveLabels = atomFamily<string[], string>({
   key: "modalActiveLabels",
-  default: activeLabels,
+  default: [],
 });
 
 export const activeOther = atom<string[]>({
