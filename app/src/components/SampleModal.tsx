@@ -27,11 +27,6 @@ import {
 import { formatMetadata, stringify } from "../utils/labels";
 import { useToggleSelectionObject } from "../utils/selection";
 
-type Props = {
-  sample: object;
-  sampleUrl: string;
-};
-
 const Container = styled.div`
   position: relative;
   display: grid;
@@ -225,8 +220,17 @@ const Row = ({ name, renderedName, value, children, ...rest }) => (
   </div>
 );
 
+type Props = {
+  sample: object;
+  sampleUrl: string;
+  colorMap: { [key: string]: string };
+  onClose: () => void;
+  onNext: () => void;
+  onPrevious: () => void;
+};
+
 const SampleModal = (
-  { sampleUrl, colorMap = {}, onClose, port, ...rest }: Props,
+  { sampleUrl, colorMap = {}, onClose, onNext, onPrevious }: Props,
   ref
 ) => {
   const { sample } = useRecoilValue(atoms.modal);
@@ -320,10 +324,10 @@ const SampleModal = (
       } else if (onClose) {
         onClose();
       }
-    } else if (e.key == "ArrowLeft" && rest.onPrevious) {
-      rest.onPrevious();
-    } else if (e.key == "ArrowRight" && rest.onNext) {
-      rest.onNext();
+    } else if (e.key == "ArrowLeft" && onPrevious) {
+      onPrevious();
+    } else if (e.key == "ArrowRight" && onNext) {
+      onNext();
     }
   });
 
@@ -341,7 +345,6 @@ const SampleModal = (
     hideCheckbox = false,
     filteredCountOrExists
   ) => {
-    console.log(selected);
     return [...values].sort().map(({ name, type }) => ({
       hideCheckbox,
       name,
@@ -483,7 +486,6 @@ const SampleModal = (
               sample={sample}
               keep={true}
               overlay={videoLabels}
-              colorMap={colorMap}
               colorByLabel={colorByLabel}
               activeLabelsAtom={labelAtoms.activeLabelPaths(true)}
               fieldSchema={fieldSchema}

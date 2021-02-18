@@ -309,6 +309,7 @@ const FieldsSidebar = React.forwardRef(
               icon: <Brush />,
             },
           ]}
+          {...cellRest}
         />
       </Container>
     );
