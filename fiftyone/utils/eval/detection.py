@@ -97,9 +97,11 @@ def evaluate_detections(
     config = _parse_config(
         config, method, iou=iou, classwise=classwise, **kwargs
     )
-    eval_info = EvaluationInfo(eval_key, pred_field, gt_field, config)
-    validate_evaluation(samples, eval_info)
     eval_method = config.build()
+
+    if eval_key is not None:
+        eval_info = EvaluationInfo(eval_key, pred_field, gt_field, config)
+        validate_evaluation(samples, eval_info)
 
     pred_field, processing_frames = samples._handle_frame_field(pred_field)
     gt_field, _ = samples._handle_frame_field(gt_field)

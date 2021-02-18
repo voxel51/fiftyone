@@ -81,9 +81,11 @@ def evaluate_classifications(
         a :class:`ClassificationResults`
     """
     config = _parse_config(config, method, **kwargs)
-    eval_info = EvaluationInfo(eval_key, pred_field, gt_field, config)
-    validate_evaluation(samples, eval_info)
     eval_method = config.build()
+
+    if eval_key is not None:
+        eval_info = EvaluationInfo(eval_key, pred_field, gt_field, config)
+        validate_evaluation(samples, eval_info)
 
     results = eval_method.evaluate_samples(
         samples,
