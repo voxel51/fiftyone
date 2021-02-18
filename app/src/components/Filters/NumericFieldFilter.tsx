@@ -197,7 +197,7 @@ const NumericFieldFilter = ({ expanded, entry }) => {
         boundsAtom={boundsAtom({ path: entry.path })}
         hasNoneAtom={hasNoneField(entry.path)}
         rangeAtom={rangeAtom({ path: entry.path })}
-        noneAtom={noneAtom(entry.path)}
+        noneAtom={noneAtom({ path: entry.path })}
         ref={ref}
       />
     </animated.div>

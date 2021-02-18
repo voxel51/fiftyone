@@ -281,9 +281,6 @@ const SampleModal = (
   const wrapNavigationFunc = (callback) => {
     if (callback) {
       return () => {
-        if (playerRef.current) {
-          setSavedOverlayOptions(playerRef.current.getOverlayOptions());
-        }
         callback();
       };
     }
