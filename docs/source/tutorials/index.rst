@@ -45,7 +45,7 @@ your datasets and turn your good models into *great models*.
 
 .. customcarditem::
     :header: Evaluating a classifier
-    :description: This tutorial walks you through and end-to-end example of fine-tuning a classifier and understanding its failure modes using FiftyOne.
+    :description: Evaluation made easy. This tutorial walks through and end-to-end example of fine-tuning a classifier and understanding its failure modes using FiftyOne.
     :link: evaluate_classifications.html
     :image: ../_static/images/tutorials/evaluate_classifications.png
     :tags: Getting-Started,Model-Evaluation
