@@ -229,7 +229,7 @@ const SampleModal = (
   { sampleUrl, colorMap = {}, onClose, port, ...rest }: Props,
   ref
 ) => {
-  const { metadata, sample } = useRecoilValue(atoms.modal);
+  const { sample } = useRecoilValue(atoms.modal);
   const playerContainerRef = useRef();
   const [playerStyle, setPlayerStyle] = useState({
     height: "100%",
@@ -490,7 +490,6 @@ const SampleModal = (
               sample={sample}
               keep={true}
               overlay={videoLabels}
-              metadata={metadata}
               colorMap={colorMap}
               colorByLabel={colorByLabel}
               activeLabelsAtom={labelAtoms.activeLabelPaths(true)}

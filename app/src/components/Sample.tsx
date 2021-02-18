@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useCallback, useContext, useState } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled, { ThemeContext } from "styled-components";
 import { animated, useSpring, useTransition } from "react-spring";
@@ -135,8 +135,30 @@ const SelectedDiv = styled.div`
   border-left-style: solid;
 `;
 
-const Sample = ({ sample, metadata }) => {
+const getModalLabelsSetter = (sample, metadata) => {
   const setModal = useSetRecoilState(atoms.modal);
+  const setOther = useSetRecoilState(labelAtoms.modalActiveOther);
+  const setLabels = useSetRecoilState(labelAtoms.modalActiveLabels("sample"));
+  const setFramesLabels = useSetRecoilState(
+    labelAtoms.modalActiveLabels("frames")
+  );
+  const setTags = useSetRecoilState(labelAtoms.modalActiveTags);
+
+  const other = useRecoilValue(labelAtoms.activeOther);
+  const labels = useRecoilValue(labelAtoms.activeLabels("sample"));
+  const frameLabels = useRecoilValue(labelAtoms.activeLabels("frame"));
+  const tags = useRecoilValue(labelAtoms.activeTags);
+
+  return useCallback(() => {
+    setOther(other);
+    setTags(tags);
+    setFramesLabels(frameLabels);
+    setLabels(labels);
+    setModal({ visible: true, sample, metadata });
+  }, [labels, frameLabels, other, tags, sample, metadata]);
+};
+
+const Sample = ({ sample, metadata }) => {
   const http = useRecoilValue(selectors.http);
   const id = sample._id;
   const src = `${http}/filepath/${encodeURI(sample.filepath)}?id=${id}`;
@@ -226,6 +248,7 @@ const Sample = ({ sample, metadata }) => {
   });
 
   const [bar, onMouseEnter, onMouseLeave] = useHoverLoad(socket, sample);
+  const setter = getModalLabelsSetter(sample, metadata);
 
   const bubbles = [
     ...Object.keys(sample)
@@ -279,7 +302,7 @@ const Sample = ({ sample, metadata }) => {
           filterSelector={labelFilters(false)}
           onMouseEnter={onMouseEnter}
           onMouseLeave={onMouseLeave}
-          onClick={() => setModal({ visible: true, sample, metadata })}
+          onClick={setter}
         />
         {bar.map(({ key, props }) => (
           <LoadingBar key={key} style={props} />
