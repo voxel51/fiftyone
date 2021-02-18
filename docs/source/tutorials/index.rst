@@ -38,9 +38,16 @@ your datasets and turn your good models into *great models*.
 
 .. customcarditem::
     :header: Evaluating object detections
-    :description: Object detections are difficult to visualize. This tutorial shows how to use FiftyOne to perform powerful evaluation workflows on your data.
+    :description: Aggregate statistics aren't sufficient for object detection. This tutorial shows how to use FiftyOne to perform powerful evaluation workflows on your detector.
     :link: evaluate_detections.html
     :image: ../_static/images/tutorials/evaluate_detections.png
+    :tags: Getting-Started,Model-Evaluation
+
+.. customcarditem::
+    :header: Evaluating a classifier
+    :description: Evaluation made easy. This tutorial walks through and end-to-end example of fine-tuning a classifier and understanding its failure modes using FiftyOne.
+    :link: evaluate_classifications.html
+    :image: ../_static/images/tutorials/evaluate_classifications.png
     :tags: Getting-Started,Model-Evaluation
 
 .. customcarditem::
@@ -82,5 +89,6 @@ your datasets and turn your good models into *great models*.
    :hidden:
 
    Evaluating object detections<evaluate_detections.ipynb>
+   Evaluating a classifier<evaluate_classifications.ipynb>
    Exploring image uniqueness<uniqueness.ipynb>
    Finding label mistakes<label_mistakes.ipynb>
