@@ -137,6 +137,19 @@ class Evaluation(Configurable):
         config: an :class:`EvaluationConfig`
     """
 
+    def get_fields(self, samples, eval_key):
+        """Gets the evaluation fields that were populated by the given
+        evaluation.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            eval_key: an evaluation key
+
+        Returns:
+            a list of fields
+        """
+        raise NotImplementedError("subclass must implement get_fields()")
+
     def cleanup(self, samples, eval_key):
         """Deletes any results for the evaluation with the given key from the
         collection.
@@ -187,12 +200,22 @@ def validate_evaluation(samples, eval_info):
 
     The evaluation may be invalid if, for example, an evaluation of a different
     type has already been run under the same evaluation key and thus
+    overwriting it would cause ambiguity on how to delete the evaluations.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         eval_info: an :class:`EvaluationInfo`
     """
     eval_key = eval_info.eval_key
+    if eval_key is None:
+        return
+
+    if not etau.is_str(eval_key) or not eval_key.isidentifier():
+        raise ValueError(
+            "Invalid eval_key '%s'. Evaluation keys must be valid variable "
+            "names" % eval_key
+        )
+
     if eval_key not in list_evaluations(samples):
         return
 
@@ -230,20 +253,69 @@ def save_evaluation_info(samples, eval_info):
     samples._dataset.save()
 
 
-def load_evaluation_view(samples, eval_key):
+def load_evaluation_view(samples, eval_key, select_fields=False):
     """Loads the :class:`fiftyone.core.view.DatasetView` on which the specified
     evaluation was performed.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         eval_key: an evaluation key
+        select_fields (False): whether to select only the fields involved
+            in the evaluation. If true, only the predicted and ground truth
+            fields involved in the evaluation will be selected, and any
+            ancillary fields populated on those samples by other evaluations
+            will be excluded
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
     """
     eval_doc = _get_evaluation_doc(samples, eval_key)
     stage_dicts = [json.loads(s) for s in eval_doc.view_stages]
-    return fov.DatasetView._build(samples._dataset, stage_dicts)
+    view = fov.DatasetView._build(samples._dataset, stage_dicts)
+
+    if not select_fields:
+        return view
+
+    #
+    # Select evaluation fields
+    #
+
+    gt_field = eval_doc.gt_field
+    pred_field = eval_doc.pred_field
+
+    select = [gt_field, pred_field]
+    prefixes = (gt_field + ".", pred_field + ".")
+    for field in _get_eval_fields(samples, eval_key):
+        # We don't need to select embedded fields of gt/pred
+        if not field.startswith(prefixes):
+            select.append(field)
+
+    view = view.select_fields(select)
+
+    #
+    # Hide any ancillary evaluations on the same fields
+    #
+
+    exclude = []
+    for _eval_key in list_evaluations(samples):
+        if _eval_key == eval_key:
+            continue
+
+        for field in _get_eval_fields(samples, _eval_key):
+            # We only need to select embedded fields of gt/pred
+            if field.startswith(prefixes):
+                exclude.append(field)
+
+    if exclude:
+        view = view.exclude_fields(exclude)
+
+    return view
+
+
+def _get_eval_fields(samples, eval_key):
+    eval_info = get_evaluation_info(samples, eval_key)
+    eval_method = eval_info.config.build()
+    return eval_method.get_fields(samples, eval_key)
 
 
 def delete_evaluation(samples, eval_key):

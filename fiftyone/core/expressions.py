@@ -148,7 +148,9 @@ class ViewExpression(object):
         return super().__hash__()
 
     def __deepcopy__(self, memo):
-        return self.__class__(deepcopy(self._expr, memo))
+        obj = self.__class__(deepcopy(self._expr, memo))
+        obj._prefix = deepcopy(self._prefix)
+        return obj
 
     def _freeze_prefix(self, prefix):
         _do_freeze_prefix(self, prefix)
@@ -333,16 +335,19 @@ class ViewExpression(object):
         """
         return ViewExpression({"$lt": [self, other]})
 
-    def exists(self):
+    def exists(self, bool=True):
         """Determines whether this expression, which must resolve to a field,
         exists and is not None.
 
         Examples::
 
+            import fiftyone as fo
             import fiftyone.zoo as foz
             from fiftyone import ViewField as F
 
-            dataset = foz.load_zoo_dataset("quickstart")
+            dataset = foz.load_zoo_dataset(
+                "quickstart", dataset_name=fo.get_default_dataset_name()
+            )
 
             # Add a new field to one sample
             sample = dataset.first()
@@ -354,11 +359,20 @@ class ViewExpression(object):
 
             print(len(view))
 
+        Args:
+            bool (True): whether to determine whether this expression exists
+                (True) or is None or non-existent (False)
+
         Returns:
             a :class:`ViewExpression`
         """
         # https://stackoverflow.com/a/25515046
-        return ViewExpression({"$gt": [self, None]})
+        expr = ViewExpression({"$gt": [self, None]})
+
+        if not bool:
+            expr = ~expr
+
+        return expr
 
     # Logical operators #######################################################
 
@@ -1222,6 +1236,122 @@ class ViewExpression(object):
 
         return ViewExpression({"$in": [self, list(values)]})
 
+    def to_bool(self):
+        """Converts the expression to a boolean value.
+
+        See
+        `this page <https://docs.mongodb.com/manual/reference/operator/aggregation/toBool>`__
+        for conversion rules.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart").clone()
+
+            # Adds a `uniqueness_bool` field that is False when
+            # `uniqueness < 0.5` and True when `uniqueness >= 0.5`
+            dataset.add_sample_field("uniqueness_bool", fo.BooleanField)
+            view = dataset.set_field(
+                "uniqueness_bool", (2.0 * F("uniqueness")).floor().to_bool()
+            )
+
+            print(view.count_values("uniqueness_bool"))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$toBool": self})
+
+    def to_int(self):
+        """Converts the expression to an integer value.
+
+        See
+        `this page <https://docs.mongodb.com/manual/reference/operator/aggregation/toInt>`__
+        for conversion rules.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart").clone()
+
+            # Adds a `uniqueness_int` field that contains the value of the
+            # first decimal point of the `uniqueness` field
+            dataset.add_sample_field("uniqueness_int", fo.IntField)
+            view = dataset.set_field(
+                "uniqueness_int", (10.0 * F("uniqueness")).floor().to_int()
+            )
+
+            print(view.count_values("uniqueness_int"))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$toInt": self})
+
+    def to_double(self):
+        """Converts the expression to a double precision value.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart").clone()
+
+            # Adds a `uniqueness_float` field that is 0.0 when
+            # `uniqueness < 0.5` and 1.0 when `uniqueness >= 0.5`
+            dataset.add_sample_field("uniqueness_float", fo.FloatField)
+            view = dataset.set_field(
+                "uniqueness_float", (F("uniqueness") >= 0.5).to_double()
+            )
+
+            print(view.count_values("uniqueness_float"))
+
+        See
+        `this page <https://docs.mongodb.com/manual/reference/operator/aggregation/toDouble>`__
+        for conversion rules.
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$toDouble": self})
+
+    def to_string(self):
+        """Converts the expression to a string value.
+
+        See
+        `this page <https://docs.mongodb.com/manual/reference/operator/aggregation/toString>`__
+        for conversion rules.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart").clone()
+
+            # Adds a `uniqueness_str` field that is "true" when
+            # `uniqueness >= 0.5` and "false" when `uniqueness < 0.5`
+            dataset.add_sample_field("uniqueness_str", fo.StringField)
+            view = dataset.set_field(
+                "uniqueness_str", (F("uniqueness") >= 0.5).to_string()
+            )
+
+            print(view.count_values("uniqueness_str"))
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        return ViewExpression({"$toString": self})
+
     def apply(self, expr):
         """Applies the given expression to this expression.
 
@@ -1437,12 +1567,12 @@ class ViewExpression(object):
             }
         )
 
-    def set_field(self, field, value_or_expr):
+    def set_field(self, field, value_or_expr, relative=True):
         """Sets the specified field or embedded field of this expression, which
         must resolve to a document, to the given value or expression.
 
-        The provided expression is computed by applying it to this expression
-        via ``self.apply(value_or_expr)``.
+        By default, the provided expression is computed by applying it to this
+        expression via ``self.apply(value_or_expr)``.
 
         Examples::
 
@@ -1475,12 +1605,15 @@ class ViewExpression(object):
             field: the "field" or "embedded.field.name" to set
             value_or_expr: a literal value or :class:`ViewExpression` defining
                 the field to set
+            relative (True): whether to compute ``value_or_expr`` by applying
+                it to this expression (True), or to use it untouched (False)
 
         Returns:
             a :class:`ViewExpression`
         """
         if (
             isinstance(value_or_expr, ViewExpression)
+            and relative
             and not value_or_expr.is_frozen
         ):
             value = self.apply(value_or_expr)
@@ -2607,7 +2740,7 @@ class ViewExpression(object):
             regex: the regular expression to apply. Must be a Perl Compatible
                 Regular Expression (PCRE). See
                 `this page <https://docs.mongodb.com/manual/reference/operator/aggregation/regexMatch/#regexmatch-regex>`__
-                for  details
+                for details
             options (None): an optional string of regex options to apply. See
                 `this page <https://docs.mongodb.com/manual/reference/operator/aggregation/regexMatch/#regexmatch-options>`__
                 for the available options

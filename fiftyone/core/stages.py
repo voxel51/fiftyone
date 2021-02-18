@@ -18,6 +18,7 @@ from pymongo import ASCENDING, DESCENDING
 import eta.core.utils as etau
 
 import fiftyone.core.expressions as foe
+from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -470,7 +471,7 @@ class ExcludeObjects(ViewStage):
 
         pipeline = []
         for field, object_ids in self._object_ids.items():
-            label_filter = ~foe.ViewField("_id").is_in(
+            label_filter = ~F("_id").is_in(
                 [foe.ObjectId(oid) for oid in object_ids]
             )
             stage = _make_label_filter_stage(label_schema, field, label_filter)
@@ -512,6 +513,7 @@ class Exists(ViewStage):
                     ground_truth=None,
                     predictions=None,
                 ),
+                fo.Sample(filepath="/path/to/image4.png"),
             ]
         )
 
@@ -553,19 +555,8 @@ class Exists(ViewStage):
         return self._bool
 
     def to_mongo(self, _, **__):
-        if self._bool:
-            return [{"$match": {self._field: {"$exists": True, "$ne": None}}}]
-
-        return [
-            {
-                "$match": {
-                    "$or": [
-                        {self._field: {"$exists": False}},
-                        {self._field: {"$eq": None}},
-                    ]
-                }
-            }
-        ]
+        expr = F(self._field).exists(self._bool)
+        return [{"$match": {"$expr": expr.to_mongo()}}]
 
     def _kwargs(self):
         return [["field", self._field], ["bool", self._bool]]
@@ -705,7 +696,7 @@ class FilterField(ViewStage):
         return field
 
     def _needs_frames(self, sample_collection):
-        return sample_collection._handle_frame_field(self._field)[1]
+        return sample_collection._is_frame_field(self._field)
 
     def _kwargs(self):
         return [
@@ -765,7 +756,7 @@ def _get_filter_field_pipeline(
 
     if only_matches:
         pipeline.append(
-            {"$match": {new_field: {"$exists": True, "$ne": None}}}
+            {"$match": {"$expr": F(new_field).exists().to_mongo()}}
         )
 
     if hide_result:
@@ -1176,7 +1167,7 @@ class FilterLabels(FilterField):
         )
 
     def _needs_frames(self, sample_collection):
-        return sample_collection._handle_frame_field(self._labels_field)[1]
+        return sample_collection._is_frame_field(self._labels_field)
 
     def _get_mongo_filter(self):
         if self._is_labels_list_field:
@@ -1795,8 +1786,8 @@ class MapLabels(ViewStage):
         )
 
         label_path = labels_field + ".label"
-        expr = foe.ViewField("label").map_values(self._map)
-        return _make_set_field_pipeline(sample_collection, label_path, expr)
+        expr = F().map_values(self._map)
+        return sample_collection._make_set_field_pipeline(label_path, expr)
 
     def _kwargs(self):
         return [
@@ -1813,88 +1804,6 @@ class MapLabels(ViewStage):
 
     def validate(self, sample_collection):
         _get_labels_field(sample_collection, self._field)
-
-
-def _make_set_field_pipeline(sample_collection, field, expr):
-    path, list_fields = _parse_field_name(sample_collection, field)
-
-    # Don't unroll terminal lists unless explicitly requested
-    list_fields = [lf for lf in list_fields if lf != field]
-
-    # Case 1: no list fields
-    if not list_fields:
-        if "." in path:
-            prefix = "$" + path.rsplit(".", 1)[0]
-        else:
-            prefix = None
-
-        path_expr = _get_mongo_expr(expr, prefix=prefix)
-
-        return [{"$set": {path: path_expr}}]
-
-    # Case 2: one list field
-    if len(list_fields) == 1:
-        list_field = list_fields[0]
-        subfield = path[len(list_field) + 1 :]
-        expr = _set_terminal_list_field(list_field, subfield, expr)
-        return [{"$set": {list_field: expr.to_mongo()}}]
-
-    # Case 3: multiple list fields
-
-    # Handle last list field
-    last_list_field = list_fields[-1]
-    terminal_prefix = last_list_field[len(list_fields[-2]) + 1 :]
-    subfield = path[len(last_list_field) + 1 :]
-    expr = _set_terminal_list_field(terminal_prefix, subfield, expr)
-
-    for list_field1, list_field2 in zip(
-        reversed(list_fields[:-1]), reversed(list_fields[1:])
-    ):
-        inner_list_field = list_field2[len(list_field1) + 1 :]
-        expr = foe.ViewField().map(
-            foe.ViewField().set_field(inner_list_field, expr)
-        )
-
-    expr = expr.to_mongo(prefix="$" + list_fields[0])
-
-    return [{"$set": {list_fields[0]: expr}}]
-
-
-def _parse_field_name(sample_collection, field_name):
-    path, is_frame_field, list_fields, _ = sample_collection._parse_field_name(
-        field_name
-    )
-
-    if is_frame_field and path != "frames":
-        path = sample_collection._FRAMES_PREFIX + path
-        list_fields = ["frames"] + [
-            sample_collection._FRAMES_PREFIX + lf for lf in list_fields
-        ]
-
-    return path, list_fields
-
-
-def _set_terminal_list_field(list_field, subfield, expr):
-    map_path = "$$this"
-    if subfield:
-        map_path += "." + subfield
-
-    prefix = map_path.rsplit(".", 1)[0]
-    map_expr = _get_mongo_expr(expr, prefix=prefix)
-
-    if subfield:
-        map_expr = foe.ViewField().set_field(subfield, map_expr)
-    else:
-        map_expr = foe.ViewExpression(map_expr)
-
-    return foe.ViewField(list_field).map(map_expr)
-
-
-def _get_mongo_expr(expr, prefix=None):
-    if isinstance(expr, foe.ViewExpression):
-        return expr.to_mongo(prefix=prefix)
-
-    return expr
 
 
 class SetField(ViewStage):
@@ -2022,21 +1931,23 @@ class SetField(ViewStage):
         """The expression to apply."""
         return self._expr
 
+    def _needs_frames(self, sample_collection):
+        if sample_collection.media_type != fom.VIDEO:
+            return False
+
+        is_frame_field = sample_collection._is_frame_field(self._field)
+        is_frame_expr = _is_frames_expr(self._get_mongo_expr())
+        return is_frame_field or is_frame_expr
+
     def to_mongo(self, sample_collection, **_):
-        return _make_set_field_pipeline(
-            sample_collection, self._field, self._expr
+        return sample_collection._make_set_field_pipeline(
+            self._field, self._expr, embedded_root=True
         )
 
     def _kwargs(self):
-        # @todo doesn't handle list fields
-        if "." in self._field:
-            prefix = "$" + self._field.rsplit(".", 1)[0]
-        else:
-            prefix = None
-
         return [
             ["field", self._field],
-            ["expr", _get_mongo_expr(self._expr, prefix=prefix)],
+            ["expr", self._get_mongo_expr()],
         ]
 
     @classmethod
@@ -2045,6 +1956,18 @@ class SetField(ViewStage):
             {"name": "field", "type": "field"},
             {"name": "expr", "type": "dict", "placeholder": ""},
         ]
+
+    def _get_mongo_expr(self):
+        if not isinstance(self._expr, foe.ViewExpression):
+            return self._expr
+
+        # @todo doesn't handle list fields
+        if "." in self._field:
+            prefix = "$" + self._field.rsplit(".", 1)[0]
+        else:
+            prefix = None
+
+        return self._expr.to_mongo(prefix=prefix)
 
     def validate(self, sample_collection):
         sample_collection.validate_fields_exist(self._field)
@@ -2167,10 +2090,10 @@ class Match(ViewStage):
         return [{"$match": self._get_mongo_expr()}]
 
     def _get_mongo_expr(self):
-        if isinstance(self._filter, foe.ViewExpression):
-            return {"$expr": self._filter.to_mongo()}
+        if not isinstance(self._filter, foe.ViewExpression):
+            return self._filter
 
-        return self._filter
+        return {"$expr": self._filter.to_mongo()}
 
     def _kwargs(self):
         return [["filter", self._get_mongo_expr()]]
@@ -2658,7 +2581,7 @@ class SelectObjects(ViewStage):
         pipeline.extend(stage.to_mongo(sample_collection))
 
         for field, object_ids in self._object_ids.items():
-            label_filter = foe.ViewField("_id").is_in(
+            label_filter = F("_id").is_in(
                 [foe.ObjectId(oid) for oid in object_ids]
             )
             stage = _make_label_filter_stage(label_schema, field, label_filter)
@@ -3127,6 +3050,19 @@ def _make_label_filter_stage(label_schema, field, label_filter):
     msg = "Ignoring unsupported field '%s' (%s)" % (field, label_type)
     warnings.warn(msg)
     return None
+
+
+def _is_frames_expr(val):
+    if etau.is_str(val):
+        return val == "$frames" or val.startswith("$frames.")
+
+    if isinstance(val, dict):
+        return {_is_frames_expr(k): _is_frames_expr(v) for k, v in val.items()}
+
+    if isinstance(val, list):
+        return [_is_frames_expr(v) for v in val]
+
+    return False
 
 
 class _ViewStageRepr(reprlib.Repr):

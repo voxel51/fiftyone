@@ -1128,7 +1128,7 @@ def _make_scalar_expression(f, args):
         expr = f.is_in(values)
         exclude = args["exclude"]
 
-        if exclude and expr:
+        if exclude:
             # pylint: disable=invalid-unary-operand-type
             expr = ~expr
 
@@ -1199,6 +1199,9 @@ class FileHandler(tornado.web.StaticFileHandler):
 class MediaHandler(FileHandler):
     @classmethod
     def get_absolute_path(cls, root, path):
+        if os.name != "nt":
+            path = os.path.join("/", path)
+
         return path
 
     def validate_absolute_path(self, root, absolute_path):

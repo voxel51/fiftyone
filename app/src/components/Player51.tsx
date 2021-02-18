@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 import styled from "styled-components";
 import uuid from "react-uuid";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import { Warning } from "@material-ui/icons";
 import { animated, useSpring } from "react-spring";
@@ -330,13 +330,15 @@ export default ({
   playerRef,
   selectedObjects,
   onSelectObject,
-  savedOverlayOptions,
 }) => {
   const isVideo = useRecoilValue(selectors.isVideoDataset);
   const filter = useRecoilValue(filterSelector);
   const fps = useRecoilValue(atoms.sampleFrameRate(sample._id));
   const overlayOptions = useRecoilValue(selectors.playerOverlayOptions);
   const defaultTargets = useRecoilValue(selectors.defaultTargets);
+  const [savedOverlayOptions, setSavedOverlayOptions] = useRecoilState(
+    atoms.savedPlayerOverlayOptions
+  );
   const colorMap = useRecoilValue(selectors.colorMap);
   if (overlay === null) {
     overlay = convertSampleToETA(sample, fieldSchema);
@@ -369,7 +371,6 @@ export default ({
         },
         defaultOverlayOptions: {
           ...overlayOptions,
-          ...savedOverlayOptions,
           action: "hover",
           attrRenderMode: "attr-value",
           smoothMasks: false,
@@ -468,6 +469,17 @@ export default ({
   const ref = useRef(null);
   const containerRef = useRef(null);
   const bind = useMove((s) => ref.current && ref.current(s));
+
+  useEventHandler(
+    player,
+    "options",
+    ({ data: { showAttrs, showConfidence } }) => {
+      setSavedOverlayOptions({
+        showAttrs,
+        showConfidence,
+      });
+    }
+  );
 
   return (
     <animated.div

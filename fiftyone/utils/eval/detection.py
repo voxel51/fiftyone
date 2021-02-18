@@ -30,7 +30,7 @@ def evaluate_detections(
     classes=None,
     missing="none",
     method="coco",
-    iou=0.75,
+    iou=0.50,
     classwise=True,
     config=None,
     **kwargs
@@ -50,6 +50,13 @@ def evaluate_detections(
             TP: sample.<eval_key>_tp
             FP: sample.<eval_key>_fp
             FN: sample.<eval_key>_fn
+
+        In addition, when evaluating frame-level objects, TP/FP/FN counts are
+        recorded for each frame::
+
+            TP: frame.<eval_key>_tp
+            FP: frame.<eval_key>_fp
+            FN: frame.<eval_key>_fn
 
     -   The fields listed below are populated on each individual
         :class:`fiftyone.core.labels.Detection` instance; these fields tabulate
@@ -74,7 +81,7 @@ def evaluate_detections(
             given this label for results purposes
         method ("coco"): a string specifying the evaluation method to use.
             Supported values are ``("coco")``
-        iou (0.75): the IoU threshold to use to determine matches
+        iou (0.50): the IoU threshold to use to determine matches
         classwise (True): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
         config (None): an :class:`DetectionEvaluationConfig` specifying the
@@ -90,9 +97,11 @@ def evaluate_detections(
     config = _parse_config(
         config, method, iou=iou, classwise=classwise, **kwargs
     )
-    eval_info = EvaluationInfo(eval_key, pred_field, gt_field, config)
-    validate_evaluation(samples, eval_info)
     eval_method = config.build()
+
+    if eval_key is not None:
+        eval_info = EvaluationInfo(eval_key, pred_field, gt_field, config)
+        validate_evaluation(samples, eval_info)
 
     pred_field, processing_frames = samples._handle_frame_field(pred_field)
     gt_field, _ = samples._handle_frame_field(gt_field)
@@ -116,7 +125,7 @@ def evaluate_detections(
             sample_fn = 0
             for image in images:
                 image_matches = eval_method.evaluate_image(
-                    image, gt_field, pred_field, eval_key=eval_key
+                    image, pred_field, gt_field, eval_key=eval_key
                 )
                 matches.extend(image_matches)
                 tp, fp, fn = _tally_matches(image_matches)
@@ -124,37 +133,31 @@ def evaluate_detections(
                 sample_fp += fp
                 sample_fn += fn
 
+                if processing_frames and eval_key is not None:
+                    image["%s_tp" % eval_key] = tp
+                    image["%s_fp" % eval_key] = fp
+                    image["%s_fn" % eval_key] = fn
+
             if eval_key is not None:
                 sample["%s_tp" % eval_key] = sample_tp
                 sample["%s_fp" % eval_key] = sample_fp
                 sample["%s_fn" % eval_key] = sample_fn
                 sample.save()
 
+    results = eval_method.generate_results(
+        samples,
+        pred_field,
+        gt_field,
+        matches,
+        eval_key=eval_key,
+        classes=classes,
+        missing=missing,
+    )
+
     if eval_key is not None:
         save_evaluation_info(samples, eval_info)
 
-    return DetectionResults(matches, classes=classes, missing=missing)
-
-
-def _cleanup_evaluate_detections(samples, pred_field, gt_field, eval_key):
-    pred_field, is_frame_field = samples._handle_frame_field(pred_field)
-    gt_field, _ = samples._handle_frame_field(gt_field)
-
-    fields = [
-        "%s.detections.%s_id" % (pred_field, eval_key),
-        "%s.detections.%s_iou" % (pred_field, eval_key),
-        "%s.detections.%s_id" % (gt_field, eval_key),
-        "%s.detections.%s_iou" % (gt_field, eval_key),
-    ]
-
-    if is_frame_field:
-        samples._dataset.delete_frame_fields(fields)
-    else:
-        samples._dataset.delete_sample_fields(fields)
-
-    samples._dataset.delete_sample_fields(
-        ["%s_tp" % eval_key, "%s_fp" % eval_key, "%s_fn" % eval_key]
-    )
+    return results
 
 
 class DetectionEvaluationConfig(EvaluationConfig):
@@ -180,7 +183,7 @@ class DetectionEvaluation(Evaluation):
     """
 
     def evaluate_image(
-        self, sample_or_frame, gt_field, pred_field, eval_key=None
+        self, sample_or_frame, pred_field, gt_field, eval_key=None
     ):
         """Evaluates the ground truth and predicted objects in an image.
 
@@ -191,7 +194,7 @@ class DetectionEvaluation(Evaluation):
                 :class:`fiftyone.core.labels.Detections` instances
             gt_field: the name of the field containing the ground truth
                 :class:`fiftyone.core.labels.Detections` instances
-            eval_key (None): an evaluation key for this evaluation
+            eval_key (None): the evaluation key for this evaluation
 
         Returns:
             a list of matched ``(gt_label, pred_label, iou, pred_confidence)``
@@ -199,14 +202,95 @@ class DetectionEvaluation(Evaluation):
         """
         raise NotImplementedError("subclass must implement evaluate_image()")
 
+    def generate_results(
+        self,
+        samples,
+        pred_field,
+        gt_field,
+        matches,
+        eval_key=None,
+        classes=None,
+        missing=None,
+    ):
+        """Generates aggregate evaluation results for the samples.
+
+        Subclasses may perform additional computations here such as IoU sweeps
+        in order to generate mAP, PR curves, etc.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            pred_field: the name of the field containing the predicted
+                :class:`fiftyone.core.labels.Detections`
+            gt_field ("ground_truth"): the name of the field containing the
+                ground truth :class:`fiftyone.core.labels.Detections`
+            matches: a list of ``(gt_label, pred_label, iou, pred_confidence)``
+                matches. Either label can be ``None`` to indicate an unmatched
+                object
+            eval_key (None): the evaluation key for this evaluation
+            classes (None): the list of possible classes. If not provided, the
+                observed ground truth/predicted labels are used for results
+                purposes
+            missing ("none"): a missing label string. Any unmatched objects are
+                given this label for results purposes
+
+        Returns:
+            a :class:`DetectionResults`
+        """
+        return DetectionResults(matches, classes=classes, missing=missing)
+
+    def get_fields(self, samples, eval_key):
+        eval_info = samples.get_evaluation_info(eval_key)
+
+        eval_fields = [
+            "%s_tp" % eval_key,
+            "%s_fp" % eval_key,
+            "%s_fn" % eval_key,
+            "%s.detections.%s" % (eval_info.pred_field, eval_key),
+            "%s.detections.%s_id" % (eval_info.pred_field, eval_key),
+            "%s.detections.%s_iou" % (eval_info.pred_field, eval_key),
+            "%s.detections.%s" % (eval_info.gt_field, eval_key),
+            "%s.detections.%s_id" % (eval_info.gt_field, eval_key),
+            "%s.detections.%s_iou" % (eval_info.gt_field, eval_key),
+        ]
+
+        if samples._is_frame_field(eval_info.gt_field):
+            eval_fields.extend(
+                [
+                    "frames.%s_tp" % eval_key,
+                    "frames.%s_fp" % eval_key,
+                    "frames.%s_fn" % eval_key,
+                ]
+            )
+
+        return eval_fields
+
     def cleanup(self, samples, eval_key):
         eval_info = samples.get_evaluation_info(eval_key)
-        _cleanup_evaluate_detections(
-            samples,
-            eval_info.pred_field,
-            eval_info.gt_field,
-            eval_info.eval_key,
+
+        pred_field, is_frame_field = samples._handle_frame_field(
+            eval_info.pred_field
         )
+        gt_field, _ = samples._handle_frame_field(eval_info.gt_field)
+
+        fields = [
+            "%s_tp" % eval_key,
+            "%s_fp" % eval_key,
+            "%s_fn" % eval_key,
+            "%s.detections.%s" % (pred_field, eval_key),
+            "%s.detections.%s_id" % (pred_field, eval_key),
+            "%s.detections.%s_iou" % (pred_field, eval_key),
+            "%s.detections.%s" % (gt_field, eval_key),
+            "%s.detections.%s_id" % (gt_field, eval_key),
+            "%s.detections.%s_iou" % (gt_field, eval_key),
+        ]
+
+        if is_frame_field:
+            samples._dataset.delete_sample_fields(
+                ["%s_tp" % eval_key, "%s_fp" % eval_key, "%s_fn" % eval_key]
+            )
+            samples._dataset.delete_frame_fields(fields)
+        else:
+            samples._dataset.delete_sample_fields(fields)
 
 
 class DetectionResults(ClassificationResults):

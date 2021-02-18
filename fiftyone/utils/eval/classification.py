@@ -5,6 +5,7 @@ Classification evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import itertools
 import warnings
 
 import matplotlib.pyplot as plt
@@ -43,8 +44,18 @@ def evaluate_classifications(
     each sample, but other strategies such as binary evaluation and top-k
     matching can be configured via the ``method`` and ``config`` parameters.
 
-    If an ``eval_key`` is specified, this method will record whether each
-    prediction is correct in this field.
+    If an ``eval_key`` is specified, then this method will record some
+    statistics on each sample:
+
+    -   When evaluating sample-level fields, an ``eval_key`` field will be
+        populated on each sample recording whether that sample's prediction is
+        correct.
+
+    -   When evaluating frame-level fields, an ``eval_key`` field will be
+        populated on each frame recording whether that frame's prediction is
+        correct. In addition, an ``eval_key`` field will be populated on each
+        sample that records the average accuracy of the frame predictions of
+        the sample.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
@@ -70,9 +81,11 @@ def evaluate_classifications(
         a :class:`ClassificationResults`
     """
     config = _parse_config(config, method, **kwargs)
-    eval_info = EvaluationInfo(eval_key, pred_field, gt_field, config)
-    validate_evaluation(samples, eval_info)
     eval_method = config.build()
+
+    if eval_key is not None:
+        eval_info = EvaluationInfo(eval_key, pred_field, gt_field, config)
+        validate_evaluation(samples, eval_info)
 
     results = eval_method.evaluate_samples(
         samples,
@@ -134,8 +147,20 @@ class ClassificationEvaluation(Evaluation):
         """
         raise NotImplementedError("subclass must implement evaluate_samples()")
 
+    def get_fields(self, samples, eval_key):
+        eval_info = samples.get_evaluation_info(eval_key)
+
+        eval_fields = [eval_key]
+        if samples._is_frame_field(eval_info.gt_field):
+            return eval_fields.append(samples._FRAMES_PREFIX + eval_key)
+
+        return eval_fields
+
     def cleanup(self, samples, eval_key):
+        eval_info = samples.get_evaluation_info(eval_key)
         samples._dataset.delete_sample_field(eval_key)
+        if samples._is_frame_field(eval_info.gt_field):
+            samples._dataset.delete_frame_field(eval_key)
 
 
 class SimpleEvaluationConfig(ClassificationEvaluationConfig):
@@ -162,10 +187,7 @@ class SimpleEvaluation(ClassificationEvaluation):
         classes=None,
         missing=None,
     ):
-        if samples._is_frame_field(pred_field):
-            raise ValueError(
-                "Frame-level classifications are not yet supported"
-            )
+        is_frame_field = samples._is_frame_field(gt_field)
 
         gt = gt_field + ".label"
         pred = pred_field + ".label"
@@ -175,13 +197,39 @@ class SimpleEvaluation(ClassificationEvaluation):
             [foa.Values(gt), foa.Values(pred), foa.Values(pred_conf)]
         )
 
-        if eval_key is not None:
+        if is_frame_field:
+            ytrue = list(itertools.chain.from_iterable(ytrue))
+            ypred = list(itertools.chain.from_iterable(ypred))
+            confs = list(itertools.chain.from_iterable(confs))
+
+        results = ClassificationResults(
+            ytrue, ypred, confs, classes=classes, missing=missing
+        )
+
+        if eval_key is None:
+            return results
+
+        if is_frame_field:
+            eval_frame = samples._FRAMES_PREFIX + eval_key
+            gt = gt[len(samples._FRAMES_PREFIX) :]
+            pred = pred[len(samples._FRAMES_PREFIX) :]
+
+            # Sample-level accuracies
+            samples._add_field_if_necessary(eval_key, fof.FloatField)
+            samples.set_field(
+                eval_key,
+                F("frames").map((F(gt) == F(pred)).to_double()).mean(),
+            ).save(eval_key)
+
+            # Per-frame accuracies
+            samples._add_field_if_necessary(eval_frame, fof.BooleanField)
+            samples.set_field(eval_frame, F(gt) == F(pred)).save(eval_frame)
+        else:
+            # Per-sample accuracies
             samples._add_field_if_necessary(eval_key, fof.BooleanField)
             samples.set_field(eval_key, F(gt) == F(pred)).save(eval_key)
 
-        return ClassificationResults(
-            ytrue, ypred, confs, classes=classes, missing=missing
-        )
+        return results
 
 
 class TopKEvaluationConfig(ClassificationEvaluationConfig):
@@ -220,20 +268,16 @@ class TopKEvaluation(ClassificationEvaluation):
         classes=None,
         missing=None,
     ):
-        if samples._is_frame_field(pred_field):
-            raise ValueError(
-                "Frame-level classifications are not yet supported"
-            )
-
         if classes is None:
             raise ValueError(
                 "You must provide the list of classes corresponding to your "
                 "logits in order to run top-k classification evaluation"
             )
 
+        is_frame_field = samples._is_frame_field(gt_field)
         k = self.config.k
 
-        # This extracts a `num_samples x num_classes` array of logits
+        # This extracts a potentially huge number of logits
         # @todo consider sample iteration for very large datasets
         ytrue, ypred, logits = samples.aggregate(
             [
@@ -245,44 +289,85 @@ class TopKEvaluation(ClassificationEvaluation):
 
         targets_map = {label: idx for idx, label in enumerate(classes)}
 
-        confs = []
-        correct = []
-        for idx, (_ytrue, _logits) in enumerate(zip(ytrue, logits)):
-            if _logits is None:
-                # No logits; no prediction
-                ypred[idx] = None
-                _conf = None
-                _correct = None
-                msg = (
-                    "Found sample(s) with no logits. Logits are required to "
-                    + "compute top-k accuracy"
+        if is_frame_field:
+            confs = []
+            correct = []
+            for _ytrue, _ypred, _logits in zip(ytrue, ypred, logits):
+                _confs, _correct = _evaluate_top_k(
+                    _ytrue, _ypred, _logits, k, targets_map
                 )
-                warnings.warn(msg)
-            else:
-                target = targets_map[_ytrue]
-                top_k = np.argpartition(_logits, -k)[-k:]
-                if target in top_k:
-                    # Truth is in top-k; use it
-                    ypred[idx] = _ytrue
-                    logit = _logits[target]
-                    _correct = True
-                else:
-                    # Truth is not in top-k; retain actual prediction
-                    logit = _logits[targets_map[ypred[idx]]]
-                    _correct = False
+                confs.append(_confs)
+                correct.append(_correct)
 
-                _conf = np.exp(logit) / np.sum(np.exp(_logits))
+            ytrue = list(itertools.chain.from_iterable(ytrue))
+            ypred = list(itertools.chain.from_iterable(ypred))
+            confs = list(itertools.chain.from_iterable(confs))
+        else:
+            confs, correct = _evaluate_top_k(
+                ytrue, ypred, logits, k, targets_map
+            )
 
-            confs.append(_conf)
-            correct.append(_correct)
+        results = ClassificationResults(
+            ytrue, ypred, confs, classes=classes, missing=missing
+        )
 
-        if eval_key is not None:
+        if eval_key is None:
+            return results
+
+        if is_frame_field:
+            eval_frame = samples._FRAMES_PREFIX + eval_key
+
+            # Sample-level accuracies
+            samples._add_field_if_necessary(eval_key, fof.FloatField)
+            samples.set_values(eval_key, [np.mean(c) for c in correct])
+
+            # Per-frame accuracies
+            samples._add_field_if_necessary(eval_frame, fof.BooleanField)
+            samples.set_values(eval_frame, correct)
+        else:
+            # Per-sample accuracies
             samples._add_field_if_necessary(eval_key, fof.BooleanField)
             samples.set_values(eval_key, correct)
 
-        return ClassificationResults(
-            ytrue, ypred, confs, classes=classes, missing=missing
-        )
+        return results
+
+
+def _evaluate_top_k(ytrue, ypred, logits, k, targets_map):
+    confs = []
+    correct = []
+    for idx, (_ytrue, _logits) in enumerate(zip(ytrue, logits)):
+        if _logits is None:
+            # No logits; no prediction
+            ypred[idx] = None
+            _conf = None
+            _correct = False
+            msg = (
+                "Found sample(s) with no logits. Logits are required to "
+                + "compute top-k accuracy"
+            )
+            warnings.warn(msg)
+        else:
+            target = targets_map[_ytrue]
+            top_k = np.argpartition(_logits, -k)[-k:]
+            if target in top_k:
+                # Truth is in top-k; use it
+                ypred[idx] = _ytrue
+                logit = _logits[target]
+                _correct = True
+            elif ypred[idx] is not None:
+                # Truth is not in top-k; retain actual prediction
+                logit = _logits[targets_map[ypred[idx]]]
+                _correct = False
+            else:
+                logit = -np.inf
+                _correct = False
+
+            _conf = np.exp(logit) / np.sum(np.exp(_logits))
+
+        confs.append(_conf)
+        correct.append(_correct)
+
+    return confs, correct
 
 
 class BinaryEvaluationConfig(ClassificationEvaluationConfig):
@@ -321,17 +406,14 @@ class BinaryEvaluation(ClassificationEvaluation):
         classes=None,
         missing=None,
     ):
-        if samples._is_frame_field(pred_field):
-            raise ValueError(
-                "Frame-level classifications are not yet supported"
-            )
-
         if classes is None or len(classes) != 2:
             raise ValueError(
                 "You must provide the ``(neg_label, pos_label)`` labels for "
                 "your task via the ``classes`` argument in order to run "
                 "binary evaluation"
             )
+
+        is_frame_field = samples._is_frame_field(gt_field)
 
         pos_label = classes[-1]
 
@@ -343,7 +425,43 @@ class BinaryEvaluation(ClassificationEvaluation):
             [foa.Values(gt), foa.Values(pred), foa.Values(pred_conf)]
         )
 
-        if eval_key is not None:
+        if is_frame_field:
+            ytrue = list(itertools.chain.from_iterable(ytrue))
+            ypred = list(itertools.chain.from_iterable(ypred))
+            confs = list(itertools.chain.from_iterable(confs))
+
+        results = BinaryClassificationResults(ytrue, ypred, confs, classes)
+
+        if eval_key is None:
+            return results
+
+        if is_frame_field:
+            eval_frame = samples._FRAMES_PREFIX + eval_key
+            gt = gt[len(samples._FRAMES_PREFIX) :]
+            pred = pred[len(samples._FRAMES_PREFIX) :]
+
+            # Sample-level accuracies
+            samples._add_field_if_necessary(eval_key, fof.FloatField)
+            samples.set_field(
+                eval_key,
+                F("frames").map((F(gt) == F(pred)).to_double()).mean(),
+            ).save(eval_key)
+
+            # Per-frame accuracies
+            samples._add_field_if_necessary(eval_frame, fof.StringField)
+            samples.set_field(
+                eval_frame,
+                F().switch(
+                    {
+                        (F(gt) == pos_label) & (F(pred) == pos_label): "TP",
+                        (F(gt) == pos_label) & (F(pred) != pos_label): "FN",
+                        (F(gt) != pos_label) & (F(pred) != pos_label): "TN",
+                        (F(gt) != pos_label) & (F(pred) == pos_label): "FP",
+                    }
+                ),
+            ).save(eval_frame)
+        else:
+            # Per-sample accuracies
             samples._add_field_if_necessary(eval_key, fof.StringField)
             samples.set_field(
                 eval_key,
@@ -357,7 +475,7 @@ class BinaryEvaluation(ClassificationEvaluation):
                 ),
             ).save(eval_key)
 
-        return BinaryClassificationResults(ytrue, ypred, confs, classes)
+        return results
 
 
 class ClassificationResults(EvaluationResults):
@@ -504,8 +622,10 @@ class ClassificationResults(EvaluationResults):
         cmap="viridis",
         xticks_rotation=45.0,
         ax=None,
+        figsize=None,
         block=False,
-        **kwargs,
+        return_ax=False,
+        **kwargs
     ):
         """Plots a confusion matrix for the results.
 
@@ -518,8 +638,12 @@ class ClassificationResults(EvaluationResults):
             xticks_rotation (45.0): a rotation for the x-tick labels. Can be
                 numeric degrees, or "vertical" or "horizontal"
             ax (None): an optional matplotlib axis to plot in
+            figsize (None): an optional ``(width, height)`` for the figure, in
+                inches
             block (False): whether to block execution when the plot is
                 displayed via ``matplotlib.pyplot.show(block=block)``
+            return_ax (False): whether to return the matplotlib axis containing
+                the plot
             **kwargs: optional keyword arguments for
                 ``sklearn.metrics.ConfusionMatrixDisplay.plot(**kwargs)``
 
@@ -538,8 +662,12 @@ class ClassificationResults(EvaluationResults):
             ax=ax,
             **kwargs,
         )
+        if figsize is not None:
+            display.figure_.set_size_inches(*figsize)
+
+        plt.tight_layout()
         plt.show(block=block)
-        return display.ax_
+        return display.ax_ if return_ax else None
 
 
 class BinaryClassificationResults(ClassificationResults):
@@ -592,15 +720,27 @@ class BinaryClassificationResults(ClassificationResults):
             sample_weight=self.weights,
         )
 
-    def plot_pr_curve(self, average="micro", ax=None, block=False, **kwargs):
+    def plot_pr_curve(
+        self,
+        average="micro",
+        ax=None,
+        figsize=None,
+        block=False,
+        return_ax=False,
+        **kwargs
+    ):
         """Plots a precision-recall (PR) curve for the results.
 
         Args:
             average ("micro"): the averaging strategy to use when computing
                 average precision
             ax (None): an optional matplotlib axis to plot in
+            figsize (None): an optional ``(width, height)`` for the figure, in
+                inches
             block (False): whether to block execution when the plot is
                 displayed via ``matplotlib.pyplot.show(block=block)``
+            return_ax (False): whether to return the matplotlib axis containing
+                the plot
             **kwargs: optional keyword arguments for
                 ``sklearn.metrics.PrecisionRecallDisplay.plot(**kwargs)``
 
@@ -617,19 +757,29 @@ class BinaryClassificationResults(ClassificationResults):
         display = skm.PrecisionRecallDisplay(
             precision=precision, recall=recall
         )
+
         label = "AP = %.2f" % avg_precision
         display.plot(ax=ax, label=label, **kwargs)
-        plt.show(block=block)
-        return display.ax_
+        if figsize is not None:
+            display.figure_.set_size_inches(*figsize)
 
-    def plot_roc_curve(self, ax=None, block=False, **kwargs):
+        plt.show(block=block)
+        return display.ax_ if return_ax else None
+
+    def plot_roc_curve(
+        self, ax=None, figsize=None, block=False, return_ax=False, **kwargs
+    ):
         """Plots a receiver operating characteristic (ROC) curve for the
         results.
 
         Args:
             ax (None): an optional matplotlib axis to plot in
+            figsize (None): an optional ``(width, height)`` for the figure, in
+                inches
             block (False): whether to block execution when the plot is
                 displayed via ``matplotlib.pyplot.show(block=block)``
+            return_ax (False): whether to return the matplotlib axis containing
+                the plot
             **kwargs: optional keyword arguments for
                 ``sklearn.metrics.RocCurveDisplay.plot(**kwargs)``
 
@@ -645,8 +795,11 @@ class BinaryClassificationResults(ClassificationResults):
         roc_auc = skm.auc(fpr, tpr)
         display = skm.RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc)
         display.plot(ax=ax, **kwargs)
+        if figsize is not None:
+            display.figure_.set_size_inches(*figsize)
+
         plt.show(block=block)
-        return display.ax_
+        return display.ax_ if return_ax else None
 
 
 def _parse_config(config, method, **kwargs):

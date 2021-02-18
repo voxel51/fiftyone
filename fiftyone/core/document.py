@@ -309,7 +309,8 @@ class Document(object):
 
     def reload(self):
         """Reloads the document from the database."""
-        self._doc.reload()
+        # only reload attrs that are in our schema
+        self._doc.reload(*list(self._doc))
 
     def _delete(self):
         """Deletes the document from the database."""
