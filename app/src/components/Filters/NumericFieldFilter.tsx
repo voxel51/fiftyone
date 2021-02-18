@@ -74,31 +74,36 @@ export const boundsAtom = selectorFamily<
 >({
   key: "numericFieldBounds",
   get: ({ path, defaultRange }) => ({ get }) => {
-    return (get(selectors.datasetStats) ?? []).reduce(
+    let bounds = (get(selectors.datasetStats) ?? []).reduce(
       (acc, cur) => {
         if (cur.name === path && cur._CLS === AGGS.BOUNDS) {
-          let { result: bounds } = cur;
-          let [maxMin, minMax]: Range = [null, null];
-          if (defaultRange) {
-            [maxMin, minMax] = defaultRange;
-            bounds = [
-              maxMin < bounds[0] ? maxMin : bounds[0],
-              minMax > bounds[1] ? minMax : bounds[1],
-            ];
-          }
-          return [
-            bounds[0] !== null && bounds[0] !== maxMin
-              ? Number((bounds[0] - 0.01).toFixed(2))
-              : bounds[0],
-            bounds[1] !== null && bounds[1] !== minMax
-              ? Number((bounds[1] + 0.01).toFixed(2))
-              : bounds[1],
-          ];
+          return cur.result;
         }
         return acc;
       },
       [null, null]
     );
+
+    if (bounds.every((b) => b === null)) {
+      return bounds;
+    }
+
+    let [maxMin, minMax]: Range = [null, null];
+    if (defaultRange) {
+      [maxMin, minMax] = defaultRange;
+      bounds = [
+        maxMin < bounds[0] ? maxMin : bounds[0],
+        minMax > bounds[1] ? minMax : bounds[1],
+      ];
+    }
+    return [
+      bounds[0] !== null && bounds[0] !== maxMin
+        ? Number((bounds[0] - 0.01).toFixed(2))
+        : bounds[0],
+      bounds[1] !== null && bounds[1] !== minMax
+        ? Number((bounds[1] + 0.01).toFixed(2))
+        : bounds[1],
+    ];
   },
 });
 
@@ -128,14 +133,26 @@ export const rangeModalAtom = atomFamily<
   default: rangeAtom,
 });
 
-export const noneAtom = selectorFamily<boolean, string>({
+export const noneAtom = selectorFamily<
+  boolean,
+  {
+    path: string;
+    defaultRange?: Range;
+  }
+>({
   key: "filterNumericFieldNone",
-  get: (path) => ({ get }) => getFilter(get, path).none,
-  set: (path) => ({ get, set }, value) =>
-    setFilter(get, set, path, "none", value),
+  get: ({ path }) => ({ get }) => getFilter(get, path).none,
+  set: ({ path, defaultRange }) => ({ get, set }, value) =>
+    setFilter(get, set, path, "none", value, defaultRange),
 });
 
-export const noneModalAtom = atomFamily<boolean, string>({
+export const noneModalAtom = atomFamily<
+  boolean,
+  {
+    path: string;
+    defaultRange?: Range;
+  }
+>({
   key: "modalFilterNumericFieldNone",
   default: true,
 });
@@ -154,7 +171,7 @@ export const fieldIsFiltered = selectorFamily<
       ? [noneModalAtom, rangeModalAtom]
       : [noneAtom, rangeAtom];
     const [none, range] = [
-      get(noneValue(path)),
+      get(noneValue({ path, defaultRange })),
       get(rangeValue({ path, defaultRange })),
     ];
     const bounds = get(boundsAtom({ path, defaultRange }));
@@ -180,7 +197,7 @@ const NumericFieldFilter = ({ expanded, entry }) => {
         boundsAtom={boundsAtom({ path: entry.path })}
         hasNoneAtom={hasNoneField(entry.path)}
         rangeAtom={rangeAtom({ path: entry.path })}
-        noneAtom={noneAtom(entry.path)}
+        noneAtom={noneAtom({ path: entry.path })}
         ref={ref}
       />
     </animated.div>

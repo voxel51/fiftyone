@@ -97,7 +97,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
               color={entry.color}
               name={"Confidence"}
               valueName={"confidence"}
-              noneAtom={noConfidence(cPath)}
+              noneAtom={noConfidence({ path: cPath, defaultRange: [0, 1] })}
               hasNoneAtom={hasNoneField(cPath)}
               boundsAtom={numericField.boundsAtom({
                 path: cPath,

@@ -200,12 +200,22 @@ def validate_evaluation(samples, eval_info):
 
     The evaluation may be invalid if, for example, an evaluation of a different
     type has already been run under the same evaluation key and thus
+    overwriting it would cause ambiguity on how to delete the evaluations.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         eval_info: an :class:`EvaluationInfo`
     """
     eval_key = eval_info.eval_key
+    if eval_key is None:
+        return
+
+    if not etau.is_str(eval_key) or not eval_key.isidentifier():
+        raise ValueError(
+            "Invalid eval_key '%s'. Evaluation keys must be valid variable "
+            "names" % eval_key
+        )
+
     if eval_key not in list_evaluations(samples):
         return
 

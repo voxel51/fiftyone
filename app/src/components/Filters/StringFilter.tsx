@@ -279,14 +279,22 @@ const StringFilterContainer = styled.div`
 type Props = {
   valuesAtom: RecoilValueReadOnly<string[]>;
   selectedValuesAtom: RecoilState<string[]>;
+  excludeAtom: RecoilState<boolean>;
   valueName: string;
   color?: string;
 };
 
 const StringFilter = React.memo(
-  ({ valuesAtom, selectedValuesAtom, valueName, color }: Props) => {
+  ({
+    valuesAtom,
+    selectedValuesAtom,
+    excludeAtom,
+    valueName,
+    color,
+  }: Props) => {
     const theme = useContext(ThemeContext);
     const values = useRecoilValue(valuesAtom);
+    const [exclude, setExclude] = useRecoilState(excludeAtom);
     const [selectedValues, setSelectedValues] = useRecoilState(
       selectedValuesAtom
     );
@@ -371,6 +379,31 @@ const StringFilter = React.memo(
               />
             )}
           </div>
+          {selected.length > 0 ? (
+            exclude ? (
+              <>
+                <a
+                  style={{ cursor: "pointer" }}
+                  onClick={() => setExclude(!exclude)}
+                >
+                  show
+                </a>
+                <span style={{ padding: "0 0.25rem" }}>|</span>
+                <a style={{ textDecoration: "underline" }}>excluding</a>
+              </>
+            ) : (
+              <>
+                <a style={{ textDecoration: "underline" }}>showing</a>
+                <span style={{ padding: "0 0.25rem" }}>|</span>
+                <a
+                  style={{ cursor: "pointer" }}
+                  onClick={() => setExclude(!exclude)}
+                >
+                  exclude
+                </a>
+              </>
+            )
+          ) : null}
           {selected.length ? (
             <Selected>
               {selected.map((s) => (
@@ -403,15 +436,6 @@ const NamedStringFilterHeader = styled.div`
   justify-content: space-between;
 `;
 
-const CheckboxContainer = styled.div`
-  background: ${({ theme }) => theme.backgroundDark};
-  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
-  border: 1px solid #191c1f;
-  border-radius: 2px;
-  color: ${({ theme }) => theme.fontDark};
-  margin-top: 0.25rem;
-`;
-
 type NamedProps = {
   valuesAtom: RecoilValueReadOnly<string[]>;
   selectedValuesAtom: RecoilState<string[]>;
@@ -422,17 +446,16 @@ type NamedProps = {
 };
 
 export const NamedStringFilter = React.memo(
-  React.forwardRef(
-    ({ name, excludeAtom, ...stringFilterProps }: NamedProps, ref) => {
-      const [values, setValues] = useRecoilState(
-        stringFilterProps.selectedValuesAtom
-      );
-      const [exclude, setExclude] = useRecoilState(excludeAtom);
+  React.forwardRef(({ name, ...stringFilterProps }: NamedProps, ref) => {
+    const [values, setValues] = useRecoilState(
+      stringFilterProps.selectedValuesAtom
+    );
 
-      return (
-        <NamedStringFilterContainer ref={ref}>
-          <NamedStringFilterHeader>
-            {name}
+    return (
+      <NamedStringFilterContainer ref={ref}>
+        <NamedStringFilterHeader>
+          {name}
+          <div>
             {values.length > 0 ? (
               <a
                 style={{ cursor: "pointer", textDecoration: "underline" }}
@@ -441,33 +464,14 @@ export const NamedStringFilter = React.memo(
                 reset
               </a>
             ) : null}
-          </NamedStringFilterHeader>
-          <StringFilterContainer>
-            <StringFilter {...stringFilterProps} />
-            <CheckboxContainer>
-              <FormControlLabel
-                label={
-                  <div style={{ lineHeight: "20px", fontSize: 14 }}>
-                    Exclude {name.toLowerCase()}
-                  </div>
-                }
-                control={
-                  <Checkbox
-                    checked={exclude}
-                    onChange={() => setExclude(!exclude)}
-                    style={{
-                      padding: "0 5px",
-                      color: stringFilterProps.color,
-                    }}
-                  />
-                }
-              />
-            </CheckboxContainer>
-          </StringFilterContainer>
-        </NamedStringFilterContainer>
-      );
-    }
-  )
+          </div>
+        </NamedStringFilterHeader>
+        <StringFilterContainer>
+          <StringFilter {...stringFilterProps} />
+        </StringFilterContainer>
+      </NamedStringFilterContainer>
+    );
+  })
 );
 
 export default StringFilter;

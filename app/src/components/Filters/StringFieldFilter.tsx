@@ -46,6 +46,9 @@ const setFilter = (
     [key]: value,
     _CLS: "str",
   };
+  if (filter.values.length === 0) {
+    filter.exclude = false;
+  }
   if (meetsDefault(filter)) {
     set(selectors.filterStage(path), null);
   } else {

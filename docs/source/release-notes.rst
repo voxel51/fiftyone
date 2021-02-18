@@ -3,7 +3,101 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
-.. _release-notes-v0.7.2:
+.. _release-notes-v0.7.3:
+
+FiftyOne 0.7.3
+--------------
+*Released February 18, 2021*
+
+App
+^^^
+- Added filtering widgets to the Fields Sidebar for
+  :class:`StringFields <fiftyone.core.fields.StringField>` and
+  :class:`BooleanFields <fiftyone.core.fields.BooleanField>`
+- Added histogram plots for
+  :class:`StringFields <fiftyone.core.fields.StringField>` and
+  :class:`BooleanFields <fiftyone.core.fields.BooleanField>` in the `Scalars`
+  tab
+- Moved `None` selection for
+  :class:`StringFields <fiftyone.core.fields.StringField>` to the input format
+  in the Fields Sidebar
+- Changed `None` options to only be present when `None` values exist for a
+  supported :class:`Field <fiftyone.core.fields.Field>` in the Fields Sidebar
+- Added `Color by label` support for
+  :class:`Classification <fiftyone.core.labels.Classification>`,
+  :class:`Classifications <fiftyone.core.labels.Classifications>`,
+  :class:`BooleanField <fiftyone.core.fields.BooleanField>`, and
+  :class:`StringField <fiftyone.core.fields.StringField>`
+- Added support excluding selected values for a
+  :class:`StringField <fiftyone.core.fields.StringField>` in the Fields
+  Sidebar
+- Various style and interaction improvements in the Fields Sidebar
+- The App will no longer crash when samples whose source media is unsupported
+  or missing are loaded
+
+Core
+^^^^
+- Added
+  :meth:`evaluate_classifications() <fiftyone.core.collections.SampleCollection.evaluate_classifications>`,
+  :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`, and
+  :meth:`evaluate_segmentations() <fiftyone.core.collections.SampleCollection.evaluate_segmentations>`
+  methods that provide support for evaluating various types of labels. See the
+  new :ref:`evaluation page <evaluating-models>` of the user guide for more
+  details
+- Added :meth:`one() <fiftyone.core.collections.SampleCollection>` for retrieving
+  one matched |Sample| from a |Dataset| or |DatasetView|
+- Added support for cloning and saving views into video datasets via
+  :meth:`clone() <fiftyone.core.view.DatasetView.clone>` and
+  :meth:`save() <fiftyone.core.view.DatasetView.save>`
+- Added support for extracting batches of frame-level and/or array fields via
+  the :meth:`values() <fiftyone.core.collections.SampleCollection.values>`
+  aggregation
+- Added support for setting batches of frame-level and/or array fields via
+  :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+- Added support for accessing samples from a |Dataset| or |DatasetView| via
+  the `dataset[filepath]` syntax
+- Added support for passing |Sample| and any |Sample| iterable, e.g.
+  |DatasetView|, to methods like
+  :meth:`remove_samples() <fiftyone.core.dataset.Dataset.remove_samples>`,
+  :meth:`exclude() <fiftyone.core.collections.SampleCollection.exclude>`, and
+  :meth:`select() <fiftyone.core.collections.SampleCollection.select>`
+- Changed the default value for `only_matches` for
+  :meth:`filter_classifications() <fiftyone.core.collections.SampleCollection.filter_classifications>`,
+  :meth:`filter_detections() <fiftyone.core.collections.SampleCollection.filter_detections>`,
+  :meth:`filter_field() <fiftyone.core.collections.SampleCollection.filter_field>`,
+  :meth:`filter_labels() <fiftyone.core.collections.SampleCollection.filter_labels>`,
+  :meth:`filter_keypoints() <fiftyone.core.collections.SampleCollection.filter_keypoints>`,
+  and
+  :meth:`filter_polylines() <fiftyone.core.collections.SampleCollection.filter_polylines>`
+  from `False` to `True`
+- :meth:`compute_metadata() <fiftyone.core.collections.SampleCollection.compute_metadata>`
+  will now gracefully skip samples for which media metadata cannot be computed
+- Added a :meth:`stats() <fiftyone.core.dataset.Dataset.stats>` method for
+  listing helpful info about the size of various entities of a dataset
+
+Zoo
+^^^
+- Added support for storing logits for many :ref:`zoo models <model-zoo>` when
+  using
+  :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
+- Default confidence thresholds for :ref:`zoo models <model-zoo>` are now
+  stored on a per-model basis rather than as a global default value in
+  :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`.
+  All detection models still have a default confidence threshold of 0.3, and
+  all other model types have no default confidence threshold
+
+CLI
+^^^
+- Added a :ref:`migration API <downgrading-fiftyone>` to provide better support
+  for downgrading the version of your `fiftyone` package
+
+Docs
+^^^^
+- Added a new :ref:`evaluation page <evaluating-models>` to the user guide that
+  explains how to evaluate various types of models with FiftyOne
+- Removed legacy `--index` flags from the install instructions from the
+  :ref:`troubleshooting page <alternative-builds>` which prevented a valid
+  installation
 
 FiftyOne 0.7.2
 --------------
@@ -39,7 +133,7 @@ Core
   |ViewExpression| methods including powerful transformations like
   :meth:`map_values() <fiftyone.core.expressions.ViewExpression.map_values>`,
   :meth:`reduce() <fiftyone.core.expressions.ViewExpression.reduce>`, and
-  :meth:`sort_by() <fiftyone.core.expressions.ViewExpression.sort_by>`
+  :meth:`sort() <fiftyone.core.expressions.ViewExpression.sort>`
 - Exposed all :class:`Aggregtaions <fiftyone.core.aggregations.Aggregation>` as
   single execution methods on the |SampleCollection| interface, e.g.,
   :meth:`distinct() <fiftyone.core.collections.SampleCollection.distinct>`
@@ -77,7 +171,7 @@ Zoo
 
 CLI
 ^^^
-- Added a :ref:`fiftyone app config <cli-fiftyone-zpp-config>` command for
+- Added a :ref:`fiftyone app config <cli-fiftyone-app-config>` command for
   inspecting the default :ref:`App config <configuring-fiftyone-app>`
 - Improved `ctrl + c` exit handling for CLI commands
 

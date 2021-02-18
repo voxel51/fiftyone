@@ -322,12 +322,13 @@ class COCODetectionResults(DetectionResults):
             )
             label = "AP = %.2f, class = %s" % (avg_precision, c)
             display.plot(ax=ax, label=label, **kwargs)
+            ax = display.ax_
 
         if figsize is not None:
             display.figure_.set_size_inches(*figsize)
 
         plt.show(block=block)
-        return display.ax_ if return_ax else None
+        return ax if return_ax else None
 
     def mAP(self, classes=None):
         """Computes COCO-style mean average precision (mAP) for the specified
