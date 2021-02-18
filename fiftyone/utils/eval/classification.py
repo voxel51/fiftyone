@@ -620,8 +620,10 @@ class ClassificationResults(EvaluationResults):
         cmap="viridis",
         xticks_rotation=45.0,
         ax=None,
+        figsize=None,
         block=False,
-        **kwargs,
+        return_ax=False,
+        **kwargs
     ):
         """Plots a confusion matrix for the results.
 
@@ -634,8 +636,12 @@ class ClassificationResults(EvaluationResults):
             xticks_rotation (45.0): a rotation for the x-tick labels. Can be
                 numeric degrees, or "vertical" or "horizontal"
             ax (None): an optional matplotlib axis to plot in
+            figsize (None): an optional ``(width, height)`` for the figure, in
+                inches
             block (False): whether to block execution when the plot is
                 displayed via ``matplotlib.pyplot.show(block=block)``
+            return_ax (False): whether to return the matplotlib axis containing
+                the plot
             **kwargs: optional keyword arguments for
                 ``sklearn.metrics.ConfusionMatrixDisplay.plot(**kwargs)``
 
@@ -654,9 +660,12 @@ class ClassificationResults(EvaluationResults):
             ax=ax,
             **kwargs,
         )
+        if figsize is not None:
+            display.figure_.set_size_inches(*figsize)
+
         plt.tight_layout()
         plt.show(block=block)
-        return display.ax_
+        return display.ax_ if return_ax else None
 
 
 class BinaryClassificationResults(ClassificationResults):
@@ -709,15 +718,27 @@ class BinaryClassificationResults(ClassificationResults):
             sample_weight=self.weights,
         )
 
-    def plot_pr_curve(self, average="micro", ax=None, block=False, **kwargs):
+    def plot_pr_curve(
+        self,
+        average="micro",
+        ax=None,
+        figsize=None,
+        block=False,
+        return_ax=False,
+        **kwargs
+    ):
         """Plots a precision-recall (PR) curve for the results.
 
         Args:
             average ("micro"): the averaging strategy to use when computing
                 average precision
             ax (None): an optional matplotlib axis to plot in
+            figsize (None): an optional ``(width, height)`` for the figure, in
+                inches
             block (False): whether to block execution when the plot is
                 displayed via ``matplotlib.pyplot.show(block=block)``
+            return_ax (False): whether to return the matplotlib axis containing
+                the plot
             **kwargs: optional keyword arguments for
                 ``sklearn.metrics.PrecisionRecallDisplay.plot(**kwargs)``
 
@@ -734,19 +755,29 @@ class BinaryClassificationResults(ClassificationResults):
         display = skm.PrecisionRecallDisplay(
             precision=precision, recall=recall
         )
+
         label = "AP = %.2f" % avg_precision
         display.plot(ax=ax, label=label, **kwargs)
-        plt.show(block=block)
-        return display.ax_
+        if figsize is not None:
+            display.figure_.set_size_inches(*figsize)
 
-    def plot_roc_curve(self, ax=None, block=False, **kwargs):
+        plt.show(block=block)
+        return display.ax_ if return_ax else None
+
+    def plot_roc_curve(
+        self, ax=None, figsize=None, block=False, return_ax=False, **kwargs
+    ):
         """Plots a receiver operating characteristic (ROC) curve for the
         results.
 
         Args:
             ax (None): an optional matplotlib axis to plot in
+            figsize (None): an optional ``(width, height)`` for the figure, in
+                inches
             block (False): whether to block execution when the plot is
                 displayed via ``matplotlib.pyplot.show(block=block)``
+            return_ax (False): whether to return the matplotlib axis containing
+                the plot
             **kwargs: optional keyword arguments for
                 ``sklearn.metrics.RocCurveDisplay.plot(**kwargs)``
 
@@ -762,8 +793,11 @@ class BinaryClassificationResults(ClassificationResults):
         roc_auc = skm.auc(fpr, tpr)
         display = skm.RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc)
         display.plot(ax=ax, **kwargs)
+        if figsize is not None:
+            display.figure_.set_size_inches(*figsize)
+
         plt.show(block=block)
-        return display.ax_
+        return display.ax_ if return_ax else None
 
 
 def _parse_config(config, method, **kwargs):
