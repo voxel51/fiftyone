@@ -273,15 +273,6 @@ const SampleModal = (
   // save overlay options when navigating - these are restored by passing them
   // in defaultOverlayOptions when the new player is created
   const playerRef = useRef();
-  const wrapNavigationFunc = (callback) => {
-    if (callback) {
-      return () => {
-        callback();
-      };
-    }
-  };
-  const onPrevious = wrapNavigationFunc(rest.onPrevious);
-  const onNext = wrapNavigationFunc(rest.onNext);
 
   const handleResize = () => {
     if (!playerRef.current || !playerContainerRef.current || showJSON) {
@@ -329,10 +320,10 @@ const SampleModal = (
       } else if (onClose) {
         onClose();
       }
-    } else if (e.key == "ArrowLeft" && onPrevious) {
-      onPrevious();
-    } else if (e.key == "ArrowRight" && onNext) {
-      onNext();
+    } else if (e.key == "ArrowLeft" && rest.onPrevious) {
+      rest.onPrevious();
+    } else if (e.key == "ArrowRight" && rest.onNext) {
+      rest.onNext();
     }
   });
 
@@ -350,6 +341,7 @@ const SampleModal = (
     hideCheckbox = false,
     filteredCountOrExists
   ) => {
+    console.log(selected);
     return [...values].sort().map(({ name, type }) => ({
       hideCheckbox,
       name,
@@ -369,14 +361,13 @@ const SampleModal = (
     }));
   };
 
-  const handleSetDisplayOption = (setSelected) => (entry) => {
+  const handleSetDisplayOption = (setSelected) => (entry) =>
     setSelected((selected) => {
       if (entry.selected) {
         return [entry.name, ...selected];
       }
       return selected.filter((e) => e !== entry.name);
     });
-  };
 
   const tagSampleExists = tagNames.reduce(
     (acc, tag) => ({
