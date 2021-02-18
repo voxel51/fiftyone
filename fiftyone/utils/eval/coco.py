@@ -281,20 +281,33 @@ class COCODetectionResults(DetectionResults):
         self.iou_threshs = iou_threshs
         self._classwise_AP = np.mean(precision, axis=(0, 2))
 
-    def plot_pr_curves(self, classes=None, ax=None, block=False, **kwargs):
+    def plot_pr_curves(
+        self,
+        classes=None,
+        ax=None,
+        figsize=None,
+        block=False,
+        return_ax=False,
+        **kwargs
+    ):
         """Plots precision-recall (PR) curves for the detection results.
 
         Args:
             classes (None): a list of classes to generate curves for. By
                 default, top 3 AP classes will be plotted
             ax (None): an optional matplotlib axis to plot in
+            figsize (None): an optional ``(width, height)`` for the figure, in
+                inches
             block (False): whether to block execution when the plot is
                 displayed via ``matplotlib.pyplot.show(block=block)``
+            return_ax (False): whether to return the matplotlib axis containing
+                the plots
             **kwargs: optional keyword arguments for
                 ``sklearn.metrics.PrecisionRecallDisplay.plot(**kwargs)``
 
         Returns:
-            the matplotlib axis containing the plots
+            None, or, if ``return_ax`` is True, the matplotlib axis containing
+            the plots
         """
         if not classes:
             inds = np.argsort(self._classwise_AP)[::-1][:3]
@@ -309,11 +322,12 @@ class COCODetectionResults(DetectionResults):
             )
             label = "AP = %.2f, class = %s" % (avg_precision, c)
             display.plot(ax=ax, label=label, **kwargs)
-            ax = display.ax_
+
+        if figsize is not None:
+            display.figure_.set_size_inches(*figsize)
 
         plt.show(block=block)
-
-        return ax
+        return display.ax_ if return_ax else None
 
     def mAP(self, classes=None):
         """Computes COCO-style mean average precision (mAP) for the specified
@@ -326,7 +340,7 @@ class COCODetectionResults(DetectionResults):
             classes (None): a list of classes for which to compute mAP
 
         Returns:
-            the mAP float
+            the mAP in ``[0, 1]``
         """
         if classes is not None:
             class_inds = [self.classes.index(c) for c in classes]
@@ -334,11 +348,11 @@ class COCODetectionResults(DetectionResults):
         else:
             classwise_AP = self._classwise_AP
 
-        existing_classes = classwise_AP > -1
-        if not any(existing_classes):
+        classwise_AP = classwise_AP[classwise_AP > -1]
+        if classwise_AP.size == 0:
             return -1
 
-        return np.mean(classwise_AP[existing_classes])
+        return np.mean(classwise_AP)
 
 
 _NO_MATCH_ID = ""
