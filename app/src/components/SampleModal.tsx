@@ -365,15 +365,17 @@ const SampleModal = (
       filteredCount: filteredCountOrExists
         ? filteredCountOrExists[name]
         : undefined,
-      selected: Boolean(selected[name]),
+      selected: selected.includes(name),
     }));
   };
 
   const handleSetDisplayOption = (setSelected) => (entry) => {
-    setSelected((selected) => ({
-      ...selected,
-      [entry.name]: entry.selected,
-    }));
+    setSelected((selected) => {
+      if (entry.selected) {
+        return [entry.name, ...selected];
+      }
+      return selected.filter((e) => e !== entry.name);
+    });
   };
 
   const tagSampleExists = tagNames.reduce(

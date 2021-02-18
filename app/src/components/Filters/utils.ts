@@ -90,10 +90,9 @@ export const activeLabelPaths = selectorFamily<string[], boolean>({
   key: "activeLabelPaths",
   get: (modal) => ({ get }) => {
     const node = modal ? modalActiveLabels : activeLabels;
-    return [
-      ...get(node("sample")),
-      ...get(node("frames")).map((l) => "frames." + l),
-    ];
+    const sample = get(node("sample"));
+    const frame = get(node("frames")).map((l) => "frames." + l);
+    return [...sample, ...frame];
   },
 });
 
