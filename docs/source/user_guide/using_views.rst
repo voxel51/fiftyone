@@ -420,21 +420,12 @@ Here are some self-contained examples for each task:
 
             dataset = foz.load_zoo_dataset("imagenet-sample")
 
-            # Only include labels in the `ground_truth` field whose `label` is
-            # "slug" or "conch"
+            # Only include samples whose ground truth `label` is "slug" or "conch"
             slug_conch_view = dataset.filter_labels(
                 "ground_truth", (F("label") == "slug") | (F("label") == "conch")
             )
 
-            # Same as above, but only include samples with a ground truth
-            # label after filtering
-            only_slug_conch_view = dataset.filter_labels(
-                "ground_truth",
-                (F("label") == "slug") | (F("label") == "conch"),
-                only_matches=True,
-            )
-
-            session = fo.launch_app(view=only_slug_conch_view)
+            session = fo.launch_app(view=slug_conch_view)
 
     .. tab:: Detections
 
@@ -449,19 +440,12 @@ Here are some self-contained examples for each task:
             # Bboxes are in [top-left-x, top-left-y, width, height] format
             bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
 
-            # Only include predictions whose bounding boxes have an area of at
-            # least 50% of the image
-            show_large_boxes_view = dataset.filter_labels(
-                "predictions", bbox_area >= 0.5
-            )
+            # Only includes predictions whose bounding boxes have an area of at
+            # least 50% of the image, and only include samples with at least
+            # one prediction after filtering
+            large_boxes_view = dataset.filter_labels("predictions", bbox_area >= 0.5)
 
-            # Same as above, but only include samples with at least one
-            # prediction after filtering
-            only_large_boxes_view = dataset.filter_labels(
-                "predictions", bbox_area >= 0.5, only_matches=True
-            )
-
-            session = fo.launch_app(view=only_large_boxes_view)
+            session = fo.launch_app(view=large_boxes_view)
 
     .. tab:: Polylines
 
@@ -483,19 +467,11 @@ Here are some self-contained examples for each task:
                 "bdd100k", split="validation", source_dir=source_dir
             )
 
-            # Only include polylines that are filled
-            # (i.e., polygons, not polylines)
-            polygons_view = dataset.filter_labels(
-                "gt_polylines", F("filled") == True
-            )
+            # Only include polylines that are filled (polygons, not polylines),
+            # and only include samples with at least one polygon after filtering
+            polygons_view = dataset.filter_labels("gt_polylines", F("filled") == True)
 
-            # Same as above, but only include samples with at least one polygon
-            # after filtering
-            only_polygons_view = dataset.filter_labels(
-                "gt_polylines", F("filled") == True, only_matches=True
-            )
-
-            session = fo.launch_app(view=only_polygons_view)
+            session = fo.launch_app(view=polygons_view)
 
     .. tab:: Keypoints
 
@@ -527,9 +503,7 @@ Here are some self-contained examples for each task:
             # sample that have at least 10 vertices, and only include samples
             # with at least one keypoint instance after filtering
             many_points_view = dataset.filter_labels(
-                "rcnn_keypoints",
-                F("points").length() >= 10,
-                only_matches=True,
+                "rcnn_keypoints", F("points").length() >= 10,
             )
 
             session = fo.launch_app(view=many_points_view)
@@ -722,8 +696,30 @@ Need to filter your detections by bounding box area? Use this |ViewExpression|!
     # Bboxes are in [top-left-x, top-left-y, width, height] format
     bbox_area = F("bounding_box")[2] * F("bounding_box")[3]
 
+    # Only contains boxes whose area is between 5% and 50% of the image
     medium_boxes_view = dataset.filter_labels(
         "predictions", (0.05 <= bbox_area) & (bbox_area < 0.5)
+    )
+
+FiftyOne stores bounding box coordinates as relative values in ``[0, 1]``.
+However, you can use the expression below to filter by absolute pixel area:
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone import ViewField as F
+
+    dataset.compute_metadata()
+
+    # Computes the area of each bounding box in pixels
+    bbox_area = (
+        F("$metadata.width") * F("bounding_box")[2] *
+        F("$metadata.height") * F("bounding_box")[3]
+    )
+
+    # Only contains boxes whose area is between 32^2 and 96^2 pixels
+    medium_boxes_view = dataset.filter_labels(
+        "predictions", (32 ** 2 < bbox_area) & (bbox_area < 96 ** 2)
     )
 
 Removing a batch of samples from a dataset
