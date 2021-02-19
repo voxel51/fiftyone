@@ -11,6 +11,7 @@ import weakref
 
 from pymongo import ReplaceOne
 
+from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.document import Document
 import fiftyone.core.frame_utils as fofu
 from fiftyone.core.odm.frame import (
@@ -339,8 +340,14 @@ class Frames(object):
 
         repl_fns = sorted(self._replacements.keys())
         repl_fn = repl_fns[0] if repl_fns else None
-        find_d = {"_sample_id": self._sample._id}
-        for d in self._frame_collection.find(find_d):
+        view = self._view or self._sample._dataset
+        try:
+            result = next(
+                view.match(F("filepath") == self._sample.filepath)._aggregate()
+            )
+        except:
+            result = {"frames": []}
+        for d in result["frames"]:
             if repl_fn is not None and d["frame_number"] >= repl_fn:
                 self._iter_frame = self._replacements[repl_fn]
                 repl_fn += 1

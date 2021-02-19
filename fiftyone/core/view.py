@@ -178,9 +178,8 @@ class DatasetView(foc.SampleCollection):
         selected_fields, excluded_fields = self._get_selected_excluded_fields()
         filtered_fields = self._get_filtered_fields()
 
-        for d in self._aggregate():
+        for d in self._aggregate(detach_frames=True):
             try:
-                frames = d.pop("frames", [])
                 doc = self._dataset._sample_dict_to_doc(d)
                 sample = fos.SampleView(
                     doc,
@@ -189,8 +188,6 @@ class DatasetView(foc.SampleCollection):
                     excluded_fields=excluded_fields,
                     filtered_fields=filtered_fields,
                 )
-                if self.media_type == fom.VIDEO:
-                    sample.frames._set_replacements(frames)
 
                 yield sample
             except Exception as e:
@@ -587,7 +584,13 @@ class DatasetView(foc.SampleCollection):
 
         return False
 
-    def _pipeline(self, pipeline=None, attach_frames=True, frames_only=False):
+    def _pipeline(
+        self,
+        pipeline=None,
+        attach_frames=True,
+        detach_frames=False,
+        frames_only=False,
+    ):
         _pipeline = []
         for s in self._stages:
             _pipeline.extend(s.to_mongo(self))
@@ -598,15 +601,23 @@ class DatasetView(foc.SampleCollection):
         if not attach_frames:
             attach_frames = self._needs_frames()
 
+        if not attach_frames:
+            detach_frames = False
+
         return self._dataset._pipeline(
             pipeline=_pipeline,
             attach_frames=attach_frames,
+            detach_frames=detach_frames,
             frames_only=frames_only,
         )
 
-    def _aggregate(self, pipeline=None, attach_frames=True):
+    def _aggregate(
+        self, pipeline=None, attach_frames=True, detach_frames=False
+    ):
         _pipeline = self._pipeline(
-            pipeline=pipeline, attach_frames=attach_frames
+            pipeline=pipeline,
+            attach_frames=attach_frames,
+            detach_frames=detach_frames,
         )
         return self._dataset._sample_collection.aggregate(_pipeline)
 

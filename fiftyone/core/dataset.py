@@ -1016,12 +1016,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
-        for d in self._aggregate():
-            frames = d.pop("frames", [])
+        for d in self._aggregate(detach_frames=True):
             doc = self._sample_dict_to_doc(d)
             sample = fos.Sample.from_doc(doc, dataset=self)
-            if self.media_type == fom.VIDEO:
-                sample.frames._set_replacements(frames)
 
             yield sample
 
@@ -2461,7 +2458,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _add_view_stage(self, stage):
         return self.view().add_stage(stage)
 
-    def _pipeline(self, pipeline=None, attach_frames=True, frames_only=False):
+    def _pipeline(
+        self,
+        pipeline=None,
+        attach_frames=True,
+        detach_frames=False,
+        frames_only=False,
+    ):
         if frames_only:
             attach_frames = True
 
@@ -2482,7 +2485,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if pipeline is not None:
             _pipeline += pipeline
 
-        if frames_only:
+        if detach_frames:
+            _pipeline += [{"$project": {"frames": False}}]
+        elif frames_only:
             _pipeline += [
                 {"$project": {"frames": True}},
                 {"$unwind": "$frames"},
@@ -2491,9 +2496,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return _pipeline
 
-    def _aggregate(self, pipeline=None, attach_frames=True):
+    def _aggregate(
+        self, pipeline=None, attach_frames=True, detach_frames=False
+    ):
         _pipeline = self._pipeline(
-            pipeline=pipeline, attach_frames=attach_frames
+            pipeline=pipeline,
+            attach_frames=attach_frames,
+            detach_frames=detach_frames,
         )
 
         return self._sample_collection.aggregate(_pipeline)
