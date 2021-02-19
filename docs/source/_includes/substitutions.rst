@@ -12,6 +12,10 @@
 .. |Frame| replace:: :class:`Frame <fiftyone.core.frame.Frame>`
 
 .. |Field| replace:: :class:`Field <fiftyone.core.fields.Field>`
+.. |BooleanField| replace:: :class:`BooleanField <fiftyone.core.fields.BooleanField>`
+.. |IntField| replace:: :class:`IntField <fiftyone.core.fields.IntField>`
+.. |FloatField| replace:: :class:`FloatField <fiftyone.core.fields.FloatField>`
+.. |StringField| replace:: :class:`StringField <fiftyone.core.fields.StringField>`
 .. |ListField| replace:: :class:`ListField <fiftyone.core.fields.ListField>`
 .. |DictField| replace:: :class:`DictField <fiftyone.core.fields.DictField>`
 
