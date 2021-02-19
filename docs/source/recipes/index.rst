@@ -46,10 +46,17 @@ workflows.
     :tags: Basics,Dataset-Curation
 
 .. customcarditem::
-    :header: Add model predictions to a dataset
-    :description: Add FiftyOne to your model training and analysis loop to visualize and analyze your model's predictions.
-    :link: model_inference.html
-    :image: ../_static/images/recipes/model_inference.png
+    :header: Adding classifier predictions to a dataset
+    :description: Add FiftyOne to your model training and analysis loop to visualize and analyze your classifier's predictions.
+    :link: adding_classifications.html
+    :image: ../_static/images/recipes/adding_classifications.png
+    :tags: Basics,Model-Training
+
+.. customcarditem::
+    :header: Adding object detections to a dataset
+    :description: Use FiftyOne to store your object detections and use the FiftyOne App to analyze them.
+    :link: adding_detections.html
+    :image: ../_static/images/recipes/adding_detections.png
     :tags: Basics,Model-Training
 
 .. customcarditem::
@@ -65,13 +72,6 @@ workflows.
     :link: convert_datasets.html
     :image: ../_static/images/recipes/convert_datasets.png
     :tags: Basics,I/O
-
-.. customcarditem::
-    :header: Compute detection mistakenness
-    :description: Use the FiftyOne Brain's mistakenness feature to find annotation errors in your object detections.
-    :link: detection_mistakenness.html
-    :image: ../_static/images/recipes/detection_mistakenness.png
-    :tags: Advanced,Dataset-Curation,Visualization,Brain
 
 .. customcarditem::
     :header: Merge datasets
@@ -126,10 +126,10 @@ workflows.
    :hidden:
 
    Remove duplicate images<image_deduplication.ipynb>
-   Add model predictions<model_inference.ipynb>
+   Adding classifier predictions<adding_classifications.ipynb>
+   Adding object detections<adding_detections.ipynb>
    Draw labels on samples<draw_labels.ipynb>
    Convert dataset formats<convert_datasets.ipynb>
-   Detection mistakes<detection_mistakenness.ipynb>
    Merge datasets<merge_datasets.ipynb>
    Custom dataset importers<custom_importer.ipynb>
    Custom dataset exporters<custom_exporter.ipynb>

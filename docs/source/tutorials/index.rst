@@ -55,14 +55,21 @@ your datasets and turn your good models into *great models*.
     :description: Your models need diverse data. This tutorial shows how FiftyOne can remove near-duplicate images and recommend unique samples for model training.
     :link: uniqueness.html
     :image: ../_static/images/tutorials/uniqueness.png
-    :tags: Getting-Started,Dataset-Evaluation
+    :tags: Getting-Started,Dataset-Evaluation,Brian
 
 .. customcarditem::
-    :header: Finding label mistakes
-    :description: Better models start with better data. This tutorial shows how FiftyOne can automatically find possible label mistakes in your datasets.
-    :link: label_mistakes.html
-    :image: ../_static/images/tutorials/label_mistakes.png
-    :tags: Getting-Started,Dataset-Evaluation
+    :header: Finding classification mistakes
+    :description: Better models start with better data. This tutorial shows how FiftyOne can automatically find possible label mistakes in your classification datasets.
+    :link: classification_mistakes.html
+    :image: ../_static/images/tutorials/classification_mistakes.png
+    :tags: Getting-Started,Dataset-Evaluation,Brian
+
+.. customcarditem::
+    :header: Finding detection mistakes
+    :description: How good are your ground truth objects? Use the FiftyOne Brain's mistakenness feature to find annotation errors in your object detections.
+    :link: detection_mistakes.html
+    :image: ../_static/images/tutorials/detection_mistakes.png
+    :tags: Getting-Started,Dataset-Evaluation,Brian
 
 .. End of tutorial cards
 
@@ -91,4 +98,5 @@ your datasets and turn your good models into *great models*.
    Evaluating object detections<evaluate_detections.ipynb>
    Evaluating a classifier<evaluate_classifications.ipynb>
    Exploring image uniqueness<uniqueness.ipynb>
-   Finding label mistakes<label_mistakes.ipynb>
+   Finding class mistakes<classification_mistakes.ipynb>
+   Finding detection mistakes<detection_mistakes.ipynb>

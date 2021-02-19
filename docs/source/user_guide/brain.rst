@@ -144,7 +144,7 @@ datasets.
         .. note::
 
             Check out the
-            :doc:`label mistakes tutorial <../tutorials/label_mistakes>`
+            :doc:`label mistakes tutorial <../tutorials/classification_mistakes>`
             to see an example use case of the Brain's mistakenness method on
             a classification dataset.
 
@@ -219,7 +219,7 @@ datasets.
         .. note::
 
             Check out the
-            :doc:`detection mistakenness recipe <../recipes/detection_mistakenness>`
+            :doc:`detection mistakes tutorials <../tutorials/detection_mistakes>`
             to see an example use case of the Brain's mistakenness method on a
             detection dataset.
 
