@@ -154,20 +154,27 @@ export const sampleModalFilter = selector({
         };
       }, {}),
     };
+    const hiddenObjects = get(atoms.hiddenObjects);
+
     return (sample) => {
       return Object.entries(sample).reduce((acc, [key, value]) => {
+        if (value && hiddenObjects[value.id]) {
+          return acc;
+        }
         if (key === "tags") {
           acc[key] = value;
         } else if (value && VALID_LIST_TYPES.includes(value._cls)) {
-          acc[key] =
-            filters[key] && value !== null
-              ? {
-                  ...value,
-                  [value._cls.toLowerCase()]: value[
-                    value._cls.toLowerCase()
-                  ].filter(filters[key]),
-                }
-              : value;
+          if (activeLabels[key]) {
+            acc[key] =
+              filters[key] && value !== null
+                ? {
+                    ...value,
+                    [value._cls.toLowerCase()]: value[
+                      value._cls.toLowerCase()
+                    ].filter((l) => filters[key](l) && !hiddenObjects[l.id]),
+                  }
+                : value;
+          }
         } else if (value !== null && filters[key] && filters[key](value)) {
           acc[key] = value;
         } else if (RESERVED_FIELDS.includes(key)) {
