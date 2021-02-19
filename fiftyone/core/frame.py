@@ -347,6 +347,7 @@ class Frames(object):
             )
         except:
             result = {"frames": []}
+
         for d in result["frames"]:
             if repl_fn is not None and d["frame_number"] >= repl_fn:
                 self._iter_frame = self._replacements[repl_fn]
