@@ -56,6 +56,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
     };
     const filters = {};
     const typeMap = get(selectors.labelTypesMap);
+    const hiddenObjects = modal ? get(atoms.hiddenObjects) : null;
     for (const label in labels) {
       const path = `${label}${getPathExtension(typeMap[label])}`;
 
@@ -84,6 +85,9 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
       ];
 
       filters[label] = (s) => {
+        if (hiddenObjects && hiddenObjects[s.id]) {
+          return false;
+        }
         const inRange =
           cRange[0] - 0.005 <= s.confidence &&
           s.confidence <= cRange[1] + 0.005;
