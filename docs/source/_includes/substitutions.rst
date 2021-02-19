@@ -1,5 +1,4 @@
 .. |Dataset| replace:: :class:`Dataset <fiftyone.core.dataset.Dataset>`
-.. |WhatIsAFiftyOneDataset| replace:: :ref:`FiftyOne Dataset <what-is-a-fiftyone-dataset>`
 
 .. |SampleCollection| replace:: :class:`SampleCollection <fiftyone.core.collections.SampleCollection>`
 

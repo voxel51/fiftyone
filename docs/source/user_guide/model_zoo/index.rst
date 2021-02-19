@@ -1,4 +1,3 @@
-
 .. _model-zoo:
 
 FiftyOne Model Zoo

@@ -1,3 +1,5 @@
+.. _using-aggregations:
+
 Using Aggregations
 ==================
 
@@ -17,8 +19,6 @@ results.
 The :mod:`fiftyone.core.aggregations` module offers a declaritive and
 highly-efficient approach to computing summary statistics about your datasets
 and views.
-
-.. _using-aggregations:
 
 Overview
 ________

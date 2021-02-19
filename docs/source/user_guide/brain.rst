@@ -1,4 +1,3 @@
-
 .. _fiftyone-brain:
 
 FiftyOne Brain
@@ -24,8 +23,8 @@ workflow:
 * **Uniqueness**: During the training loop for a model, the best results will
   be seen when training on unique data. The FiftyOne Brain provides a
   *uniqueness measure* for images that compare the content of every image in a
-  |WhatIsAFiftyOneDataset| with all other images. Uniqueness operates on raw
-  images and does not require any prior annotation on the data. It is hence
+  :ref:`dataset <using-datasets>` with all other images. Uniqueness operates on
+  raw images and does not require any prior annotation on the data. It is hence
   very useful in the early stages of the machine learning workflow when you are
   likely asking "What data should I select to annotate?"
 

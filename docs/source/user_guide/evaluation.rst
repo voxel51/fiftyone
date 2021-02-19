@@ -1,3 +1,5 @@
+.. _evaluating-models:
+
 Evaluating Models
 =================
 
@@ -27,8 +29,6 @@ your data!
 
      Check out the :ref:`tutorials page <tutorials>` for in-depth walkthroughs
      of evaluating various types of models with FiftyOne.
-
-.. _evaluating-models:
 
 Overview
 ________

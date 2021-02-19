@@ -1,4 +1,3 @@
-
 .. _recipes:
 
 FiftyOne Recipes
