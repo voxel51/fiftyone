@@ -37,6 +37,7 @@ class StateDescription(etas.Serializable):
         selected_objects (None): the list of currently selected objects
         view (None): the current :class:`fiftyone.core.view.DatasetView`
         config (None): an optional :class:`fiftyone.core.config.AppConfig`
+        refresh (False): a boolean toggle for forcing an App refresh
     """
 
     def __init__(
@@ -51,6 +52,7 @@ class StateDescription(etas.Serializable):
         view=None,
         filters={},
         config=None,
+        refresh=False,
     ):
         self.config = config or fo.app_config.copy()
         self.close = close
@@ -62,6 +64,7 @@ class StateDescription(etas.Serializable):
         self.filters = filters
         self.datasets = datasets or fod.list_datasets()
         self.active_handle = active_handle
+        self.refresh = refresh
         super().__init__()
 
     def serialize(self, reflective=False):

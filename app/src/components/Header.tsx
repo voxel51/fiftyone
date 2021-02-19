@@ -652,7 +652,7 @@ const FeedbackButton = ({ addNotification }) => {
 
 const Header = ({ addNotification }) => {
   const socket = useRecoilValue(selectors.socket);
-  const [refresh, setRefresh] = useRecoilState(atoms.refresh);
+  const [refresh, setRefresh] = useRecoilState(selectors.refresh);
   const logoProps = useSpring({
     transform: refresh ? `rotate(0turn)` : `rotate(1turn)`,
   });

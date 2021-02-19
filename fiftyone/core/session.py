@@ -168,6 +168,7 @@ def _update_state(auto_show=False):
         def wrapper(self, *args, **kwargs):
             result = func(self, *args, **kwargs)
             self.state.datasets = fod.list_datasets()
+            self.state.refresh = not self.state.refresh
             if auto_show:
                 self._auto_show()
 
