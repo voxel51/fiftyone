@@ -3878,6 +3878,39 @@ class SampleCollection(object):
             or field_name == "frames"
         )
 
+    def _is_label_field(self, field_name, label_type_or_types):
+        field_name, is_frame_field = self._handle_frame_field(field_name)
+        if is_frame_field:
+            schema = self.get_frame_field_schema()
+        else:
+            schema = self.get_field_schema()
+
+        if field_name not in schema:
+            ftype = "Frame field" if is_frame_field else "Field"
+            raise ValueError(
+                "%s '%s' does not exist on collection '%s'"
+                % (ftype, field_name, self.name)
+            )
+
+        field = schema[field_name]
+
+        if not isinstance(field, fof.EmbeddedDocumentField) or not issubclass(
+            field.document_type, fol.Label
+        ):
+            raise ValueError(
+                "Field '%s' is not a Label type; found %s"
+                % (field_name, field)
+            )
+
+        try:
+            iter(label_type_or_types)
+        except:
+            label_type_or_types = (label_type_or_types,)
+
+        return any(
+            issubclass(field.document_type, t) for t in label_type_or_types
+        )
+
     def _is_array_field(self, field_name):
         return _is_array_field(self, field_name)
 
