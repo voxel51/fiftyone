@@ -114,6 +114,7 @@ class StateDescription(etas.Serializable):
         filters = d.get("filters", {})
         selected = d.get("selected", [])
         selected_objects = d.get("selected_objects", [])
+        refresh = d.get("refresh", False)
 
         dataset = d.get("dataset", None)
         if dataset is not None:
@@ -135,6 +136,7 @@ class StateDescription(etas.Serializable):
             selected_objects=selected_objects,
             view=view,
             filters=filters,
+            refresh=refresh,
             **kwargs
         )
 
