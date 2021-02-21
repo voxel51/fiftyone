@@ -6,6 +6,7 @@ Utilities for usage analytics.
 |
 """
 import os
+from socket import gaierror
 import threading
 import uuid
 
@@ -17,6 +18,7 @@ from fiftyone.core.context import _get_context
 
 
 _FIRST_IMPORT = "FIFTYONE_FIRST_IMPORT"
+_import_logged = False
 
 
 def get_user_id():
@@ -52,12 +54,19 @@ def get_user_id():
     return read(), first_import
 
 
-def log_import_if_allowed():
-    """Logs the FiftyOne import event, if allowed."""
+def log_import_if_allowed(test=False):
+    """Logs the FiftyOne import event, if allowed.
+
+    Args:
+        test (False): whether to use the "test" uid
+    """
     if fo.config.do_not_track:
         return
 
-    uid, first_import = get_user_id()
+    if test:
+        uid, first_import = "test", False
+    else:
+        uid, first_import = get_user_id()
 
     kind = "new" if first_import else "returning"
 
@@ -69,9 +78,12 @@ def log_import_if_allowed():
                     "event",
                     "import",
                     kind,
-                    label="%s-%s" % (__version__, _get_context()),
+                    label="%s-%s" % (foc.VERSION, _get_context()),
                 )
-        except:
+
+            global _import_logged
+            _import_logged = True
+        except gaierror as e:
             pass
 
     th = threading.Thread(target=send_import_event)
