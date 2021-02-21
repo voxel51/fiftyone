@@ -1,11 +1,12 @@
 """
-Base evaluation utilities.
+Evaluation infrastructure.
 
 | Copyright 2017-2021, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 from copy import copy
+import datetime
 import json
 
 import eta.core.utils as etau
@@ -20,50 +21,29 @@ class EvaluationInfo(Config):
 
     Args:
         eval_key: the evaluation key
-        pred_field (None): the name of the predicted field
-        gt_field (None): the name of the ground truth field
-        config (None): the :class:`EvaluationConfig` for the evaluation
+        timestamp (None): the UTC ``datetime`` at which the evaluation was run.
+            If not specified, the current time is used
+        config (None): the :class:`EvaluationMethodConfig` for the evaluation
     """
 
-    def __init__(self, eval_key, pred_field=None, gt_field=None, config=None):
+    def __init__(self, eval_key, timestamp=None, config=None):
+        if timestamp:
+            timestamp = datetime.datetime.utcnow()
+
         self.eval_key = eval_key
-        self.pred_field = pred_field
-        self.gt_field = gt_field
+        self.timestamp = timestamp
         self.config = config
-
-    @classmethod
-    def from_dict(cls, d):
-        """Creates an :class:`EvaluationInfo` from a JSON dict representation
-        of it.
-
-        Args:
-            d: a JSON dict
-
-        Returns:
-            a :class:`EvaluationInfo`
-        """
-        config = d.get("config", None)
-        if config is not None:
-            config = EvaluationConfig.from_dict(config)
-
-        return cls(
-            d["eval_key"],
-            pred_field=d.get("pred_field", None),
-            gt_field=d.get("gt_field", None),
-            config=config,
-        )
 
     @classmethod
     def _from_doc(cls, doc):
         return cls(
             eval_key=doc.eval_key,
-            pred_field=doc.pred_field,
-            gt_field=doc.gt_field,
-            config=EvaluationConfig.from_dict(doc.config),
+            timestamp=doc.timestamp,
+            config=EvaluationMethodConfig.from_dict(doc.config),
         )
 
 
-class EvaluationConfig(Config):
+class EvaluationMethodConfig(Config):
     """Base class for configuring :class:`Evaluation` instances.
 
     Args:
@@ -85,19 +65,21 @@ class EvaluationConfig(Config):
 
     @property
     def cls(self):
-        """The fully-qualified name of this :class:`EvaluationConfig` class."""
+        """The fully-qualified name of this :class:`EvaluationMethodConfig`
+        class.
+        """
         return etau.get_class_name(self)
 
     @property
     def method_cls(self):
-        """The :class:`Evaluation` class associated with this config."""
+        """The :class:`EvaluationMethod` class associated with this config."""
         return etau.get_class(self.cls[: -len("Config")])
 
     def build(self):
-        """Builds the :class:`Evaluation` associated with this config.
+        """Builds the :class:`EvaluationMethod` associated with this config.
 
-        Returns:
-            an :class:`Evaluation` instance
+        Returns:`
+            an :class:`EvaluationMethod` instance
         """
         return self.method_cls(self)
 
@@ -112,14 +94,14 @@ class EvaluationConfig(Config):
 
     @classmethod
     def from_dict(cls, d):
-        """Constructs an :class:`EvaluationConfig` from a serialized JSON dict
-        representation of it.
+        """Constructs an :class:`EvaluationMethodConfig` from a serialized JSON
+        dict representation of it.
 
         Args:
             d: a JSON dict
 
         Returns:
-            an :class:`EvaluationConfig`
+            an :class:`EvaluationMethodConfig`
         """
         d = copy(d)
         d.pop("method")
@@ -127,18 +109,18 @@ class EvaluationConfig(Config):
         return config_cls(**d)
 
 
-class Evaluation(Configurable):
+class EvaluationMethod(Configurable):
     """Base class for evaluation methods.
 
     Subclasses will typically declare an interface method that handles
     performing evaluation on an image, video, or entire collection.
 
     Args:
-        config: an :class:`EvaluationConfig`
+        config: an :class:`EvaluationMethodConfig`
     """
 
     def get_fields(self, samples, eval_key):
-        """Gets the evaluation fields that were populated by the given
+        """Gets the fields that were involved and populated by the given
         evaluation.
 
         Args:
@@ -159,6 +141,67 @@ class Evaluation(Configurable):
             eval_key: an evaluation key
         """
         raise NotImplementedError("subclass must implement cleanup()")
+
+    def validate_run(self, samples, eval_key):
+        """Validates that the collection can accept this evaluation run.
+
+        The run may be invalid if, for example, an evaluation of a different
+        type has already been run under the same evaluation key and thus
+        overwriting it would cause ambiguity on how to cleanup the results.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            eval_key: an evaluation key
+        """
+        if eval_key is None:
+            return
+
+        if not etau.is_str(eval_key) or not eval_key.isidentifier():
+            raise ValueError(
+                "Invalid eval_key '%s'. Evaluation keys must be valid "
+                "variable names" % eval_key
+            )
+
+        if eval_key not in list_evaluations(samples):
+            return
+
+        existing_info = get_evaluation_info(samples, eval_key)
+
+        if self.config.__class__ != existing_info.config.__class__:
+            raise ValueError(
+                "Cannot overwrite existing evaluation '%s' of type %s with an "
+                "evaluation of type %s; please choose a different `eval_key` "
+                "or delete the existing evaluation first"
+                % (
+                    eval_key,
+                    existing_info.config.__class__,
+                    self.config.__class__,
+                )
+            )
+
+        self._validate_run(samples, eval_key, existing_info)
+
+    def _validate_run(self, samples, eval_key, existing_info):
+        """Subclass-specific validation when a run with the given key already
+        exists.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            eval_key: an evaluation key
+            existing_info: an :class:`EvaluationInfo`
+        """
+        pass
+
+    def _validate_fields_match(self, eval_key, field_name, existing_info):
+        new_field = getattr(self.config, field_name)
+        existing_field = getattr(existing_info.config, field_name)
+        if new_field != existing_field:
+            raise ValueError(
+                "Cannot overwrite existing evaluation '%s' where %s=%s with "
+                "an evaluation where %s=%s. Please choose a different "
+                "`eval_key` or delete the existing evaluation first"
+                % (eval_key, field_name, existing_field, field_name, new_field)
+            )
 
 
 class EvaluationResults(object):
@@ -194,46 +237,6 @@ def get_evaluation_info(samples, eval_key):
     return EvaluationInfo._from_doc(eval_doc)
 
 
-def validate_evaluation(samples, eval_info):
-    """Validates that the collection can accept the evaluation specified by the
-    given info.
-
-    The evaluation may be invalid if, for example, an evaluation of a different
-    type has already been run under the same evaluation key and thus
-    overwriting it would cause ambiguity on how to delete the evaluations.
-
-    Args:
-        samples: a :class:`fiftyone.core.collections.SampleCollection`
-        eval_info: an :class:`EvaluationInfo`
-    """
-    eval_key = eval_info.eval_key
-    if eval_key is None:
-        return
-
-    if not etau.is_str(eval_key) or not eval_key.isidentifier():
-        raise ValueError(
-            "Invalid eval_key '%s'. Evaluation keys must be valid variable "
-            "names" % eval_key
-        )
-
-    if eval_key not in list_evaluations(samples):
-        return
-
-    existing_info = get_evaluation_info(samples, eval_key)
-
-    if eval_info.config.__class__ != existing_info.config.__class__:
-        raise ValueError(
-            "Cannot overwrite existing evaluation '%s' of type %s with an "
-            "evaluation of type %s; please choose a different ``eval_key`` or "
-            "delete the existing evaluation first"
-            % (
-                eval_key,
-                existing_info.config.__class__,
-                eval_info.config.__class__,
-            )
-        )
-
-
 def save_evaluation_info(samples, eval_info):
     """Saves the evaluation information on the collection.
 
@@ -245,8 +248,7 @@ def save_evaluation_info(samples, eval_info):
     view_stages = [json.dumps(s) for s in samples.view()._serialize()]
     samples._dataset._doc.evaluations[eval_key] = EvaluationDocument(
         eval_key=eval_key,
-        pred_field=eval_info.pred_field,
-        gt_field=eval_info.gt_field,
+        timestamp=eval_info.timestamp,
         config=eval_info.config.serialize(),
         view_stages=view_stages,
     )
@@ -261,10 +263,7 @@ def load_evaluation_view(samples, eval_key, select_fields=False):
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         eval_key: an evaluation key
         select_fields (False): whether to select only the fields involved
-            in the evaluation. If true, only the predicted and ground truth
-            fields involved in the evaluation will be selected, and any
-            ancillary fields populated on those samples by other evaluations
-            will be excluded
+            in the evaluation
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
@@ -280,34 +279,30 @@ def load_evaluation_view(samples, eval_key, select_fields=False):
     # Select evaluation fields
     #
 
-    gt_field = eval_doc.gt_field
-    pred_field = eval_doc.pred_field
+    fields = _get_eval_fields(samples, eval_key)
+    root_fields = [f for f in fields if "." not in f]
+    _select_fields = root_fields
+    for field in fields:
+        if not any(f.startswith(field) for f in root_fields):
+            _select_fields.append(field)
 
-    select = [gt_field, pred_field]
-    prefixes = (gt_field + ".", pred_field + ".")
-    for field in _get_eval_fields(samples, eval_key):
-        # We don't need to select embedded fields of gt/pred
-        if not field.startswith(prefixes):
-            select.append(field)
-
-    view = view.select_fields(select)
+    view = view.select_fields(_select_fields)
 
     #
     # Hide any ancillary evaluations on the same fields
     #
 
-    exclude = []
+    _exclude_fields = []
     for _eval_key in list_evaluations(samples):
         if _eval_key == eval_key:
             continue
 
         for field in _get_eval_fields(samples, _eval_key):
-            # We only need to select embedded fields of gt/pred
-            if field.startswith(prefixes):
-                exclude.append(field)
+            if "." in field and field.startswith(root_fields):
+                _exclude_fields.append(field)
 
-    if exclude:
-        view = view.exclude_fields(exclude)
+    if _exclude_fields:
+        view = view.exclude_fields(_exclude_fields)
 
     return view
 
@@ -344,11 +339,11 @@ def delete_evaluations(samples):
 
 
 def _get_evaluation_doc(samples, eval_key):
-    evaluation = samples._dataset._doc.evaluations.get(eval_key, None)
-    if evaluation is None:
+    eval_doc = samples._dataset._doc.evaluations.get(eval_key, None)
+    if eval_doc is None:
         raise ValueError(
-            "Evaluation '%s' not found on collection '%s'"
+            "Evaluation key '%s' not found on collection '%s'"
             % (eval_key, samples.name)
         )
 
-    return evaluation
+    return eval_doc

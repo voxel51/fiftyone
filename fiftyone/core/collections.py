@@ -20,6 +20,7 @@ import eta.core.utils as etau
 import fiftyone.core.aggregations as foa
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
+import fiftyone.core.evaluation as foev
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -959,7 +960,7 @@ class SampleCollection(object):
         Returns:
             a list of evaluation keys
         """
-        return foue.list_evaluations(self)
+        return foev.list_evaluations(self)
 
     def get_evaluation_info(self, eval_key):
         """Returns information about the evaluation with the given key on this
@@ -969,9 +970,9 @@ class SampleCollection(object):
             eval_key: an evaluation key
 
         Returns:
-            an :class:`fiftyone.utils.eval.base.EvaluationInfo`
+            an :class:`fiftyone.core.evaluation.EvaluationInfo`
         """
-        return foue.get_evaluation_info(self, eval_key)
+        return foev.get_evaluation_info(self, eval_key)
 
     def load_evaluation_view(self, eval_key, select_fields=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` on which the
@@ -980,15 +981,12 @@ class SampleCollection(object):
         Args:
             eval_key: an evaluation key
             select_fields (False): whether to select only the fields involved
-                in the evaluation. If true, only the predicted and ground truth
-                fields involved in the evaluation will be selected, and any
-                ancillary fields populated on those samples by other
-                evaluations will be excluded
+                in the evaluation
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return foue.load_evaluation_view(
+        return foev.load_evaluation_view(
             self, eval_key, select_fields=select_fields
         )
 
@@ -999,11 +997,11 @@ class SampleCollection(object):
         Args:
             eval_key: an evaluation key
         """
-        foue.delete_evaluation(self, eval_key)
+        foev.delete_evaluation(self, eval_key)
 
     def delete_evaluations(self):
         """Deletes all evaluation results from this collection."""
-        foue.delete_evaluations(self)
+        foev.delete_evaluations(self)
 
     @classmethod
     def list_view_stages(cls):
