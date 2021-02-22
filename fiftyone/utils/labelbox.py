@@ -280,7 +280,7 @@ def export_to_labelbox(
             labelbox_id = sample[labelbox_id_field]
             if labelbox_id is None:
                 logger.warning(
-                    "Skipping sample '%d' with no '%s' value",
+                    "Skipping sample '%s' with no '%s' value",
                     sample.id,
                     labelbox_id_field,
                 )
