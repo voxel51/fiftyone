@@ -219,7 +219,6 @@ fake predictions added to it to demonstrate the workflow:
     import fiftyone.zoo as foz
     from fiftyone import ViewField as F
 
-    # Load a small sample from the ImageNet dataset
     dataset = foz.load_zoo_dataset(
         "cifar10",
         split="test",
@@ -316,9 +315,9 @@ correct.
     Did you know? Many models from the :ref:`Model Zoo <model-zoo>`
     provide support for storing logits for their predictions!
 
-The example below demonstrates top-k evaluation on an image dataset from the
-:ref:`Dataset Zoo <dataset-zoo>` with predictions from a pre-trained model from
-the :ref:`Model Zoo <model-zoo>`:
+The example below demonstrates top-k evaluation on a
+:ref:`small ImageNet sample <dataset-zoo-imagenet-sample>` with predictions
+from a pre-trained model from the :ref:`Model Zoo <model-zoo>`:
 
 .. code-block:: python
     :linenos:
@@ -327,7 +326,6 @@ the :ref:`Model Zoo <model-zoo>`:
     import fiftyone.zoo as foz
     from fiftyone import ViewField as F
 
-    # Load a small sample from the ImageNet dataset
     dataset = foz.load_zoo_dataset(
         "imagenet-sample", dataset_name="top-k-eval-demo"
     )
