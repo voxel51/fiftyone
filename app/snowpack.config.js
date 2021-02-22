@@ -25,7 +25,7 @@ module.exports = {
     ],
   ],
   exclude: ["**/*.@(test|stories).@(ts|tsx)"],
-  installOptions: {
+  packageOptions: {
     polyfillNode: true,
   },
   devOptions: {
