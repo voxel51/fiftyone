@@ -13,8 +13,7 @@ class BrainInfo(RunInfo):
 
     Args:
         key: the brain key
-        timestamp (None): the UTC ``datetime`` at which the brain method was
-            run. If not specified, the current time is used
+        timestamp (None): the UTC ``datetime`` when the brain method was run
         config (None): the :class:`BrainMethodConfig` for the run
     """
 

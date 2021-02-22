@@ -20,21 +20,18 @@ class RunInfo(Config):
 
     Args:
         key: the run key
-        timestamp (None): the UTC ``datetime`` of the run. If not specified,
-            the current time is used
+        timestamp (None): the UTC ``datetime`` of the run
         config (None): the :class:`RunConfig` for the run
     """
 
     def __init__(self, key, timestamp=None, config=None):
-        if timestamp is None:
-            timestamp = datetime.datetime.utcnow()
-
         self.key = key
         self.timestamp = timestamp
         self.config = config
 
     @classmethod
     def config_cls(cls):
+        """The :class:`RunConfig` class associated with this class."""
         raise NotImplementedError("subclass must implement config_cls")
 
     @classmethod
@@ -95,7 +92,7 @@ class RunConfig(Config):
 
     @classmethod
     def from_dict(cls, d):
-        """Constructs an :class:`RunConfig` from a serialized JSON dict
+        """Constructs a :class:`RunConfig` from a serialized JSON dict
         representation of it.
 
         Args:
@@ -118,8 +115,25 @@ class Run(Configurable):
     how to validate that a run is valid and how to cleanup after a run.
 
     Args:
-        config: an :class:`RunConfig`
+        config: a :class:`RunConfig`
     """
+
+    @classmethod
+    def run_info_cls(cls):
+        """The :class:`RunInfo` class associated with this class."""
+        raise NotImplementedError("subclass must implement run_info_cls()")
+
+    @classmethod
+    def _runs_field(cls):
+        """The :class:`fiftyone.core.odm.dataset.DatasetDocument` field in
+        which these runs are stored.
+        """
+        raise NotImplementedError("subclass must implement _runs_field()")
+
+    @classmethod
+    def _run_str(cls):
+        """A string to use when referring to these runs in log messages."""
+        raise NotImplementedError("subclass must implement _run_str()")
 
     def get_fields(self, samples, key):
         """Gets the fields that were involved and populated by the given run.
@@ -155,8 +169,9 @@ class Run(Configurable):
             return
 
         self.validate_run(samples, key)
+        timestamp = datetime.datetime.utcnow()
         run_info_cls = self.run_info_cls()
-        run_info = run_info_cls(key, config=self.config)
+        run_info = run_info_cls(key, timestamp=timestamp, config=self.config)
         self.save_run_info(samples, run_info)
 
     def validate_run(self, samples, key):
@@ -224,18 +239,6 @@ class Run(Configurable):
                     new_field,
                 )
             )
-
-    @classmethod
-    def run_info_cls(cls):
-        raise NotImplementedError("subclass must implement run_info_cls()")
-
-    @classmethod
-    def _runs_field(cls):
-        raise NotImplementedError("subclass must implement _runs_field()")
-
-    @classmethod
-    def _run_str(cls):
-        raise NotImplementedError("subclass must implement _run_str()")
 
     @classmethod
     def list_runs(cls, samples):

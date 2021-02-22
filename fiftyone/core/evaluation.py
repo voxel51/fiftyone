@@ -13,8 +13,7 @@ class EvaluationInfo(RunInfo):
 
     Args:
         key: the evaluation key
-        timestamp (None): the UTC ``datetime`` at which the evaluation was run.
-            If not specified, the current time is used
+        timestamp (None): the UTC ``datetime`` when the evaluation was run
         config (None): the :class:`EvaluationMethodConfig` for the evaluation
     """
 
