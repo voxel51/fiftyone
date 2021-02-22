@@ -16,6 +16,7 @@ import CellHeader from "./CellHeader";
 import CheckboxGrid from "./CheckboxGrid";
 import DropdownCell from "./DropdownCell";
 import SelectionTag from "./Tags/SelectionTag";
+import * as fieldAtoms from "./Filters/utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 
@@ -25,6 +26,7 @@ export type Entry = {
   count: number;
   type: string;
   path: string;
+  boolean: boolean;
 };
 
 const Button = animated(styled.div`
@@ -114,16 +116,25 @@ const RefreshButton = () => {
   );
 };
 
+type CellProps = {
+  label: string;
+  title: string;
+  modal: boolean;
+  onSelect: (values: string[]) => void;
+  path: string;
+  entries: Entry[];
+  icon: SVGElement;
+};
+
 const Cell = ({
   label,
   icon,
   entries,
   onSelect,
-  colorMap = {},
   title,
   modal,
-  prefix = "",
-}) => {
+  path = "",
+}: CellProps) => {
   const theme = useContext(ThemeContext);
   const [expanded, setExpanded] = useState(true);
   const colorByLabel = useRecoilValue(
@@ -137,7 +148,7 @@ const Cell = ({
     e.stopPropagation();
     for (const entry of entries) {
       if (entry.selected) {
-        onSelect({ ...entry, selected: false });
+        onSelect([]);
       }
     }
   };
@@ -176,8 +187,8 @@ const Cell = ({
             filteredCount: e.filteredCount,
             color: colorByLabel
               ? theme.brand
-              : colorMap[prefix + e.name]
-              ? colorMap[prefix + e.name]
+              : colorMap[path]
+              ? colorMap[path]
               : theme.brand,
             hideCheckbox: e.hideCheckbox,
             disabled: Boolean(e.disabled),
@@ -209,87 +220,42 @@ const makeData = (filteredCount, totalCount) => {
   return totalCount;
 };
 
-type Props = {
+type TagsCellProps = {
   modal: boolean;
 };
 
-const FieldsSidebar = React.forwardRef(({ modal = false }: Props, ref) => {
-  const [colorByLabel, setColorByLabel] = useRecoilState(colorByLabelAtom);
-  const theme = useContext(ThemeContext);
-  const colorMap = useRecoilValue(selectors.colorMap);
-  const mediaType = useRecoilValue(selectors.mediaType);
-  const isVideo = mediaType === "video";
-
-  return (
-    <Container ref={ref} {...rest}>
-      <Cell
-        colorMap={colorMap}
-        label="Tags"
-        icon={<PhotoLibrary />}
-        entries={tags}
-        onSelect={onSelectTag}
-        modal={modal}
-      />
-      <Cell
-        colorMap={colorMap}
-        label="Labels"
-        icon={<Label style={{ transform: "rotate(180deg)" }} />}
-        entries={labels}
-        onSelect={onSelectLabel}
-        modal={modal}
-      />
-      {isVideo && (
-        <Cell
-          colorMap={colorMap}
-          label="Frame Labels"
-          icon={<PhotoLibrary />}
-          entries={frameLabels}
-          onSelect={onSelectFrameLabel}
-          modal={modal}
-          prefix="frames."
-        />
-      )}
-      <Cell
-        colorMap={colorMap}
-        label="Scalars"
-        icon={<BarChart />}
-        entries={scalars}
-        onSelect={onSelectScalar}
-        modal={modal}
-      />
-      {unsupported.length ? (
-        <Cell
-          label="Unsupported"
-          title="These fields cannot currently be displayed in the app"
-          icon={<Help />}
-          colorMap={{}}
-          entries={unsupported.map((entry) => ({
-            ...entry,
-            selected: false,
-            disabled: true,
-          }))}
-          modal={modal}
-        />
-      ) : null}
-      <Cell
-        label="Options"
-        title="Field options"
-        icon={<Settings />}
-        onSelect={() => setColorByLabel(!colorByLabel)}
-        colorMap={{
-          "Color by label": theme.brand,
-        }}
-        entries={[
-          {
-            name: "Color by label",
-            selected: colorByLabel,
-            icon: <Brush />,
-          },
-        ]}
-        modal={modal}
-      />
-    </Container>
+const TagsCell = ({ modal }: TagsCellProps) => {
+  const [tags, setTags] = useRecoilState(
+    modal ? fieldAtoms.modalActiveTags : fieldAtoms.activeTags
   );
-});
+  return (
+    <Cell
+      label="Tags"
+      icon={<PhotoLibrary />}
+      entries={tags}
+      onSelect={onSelectTag}
+      modal={modal}
+    />
+  );
+};
+
+type FieldsSidebarProps = {
+  modal: boolean;
+};
+
+const FieldsSidebar = React.forwardRef(
+  ({ modal = false }: FieldsSidebarProps, ref) => {
+    const theme = useContext(ThemeContext);
+    const colorMap = useRecoilValue(selectors.colorMap);
+    const mediaType = useRecoilValue(selectors.mediaType);
+    const isVideo = mediaType === "video";
+
+    return (
+      <Container ref={ref} {...rest}>
+        <TagsCell modal={modal} />
+      </Container>
+    );
+  }
+);
 
 export default FieldsSidebar;

@@ -78,15 +78,6 @@ function Dataset() {
     resetHiddenObjects();
   };
 
-  useEffect(() => {
-    applyActiveLabels(labelTuples, activeLabels, setActiveLabels);
-    applyActiveLabels(
-      frameLabelTuples,
-      activeFrameLabels,
-      setActiveFrameLabels
-    );
-  }, [datasetName, labelTuples, frameLabelTuples]);
-
   useScreenshot();
 
   useEffect(() => {
