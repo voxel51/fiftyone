@@ -651,8 +651,8 @@ const FeedbackButton = ({ addNotification }) => {
 };
 
 const Header = ({ addNotification }) => {
+  const refresh = useRecoilValue(selectors.refresh);
   const socket = useRecoilValue(selectors.socket);
-  const [refresh, setRefresh] = useRecoilState(selectors.refresh);
   const logoProps = useSpring({
     transform: refresh ? `rotate(0turn)` : `rotate(1turn)`,
   });
@@ -660,12 +660,7 @@ const Header = ({ addNotification }) => {
   return (
     <HeaderDiv>
       <LeftDiv>
-        <TitleDiv
-          onClick={() => {
-            socket.send(packageMessage("refresh", {}));
-            setRefresh(!refresh);
-          }}
-        >
+        <TitleDiv onClick={() => socket.send(packageMessage("refresh", {}))}>
           <LogoImg style={logoProps} src={"./logo.png"} />
           <FiftyOneDiv className="fix-me">FiftyOne</FiftyOneDiv>
         </TitleDiv>
