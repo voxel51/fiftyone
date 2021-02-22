@@ -1,5 +1,3 @@
-import { Theme } from "@material-ui/core";
-
 export const white100 = "hsl(0, 0%, 100%)";
 export const white96 = "hsl(0, 0%, 96%)";
 export const white85 = "hsl(0, 0%, 85%)";
