@@ -81,19 +81,10 @@ def evaluate_segmentations(
     """
     config = _parse_config(config, pred_field, gt_field, method, **kwargs)
     eval_method = config.build()
-    eval_method.validate_run(samples, eval_key)
-
-    if eval_key is not None:
-        eval_info = foe.EvaluationInfo(eval_key, config=config)
-
-    results = eval_method.evaluate_samples(
+    eval_method.register_run(samples, eval_key)
+    return eval_method.evaluate_samples(
         samples, eval_key=eval_key, mask_index=mask_index
     )
-
-    if eval_key is not None:
-        foe.save_evaluation_info(samples, eval_info)
-
-    return results
 
 
 class SegmentationEvaluationConfig(foe.EvaluationMethodConfig):

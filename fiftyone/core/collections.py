@@ -961,7 +961,7 @@ class SampleCollection(object):
         Returns:
             a list of evaluation keys
         """
-        return foev.list_evaluations(self)
+        return foev.EvaluationMethod.list_runs(self)
 
     def get_evaluation_info(self, eval_key):
         """Returns information about the evaluation with the given key on this
@@ -973,7 +973,7 @@ class SampleCollection(object):
         Returns:
             an :class:`fiftyone.core.evaluation.EvaluationInfo`
         """
-        return foev.get_evaluation_info(self, eval_key)
+        return foev.EvaluationMethod.get_run_info(self, eval_key)
 
     def load_evaluation_view(self, eval_key, select_fields=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` on which the
@@ -987,7 +987,7 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return foev.load_evaluation_view(
+        return foev.EvaluationMethod.load_run_view(
             self, eval_key, select_fields=select_fields
         )
 
@@ -998,11 +998,11 @@ class SampleCollection(object):
         Args:
             eval_key: an evaluation key
         """
-        foev.delete_evaluation(self, eval_key)
+        foev.EvaluationMethod.delete_run(self, eval_key)
 
     def delete_evaluations(self):
         """Deletes all evaluation results from this collection."""
-        foev.delete_evaluations(self)
+        foev.EvaluationMethod.delete_runs(self)
 
     def list_brain_keys(self):
         """Returns a list of all brain keys on this collection.
@@ -1010,7 +1010,7 @@ class SampleCollection(object):
         Returns:
             a list of brain keys
         """
-        return fob.list_brain_keys(self)
+        return fob.BrainMethod.list_runs(self)
 
     def get_brain_info(self, brain_key):
         """Returns information about the brain method run with the given key on
@@ -1022,7 +1022,7 @@ class SampleCollection(object):
         Returns:
             an :class:`fiftyone.core.brain.BrainInfo`
         """
-        return fob.get_brain_info(self, brain_key)
+        return fob.BrainMethod.get_run_info(self, brain_key)
 
     def load_brain_view(self, brain_key, select_fields=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` on which the
@@ -1036,7 +1036,7 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return fob.load_brain_view(
+        return fob.BrainMethod.load_run_view(
             self, brain_key, select_fields=select_fields
         )
 
@@ -1047,11 +1047,11 @@ class SampleCollection(object):
         Args:
             brain_key: a brain key
         """
-        fob.delete_brain_result(self, brain_key)
+        fob.BrainMethod.delete_run(self, brain_key)
 
     def delete_brain_results(self):
         """Deletes all brain results from this collection."""
-        fob.delete_brain_results(self)
+        fob.BrainMethod.delete_runs(self)
 
     @classmethod
     def list_view_stages(cls):

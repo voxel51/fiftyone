@@ -13,6 +13,7 @@ def up(db, dataset_name):
 
     evaluations = dataset_dict.get("evaluations", {})
     for eval_doc in evaluations.values():
+        eval_doc["key"] = eval_doc.pop("eval_key")
         eval_doc["config"]["pred_field"] = eval_doc.pop("pred_field")
         eval_doc["config"]["gt_field"] = eval_doc.pop("gt_field")
 
@@ -30,6 +31,7 @@ def down(db, dataset_name):
 
     evaluations = dataset_dict.get("evaluations", {})
     for eval_doc in evaluations.values():
+        eval_doc["eval_key"] = eval_doc.pop("key")
         eval_doc["pred_field"] = eval_doc["config"].pop("pred_field")
         eval_doc["gt_field"] = eval_doc["config"].pop("gt_field")
 

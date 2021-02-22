@@ -98,10 +98,7 @@ def evaluate_detections(
         **kwargs
     )
     eval_method = config.build()
-    eval_method.validate_run(samples, eval_key)
-
-    if eval_key is not None:
-        eval_info = foe.EvaluationInfo(eval_key, config=config)
+    eval_method.register_run(samples, eval_key)
 
     pred_field, processing_frames = samples._handle_frame_field(pred_field)
     gt_field, _ = samples._handle_frame_field(gt_field)
@@ -144,14 +141,9 @@ def evaluate_detections(
                 sample["%s_fn" % eval_key] = sample_fn
                 sample.save()
 
-    results = eval_method.generate_results(
+    return eval_method.generate_results(
         samples, matches, eval_key=eval_key, classes=classes, missing=missing,
     )
-
-    if eval_key is not None:
-        foe.save_evaluation_info(samples, eval_info)
-
-    return results
 
 
 class DetectionEvaluationConfig(foe.EvaluationMethodConfig):
