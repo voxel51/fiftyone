@@ -18,6 +18,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.aggregations as foa
+import fiftyone.core.brain as fob
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.evaluation as foev
@@ -1002,6 +1003,55 @@ class SampleCollection(object):
     def delete_evaluations(self):
         """Deletes all evaluation results from this collection."""
         foev.delete_evaluations(self)
+
+    def list_brain_keys(self):
+        """Returns a list of all brain keys on this collection.
+
+        Returns:
+            a list of brain keys
+        """
+        return fob.list_brain_keys(self)
+
+    def get_brain_info(self, brain_key):
+        """Returns information about the brain method run with the given key on
+        this collection.
+
+        Args:
+            brain_key: a brain key
+
+        Returns:
+            an :class:`fiftyone.core.brain.BrainInfo`
+        """
+        return fob.get_brain_info(self, brain_key)
+
+    def load_brain_view(self, brain_key, select_fields=False):
+        """Loads the :class:`fiftyone.core.view.DatasetView` on which the
+        specified brain method run was performed on this collection.
+
+        Args:
+            brain_key: a brain key
+            select_fields (False): whether to select only the fields involved
+                in the brain method run
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return fob.load_brain_view(
+            self, brain_key, select_fields=select_fields
+        )
+
+    def delete_brain_result(self, brain_key):
+        """Deletes the brain results associated with the given key from this
+        collection.
+
+        Args:
+            brain_key: a brain key
+        """
+        fob.delete_brain_result(self, brain_key)
+
+    def delete_brain_results(self):
+        """Deletes all brain results from this collection."""
+        fob.delete_brain_results(self)
 
     @classmethod
     def list_view_stages(cls):

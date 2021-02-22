@@ -15,6 +15,7 @@ from mongoengine import (
 
 import eta.core.utils as etau
 
+from .brain import BrainDocument
 from .document import Document, EmbeddedDocument
 from .evaluation import EvaluationDocument
 
@@ -105,6 +106,9 @@ class DatasetDocument(Document):
     info = DictField(default=dict)
     evaluations = DictField(
         EmbeddedDocumentField(document_type=EvaluationDocument), default=dict
+    )
+    brain_methods = DictField(
+        EmbeddedDocumentField(document_type=BrainDocument), default=dict
     )
     sample_fields = EmbeddedDocumentListField(
         document_type=SampleFieldDocument
