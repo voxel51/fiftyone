@@ -1004,7 +1004,7 @@ class SampleCollection(object):
         """Deletes all evaluation results from this collection."""
         foev.EvaluationMethod.delete_runs(self)
 
-    def list_brain_keys(self):
+    def list_brain_runs(self):
         """Returns a list of all brain keys on this collection.
 
         Returns:
@@ -1040,17 +1040,16 @@ class SampleCollection(object):
             self, brain_key, select_fields=select_fields
         )
 
-    def delete_brain_result(self, brain_key):
-        """Deletes the brain results associated with the given key from this
-        collection.
+    def delete_brain_run(self, brain_key):
+        """Deletes the brain method run with the given key from this collection.
 
         Args:
             brain_key: a brain key
         """
         fob.BrainMethod.delete_run(self, brain_key)
 
-    def delete_brain_results(self):
-        """Deletes all brain results from this collection."""
+    def delete_brain_runs(self):
+        """Deletes all brain method runs from this collection."""
         fob.BrainMethod.delete_runs(self)
 
     @classmethod

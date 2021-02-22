@@ -308,12 +308,12 @@ The example below demonstrates the basic interface:
 
     fob.compute_uniqueness(dataset)
 
-    print(dataset.list_brain_keys())
+    print(dataset.list_brain_runs())
     # ['uniqueness']
 
     # Print information about a brain run
     print(dataset.get_brain_info("uniqueness"))
 
-    # Delete the results of a brain run
+    # Delete the brain run
     # This will delete any fields that were populated on the dataset
-    dataset.delete_brain_result("uniqueness")
+    dataset.delete_brain_run("uniqueness")
