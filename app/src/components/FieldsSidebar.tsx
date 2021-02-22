@@ -187,6 +187,12 @@ const TagsCell = ({ modal }: TagsCellProps) => {
     modal ? fieldAtoms.modalActiveTags : fieldAtoms.activeTags
   );
   const colorMap = useRecoilValue(selectors.colorMap);
+  const [subCountAtom, countAtom] = modal
+    ? [null, selectors.tagSampleModalCounts]
+    : [selectors.filteredTagSampleCounts, selectors.tagSampleCounts];
+
+  const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
+  const count = useRecoilValue(countAtom);
 
   return (
     <Cell
@@ -196,6 +202,11 @@ const TagsCell = ({ modal }: TagsCellProps) => {
         name,
         selected: activeTags.includes(name),
         color: colorMap[name],
+        title: name,
+        path: name,
+        data: count,
+        hideCheckbox: modal,
+        modal: modal,
       }))}
       onSelect={({ name, selected }) =>
         setActiveTags(

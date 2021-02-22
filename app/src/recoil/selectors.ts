@@ -847,3 +847,21 @@ export const getTarget = selector({
     };
   },
 });
+
+export const modalSample = selector({
+  key: "modalSample",
+  get: ({ get }) => {
+    return get(atoms.modal).sample;
+  },
+});
+
+export const tagSampleModalCounts = selector<{ [key: string]: number }>({
+  key: "tagSampleModalCounts",
+  get: ({ get }) => {
+    const sample = get(modalSample);
+    const tags = get(tagNames);
+    return tags.reduce((acc, cur) => {
+      acc[cur] = sample.tags.includes(cur) ? 1 : 0;
+    }, {});
+  },
+});
