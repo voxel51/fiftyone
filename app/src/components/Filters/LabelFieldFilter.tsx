@@ -34,8 +34,7 @@ const HiddenObjectFilter = ({ entry }) => {
 
   const sampleHiddenObjectIDs = Object.entries(hiddenObjects)
     .filter(
-      ([object_id, data]) =>
-        data.sample_id === sample._id && data.field === fieldName
+      ([_, data]) => data.sample_id === sample._id && data.field === fieldName
     )
     .map(([object_id]) => object_id);
   if (!sampleHiddenObjectIDs.length) {
@@ -58,7 +57,7 @@ interface Entry {
   path: string;
   name: string;
   color: string;
-  type: string;
+  labelType?: string;
 }
 
 type Props = {
@@ -69,7 +68,7 @@ type Props = {
 
 const LabelFilter = ({ expanded, entry, modal }: Props) => {
   const [ref, props] = useExpand(expanded);
-  const path = `${entry.path}${getPathExtension(entry.type)}`;
+  const path = `${entry.path}${getPathExtension(entry.labelType)}`;
   const cPath = `${path}.confidence`;
   const lPath = `${path}.label`;
 
@@ -94,7 +93,7 @@ const LabelFilter = ({ expanded, entry, modal }: Props) => {
             excludeAtom={exclude(lPath)}
           />
           <HiddenObjectFilter entry={entry} />
-          {CONFIDENCE_LABELS.includes(entry.type) && (
+          {CONFIDENCE_LABELS.includes(entry.labelType) && (
             <NamedRangeSlider
               color={entry.color}
               name={"Confidence"}

@@ -1,7 +1,7 @@
-import React, { ElementType, useState, useContext } from "react";
+import React, { useState } from "react";
 import { animated, useSpring } from "react-spring";
-import styled, { ThemeContext } from "styled-components";
-import { useRecoilValue, useSetRecoilState, useRecoilState } from "recoil";
+import styled from "styled-components";
+import { useRecoilValue, useRecoilState } from "recoil";
 import {
   Autorenew,
   BarChart,
@@ -114,7 +114,7 @@ type CellProps = {
   title: string;
   modal: boolean;
   onSelect: (entry: Entry) => void;
-  path: string;
+  handleClear: () => void;
   entries: Entry[];
   icon: any;
 };
@@ -123,24 +123,13 @@ const Cell = ({
   label,
   icon,
   entries,
+  handleClear,
   onSelect,
   title,
   modal,
-  path = "",
 }: CellProps) => {
   const [expanded, setExpanded] = useState(true);
   const numSelected = entries.filter((e) => e.selected).length;
-  const handleClear = (e) => {
-    if (!onSelect) {
-      return;
-    }
-    e.stopPropagation();
-    for (const entry of entries) {
-      if (entry.selected) {
-        onSelect([]);
-      }
-    }
-  };
 
   return (
     <DropdownCell
@@ -193,23 +182,31 @@ type TagsCellProps = {
 };
 
 const TagsCell = ({ modal }: TagsCellProps) => {
-  const [tags, setTags] = useRecoilState(
+  const tags = useRecoilValue(selectors.tagNames);
+  const [activeTags, setActiveTags] = useRecoilState(
     modal ? fieldAtoms.modalActiveTags : fieldAtoms.activeTags
   );
+  const colorMap = useRecoilValue(selectors.colorMap);
 
   return (
     <Cell
       label="Tags"
       icon={<PhotoLibrary />}
-      entries={tags}
-      onSelect={({ name, selected }) => {
-        if (selected) {
-          setTags([name, ...selected]);
-        } else {
-          setTags(tags.filter((t) => t !== name));
-        }
-      }}
+      entries={tags.map((name) => ({
+        name,
+        selected: activeTags.includes(name),
+        color: colorMap[name],
+      }))}
+      onSelect={({ name, selected }) =>
+        setActiveTags(
+          selected
+            ? [name, ...activeTags]
+            : activeTags.filter((t) => t !== name)
+        )
+      }
+      handleClear={() => setActiveTags([])}
       modal={modal}
+      title={"Tags"}
     />
   );
 };

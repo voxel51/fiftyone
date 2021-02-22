@@ -124,7 +124,7 @@ export type Entry = {
   data: string | null | HTMLElement;
   color: string;
   disabled: boolean;
-  type: string;
+  labelType?: string;
   path: string;
   hasDropdown: boolean;
   hideCheckbox: boolean;
@@ -245,7 +245,7 @@ const Entry = ({ entry, onCheck, modal }: EntryProps) => {
       {isNumeric && <NumericFieldFilter expanded={expanded} entry={entry} />}
       {isString && <StringFieldFilter expanded={expanded} entry={entry} />}
       {isBoolean && <BooleanFieldFilter expanded={expanded} entry={entry} />}
-      {entry.type && labelTypeIsFilterable(entry.type) ? (
+      {entry.labelType && labelTypeIsFilterable(entry.labelType) ? (
         <LabelFieldFilter expanded={expanded} entry={entry} modal={modal} />
       ) : null}
     </CheckboxContainer>
