@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { ElementType, useState, useContext } from "react";
 import { animated, useSpring } from "react-spring";
 import styled, { ThemeContext } from "styled-components";
 import { useRecoilValue, useSetRecoilState, useRecoilState } from "recoil";
@@ -16,9 +16,11 @@ import CellHeader from "./CellHeader";
 import CheckboxGrid from "./CheckboxGroup";
 import DropdownCell from "./DropdownCell";
 import SelectionTag from "./Tags/SelectionTag";
+import { Entry } from "./CheckboxGroup";
 import * as fieldAtoms from "./Filters/utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
+import { useTheme } from "../utils/hooks";
 
 const Button = animated(styled.div`
   cursor: pointer;
@@ -80,7 +82,7 @@ const Container = styled.div`
 `;
 
 const RefreshButton = () => {
-  const theme = useContext(ThemeContext);
+  const theme = useTheme();
   const [colorSeed, setColorSeed] = useRecoilState(atoms.colorSeed);
   const [clicked, setClicked] = useState(false);
   const props = useSpring({
@@ -114,7 +116,7 @@ type CellProps = {
   onSelect: (values: string[]) => void;
   path: string;
   entries: Entry[];
-  icon: SVGElement;
+  icon: any;
 };
 
 const Cell = ({
@@ -126,11 +128,12 @@ const Cell = ({
   modal,
   path = "",
 }: CellProps) => {
-  const theme = useContext(ThemeContext);
+  const theme = useTheme();
   const [expanded, setExpanded] = useState(true);
   const colorByLabel = useRecoilValue(
     modal ? atoms.modalColorByLabel : atoms.colorByLabel
   );
+  const colorMap = useRecoilValue(selectors.colorMap);
   const numSelected = entries.filter((e) => e.selected).length;
   const handleClear = (e) => {
     if (!onSelect) {
@@ -187,7 +190,6 @@ const Cell = ({
           }))}
           onCheck={onSelect}
           modal={modal}
-          prefix={prefix}
         />
       ) : (
         <span>No options available</span>
@@ -219,6 +221,7 @@ const TagsCell = ({ modal }: TagsCellProps) => {
   const [tags, setTags] = useRecoilState(
     modal ? fieldAtoms.modalActiveTags : fieldAtoms.activeTags
   );
+
   return (
     <Cell
       label="Tags"
@@ -234,19 +237,15 @@ type FieldsSidebarProps = {
   modal: boolean;
 };
 
-const FieldsSidebar = React.forwardRef(
-  ({ modal = false }: FieldsSidebarProps, ref) => {
-    const theme = useContext(ThemeContext);
-    const colorMap = useRecoilValue(selectors.colorMap);
-    const mediaType = useRecoilValue(selectors.mediaType);
-    const isVideo = mediaType === "video";
+const FieldsSidebar = React.forwardRef(({ modal }: FieldsSidebarProps, ref) => {
+  const mediaType = useRecoilValue(selectors.mediaType);
+  const isVideo = mediaType === "video";
 
-    return (
-      <Container ref={ref} {...rest}>
-        <TagsCell modal={modal} />
-      </Container>
-    );
-  }
-);
+  return (
+    <Container ref={ref}>
+      <TagsCell modal={modal} />
+    </Container>
+  );
+});
 
 export default FieldsSidebar;

@@ -121,13 +121,14 @@ const CheckboxContainer = animated(styled.div``);
 export type Entry = {
   name: string;
   selected: boolean;
-  data: string;
+  data: string | null | HTMLElement;
   color: string;
   disabled: boolean;
   type: string;
   path: string;
   hasDropdown: boolean;
   hideCheckbox: boolean;
+  title: string;
 };
 
 type EntryProps = {
@@ -146,6 +147,7 @@ const Entry = ({ entry, onCheck, modal }: EntryProps) => {
     name,
     path,
     selected,
+    title,
   } = entry;
   const [expanded, setExpanded] = useState(false);
   const theme = useTheme();
@@ -190,7 +192,7 @@ const Entry = ({ entry, onCheck, modal }: EntryProps) => {
             </span>
             {data !== null ? (
               <>
-                <span className="count" title={data}>
+                <span className="count" title={title}>
                   {data}
                 </span>
                 {hasDropdown && (
