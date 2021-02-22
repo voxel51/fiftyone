@@ -121,7 +121,7 @@ const CheckboxContainer = animated(styled.div``);
 export type Entry = {
   name: string;
   selected: boolean;
-  data: string | null | HTMLElement;
+  data: string | null | any;
   color: string;
   disabled: boolean;
   labelType?: string;

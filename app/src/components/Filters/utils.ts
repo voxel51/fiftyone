@@ -81,42 +81,26 @@ export const useExpand = (
   ];
 };
 
-export const activeLabels = atomFamily<string[], string>({
-  key: "activeLabels",
-  default: selectors.labelNames,
-});
-
 export const activeLabelPaths = selectorFamily<string[], boolean>({
   key: "activeLabelPaths",
   get: (modal) => ({ get }) => {
-    const node = modal ? modalActiveLabels : activeLabels;
     const sample = get(node("sample"));
     const frame = get(node("frames")).map((l) => "frames." + l);
     return [...sample, ...frame];
   },
 });
 
-export const modalActiveLabels = atomFamily<string[], string>({
-  key: "modalActiveLabels",
+export const activeFields = atomFamily<string[], boolean>({
+  key: "activeFields",
   default: [],
 });
 
-export const activeOther = atom<string[]>({
-  key: "activeOther",
-  default: [],
-});
-
-export const modalActiveOther = atom<string[]>({
-  key: "modalActiveOther",
-  default: [],
-});
-
-export const activeTags = atom<string[]>({
+export const activeTags = selectorFamily<string[], boolean>({
   key: "activeTags",
-  default: [],
-});
-
-export const modalActiveTags = atom<string[]>({
-  key: "modalActiveTags",
-  default: [],
+  get: (modal) => ({ get }) => {
+    const tags = get(selectors.tagNames);
+    return get(activeFields(modal)).filter(
+      (t) => t.startsWith("tags.") && tags.includes(t.slice(0, 4))
+    );
+  },
 });

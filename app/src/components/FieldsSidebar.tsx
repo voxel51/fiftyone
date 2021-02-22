@@ -116,7 +116,7 @@ type CellProps = {
   title: string;
   modal: boolean;
   onSelect: (entry: Entry) => void;
-  handleClear: () => void;
+  handleClear: (event: Event) => void;
   entries: Entry[];
   icon: any;
 };
@@ -164,7 +164,7 @@ const Cell = ({
   );
 };
 
-const makeData = (filteredCount, totalCount) => {
+const makeData = (filteredCount: number, totalCount: number): string => {
   if (
     typeof filteredCount === "number" &&
     filteredCount !== totalCount &&
@@ -210,7 +210,7 @@ const TagsCell = ({ modal }: TagsCellProps) => {
         title: name,
         path: name,
         data: modal ? (
-          count ? (
+          count[name] > 0 ? (
             <Check style={{ color: colorMap[name] }} />
           ) : (
             <Close style={{ color: colorMap[name] }} />
@@ -218,7 +218,9 @@ const TagsCell = ({ modal }: TagsCellProps) => {
         ) : (
           makeData(subCount[name], count[name])
         ),
-        modal: modal,
+        totalCount: count[name],
+        filteredCount: subCount[name],
+        modal,
       }))}
       onSelect={({ name, selected }) =>
         setActiveTags(
@@ -227,7 +229,10 @@ const TagsCell = ({ modal }: TagsCellProps) => {
             : activeTags.filter((t) => t !== name)
         )
       }
-      handleClear={() => setActiveTags([])}
+      handleClear={(e) => {
+        e.stopPropagation();
+        setActiveTags([]);
+      }}
       modal={modal}
       title={"Tags"}
     />
