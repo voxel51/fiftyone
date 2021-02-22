@@ -152,6 +152,14 @@ const ViewBar = React.memo(() => {
             }
           />
         ) : null}
+        <div
+          style={{
+            display: "block",
+            minWidth: 64,
+            maxWidth: 64,
+            height: "100%",
+          }}
+        ></div>
       </ViewBarDiv>
 
       <IconsContainer>
