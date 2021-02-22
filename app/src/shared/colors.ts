@@ -43,7 +43,7 @@ const blue92 = "hsl(211, 85%, 92%)";
 
 const red = "hsl(0, 87%, 53%)";
 
-type ColorTheme = {
+export type ColorTheme = {
   background: string;
   backgroundDark: string;
   backgroundDarker: string;

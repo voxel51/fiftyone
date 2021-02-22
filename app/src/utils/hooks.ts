@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useRecoilState, useSetRecoilState, useRecoilValue } from "recoil";
 import ResizeObserver from "resize-observer-polyfill";
 import ReactGA from "react-ga";
+import { ThemeContext } from "styled-components";
 import html2canvas from "html2canvas";
 
+import { ColorTheme } from "../shared/colors";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { attachDisposableHandler, packageMessage } from "./socket";
@@ -331,4 +333,8 @@ export const useScreenshot = () => {
       chain.then(capture);
     }
   });
+};
+
+export const useTheme = (): ColorTheme => {
+  return useContext<ColorTheme>(ThemeContext);
 };

@@ -54,15 +54,17 @@ const HiddenObjectFilter = ({ entry }) => {
   );
 };
 
+interface Entry {
+  path: string;
+  name: string;
+  color: string;
+  type: string;
+}
+
 type Props = {
   expanded: boolean;
   modal: boolean;
-  entry: {
-    path: string;
-    name: string;
-    color: string;
-    type: string;
-  };
+  entry: Entry;
 };
 
 const LabelFilter = ({ expanded, entry, modal }: Props) => {

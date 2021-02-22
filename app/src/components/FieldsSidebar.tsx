@@ -13,21 +13,12 @@ import {
 } from "@material-ui/icons";
 
 import CellHeader from "./CellHeader";
-import CheckboxGrid from "./CheckboxGrid";
+import CheckboxGrid from "./CheckboxGroup";
 import DropdownCell from "./DropdownCell";
 import SelectionTag from "./Tags/SelectionTag";
 import * as fieldAtoms from "./Filters/utils";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-
-export type Entry = {
-  name: string;
-  selected: boolean;
-  count: number;
-  type: string;
-  path: string;
-  boolean: boolean;
-};
 
 const Button = animated(styled.div`
   cursor: pointer;
