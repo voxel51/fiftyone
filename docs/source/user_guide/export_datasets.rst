@@ -1,4 +1,3 @@
-
 .. _exporting-datasets:
 
 Exporting FiftyOne Datasets
@@ -150,8 +149,8 @@ format when writing the dataset to disk.
     | :ref:`BDDDataset <BDDDataset-export>`                              | A labeled dataset consisting of images and their associated multitask predictions  |
     |                                                                    | saved in `Berkeley DeepDrive (BDD) format <https://bdd-data.berkeley.edu>`_.       |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`FiftyOneDataset <FiftyOneDataset-export>`                    | A dataset consisting of an arbitrary serialized |WhatIsAFiftyOneDataset| and its   |
-    |                                                                    | associated source data.                                                            |
+    | :ref:`FiftyOneDataset <FiftyOneDataset-export>`                    | A dataset consisting of an arbitrary serialized |Dataset| and its associated       |
+    |                                                                    | source data.                                                                       |
     +--------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`Custom formats <custom-dataset-exporter>`                    | Export datasets in custom formats by defining your own |DatasetType| or            |
     |                                                                    | |DatasetExporter| class.                                                           |

@@ -1,3 +1,5 @@
+.. _adding-samples:
+
 Adding Samples to Datasets
 ==========================
 

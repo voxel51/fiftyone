@@ -1,3 +1,5 @@
+.. _using-aggregations:
+
 Using Aggregations
 ==================
 
@@ -17,8 +19,6 @@ results.
 The :mod:`fiftyone.core.aggregations` module offers a declaritive and
 highly-efficient approach to computing summary statistics about your datasets
 and views.
-
-.. _using-aggregations:
 
 Overview
 ________
@@ -626,14 +626,13 @@ to succinctly express this:
 
     dataset = foz.load_zoo_dataset("quickstart")
 
-    high_conf_view = dataset.filter_labels(
-        "predictions", F("confidence") >= 0.5
+    avg_conf = (
+        dataset
+        .filter_labels("predictions", F("confidence") >= 0.5)
+        .mean("predictions.detections.confidence")
     )
 
-    print(
-        high_conf_view.sum("predictions.detections.confidence") /
-        high_conf_view.count("predictions.detections.confidence")
-    )
+    print(avg_conf)
     # 0.8170506501060617
 
 .. _aggregations-frame-labels:

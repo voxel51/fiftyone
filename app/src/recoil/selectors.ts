@@ -113,10 +113,6 @@ export const handleId = selector({
 export const refresh = selector<boolean>({
   key: "refresh",
   get: ({ get }) => get(atoms.stateDescription).refresh,
-  set: (value) => ({ get }) => {
-    const state = get(atoms.stateDescription);
-    get(socket).send(packageMessage("update", { ...state, refresh: value }));
-  },
 });
 
 export const deactivated = selector({

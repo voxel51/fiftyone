@@ -1,4 +1,3 @@
-
 .. _virtualenv-guide:
 
 Virtual Environment Setup

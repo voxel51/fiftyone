@@ -1,3 +1,5 @@
+.. _drawing-labels:
+
 Drawing Labels on Samples
 =========================
 
