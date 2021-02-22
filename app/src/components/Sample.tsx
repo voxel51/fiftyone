@@ -1,6 +1,6 @@
-import React, { useCallback, useContext, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
-import styled, { ThemeContext } from "styled-components";
+import styled from "styled-components";
 import { animated, useSpring, useTransition } from "react-spring";
 
 import { getColor } from "player51";
@@ -12,8 +12,8 @@ import { labelFilters } from "./Filters/LabelFieldFilters.state";
 import * as labelAtoms from "./Filters/utils";
 import { getLabelText, stringify } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
-import { useFastRerender, useVideoData } from "../utils/hooks";
-import { Checkbox } from "@material-ui/core";
+import { useFastRerender, useVideoData, useTheme } from "../utils/hooks";
+import { Checkbox, useTheme } from "@material-ui/core";
 
 const SampleDiv = animated(styled.div`
   position: relative;
@@ -149,7 +149,7 @@ const Sample = ({ sample, metadata }) => {
   const [stateDescription, setStateDescription] = useRecoilState(
     atoms.stateDescription
   );
-  const theme = useContext(ThemeContext);
+  const theme = useTheme();
 
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     atoms.selectedSamples
@@ -225,7 +225,6 @@ const Sample = ({ sample, metadata }) => {
   });
 
   const [bar, onMouseEnter, onMouseLeave] = useHoverLoad(socket, sample);
-  const setter = getModalLabelsSetter(sample, metadata);
 
   const bubbles = [
     ...Object.keys(sample)
@@ -279,7 +278,7 @@ const Sample = ({ sample, metadata }) => {
           filterSelector={labelFilters(false)}
           onMouseEnter={onMouseEnter}
           onMouseLeave={onMouseLeave}
-          onClick={setter}
+          onClick={() => {}}
         />
         {bar.map(({ key, props }) => (
           <LoadingBar key={key} style={props} />

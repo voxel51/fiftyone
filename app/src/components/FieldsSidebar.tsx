@@ -202,8 +202,8 @@ const TagsCell = ({ modal }: TagsCellProps) => {
       icon={<PhotoLibrary />}
       entries={tags.map((name) => ({
         name,
-        disabled: true,
-        hideCheckbox: true,
+        disabled: false,
+        hideCheckbox: modal,
         hasDropdown: false,
         selected: activeTags.includes(name),
         color: colorMap[name],
@@ -216,7 +216,7 @@ const TagsCell = ({ modal }: TagsCellProps) => {
             <Close style={{ color: colorMap[name] }} />
           )
         ) : (
-          makeData(subCount, count)
+          makeData(subCount[name], count[name])
         ),
         modal: modal,
       }))}
