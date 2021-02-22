@@ -1,4 +1,3 @@
-
 .. _fiftyone-brain:
 
 FiftyOne Brain
@@ -24,8 +23,8 @@ workflow:
 * **Uniqueness**: During the training loop for a model, the best results will
   be seen when training on unique data. The FiftyOne Brain provides a
   *uniqueness measure* for images that compare the content of every image in a
-  |WhatIsAFiftyOneDataset| with all other images. Uniqueness operates on raw
-  images and does not require any prior annotation on the data. It is hence
+  :ref:`dataset <using-datasets>` with all other images. Uniqueness operates on
+  raw images and does not require any prior annotation on the data. It is hence
   very useful in the early stages of the machine learning workflow when you are
   likely asking "What data should I select to annotate?"
 
@@ -79,18 +78,27 @@ predictions of a pre-trained model via the
 formats, ranging from a simple directory of images to complicated dataset
 structures like `COCO <https://cocodataset.org/#home>`_.
 
-**Output**: A scalar-valued field on each sample that ranks the uniqueness of
-that sample (higher value means more unique). The default name of this field
-is `uniqueness`, but you can customize its name via the `uniqueness_field`
-argument of :meth:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`.
-The uniqueness value is normalized so it is comparable across datasets and
-data-subsets.
+**Output**: A scalar-valued ``uniqueness`` field is populated on each sample
+that ranks the uniqueness of that sample (higher value means more unique).
+The uniqueness values for a dataset are normalized to ``[0, 1]``, with the most
+unique sample in the collection having a uniqueness value of ``1``.
+
+You can customize the name of this field by passing the optional
+``uniqueness_field`` argument to
+:meth:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`.
 
 **What to expect**: Uniqueness uses a tuned algorithm that measures the
 distribution of each |Sample| in the |Dataset|. Using this distribution, it
 ranks each sample based on its relative *similarity* to other samples. Those
 that are close to other samples are not unique whereas those that are far from
 most other samples are more unique.
+
+.. note::
+
+    You can also specify a region of interest within each image to use to
+    compute uniqueness by providing the optional ``roi_field`` argument to
+    :meth:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`, which
+    contains |Detections| or |Polylines| that define the ROI for each sample.
 
 .. note::
 
@@ -111,7 +119,8 @@ datasets.
 
         Correct annotations are crucial in developing high performing models.
         Using the FiftyOne Brain and the predictions of a pre-trained model,
-        you can identify possible labels mistakes in your dataset via the
+        you can identify possible labels mistakes in |Classification| fields
+        of your dataset via the
         :meth:`compute_mistakenness() <fiftyone.brain.compute_mistakenness>`
         method:
 
@@ -121,17 +130,17 @@ datasets.
             import fiftyone.brain as fob
 
             fob.compute_mistakenness(
-                samples, pred_field="my_model", label_field="ground_truth"
+                samples, "predictions", label_field="ground_truth"
             )
 
         **Input**: Label mistakes operate on samples for which there are both
-        human annotations (`label_field` in the example block) and model
-        predictions (`pred_field` above).
+        human annotations (`"ground_truth"` above) and model predictions
+        (`"predictions"` above).
 
-        **Output**: A scalar-valued field on each sample that ranks the chance
-        of a mistaken annotation. The default name of this field is
-        `mistakenness`, but you can customize its name via the
-        `mistakenness_field` argument of
+        **Output**: A float ``mistakenness`` field is populated on each sample
+        that ranks the chance that the human annotation is mistaken. You can
+        customize the name of this field by passing the optional
+        ``mistakenness_field`` argument to
         :meth:`compute_mistakenness() <fiftyone.brain.compute_mistakenness>`.
 
         **What to expect**: Finding mistakes in human annotations is
@@ -144,7 +153,7 @@ datasets.
         .. note::
 
             Check out the
-            :doc:`label mistakes tutorial <../tutorials/label_mistakes>`
+            :doc:`label mistakes tutorial <../tutorials/classification_mistakes>`
             to see an example use case of the Brain's mistakenness method on
             a classification dataset.
 
@@ -152,7 +161,8 @@ datasets.
 
         Correct annotations are crucial in developing high performing models.
         Using the FiftyOne Brain and the predictions of a pre-trained model,
-        you can identify possible labels mistakes in your dataset via the
+        you can identify possible labels mistakes in |Detections| fields of
+        your dataset via the
         :meth:`compute_mistakenness() <fiftyone.brain.compute_mistakenness>`
         method:
 
@@ -162,52 +172,54 @@ datasets.
             import fiftyone.brain as fob
 
             fob.compute_mistakenness(
-                samples, pred_field="my_model", label_field="ground_truth"
+                samples, "predictions", label_field="ground_truth"
             )
 
-        **Input**: Label mistakes operate on samples for which there are both
-        human annotations (`label_field` in the example block) and model
-        predictions (`pred_field` above). While it is recommended that you add
-        logits to every prediction, if that is not possible then you can add
-        the `use_logits=False` keyword argument to
-        :meth:`compute_mistakenness() <fiftyone.brain.compute_mistakenness>`
-        and it will use the confidence of the predictions instead.
+        **Input**: You can compute label mistakes on samples for which there
+        are both human annotations (`"ground_truth"` above) and model
+        predictions (`"predictions"` above).
 
         **Output**: New fields on both the detections in `label_field` and the
         samples will be populated:
 
         Detection-level fields:
 
-        * `mistakenness` (float): Populated for objects in `label_field` that
-          matched with a prediction in `pred_field`. It is a measure of the
-          likelihood that the ground truth annotation is a mistake.
+        * `mistakenness` (float): Objects in `label_field` that matched with a
+          prediction have their `mistakenness` field populated with a measure
+          of the likelihood that the ground truth annotation is a mistake.
 
-        * `mistakenness_loc` (float): Populated for objects in `label_field`
-          that matched with a prediction in `pred_field`. It is a measure of
-          the mistakenness in the localization (bounding box) of the ground
-          truth annotation.
+        * `mistakenness_loc` (float): Objects in `label_field` that matched
+          with a prediction have their `mistakenness_loc` field populated with
+          a measure of the mistakenness in the localization (bounding box) of
+          the ground truth annotation.
 
-        * `possible_spurious` (bool): Populated for objects in `label_field`
-          that were not matched with a prediction and deemed to be likely
-          spurious annotations.
+        * `possible_missing` (bool): If there are predicted objects with no
+          matches in `label_field` but which are deemed to be likely correct
+          annotations, these objects will have their `possible_missing`
+          attribute set to True. In addition, if you pass the optional
+          ``copy_missing=True`` flag to
+          :meth:`compute_mistakenness() <fiftyone.brain.compute_mistakenness>`,
+          then these objects will be copied into `label_field`.
 
-        * `possible_missing` (bool): If there are objects in `pred_field` with
-          no matches in `object_field` but which are deemed to be likely
-          correct annotations, new |Detections| with their `possible_missing`
-          field populated are added to `label_field` to indicate ground truth
-          annotations that were likely missed by annotators.
+        * `possible_spurious` (bool): Objects in `label_field` that were not
+          matched with a prediction and deemed to be likely spurious
+          annotations will have their `possible_spurious` field set to True.
 
         Sample-level fields:
 
         * `mistakenness` (float): The maximum mistakenness of an object in the
           `label_field` of the sample.
 
-        * `possible_spurious` (int): The number of objects in the `label_field`
-          of the sample that were deemed to be likely spurious annotations.
-
         * `possible_missing` (int): The number of objects that were added to
           the `label_field` of the sample and marked as likely missing
           annotations.
+
+        * `possible_spurious` (int): The number of objects in the `label_field`
+          of the sample that were deemed to be likely spurious annotations.
+
+        You can customize the names of these fields by passing optional
+        arguments to
+        :meth:`compute_mistakenness() <fiftyone.brain.compute_mistakenness>`.
 
         **What to expect**: Finding mistakes in human annotations is
         non-trivial (if it could be done perfectly then the approach would
@@ -219,7 +231,7 @@ datasets.
         .. note::
 
             Check out the
-            :doc:`detection mistakenness recipe <../recipes/detection_mistakenness>`
+            :doc:`detection mistakes tutorials <../tutorials/detection_mistakes>`
             to see an example use case of the Brain's mistakenness method on a
             detection dataset.
 
@@ -231,27 +243,26 @@ _______________
 During training, it is useful to identify samples that are more difficult for a
 model to learn so that training can be more focused around these hard samples.
 These hard samples are also useful as seeds when considering what other new
-samples of add to a training dataset.
+samples to add to a training dataset.
 
-In order to compute hardness, model predictions must be generated on the
-samples of a dataset. These predictions can then be loaded into FiftyOne into
-the same |Dataset| and the FiftyOne Brain can be used to compute hardness via
-the :meth:`compute_hardness() <fiftyone.brain.compute_hardness>` method:
+In order to compute hardness, all you need to do is add your model predictions
+and their logits to your FiftyOne |Dataset| and then run the
+:meth:`compute_hardness() <fiftyone.brain.compute_hardness>` method:
 
 .. code-block:: python
     :linenos:
 
     import fiftyone.brain as fob
 
-    fob.compute_hardness(dataset, label_field="predictions")
+    fob.compute_hardness(dataset, "predictions")
 
-**Input**: The `dataset` argument has samples on which predictions (logits)
-have been computed and are stored in the `label_field`. Annotations and labels
-are not required for hardness.
+**Input**: A |Dataset| or |DatasetView| on which predictions have been
+computed and are stored in the ``"predictions"`` argument. Ground truth
+annotations are not required for hardness.
 
-**Output**: A scalar-valued field on each sample that ranks the hardness of the
-sample. The default name of this field is `hardness`, but you can customize its
-name by using the `hardness_field` argument of
+**Output**: A scalar-valued ``hardness`` field is populated on each sample that
+ranks the hardness of the sample. You can customize the name of this field via
+the ``hardness_field`` argument of
 :meth:`compute_hardness() <fiftyone.brain.compute_hardness>`.
 
 **What to expect**: Hardness is computed in the context of a prediction model.

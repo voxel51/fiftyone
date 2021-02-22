@@ -339,7 +339,7 @@ CLI
 
 Docs
 ^^^^
-- Added :doc:`a recipe </recipes/detection_mistakenness>` demonstrating how to
+- Added :doc:`a tutorial </tutorials/detection_mistakes>` demonstrating how to
   use :meth:`compute_mistakenness() <fiftyone.brain.compute_mistakenness>` to
   detect label mistakes for detection datasets
 - Added questions to the :ref:`FAQ page <faq>`:

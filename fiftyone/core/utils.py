@@ -464,8 +464,13 @@ class ResourceLimit(object):
 
 class ProgressBar(etau.ProgressBar):
     def __init__(self, *args, **kwargs):
-        quiet = not fo.config.show_progress_bars
-        super().__init__(*args, iters_str="samples", quiet=quiet, **kwargs)
+        if "quiet" not in kwargs:
+            kwargs["quiet"] = not fo.config.show_progress_bars
+
+        if "iters_str" not in kwargs:
+            kwargs["iters_str"] = "samples"
+
+        super().__init__(*args, **kwargs)
 
 
 @contextmanager
