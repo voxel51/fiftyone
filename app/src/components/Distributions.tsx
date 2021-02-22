@@ -152,7 +152,7 @@ const Distributions = ({ group }) => {
   const filters = useRecoilValue(selectors.filterStages);
   const datasetName = useRecoilValue(selectors.datasetName);
   const [loading, setLoading] = useState(true);
-  const refresh = useRecoilValue(atoms.refresh);
+  const refresh = useRecoilValue(selectors.refresh);
   const [data, setData] = useState([]);
 
   useSendMessage("distributions", { group }, null, [

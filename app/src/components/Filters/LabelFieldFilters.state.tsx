@@ -53,6 +53,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
     const labels = get(activeLabelPaths(true));
     const filters = {};
     const typeMap = get(selectors.labelTypesMap);
+    const hiddenObjects = modal ? get(atoms.hiddenObjects) : null;
     for (const label of labels) {
       const path = `${label}${getPathExtension(typeMap[label])}`;
 
@@ -81,6 +82,9 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
       ];
 
       filters[label] = (s) => {
+        if (hiddenObjects && hiddenObjects[s.id]) {
+          return false;
+        }
         const inRange =
           cRange[0] - 0.005 <= s.confidence &&
           s.confidence <= cRange[1] + 0.005;
@@ -137,20 +141,26 @@ export const sampleModalFilter = selector({
   get: ({ get }) => {
     const filters = get(labelFilters(true));
     const labels = get(activeLabelPaths(true));
+    const hiddenObjects = get(atoms.hiddenObjects);
     return (sample) => {
       return Object.entries(sample).reduce((acc, [key, value]) => {
+        if (value && hiddenObjects[value.id]) {
+          return acc;
+        }
         if (key === "tags") {
           acc[key] = value;
         } else if (value && VALID_LIST_TYPES.includes(value._cls)) {
-          acc[key] =
-            filters[key] && value !== null
-              ? {
-                  ...value,
-                  [value._cls.toLowerCase()]: value[
-                    value._cls.toLowerCase()
-                  ].filter(filters[key]),
-                }
-              : value;
+          if (activeLabels[key]) {
+            acc[key] =
+              filters[key] && value !== null
+                ? {
+                    ...value,
+                    [value._cls.toLowerCase()]: value[
+                      value._cls.toLowerCase()
+                    ].filter((l) => filters[key](l) && !hiddenObjects[l.id]),
+                  }
+                : value;
+          }
         } else if (value !== null && filters[key] && filters[key](value)) {
           acc[key] = value;
         } else if (RESERVED_FIELDS.includes(key)) {

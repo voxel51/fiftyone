@@ -34,11 +34,6 @@ export const feedbackSubmitted = atom({
   },
 });
 
-export const refresh = atom({
-  key: "refresh",
-  default: false,
-});
-
 export const activePlot = atom({
   key: "activePlot",
   default: "labels",

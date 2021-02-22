@@ -1,11 +1,9 @@
 /** @type {import("snowpack").SnowpackUserConfig } */
 module.exports = {
-  experiments: {
-    optimize: {
-      bundle: true,
-      minify: true,
-      target: "es2018",
-    },
+  optimize: {
+    bundle: true,
+    minify: true,
+    target: "es2018",
   },
   mount: {
     src: "/_dist_",
@@ -38,11 +36,5 @@ module.exports = {
     baseUrl: "",
     clean: true,
     out: "../fiftyone/server/static",
-  },
-  proxy: {
-    /* ... */
-  },
-  alias: {
-    /* ... */
   },
 };

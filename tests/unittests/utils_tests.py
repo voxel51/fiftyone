@@ -5,13 +5,16 @@ FiftyOne utilities unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import time
 import unittest
 
 from mongoengine.errors import ValidationError
 import numpy as np
 
 import fiftyone as fo
+import fiftyone.constants as foc
 import fiftyone.core.media as fom
+import fiftyone.core.uid as fou
 from fiftyone.migrations.runner import MigrationRunner
 
 from decorators import drop_datasets
@@ -211,6 +214,16 @@ class MigrationTests(unittest.TestCase):
             _revisions=revs(["0.1", "0.2", "0.3"]),
         )
         self.assertEqual(runner.revisions, ["0.3", "0.2", "0.1"])
+
+
+class UIDTests(unittest.TestCase):
+    def test_log_import(self):
+        fo.config.do_not_track = False
+        foc.UA_ID = foc.UA_DEV
+
+        fou.log_import_if_allowed(test=True)
+        time.sleep(2)
+        self.assertTrue(fou._import_logged)
 
 
 if __name__ == "__main__":
