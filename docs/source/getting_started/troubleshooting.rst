@@ -1,4 +1,3 @@
-
 .. _troubleshooting:
 
 Install Troubleshooting

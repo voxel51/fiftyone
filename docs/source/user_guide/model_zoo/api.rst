@@ -1,4 +1,3 @@
-
 .. _model-zoo-api:
 
 Model Zoo API Reference

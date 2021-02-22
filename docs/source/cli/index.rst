@@ -1,4 +1,3 @@
-
 .. _fiftyone-cli:
 
 FiftyOne Command-Line Interface (CLI)
