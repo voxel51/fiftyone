@@ -132,9 +132,9 @@ class ClassificationEvaluation(foe.EvaluationMethod):
         return fields
 
     def cleanup(self, samples, eval_key):
-        samples._dataset.delete_sample_field(eval_key)
+        samples._dataset.delete_sample_field(eval_key, error_level=1)
         if samples._is_frame_field(self.config.gt_field):
-            samples._dataset.delete_frame_field(eval_key)
+            samples._dataset.delete_frame_field(eval_key, error_level=1)
 
     def _validate_run(self, samples, eval_key, existing_info):
         self._validate_fields_match(eval_key, "pred_field", existing_info)

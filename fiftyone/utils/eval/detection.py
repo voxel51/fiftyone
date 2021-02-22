@@ -259,11 +259,12 @@ class DetectionEvaluation(foe.EvaluationMethod):
 
         if is_frame_field:
             samples._dataset.delete_sample_fields(
-                ["%s_tp" % eval_key, "%s_fp" % eval_key, "%s_fn" % eval_key]
+                ["%s_tp" % eval_key, "%s_fp" % eval_key, "%s_fn" % eval_key],
+                error_level=1,
             )
-            samples._dataset.delete_frame_fields(fields)
+            samples._dataset.delete_frame_fields(fields, error_level=1)
         else:
-            samples._dataset.delete_sample_fields(fields)
+            samples._dataset.delete_sample_fields(fields, error_level=1)
 
     def _validate_run(self, samples, eval_key, existing_info):
         self._validate_fields_match(eval_key, "pred_field", existing_info)
