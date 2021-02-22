@@ -25,6 +25,10 @@ DOWN = "down"
 UP = "up"
 
 
+def _migrations_disabled():
+    return os.environ.get("FIFTYONE_DISABLE_MIGRATIONS", "0") != "0"
+
+
 def get_database_revision():
     """Gets the current revision of the database.
 
@@ -81,6 +85,9 @@ def migrate_database_if_necessary(destination=None, verbose=False):
             ``fiftyone`` package version is used
         verbose (False): whether to log incremental migrations that are run
     """
+    if _migrations_disabled():
+        return
+
     if destination is None:
         destination = foc.VERSION
 
@@ -118,6 +125,9 @@ def migrate_dataset_if_necessary(name, destination=None, verbose=False):
             ``fiftyone`` package version is used
         verbose (False): whether to log incremental migrations that are run
     """
+    if _migrations_disabled():
+        return
+
     if destination is None:
         destination = foc.VERSION
 
