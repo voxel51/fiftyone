@@ -38,7 +38,7 @@ type Props = {
   expanded: boolean;
   onExpand: (expanded: boolean) => void;
   boxed: boolean;
-  children: React.ReactChildren;
+  children: React.ReactElement[];
 };
 
 const DropdownCell = ({

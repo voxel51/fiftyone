@@ -129,6 +129,8 @@ export type Entry = {
   hasDropdown: boolean;
   hideCheckbox: boolean;
   title: string;
+  totalCount: number;
+  filteredCount: number;
 };
 
 type EntryProps = {
@@ -155,12 +157,6 @@ const Entry = ({ entry, onCheck, modal }: EntryProps) => {
   const isNumeric = useRecoilValue(isNumericField(path));
   const isString = useRecoilValue(isStringField(path));
   const isBoolean = useRecoilValue(isBooleanField(path));
-
-  const handleCheck = (entry) => {
-    if (onCheck) {
-      onCheck({ ...entry, selected: !entry.selected });
-    }
-  };
 
   const sample = useContext(SampleContext);
   const hiddenObjects = useRecoilValue(atoms.hiddenObjects);
@@ -233,7 +229,7 @@ const Entry = ({ entry, onCheck, modal }: EntryProps) => {
         control={
           <Checkbox
             checked={selected}
-            onChange={() => handleCheck(entry)}
+            onChange={() => onCheck({ ...entry, selected: !entry.selected })}
             style={{
               display: hideCheckbox ? "none" : "block",
               color:

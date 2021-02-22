@@ -113,7 +113,7 @@ type CellProps = {
   label: string;
   title: string;
   modal: boolean;
-  onSelect: (values: string[]) => void;
+  onSelect: (entry: Entry) => void;
   path: string;
   entries: Entry[];
   icon: any;
@@ -128,12 +128,7 @@ const Cell = ({
   modal,
   path = "",
 }: CellProps) => {
-  const theme = useTheme();
   const [expanded, setExpanded] = useState(true);
-  const colorByLabel = useRecoilValue(
-    modal ? atoms.modalColorByLabel : atoms.colorByLabel
-  );
-  const colorMap = useRecoilValue(selectors.colorMap);
   const numSelected = entries.filter((e) => e.selected).length;
   const handleClear = (e) => {
     if (!onSelect) {
@@ -170,27 +165,7 @@ const Cell = ({
     >
       {label === "Options" && <RefreshButton />}
       {entries.length ? (
-        <CheckboxGrid
-          columnWidths={[3, 2]}
-          entries={entries.map((e) => ({
-            name: e.name,
-            selected: e.selected,
-            type: e.type,
-            data: e.icon ? e.icon : makeData(e.filteredCount, e.totalCount),
-            totalCount: e.totalCount,
-            filteredCount: e.filteredCount,
-            color: colorByLabel
-              ? theme.brand
-              : colorMap[path]
-              ? colorMap[path]
-              : theme.brand,
-            hideCheckbox: e.hideCheckbox,
-            disabled: Boolean(e.disabled),
-            path: prefix + e.name,
-          }))}
-          onCheck={onSelect}
-          modal={modal}
-        />
+        <CheckboxGrid entries={entries} onCheck={onSelect} modal={modal} />
       ) : (
         <span>No options available</span>
       )}
@@ -227,7 +202,13 @@ const TagsCell = ({ modal }: TagsCellProps) => {
       label="Tags"
       icon={<PhotoLibrary />}
       entries={tags}
-      onSelect={onSelectTag}
+      onSelect={({ name, selected }) => {
+        if (selected) {
+          setTags([name, ...selected]);
+        } else {
+          setTags(tags.filter((t) => t !== name));
+        }
+      }}
       modal={modal}
     />
   );
