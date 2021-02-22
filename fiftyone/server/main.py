@@ -476,9 +476,10 @@ class StateHandler(tornado.websocket.WebSocketHandler):
     @staticmethod
     async def on_refresh(self, polling_client=None):
         """Event for refreshing an App client."""
-        StateHandler.state = fos.StateDescription.from_dict(
-            StateHandler.state
-        ).serialize()
+        state = fos.StateDescription.from_dict(StateHandler.state)
+        state.refresh = not state.refresh
+        StateHandler.state = state.serialize()
+
         if polling_client:
             PollingHandler.clients[polling_client].update(
                 {"update", "statistics", "extended_statistics"}
