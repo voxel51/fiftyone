@@ -13,7 +13,6 @@ import eta.core.utils as etau
 
 from fiftyone.core.config import Config, Configurable
 from fiftyone.core.odm.evaluation import EvaluationDocument
-import fiftyone.core.view as fov
 
 
 class EvaluationInfo(Config):
@@ -27,7 +26,7 @@ class EvaluationInfo(Config):
     """
 
     def __init__(self, eval_key, timestamp=None, config=None):
-        if timestamp:
+        if timestamp is None:
             timestamp = datetime.datetime.utcnow()
 
         self.eval_key = eval_key
@@ -268,6 +267,8 @@ def load_evaluation_view(samples, eval_key, select_fields=False):
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
     """
+    import fiftyone.core.view as fov
+
     eval_doc = _get_evaluation_doc(samples, eval_key)
     stage_dicts = [json.loads(s) for s in eval_doc.view_stages]
     view = fov.DatasetView._build(samples._dataset, stage_dicts)

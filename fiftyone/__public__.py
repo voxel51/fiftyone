@@ -37,15 +37,6 @@ from .core.dataset import (
     make_unique_dataset_name,
     get_default_dataset_dir,
 )
-from .core.evaluation import (
-    EvaluationInfo,
-    EvaluationResults,
-    list_evaluations,
-    get_evaluation_info,
-    load_evaluation_view,
-    delete_evaluation,
-    delete_evaluations,
-)
 from .core.expressions import (
     ViewField,
     ViewExpression,
