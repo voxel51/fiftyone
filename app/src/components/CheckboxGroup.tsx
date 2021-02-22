@@ -176,6 +176,7 @@ const Entry = ({ entry, onCheck, modal }: EntryProps) => {
         : theme.background,
   });
   const ArrowType = expanded ? ArrowDropUp : ArrowDropDown;
+  return null;
 
   return (
     <CheckboxContainer key={name} style={containerProps}>

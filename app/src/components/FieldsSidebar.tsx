@@ -5,6 +5,8 @@ import { useRecoilValue, useRecoilState } from "recoil";
 import {
   Autorenew,
   BarChart,
+  Check,
+  Close,
   Help,
   Label,
   PhotoLibrary,
@@ -200,12 +202,22 @@ const TagsCell = ({ modal }: TagsCellProps) => {
       icon={<PhotoLibrary />}
       entries={tags.map((name) => ({
         name,
+        disabled: true,
+        hideCheckbox: true,
+        hasDropdown: false,
         selected: activeTags.includes(name),
         color: colorMap[name],
         title: name,
         path: name,
-        data: count,
-        hideCheckbox: modal,
+        data: modal ? (
+          count ? (
+            <Check style={{ color: colorMap[name] }} />
+          ) : (
+            <Close style={{ color: colorMap[name] }} />
+          )
+        ) : (
+          makeData(subCount, count)
+        ),
         modal: modal,
       }))}
       onSelect={({ name, selected }) =>

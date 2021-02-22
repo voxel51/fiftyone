@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import styled from "styled-components";
 
-import { Check, Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { Close, Fullscreen, FullscreenExit } from "@material-ui/icons";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 
 import FieldsSidebar from "./FieldsSidebar";
 import JSONView from "./JSONView";
@@ -12,10 +12,7 @@ import { Button, ModalFooter } from "./utils";
 import * as selectors from "../recoil/selectors";
 import * as atoms from "../recoil/atoms";
 import * as labelAtoms from "./Filters/utils";
-import {
-  labelFilters,
-  sampleModalFilter,
-} from "./Filters/LabelFieldFilters.state";
+import { labelFilters } from "./Filters/LabelFieldFilters.state";
 import { SampleContext } from "../utils/context";
 
 import {
@@ -210,9 +207,16 @@ const TopRightNavButton = ({ icon, title, onClick, ...rest }) => {
   );
 };
 
-const Row = ({ name, renderedName, value, children, ...rest }) => (
+type RowProps = {
+  name: string;
+  value: string;
+  style?: any;
+  children?: React.ReactElement<any>[];
+};
+
+const Row = ({ name, value, children, ...rest }: RowProps) => (
   <div className="row" {...rest}>
-    <label>{renderedName || name}&nbsp;</label>
+    <label>{name}&nbsp;</label>
     <div>
       <span title={value}>{value}</span>
     </div>
@@ -243,26 +247,12 @@ const SampleModal = (
   const [showJSON, setShowJSON] = useState(false);
   const [enableJSONFilter, setEnableJSONFilter] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
-  const [activeLabels, setActiveLabels] = useRecoilState(
-    labelAtoms.modalActiveLabels("sample")
-  );
-  const [activeFrameLabels, setActiveFrameLabels] = useRecoilState(
-    labelAtoms.modalActiveLabels("frame")
-  );
   const mediaType = useRecoilValue(selectors.mediaType);
-  const filter = useRecoilValue(sampleModalFilter);
-  const activeTags = useRecoilValue(labelAtoms.modalActiveTags);
-  const tagNames = useRecoilValue(selectors.tagNames);
   const fieldSchema = useRecoilValue(selectors.fieldSchema("sample"));
-  const labelNameGroups = useRecoilValue(selectors.labelNameGroups("sample"));
-  const frameLabelNameGroups = useRecoilValue(
-    selectors.labelNameGroups("frame")
-  );
   const colorByLabel = useRecoilValue(atoms.modalColorByLabel);
   const socket = useRecoilValue(selectors.socket);
   const viewCounter = useRecoilValue(atoms.viewCounter);
   const [requested, requestLabels] = useVideoData(socket, sample);
-  const frameData = useRecoilValue(atoms.sampleFrameData(sample._id));
   const videoLabels = useRecoilValue(atoms.sampleVideoLabels(sample._id));
   useEffect(() => {
     mediaType === "video" && requested !== viewCounter && requestLabels();
@@ -337,129 +327,6 @@ const SampleModal = (
   useEventHandler(playerRef.current, "timeupdate", (e) => {
     frameNumberRef.current = e.data.frame_number;
   });
-
-  const getDisplayOptions = (
-    values,
-    countOrExists,
-    selected,
-    hideCheckbox = false,
-    filteredCountOrExists
-  ) => {
-    return [...values].sort().map(({ name, type }) => ({
-      hideCheckbox,
-      name,
-      type,
-      icon: ["boolean", "undefined"].includes(typeof countOrExists[name]) ? (
-        countOrExists[name] ? (
-          <Check style={{ color: colorMap[name] }} />
-        ) : (
-          <Close style={{ color: colorMap[name] }} />
-        )
-      ) : undefined,
-      totalCount: countOrExists[name],
-      filteredCount: filteredCountOrExists
-        ? filteredCountOrExists[name]
-        : undefined,
-      selected: selected.includes(name),
-    }));
-  };
-
-  const handleSetDisplayOption = (setSelected) => (entry) => {
-    setSelected((selected) => {
-      if (entry.selected) {
-        return [];
-      }
-      return [];
-    });
-  };
-
-  const tagSampleExists = tagNames.reduce(
-    (acc, tag) => ({
-      ...acc,
-      [tag]: sample.tags.includes(tag),
-    }),
-    {}
-  );
-
-  const labelSampleValuesReducer = (s, groups, filterData = false) => {
-    const isVideo = s._media_type === "video";
-    return groups.labels.reduce((obj, { name, type }) => {
-      let value = 0;
-      const resolver = (frame, prefix = "") => {
-        const path = prefix + name;
-        if (!frame[path]) return 0;
-        return ["Detections", "Classifications", "Polylines"].includes(type)
-          ? frame[path][type.toLowerCase()].length
-          : type === "Keypoints"
-          ? frame[path].keypoints.reduce(
-              (acc, cur) => acc + cur.points.length,
-              0
-            )
-          : type === "Keypoint"
-          ? frame[path].points.length
-          : 1;
-      };
-
-      if (!(name in s) && isVideo && frameData) {
-        for (const frame of frameData) {
-          const pathFrame = Object.keys(frame).reduce(
-            (acc, cur) => ({
-              ...acc,
-              ["frames." + cur]: frame[cur],
-            }),
-            {}
-          );
-          if (frame[name])
-            value += resolver(
-              filterData ? filter(pathFrame) : pathFrame,
-              "frames."
-            );
-        }
-      } else if (!(name in s) && isVideo) {
-        value = "-";
-      } else {
-        value += resolver(s);
-      }
-      return {
-        ...obj,
-        [name]: value,
-      };
-    }, {});
-  };
-
-  const labelSampleValues = labelSampleValuesReducer(sample, labelNameGroups);
-  const filteredLabelSampleValues = labelSampleValuesReducer(
-    filter(sample),
-    labelNameGroups,
-    true
-  );
-  const frameLabelSampleValues = labelSampleValuesReducer(
-    sample,
-    frameLabelNameGroups
-  );
-  const filteredFrameLabelSampleValues = labelSampleValuesReducer(
-    filter(sample),
-    frameLabelNameGroups,
-    true
-  );
-
-  const scalarSampleValues = labelNameGroups.scalars.reduce(
-    (obj, { name }) => ({
-      ...obj,
-      [name]:
-        sample[name] !== undefined && sample[name] !== null
-          ? stringify(sample[name])
-          : undefined,
-    }),
-    {}
-  );
-
-  const otherSampleValues = labelNameGroups.unsupported.reduce((obj, label) => {
-    return {
-      ...obj,
-      [label]: label in sample,
-    };
-  }, {});
 
   return (
     <SampleContext.Provider value={sample}>
@@ -550,49 +417,6 @@ const SampleModal = (
                 frameNumberRef={frameNumberRef}
               />
             </div>
-            <FieldsSidebar
-              colorMap={colorMap}
-              tags={getDisplayOptions(
-                tagNames.map((t) => ({ name: t })),
-                tagSampleExists,
-                activeTags,
-                true
-              )}
-              labels={getDisplayOptions(
-                labelNameGroups.labels,
-                labelSampleValues,
-                activeLabels,
-                false,
-                filteredLabelSampleValues
-              )}
-              frameLabels={getDisplayOptions(
-                frameLabelNameGroups.labels,
-                frameLabelSampleValues,
-                activeFrameLabels,
-                false,
-                filteredFrameLabelSampleValues
-              )}
-              onSelectLabel={handleSetDisplayOption(setActiveLabels)}
-              onSelectFrameLabel={handleSetDisplayOption(setActiveFrameLabels)}
-              scalars={getDisplayOptions(
-                labelNameGroups.scalars,
-                scalarSampleValues,
-                activeLabels,
-                true
-              )}
-              unsupported={getDisplayOptions(
-                labelNameGroups.unsupported,
-                otherSampleValues,
-                activeLabels
-              )}
-              style={{
-                overflowY: "auto",
-                overflowX: "hidden",
-                height: "auto",
-              }}
-              colorByLabelAtom={atoms.modalColorByLabel}
-              modal={true}
-            />
             <TopRightNavButton
               onClick={onClose}
               title={"Close"}

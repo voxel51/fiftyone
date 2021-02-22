@@ -37,7 +37,7 @@ type Props = {
   title: string;
   expanded: boolean;
   onExpand: (expanded: boolean) => void;
-  boxed: boolean;
+  boxed?: boolean;
   children: React.ReactElement[];
 };
 

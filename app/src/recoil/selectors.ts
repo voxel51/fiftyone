@@ -413,9 +413,9 @@ export const extendedDatasetStats = selector({
   },
 });
 
-export const totalCount = selector({
+export const totalCount = selector<number>({
   key: "totalCount",
-  get: ({ get }): number => {
+  get: ({ get }) => {
     const stats = get(datasetStats) || [];
     return stats.reduce(
       (acc, cur) => (cur.name === null ? cur.result : acc),
@@ -424,9 +424,9 @@ export const totalCount = selector({
   },
 });
 
-export const filteredCount = selector({
+export const filteredCount = selector<number>({
   key: "filteredCount",
-  get: ({ get }): number => {
+  get: ({ get }) => {
     const stats = get(extendedDatasetStats) || [];
     return stats.reduce(
       (acc, cur) => (cur.name === null ? cur.result : acc),
@@ -435,7 +435,7 @@ export const filteredCount = selector({
   },
 });
 
-export const tagNames = selector({
+export const tagNames = selector<string[]>({
   key: "tagNames",
   get: ({ get }) => {
     return (get(datasetStats) ?? []).reduce((acc, cur) => {
