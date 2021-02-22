@@ -271,9 +271,8 @@ ___________________
 
 When you run a brain method on a dataset, the run is recorded on the dataset,
 allowing you to retrive information about it later, delete it (along with any
-modifications to your dataset that were performed by it), or even
-:meth:`retrieve the view <fiftyone.core.collections.SampleCollection.load_brain_view>`
-into your dataset that you processed.
+modifications to your dataset that were performed by it), or even retrieve the
+view into your dataset that you processed.
 
 Brain method runs can be accessed later by their `brain_key`:
 
