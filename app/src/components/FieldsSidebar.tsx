@@ -248,6 +248,7 @@ const LabelsCell = ({ modal }: LabelsCellProps) => {
   const [activeLabels, setActiveLabels] = useRecoilState(
     fieldAtoms.activeLabels({ modal, frames: false })
   );
+  const types = useRecoilValue(selectors.labelTypesMap);
 
   const colorMap = useRecoilValue(selectors.colorMap);
   const [subCountAtom, countAtom] = modal
@@ -268,7 +269,7 @@ const LabelsCell = ({ modal }: LabelsCellProps) => {
         name,
         disabled: false,
         hideCheckbox: modal,
-        hasDropdown: false,
+        hasDropdown: true,
         selected: activeLabels.includes(name),
         color: colorMap[name],
         title: name,
@@ -277,6 +278,7 @@ const LabelsCell = ({ modal }: LabelsCellProps) => {
         totalCount: count ? count[name] : null,
         filteredCount: subCount ? subCount[name] : null,
         modal,
+        labelType: types[name],
       }))}
       onSelect={({ name, selected }) =>
         setActiveLabels(
@@ -290,7 +292,7 @@ const LabelsCell = ({ modal }: LabelsCellProps) => {
         setActiveLabels([]);
       }}
       modal={modal}
-      title={"Tags"}
+      title={"Labels"}
     />
   );
 };

@@ -99,6 +99,16 @@ export const activeLabels = selectorFamily<
         frames ? v.startsWith("frames.") : !v.startsWith("frames.")
       );
   },
+  set: ({ modal, frames }) => ({ get, set }, value) => {
+    if (Array.isArray(value)) {
+      const labels = frames ? value.map((v) => "frames." + v) : value;
+      let active = get(activeFields(modal)).filter((v) => labels.includes(v));
+      if (labels.length) {
+        active = [labels[0], ...active.filter((v) => v !== labels[0])];
+      }
+      set(activeFields(modal), active);
+    }
+  },
 });
 
 export const activeTags = selectorFamily<string[], boolean>({
