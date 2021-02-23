@@ -83,15 +83,22 @@ export const useExpand = (
 
 export const activeFields = atomFamily<string[], boolean>({
   key: "activeFields",
-  default: [],
+  default: selectors.labelPaths,
 });
 
-export const activeLabels = atomFamily<
+export const activeLabels = selectorFamily<
   string[],
   { modal: boolean; frames: boolean }
 >({
   key: "activeLabels",
-  default: [],
+  get: ({ modal, frames }) => ({ get }) => {
+    const paths = get(selectors.labelPaths);
+    return get(activeFields(modal))
+      .filter((v) => paths.includes(v))
+      .filter((v) =>
+        frames ? v.startsWith("frames.") : !v.startsWith("frames.")
+      );
+  },
 });
 
 export const activeTags = selectorFamily<string[], boolean>({
