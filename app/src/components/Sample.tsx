@@ -124,6 +124,7 @@ const revealSample = () => {
 const SampleInfo = ({ sample }) => {
   const activeFields = useRecoilValue(labelAtoms.activeFields(false));
   const colorMap = useRecoilValue(selectors.colorMap);
+  const scalars = useRecoilValue(selectors.scalarNames("sample"));
   return (
     <SampleInfoDiv>
       {activeFields.reduce((acc, cur) => {
@@ -143,6 +144,7 @@ const SampleInfo = ({ sample }) => {
               maxWidth={"calc(100% - 32px)"}
             />,
           ];
+        } else if (scalars.includes(cur)) {
         }
         return acc;
       }, [])}

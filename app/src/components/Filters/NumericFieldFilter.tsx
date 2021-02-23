@@ -58,7 +58,7 @@ const setFilter = (
     _CLS: "numeric",
   };
 
-  if (meetsDefault(filter, bounds)) {
+  if (meetsDefault({ ...filter, none: true }, bounds)) {
     set(selectors.filterStage(path), null);
   } else {
     set(selectors.filterStage(path), filter);
