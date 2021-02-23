@@ -119,15 +119,6 @@ export const useFollow = (leaderRef, followerRef, set) => {
   useObserve(followerRef ? followerRef.current : null, follow);
 };
 
-// allows re-rendering before recoil's Batcher updates
-export const useFastRerender = () => {
-  const [counter, setCounter] = useState(0);
-  const rerender = useCallback(() => {
-    setCounter((prev) => prev + 1);
-  }, []);
-  return rerender;
-};
-
 export const useVideoData = (socket, sample, callback = null) => {
   const { _id: sampleId, filepath } = sample;
   const [requested, setRequested] = useRecoilState(

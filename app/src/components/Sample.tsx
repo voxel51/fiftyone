@@ -1,19 +1,17 @@
-import React, { useCallback, useState } from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import React, { useState } from "react";
+import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { animated, useSpring, useTransition } from "react-spring";
 
-import { getColor } from "player51";
 import Player51 from "./Player51";
 import Tag from "./Tags/Tag";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { labelFilters } from "./Filters/LabelFieldFilters.state";
 import * as labelAtoms from "./Filters/utils";
-import { getLabelText, stringify } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
-import { useFastRerender, useVideoData, useTheme } from "../utils/hooks";
-import { Checkbox, useTheme } from "@material-ui/core";
+import { useVideoData, useTheme } from "../utils/hooks";
+import { Checkbox } from "@material-ui/core";
 
 const SampleDiv = animated(styled.div`
   position: relative;
@@ -135,17 +133,23 @@ const SelectedDiv = styled.div`
   border-left-style: solid;
 `;
 
+const revealSample = () => {
+  return useSpring({
+    from: {
+      opacity: 0,
+    },
+    opacity: 1,
+  });
+};
+
 const Sample = ({ sample, metadata }) => {
   const http = useRecoilValue(selectors.http);
   const id = sample._id;
   const src = `${http}/filepath/${encodeURI(sample.filepath)}?id=${id}`;
   const socket = useRecoilValue(selectors.socket);
-  const filter = useRecoilValue(labelFilters(false));
   const colorMap = useRecoilValue(selectors.colorMap);
   const colorByLabel = useRecoilValue(atoms.colorByLabel);
-  const activeLabels = useRecoilValue(labelAtoms.activeLabels("sample"));
-  const activeTags = useRecoilValue(labelAtoms.activeTags);
-  const activeOther = useRecoilValue(labelAtoms.activeOther);
+  const activeTags = useRecoilValue(labelAtoms.activeTags(false));
   const [stateDescription, setStateDescription] = useRecoilState(
     atoms.stateDescription
   );
@@ -154,7 +158,6 @@ const Sample = ({ sample, metadata }) => {
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     atoms.selectedSamples
   );
-  const rerender = useFastRerender();
 
   const handleClick = () => {
     const newSelected = new Set(selectedSamples);
@@ -167,94 +170,23 @@ const Sample = ({ sample, metadata }) => {
       event = "add_selection";
     }
     setSelectedSamples(newSelected);
-    rerender();
     socket.send(packageMessage(event, { _id: id }));
     setStateDescription({ ...stateDescription, selected: [...newSelected] });
   };
-  const renderLabel = ({ name, label, idx }) => {
-    if (!activeLabels.includes(name) || !label) {
-      return null;
-    }
-    let value = getLabelText(label);
-    if (value === undefined) {
-      return null;
-    }
-
-    if (!filter[name](label)) {
-      return null;
-    }
-    return (
-      <Tag
-        key={"label-" + name + "-" + value + (idx ? "-" + idx : "")}
-        title={name}
-        name={value}
-        color={colorByLabel ? getColor(value) : colorMap[name]}
-      />
-    );
-  };
-  const renderScalar = (name) => {
-    if (
-      !activeOther[name] ||
-      sample[name] === undefined ||
-      sample[name] === null
-    ) {
-      return null;
-    }
-    const value = stringify(sample[name]);
-    return (
-      <Tag
-        key={"scalar-" + name}
-        title={name}
-        name={value}
-        color={
-          colorByLabel
-            ? colorMap[value]
-              ? colorMap[value]
-              : "#000000"
-            : colorMap[name]
-        }
-      />
-    );
-  };
-
-  const showSamples = useSpring({
-    from: {
-      opacity: 0,
-    },
-    opacity: 1,
-  });
 
   const [bar, onMouseEnter, onMouseLeave] = useHoverLoad(socket, sample);
 
   const bubbles = [
-    ...Object.keys(sample)
-      .sort()
-      .reduce((acc, name) => {
-        const label = sample[name];
-        if (label && label._cls === "Classifications") {
-          return [
-            ...acc,
-            ...label[label._cls.toLowerCase()].map((l, i) => ({
-              name,
-              label: l,
-              idx: i,
-            })),
-          ];
-        }
-        return [...acc, { name, label }];
-      }, [])
-      .map(renderLabel),
     ...[...sample.tags]
       .sort()
       .filter((t) => activeTags[t])
       .map((t) => {
-        return <Tag key={t} name={String(t)} color={colorMap[t]} />;
+        return <Tag key={t} name={t} color={colorMap[t]} title={t} />;
       }),
-    ...Object.keys(sample).sort().map(renderScalar),
   ].filter((s) => s !== null);
 
   return (
-    <SampleDiv className="sample" style={showSamples}>
+    <SampleDiv className="sample" style={revealSample()}>
       <div
         style={{
           position: "relative",
@@ -273,7 +205,7 @@ const Sample = ({ sample, metadata }) => {
           sample={sample}
           metadata={metadata}
           thumbnail={true}
-          activeLabelsAtom={labelAtoms.activeLabelPaths(false)}
+          activeLabelsAtom={labelAtoms.activeFields(false)}
           colorByLabel={colorByLabel}
           filterSelector={labelFilters(false)}
           onMouseEnter={onMouseEnter}

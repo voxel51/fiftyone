@@ -48,7 +48,7 @@ const Tag = ({
   name,
   title,
   color = "blue",
-  maxWidth,
+  maxWidth = null,
   outline = false,
   onClick = undefined,
 }) => {

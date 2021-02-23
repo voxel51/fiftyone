@@ -2,9 +2,7 @@ import { atomFamily, selector, selectorFamily } from "recoil";
 
 import { Range } from "./RangeSlider";
 import {
-  activeLabels,
-  activeLabelPaths,
-  modalActiveLabels,
+  activeFields,
   isBooleanField,
   isNumericField,
   isStringField,
@@ -50,7 +48,7 @@ export const getPathExtension = (type: string): string => {
 export const labelFilters = selectorFamily<LabelFilters, boolean>({
   key: "labelFilters",
   get: (modal) => ({ get }) => {
-    const labels = get(activeLabelPaths(true));
+    const labels = get(activeFields(true));
     const filters = {};
     const typeMap = get(selectors.labelTypesMap);
     const hiddenObjects = modal ? get(atoms.hiddenObjects) : null;
@@ -104,9 +102,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
   },
   set: () => ({ get, set }, _) => {
     const paths = get(selectors.labelTypesMap);
-    set(modalActiveLabels("sample"), get(activeLabels("sample")));
-    const activeFrameLabels = get(activeLabels("frame"));
-    set(modalActiveLabels("frame"), activeFrameLabels);
+    set(activeFields(true), get(activeFields(false)));
     for (const [label, type] of Object.entries(paths)) {
       const path = `${label}${getPathExtension(type)}`;
       const cPath = `${path}.confidence`;
@@ -140,7 +136,7 @@ export const sampleModalFilter = selector({
   key: "sampleModalFilter",
   get: ({ get }) => {
     const filters = get(labelFilters(true));
-    const labels = get(activeLabelPaths(true));
+    const labels = get(activeFields(true));
     const hiddenObjects = get(atoms.hiddenObjects);
     return (sample) => {
       return Object.entries(sample).reduce((acc, [key, value]) => {

@@ -81,15 +81,6 @@ export const useExpand = (
   ];
 };
 
-export const activeLabelPaths = selectorFamily<string[], boolean>({
-  key: "activeLabelPaths",
-  get: (modal) => ({ get }) => {
-    const sample = get(node("sample"));
-    const frame = get(node("frames")).map((l) => "frames." + l);
-    return [...sample, ...frame];
-  },
-});
-
 export const activeFields = atomFamily<string[], boolean>({
   key: "activeFields",
   default: [],
@@ -103,4 +94,6 @@ export const activeTags = selectorFamily<string[], boolean>({
       (t) => t.startsWith("tags.") && tags.includes(t.slice(0, 4))
     );
   },
+  set: (modal) => ({ get, set }, value) =>
+    set(activeFields(modal), ["tags." + value, ...get(activeFields(modal))]),
 });

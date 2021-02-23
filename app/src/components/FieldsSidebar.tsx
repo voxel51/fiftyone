@@ -186,7 +186,7 @@ type TagsCellProps = {
 const TagsCell = ({ modal }: TagsCellProps) => {
   const tags = useRecoilValue(selectors.tagNames);
   const [activeTags, setActiveTags] = useRecoilState(
-    modal ? fieldAtoms.modalActiveTags : fieldAtoms.activeTags
+    fieldAtoms.activeTags(modal)
   );
   const colorMap = useRecoilValue(selectors.colorMap);
   const [subCountAtom, countAtom] = modal
