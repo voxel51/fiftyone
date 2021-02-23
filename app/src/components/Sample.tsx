@@ -12,6 +12,7 @@ import * as labelAtoms from "./Filters/utils";
 import { packageMessage } from "../utils/socket";
 import { useVideoData, useTheme } from "../utils/hooks";
 import { Checkbox } from "@material-ui/core";
+import { stringify } from "../utils/labels";
 
 const SampleDiv = animated(styled.div`
   position: relative;
@@ -125,6 +126,8 @@ const SampleInfo = ({ sample }) => {
   const activeFields = useRecoilValue(labelAtoms.activeFields(false));
   const colorMap = useRecoilValue(selectors.colorMap);
   const scalars = useRecoilValue(selectors.scalarNames("sample"));
+  const colorByLabel = useRecoilValue(atoms.colorByLabel);
+
   return (
     <SampleInfoDiv>
       {activeFields.reduce((acc, cur) => {
@@ -144,7 +147,20 @@ const SampleInfo = ({ sample }) => {
               maxWidth={"calc(100% - 32px)"}
             />,
           ];
-        } else if (scalars.includes(cur)) {
+        } else if (
+          scalars.includes(cur) &&
+          ![null, undefined].includes(sample[cur])
+        ) {
+          const value = stringify(sample[cur]);
+          acc = [
+            ...acc,
+            <Tag
+              key={"scalar-" + cur + "" + value}
+              title={`${cur}: ${value}`}
+              name={value}
+              color={colorByLabel ? colorMap[cur] : colorMap[value]}
+            />,
+          ];
         }
         return acc;
       }, [])}
@@ -160,7 +176,7 @@ const SelectorDiv = animated(styled.div`
   background: rgb(0, 0, 0);
   background: linear-gradient(
     0deg,
-    rgba(0, 0, 0, 0.00043767507002800965) 0%,
+    rgba(0, 0, 0, 0) 0%,
     rgba(34, 38, 42, 1) 90%
   );
   display: flex;
