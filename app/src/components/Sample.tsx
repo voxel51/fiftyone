@@ -76,7 +76,7 @@ const LoadingBar = animated(styled.div`
 
 const useHoverLoad = (socket, sample) => {
   if (sample._media_type !== "video") {
-    return [[], () => {}, () => {}];
+    return [[], (e) => {}, (e) => {}];
   }
   const [barItem, setBarItem] = useState([]);
   const [loaded, setLoaded] = useState(null);
@@ -159,7 +159,22 @@ const SampleInfo = ({ sample }) => {
   );
 };
 
-const Selector = ({ id }: { id: string }) => {
+const SelectorDiv = animated(styled.div`
+  position: absolute;
+  width: 100%;
+  top: 0;
+  right: 0;
+  background: rgb(0, 0, 0);
+  background: linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.00043767507002800965) 0%,
+    rgba(34, 38, 42, 1) 90%
+  );
+  display: flex;
+  direction: rtl;
+`);
+
+const Selector = ({ id, spring }: { id: string }) => {
   const theme = useTheme();
   const [stateDescription, setStateDescription] = useRecoilState(
     atoms.stateDescription
@@ -185,17 +200,16 @@ const Selector = ({ id }: { id: string }) => {
     setStateDescription({ ...stateDescription, selected: [...newSelected] });
   };
   return (
-    <Checkbox
-      checked={selectedSamples.has(id)}
-      style={{
-        color: theme.brand,
-        position: "absolute",
-        top: "0.5rem",
-        right: "0.5rem",
-      }}
-      onClick={() => handleClick()}
-      title={"Click to select sample"}
-    />
+    <SelectorDiv style={spring}>
+      <Checkbox
+        checked={selectedSamples.has(id)}
+        style={{
+          color: theme.brand,
+        }}
+        onClick={handleClick}
+        title={"Click to select sample"}
+      />
+    </SelectorDiv>
   );
 };
 
@@ -205,8 +219,13 @@ const Sample = ({ sample, metadata }) => {
   const src = `${http}/filepath/${encodeURI(sample.filepath)}?id=${id}`;
   const socket = useRecoilValue(selectors.socket);
   const colorByLabel = useRecoilValue(atoms.colorByLabel);
+  const [hovering, sethovering] = useState(false);
+  const selectedSamples = useRecoilValue(atoms.selectedSamples);
 
   const [bar, onMouseEnter, onMouseLeave] = useHoverLoad(socket, sample);
+  const selectorSpring = useSpring({
+    opacity: hovering || selectedSamples.has(id) ? 1 : 0,
+  });
 
   return (
     <SampleDiv className="sample" style={revealSample()}>
@@ -231,14 +250,20 @@ const Sample = ({ sample, metadata }) => {
           activeLabelsAtom={labelAtoms.activeFields(false)}
           colorByLabel={colorByLabel}
           filterSelector={labelFilters(false)}
-          onMouseEnter={onMouseEnter}
-          onMouseLeave={onMouseLeave}
+          onMouseEnter={(e) => {
+            onMouseEnter(e);
+            sethovering(true);
+          }}
+          onMouseLeave={(e) => {
+            onMouseLeave(e);
+            sethovering(false);
+          }}
           onClick={() => {}}
         />
         {bar.map(({ key, props }) => (
           <LoadingBar key={key} style={props} />
         ))}
-        <Selector key={id} id={id} />
+        <Selector key={id} id={id} spring={selectorSpring} />
       </div>
       <SampleChin>
         <SampleInfo sample={sample} />
