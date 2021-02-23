@@ -324,6 +324,7 @@ class DatasetsCommand(Command):
         subparsers = parser.add_subparsers(title="available commands")
         _register_command(subparsers, "list", DatasetsListCommand)
         _register_command(subparsers, "info", DatasetsInfoCommand)
+        _register_command(subparsers, "stats", DatasetsStatsCommand)
         _register_command(subparsers, "create", DatasetsCreateCommand)
         _register_command(subparsers, "head", DatasetsHeadCommand)
         _register_command(subparsers, "tail", DatasetsTailCommand)
@@ -381,6 +382,48 @@ class DatasetsInfoCommand(Command):
     def execute(parser, args):
         dataset = fod.load_dataset(args.name)
         print(dataset)
+
+
+class DatasetsStatsCommand(Command):
+    """Print stats about FiftyOne datasets on disk.
+
+    Examples::
+
+        # Print stats about the given dataset on disk
+        fiftyone datasets stats <name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name", metavar="NAME", help="the name of the dataset",
+        )
+        parser.add_argument(
+            "-m",
+            "--include-media",
+            action="store_true",
+            help=(
+                "whether to include stats about the size of the raw media in "
+                "the dataset"
+            ),
+        )
+        parser.add_argument(
+            "-c",
+            "--compressed",
+            action="store_true",
+            help=(
+                "whether to return the sizes of collections in their "
+                "compressed form on disk"
+            ),
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        dataset = fod.load_dataset(args.name)
+        stats = dataset.stats(
+            include_media=args.include_media, compressed=args.compressed
+        )
+        _print_dict_as_table(stats)
 
 
 class DatasetsCreateCommand(Command):
