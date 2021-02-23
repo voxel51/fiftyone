@@ -172,6 +172,7 @@ const SelectorDiv = animated(styled.div`
   );
   display: flex;
   direction: rtl;
+  cursor: pointer;
 `);
 
 const Selector = ({ id, spring }: { id: string }) => {
@@ -185,7 +186,8 @@ const Selector = ({ id, spring }: { id: string }) => {
   );
   const socket = useRecoilValue(selectors.socket);
 
-  const handleClick = () => {
+  const handleClick = (e) => {
+    e.preventDefault();
     const newSelected = new Set(selectedSamples);
     let event;
     if (newSelected.has(id)) {
@@ -200,13 +202,12 @@ const Selector = ({ id, spring }: { id: string }) => {
     setStateDescription({ ...stateDescription, selected: [...newSelected] });
   };
   return (
-    <SelectorDiv style={spring}>
+    <SelectorDiv style={{ ...spring, zIndex: 10000 }} onClick={handleClick}>
       <Checkbox
         checked={selectedSamples.has(id)}
         style={{
           color: theme.brand,
         }}
-        onClick={handleClick}
         title={"Click to select sample"}
       />
     </SelectorDiv>
@@ -219,7 +220,7 @@ const Sample = ({ sample, metadata }) => {
   const src = `${http}/filepath/${encodeURI(sample.filepath)}?id=${id}`;
   const socket = useRecoilValue(selectors.socket);
   const colorByLabel = useRecoilValue(atoms.colorByLabel);
-  const [hovering, sethovering] = useState(false);
+  const [hovering, setHovering] = useState(false);
   const selectedSamples = useRecoilValue(atoms.selectedSamples);
 
   const [bar, onMouseEnter, onMouseLeave] = useHoverLoad(socket, sample);
@@ -235,13 +236,16 @@ const Sample = ({ sample, metadata }) => {
           width: "100%",
           height: "calc(100% - 44px)",
         }}
+        onMouseEnter={() => setHovering(true)}
+        onMouseLeave={() => setHovering(false)}
       >
+        <Selector key={id} id={id} spring={selectorSpring} />
         <Player51
           src={src}
           style={{
             height: "100%",
             width: "100%",
-            position: "relative",
+            position: "absolute",
             cursor: "pointer",
           }}
           sample={sample}
@@ -250,20 +254,13 @@ const Sample = ({ sample, metadata }) => {
           activeLabelsAtom={labelAtoms.activeFields(false)}
           colorByLabel={colorByLabel}
           filterSelector={labelFilters(false)}
-          onMouseEnter={(e) => {
-            onMouseEnter(e);
-            sethovering(true);
-          }}
-          onMouseLeave={(e) => {
-            onMouseLeave(e);
-            sethovering(false);
-          }}
-          onClick={() => {}}
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
+          onClick={(e) => {}}
         />
         {bar.map(({ key, props }) => (
           <LoadingBar key={key} style={props} />
         ))}
-        <Selector key={id} id={id} spring={selectorSpring} />
       </div>
       <SampleChin>
         <SampleInfo sample={sample} />
