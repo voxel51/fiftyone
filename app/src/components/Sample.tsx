@@ -243,7 +243,7 @@ const Sample = ({ sample, metadata }) => {
         style={{
           position: "relative",
           width: "100%",
-          height: "calc(100% - 44px)",
+          height: "100%",
         }}
         onMouseEnter={() => setHovering(true)}
         onMouseLeave={() => setHovering(false)}
