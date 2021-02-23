@@ -26,7 +26,7 @@ const SampleInfoDiv = styled.div`
   display: block;
   position: absolute;
   bottom: 0;
-  padding: 14px 0 8px 0.5rem;
+  padding: 0.5rem;
   bottom: 0;
   &::-webkit-scrollbar {
     width: 0px;
@@ -39,7 +39,7 @@ const SampleInfoDiv = styled.div`
   }
   scrollbar-width: none;
   overflow-x: scroll;
-  display: flex;
+  width: 100%;
 `;
 
 const LoadingBar = animated(styled.div`
@@ -134,7 +134,13 @@ const SampleInfo = ({ sample }) => {
           const tag = cur.slice(5);
           acc = [
             ...acc,
-            <Tag key={cur} name={tag} color={colorMap[tag]} title={tag} />,
+            <Tag
+              key={cur}
+              name={tag}
+              color={colorMap[tag]}
+              title={tag}
+              maxWidth={"calc(100% - 32px)"}
+            />,
           ];
         }
         return acc;

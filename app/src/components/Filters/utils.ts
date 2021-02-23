@@ -102,8 +102,12 @@ export const activeLabels = selectorFamily<
   set: ({ modal, frames }) => ({ get, set }, value) => {
     if (Array.isArray(value)) {
       const labels = frames ? value.map((v) => "frames." + v) : value;
-      let active = get(activeFields(modal)).filter((v) => labels.includes(v));
-      if (labels.length) {
+      const prevActiveLabels = get(activeLabels({ modal, frames }));
+
+      let active = get(activeFields(modal)).filter((v) =>
+        get(isLabelField(v)) ? labels.includes(v) : true
+      );
+      if (labels.length && prevActiveLabels.length < labels.length) {
         active = [labels[0], ...active.filter((v) => v !== labels[0])];
       }
       set(activeFields(modal), active);
@@ -117,10 +121,14 @@ export const activeScalars = selectorFamily<string[], boolean>({
     const scalars = get(selectors.scalarNames("sample"));
     return get(activeFields(modal)).filter((v) => scalars.includes(v));
   },
-  set: (modal) => ({ get, set }, scalars) => {
-    if (Array.isArray(scalars)) {
-      let active = get(activeFields(modal)).filter((v) => scalars.includes(v));
-      if (scalars.length) {
+  set: (modal) => ({ get, set }, value) => {
+    if (Array.isArray(value)) {
+      const scalars = get(selectors.scalarNames("sample"));
+      const prevActiveScalars = get(activeScalars(modal));
+      let active = get(activeFields(modal)).filter((v) =>
+        scalars.includes(v) ? value.includes(v) : true
+      );
+      if (value.length && prevActiveScalars.length < value.length) {
         active = [scalars[0], ...active.filter((v) => v !== scalars[0])];
       }
       set(activeFields(modal), active);
@@ -139,10 +147,11 @@ export const activeTags = selectorFamily<string[], boolean>({
   set: (modal) => ({ get, set }, value) => {
     if (Array.isArray(value)) {
       const tags = value.map((v) => "tags." + v);
+      const prevActiveTags = get(activeTags(modal));
       let active = get(activeFields(modal)).filter((v) =>
         v.startsWith("tags.") ? tags.includes(v) : true
       );
-      if (tags.length) {
+      if (tags.length && prevActiveTags.length < tags.length) {
         active = [tags[0], ...active.filter((v) => v !== tags[0])];
       }
       set(activeFields(modal), active);
