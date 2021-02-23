@@ -445,8 +445,10 @@ def test_classification_results():
     # Only include `cat` and `dog` rows (GT) and columns (predictions)
     results.plot_confusion_matrix(classes=classes, include_other=False)
 
+    input("Press enter to continue...")
 
-def test_classification_results_with_missing_data():
+
+def test_classification_results_missing_data():
     ytrue = ["cat", "cat", "cat", "dog", "dog", "dog", "fox", "fox", "fox"]
     ypred = ["cat", "dog", None, "dog", "fox", None, "fox", "cat", None]
 
@@ -464,10 +466,16 @@ def test_classification_results_with_missing_data():
 
     # Shows per-class metrics for only `cat` and `dog` classes, but other
     # predictions when GT=cat/dog are taken into account for P/R/F1 scores
+    results.print_report(classes=classes)
+
+    # Shows per-class metrics for only `cat` and `dog` classes, but other
+    # predictions when GT=cat/dog are taken into account for P/R/F1 scores
     results.plot_confusion_matrix(classes=classes)
 
     # Only include `cat` and `dog` rows (GT) and columns (predictions)
     results.plot_confusion_matrix(classes=classes, include_other=False)
+
+    input("Press enter to continue...")
 
 
 if __name__ == "__main__":
