@@ -90,10 +90,20 @@ export const activeTags = selectorFamily<string[], boolean>({
   key: "activeTags",
   get: (modal) => ({ get }) => {
     const tags = get(selectors.tagNames);
-    return get(activeFields(modal)).filter(
-      (t) => t.startsWith("tags.") && tags.includes(t.slice(0, 4))
-    );
+    return get(activeFields(modal))
+      .filter((t) => t.startsWith("tags.") && tags.includes(t.slice(5)))
+      .map((t) => t.slice(5));
   },
-  set: (modal) => ({ get, set }, value) =>
-    set(activeFields(modal), ["tags." + value, ...get(activeFields(modal))]),
+  set: (modal) => ({ get, set }, value) => {
+    if (Array.isArray(value)) {
+      const tags = value.map((v) => "tags." + v);
+      let active = get(activeFields(modal)).filter((v) =>
+        v.startsWith("tags.") ? tags.includes(v) : true
+      );
+      if (tags.length) {
+        active = [tags[0], ...active.filter((v) => v !== tags[0])];
+      }
+      set(activeFields(modal), active);
+    }
+  },
 });
