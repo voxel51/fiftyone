@@ -21,27 +21,11 @@ const SampleDiv = animated(styled.div`
   width: 100%;
 `);
 
-const SampleChin = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 43px;
-  width: 100%;
-  &::-webkit-scrollbar {
-    width: 0px;
-    background: transparent;
-    display: none;
-  }
-  &::-webkit-scrollbar-thumb {
-    width: 0px;
-    display: none;
-  }
-  scrollbar-width: none;
-  border: 1px ${({ theme }) => theme.backgroundDarkBorder} solid;
-  border-top-width: 0;
-`;
-
 const SampleInfoDiv = styled.div`
   height: 43px;
   display: block;
+  position: absolute;
+  bottom: 0;
   padding: 14px 0 8px 0.5rem;
   bottom: 0;
   &::-webkit-scrollbar {
@@ -139,7 +123,6 @@ const revealSample = () => {
 const SampleInfo = ({ sample }) => {
   const activeFields = useRecoilValue(labelAtoms.activeFields(false));
   const colorMap = useRecoilValue(selectors.colorMap);
-
   return (
     <SampleInfoDiv>
       {activeFields.reduce((acc, cur) => {
@@ -149,11 +132,12 @@ const SampleInfo = ({ sample }) => {
           sample.tags.includes(cur.slice(5))
         ) {
           const tag = cur.slice(5);
-          return [
+          acc = [
             ...acc,
             <Tag key={cur} name={tag} color={colorMap[tag]} title={tag} />,
           ];
         }
+        return acc;
       }, [])}
     </SampleInfoDiv>
   );
@@ -262,9 +246,7 @@ const Sample = ({ sample, metadata }) => {
           <LoadingBar key={key} style={props} />
         ))}
       </div>
-      <SampleChin>
-        <SampleInfo sample={sample} />
-      </SampleChin>
+      <SampleInfo sample={sample} />
     </SampleDiv>
   );
 };
