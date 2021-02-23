@@ -239,6 +239,67 @@ const TagsCell = ({ modal }: TagsCellProps) => {
   );
 };
 
+type LabelsCellProps = {
+  modal: boolean;
+};
+
+const LabelsCell = ({ modal }: LabelsCellProps) => {
+  const labels = useRecoilValue(selectors.labelNames("sample"));
+  const [activeLabels, setActiveLabels] = useRecoilState(
+    fieldAtoms.activeLabels("sample")
+  );
+
+  const colorMap = useRecoilValue(selectors.colorMap);
+  const [subCountAtom, countAtom] = modal
+    ? [selectors.labelSampleModalCounts, selectors.labelSampleModalCounts]
+    : [selectors.filteredLabelSampleCounts, selectors.labelSampleCounts];
+
+  const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
+  const count = useRecoilValue(countAtom);
+
+  return (
+    <Cell
+      label="Labels"
+      icon={<Label style={{ transform: "rotate(180deg)" }} />}
+      entries={labels.map((name) => ({
+        name,
+        disabled: false,
+        hideCheckbox: modal,
+        hasDropdown: false,
+        selected: activeLabels.includes(name),
+        color: colorMap[name],
+        title: name,
+        path: name,
+        data: modal ? (
+          count[name] > 0 ? (
+            <Check style={{ color: colorMap[name] }} />
+          ) : (
+            <Close style={{ color: colorMap[name] }} />
+          )
+        ) : (
+          makeData(subCount[name], count[name])
+        ),
+        totalCount: count[name],
+        filteredCount: subCount[name],
+        modal,
+      }))}
+      onSelect={({ name, selected }) =>
+        setActiveLabels(
+          selected
+            ? [name, ...activeLabels]
+            : activeLabels.filter((t) => t !== name)
+        )
+      }
+      handleClear={(e) => {
+        e.stopPropagation();
+        setActiveLabels([]);
+      }}
+      modal={modal}
+      title={"Tags"}
+    />
+  );
+};
+
 type FieldsSidebarProps = {
   modal: boolean;
 };
@@ -250,6 +311,7 @@ const FieldsSidebar = React.forwardRef(({ modal }: FieldsSidebarProps, ref) => {
   return (
     <Container ref={ref}>
       <TagsCell modal={modal} />
+      <LabelsCell modal={modal} />
     </Container>
   );
 });
