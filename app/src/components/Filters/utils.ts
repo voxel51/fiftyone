@@ -86,6 +86,14 @@ export const activeFields = atomFamily<string[], boolean>({
   default: [],
 });
 
+export const activeLabels = atomFamily<
+  string[],
+  { modal: boolean; frames: boolean }
+>({
+  key: "activeLabels",
+  default: [],
+});
+
 export const activeTags = selectorFamily<string[], boolean>({
   key: "activeTags",
   get: (modal) => ({ get }) => {

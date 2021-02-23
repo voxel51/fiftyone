@@ -246,13 +246,16 @@ type LabelsCellProps = {
 const LabelsCell = ({ modal }: LabelsCellProps) => {
   const labels = useRecoilValue(selectors.labelNames("sample"));
   const [activeLabels, setActiveLabels] = useRecoilState(
-    fieldAtoms.activeLabels("sample")
+    fieldAtoms.activeLabels({ modal, frames: false })
   );
 
   const colorMap = useRecoilValue(selectors.colorMap);
   const [subCountAtom, countAtom] = modal
     ? [selectors.labelSampleModalCounts, selectors.labelSampleModalCounts]
-    : [selectors.filteredLabelSampleCounts, selectors.labelSampleCounts];
+    : [
+        selectors.filteredLabelSampleCounts("sample"),
+        selectors.labelSampleCounts("sample"),
+      ];
 
   const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
   const count = useRecoilValue(countAtom);
@@ -270,17 +273,9 @@ const LabelsCell = ({ modal }: LabelsCellProps) => {
         color: colorMap[name],
         title: name,
         path: name,
-        data: modal ? (
-          count[name] > 0 ? (
-            <Check style={{ color: colorMap[name] }} />
-          ) : (
-            <Close style={{ color: colorMap[name] }} />
-          )
-        ) : (
-          makeData(subCount[name], count[name])
-        ),
-        totalCount: count[name],
-        filteredCount: subCount[name],
+        data: count && subCount ? makeData(subCount[name], count[name]) : null,
+        totalCount: count ? count[name] : null,
+        filteredCount: subCount ? subCount[name] : null,
         modal,
       }))}
       onSelect={({ name, selected }) =>
