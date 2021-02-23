@@ -351,8 +351,10 @@ Print stats about FiftyOne datasets on disk.
 
     optional arguments:
       -h, --help           show this help message and exit
-      -m, --include-media  whether to include stats about the size of the raw media in the dataset
-      -c, --compressed     whether to return the sizes of collections in their compressed form on disk
+      -m, --include-media  whether to include stats about the size of the raw
+                           media in the dataset
+      -c, --compressed     whether to return the sizes of collections in their
+                           compressed form on disk
 
 **Examples**
 
