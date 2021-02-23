@@ -297,6 +297,62 @@ const LabelsCell = ({ modal }: LabelsCellProps) => {
   );
 };
 
+type ScalarsCellProps = {
+  modal: boolean;
+};
+
+const ScalarsCell = ({ modal }: ScalarsCellProps) => {
+  const scalars = useRecoilValue(selectors.scalarNames("sample"));
+  const [activeScalars, setActiveScalars] = useRecoilState(
+    fieldAtoms.activeScalars({ modal, frames: false })
+  );
+
+  const colorMap = useRecoilValue(selectors.colorMap);
+  const [subCountAtom, countAtom] = modal
+    ? [selectors.labelSampleModalCounts, selectors.labelSampleModalCounts]
+    : [
+        selectors.filteredLabelSampleCounts("sample"),
+        selectors.labelSampleCounts("sample"),
+      ];
+
+  const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
+  const count = useRecoilValue(countAtom);
+
+  return (
+    <Cell
+      label="Scalars"
+      icon={<BarChart />}
+      entries={scalars.map((name) => ({
+        name,
+        disabled: false,
+        hideCheckbox: modal,
+        hasDropdown: true,
+        selected: activeScalars.includes(name),
+        color: colorMap[name],
+        title: name,
+        path: name,
+        data: count && subCount ? makeData(subCount[name], count[name]) : null,
+        totalCount: count ? count[name] : null,
+        filteredCount: subCount ? subCount[name] : null,
+        modal,
+      }))}
+      onSelect={({ name, selected }) =>
+        setActiveScalars(
+          selected
+            ? [name, ...activeScalars]
+            : activeScalars.filter((t) => t !== name)
+        )
+      }
+      handleClear={(e) => {
+        e.stopPropagation();
+        setActiveScalars([]);
+      }}
+      modal={modal}
+      title={"Scalars"}
+    />
+  );
+};
+
 type FieldsSidebarProps = {
   modal: boolean;
 };
@@ -309,6 +365,7 @@ const FieldsSidebar = React.forwardRef(({ modal }: FieldsSidebarProps, ref) => {
     <Container ref={ref}>
       <TagsCell modal={modal} />
       <LabelsCell modal={modal} />
+      <ScalarsCell modal={modal} />
     </Container>
   );
 });
