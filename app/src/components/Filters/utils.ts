@@ -111,6 +111,23 @@ export const activeLabels = selectorFamily<
   },
 });
 
+export const activeScalars = selectorFamily<string[], boolean>({
+  key: "activeScalars",
+  get: (modal) => ({ get }) => {
+    const scalars = get(selectors.scalarNames("sample"));
+    return get(activeFields(modal)).filter((v) => scalars.includes(v));
+  },
+  set: (modal) => ({ get, set }, scalars) => {
+    if (Array.isArray(scalars)) {
+      let active = get(activeFields(modal)).filter((v) => scalars.includes(v));
+      if (scalars.length) {
+        active = [scalars[0], ...active.filter((v) => v !== scalars[0])];
+      }
+      set(activeFields(modal), active);
+    }
+  },
+});
+
 export const activeTags = selectorFamily<string[], boolean>({
   key: "activeTags",
   get: (modal) => ({ get }) => {

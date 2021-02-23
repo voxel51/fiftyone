@@ -483,7 +483,11 @@ const labelFilter = (f) => {
 };
 
 const scalarFilter = (f) => {
-  return VALID_SCALAR_TYPES.includes(f.ftype);
+  return (
+    VALID_SCALAR_TYPES.includes(f.ftype) &&
+    !f.name.startsWith("_") &&
+    f.name !== "filepath"
+  );
 };
 
 const fields = selectorFamily({
