@@ -127,12 +127,6 @@ const useHoverLoad = (socket, sample) => {
   return [bar, onMouseEnter, onMouseLeave];
 };
 
-const SelectedDiv = styled.div`
-  border-left-width: 1px;
-  border-color: ${({ theme }) => theme.backgroundDarkBorder};
-  border-left-style: solid;
-`;
-
 const revealSample = () => {
   return useSpring({
     from: {
@@ -165,22 +159,16 @@ const SampleInfo = ({ sample }) => {
   );
 };
 
-const Sample = ({ sample, metadata }) => {
-  const http = useRecoilValue(selectors.http);
-  const id = sample._id;
-  const src = `${http}/filepath/${encodeURI(sample.filepath)}?id=${id}`;
-  const socket = useRecoilValue(selectors.socket);
-  const colorMap = useRecoilValue(selectors.colorMap);
-  const colorByLabel = useRecoilValue(atoms.colorByLabel);
-  const activeTags = useRecoilValue(labelAtoms.activeTags(false));
+const Selector = ({ id }: { id: string }) => {
+  const theme = useTheme();
   const [stateDescription, setStateDescription] = useRecoilState(
     atoms.stateDescription
   );
-  const theme = useTheme();
 
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     atoms.selectedSamples
   );
+  const socket = useRecoilValue(selectors.socket);
 
   const handleClick = () => {
     const newSelected = new Set(selectedSamples);
@@ -196,17 +184,29 @@ const Sample = ({ sample, metadata }) => {
     socket.send(packageMessage(event, { _id: id }));
     setStateDescription({ ...stateDescription, selected: [...newSelected] });
   };
+  return (
+    <Checkbox
+      checked={selectedSamples.has(id)}
+      style={{
+        color: theme.brand,
+        position: "absolute",
+        top: "0.5rem",
+        right: "0.5rem",
+      }}
+      onClick={() => handleClick()}
+      title={"Click to select sample"}
+    />
+  );
+};
+
+const Sample = ({ sample, metadata }) => {
+  const http = useRecoilValue(selectors.http);
+  const id = sample._id;
+  const src = `${http}/filepath/${encodeURI(sample.filepath)}?id=${id}`;
+  const socket = useRecoilValue(selectors.socket);
+  const colorByLabel = useRecoilValue(atoms.colorByLabel);
 
   const [bar, onMouseEnter, onMouseLeave] = useHoverLoad(socket, sample);
-
-  const bubbles = [
-    ...[...sample.tags]
-      .sort()
-      .filter((t) => activeTags[t])
-      .map((t) => {
-        return;
-      }),
-  ].filter((s) => s !== null);
 
   return (
     <SampleDiv className="sample" style={revealSample()}>
@@ -238,17 +238,10 @@ const Sample = ({ sample, metadata }) => {
         {bar.map(({ key, props }) => (
           <LoadingBar key={key} style={props} />
         ))}
+        <Selector key={id} id={id} />
       </div>
       <SampleChin>
         <SampleInfo sample={sample} />
-        <SelectedDiv>
-          <Checkbox
-            checked={selectedSamples.has(id)}
-            style={{ color: theme.brand }}
-            onClick={() => handleClick()}
-            title={"Click to select sample"}
-          />
-        </SelectedDiv>
       </SampleChin>
     </SampleDiv>
   );
