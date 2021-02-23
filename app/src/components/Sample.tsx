@@ -40,6 +40,7 @@ const SampleInfoDiv = styled.div`
   scrollbar-width: none;
   overflow-x: scroll;
   width: 100%;
+  pointer-events: none;
 `;
 
 const LoadingBar = animated(styled.div`
