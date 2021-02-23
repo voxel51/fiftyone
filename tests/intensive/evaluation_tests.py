@@ -420,6 +420,56 @@ def test_evaluate_segmentations():
     dataset.delete_evaluations()
 
 
+def test_classification_results():
+    ytrue = ["cat", "cat", "dog", "dog", "fox", "fox"]
+    ypred = ["cat", "dog", "dog", "fox", "fox", "cat"]
+
+    results = fo.ClassificationResults(ytrue, ypred, None)
+
+    # Includes all 3 classes
+    results.print_report()
+
+    # Includes all 3 classes
+    results.plot_confusion_matrix()
+
+    classes = ["cat", "dog"]
+
+    # Shows per-class metrics for only `cat` and `dog` classes, but other
+    # predictions when GT=cat/dog are taken into account for P/R/F1 scores
+    results.print_report(classes=classes)
+
+    # Only include `cat` and `dog` rows (GT); associated non-cat/dog
+    # predictions are captured in an "other" column
+    results.plot_confusion_matrix(classes=classes)
+
+    # Only include `cat` and `dog` rows (GT) and columns (predictions)
+    results.plot_confusion_matrix(classes=classes, include_other=False)
+
+
+def test_classification_results_with_missing_data():
+    ytrue = ["cat", "cat", "cat", "dog", "dog", "dog", "fox", "fox", "fox"]
+    ypred = ["cat", "dog", None, "dog", "fox", None, "fox", "cat", None]
+
+    results = fo.ClassificationResults(ytrue, ypred, None)
+
+    # No row for "missing" GT labels, since these entires represent false
+    # positive predictions
+    results.print_report()
+
+    # Data includes missing GT/preds, so include a "none" row/column when
+    # plotting confusion matrix
+    results.plot_confusion_matrix()
+
+    classes = ["cat", "dog"]
+
+    # Shows per-class metrics for only `cat` and `dog` classes, but other
+    # predictions when GT=cat/dog are taken into account for P/R/F1 scores
+    results.plot_confusion_matrix(classes=classes)
+
+    # Only include `cat` and `dog` rows (GT) and columns (predictions)
+    results.plot_confusion_matrix(classes=classes, include_other=False)
+
+
 if __name__ == "__main__":
     fo.config.show_progress_bars = True
     unittest.main(verbosity=2)
