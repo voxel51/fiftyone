@@ -9,11 +9,14 @@ Project FiftyOne React/Electron App
 The following installation steps are a part of the
 [install script](../install.bash)
 
-Install [`nvm`](https://github.com/nvm-sh/nvm) and set your node version to
-`v12.16.2`:
+Install [`nvm`](https://github.com/nvm-sh/nvm) and install andset your node
+version to `v12.16.2`. And then install `yarn` globally in your node
+environment with `npm`:
 
 ```sh
+nvm install v12.16.2
 nvm use v12.16.2
+npm -g install yarn
 ```
 
 Install the app with `yarn` in this directory (`./fiftyone/app`):
