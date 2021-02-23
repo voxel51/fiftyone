@@ -39,7 +39,7 @@ const SampleChin = styled.div`
   border-top-width: 0;
 `;
 
-const SampleInfo = styled.div`
+const SampleInfoDiv = styled.div`
   height: 43px;
   display: block;
   padding: 14px 0 8px 0.5rem;
@@ -142,6 +142,29 @@ const revealSample = () => {
   });
 };
 
+const SampleInfo = ({ sample }) => {
+  const activeFields = useRecoilValue(labelAtoms.activeFields(false));
+  const colorMap = useRecoilValue(selectors.colorMap);
+
+  return (
+    <SampleInfoDiv>
+      {activeFields.reduce((acc, cur) => {
+        if (
+          cur.startsWith("tags.") &&
+          Array.isArray(sample.tags) &&
+          sample.tags.includes(cur.slice(5))
+        ) {
+          const tag = cur.slice(5);
+          return [
+            ...acc,
+            <Tag key={cur} name={tag} color={colorMap[tag]} title={tag} />,
+          ];
+        }
+      }, [])}
+    </SampleInfoDiv>
+  );
+};
+
 const Sample = ({ sample, metadata }) => {
   const http = useRecoilValue(selectors.http);
   const id = sample._id;
@@ -181,7 +204,7 @@ const Sample = ({ sample, metadata }) => {
       .sort()
       .filter((t) => activeTags[t])
       .map((t) => {
-        return <Tag key={t} name={t} color={colorMap[t]} title={t} />;
+        return;
       }),
   ].filter((s) => s !== null);
 
@@ -217,7 +240,7 @@ const Sample = ({ sample, metadata }) => {
         ))}
       </div>
       <SampleChin>
-        <SampleInfo>{bubbles}</SampleInfo>
+        <SampleInfo sample={sample} />
         <SelectedDiv>
           <Checkbox
             checked={selectedSamples.has(id)}
