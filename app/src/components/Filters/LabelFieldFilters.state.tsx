@@ -203,3 +203,94 @@ export const fieldIsFiltered = selectorFamily<
     );
   },
 });
+
+const catchLabelCount = (
+  names: string[],
+  prefix: string,
+  cur: { name: string; _CLS: string; result: number },
+  acc: { [key: string]: number }
+): void => {
+  if (
+    cur.name &&
+    names.includes(cur.name.slice(prefix.length).split(".")[0]) &&
+    cur._CLS === COUNT_CLS
+  ) {
+    acc[cur.name.slice(prefix.length).split(".")[0]] = cur.result;
+  }
+};
+
+interface Counts {
+  [key: string]: number | null;
+}
+
+export const labelSampleCounts = selectorFamily<Counts | null, string>({
+  key: "labelSampleCounts",
+  get: (dimension) => ({ get }) => {
+    const names = get(labelNames(dimension)).concat(
+      get(scalarNames(dimension))
+    );
+    const prefix = dimension === "sample" ? "" : "frames.";
+    const stats = get(datasetStats);
+    if (stats === null) {
+      return null;
+    }
+    return stats.reduce((acc, cur) => {
+      catchLabelCount(names, prefix, cur, acc);
+      return acc;
+    }, {});
+  },
+});
+
+export const filteredLabelSampleCounts = selectorFamily<Counts | null, string>({
+  key: "filteredLabelSampleCounts",
+  get: (dimension) => ({ get }) => {
+    const names = get(labelNames(dimension)).concat(
+      get(scalarNames(dimension))
+    );
+    const prefix = dimension === "sample" ? "" : "frames.";
+    const stats = get(extendedDatasetStats);
+    if (stats === null) {
+      return null;
+    }
+    return stats.reduce((acc, cur) => {
+      catchLabelCount(names, prefix, cur, acc);
+      return acc;
+    }, {});
+  },
+});
+
+export const labelSampleModalCounts = selectorFamily<Counts | null, string>({
+  key: "labelSampleModalCounts",
+  get: (dimension) => ({ get }) => {
+    return {};
+  },
+});
+
+const sampleCountResolver = (value, type) => {
+  if (!value) return 0;
+  return ["Detections", "Classifications", "Polylines"].includes(type)
+    ? value[type.toLowerCase()].length
+    : type === "Keypoints"
+    ? value.keypoints.reduce((acc, cur) => acc + cur.points.length, 0)
+    : type === "Keypoint"
+    ? value.points.length
+    : 1;
+};
+
+export const filteredLabelSampleModalCounts = selectorFamily<
+  Counts | null,
+  string
+>({
+  key: "filteredLabelSampleModalCounts",
+  get: (dimension) => ({ get }) => {
+    const labels = get(labelNames(dimension));
+    const types = get(labelTypesMap);
+    const paths =
+      dimension === "sample" ? labels : labels.map((l) => "frames." + l);
+    const sample = get(atoms.modal).sample || {};
+    return labels.reduce((acc, path, i) => {
+      acc[path] += sampleCountResolver(sample[path], types[path]);
+      return acc;
+    }, {});
+  },
+});

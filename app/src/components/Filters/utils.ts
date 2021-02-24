@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSpring } from "react-spring";
-import { atom, atomFamily, selectorFamily } from "recoil";
+import { atomFamily, selectorFamily } from "recoil";
 import useMeasure from "react-use-measure";
 
 import * as selectors from "../../recoil/selectors";
@@ -9,6 +9,8 @@ import {
   STRING_FIELD,
   VALID_NUMERIC_TYPES,
 } from "../../utils/labels";
+
+const COUNT_CLS = "Count";
 
 export const isBooleanField = selectorFamily<boolean, string>({
   key: "isBooleanField",
