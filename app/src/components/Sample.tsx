@@ -12,7 +12,11 @@ import * as labelAtoms from "./Filters/utils";
 import { packageMessage } from "../utils/socket";
 import { useVideoData, useTheme } from "../utils/hooks";
 import { Checkbox } from "@material-ui/core";
-import { stringify } from "../utils/labels";
+import {
+  stringify,
+  VALID_CLASS_TYPES,
+  VALID_LIST_TYPES,
+} from "../utils/labels";
 
 const SampleDiv = animated(styled.div`
   position: relative;
@@ -127,6 +131,7 @@ const SampleInfo = ({ sample }) => {
   const colorMap = useRecoilValue(selectors.colorMap);
   const scalars = useRecoilValue(selectors.scalarNames("sample"));
   const colorByLabel = useRecoilValue(atoms.colorByLabel);
+  const labelTypes = useRecoilValue(selectors.labelTypesMap);
   const theme = useTheme();
   const bubbles = activeFields.reduce((acc, cur) => {
     if (
@@ -158,6 +163,22 @@ const SampleInfo = ({ sample }) => {
           name={value}
           color={colorByLabel ? colorMap[value] : colorMap[cur]}
         />,
+      ];
+    } else if (VALID_CLASS_TYPES.includes(labelTypes[cur])) {
+      const labelType = labelTypes[cur];
+      const values = VALID_LIST_TYPES.includes(labelType)
+        ? sample[cur].classifications.map((l) => l.label)
+        : [sample[cur].label];
+      acc = [
+        ...acc,
+        values.map((v) => (
+          <Tag
+            key={"scalar-" + cur + "" + v}
+            title={`${cur}: ${v}`}
+            name={v}
+            color={colorByLabel ? colorMap[v] : colorMap[cur]}
+          />
+        )),
       ];
     }
     return acc;

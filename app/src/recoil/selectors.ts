@@ -681,6 +681,7 @@ export const labelSampleCounts = selectorFamily({
     );
     const prefix = dimension === "sample" ? "" : "frames.";
     const stats = get(datasetStats);
+    console.log("STATS", stats);
     if (stats === null) {
       return null;
     }

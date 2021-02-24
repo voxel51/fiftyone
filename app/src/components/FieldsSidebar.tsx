@@ -265,6 +265,7 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
 
   const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
   const count = useRecoilValue(countAtom);
+  console.log(count);
 
   return (
     <Cell
