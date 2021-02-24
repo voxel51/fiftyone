@@ -42,6 +42,7 @@ const SampleInfoDiv = styled.div`
   overflow-x: scroll;
   width: 100%;
   pointer-events: none;
+  z-index: 10000;
 `;
 
 const LoadingBar = animated(styled.div`
@@ -158,7 +159,7 @@ const SampleInfo = ({ sample }) => {
               key={"scalar-" + cur + "" + value}
               title={`${cur}: ${value}`}
               name={value}
-              color={colorByLabel ? colorMap[cur] : colorMap[value]}
+              color={colorByLabel ? colorMap[value] : colorMap[cur]}
             />,
           ];
         }
@@ -182,6 +183,7 @@ const SelectorDiv = animated(styled.div`
   display: flex;
   direction: rtl;
   cursor: pointer;
+  z-index: 10000;
 `);
 
 const Selector = ({ id, spring }: { id: string }) => {
@@ -211,7 +213,7 @@ const Selector = ({ id, spring }: { id: string }) => {
     setStateDescription({ ...stateDescription, selected: [...newSelected] });
   };
   return (
-    <SelectorDiv style={{ ...spring, zIndex: 10000 }} onClick={handleClick}>
+    <SelectorDiv style={{ ...spring }} onClick={handleClick}>
       <Checkbox
         checked={selectedSamples.has(id)}
         style={{
@@ -249,6 +251,7 @@ const Sample = ({ sample, metadata }) => {
         onMouseLeave={() => setHovering(false)}
       >
         <Selector key={id} id={id} spring={selectorSpring} />
+        <SampleInfo sample={sample} />
         <Player51
           src={src}
           style={{
@@ -271,7 +274,6 @@ const Sample = ({ sample, metadata }) => {
           <LoadingBar key={key} style={props} />
         ))}
       </div>
-      <SampleInfo sample={sample} />
     </SampleDiv>
   );
 };

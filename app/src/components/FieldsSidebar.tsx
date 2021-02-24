@@ -304,7 +304,7 @@ type ScalarsCellProps = {
 const ScalarsCell = ({ modal }: ScalarsCellProps) => {
   const scalars = useRecoilValue(selectors.scalarNames("sample"));
   const [activeScalars, setActiveScalars] = useRecoilState(
-    fieldAtoms.activeScalars({ modal, frames: false })
+    fieldAtoms.activeScalars(modal)
   );
 
   const colorMap = useRecoilValue(selectors.colorMap);
