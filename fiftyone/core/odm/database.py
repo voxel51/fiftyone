@@ -181,8 +181,10 @@ def delete_dataset(name, dry_run=False):
 
     if "sample_collection_name" not in dataset_dict:
         logger.warning(
-            "Cannot find sample/frame collections; stopping now. Use "
-            "`drop_orphan_collections()` to cleanup any dangling collections."
+            "Cannot find sample/frame collections for dataset '%s'; stopping "
+            "now. Use `drop_orphan_collections()` to cleanup any dangling "
+            "collections",
+            name,
         )
         return
 
