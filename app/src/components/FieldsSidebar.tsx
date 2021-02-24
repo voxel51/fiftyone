@@ -245,7 +245,7 @@ type LabelsCellProps = {
 };
 
 const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
-  const key = frames ? "frames" : "sample";
+  const key = frames ? "frame" : "sample";
   const labels = useRecoilValue(selectors.labelNames(key));
   const [activeLabels, setActiveLabels] = useRecoilState(
     fieldAtoms.activeLabels({ modal, frames })
@@ -270,21 +270,25 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
     <Cell
       label={frames ? "Frame Labels" : "Labels"}
       icon={<Label style={{ transform: "rotate(180deg)" }} />}
-      entries={labels.map((name) => ({
-        name,
-        disabled: false,
-        hideCheckbox: modal,
-        hasDropdown: true,
-        selected: activeLabels.includes(name),
-        color: colorMap[name],
-        title: name,
-        path: frames ? "frames." + name : name,
-        data: count && subCount ? makeData(subCount[name], count[name]) : null,
-        totalCount: count ? count[name] : null,
-        filteredCount: subCount ? subCount[name] : null,
-        modal,
-        labelType: types[frames ? "frames." + name : name],
-      }))}
+      entries={labels.map((name) => {
+        const path = frames ? "frames." + name : name;
+        return {
+          name,
+          disabled: false,
+          hideCheckbox: modal,
+          hasDropdown: true,
+          selected: activeLabels.includes(path),
+          color: colorMap[path],
+          title: name,
+          path,
+          data:
+            count && subCount ? makeData(subCount[name], count[name]) : null,
+          totalCount: count ? count[name] : null,
+          filteredCount: subCount ? subCount[name] : null,
+          modal,
+          labelType: types[path],
+        };
+      })}
       onSelect={({ name, selected }) =>
         setActiveLabels(
           selected
@@ -297,7 +301,7 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
         setActiveLabels([]);
       }}
       modal={modal}
-      title={"Labels"}
+      title={frames ? "Frame Labels" : "Labels"}
     />
   );
 };

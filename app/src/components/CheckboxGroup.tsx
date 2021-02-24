@@ -13,7 +13,7 @@ import * as atoms from "../recoil/atoms";
 import { fieldIsFiltered } from "./Filters/LabelFieldFilters.state";
 import { isBooleanField, isNumericField, isStringField } from "./Filters/utils";
 import { SampleContext } from "../utils/context";
-import { labelTypeIsFilterable, LABEL_LISTS } from "../utils/labels";
+import { labelTypeIsFilterable } from "../utils/labels";
 
 import LabelFieldFilter from "./Filters/LabelFieldFilter";
 import NumericFieldFilter from "./Filters/NumericFieldFilter";

@@ -16,7 +16,6 @@ import {
 import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
 import { lightTheme } from "../shared/colors";
-import { string } from "prop-types";
 
 class HTTPSSocket {
   location: string;
