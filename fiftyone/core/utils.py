@@ -546,7 +546,8 @@ class UniqueFilenameMaker(object):
 
         if output_ext is not None:
             ext = output_ext
-            filename = name + ext
+
+        filename = name + ext
 
         key = name if self.ignore_exts else filename
         self._filename_counts[key] += 1
