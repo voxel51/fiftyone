@@ -24,6 +24,7 @@ import * as labelAtoms from "./Filters/LabelFieldFilters.state";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { useTheme } from "../utils/hooks";
+import { stringify } from "../utils/labels";
 
 const Button = animated(styled.div`
   cursor: pointer;
@@ -276,7 +277,7 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
         return {
           name,
           disabled: false,
-          hideCheckbox: modal,
+          hideCheckbox: false,
           hasDropdown: true,
           selected: activeLabels.includes(path),
           color: colorMap[path],
@@ -319,10 +320,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
 
   const colorMap = useRecoilValue(selectors.colorMap);
   const [subCountAtom, countAtom] = modal
-    ? [
-        labelAtoms.labelSampleModalCounts("sample"),
-        labelAtoms.labelSampleModalCounts("sampl"),
-      ]
+    ? [null, selectors.modalSample]
     : [
         labelAtoms.filteredLabelSampleCounts("sample"),
         labelAtoms.labelSampleCounts("sample"),
@@ -339,14 +337,19 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
         name,
         disabled: false,
         hideCheckbox: modal,
-        hasDropdown: true,
+        hasDropdown: !modal,
         selected: activeScalars.includes(name),
         color: colorMap[name],
         title: name,
         path: name,
-        data: count && subCount ? makeData(subCount[name], count[name]) : null,
-        totalCount: count ? count[name] : null,
-        filteredCount: subCount ? subCount[name] : null,
+        data:
+          count && subCount && !modal
+            ? makeData(subCount[name], count[name])
+            : modal
+            ? stringify(count[name])
+            : null,
+        totalCount: !modal && count ? count[name] : null,
+        filteredCount: !modal && subCount ? subCount[name] : null,
         modal,
       }))}
       onSelect={({ name, selected }) =>

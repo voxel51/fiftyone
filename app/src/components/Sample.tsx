@@ -162,6 +162,7 @@ const SampleInfo = ({ sample }) => {
           title={`${cur}: ${value}`}
           name={value}
           color={colorByLabel ? colorMap[value] : colorMap[cur]}
+          maxWidth={"calc(100% - 32px)"}
         />,
       ];
     } else if (VALID_CLASS_TYPES.includes(labelTypes[cur])) {
@@ -179,6 +180,7 @@ const SampleInfo = ({ sample }) => {
               title={`${cur}: ${v}`}
               name={v}
               color={colorByLabel ? colorMap[v] : colorMap[cur]}
+              maxWidth={"calc(100% - 32px)"}
             />
           )),
       ];
