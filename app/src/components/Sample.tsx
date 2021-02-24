@@ -167,18 +167,20 @@ const SampleInfo = ({ sample }) => {
     } else if (VALID_CLASS_TYPES.includes(labelTypes[cur])) {
       const labelType = labelTypes[cur];
       const values = VALID_LIST_TYPES.includes(labelType)
-        ? sample[cur].classifications.map((l) => l.label)
-        : [sample[cur].label];
+        ? sample[cur].classifications
+        : sample[cur];
       acc = [
         ...acc,
-        values.map((v) => (
-          <Tag
-            key={"scalar-" + cur + "" + v}
-            title={`${cur}: ${v}`}
-            name={v}
-            color={colorByLabel ? colorMap[v] : colorMap[cur]}
-          />
-        )),
+        values
+          .map((v) => stringify(v.label))
+          .map((v) => (
+            <Tag
+              key={"scalar-" + cur + "" + v}
+              title={`${cur}: ${v}`}
+              name={v}
+              color={colorByLabel ? colorMap[v] : colorMap[cur]}
+            />
+          )),
       ];
     }
     return acc;

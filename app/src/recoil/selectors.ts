@@ -663,7 +663,12 @@ export const scalarTypes = selectorFamily({
 
 const COUNT_CLS = "Count";
 
-const catchLabelCount = (names, prefix, cur, acc) => {
+const catchLabelCount = (
+  names: string[],
+  prefix: string,
+  cur: { name: string; _CLS: string; result: number },
+  acc: { [key: string]: number }
+): void => {
   if (
     cur.name &&
     names.includes(cur.name.slice(prefix.length).split(".")[0]) &&
@@ -673,15 +678,18 @@ const catchLabelCount = (names, prefix, cur, acc) => {
   }
 };
 
-export const labelSampleCounts = selectorFamily({
+interface Counts {
+  [key: string]: number | null;
+}
+
+export const labelSampleCounts = selectorFamily<Counts | null, string>({
   key: "labelSampleCounts",
-  get: (dimension: string) => ({ get }) => {
+  get: (dimension) => ({ get }) => {
     const names = get(labelNames(dimension)).concat(
       get(scalarNames(dimension))
     );
     const prefix = dimension === "sample" ? "" : "frames.";
     const stats = get(datasetStats);
-    console.log("STATS", stats);
     if (stats === null) {
       return null;
     }
@@ -692,9 +700,9 @@ export const labelSampleCounts = selectorFamily({
   },
 });
 
-export const filteredLabelSampleCounts = selectorFamily({
+export const filteredLabelSampleCounts = selectorFamily<Counts | null, string>({
   key: "filteredLabelSampleCounts",
-  get: (dimension: string) => ({ get }) => {
+  get: (dimension) => ({ get }) => {
     const names = get(labelNames(dimension)).concat(
       get(scalarNames(dimension))
     );
@@ -707,6 +715,25 @@ export const filteredLabelSampleCounts = selectorFamily({
       catchLabelCount(names, prefix, cur, acc);
       return acc;
     }, {});
+  },
+});
+
+export const labelSampleModalCounts = selectorFamily<Counts | null, string>({
+  key: "labelSampleModalCounts",
+  get: (dimension) => ({ get }) => {
+    // todo
+    return {};
+  },
+});
+
+export const filteredLabelSampleModalCounts = selectorFamily<
+  Counts | null,
+  string
+>({
+  key: "filteredLabelSampleModalCounts",
+  get: (dimension) => ({ get }) => {
+    // todo
+    return {};
   },
 });
 
