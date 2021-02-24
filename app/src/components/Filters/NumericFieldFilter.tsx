@@ -58,7 +58,12 @@ const setFilter = (
     _CLS: "numeric",
   };
 
-  if (meetsDefault({ ...filter, none: true }, bounds)) {
+  const check = { ...filter, none: true };
+  if (key === "none") {
+    check[key] = Boolean(value);
+  }
+
+  if (meetsDefault(check, bounds)) {
     set(selectors.filterStage(path), null);
   } else {
     set(selectors.filterStage(path), filter);

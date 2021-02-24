@@ -370,7 +370,7 @@ const FieldsSidebar = React.forwardRef(({ modal }: FieldsSidebarProps, ref) => {
     <Container ref={ref}>
       <TagsCell modal={modal} />
       <LabelsCell modal={modal} frames={false} />
-      <LabelsCell modal={modal} frames={true} />
+      {isVideo && <LabelsCell modal={modal} frames={true} />}
       <ScalarsCell modal={modal} />
     </Container>
   );
