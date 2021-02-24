@@ -20,6 +20,7 @@ import eta.core.utils as etau
 import eta.core.web as etaw
 
 import fiftyone.core.collections as foc
+import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fomm
 import fiftyone.core.metadata as fom
@@ -106,6 +107,9 @@ def import_from_labelbox(
     """
     if download_dir:
         filename_maker = fou.UniqueFilenameMaker(output_dir=download_dir)
+
+    if labelbox_id_field not in dataset.get_field_schema():
+        dataset.add_sample_field(labelbox_id_field, fof.StringField)
 
     id_map = {}
     for sample in dataset.select_fields(labelbox_id_field):
