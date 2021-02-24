@@ -51,8 +51,8 @@ def evaluate_segmentations(
         Precision: sample.<eval_key>_precision
            Recall: sample.<eval_key>_recall
 
-   In addition, when evaluating frame-level masks, the accuracy, precision, and
-   recall of each frame if recorded in the following frame-level fields::
+    In addition, when evaluating frame-level masks, the accuracy, precision,
+    and recall of each frame if recorded in the following frame-level fields::
 
          Accuracy: frame.<eval_key>_accuracy
         Precision: frame.<eval_key>_precision
