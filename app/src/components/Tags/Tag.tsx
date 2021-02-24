@@ -6,7 +6,7 @@ const Body = styled.div`
   background-color: ${({ fillColor }) => fillColor};
   box-sizing: content-box;
   height: 1em;
-  margin: 0 2px 0 2px;
+  margin: 0 2px 0;
   padding: 3px 12px 3px 12px;
   color: white;
   font-size: 14px;

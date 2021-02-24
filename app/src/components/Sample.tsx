@@ -22,13 +22,12 @@ const SampleDiv = animated(styled.div`
   width: 100%;
 `);
 
-const SampleInfoDiv = styled.div`
-  height: 43px;
-  display: block;
+const SampleInfoDiv = animated(styled.div`
+  height: 36px;
+  display: flex;
   position: absolute;
   bottom: 0;
   padding: 0.5rem;
-  bottom: 0;
   &::-webkit-scrollbar {
     width: 0px;
     background: transparent;
@@ -41,9 +40,9 @@ const SampleInfoDiv = styled.div`
   scrollbar-width: none;
   overflow-x: scroll;
   width: 100%;
-  pointer-events: none;
   z-index: 499;
-`;
+  pointer-events: none;
+`);
 
 const LoadingBar = animated(styled.div`
   position: absolute;
@@ -128,45 +127,50 @@ const SampleInfo = ({ sample }) => {
   const colorMap = useRecoilValue(selectors.colorMap);
   const scalars = useRecoilValue(selectors.scalarNames("sample"));
   const colorByLabel = useRecoilValue(atoms.colorByLabel);
+  const theme = useTheme();
+  const bubbles = activeFields.reduce((acc, cur) => {
+    if (
+      cur.startsWith("tags.") &&
+      Array.isArray(sample.tags) &&
+      sample.tags.includes(cur.slice(5))
+    ) {
+      const tag = cur.slice(5);
+      acc = [
+        ...acc,
+        <Tag
+          key={cur}
+          name={tag}
+          color={colorMap[tag]}
+          title={tag}
+          maxWidth={"calc(100% - 32px)"}
+        />,
+      ];
+    } else if (
+      scalars.includes(cur) &&
+      ![null, undefined].includes(sample[cur])
+    ) {
+      const value = stringify(sample[cur]);
+      acc = [
+        ...acc,
+        <Tag
+          key={"scalar-" + cur + "" + value}
+          title={`${cur}: ${value}`}
+          name={value}
+          color={colorByLabel ? colorMap[value] : colorMap[cur]}
+        />,
+      ];
+    }
+    return acc;
+  }, []);
+  const props = useSpring({
+    background: `linear-gradient(
+      0deg,
+      ${bubbles.length ? theme.backgroundDark : "rgba(0, 0, 0, 0)"} 0%,
+      rgba(0, 0, 0, 0) 90%
+    )`,
+  });
 
-  return (
-    <SampleInfoDiv>
-      {activeFields.reduce((acc, cur) => {
-        if (
-          cur.startsWith("tags.") &&
-          Array.isArray(sample.tags) &&
-          sample.tags.includes(cur.slice(5))
-        ) {
-          const tag = cur.slice(5);
-          acc = [
-            ...acc,
-            <Tag
-              key={cur}
-              name={tag}
-              color={colorMap[tag]}
-              title={tag}
-              maxWidth={"calc(100% - 32px)"}
-            />,
-          ];
-        } else if (
-          scalars.includes(cur) &&
-          ![null, undefined].includes(sample[cur])
-        ) {
-          const value = stringify(sample[cur]);
-          acc = [
-            ...acc,
-            <Tag
-              key={"scalar-" + cur + "" + value}
-              title={`${cur}: ${value}`}
-              name={value}
-              color={colorByLabel ? colorMap[value] : colorMap[cur]}
-            />,
-          ];
-        }
-        return acc;
-      }, [])}
-    </SampleInfoDiv>
-  );
+  return <SampleInfoDiv style={props}>{bubbles}</SampleInfoDiv>;
 };
 
 const SelectorDiv = animated(styled.div`
@@ -174,16 +178,15 @@ const SelectorDiv = animated(styled.div`
   width: 100%;
   top: 0;
   right: 0;
-  background: rgb(0, 0, 0);
-  background: linear-gradient(
-    0deg,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(34, 38, 42, 1) 90%
-  );
   display: flex;
   direction: rtl;
   cursor: pointer;
   z-index: 499;
+  background: linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0) 0%,
+    ${({ theme }) => theme.backgroundDark} 90%
+  );
 `);
 
 const Selector = ({ id, spring }: { id: string }) => {
