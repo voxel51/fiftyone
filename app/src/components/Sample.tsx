@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { animated, useSpring, useTransition } from "react-spring";
 
@@ -227,6 +227,7 @@ const Selector = ({ id, spring }: { id: string }) => {
 
 const Sample = ({ sample, metadata }) => {
   const http = useRecoilValue(selectors.http);
+  const setModal = useSetRecoilState(atoms.modal);
   const id = sample._id;
   const src = `${http}/filepath/${encodeURI(sample.filepath)}?id=${id}`;
   const socket = useRecoilValue(selectors.socket);
@@ -268,7 +269,7 @@ const Sample = ({ sample, metadata }) => {
           filterSelector={labelFilters(false)}
           onMouseEnter={onMouseEnter}
           onMouseLeave={onMouseLeave}
-          onClick={(e) => {}}
+          onClick={() => setModal({ visible: true, sample, metadata })}
         />
         {bar.map(({ key, props }) => (
           <LoadingBar key={key} style={props} />
