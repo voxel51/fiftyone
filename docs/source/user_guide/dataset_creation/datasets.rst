@@ -1,4 +1,3 @@
-
 .. _loading-datasets-from-disk:
 
 Loading Datasets From Disk
@@ -160,8 +159,8 @@ format when reading the dataset from disk.
     |                                                                                       | stored in `ETA VideoLabels format \                                                |
     |                                                                                       | <https://github.com/voxel51/eta/blob/develop/docs/video_labels_guide.md>`_.        |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
-    | :ref:`FiftyOneDataset <FiftyOneDataset-import>`                                       | A dataset consisting of an arbitrary serialized |WhatIsAFiftyOneDataset| and its   |
-    |                                                                                       | associated source data.                                                            |
+    | :ref:`FiftyOneDataset <FiftyOneDataset-import>`                                       | A dataset consisting of an arbitrary serialized |Dataset| and its associated       |
+    |                                                                                       | data.                                                                              |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`Custom formats <custom-dataset-importer>`                                       | Import datasets in custom formats by defining your own |DatasetType| or            |
     |                                                                                       | |DatasetImporter| class.                                                           |

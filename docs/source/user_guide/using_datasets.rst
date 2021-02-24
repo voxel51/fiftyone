@@ -1,16 +1,16 @@
+.. _using-datasets:
+
 Using FiftyOne Datasets
 =======================
 
 .. default-role:: code
 
-After a |WhatIsAFiftyOneDataset| has been loaded or created, FiftyOne provides
-powerful functionality to inspect, search, and modify it from a |Dataset|-wide
-down to a |Sample| level.
+After a |Dataset| has been loaded or created, FiftyOne provides powerful
+functionality to inspect, search, and modify it from a |Dataset|-wide down to
+a |Sample| level.
 
 The following sections provide details of how to use various aspects of a
 FiftyOne |Dataset|.
-
-.. _using-datasets:
 
 Datasets
 ________

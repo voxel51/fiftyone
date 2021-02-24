@@ -17,9 +17,9 @@ on your data quickly and easily.
 .. Add callout items below this line
 
 .. customcalloutitem::
-    :header: FiftyOne Dataset basics
-    :description: Get up to speed with FiftyOne datasets and familarize yourself with their design.
-    :button_text: Learn more about dataset basics
+    :header: FiftyOne basics
+    :description: Get up to speed with a quick overview of FiftyOne's basic concepts.
+    :button_text: Learn the basics
     :button_link: basics.html
 
 .. customcalloutitem::
@@ -107,7 +107,7 @@ on your data quickly and easily.
     :maxdepth: 1
     :hidden:
 
-    Dataset basics <basics>
+    FiftyOne basics <basics>
     Loading datasets <dataset_creation/index>
     Using datasets <using_datasets>
     Dataset views <using_views>

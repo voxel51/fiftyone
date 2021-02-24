@@ -1,4 +1,3 @@
-
 .. _fiftyone-app:
 
 Using the FiftyOne App

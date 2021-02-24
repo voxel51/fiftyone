@@ -1,4 +1,3 @@
-
 .. _fiftyone-cli:
 
 FiftyOne Command-Line Interface (CLI)
@@ -269,6 +268,7 @@ Tools for working with FiftyOne datasets.
       {list,info,create,head,tail,stream,export,delete}
         list                List FiftyOne datasets.
         info                Print information about FiftyOne datasets.
+        stats               Print stats about FiftyOne datasets on disk.
         create              Tools for creating FiftyOne datasets.
         head                Prints the first few samples in a FiftyOne dataset.
         tail                Prints the last few samples in a FiftyOne dataset.
@@ -330,6 +330,38 @@ Print information about FiftyOne datasets.
 
     # Print information about the given dataset
     fiftyone datasets info <name>
+
+.. _cli-fiftyone-datasets-stats:
+
+Print dataset stats
+~~~~~~~~~~~~~~~~~~~
+
+Print stats about FiftyOne datasets on disk.
+
+.. code-block:: text
+
+    fiftyone datasets stats [-h] [-m] [-c] NAME
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                 the name of the dataset
+
+    optional arguments:
+      -h, --help           show this help message and exit
+      -m, --include-media  whether to include stats about the size of the raw
+                           media in the dataset
+      -c, --compressed     whether to return the sizes of collections in their
+                           compressed form on disk
+
+**Examples**
+
+.. code-block:: shell
+
+    # Print stats about the given dataset on disk
+    fiftyone datasets stats <name>
 
 .. _cli-fiftyone-datasets-create:
 

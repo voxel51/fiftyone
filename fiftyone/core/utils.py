@@ -38,6 +38,7 @@ import eta
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.context as foc
 
 
 logger = logging.getLogger(__name__)
@@ -464,8 +465,18 @@ class ResourceLimit(object):
 
 class ProgressBar(etau.ProgressBar):
     def __init__(self, *args, **kwargs):
-        quiet = not fo.config.show_progress_bars
-        super().__init__(*args, iters_str="samples", quiet=quiet, **kwargs)
+        if "quiet" not in kwargs:
+            kwargs["quiet"] = not fo.config.show_progress_bars
+
+        if "iters_str" not in kwargs:
+            kwargs["iters_str"] = "samples"
+
+        # For progress bars in notebooks, use a fixed size so that they will
+        # read well across browsers, in HTML format, etc
+        if foc.is_notebook_context() and "max_width" not in kwargs:
+            kwargs["max_width"] = 90
+
+        super().__init__(*args, **kwargs)
 
 
 @contextmanager
