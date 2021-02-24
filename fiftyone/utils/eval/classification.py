@@ -33,7 +33,7 @@ def evaluate_classifications(
     gt_field="ground_truth",
     eval_key=None,
     classes=None,
-    missing="none",
+    missing=None,
     method="simple",
     config=None,
     **kwargs,
@@ -68,7 +68,7 @@ def evaluate_classifications(
         classes (None): the list of possible classes. If not provided, the
             observed ground truth/predicted labels are used for results
             purposes
-        missing ("none"): a missing label string. Any None-valued labels are
+        missing (None): a missing label string. Any None-valued labels are
             given this label for results purposes
         method ("simple"): a string specifying the evaluation method to use.
             Supported values are ``("simple", "binary", "top-k")``
@@ -140,8 +140,8 @@ class ClassificationEvaluation(Evaluation):
             classes (None): the list of possible classes. If not provided, the
                 observed ground truth/predicted labels are used for results
                 purposes
-            missing ("none"): a missing label string. Any None-valued labels
-                are given this label for results purposes
+            missing (None): a missing label string. Any None-valued labels are
+                given this label for results purposes
 
         Returns:
             a :class:`ClassificationResults` instance
@@ -489,13 +489,16 @@ class ClassificationResults(EvaluationResults):
         weights (None): an optional list of sample weights
         classes (None): the list of possible classes. If not provided, the
             observed ground truth/predicted labels are used
-        missing ("none"): a missing label string. Any None-valued labels are
+        missing (None): a missing label string. Any None-valued labels are
             given this label for evaluation purposes
     """
 
     def __init__(
-        self, ytrue, ypred, confs, weights=None, classes=None, missing="none"
+        self, ytrue, ypred, confs, weights=None, classes=None, missing=None
     ):
+        if missing is None:
+            missing = "(none)"
+
         ytrue, ypred, classes = _parse_labels(ytrue, ypred, classes, missing)
 
         self.ytrue = ytrue
@@ -609,7 +612,8 @@ class ClassificationResults(EvaluationResults):
 
         Args:
             classes (None): an optional list of classes to include in the
-                confusion matrix
+                confusion matrix. Include ``self.missing`` in this list if you
+                would like to study a subset of classes including missing data
             include_other (False): whether to include an extra row/column at
                 the end of the matrix for labels that do not appear in
                 ``classes``
@@ -618,15 +622,31 @@ class ClassificationResults(EvaluationResults):
             a ``num_classes x num_classes`` confusion matrix
         """
         labels = self._get_labels(classes, include_missing=True)
-        confusion_matrix, _ = self._confusion_matrix(labels, include_other)
+        confusion_matrix, _ = self._confusion_matrix(
+            labels, include_other=include_other
+        )
         return confusion_matrix
 
-    def _confusion_matrix(self, labels, include_other):
+    def _confusion_matrix(
+        self,
+        labels,
+        include_other=False,
+        other_label=None,
+        include_missing=False,
+    ):
+        labels = list(labels)
+
+        if include_other:
+            if other_label not in labels:
+                labels.append(other_label)
+
+        if include_missing and self.missing not in labels:
+            labels.append(self.missing)
+
         if include_other:
             labels_set = set(labels)
-            ypred = [y if y in labels_set else "other" for y in self.ypred]
-            ytrue = [y if y in labels_set else "other" for y in self.ytrue]
-            labels = list(labels) + ["other"]
+            ypred = [y if y in labels_set else other_label for y in self.ypred]
+            ytrue = [y if y in labels_set else other_label for y in self.ytrue]
         else:
             ypred = self.ypred
             ytrue = self.ytrue
@@ -640,6 +660,7 @@ class ClassificationResults(EvaluationResults):
         self,
         classes=None,
         include_other=True,
+        other_label="(other)",
         show_values=True,
         show_colorbar=True,
         cmap="viridis",
@@ -654,9 +675,15 @@ class ClassificationResults(EvaluationResults):
         Args:
             classes (None): an optional list of classes to include in the
                 confusion matrix
-            include_other (True): whether to include an extra column at
-                the end of the confusion matrix for predictions that do not
-                appear in ``classes`` (only if necessary)
+            include_other (True): whether to include extra columns at the end
+                of the confusion matrix for **predictions** that are either
+                (i) missing, or (ii) are not missing but do not appear in
+                ``classes``. If ``self.missing`` already appears in ``classes``
+                or there are no missing predictions, no extra column is added
+                for (i). Likewise, no extra column is added for (ii) if there
+                are no predictions that fall in this case
+            other_label ("(other)"): the label to use for "other" predictions.
+                Only applicable when ``include_other`` is True
             show_values (True): whether to show counts in the confusion matrix
                 cells
             show_colorbar (True): whether to show a colorbar
@@ -674,19 +701,31 @@ class ClassificationResults(EvaluationResults):
         Returns:
             the matplotlib axis containing the plot
         """
-        labels = self._get_labels(classes, include_missing=True)
+        _labels = self._get_labels(classes, include_missing=True)
         confusion_matrix, labels = self._confusion_matrix(
-            labels, include_other
+            _labels,
+            include_other=include_other,
+            other_label=other_label,
+            include_missing=include_other,
         )
 
         if include_other:
-            # don't include `other` for ground truth
-            confusion_matrix = confusion_matrix[:-1, :]
+            num_labels = len(labels)
+            num_extra = num_labels - len(_labels)
 
-            # only include `other` for predictions if necessary
-            if not any(confusion_matrix[:, -1]):
-                confusion_matrix = confusion_matrix[:, :-1]
-                labels = labels[:-1]
+            # Don't include extra ground truth rows
+            if num_extra > 0:
+                confusion_matrix = confusion_matrix[:-num_extra, :]
+
+            # Only include non-trivial extra prediction rows
+            rm_inds = []
+            for idx in range(num_labels - num_extra, num_labels):
+                if not any(confusion_matrix[:, idx]):
+                    rm_inds.append(idx)
+
+            if rm_inds:
+                np.delete(confusion_matrix, rm_inds, axis=1)
+                labels = [l for i, l in enumerate(labels) if i not in rm_inds]
 
         ax = _plot_confusion_matrix(
             confusion_matrix,

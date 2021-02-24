@@ -458,7 +458,7 @@ def test_classification_results_missing_data():
     # positive predictions
     results.print_report()
 
-    # Data includes missing GT/preds, so include a "none" row/column when
+    # Data includes missing GT/preds, so includes a "none" row/column when
     # plotting confusion matrix
     results.plot_confusion_matrix()
 
@@ -474,6 +474,38 @@ def test_classification_results_missing_data():
 
     # Only include `cat` and `dog` rows (GT) and columns (predictions)
     results.plot_confusion_matrix(classes=classes, include_other=False)
+
+    input("Press enter to continue...")
+
+
+def test_detection_results():
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    results = dataset.evaluate_detections("predictions", classwise=False)
+
+    # Get the 10 most common classes in the dataset
+    counts = dataset.count_values("ground_truth.detections.label")
+    classes = sorted(counts, key=counts.get, reverse=True)[:10]
+
+    # Print a classification report for the top-10 classes
+    # Should show only per-class metrics for the specified classes, but other
+    # predictions not in `classes` for GTs that are in `classes` should be
+    # taken into account for P/R/F1 scores
+    results.print_report(classes=classes)
+
+    # Should contain "other" and "none" columns
+    results.plot_confusion_matrix(classes=classes)
+
+    # Should not contain "other" or "none" columns
+    results.plot_confusion_matrix(classes=classes, include_other=False)
+
+    # Should contain "other" and "none" columns, as well as a "none" row
+    results.plot_confusion_matrix(classes=classes + [results.missing])
+
+    # Should contain "none" row and columns
+    results.plot_confusion_matrix(
+        classes=classes + [results.missing], include_other=False
+    )
 
     input("Press enter to continue...")
 
