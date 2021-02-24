@@ -417,6 +417,14 @@ const SampleModal = (
                 frameNumberRef={frameNumberRef}
               />
             </div>
+            <FieldsSidebar
+              modal={true}
+              style={{
+                overflowY: "auto",
+                overflowX: "hidden",
+                height: "auto",
+              }}
+            />
             <TopRightNavButton
               onClick={onClose}
               title={"Close"}

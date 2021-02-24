@@ -813,6 +813,7 @@ export const tagSampleModalCounts = selector<{ [key: string]: number }>({
     const tags = get(tagNames);
     return tags.reduce((acc, cur) => {
       acc[cur] = sample.tags.includes(cur) ? 1 : 0;
+      return acc;
     }, {});
   },
 });

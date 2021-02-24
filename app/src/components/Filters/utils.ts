@@ -10,8 +10,6 @@ import {
   VALID_NUMERIC_TYPES,
 } from "../../utils/labels";
 
-const COUNT_CLS = "Count";
-
 export const isBooleanField = selectorFamily<boolean, string>({
   key: "isBooleanField",
   get: (name) => ({ get }) => {

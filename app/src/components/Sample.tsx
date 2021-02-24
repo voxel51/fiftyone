@@ -189,7 +189,7 @@ const SampleInfo = ({ sample }) => {
     background: `linear-gradient(
       0deg,
       ${bubbles.length ? theme.backgroundDark : "rgba(0, 0, 0, 0)"} 0%,
-      rgba(0, 0, 0, 0) 90%
+      rgba(0, 0, 0, 0) 100%
     )`,
   });
 

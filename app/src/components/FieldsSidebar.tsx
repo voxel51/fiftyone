@@ -20,6 +20,7 @@ import DropdownCell from "./DropdownCell";
 import SelectionTag from "./Tags/SelectionTag";
 import { Entry } from "./CheckboxGroup";
 import * as fieldAtoms from "./Filters/utils";
+import * as labelAtoms from "./Filters/LabelFieldFilters.state";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { useTheme } from "../utils/hooks";
@@ -219,7 +220,7 @@ const TagsCell = ({ modal }: TagsCellProps) => {
           makeData(subCount[name], count[name])
         ),
         totalCount: count[name],
-        filteredCount: subCount[name],
+        filteredCount: modal ? null : subCount[name],
         modal,
       }))}
       onSelect={({ name, selected }) =>
@@ -255,17 +256,16 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
   const colorMap = useRecoilValue(selectors.colorMap);
   const [subCountAtom, countAtom] = modal
     ? [
-        selectors.labelSampleModalCounts(key),
-        selectors.labelSampleModalCounts(key),
+        labelAtoms.labelSampleModalCounts(key),
+        labelAtoms.labelSampleModalCounts(key),
       ]
     : [
-        selectors.filteredLabelSampleCounts(key),
-        selectors.labelSampleCounts(key),
+        labelAtoms.filteredLabelSampleCounts(key),
+        labelAtoms.labelSampleCounts(key),
       ];
 
   const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
   const count = useRecoilValue(countAtom);
-  console.log(count);
 
   return (
     <Cell
@@ -319,10 +319,13 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
 
   const colorMap = useRecoilValue(selectors.colorMap);
   const [subCountAtom, countAtom] = modal
-    ? [selectors.labelSampleModalCounts, selectors.labelSampleModalCounts]
+    ? [
+        labelAtoms.labelSampleModalCounts("sample"),
+        labelAtoms.labelSampleModalCounts("sampl"),
+      ]
     : [
-        selectors.filteredLabelSampleCounts("sample"),
-        selectors.labelSampleCounts("sample"),
+        labelAtoms.filteredLabelSampleCounts("sample"),
+        labelAtoms.labelSampleCounts("sample"),
       ];
 
   const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
@@ -365,20 +368,23 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
 
 type FieldsSidebarProps = {
   modal: boolean;
+  style: object;
 };
 
-const FieldsSidebar = React.forwardRef(({ modal }: FieldsSidebarProps, ref) => {
-  const mediaType = useRecoilValue(selectors.mediaType);
-  const isVideo = mediaType === "video";
+const FieldsSidebar = React.forwardRef(
+  ({ modal, style }: FieldsSidebarProps, ref) => {
+    const mediaType = useRecoilValue(selectors.mediaType);
+    const isVideo = mediaType === "video";
 
-  return (
-    <Container ref={ref}>
-      <TagsCell modal={modal} />
-      <LabelsCell modal={modal} frames={false} />
-      {isVideo && <LabelsCell modal={modal} frames={true} />}
-      <ScalarsCell modal={modal} />
-    </Container>
-  );
-});
+    return (
+      <Container ref={ref} style={style}>
+        <TagsCell modal={modal} />
+        <LabelsCell modal={modal} frames={false} />
+        {isVideo && <LabelsCell modal={modal} frames={true} />}
+        <ScalarsCell modal={modal} />
+      </Container>
+    );
+  }
+);
 
 export default FieldsSidebar;

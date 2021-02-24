@@ -14,6 +14,8 @@ import * as atoms from "../../recoil/atoms";
 import * as selectors from "../../recoil/selectors";
 import { RESERVED_FIELDS, VALID_LIST_TYPES } from "../../utils/labels";
 
+const COUNT_CLS = "Count";
+
 export const modalFilterIncludeLabels = atomFamily<string[], string>({
   key: "modalFilterIncludeLabels",
   default: [],
@@ -138,6 +140,7 @@ export const sampleModalFilter = selector({
     const filters = get(labelFilters(true));
     const labels = get(activeFields(true));
     const hiddenObjects = get(atoms.hiddenObjects);
+    const fields = get(activeFields(false));
     return (sample) => {
       return Object.entries(sample).reduce((acc, [key, value]) => {
         if (value && hiddenObjects[value.id]) {
@@ -146,7 +149,7 @@ export const sampleModalFilter = selector({
         if (key === "tags") {
           acc[key] = value;
         } else if (value && VALID_LIST_TYPES.includes(value._cls)) {
-          if (activeLabels[key]) {
+          if (fields.includes(key)) {
             acc[key] =
               filters[key] && value !== null
                 ? {
@@ -226,11 +229,11 @@ interface Counts {
 export const labelSampleCounts = selectorFamily<Counts | null, string>({
   key: "labelSampleCounts",
   get: (dimension) => ({ get }) => {
-    const names = get(labelNames(dimension)).concat(
-      get(scalarNames(dimension))
+    const names = get(selectors.labelNames(dimension)).concat(
+      get(selectors.scalarNames(dimension))
     );
     const prefix = dimension === "sample" ? "" : "frames.";
-    const stats = get(datasetStats);
+    const stats = get(selectors.datasetStats);
     if (stats === null) {
       return null;
     }
@@ -244,11 +247,11 @@ export const labelSampleCounts = selectorFamily<Counts | null, string>({
 export const filteredLabelSampleCounts = selectorFamily<Counts | null, string>({
   key: "filteredLabelSampleCounts",
   get: (dimension) => ({ get }) => {
-    const names = get(labelNames(dimension)).concat(
-      get(scalarNames(dimension))
+    const names = get(selectors.labelNames(dimension)).concat(
+      get(selectors.scalarNames(dimension))
     );
     const prefix = dimension === "sample" ? "" : "frames.";
-    const stats = get(extendedDatasetStats);
+    const stats = get(selectors.extendedDatasetStats);
     if (stats === null) {
       return null;
     }
@@ -283,8 +286,8 @@ export const filteredLabelSampleModalCounts = selectorFamily<
 >({
   key: "filteredLabelSampleModalCounts",
   get: (dimension) => ({ get }) => {
-    const labels = get(labelNames(dimension));
-    const types = get(labelTypesMap);
+    const labels = get(selectors.labelNames(dimension));
+    const types = get(selectors.labelTypesMap);
     const paths =
       dimension === "sample" ? labels : labels.map((l) => "frames." + l);
     const sample = get(atoms.modal).sample || {};
