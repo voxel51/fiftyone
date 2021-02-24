@@ -163,9 +163,11 @@ bash install.bash
 ```
 
 **NOTE:** The install script adds to your `nvm` settings in your `~/.bashrc` or
-`~/.bash_profile`, which is needed for installing and building the App. When
-you pull in new changes to the App, you will need to run `yarn build-web` in
-the `./app` directory.
+`~/.bash_profile`, which is needed for installing and building the App
+
+**NOTE:** When you pull in new changes to the App, you will need to rebuild it,
+which you can do either by rerunning the install script or just running
+`yarn build-web` in the `./app` directory.
 
 3. If you want to use the `fiftyone.brain` package, you will need to install it
    separately after installing FiftyOne:

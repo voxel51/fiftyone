@@ -44,9 +44,21 @@ const ViewBarDiv = styled.div`
 const IconsContainer = styled.div`
   position: absolute;
   z-index: 904;
-  top: 30px;
-  right: 0.5rem;
+  top: 1rem;
+  padding: 0.5rem;
+  border-radius: 3px;
+  right: 0;
   display: flex;
+  background-image: linear-gradient(
+    to right,
+    rgba(255, 0, 0, 0),
+    5%,
+    ${({ theme }) => theme.backgroundDark}
+  );
+
+  & > * {
+    margin-top: 5px;
+  }
 `;
 
 const viewBarKeyMap = {
@@ -140,6 +152,14 @@ const ViewBar = React.memo(() => {
             }
           />
         ) : null}
+        <div
+          style={{
+            display: "block",
+            minWidth: 64,
+            maxWidth: 64,
+            height: "100%",
+          }}
+        ></div>
       </ViewBarDiv>
 
       <IconsContainer>
