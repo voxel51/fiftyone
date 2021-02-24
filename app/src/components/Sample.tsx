@@ -42,7 +42,7 @@ const SampleInfoDiv = styled.div`
   overflow-x: scroll;
   width: 100%;
   pointer-events: none;
-  z-index: 10000;
+  z-index: 499;
 `;
 
 const LoadingBar = animated(styled.div`
@@ -183,7 +183,7 @@ const SelectorDiv = animated(styled.div`
   display: flex;
   direction: rtl;
   cursor: pointer;
-  z-index: 10000;
+  z-index: 499;
 `);
 
 const Selector = ({ id, spring }: { id: string }) => {
