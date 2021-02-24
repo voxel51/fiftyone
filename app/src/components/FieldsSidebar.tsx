@@ -241,21 +241,26 @@ const TagsCell = ({ modal }: TagsCellProps) => {
 
 type LabelsCellProps = {
   modal: boolean;
+  frames: boolean;
 };
 
-const LabelsCell = ({ modal }: LabelsCellProps) => {
-  const labels = useRecoilValue(selectors.labelNames("sample"));
+const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
+  const key = frames ? "frames" : "sample";
+  const labels = useRecoilValue(selectors.labelNames(key));
   const [activeLabels, setActiveLabels] = useRecoilState(
-    fieldAtoms.activeLabels({ modal, frames: false })
+    fieldAtoms.activeLabels({ modal, frames })
   );
   const types = useRecoilValue(selectors.labelTypesMap);
 
   const colorMap = useRecoilValue(selectors.colorMap);
   const [subCountAtom, countAtom] = modal
-    ? [selectors.labelSampleModalCounts, selectors.labelSampleModalCounts]
+    ? [
+        selectors.labelSampleModalCounts(key),
+        selectors.labelSampleModalCounts(key),
+      ]
     : [
-        selectors.filteredLabelSampleCounts("sample"),
-        selectors.labelSampleCounts("sample"),
+        selectors.filteredLabelSampleCounts(key),
+        selectors.labelSampleCounts(key),
       ];
 
   const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
@@ -263,7 +268,7 @@ const LabelsCell = ({ modal }: LabelsCellProps) => {
 
   return (
     <Cell
-      label="Labels"
+      label={frames ? "Frame Labels" : "Labels"}
       icon={<Label style={{ transform: "rotate(180deg)" }} />}
       entries={labels.map((name) => ({
         name,
@@ -273,12 +278,12 @@ const LabelsCell = ({ modal }: LabelsCellProps) => {
         selected: activeLabels.includes(name),
         color: colorMap[name],
         title: name,
-        path: name,
+        path: frames ? "frames." + name : name,
         data: count && subCount ? makeData(subCount[name], count[name]) : null,
         totalCount: count ? count[name] : null,
         filteredCount: subCount ? subCount[name] : null,
         modal,
-        labelType: types[name],
+        labelType: types[frames ? "frames." + name : name],
       }))}
       onSelect={({ name, selected }) =>
         setActiveLabels(
@@ -364,7 +369,8 @@ const FieldsSidebar = React.forwardRef(({ modal }: FieldsSidebarProps, ref) => {
   return (
     <Container ref={ref}>
       <TagsCell modal={modal} />
-      <LabelsCell modal={modal} />
+      <LabelsCell modal={modal} frames={false} />
+      <LabelsCell modal={modal} frames={true} />
       <ScalarsCell modal={modal} />
     </Container>
   );
