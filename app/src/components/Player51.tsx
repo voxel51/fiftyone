@@ -472,10 +472,11 @@ export default ({
   useEventHandler(
     player,
     "options",
-    ({ data: { showAttrs, showConfidence } }) => {
+    ({ data: { showAttrs, showConfidence, showTooltip } }) => {
       setSavedOverlayOptions({
         showAttrs,
         showConfidence,
+        showTooltip,
       });
     }
   );
