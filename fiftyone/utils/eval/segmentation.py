@@ -13,15 +13,9 @@ import sklearn.metrics as skm
 
 import eta.core.image as etai
 
+import fiftyone.core.evaluation as foe
 import fiftyone.core.utils as fou
 
-from .base import (
-    Evaluation,
-    EvaluationConfig,
-    EvaluationInfo,
-    save_evaluation_info,
-    validate_evaluation,
-)
 from .classification import ClassificationResults
 
 
@@ -85,52 +79,43 @@ def evaluate_segmentations(
     Returns:
         a :class:`SegmentationResults`
     """
-    config = _parse_config(config, method, **kwargs)
+    config = _parse_config(config, pred_field, gt_field, method, **kwargs)
     eval_method = config.build()
-
-    if eval_key is not None:
-        eval_info = EvaluationInfo(eval_key, pred_field, gt_field, config)
-        validate_evaluation(samples, eval_info)
-
-    results = eval_method.evaluate_samples(
-        samples,
-        pred_field,
-        gt_field,
-        eval_key=eval_key,
-        mask_index=mask_index,
+    eval_method.register_run(samples, eval_key)
+    return eval_method.evaluate_samples(
+        samples, eval_key=eval_key, mask_index=mask_index
     )
 
-    if eval_key is not None:
-        save_evaluation_info(samples, eval_info)
 
-    return results
+class SegmentationEvaluationConfig(foe.EvaluationMethodConfig):
+    """Base class for configuring :class:`SegmentationEvaluation` instances.
+
+    Args:
+        pred_field: the name of the field containing the predicted
+            :class:`fiftyone.core.labels.Segmentation` instances
+        gt_field ("ground_truth"): the name of the field containing the ground
+            truth :class:`fiftyone.core.labels.Segmentation` instances
+    """
+
+    def __init__(self, pred_field, gt_field, **kwargs):
+        super().__init__(**kwargs)
+        self.pred_field = pred_field
+        self.gt_field = gt_field
 
 
-class SegmentationEvaluationConfig(EvaluationConfig):
-    """Base class for configuring :class:`SegmentationEvaluation` instances."""
-
-    pass
-
-
-class SegmentationEvaluation(Evaluation):
+class SegmentationEvaluation(foe.EvaluationMethod):
     """Base class for segmentation evaluation methods.
 
     Args:
         config: a :class:`SegmentationEvaluationConfig`
     """
 
-    def evaluate_samples(
-        self, samples, pred_field, gt_field, eval_key=None, mask_index=None
-    ):
+    def evaluate_samples(self, samples, eval_key=None, mask_index=None):
         """Evaluates the predicted segmentation masks in the given samples with
         respect to the specified ground truth masks.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
-            pred_field: the name of the field containing the predicted
-                :class:`fiftyone.core.labels.Segmentation` instances
-            gt_field: the name of the field containing the ground truth
-                :class:`fiftyone.core.labels.Segmentation` instances
             eval_key (None): an evaluation key for this evaluation
             mask_index (None): a dict mapping mask values to labels. May
                 contain a subset of the possible classes if you wish to
@@ -143,40 +128,44 @@ class SegmentationEvaluation(Evaluation):
         pass
 
     def get_fields(self, samples, eval_key):
-        eval_info = samples.get_evaluation_info(eval_key)
-
-        eval_fields = [
+        fields = [
             "%s_tp" % eval_key,
             "%s_fp" % eval_key,
             "%s_fn" % eval_key,
         ]
 
-        if samples._is_frame_field(eval_info.gt_field):
+        if samples._is_frame_field(self.config.gt_field):
             prefix = samples._FRAMES_PREFIX + eval_key
-            eval_fields.extend(
+            fields.extend(
                 ["%s_tp" % prefix, "%s_fp" % prefix, "%s_fn" % prefix]
             )
 
-        return eval_fields
+        return fields
 
     def cleanup(self, samples, eval_key):
-        eval_info = samples.get_evaluation_info(eval_key)
-
         fields = [
             "%s_accuracy" % eval_key,
             "%s_precision" % eval_key,
             "%s_recall" % eval_key,
         ]
 
-        samples._dataset.delete_sample_fields(fields)
-        if samples._is_frame_field(eval_info.gt_field):
-            samples._dataset.delete_frame_fields(fields)
+        samples._dataset.delete_sample_fields(fields, error_level=1)
+        if samples._is_frame_field(self.config.gt_field):
+            samples._dataset.delete_frame_fields(fields, error_level=1)
+
+    def _validate_run(self, samples, eval_key, existing_info):
+        self._validate_fields_match(eval_key, "pred_field", existing_info)
+        self._validate_fields_match(eval_key, "gt_field", existing_info)
 
 
 class SimpleEvaluationConfig(SegmentationEvaluationConfig):
     """Base class for configuring :class:`SimpleEvaluation` instances.
 
     Args:
+        pred_field: the name of the field containing the predicted
+            :class:`fiftyone.core.labels.Segmentation` instances
+        gt_field ("ground_truth"): the name of the field containing the ground
+            truth :class:`fiftyone.core.labels.Segmentation` instances
         bandwidth (None): an optional bandwidth along the contours of the
             ground truth masks to which to restrict attention when computing
             accuracies. A typical value for this parameter is 5 pixels. By
@@ -189,8 +178,10 @@ class SimpleEvaluationConfig(SegmentationEvaluationConfig):
     def method(self):
         return "simple"
 
-    def __init__(self, bandwidth=None, average="micro", **kwargs):
-        super().__init__(**kwargs)
+    def __init__(
+        self, pred_field, gt_field, bandwidth=None, average="micro", **kwargs
+    ):
+        super().__init__(pred_field, gt_field, **kwargs)
         self.bandwidth = bandwidth
         self.average = average
 
@@ -202,9 +193,10 @@ class SimpleEvaluation(SegmentationEvaluation):
         config: a :class:`SegmentationEvaluationConfig`
     """
 
-    def evaluate_samples(
-        self, samples, pred_field, gt_field, eval_key=None, mask_index=None
-    ):
+    def evaluate_samples(self, samples, eval_key=None, mask_index=None):
+        pred_field = self.config.pred_field
+        gt_field = self.config.gt_field
+
         if mask_index is not None:
             values, classes = zip(*sorted(mask_index.items()))
         else:
@@ -316,7 +308,7 @@ class SegmentationResults(ClassificationResults):
         )
 
 
-def _parse_config(config, method, **kwargs):
+def _parse_config(config, pred_field, gt_field, method, **kwargs):
     if config is not None:
         return config
 
@@ -324,7 +316,7 @@ def _parse_config(config, method, **kwargs):
         method = "simple"
 
     if method == "simple":
-        return SimpleEvaluationConfig(**kwargs)
+        return SimpleEvaluationConfig(pred_field, gt_field, **kwargs)
 
     raise ValueError("Unsupported evaluation method '%s'" % method)
 

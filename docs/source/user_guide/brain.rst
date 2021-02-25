@@ -52,7 +52,7 @@ demonstrating a workflow.
 
 .. _brain-image-uniqueness:
 
-Image Uniqueness
+Image uniqueness
 ________________
 
 The FiftyOne Brain allows for the computation of the uniqueness of an image,
@@ -107,7 +107,7 @@ most other samples are more unique.
 
 .. _brain-label-mistakes:
 
-Label Mistakes
+Label mistakes
 ______________
 
 Label mistakes can be calculated for both classification and detection
@@ -237,7 +237,7 @@ datasets.
 
 .. _brain-sample-hardness:
 
-Sample Hardness
+Sample hardness
 _______________
 
 During training, it is useful to identify samples that are more difficult for a
@@ -274,3 +274,61 @@ demonstrated empirical value in many model training exercises.
 .. note::
 
     Tutorial coming soon!
+
+.. _brain-managing-runs:
+
+Managing brain runs
+___________________
+
+When you run a brain method on a dataset, the run is recorded on the dataset,
+allowing you to retrive information about it later, delete it (along with any
+modifications to your dataset that were performed by it), or even retrieve the
+view into your dataset that you processed.
+
+Brain method runs can be accessed later by their `brain_key`:
+
+.. tabs::
+
+    .. tab:: Uniqueness
+
+        The brain key of uniqueness runs is the value of the
+        ``uniqueness_field`` passed to
+        :meth:`compute_uniqueness() <fiftyone.brain.compute_uniqueness>`.
+
+    .. tab:: Mistakenness
+
+        The brain key of mistakenness runs is the value of the
+        ``mistakenness_field`` passed to
+        :meth:`compute_mistakenness() <fiftyone.brain.compute_mistakenness>`.
+
+    .. tab:: Hardness
+
+        The brain key of hardness runs is the value of the ``hardness_field``
+        passed to :meth:`compute_hardness() <fiftyone.brain.compute_hardness>`.
+
+The example below demonstrates the basic interface:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    
+    view = dataset.take(100)
+
+    fob.compute_uniqueness(view)
+
+    print(dataset.list_brain_runs())
+    # ['uniqueness']
+
+    # Print information about a brain run
+    print(dataset.get_brain_info("uniqueness"))
+
+    # Get the view used in this brain run
+    same_view = dataset.load_brain_view("uniqueness")
+
+    # Delete the brain run
+    # This will delete any fields that were populated on the dataset
+    dataset.delete_brain_run("uniqueness")
