@@ -14,17 +14,9 @@ import numpy as np
 import sklearn.metrics as skm
 
 import fiftyone.core.aggregations as foa
+import fiftyone.core.evaluation as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
-
-from .base import (
-    Evaluation,
-    EvaluationConfig,
-    EvaluationInfo,
-    EvaluationResults,
-    save_evaluation_info,
-    validate_evaluation,
-)
 
 
 def evaluate_classifications(
@@ -81,37 +73,32 @@ def evaluate_classifications(
     Returns:
         a :class:`ClassificationResults`
     """
-    config = _parse_config(config, method, **kwargs)
+    config = _parse_config(config, pred_field, gt_field, method, **kwargs)
     eval_method = config.build()
-
-    if eval_key is not None:
-        eval_info = EvaluationInfo(eval_key, pred_field, gt_field, config)
-        validate_evaluation(samples, eval_info)
-
-    results = eval_method.evaluate_samples(
-        samples,
-        pred_field,
-        gt_field,
-        eval_key=eval_key,
-        classes=classes,
-        missing=missing,
+    eval_method.register_run(samples, eval_key)
+    return eval_method.evaluate_samples(
+        samples, eval_key=eval_key, classes=classes, missing=missing,
     )
 
-    if eval_key is not None:
-        save_evaluation_info(samples, eval_info)
 
-    return results
-
-
-class ClassificationEvaluationConfig(EvaluationConfig):
+class ClassificationEvaluationConfig(foe.EvaluationMethodConfig):
     """Base class for configuring :class:`ClassificationEvaluation`
     instances.
+
+    Args:
+        pred_field: the name of the field containing the predicted
+            :class:`fiftyone.core.labels.Classification` instances
+        gt_field: the name of the field containing the ground truth
+            :class:`fiftyone.core.labels.Classification` instances
     """
 
-    pass
+    def __init__(self, pred_field, gt_field, **kwargs):
+        super().__init__(**kwargs)
+        self.pred_field = pred_field
+        self.gt_field = gt_field
 
 
-class ClassificationEvaluation(Evaluation):
+class ClassificationEvaluation(foe.EvaluationMethod):
     """Base class for classification evaluation methods.
 
     Args:
@@ -119,23 +106,13 @@ class ClassificationEvaluation(Evaluation):
     """
 
     def evaluate_samples(
-        self,
-        samples,
-        pred_field,
-        gt_field,
-        eval_key=None,
-        classes=None,
-        missing=None,
+        self, samples, eval_key=None, classes=None, missing=None
     ):
         """Evaluates the predicted classifications in the given samples with
         respect to the specified ground truth labels.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
-            pred_field: the name of the field containing the predicted
-                :class:`fiftyone.core.labels.Classification` instances
-            gt_field: the name of the field containing the ground truth
-                :class:`fiftyone.core.labels.Classification` instances
             eval_key (None): an evaluation key for this evaluation
             classes (None): the list of possible classes. If not provided, the
                 observed ground truth/predicted labels are used for results
@@ -149,23 +126,31 @@ class ClassificationEvaluation(Evaluation):
         raise NotImplementedError("subclass must implement evaluate_samples()")
 
     def get_fields(self, samples, eval_key):
-        eval_info = samples.get_evaluation_info(eval_key)
+        fields = [eval_key]
+        if samples._is_frame_field(self.config.gt_field):
+            fields.append(samples._FRAMES_PREFIX + eval_key)
 
-        eval_fields = [eval_key]
-        if samples._is_frame_field(eval_info.gt_field):
-            return eval_fields.append(samples._FRAMES_PREFIX + eval_key)
-
-        return eval_fields
+        return fields
 
     def cleanup(self, samples, eval_key):
-        eval_info = samples.get_evaluation_info(eval_key)
-        samples._dataset.delete_sample_field(eval_key)
-        if samples._is_frame_field(eval_info.gt_field):
-            samples._dataset.delete_frame_field(eval_key)
+        samples._dataset.delete_sample_field(eval_key, error_level=1)
+        if samples._is_frame_field(self.config.gt_field):
+            samples._dataset.delete_frame_field(eval_key, error_level=1)
+
+    def _validate_run(self, samples, eval_key, existing_info):
+        self._validate_fields_match(eval_key, "pred_field", existing_info)
+        self._validate_fields_match(eval_key, "gt_field", existing_info)
 
 
 class SimpleEvaluationConfig(ClassificationEvaluationConfig):
-    """Simple classification evaluation config."""
+    """Simple classification evaluation config.
+
+    Args:
+        pred_field: the name of the field containing the predicted
+            :class:`fiftyone.core.labels.Classification` instances
+        gt_field: the name of the field containing the ground truth
+            :class:`fiftyone.core.labels.Classification` instances
+    """
 
     @property
     def method(self):
@@ -180,14 +165,10 @@ class SimpleEvaluation(ClassificationEvaluation):
     """
 
     def evaluate_samples(
-        self,
-        samples,
-        pred_field,
-        gt_field,
-        eval_key=None,
-        classes=None,
-        missing=None,
+        self, samples, eval_key=None, classes=None, missing=None
     ):
+        pred_field = self.config.pred_field
+        gt_field = self.config.gt_field
         is_frame_field = samples._is_frame_field(gt_field)
 
         gt = gt_field + ".label"
@@ -237,11 +218,15 @@ class TopKEvaluationConfig(ClassificationEvaluationConfig):
     """Top-k classification evaluation config.
 
     Args:
+        pred_field: the name of the field containing the predicted
+            :class:`fiftyone.core.labels.Classification` instances
+        gt_field: the name of the field containing the ground truth
+            :class:`fiftyone.core.labels.Classification` instances
         k (5): the top-k value to use when assessing accuracy
     """
 
-    def __init__(self, k=5, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, pred_field, gt_field, k=5, **kwargs):
+        super().__init__(pred_field, gt_field, **kwargs)
         self.k = k
 
     @property
@@ -261,13 +246,7 @@ class TopKEvaluation(ClassificationEvaluation):
     """
 
     def evaluate_samples(
-        self,
-        samples,
-        pred_field,
-        gt_field,
-        eval_key=None,
-        classes=None,
-        missing=None,
+        self, samples, eval_key=None, classes=None, missing=None
     ):
         if classes is None:
             raise ValueError(
@@ -275,6 +254,8 @@ class TopKEvaluation(ClassificationEvaluation):
                 "logits in order to run top-k classification evaluation"
             )
 
+        pred_field = self.config.pred_field
+        gt_field = self.config.gt_field
         is_frame_field = samples._is_frame_field(gt_field)
         k = self.config.k
 
@@ -372,7 +353,13 @@ def _evaluate_top_k(ytrue, ypred, logits, k, targets_map):
 
 
 class BinaryEvaluationConfig(ClassificationEvaluationConfig):
-    """Binary evaluation config."""
+    """Binary evaluation config.
+
+    Args:
+        pred_field: the name of the field containing the predicted
+            :class:`fiftyone.core.labels.Classification` instances
+        gt_field: the name of the field containing the ground truth
+    """
 
     @property
     def method(self):
@@ -399,13 +386,7 @@ class BinaryEvaluation(ClassificationEvaluation):
     """
 
     def evaluate_samples(
-        self,
-        samples,
-        pred_field,
-        gt_field,
-        eval_key=None,
-        classes=None,
-        missing=None,
+        self, samples, eval_key=None, classes=None, missing=None
     ):
         if classes is None or len(classes) != 2:
             raise ValueError(
@@ -414,6 +395,8 @@ class BinaryEvaluation(ClassificationEvaluation):
                 "binary evaluation"
             )
 
+        pred_field = self.config.pred_field
+        gt_field = self.config.gt_field
         is_frame_field = samples._is_frame_field(gt_field)
 
         pos_label = classes[-1]
@@ -479,7 +462,7 @@ class BinaryEvaluation(ClassificationEvaluation):
         return results
 
 
-class ClassificationResults(EvaluationResults):
+class ClassificationResults(foe.EvaluationResults):
     """Class that stores the results of a classification evaluation.
 
     Args:
@@ -872,7 +855,7 @@ class BinaryClassificationResults(ClassificationResults):
         return display.ax_ if return_ax else None
 
 
-def _parse_config(config, method, **kwargs):
+def _parse_config(config, pred_field, gt_field, method, **kwargs):
     if config is not None:
         return config
 
@@ -880,13 +863,13 @@ def _parse_config(config, method, **kwargs):
         method = "simple"
 
     if method == "simple":
-        return SimpleEvaluationConfig(**kwargs)
+        return SimpleEvaluationConfig(pred_field, gt_field, **kwargs)
 
     if method == "binary":
-        return BinaryEvaluationConfig(**kwargs)
+        return BinaryEvaluationConfig(pred_field, gt_field, **kwargs)
 
     if method == "top-k":
-        return TopKEvaluationConfig(**kwargs)
+        return TopKEvaluationConfig(pred_field, gt_field, **kwargs)
 
     raise ValueError("Unsupported evaluation method '%s'" % method)
 

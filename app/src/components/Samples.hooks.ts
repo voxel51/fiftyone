@@ -24,7 +24,7 @@ export default () => {
   const filters = useRecoilValue(selectors.filterStages);
   const datasetName = useRecoilValue(selectors.datasetName);
   const view = useRecoilValue(selectors.view);
-  const refresh = useRecoilValue(atoms.refresh);
+  const refresh = useRecoilValue(selectors.refresh);
 
   const empty = {
     initialized: false,

@@ -109,6 +109,11 @@ export const handleId = selector({
   },
 });
 
+export const refresh = selector<boolean>({
+  key: "refresh",
+  get: ({ get }) => get(atoms.stateDescription).refresh,
+});
+
 export const deactivated = selector({
   key: "deactivated",
   get: ({ get }) => {

@@ -937,7 +937,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         fofr.Frame._reload_docs(self._frame_collection_name)
 
-    def delete_sample_field(self, field_name):
+    def delete_sample_field(self, field_name, error_level=0):
         """Deletes the field from all samples in the dataset.
 
         You can use dot notation (``embedded.field.name``) to delete embedded
@@ -945,10 +945,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             field_name: the field name or ``embedded.field.name``
-        """
-        self._delete_sample_fields(field_name)
+            error_level (0): the error level to use. Valid values are:
 
-    def delete_sample_fields(self, field_names):
+                0: raise error if a top-level field cannot be deleted
+                1: log warning if a top-level field cannot be deleted
+                2: ignore top-level fields that cannot be deleted
+        """
+        self._delete_sample_fields(field_name, error_level)
+
+    def delete_sample_fields(self, field_names, error_level=0):
         """Deletes the fields from all samples in the dataset.
 
         You can use dot notation (``embedded.field.name``) to delete embedded
@@ -956,10 +961,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             field_names: the field name or iterable of field names
-        """
-        self._delete_sample_fields(field_names)
+            error_level (0): the error level to use. Valid values are:
 
-    def delete_frame_field(self, field_name):
+                0: raise error if a top-level field cannot be deleted
+                1: log warning if a top-level field cannot be deleted
+                2: ignore top-level fields that cannot be deleted
+        """
+        self._delete_sample_fields(field_names, error_level)
+
+    def delete_frame_field(self, field_name, error_level=0):
         """Deletes the frame-level field from all samples in the dataset.
 
         You can use dot notation (``embedded.field.name``) to delete embedded
@@ -969,10 +979,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             field_name: the field name or ``embedded.field.name``
-        """
-        self._delete_frame_fields(field_name)
+            error_level (0): the error level to use. Valid values are:
 
-    def delete_frame_fields(self, field_names):
+                0: raise error if a top-level field cannot be deleted
+                1: log warning if a top-level field cannot be deleted
+                2: ignore top-level fields that cannot be deleted
+        """
+        self._delete_frame_fields(field_name, error_level)
+
+    def delete_frame_fields(self, field_names, error_level=0):
         """Deletes the frame-level fields from all samples in the dataset.
 
         You can use dot notation (``embedded.field.name``) to delete embedded
@@ -981,29 +996,38 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Only applicable to video datasets.
 
         Args:
-            field_names: a field name of iterable of field names
-        """
-        self._delete_frame_fields(field_names)
+            field_names: a field name or iterable of field names
+            error_level (0): the error level to use. Valid values are:
 
-    def _delete_sample_fields(self, field_names):
+                0: raise error if a top-level field cannot be deleted
+                1: log warning if a top-level field cannot be deleted
+                2: ignore top-level fields that cannot be deleted
+        """
+        self._delete_frame_fields(field_names, error_level)
+
+    def _delete_sample_fields(self, field_names, error_level):
         fields, embedded_fields = _parse_fields(field_names)
 
         if fields:
-            self._sample_doc_cls._delete_fields(fields)
+            self._sample_doc_cls._delete_fields(
+                fields, error_level=error_level
+            )
             fos.Sample._purge_fields(self._sample_collection_name, fields)
 
         if embedded_fields:
             self._sample_doc_cls._delete_embedded_fields(embedded_fields)
             fos.Sample._reload_docs(self._sample_collection_name)
 
-    def _delete_frame_fields(self, field_names):
+    def _delete_frame_fields(self, field_names, error_level):
         if self.media_type != fom.VIDEO:
             raise ValueError("Only video datasets have frame fields")
 
         fields, embedded_fields = _parse_fields(field_names)
 
         if fields:
-            self._frame_doc_cls._delete_fields(fields, are_frame_fields=True)
+            self._frame_doc_cls._delete_fields(
+                fields, are_frame_fields=True, error_level=error_level
+            )
             fofr.Frame._purge_fields(self._frame_collection_name, fields)
 
         if embedded_fields:
@@ -1016,12 +1040,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             an iterator over :class:`fiftyone.core.sample.Sample` instances
         """
-        for d in self._aggregate():
-            frames = d.pop("frames", [])
+        for d in self._aggregate(detach_frames=True):
             doc = self._sample_dict_to_doc(d)
             sample = fos.Sample.from_doc(doc, dataset=self)
-            if self.media_type == fom.VIDEO:
-                sample.frames._set_replacements(frames)
 
             yield sample
 
@@ -2461,7 +2482,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _add_view_stage(self, stage):
         return self.view().add_stage(stage)
 
-    def _pipeline(self, pipeline=None, attach_frames=True, frames_only=False):
+    def _pipeline(
+        self,
+        pipeline=None,
+        attach_frames=True,
+        detach_frames=False,
+        frames_only=False,
+    ):
         if frames_only:
             attach_frames = True
 
@@ -2482,7 +2509,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if pipeline is not None:
             _pipeline += pipeline
 
-        if frames_only:
+        if detach_frames:
+            _pipeline += [{"$project": {"frames": False}}]
+        elif frames_only:
             _pipeline += [
                 {"$project": {"frames": True}},
                 {"$unwind": "$frames"},
@@ -2491,9 +2520,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return _pipeline
 
-    def _aggregate(self, pipeline=None, attach_frames=True):
+    def _aggregate(
+        self, pipeline=None, attach_frames=True, detach_frames=False
+    ):
         _pipeline = self._pipeline(
-            pipeline=pipeline, attach_frames=attach_frames
+            pipeline=pipeline,
+            attach_frames=attach_frames,
+            detach_frames=detach_frames,
         )
 
         return self._sample_collection.aggregate(_pipeline)
