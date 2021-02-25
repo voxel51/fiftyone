@@ -169,7 +169,9 @@ const SampleInfo = ({ sample }) => {
       const labelType = labelTypes[cur];
       const values = VALID_LIST_TYPES.includes(labelType)
         ? sample[cur].classifications
-        : sample[cur];
+        : sample[cur]
+        ? [sample[cur]]
+        : [];
       acc = [
         ...acc,
         values
