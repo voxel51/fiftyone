@@ -11,6 +11,8 @@ from .database import (
     get_async_db_conn,
     drop_database,
     sync_database,
+    list_datasets,
+    delete_dataset,
     drop_orphan_collections,
     list_collections,
     stream_collection,
