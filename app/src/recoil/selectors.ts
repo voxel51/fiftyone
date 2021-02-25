@@ -542,9 +542,11 @@ export const defaultPlayerOverlayOptions = selector({
   get: ({ get }) => {
     const showAttrs = get(appConfig).show_attributes;
     const showConfidence = get(appConfig).show_confidence;
+    const showTooltip = get(appConfig).show_tooltip;
     return {
       showAttrs,
       showConfidence,
+      showTooltip,
     };
   },
 });

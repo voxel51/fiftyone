@@ -281,7 +281,6 @@ const TooltipInfo = ({ player, moveRef }) => {
     };
   });
 
-  let more;
   let limitedOverlays = overlays ? overlays : [];
   if (limitedOverlays.length > 3) {
     more = limitedOverlays.length - 3;
