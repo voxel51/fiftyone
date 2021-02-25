@@ -589,7 +589,7 @@ const labels = selectorFamily<
     return Object.keys(fieldsValue)
       .map((k) => fieldsValue[k])
       .filter(labelFilter)
-      .sort((a, b) => a.name - b.name);
+      .sort((a, b) => (a.name < b.name ? -1 : 1));
   },
 });
 
