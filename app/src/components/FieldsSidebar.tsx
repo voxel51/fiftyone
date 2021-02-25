@@ -289,6 +289,7 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
           filteredCount: subCount ? subCount[name] : null,
           modal,
           labelType: types[path],
+          canFilter: true,
         };
       })}
       onSelect={({ name, selected }) =>
@@ -351,6 +352,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
         totalCount: !modal && count ? count[name] : null,
         filteredCount: !modal && subCount ? subCount[name] : null,
         modal,
+        canFilter: !modal,
       }))}
       onSelect={({ name, selected }) =>
         setActiveScalars(

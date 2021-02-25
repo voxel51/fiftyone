@@ -131,6 +131,7 @@ export type Entry = {
   title: string;
   totalCount: number;
   filteredCount: number;
+  canFilter?: boolean;
 };
 
 type EntryProps = {
@@ -150,10 +151,12 @@ const Entry = ({ entry, onCheck, modal }: EntryProps) => {
     path,
     selected,
     title,
+    canFilter,
   } = entry;
   const [expanded, setExpanded] = useState(false);
   const theme = useTheme();
-  const fieldFiltered = useRecoilValue(fieldIsFiltered({ path, modal }));
+  const fieldFiltered =
+    useRecoilValue(fieldIsFiltered({ path, modal })) && canFilter;
   const isNumeric = useRecoilValue(isNumericField(path));
   const isString = useRecoilValue(isStringField(path));
   const isBoolean = useRecoilValue(isBooleanField(path));
