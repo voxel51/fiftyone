@@ -100,25 +100,31 @@ def list_collections():
     return list(conn.list_collection_names())
 
 
-def drop_orphan_collections():
+def drop_orphan_collections(dry_run=False):
     """Drops all orphan collections from the database.
 
     Orphan collections are collections that are not associated with any known
     dataset or other collections used by FiftyOne.
+
+    Args:
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
     """
-    import fiftyone.core.dataset as fod
+    conn = get_db_conn()
 
     colls_in_use = {"datasets"}
-    for dataset_name in fod.list_datasets():
-        dataset = fod.load_dataset(dataset_name)
-        colls_in_use.add(dataset._sample_collection_name)
-        colls_in_use.add(dataset._frame_collection_name)
+    for name in list_datasets():
+        dataset_dict = conn.datasets.find_one({"name": name})
+        sample_coll_name = dataset_dict.get("sample_collection_name", None)
+        if sample_coll_name:
+            colls_in_use.add(sample_coll_name)
+            colls_in_use.add("frames." + sample_coll_name)
 
-    conn = get_db_conn()
     for name in conn.list_collection_names():
         if name not in colls_in_use:
             logger.info("Dropping collection '%s'", name)
-            conn.drop_collection(name)
+            if not dry_run:
+                conn.drop_collection(name)
 
 
 def stream_collection(collection_name):
@@ -133,3 +139,65 @@ def stream_collection(collection_name):
     coll = conn[collection_name]
     objects = map(fou.pformat, coll.find({}))
     fou.stream_objects(objects)
+
+
+def list_datasets():
+    """Returns the list of available FiftyOne datasets.
+
+    This is a low-level implementation of dataset listing that does not call
+    :meth:`fiftyone.core.dataset.list_datasets`, which is helpful if a
+    database may be corrupted.
+
+    Returns:
+        a list of :class:`Dataset` names
+    """
+    conn = get_db_conn()
+    return sorted([d["name"] for d in conn.datasets.find({})])
+
+
+def delete_dataset(name, dry_run=False):
+    """Deletes the dataset with the given name.
+
+    This is a low-level implementation of deletion that does not call
+    :meth:`fiftyone.core.dataset.load_dataset`, which is helpful if a dataset's
+    backing document or collections are corrupted and cannot be loaded via the
+    normal pathways.
+
+    Args:
+        name: the name of the dataset
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+
+    dataset_dict = conn.datasets.find_one({"name": name})
+    if not dataset_dict:
+        logger.warning("Dataset '%s' not found" % name)
+        return
+
+    logger.info("Dropping document '%s' from 'datasets' collection", name)
+    if not dry_run:
+        conn.datasets.delete_one({"name": name})
+
+    if "sample_collection_name" not in dataset_dict:
+        logger.warning(
+            "Cannot find sample/frame collections for dataset '%s'; stopping "
+            "now. Use `drop_orphan_collections()` to cleanup any dangling "
+            "collections",
+            name,
+        )
+        return
+
+    collections = conn.list_collection_names()
+
+    sample_collection_name = dataset_dict["sample_collection_name"]
+    if sample_collection_name in collections:
+        logger.info("Dropping collection '%s'", sample_collection_name)
+        if not dry_run:
+            conn.drop_collection(sample_collection_name)
+
+    frame_collection_name = "frames." + sample_collection_name
+    if frame_collection_name in collections:
+        logger.info("Dropping collection '%s'", frame_collection_name)
+        if not dry_run:
+            conn.drop_collection(frame_collection_name)
