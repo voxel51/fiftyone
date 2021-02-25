@@ -9,6 +9,7 @@ from copy import copy
 import datetime
 import json
 
+import eta.core.serial as etas
 import eta.core.utils as etau
 
 from fiftyone.core.config import Config, Configurable
@@ -124,11 +125,20 @@ class Run(Configurable):
         raise NotImplementedError("subclass must implement run_info_cls()")
 
     @classmethod
-    def _runs_field(cls):
+    def _run_info_field(cls):
         """The :class:`fiftyone.core.odm.dataset.DatasetDocument` field in
-        which these runs are stored.
+        which the info for these runs are stored.
         """
-        raise NotImplementedError("subclass must implement _runs_field()")
+        raise NotImplementedError("subclass must implement _run_info_field()")
+
+    @classmethod
+    def _run_results_field(cls):
+        """The :class:`fiftyone.core.odm.dataset.DatasetDocument` field in
+        which the results for these runs are stored.
+        """
+        raise NotImplementedError(
+            "subclass must implement _run_results_field()"
+        )
 
     @classmethod
     def _run_str(cls):
@@ -250,7 +260,7 @@ class Run(Configurable):
         Returns:
             a list of run keys
         """
-        run_docs = getattr(samples._dataset._doc, cls._runs_field())
+        run_docs = getattr(samples._dataset._doc, cls._run_info_field())
         return sorted(run_docs.keys())
 
     @classmethod
@@ -278,7 +288,7 @@ class Run(Configurable):
         """
         key = run_info.key
         view_stages = [json.dumps(s) for s in samples.view()._serialize()]
-        run_docs = getattr(samples._dataset._doc, cls._runs_field())
+        run_docs = getattr(samples._dataset._doc, cls._run_info_field())
         run_docs[key] = RunDocument(
             key=key,
             timestamp=run_info.timestamp,
@@ -286,6 +296,36 @@ class Run(Configurable):
             view_stages=view_stages,
         )
         samples._dataset.save()
+
+    @classmethod
+    def save_run_results(cls, samples, key, run_results):
+        """Saves the run results on the collection.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            key: a run key
+            run_results: a :class:`RunResults`
+        """
+        if key is None:
+            return
+
+        results = getattr(samples._dataset._doc, cls._run_results_field())
+        results[key] = run_results.serialize()
+        samples._dataset.save()
+
+    @classmethod
+    def load_run_results(cls, samples, key):
+        """Loads the :class:`RunResults` for the given key on the collection.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            key: a run key
+
+        Returns:
+            a :class:`RunResults`
+        """
+        results_dict = cls._get_run_results_dict(samples, key)
+        return RunResults.from_dict(results_dict)
 
     @classmethod
     def load_run_view(cls, samples, key, select_fields=False):
@@ -353,8 +393,10 @@ class Run(Configurable):
         run_info = cls.get_run_info(samples, key)
         run = run_info.config.build()
         run.cleanup(samples, key)
-        run_docs = getattr(samples._dataset._doc, cls._runs_field())
+        run_docs = getattr(samples._dataset._doc, cls._run_info_field())
         run_docs.pop(key, None)
+        run_results = getattr(samples._dataset._doc, cls._run_results_field())
+        run_results.pop(key, None)
         samples._dataset.save()
 
     @classmethod
@@ -369,18 +411,66 @@ class Run(Configurable):
 
     @classmethod
     def _get_run_doc(cls, samples, key):
-        run_docs = getattr(samples._dataset._doc, cls._runs_field())
+        run_docs = getattr(samples._dataset._doc, cls._run_info_field())
         run_doc = run_docs.get(key, None)
         if run_doc is None:
             raise ValueError(
-                "%s key '%s' not found on collection '%s'"
-                % (cls._run_str().capitalize(), key, samples.name)
+                "Info for %s key '%s' not found on collection '%s'"
+                % (cls._run_str(), key, samples.name)
             )
 
         return run_doc
+
+    @classmethod
+    def _get_run_results_dict(cls, samples, key):
+        run_results = getattr(samples._dataset._doc, cls._run_results_field())
+        results_dict = run_results.get(key, None)
+        if results_dict is None:
+            raise ValueError(
+                "Results for %s key '%s' not found on collection '%s'"
+                % (cls._run_str(), key, samples.name)
+            )
+
+        return results_dict
 
     @classmethod
     def _get_run_fields(cls, samples, key):
         run_info = cls.get_run_info(samples, key)
         run = run_info.config.build()
         return run.get_fields(samples, key)
+
+
+class RunResults(etas.Serializable):
+    """Base class for storing the results of a run."""
+
+    @property
+    def cls(self):
+        """The fully-qualified name of this :class:`RunResults` class."""
+        return etau.get_class_name(self)
+
+    def attributes(self):
+        """Returns the list of class attributes that will be serialized by
+        :meth:`serialize`.
+
+        Returns:
+            a list of attributes
+        """
+        return ["cls"] + super().attributes()
+
+    @classmethod
+    def from_dict(cls, d):
+        """Builds a :class:`RunResults` from a JSON dict representation of it.
+
+        Args:
+            d: a JSON dict
+
+        Returns:
+            a :class:`RunResults`
+        """
+        run_results_cls = etau.get_class(d["cls"])
+        return run_results_cls._from_dict(d)
+
+    @classmethod
+    def _from_dict(cls, d):
+        """Subclass implementation of :meth:`from_dict`."""
+        raise NotImplementedError("subclass must implement _from_dict()")
