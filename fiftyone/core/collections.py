@@ -3928,6 +3928,16 @@ class SampleCollection(object):
         )
 
     def _is_label_field(self, field_name, label_type_or_types):
+        label_type = self._get_label_field_type(field_name)
+
+        try:
+            iter(label_type_or_types)
+        except:
+            label_type_or_types = (label_type_or_types,)
+
+        return any(issubclass(label_type, t) for t in label_type_or_types)
+
+    def _get_label_field_type(self, field_name):
         field_name, is_frame_field = self._handle_frame_field(field_name)
         if is_frame_field:
             schema = self.get_frame_field_schema()
@@ -3951,14 +3961,7 @@ class SampleCollection(object):
                 % (field_name, field)
             )
 
-        try:
-            iter(label_type_or_types)
-        except:
-            label_type_or_types = (label_type_or_types,)
-
-        return any(
-            issubclass(field.document_type, t) for t in label_type_or_types
-        )
+        return field.document_type
 
     def _is_array_field(self, field_name):
         return _is_array_field(self, field_name)
