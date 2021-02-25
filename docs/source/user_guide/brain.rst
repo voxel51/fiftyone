@@ -315,14 +315,19 @@ The example below demonstrates the basic interface:
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart")
+    
+    view = dataset.take(100)
 
-    fob.compute_uniqueness(dataset)
+    fob.compute_uniqueness(view)
 
     print(dataset.list_brain_runs())
     # ['uniqueness']
 
     # Print information about a brain run
     print(dataset.get_brain_info("uniqueness"))
+
+    # Get the view used in this brain run
+    same_view = dataset.load_brain_view("uniqueness")
 
     # Delete the brain run
     # This will delete any fields that were populated on the dataset
