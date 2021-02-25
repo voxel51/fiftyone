@@ -5,7 +5,6 @@ FiftyOne v0.7.3 revision.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import pymongo as pm
 
 
 def up(db, dataset_name):

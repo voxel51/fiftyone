@@ -7,6 +7,7 @@ Mixins and helpers for sample backing documents.
 """
 from collections import OrderedDict
 import json
+import logging
 import numbers
 import six
 
@@ -21,6 +22,9 @@ import fiftyone.core.utils as fou
 from .database import get_db_conn
 from .dataset import SampleFieldDocument, DatasetDocument
 from .document import Document, BaseEmbeddedDocument, SampleDocument
+
+
+logger = logging.getLogger(__name__)
 
 
 def default_sample_fields(cls, include_private=False, include_id=False):
@@ -300,6 +304,9 @@ class DatasetMixin(object):
             if field_name not in cls._fields:
                 raise AttributeError("Field '%s' does not exist" % field_name)
 
+        if not field_names:
+            return
+
         for field_name, new_field_name in zip(field_names, new_field_names):
             cls._rename_field_schema(
                 field_name, new_field_name, are_frame_fields
@@ -320,6 +327,9 @@ class DatasetMixin(object):
                 :class:`fiftyone.core.samples.SampleCollection` being operated
                 upon
         """
+        if not field_names:
+            return
+
         cls._rename_fields_collection(
             field_names, new_field_names, sample_collection
         )
@@ -337,6 +347,9 @@ class DatasetMixin(object):
                 :class:`fiftyone.core.samples.SampleCollection` being operated
                 upon
         """
+        if not field_names:
+            return
+
         for field_name in field_names:
             # pylint: disable=no-member
             if field_name not in cls._fields:
@@ -365,6 +378,9 @@ class DatasetMixin(object):
                 :class:`fiftyone.core.samples.SampleCollection` being operated
                 upon
         """
+        if not field_names:
+            return
+
         cls._clone_fields_collection(
             field_names, new_field_names, sample_collection
         )
@@ -379,6 +395,9 @@ class DatasetMixin(object):
                 :class:`fiftyone.core.samples.SampleCollection` being operated
                 upon
         """
+        if not field_names:
+            return
+
         if sample_collection is None:
             cls._clear_fields_simple(field_names)
         else:
@@ -394,33 +413,54 @@ class DatasetMixin(object):
                 :class:`fiftyone.core.samples.SampleCollection` being operated
                 upon
         """
+        if not field_names:
+            return
+
         cls._clear_fields_collection(field_names, sample_collection)
 
     @classmethod
-    def _delete_fields(cls, field_names, are_frame_fields=False):
+    def _delete_fields(
+        cls, field_names, are_frame_fields=False, error_level=0
+    ):
         """Deletes the field(s) from the samples in this collection.
 
         Args:
             field_names: an iterable of field names
             are_frame_fields (False): whether these are frame-level fields
+            error_level (0): the error level to use. Valid values are:
+
+                0: raise error if a field cannot be deleted
+                1: log warning if a field cannot be deleted
+                2: ignore fields that cannot be deleted
         """
+        _field_names = []
         default_fields = default_sample_fields(
             cls.__bases__[0], include_private=True, include_id=True
         )
         for field_name in field_names:
-            if field_name in default_fields:
-                raise ValueError(
-                    "Cannot delete default field '%s'" % field_name
-                )
-
             # pylint: disable=no-member
-            if field_name not in cls._fields:
-                raise AttributeError("Field '%s' does not exist" % field_name)
+            if field_name in default_fields:
+                _handle_error(
+                    ValueError(
+                        "Cannot delete default field '%s'" % field_name
+                    ),
+                    error_level,
+                )
+            elif field_name not in cls._fields:
+                _handle_error(
+                    AttributeError("Field '%s' does not exist" % field_name),
+                    error_level,
+                )
+            else:
+                _field_names.append(field_name)
 
-        for field_name in field_names:
+        if not _field_names:
+            return
+
+        for field_name in _field_names:
             cls._delete_field_schema(field_name, are_frame_fields)
 
-        cls._delete_fields_simple(field_names)
+        cls._delete_fields_simple(_field_names)
 
     @classmethod
     def _delete_embedded_fields(cls, field_names):
@@ -429,6 +469,9 @@ class DatasetMixin(object):
         Args:
             field_names: an iterable of "embedded.field.names"
         """
+        if not field_names:
+            return
+
         cls._delete_fields_simple(field_names)
 
     @classmethod
@@ -1077,3 +1120,14 @@ def _rename_field(field, new_field_name):
     field.db_field = new_field_name
     field.name = new_field_name
     return field
+
+
+def _handle_error(error, error_level):
+    if error_level > 1:
+        return
+
+    if error_level == 1:
+        logger.warning(error)
+        return
+
+    raise error

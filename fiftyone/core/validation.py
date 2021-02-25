@@ -162,7 +162,7 @@ def validate_collection_frame_label_fields(
         f[len(sample_collection._FRAMES_PREFIX) :]: f for f in field_names
     }
 
-    frames_schema = sample_collection.get_frames_field_schema(
+    frames_schema = sample_collection.get_frame_field_schema(
         ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
     )
 
