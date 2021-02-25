@@ -7,6 +7,10 @@ Detection evaluation.
 """
 import logging
 
+import numpy as np
+
+import eta.core.serial as etas
+
 import fiftyone.core.evaluation as foe
 import fiftyone.core.utils as fou
 
@@ -141,9 +145,12 @@ def evaluate_detections(
                 sample["%s_fn" % eval_key] = sample_fn
                 sample.save()
 
-    return eval_method.generate_results(
+    results = eval_method.generate_results(
         samples, matches, eval_key=eval_key, classes=classes, missing=missing,
     )
+    eval_method.save_results(samples, eval_key, results)
+
+    return results
 
 
 class DetectionEvaluationConfig(foe.EvaluationMethodConfig):
@@ -286,8 +293,29 @@ class DetectionResults(ClassificationResults):
 
     def __init__(self, matches, classes=None, missing="none"):
         ytrue, ypred, ious, confs = zip(*matches)
-        super().__init__(ytrue, ypred, confs, classes=classes, missing=missing)
-        self.ious = ious
+        super().__init__(
+            ytrue, ypred, confs=confs, classes=classes, missing=missing
+        )
+        self.ious = np.array(ious)
+
+    @classmethod
+    def _from_dict(cls, d, **kwargs):
+        matches = list(
+            zip(
+                etas.deserialize_numpy_array(d["ytrue"]),
+                etas.deserialize_numpy_array(d["ypred"]),
+                etas.deserialize_numpy_array(d["ious"]),
+                etas.deserialize_numpy_array(d["confs"]),
+            )
+        )
+
+        classes = d.get("classes", None)
+        if classes is not None:
+            classes = etas.deserialize_numpy_array(classes)
+
+        missing = d.get("missing", None)
+
+        return cls(matches, classes=classes, missing=missing, **kwargs)
 
 
 def _parse_config(config, pred_field, gt_field, method, **kwargs):

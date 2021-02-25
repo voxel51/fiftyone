@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sklearn.metrics as skm
 
+import eta.core.serial as etas
+
 import fiftyone.core.utils as fou
 
 from .detection import (
@@ -271,9 +273,9 @@ class COCODetectionResults(DetectionResults):
         self, matches, precision, recall, iou_threshs, classes, missing="none"
     ):
         super().__init__(matches, classes=classes, missing=missing)
-        self.precision = precision
-        self.recall = recall
-        self.iou_threshs = iou_threshs
+        self.precision = np.asarray(precision)
+        self.recall = np.asarray(recall)
+        self.iou_threshs = np.asarray(iou_threshs)
         self._classwise_AP = np.mean(precision, axis=(0, 2))
 
     def plot_pr_curves(
@@ -306,10 +308,10 @@ class COCODetectionResults(DetectionResults):
         """
         if not classes:
             inds = np.argsort(self._classwise_AP)[::-1][:3]
-            classes = [self.classes[i] for i in inds]
+            classes = self.classes[inds]
 
         for c in classes:
-            class_ind = self.classes.index(c)
+            class_ind = self._get_class_index(c)
             precision = np.mean(self.precision[:, class_ind], axis=0)
             avg_precision = np.mean(precision)
             display = skm.PrecisionRecallDisplay(
@@ -339,7 +341,7 @@ class COCODetectionResults(DetectionResults):
             the mAP in ``[0, 1]``
         """
         if classes is not None:
-            class_inds = [self.classes.index(c) for c in classes]
+            class_inds = np.array([self._get_class_index(c) for c in classes])
             classwise_AP = self._classwise_AP[class_inds]
         else:
             classwise_AP = self._classwise_AP
@@ -349,6 +351,23 @@ class COCODetectionResults(DetectionResults):
             return -1
 
         return np.mean(classwise_AP)
+
+    @classmethod
+    def _from_dict(cls, d, **kwargs):
+        return super()._from_dict(
+            d,
+            precision=etas.deserialize_numpy_array(d["precision"]),
+            recall=etas.deserialize_numpy_array(d["recall"]),
+            iou_threshs=etas.deserialize_numpy_array(d["iou_threshs"]),
+            **kwargs,
+        )
+
+    def _get_class_index(self, label):
+        inds = np.where(self.classes == label)[0]
+        if inds.size == 0:
+            raise ValueError("Class '%s' not found" % label)
+
+        return inds[0]
 
 
 _NO_MATCH_ID = ""

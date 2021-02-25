@@ -5,7 +5,7 @@ Evaluation runs framework.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from fiftyone.core.runs import Run, RunInfo, RunConfig
+from fiftyone.core.runs import Run, RunInfo, RunConfig, RunResults
 
 
 class EvaluationInfo(RunInfo):
@@ -48,15 +48,19 @@ class EvaluationMethod(Run):
         return EvaluationInfo
 
     @classmethod
-    def _runs_field(cls):
+    def _run_info_field(cls):
         return "evaluations"
+
+    @classmethod
+    def _run_results_field(cls):
+        return "evaluation_results"
 
     @classmethod
     def _run_str(cls):
         return "evaluation"
 
 
-class EvaluationResults(object):
+class EvaluationResults(RunResults):
     """Base class for evaluation results."""
 
     pass

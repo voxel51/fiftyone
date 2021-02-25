@@ -20,6 +20,9 @@ def up(db, dataset_name):
 
     dataset_dict["evaluations"] = evaluations
 
+    if "evaluation_results" not in dataset_dict:
+        dataset_dict["evaluation_results"] = {}
+
     if "brain_methods" not in dataset_dict:
         dataset_dict["brain_methods"] = {}
 
@@ -38,6 +41,7 @@ def down(db, dataset_name):
         eval_doc["gt_field"] = eval_doc["config"].pop("gt_field")
 
     dataset_dict["evaluations"] = evaluations
+    dataset_dict.pop("evaluation_results", None)
 
     dataset_dict.pop("brain_methods", None)
     db.datasets.replace_one(match_d, dataset_dict)

@@ -975,6 +975,18 @@ class SampleCollection(object):
         """
         return foev.EvaluationMethod.get_run_info(self, eval_key)
 
+    def load_evaluation_results(self, eval_key):
+        """Loads the :class:`fiftyone.core.evaluation.EvaluationResults` for
+        the evaluation with the given key on this collection.
+
+        Args:
+            eval_key: an evaluation key
+
+        Returns:
+            a :class:`fiftyone.core.evaluation.EvaluationResults`
+        """
+        return foev.EvaluationMethod.load_run_results(self, eval_key)
+
     def load_evaluation_view(self, eval_key, select_fields=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` on which the
         specified evaluation was performed on this collection.
