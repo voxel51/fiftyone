@@ -26,6 +26,9 @@ def up(db, dataset_name):
     if "brain_methods" not in dataset_dict:
         dataset_dict["brain_methods"] = {}
 
+    if "brain_results" not in dataset_dict:
+        dataset_dict["brain_results"] = {}
+
     db.datasets.replace_one(match_d, dataset_dict)
 
 
@@ -44,4 +47,6 @@ def down(db, dataset_name):
     dataset_dict.pop("evaluation_results", None)
 
     dataset_dict.pop("brain_methods", None)
+    dataset_dict.pop("brain_results", None)
+
     db.datasets.replace_one(match_d, dataset_dict)

@@ -1032,9 +1032,21 @@ class SampleCollection(object):
             brain_key: a brain key
 
         Returns:
-            an :class:`fiftyone.core.brain.BrainInfo`
+            a :class:`fiftyone.core.brain.BrainInfo`
         """
         return fob.BrainMethod.get_run_info(self, brain_key)
+
+    def load_brain_results(self, brain_key):
+        """Loads the :class:`fiftyone.core.brain.BrainResults` for the run with
+        the given key on this collection.
+
+        Args:
+            brain_key: a brain key
+
+        Returns:
+            a :class:`fiftyone.core.brain.BrainResults`
+        """
+        return fob.BrainMethod.load_run_results(self, brain_key)
 
     def load_brain_view(self, brain_key, select_fields=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` on which the

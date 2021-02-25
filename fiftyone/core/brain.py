@@ -5,7 +5,7 @@ Brain method runs framework.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from fiftyone.core.runs import Run, RunInfo, RunConfig
+from fiftyone.core.runs import Run, RunConfig, RunInfo, RunResults
 
 
 class BrainInfo(RunInfo):
@@ -45,15 +45,19 @@ class BrainMethod(Run):
         return BrainInfo
 
     @classmethod
-    def _runs_field(cls):
+    def _run_info_field(cls):
         return "brain_methods"
+
+    @classmethod
+    def _run_results_field(cls):
+        return "brain_results"
 
     @classmethod
     def _run_str(cls):
         return "brain method run"
 
 
-class BrainResults(object):
+class BrainResults(RunResults):
     """Base class for brain method results."""
 
     pass

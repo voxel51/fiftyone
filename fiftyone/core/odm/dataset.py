@@ -110,6 +110,7 @@ class DatasetDocument(Document):
     brain_methods = DictField(
         EmbeddedDocumentField(document_type=RunDocument), default=dict
     )
+    brain_results = DictField(default=dict)
     sample_fields = EmbeddedDocumentListField(
         document_type=SampleFieldDocument
     )
