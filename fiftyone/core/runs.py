@@ -304,13 +304,16 @@ class Run(Configurable):
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             key: a run key
-            run_results: a :class:`RunResults`
+            run_results: a :class:`RunResults`, or None
         """
         if key is None:
             return
 
+        if run_results is not None:
+            run_results = run_results.serialize()
+
         results = getattr(samples._dataset._doc, cls._run_results_field())
-        results[key] = run_results.serialize()
+        results[key] = run_results
         samples._dataset.save()
 
     @classmethod
@@ -322,9 +325,12 @@ class Run(Configurable):
             key: a run key
 
         Returns:
-            a :class:`RunResults`
+            a :class:`RunResults`, or None if the run did not save results
         """
         results_dict = cls._get_run_results_dict(samples, key)
+        if results_dict is None:
+            return None
+
         return RunResults.from_dict(results_dict)
 
     @classmethod
