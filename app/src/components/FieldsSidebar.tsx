@@ -24,7 +24,7 @@ import * as labelAtoms from "./Filters/LabelFieldFilters.state";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { useTheme } from "../utils/hooks";
-import { stringify } from "../utils/labels";
+import { stringify, FILTERABLE_TYPES } from "../utils/labels";
 
 const Button = animated(styled.div`
   cursor: pointer;
@@ -278,7 +278,7 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
           name,
           disabled: false,
           hideCheckbox: false,
-          hasDropdown: true,
+          hasDropdown: FILTERABLE_TYPES.includes(types[path]),
           selected: activeLabels.includes(path),
           color: colorMap[path],
           title: name,
