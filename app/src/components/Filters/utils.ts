@@ -54,7 +54,8 @@ export const unsupportedFields = selector<string[]>({
         !get(isLabelField(f)) &&
         !get(isNumericField(f)) &&
         !get(isStringField(f)) &&
-        !get(isBooleanField(f))
+        !get(isBooleanField(f)) &&
+        !["filepath", "metadata", "tags"].includes(f)
     );
   },
 });

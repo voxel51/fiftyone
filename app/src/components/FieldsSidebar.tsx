@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { animated } from "react-spring";
 import styled from "styled-components";
 import { useRecoilValue, useRecoilState } from "recoil";
 import {
@@ -16,10 +15,12 @@ import CheckboxGrid from "./CheckboxGroup";
 import DropdownCell from "./DropdownCell";
 import SelectionTag from "./Tags/SelectionTag";
 import { Entry } from "./CheckboxGroup";
+import * as atoms from "../recoil/atoms";
 import * as fieldAtoms from "./Filters/utils";
 import * as labelAtoms from "./Filters/LabelFieldFilters.state";
 import * as selectors from "../recoil/selectors";
 import { stringify, FILTERABLE_TYPES } from "../utils/labels";
+import { useTheme } from "../utils/hooks";
 
 const Container = styled.div`
   .MuiCheckbox-root {
@@ -140,6 +141,8 @@ const TagsCell = ({ modal }: TagsCellProps) => {
 
   const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
   const count = useRecoilValue(countAtom);
+  const colorByLabel = useRecoilValue(atoms.colorByLabel);
+  const theme = useTheme();
 
   return (
     <Cell
@@ -151,7 +154,7 @@ const TagsCell = ({ modal }: TagsCellProps) => {
         hideCheckbox: modal,
         hasDropdown: false,
         selected: activeTags.includes(name),
-        color: colorMap[name],
+        color: colorByLabel ? theme.brand : colorMap[name],
         title: name,
         path: name,
         data: modal ? (
@@ -210,6 +213,8 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
 
   const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
   const count = useRecoilValue(countAtom);
+  const colorByLabel = useRecoilValue(atoms.colorByLabel);
+  const theme = useTheme();
 
   return (
     <Cell
@@ -229,7 +234,7 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
           hideCheckbox: false,
           hasDropdown: FILTERABLE_TYPES.includes(types[path]),
           selected: activeLabels.includes(path),
-          color: colorMap[path],
+          color: colorByLabel ? theme.brand : colorMap[path],
           title: name,
           path,
           data:
@@ -278,6 +283,8 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
 
   const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
   const count = useRecoilValue(countAtom);
+  const colorByLabel = useRecoilValue(atoms.colorByLabel);
+  const theme = useTheme();
 
   return (
     <Cell
@@ -289,7 +296,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
         hideCheckbox: modal,
         hasDropdown: !modal,
         selected: activeScalars.includes(name),
-        color: colorMap[name],
+        color: colorByLabel ? theme.brand : colorMap[name],
         title: name,
         path: name,
         data:
@@ -326,12 +333,13 @@ type UnsupportedCellProps = {
 
 const UnsupportedCell = ({ modal }: UnsupportedCellProps) => {
   const unsupported = useRecoilValue(fieldAtoms.unsupportedFields);
-  return (
+  return unsupported.length ? (
     <Cell
       label={"Unsupported"}
       icon={<Help />}
       entries={unsupported.map((e) => ({
         name: e,
+        title: e,
         data: null,
         disabled: true,
         hideCheckbox: true,
@@ -339,7 +347,7 @@ const UnsupportedCell = ({ modal }: UnsupportedCellProps) => {
       }))}
       modal={modal}
     />
-  );
+  ) : null;
 };
 
 type FieldsSidebarProps = {
@@ -358,7 +366,7 @@ const FieldsSidebar = React.forwardRef(
         <LabelsCell modal={modal} frames={false} />
         {isVideo && <LabelsCell modal={modal} frames={true} />}
         <ScalarsCell modal={modal} />
-        <UnsupportedCell />
+        <UnsupportedCell modal={modal} />
       </Container>
     );
   }

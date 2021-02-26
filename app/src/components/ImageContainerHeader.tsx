@@ -88,7 +88,7 @@ const RefreshButton = () => {
   });
   return (
     <Button
-      style={props}
+      style={{ ...props, userSelect: "none" }}
       onClick={() => {
         setColorSeed(colorSeed + 1);
       }}
