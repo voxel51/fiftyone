@@ -20,6 +20,7 @@ const SidebarColumn = styled.div`
   ${scrollbarStyles}
   z-index: 400;
   max-height: 100%;
+  height: 100%;
   overflow-y: scroll;
   overflow-x: hidden;
 `;

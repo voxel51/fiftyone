@@ -95,7 +95,7 @@ const RefreshButton = () => {
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
-      <OptionText>Refresh field colors</OptionText>
+      <OptionText>Refresh colors</OptionText>
       <Autorenew style={{ marginTop: 3, height: "1.5rem" }} />
     </Button>
   );
@@ -127,7 +127,7 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
       <SamplesHeader>
         <OptionsContainer>
           <OptionContainer onClick={() => setColorByLabel(!colorByLabel)}>
-            <OptionText>Color by label</OptionText>
+            <OptionText>Color by value</OptionText>
             <Checkbox
               style={{ color: theme.brand, padding: "0 0.25rem" }}
               checked={colorByLabel}

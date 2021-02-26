@@ -310,13 +310,13 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
         modal,
         canFilter: !modal,
       }))}
-      onSelect={({ name, selected }) =>
+      onSelect={({ name, selected }) => {
         setActiveScalars(
           selected
             ? [name, ...activeScalars]
             : activeScalars.filter((t) => t !== name)
-        )
-      }
+        );
+      }}
       handleClear={(e) => {
         e.stopPropagation();
         setActiveScalars([]);

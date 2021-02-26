@@ -145,7 +145,7 @@ export const activeScalars = selectorFamily<string[], boolean>({
         scalars.includes(v) ? value.includes(v) : true
       );
       if (value.length && prevActiveScalars.length < value.length) {
-        active = [scalars[0], ...active.filter((v) => v !== scalars[0])];
+        active = [value[0], ...active.filter((v) => v !== value[0])];
       }
       set(activeFields(modal), active);
     }

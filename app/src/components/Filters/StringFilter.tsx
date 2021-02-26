@@ -50,7 +50,7 @@ const updateSelected = ({ selected, values }, { value, click }) => {
 const canCommit = ({ values }, { value }) => {
   return (
     (NONE.includes(value) && values.includes(null)) ||
-    translateNone(values).some((c) => c[1] === value.toLowerCase())
+    translateNone(values).some((c) => c[1] === value)
   );
 };
 
