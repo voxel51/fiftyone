@@ -2183,7 +2183,7 @@ class MatchTags(ViewStage):
         return [
             {
                 "name": "tags",
-                "type": "list<str>",
+                "type": "list<str>|str",
                 "placeholder": "list,of,tags",
             }
         ]
