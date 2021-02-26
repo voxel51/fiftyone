@@ -1,17 +1,14 @@
 import React, { useState } from "react";
-import { animated, useSpring } from "react-spring";
+import { animated } from "react-spring";
 import styled from "styled-components";
 import { useRecoilValue, useRecoilState } from "recoil";
 import {
-  Autorenew,
   BarChart,
   Check,
   Close,
   Help,
   Label,
   PhotoLibrary,
-  Settings,
-  Brush,
 } from "@material-ui/icons";
 
 import CellHeader from "./CellHeader";
@@ -21,34 +18,8 @@ import SelectionTag from "./Tags/SelectionTag";
 import { Entry } from "./CheckboxGroup";
 import * as fieldAtoms from "./Filters/utils";
 import * as labelAtoms from "./Filters/LabelFieldFilters.state";
-import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { useTheme } from "../utils/hooks";
 import { stringify, FILTERABLE_TYPES } from "../utils/labels";
-
-const Button = animated(styled.div`
-  cursor: pointer;
-  width: 100%;
-  margin-top: 3px;
-  margin-left: 0;
-  margin-right: 0;
-  padding: 0 0.2em;
-  border-radius: 2px;
-  display: flex;
-  height: 32px;
-`);
-
-const ButtonText = styled.div`
-  padding-right: 4px;
-  padding-left: 2px;
-  white-space: nowrap;
-  overflow-x: hidden;
-  text-overflow: ellipsis;
-  font-weight: bold;
-  padding-top: 4px;
-  letter-spacing: 0.00938em;
-  line-height: 24px;
-`;
 
 const Container = styled.div`
   .MuiCheckbox-root {
@@ -84,34 +55,6 @@ const Container = styled.div`
     margin-right: 4px;
   }
 `;
-
-const RefreshButton = () => {
-  const theme = useTheme();
-  const [colorSeed, setColorSeed] = useRecoilState(atoms.colorSeed);
-  const [clicked, setClicked] = useState(false);
-  const props = useSpring({
-    backgroundColor: clicked ? theme.backgroundLight : theme.background,
-    color: clicked ? theme.font : theme.fontDark,
-    onRest: () => clicked && setClicked(false),
-    config: {
-      duration: 250,
-    },
-  });
-  return (
-    <Button
-      style={props}
-      onClick={() => {
-        setColorSeed(colorSeed + 1);
-        setClicked(true);
-      }}
-    >
-      <div style={{ marginTop: 4 }}>
-        <Autorenew />
-      </div>
-      <ButtonText>Refresh field colors</ButtonText>
-    </Button>
-  );
-};
 
 type CellProps = {
   label: string;
@@ -271,7 +214,13 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
   return (
     <Cell
       label={frames ? "Frame Labels" : "Labels"}
-      icon={<Label style={{ transform: "rotate(180deg)" }} />}
+      icon={
+        frames ? (
+          <PhotoLibrary />
+        ) : (
+          <Label style={{ transform: "rotate(180deg)" }} />
+        )
+      }
       entries={labels.map((name) => {
         const path = frames ? "frames." + name : name;
         return {
