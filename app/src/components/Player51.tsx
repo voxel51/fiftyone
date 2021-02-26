@@ -119,42 +119,28 @@ const ConfidenceItem = ({ confidence }) => {
   return <ContentItem name={"confidence"} value={confidence} />;
 };
 
-const useTarget = (field, target) => {
-  const getTarget = useRecoilValue(selectors.getTarget);
-  return getTarget(field, target);
-};
-
-const TargetItems = ({ target, field }) => {
-  const targetValue = useTarget(field, target);
-
-  if (!target) {
-    return null;
-  }
-  return (
-    <>
-      <ContentItem key={"target"} name={"target"} value={target} />
-      <ContentItem key={"target-value"} name={"label"} value={targetValue} />
-    </>
-  );
-};
-
 const ClassificationInfo = ({ info }) => {
   return (
     <ContentBlock style={{ borderColor: info.color }}>
       <ContentItem key={"field"} name={"field"} value={info.field} />
       <ContentItem key={"label"} name={"label"} value={info.label} />
       <ConfidenceItem confidence={info.confidence} />
-      <TargetItems field={info.field} target={info.target} />
       <AttrInfo attrs={info.attrs} />
     </ContentBlock>
   );
 };
 
+const useTarget = (field, target) => {
+  const getTarget = useRecoilValue(selectors.getTarget);
+  return getTarget(field, target);
+};
+
 const MaskInfo = ({ info }) => {
+  const targetValue = useTarget(info.field, info.target);
   return (
     <ContentBlock style={{ borderColor: info.color }}>
       <ContentItem key={"field"} name={"field"} value={info.field} />
-      <TargetItems field={info.field} target={info.target} />
+      <ContentItem key={"target-value"} name={"label"} value={targetValue} />
     </ContentBlock>
   );
 };
@@ -191,17 +177,6 @@ const DetectionInfo = ({ info }) => {
       <ContentItem key={"field"} name={"field"} value={info.field} />
       <ContentItem key={"label"} name={"label"} value={info.label} />
       <ConfidenceItem confidence={info.confidence} />
-      <TargetItems field={info.field} target={info.target} />
-      <ContentItem
-        key={"top-left"}
-        name={"top-left"}
-        value={`${info.left.toFixed(5)}, ${info.top.toFixed(5)}`}
-      />
-      <ContentItem
-        key={"dimensions"}
-        name={"dimensions"}
-        value={`${info.width.toFixed(5)} x ${info.height.toFixed(5)}`}
-      />
       <AttrInfo attrs={info.attrs} />
     </ContentBlock>
   );
@@ -213,17 +188,11 @@ const KeypointInfo = ({ info }) => {
       <ContentItem key={"field"} name={"field"} value={info.field} />
       <ContentItem key={"label"} name={"label"} value={info.label} />
       <ContentItem
-        key={"point"}
-        name={"keypoint"}
-        value={`${info.point[0].toFixed(5)}, ${info.point[1].toFixed(5)}`}
-      />
-      <ContentItem
-        key={"# pkeyoints"}
-        name={"# pkeyoints"}
+        key={"# keypoints"}
+        name={"# keypoints"}
         value={info.numPoints}
       />
       <ConfidenceItem confidence={info.confidence} />
-      <TargetItems field={info.field} target={info.target} />
       <AttrInfo attrs={info.attrs} />
     </ContentBlock>
   );
@@ -238,7 +207,6 @@ const PolylineInfo = ({ info }) => {
       <ContentItem key={"closed"} name={"closed"} value={info.closed} />
       <ContentItem key={"filled"} name={"filled"} value={info.filled} />
       <ContentItem key={"# points"} name={"# points"} value={info.points} />
-      <TargetItems field={info.field} target={info.target} />
       <AttrInfo attrs={info.attrs} />
     </ContentBlock>
   );

@@ -257,7 +257,7 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
   const colorMap = useRecoilValue(selectors.colorMap);
   const [subCountAtom, countAtom] = modal
     ? [
-        labelAtoms.labelSampleModalCounts(key),
+        labelAtoms.filteredLabelSampleModalCounts(key),
         labelAtoms.labelSampleModalCounts(key),
       ]
     : [
