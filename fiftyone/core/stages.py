@@ -2582,11 +2582,6 @@ class SelectObjects(ViewStage):
     """
 
     def __init__(self, objects=None, ids=None, tags=None, fields=None):
-        if objects is None and ids is None and tags is None:
-            raise ValueError(
-                "One of `objects`, `ids`, or `tags` must be provided"
-            )
-
         if objects is not None:
             sample_ids, objects_map = _parse_objects(objects)
         else:
@@ -2721,7 +2716,7 @@ class SelectObjects(ViewStage):
         pipeline.extend(stage.to_mongo(sample_collection))
 
         num_fields = len(fields)
-        if num_fields == 0:
+        if num_fields == 0 or (self._ids is None and self._tags is None):
             return pipeline + [{"$match": {"_id": None}}]
 
         only_matches = num_fields == 1
