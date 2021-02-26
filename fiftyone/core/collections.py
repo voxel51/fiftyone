@@ -546,6 +546,10 @@ class SampleCollection(object):
             field_name
         )
 
+        if list_fields:
+            # Don't unroll terminal lists unless explicitly requested
+            list_fields = [lf for lf in list_fields if lf != field_name]
+
         if is_frame_field:
             self._set_frame_values(field_name, values, list_fields)
         else:
