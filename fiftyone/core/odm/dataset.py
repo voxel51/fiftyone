@@ -6,12 +6,19 @@ Documents that track datasets and their sample schemas in the database.
 |
 """
 import mongoengine as moe
+from mongoengine import (
+    BooleanField,
+    DictField,
+    EmbeddedDocumentField,
+    EmbeddedDocumentListField,
+    StringField,
+)
 
 import eta.core.utils as etau
 
 from .document import Document, EmbeddedDocument
-from .evaluation import EvaluationDocument
 from .fields import DictField, LabelTargetsField, TargetsField
+from .runs import RunDocument
 
 
 class SampleFieldDocument(EmbeddedDocument):
@@ -98,10 +105,12 @@ class DatasetDocument(Document):
     name = moe.StringField(unique=True, required=True)
     sample_collection_name = moe.StringField(unique=True, required=True)
     persistent = moe.BooleanField(default=False)
-    info = DictField(default=dict)
+    info = moe.DictField(default=dict)
     evaluations = moe.DictField(
-        moe.EmbeddedDocumentField(document_type=EvaluationDocument),
-        default=dict,
+        EmbeddedDocumentField(document_type=RunDocument), default=dict
+    )
+    brain_methods = moe.DictField(
+        EmbeddedDocumentField(document_type=RunDocument), default=dict
     )
     sample_fields = moe.EmbeddedDocumentListField(
         document_type=SampleFieldDocument

@@ -18,8 +18,10 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.aggregations as foa
+import fiftyone.core.brain as fob
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
+import fiftyone.core.evaluation as foev
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
@@ -904,9 +906,9 @@ class SampleCollection(object):
             Precision: sample.<eval_key>_precision
                Recall: sample.<eval_key>_recall
 
-       In addition, when evaluating frame-level masks, the accuracy, precision,
-       and recall of each frame if recorded in the following frame-level
-       fields::
+        In addition, when evaluating frame-level masks, the accuracy,
+        precision, and recall of each frame if recorded in the following
+        frame-level fields::
 
              Accuracy: frame.<eval_key>_accuracy
             Precision: frame.<eval_key>_precision
@@ -959,7 +961,7 @@ class SampleCollection(object):
         Returns:
             a list of evaluation keys
         """
-        return foue.list_evaluations(self)
+        return foev.EvaluationMethod.list_runs(self)
 
     def get_evaluation_info(self, eval_key):
         """Returns information about the evaluation with the given key on this
@@ -969,9 +971,9 @@ class SampleCollection(object):
             eval_key: an evaluation key
 
         Returns:
-            an :class:`fiftyone.utils.eval.base.EvaluationInfo`
+            an :class:`fiftyone.core.evaluation.EvaluationInfo`
         """
-        return foue.get_evaluation_info(self, eval_key)
+        return foev.EvaluationMethod.get_run_info(self, eval_key)
 
     def load_evaluation_view(self, eval_key, select_fields=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` on which the
@@ -980,15 +982,12 @@ class SampleCollection(object):
         Args:
             eval_key: an evaluation key
             select_fields (False): whether to select only the fields involved
-                in the evaluation. If true, only the predicted and ground truth
-                fields involved in the evaluation will be selected, and any
-                ancillary fields populated on those samples by other
-                evaluations will be excluded
+                in the evaluation
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return foue.load_evaluation_view(
+        return foev.EvaluationMethod.load_run_view(
             self, eval_key, select_fields=select_fields
         )
 
@@ -999,11 +998,59 @@ class SampleCollection(object):
         Args:
             eval_key: an evaluation key
         """
-        foue.delete_evaluation(self, eval_key)
+        foev.EvaluationMethod.delete_run(self, eval_key)
 
     def delete_evaluations(self):
         """Deletes all evaluation results from this collection."""
-        foue.delete_evaluations(self)
+        foev.EvaluationMethod.delete_runs(self)
+
+    def list_brain_runs(self):
+        """Returns a list of all brain keys on this collection.
+
+        Returns:
+            a list of brain keys
+        """
+        return fob.BrainMethod.list_runs(self)
+
+    def get_brain_info(self, brain_key):
+        """Returns information about the brain method run with the given key on
+        this collection.
+
+        Args:
+            brain_key: a brain key
+
+        Returns:
+            an :class:`fiftyone.core.brain.BrainInfo`
+        """
+        return fob.BrainMethod.get_run_info(self, brain_key)
+
+    def load_brain_view(self, brain_key, select_fields=False):
+        """Loads the :class:`fiftyone.core.view.DatasetView` on which the
+        specified brain method run was performed on this collection.
+
+        Args:
+            brain_key: a brain key
+            select_fields (False): whether to select only the fields involved
+                in the brain method run
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return fob.BrainMethod.load_run_view(
+            self, brain_key, select_fields=select_fields
+        )
+
+    def delete_brain_run(self, brain_key):
+        """Deletes the brain method run with the given key from this collection.
+
+        Args:
+            brain_key: a brain key
+        """
+        fob.BrainMethod.delete_run(self, brain_key)
+
+    def delete_brain_runs(self):
+        """Deletes all brain method runs from this collection."""
+        fob.BrainMethod.delete_runs(self)
 
     @classmethod
     def list_view_stages(cls):
@@ -3879,6 +3926,42 @@ class SampleCollection(object):
             field_name.startswith(self._FRAMES_PREFIX)
             or field_name == "frames"
         )
+
+    def _is_label_field(self, field_name, label_type_or_types):
+        label_type = self._get_label_field_type(field_name)
+
+        try:
+            iter(label_type_or_types)
+        except:
+            label_type_or_types = (label_type_or_types,)
+
+        return any(issubclass(label_type, t) for t in label_type_or_types)
+
+    def _get_label_field_type(self, field_name):
+        field_name, is_frame_field = self._handle_frame_field(field_name)
+        if is_frame_field:
+            schema = self.get_frame_field_schema()
+        else:
+            schema = self.get_field_schema()
+
+        if field_name not in schema:
+            ftype = "Frame field" if is_frame_field else "Field"
+            raise ValueError(
+                "%s '%s' does not exist on collection '%s'"
+                % (ftype, field_name, self.name)
+            )
+
+        field = schema[field_name]
+
+        if not isinstance(field, fof.EmbeddedDocumentField) or not issubclass(
+            field.document_type, fol.Label
+        ):
+            raise ValueError(
+                "Field '%s' is not a Label type; found %s"
+                % (field_name, field)
+            )
+
+        return field.document_type
 
     def _is_array_field(self, field_name):
         return _is_array_field(self, field_name)

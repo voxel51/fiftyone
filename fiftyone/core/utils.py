@@ -38,6 +38,7 @@ import eta
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.core.context as foc
 
 
 logger = logging.getLogger(__name__)
@@ -470,6 +471,11 @@ class ProgressBar(etau.ProgressBar):
         if "iters_str" not in kwargs:
             kwargs["iters_str"] = "samples"
 
+        # For progress bars in notebooks, use a fixed size so that they will
+        # read well across browsers, in HTML format, etc
+        if foc.is_notebook_context() and "max_width" not in kwargs:
+            kwargs["max_width"] = 90
+
         super().__init__(*args, **kwargs)
 
 
@@ -551,7 +557,8 @@ class UniqueFilenameMaker(object):
 
         if output_ext is not None:
             ext = output_ext
-            filename = name + ext
+
+        filename = name + ext
 
         key = name if self.ignore_exts else filename
         self._filename_counts[key] += 1

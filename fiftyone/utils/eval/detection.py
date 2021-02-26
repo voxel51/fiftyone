@@ -7,15 +7,9 @@ Detection evaluation.
 """
 import logging
 
+import fiftyone.core.evaluation as foe
 import fiftyone.core.utils as fou
 
-from .base import (
-    Evaluation,
-    EvaluationConfig,
-    EvaluationInfo,
-    save_evaluation_info,
-    validate_evaluation,
-)
 from .classification import ClassificationResults
 
 
@@ -95,13 +89,16 @@ def evaluate_detections(
         a :class:`DetectionResults`
     """
     config = _parse_config(
-        config, method, iou=iou, classwise=classwise, **kwargs
+        config,
+        pred_field,
+        gt_field,
+        method,
+        iou=iou,
+        classwise=classwise,
+        **kwargs
     )
     eval_method = config.build()
-
-    if eval_key is not None:
-        eval_info = EvaluationInfo(eval_key, pred_field, gt_field, config)
-        validate_evaluation(samples, eval_info)
+    eval_method.register_run(samples, eval_key)
 
     pred_field, processing_frames = samples._handle_frame_field(pred_field)
     gt_field, _ = samples._handle_frame_field(gt_field)
@@ -125,7 +122,7 @@ def evaluate_detections(
             sample_fn = 0
             for image in images:
                 image_matches = eval_method.evaluate_image(
-                    image, pred_field, gt_field, eval_key=eval_key
+                    image, eval_key=eval_key
                 )
                 matches.extend(image_matches)
                 tp, fp, fn = _tally_matches(image_matches)
@@ -144,56 +141,47 @@ def evaluate_detections(
                 sample["%s_fn" % eval_key] = sample_fn
                 sample.save()
 
-    results = eval_method.generate_results(
-        samples,
-        pred_field,
-        gt_field,
-        matches,
-        eval_key=eval_key,
-        classes=classes,
-        missing=missing,
+    return eval_method.generate_results(
+        samples, matches, eval_key=eval_key, classes=classes, missing=missing,
     )
 
-    if eval_key is not None:
-        save_evaluation_info(samples, eval_info)
 
-    return results
-
-
-class DetectionEvaluationConfig(EvaluationConfig):
+class DetectionEvaluationConfig(foe.EvaluationMethodConfig):
     """Base class for configuring :class:`DetectionEvaluation` instances.
 
     Args:
+        pred_field: the name of the field containing the predicted
+            :class:`fiftyone.core.labels.Detections` instances
+        gt_field: the name of the field containing the ground truth
+            :class:`fiftyone.core.labels.Detections` instances
         iou (None): the IoU threshold to use to determine matches
         classwise (None): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
     """
 
-    def __init__(self, iou=None, classwise=None, **kwargs):
+    def __init__(
+        self, pred_field, gt_field, iou=None, classwise=None, **kwargs
+    ):
         super().__init__(**kwargs)
+        self.pred_field = pred_field
+        self.gt_field = gt_field
         self.iou = iou
         self.classwise = classwise
 
 
-class DetectionEvaluation(Evaluation):
+class DetectionEvaluation(foe.EvaluationMethod):
     """Base class for detection evaluation methods.
 
     Args:
         config: a :class:`DetectionEvaluationConfig`
     """
 
-    def evaluate_image(
-        self, sample_or_frame, pred_field, gt_field, eval_key=None
-    ):
+    def evaluate_image(self, sample_or_frame, eval_key=None):
         """Evaluates the ground truth and predicted objects in an image.
 
         Args:
             sample_or_frame: a :class:`fiftyone.core.Sample` or
                 :class:`fiftyone.core.frame.Frame`
-            pred_field: the name of the field containing the predicted
-                :class:`fiftyone.core.labels.Detections` instances
-            gt_field: the name of the field containing the ground truth
-                :class:`fiftyone.core.labels.Detections` instances
             eval_key (None): the evaluation key for this evaluation
 
         Returns:
@@ -203,14 +191,7 @@ class DetectionEvaluation(Evaluation):
         raise NotImplementedError("subclass must implement evaluate_image()")
 
     def generate_results(
-        self,
-        samples,
-        pred_field,
-        gt_field,
-        matches,
-        eval_key=None,
-        classes=None,
-        missing=None,
+        self, samples, matches, eval_key=None, classes=None, missing=None
     ):
         """Generates aggregate evaluation results for the samples.
 
@@ -219,10 +200,6 @@ class DetectionEvaluation(Evaluation):
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
-            pred_field: the name of the field containing the predicted
-                :class:`fiftyone.core.labels.Detections`
-            gt_field ("ground_truth"): the name of the field containing the
-                ground truth :class:`fiftyone.core.labels.Detections`
             matches: a list of ``(gt_label, pred_label, iou, pred_confidence)``
                 matches. Either label can be ``None`` to indicate an unmatched
                 object
@@ -239,22 +216,20 @@ class DetectionEvaluation(Evaluation):
         return DetectionResults(matches, classes=classes, missing=missing)
 
     def get_fields(self, samples, eval_key):
-        eval_info = samples.get_evaluation_info(eval_key)
-
-        eval_fields = [
+        fields = [
             "%s_tp" % eval_key,
             "%s_fp" % eval_key,
             "%s_fn" % eval_key,
-            "%s.detections.%s" % (eval_info.pred_field, eval_key),
-            "%s.detections.%s_id" % (eval_info.pred_field, eval_key),
-            "%s.detections.%s_iou" % (eval_info.pred_field, eval_key),
-            "%s.detections.%s" % (eval_info.gt_field, eval_key),
-            "%s.detections.%s_id" % (eval_info.gt_field, eval_key),
-            "%s.detections.%s_iou" % (eval_info.gt_field, eval_key),
+            "%s.detections.%s" % (self.config.pred_field, eval_key),
+            "%s.detections.%s_id" % (self.config.pred_field, eval_key),
+            "%s.detections.%s_iou" % (self.config.pred_field, eval_key),
+            "%s.detections.%s" % (self.config.gt_field, eval_key),
+            "%s.detections.%s_id" % (self.config.gt_field, eval_key),
+            "%s.detections.%s_iou" % (self.config.gt_field, eval_key),
         ]
 
-        if samples._is_frame_field(eval_info.gt_field):
-            eval_fields.extend(
+        if samples._is_frame_field(self.config.gt_field):
+            fields.extend(
                 [
                     "frames.%s_tp" % eval_key,
                     "frames.%s_fp" % eval_key,
@@ -262,15 +237,13 @@ class DetectionEvaluation(Evaluation):
                 ]
             )
 
-        return eval_fields
+        return fields
 
     def cleanup(self, samples, eval_key):
-        eval_info = samples.get_evaluation_info(eval_key)
-
         pred_field, is_frame_field = samples._handle_frame_field(
-            eval_info.pred_field
+            self.config.pred_field
         )
-        gt_field, _ = samples._handle_frame_field(eval_info.gt_field)
+        gt_field, _ = samples._handle_frame_field(self.config.gt_field)
 
         fields = [
             "%s_tp" % eval_key,
@@ -286,11 +259,16 @@ class DetectionEvaluation(Evaluation):
 
         if is_frame_field:
             samples._dataset.delete_sample_fields(
-                ["%s_tp" % eval_key, "%s_fp" % eval_key, "%s_fn" % eval_key]
+                ["%s_tp" % eval_key, "%s_fp" % eval_key, "%s_fn" % eval_key],
+                error_level=1,
             )
-            samples._dataset.delete_frame_fields(fields)
+            samples._dataset.delete_frame_fields(fields, error_level=1)
         else:
-            samples._dataset.delete_sample_fields(fields)
+            samples._dataset.delete_sample_fields(fields, error_level=1)
+
+    def _validate_run(self, samples, eval_key, existing_info):
+        self._validate_fields_match(eval_key, "pred_field", existing_info)
+        self._validate_fields_match(eval_key, "gt_field", existing_info)
 
 
 class DetectionResults(ClassificationResults):
@@ -312,7 +290,7 @@ class DetectionResults(ClassificationResults):
         self.ious = ious
 
 
-def _parse_config(config, method, **kwargs):
+def _parse_config(config, pred_field, gt_field, method, **kwargs):
     if config is not None:
         return config
 
@@ -322,7 +300,7 @@ def _parse_config(config, method, **kwargs):
     if method == "coco":
         from .coco import COCOEvaluationConfig
 
-        return COCOEvaluationConfig(**kwargs)
+        return COCOEvaluationConfig(pred_field, gt_field, **kwargs)
 
     raise ValueError("Unsupported evaluation method '%s'" % method)
 

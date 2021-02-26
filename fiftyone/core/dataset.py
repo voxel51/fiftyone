@@ -992,7 +992,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         fofr.Frame._reload_docs(self._frame_collection_name)
 
-    def delete_sample_field(self, field_name):
+    def delete_sample_field(self, field_name, error_level=0):
         """Deletes the field from all samples in the dataset.
 
         You can use dot notation (``embedded.field.name``) to delete embedded
@@ -1000,10 +1000,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             field_name: the field name or ``embedded.field.name``
-        """
-        self._delete_sample_fields(field_name)
+            error_level (0): the error level to use. Valid values are:
 
-    def delete_sample_fields(self, field_names):
+                0: raise error if a top-level field cannot be deleted
+                1: log warning if a top-level field cannot be deleted
+                2: ignore top-level fields that cannot be deleted
+        """
+        self._delete_sample_fields(field_name, error_level)
+
+    def delete_sample_fields(self, field_names, error_level=0):
         """Deletes the fields from all samples in the dataset.
 
         You can use dot notation (``embedded.field.name``) to delete embedded
@@ -1011,10 +1016,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             field_names: the field name or iterable of field names
-        """
-        self._delete_sample_fields(field_names)
+            error_level (0): the error level to use. Valid values are:
 
-    def delete_frame_field(self, field_name):
+                0: raise error if a top-level field cannot be deleted
+                1: log warning if a top-level field cannot be deleted
+                2: ignore top-level fields that cannot be deleted
+        """
+        self._delete_sample_fields(field_names, error_level)
+
+    def delete_frame_field(self, field_name, error_level=0):
         """Deletes the frame-level field from all samples in the dataset.
 
         You can use dot notation (``embedded.field.name``) to delete embedded
@@ -1024,10 +1034,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Args:
             field_name: the field name or ``embedded.field.name``
-        """
-        self._delete_frame_fields(field_name)
+            error_level (0): the error level to use. Valid values are:
 
-    def delete_frame_fields(self, field_names):
+                0: raise error if a top-level field cannot be deleted
+                1: log warning if a top-level field cannot be deleted
+                2: ignore top-level fields that cannot be deleted
+        """
+        self._delete_frame_fields(field_name, error_level)
+
+    def delete_frame_fields(self, field_names, error_level=0):
         """Deletes the frame-level fields from all samples in the dataset.
 
         You can use dot notation (``embedded.field.name``) to delete embedded
@@ -1036,29 +1051,38 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Only applicable to video datasets.
 
         Args:
-            field_names: a field name of iterable of field names
-        """
-        self._delete_frame_fields(field_names)
+            field_names: a field name or iterable of field names
+            error_level (0): the error level to use. Valid values are:
 
-    def _delete_sample_fields(self, field_names):
+                0: raise error if a top-level field cannot be deleted
+                1: log warning if a top-level field cannot be deleted
+                2: ignore top-level fields that cannot be deleted
+        """
+        self._delete_frame_fields(field_names, error_level)
+
+    def _delete_sample_fields(self, field_names, error_level):
         fields, embedded_fields = _parse_fields(field_names)
 
         if fields:
-            self._sample_doc_cls._delete_fields(fields)
+            self._sample_doc_cls._delete_fields(
+                fields, error_level=error_level
+            )
             fos.Sample._purge_fields(self._sample_collection_name, fields)
 
         if embedded_fields:
             self._sample_doc_cls._delete_embedded_fields(embedded_fields)
             fos.Sample._reload_docs(self._sample_collection_name)
 
-    def _delete_frame_fields(self, field_names):
+    def _delete_frame_fields(self, field_names, error_level):
         if self.media_type != fom.VIDEO:
             raise ValueError("Only video datasets have frame fields")
 
         fields, embedded_fields = _parse_fields(field_names)
 
         if fields:
-            self._frame_doc_cls._delete_fields(fields, are_frame_fields=True)
+            self._frame_doc_cls._delete_fields(
+                fields, are_frame_fields=True, error_level=error_level
+            )
             fofr.Frame._purge_fields(self._frame_collection_name, fields)
 
         if embedded_fields:

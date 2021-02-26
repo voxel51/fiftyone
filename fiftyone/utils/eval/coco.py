@@ -28,6 +28,10 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
     """COCO-style evaluation config.
 
     Args:
+        pred_field: the name of the field containing the predicted
+            :class:`fiftyone.core.labels.Detections` instances
+        gt_field: the name of the field containing the ground truth
+            :class:`fiftyone.core.labels.Detections` instances
         iou (None): the IoU threshold to use to determine matches
         classwise (None): whether to only match objects with the same class
             label (True) or allow matches between classes (False)
@@ -43,13 +47,19 @@ class COCOEvaluationConfig(DetectionEvaluationConfig):
 
     def __init__(
         self,
+        pred_field,
+        gt_field,
+        iou=None,
+        classwise=None,
         iscrowd="iscrowd",
         compute_mAP=False,
         iou_threshs=None,
         max_preds=None,
         **kwargs
     ):
-        super().__init__(**kwargs)
+        super().__init__(
+            pred_field, gt_field, iou=iou, classwise=classwise, **kwargs
+        )
 
         if compute_mAP and iou_threshs is None:
             iou_threshs = [x / 100 for x in range(50, 100, 5)]
@@ -89,9 +99,7 @@ class COCOEvaluation(DetectionEvaluation):
                 "evaluation"
             )
 
-    def evaluate_image(
-        self, sample_or_frame, pred_field, gt_field, eval_key=None
-    ):
+    def evaluate_image(self, sample_or_frame, eval_key=None):
         """Performs COCO-style evaluation on the given image.
 
         Predicted objects are matched to ground truth objects in descending
@@ -109,18 +117,14 @@ class COCOEvaluation(DetectionEvaluation):
         Args:
             sample_or_frame: a :class:`fiftyone.core.Sample` or
                 :class:`fiftyone.core.frame.Frame`
-            pred_field: the name of the field containing the predicted
-                :class:`fiftyone.core.labels.Detections` instances
-            gt_field: the name of the field containing the ground truth
-                :class:`fiftyone.core.labels.Detections` instances
             eval_key (None): the evaluation key for this evaluation
 
         Returns:
             a list of matched ``(gt_label, pred_label, iou, pred_confidence)``
             tuples
         """
-        gts = sample_or_frame[gt_field]
-        preds = sample_or_frame[pred_field]
+        gts = sample_or_frame[self.config.gt_field]
+        preds = sample_or_frame[self.config.pred_field]
 
         if eval_key is None:
             # Don't save results on user's data
@@ -131,14 +135,7 @@ class COCOEvaluation(DetectionEvaluation):
         return _coco_evaluation_single_iou(gts, preds, eval_key, self.config)
 
     def generate_results(
-        self,
-        samples,
-        pred_field,
-        gt_field,
-        matches,
-        eval_key=None,
-        classes=None,
-        missing=None,
+        self, samples, matches, eval_key=None, classes=None, missing=None
     ):
         """Generates aggregate evaluation results for the samples.
 
@@ -151,10 +148,6 @@ class COCOEvaluation(DetectionEvaluation):
 
         Args:
             samples: a :class:`fiftyone.core.SampleCollection`
-            pred_field: the name of the field containing the predicted
-                :class:`fiftyone.core.labels.Detections` instances
-            gt_field: the name of the field containing the ground truth
-                :class:`fiftyone.core.labels.Detections` instances
             matches: a list of ``(gt_label, pred_label, iou, pred_confidence)``
                 matches. Either label can be ``None`` to indicate an unmatched
                 object
@@ -171,6 +164,8 @@ class COCOEvaluation(DetectionEvaluation):
         if not self.config.compute_mAP:
             return DetectionResults(matches, classes=classes, missing=missing)
 
+        pred_field = self.config.pred_field
+        gt_field = self.config.gt_field
         iou_threshs = self.config.iou_threshs
 
         thresh_matches = {t: {} for t in iou_threshs}
