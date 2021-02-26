@@ -2496,6 +2496,9 @@ class SelectObjects(ViewStage):
 
     You can perform a selection via one of the following methods:
 
+    -   Provide one or both of the ``ids`` and ``tags`` arguments, and
+        optionally the ``fields`` argument
+
     -   Provide the ``objects`` argument, which should have the following
         format::
 
@@ -2512,9 +2515,6 @@ class SelectObjects(ViewStage):
                 },
                 ...
             ]
-
-    -   Provide one or both of the ``ids`` and ``tags`` arguments, and
-        optionally the ``fields`` argument
 
     Examples::
 

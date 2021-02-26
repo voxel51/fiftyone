@@ -2490,12 +2490,15 @@ class SampleCollection(object):
 
     @view_stage
     def select_objects(self, objects=None, ids=None, tags=None, fields=None):
-        """Selects only the specified objects from a collection.
+        """Selects only the specified objects from the collection.
 
         The returned view will omit samples, sample fields, and individual
         objects that do not match the specified selection criteria.
 
         You can perform a selection via one of the following methods:
+
+        -   Provide one or both of the ``ids`` and ``tags`` arguments, and
+            optionally the ``fields`` argument
 
         -   Provide the ``objects`` argument, which should have the following
             format::
@@ -2513,9 +2516,6 @@ class SampleCollection(object):
                     },
                     ...
                 ]
-
-        -   Provide one or both of the ``ids`` and ``tags`` arguments, and
-            optionally the ``fields`` argument
 
         Examples::
 
