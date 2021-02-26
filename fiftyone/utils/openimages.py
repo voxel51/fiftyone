@@ -465,9 +465,12 @@ def _load_open_images_split(
             )
             sample["relationships"] = relationships
 
+        sample["oi_id"] = image_id
         samples.append(sample)
 
     print("Adding samples to dataset")
+    # TODO: Is it better to add samples individually in case samples gets too
+    # large?
     dataset.add_samples(samples)
 
     return dataset
@@ -630,9 +633,6 @@ def _create_segmentations(
             )
             if not os.path.isfile(mask_path):
                 print("Segmentation %s does not exists" % mask_path)
-                import pdb
-
-                pdb.set_trace()
                 continue
             rgb_mask = etai.read(mask_path)
             mask = etai.rgb_to_gray(rgb_mask) > 122
