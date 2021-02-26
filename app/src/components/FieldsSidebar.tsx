@@ -320,6 +320,28 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
   );
 };
 
+type UnsupportedCellProps = {
+  modal: boolean;
+};
+
+const UnsupportedCell = ({ modal }: UnsupportedCellProps) => {
+  const unsupported = useRecoilValue(fieldAtoms.unsupportedFields);
+  return (
+    <Cell
+      label={"Unsupported"}
+      icon={<Help />}
+      entries={unsupported.map((e) => ({
+        name: e,
+        data: null,
+        disabled: true,
+        hideCheckbox: true,
+        selected: false,
+      }))}
+      modal={modal}
+    />
+  );
+};
+
 type FieldsSidebarProps = {
   modal: boolean;
   style: object;
@@ -336,6 +358,7 @@ const FieldsSidebar = React.forwardRef(
         <LabelsCell modal={modal} frames={false} />
         {isVideo && <LabelsCell modal={modal} frames={true} />}
         <ScalarsCell modal={modal} />
+        <UnsupportedCell />
       </Container>
     );
   }

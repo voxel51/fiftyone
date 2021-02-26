@@ -11,9 +11,8 @@ import { scrollbarStyles } from "../components/utils";
 import * as atoms from "../recoil/atoms";
 
 const SidebarContainer = styled.div`
-  display: grid;
+  display: block;
   height: 100%;
-  grid-template-rows: 1fr 4rem;
   width 256px;
 `;
 

@@ -79,17 +79,11 @@ const OptionText = ({ style, children }) => {
 const RefreshButton = () => {
   const theme = useTheme();
   const [colorSeed, setColorSeed] = useRecoilState(atoms.colorSeed);
-  const [clicked, setClicked] = useState(false);
   const [hover, setHover] = useState(false);
   const props = useSpring({
-    backgroundColor: clicked
-      ? theme.backgroundDark
-      : hover
-      ? theme.backgroundLight
-      : theme.background,
-    onRest: () => clicked && setClicked(false),
+    backgroundColor: hover ? theme.backgroundLight : theme.background,
     config: {
-      duration: 250,
+      duration: 200,
     },
   });
   return (
@@ -97,7 +91,6 @@ const RefreshButton = () => {
       style={props}
       onClick={() => {
         setColorSeed(colorSeed + 1);
-        setClicked(true);
       }}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
@@ -143,7 +136,7 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
           <OptionContainer>
             <RefreshButton />
           </OptionContainer>
-          <OptionText style={{ marginLeft: "0.25rem" }}>
+          <OptionText style={{ marginLeft: "0.5rem" }}>
             <SelectionMenu />
           </OptionText>
         </OptionsContainer>

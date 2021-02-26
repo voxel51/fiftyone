@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSpring } from "react-spring";
-import { atomFamily, selectorFamily } from "recoil";
+import { atomFamily, selector, selectorFamily } from "recoil";
 import useMeasure from "react-use-measure";
 
 import * as selectors from "../../recoil/selectors";
@@ -41,6 +41,21 @@ export const isStringField = selectorFamily<boolean, string>({
   get: (name) => ({ get }) => {
     const map = get(selectors.scalarsMap("sample"));
     return map[name] === STRING_FIELD;
+  },
+});
+
+export const unsupportedFields = selector<string[]>({
+  key: "unsupportedFields",
+  get: ({ get }) => {
+    const fields = get(selectors.fieldPaths);
+    return fields.filter(
+      (f) =>
+        !f.startsWith("frames.") &&
+        !get(isLabelField(f)) &&
+        !get(isNumericField(f)) &&
+        !get(isStringField(f)) &&
+        !get(isBooleanField(f))
+    );
   },
 });
 
