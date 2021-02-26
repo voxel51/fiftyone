@@ -265,7 +265,15 @@ export const filteredLabelSampleCounts = selectorFamily<Counts | null, string>({
 export const labelSampleModalCounts = selectorFamily<Counts | null, string>({
   key: "labelSampleModalCounts",
   get: (dimension) => ({ get }) => {
-    return {};
+    const labels = get(selectors.labelNames(dimension));
+    const types = get(selectors.labelTypesMap);
+    const paths =
+      dimension === "sample" ? labels : labels.map((l) => "frames." + l);
+    const sample = get(atoms.modal).sample || {};
+    return labels.reduce((acc, path, i) => {
+      acc[path] += sampleCountResolver(sample[path], types[path]);
+      return acc;
+    }, {});
   },
 });
 
@@ -290,7 +298,7 @@ export const filteredLabelSampleModalCounts = selectorFamily<
     const types = get(selectors.labelTypesMap);
     const paths =
       dimension === "sample" ? labels : labels.map((l) => "frames." + l);
-    const sample = get(atoms.modal).sample || {};
+    const sample = get(sampleModalFilter)(get(atoms.modal).sample || {});
     return labels.reduce((acc, path, i) => {
       acc[path] += sampleCountResolver(sample[path], types[path]);
       return acc;
