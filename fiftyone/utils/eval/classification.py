@@ -664,7 +664,7 @@ class ClassificationResults(foe.EvaluationResults):
         return display.ax_ if return_ax else None
 
     @classmethod
-    def _from_dict(cls, d, **kwargs):
+    def _from_dict(cls, d, samples, **kwargs):
         ytrue = etas.deserialize_numpy_array(d["ytrue"], allow_pickle=True)
         ypred = etas.deserialize_numpy_array(d["ypred"], allow_pickle=True)
 

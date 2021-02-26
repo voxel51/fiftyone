@@ -303,7 +303,7 @@ class SegmentationResults(ClassificationResults):
         return ["cls", "pixel_confusion_matrix", "classes", "missing"]
 
     @classmethod
-    def _from_dict(cls, d, **kwargs):
+    def _from_dict(cls, d, samples, **kwargs):
         return cls(
             etas.deserialize_numpy_array(
                 d["pixel_confusion_matrix"], allow_pickle=True

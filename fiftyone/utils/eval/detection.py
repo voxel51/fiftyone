@@ -299,7 +299,7 @@ class DetectionResults(ClassificationResults):
         self.ious = np.array(ious)
 
     @classmethod
-    def _from_dict(cls, d, **kwargs):
+    def _from_dict(cls, d, samples, **kwargs):
         matches = list(
             zip(
                 etas.deserialize_numpy_array(d["ytrue"], allow_pickle=True),

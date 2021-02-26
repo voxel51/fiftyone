@@ -331,7 +331,8 @@ class Run(Configurable):
         if results_dict is None:
             return None
 
-        return RunResults.from_dict(results_dict)
+        view = cls.load_run_view(samples, key)
+        return RunResults.from_dict(results_dict, view)
 
     @classmethod
     def load_run_view(cls, samples, key, select_fields=False):
@@ -464,19 +465,30 @@ class RunResults(etas.Serializable):
         return ["cls"] + super().attributes()
 
     @classmethod
-    def from_dict(cls, d):
+    def from_dict(cls, d, samples):
         """Builds a :class:`RunResults` from a JSON dict representation of it.
 
         Args:
             d: a JSON dict
+            samples: the :class:`fiftyone.core.collections.SampleCollection`
+                for the run
 
         Returns:
             a :class:`RunResults`
         """
         run_results_cls = etau.get_class(d["cls"])
-        return run_results_cls._from_dict(d)
+        return run_results_cls._from_dict(d, samples)
 
     @classmethod
-    def _from_dict(cls, d):
-        """Subclass implementation of :meth:`from_dict`."""
+    def _from_dict(cls, d, samples):
+        """Subclass implementation of :meth:`from_dict`.
+
+        Args:
+            d: a JSON dict
+            samples: the :class:`fiftyone.core.collections.SampleCollection`
+                for the run
+
+        Returns:
+            a :class:`RunResults`
+        """
         raise NotImplementedError("subclass must implement _from_dict()")

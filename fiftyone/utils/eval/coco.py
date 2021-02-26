@@ -353,9 +353,10 @@ class COCODetectionResults(DetectionResults):
         return np.mean(classwise_AP)
 
     @classmethod
-    def _from_dict(cls, d, **kwargs):
+    def _from_dict(cls, d, samples, **kwargs):
         return super()._from_dict(
             d,
+            samples,
             precision=etas.deserialize_numpy_array(
                 d["precision"], allow_pickle=True
             ),
