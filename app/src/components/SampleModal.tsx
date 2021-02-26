@@ -262,7 +262,9 @@ const SampleModal = (
   }, []);
 
   const toggleSelectedObject = useToggleSelectionObject(atoms.selectedObjects);
-  const selectedObjectIDs = Object.keys(useRecoilValue(atoms.selectedObjects));
+  const selectedObjectIDs = Array.from(
+    useRecoilValue(selectors.selectedObjectIds)
+  );
 
   // save overlay options when navigating - these are restored by passing them
   // in defaultOverlayOptions when the new player is created

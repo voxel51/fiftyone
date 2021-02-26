@@ -122,6 +122,7 @@ const ConfidenceItem = ({ confidence }) => {
 const ClassificationInfo = ({ info }) => {
   return (
     <ContentBlock style={{ borderColor: info.color }}>
+      <SelectedItem info={info} />
       <ContentItem key={"field"} name={"field"} value={info.field} />
       <ContentItem key={"label"} name={"label"} value={info.label} />
       <ConfidenceItem confidence={info.confidence} />
@@ -139,6 +140,7 @@ const MaskInfo = ({ info }) => {
   const targetValue = useTarget(info.field, info.target);
   return (
     <ContentBlock style={{ borderColor: info.color }}>
+      <SelectedItem info={info} />
       <ContentItem key={"field"} name={"field"} value={info.field} />
       <ContentItem key={"target-value"} name={"label"} value={targetValue} />
     </ContentBlock>
@@ -171,9 +173,18 @@ const AttrInfo = ({ attrs }) => {
   );
 };
 
+const SelectedItem = ({ info }) => {
+  const selectedObjects = useRecoilValue(selectors.selectedObjectIds);
+  if (selectedObjects.has(info.id)) {
+    return <ContentItem name={"selected"} value={"True"} />;
+  }
+  return null;
+};
+
 const DetectionInfo = ({ info }) => {
   return (
     <ContentBlock style={{ borderColor: info.color }}>
+      <SelectedItem info={info} />
       <ContentItem key={"field"} name={"field"} value={info.field} />
       <ContentItem key={"label"} name={"label"} value={info.label} />
       <ConfidenceItem confidence={info.confidence} />
@@ -185,6 +196,7 @@ const DetectionInfo = ({ info }) => {
 const KeypointInfo = ({ info }) => {
   return (
     <ContentBlock style={{ borderColor: info.color }}>
+      <SelectedItem info={info} />
       <ContentItem key={"field"} name={"field"} value={info.field} />
       <ContentItem key={"label"} name={"label"} value={info.label} />
       <ContentItem
@@ -201,6 +213,7 @@ const KeypointInfo = ({ info }) => {
 const PolylineInfo = ({ info }) => {
   return (
     <ContentBlock style={{ borderColor: info.color }}>
+      <SelectedItem info={info} />
       <ContentItem key={"field"} name={"field"} value={info.field} />
       <ContentItem key={"label"} name={"label"} value={info.label} />
       <ConfidenceItem confidence={info.confidence} />

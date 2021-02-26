@@ -819,3 +819,11 @@ export const tagSampleModalCounts = selector<{ [key: string]: number }>({
     }, {});
   },
 });
+
+export const selectedObjectIds = selector<Set<string>>({
+  key: "selectedObjectIds",
+  get: ({ get }) => {
+    const objs = get(atoms.selectedObjects);
+    return new Set(Object.keys(objs));
+  },
+});
