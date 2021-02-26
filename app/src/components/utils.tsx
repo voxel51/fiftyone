@@ -46,9 +46,7 @@ export const ModalWrapper = styled.div`
   background-color: ${({ theme }) => theme.overlay};
 `;
 
-export const ModalFooter = styled.footer`
-  display: flex;
-  flex-shrink: 0;
+export const ModalFooter = styled.div`
   border-top: 2px solid ${({ theme }) => theme.border};
   padding: 1em;
   background-color: ${({ theme }) => theme.backgroundLight};

@@ -44,17 +44,17 @@ const OptionContainer = styled.div`
   display: flex;
   justify-content: space-between;
   border-right: 1px solid #191c1f;
-  color: ${({ theme }) => theme.fontDark};
+  color: ${({ theme }) => theme.font};
   font-weight: bold;
   cursor: pointer;
   margin: 0.25rem 0;
 `;
 
-const Button = animated(styled.div`
+const ButtonDiv = animated(styled.div`
   cursor: pointer;
   margin-left: 0;
   margin-right: 0;
-  padding: 0.25rem;
+  padding: 0.25rem 0.5rem;
   border-radius: 3px;
   display: flex;
   margin: 0 0.25rem;
@@ -68,7 +68,7 @@ const OptionTextDiv = styled.div`
   flex-direction: column;
 `;
 
-const OptionText = ({ style, children }) => {
+export const OptionText = ({ style, children }) => {
   return (
     <OptionTextDiv style={style}>
       <span>{children}</span>
@@ -76,36 +76,58 @@ const OptionText = ({ style, children }) => {
   );
 };
 
-const RefreshButton = () => {
+export const Button = ({ onClick, text, children }) => {
   const theme = useTheme();
-  const [colorSeed, setColorSeed] = useRecoilState(atoms.colorSeed);
   const [hover, setHover] = useState(false);
   const props = useSpring({
-    backgroundColor: hover ? theme.backgroundLight : theme.background,
+    backgroundColor: hover ? theme.brand : theme.background,
     config: {
       duration: 200,
     },
   });
   return (
-    <Button
+    <ButtonDiv
       style={{ ...props, userSelect: "none" }}
-      onClick={() => {
-        setColorSeed(colorSeed + 1);
-      }}
+      onClick={onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
-      <OptionText>Refresh colors</OptionText>
+      <OptionText style={{ fontWeight: "bold" }}>{text}</OptionText>
+      {children}
+    </ButtonDiv>
+  );
+};
+
+export const RefreshButton = () => {
+  const [colorSeed, setColorSeed] = useRecoilState(atoms.colorSeed);
+  return (
+    <Button onClick={() => setColorSeed(colorSeed + 1)} text={"Refresh colors"}>
       <Autorenew style={{ marginTop: 3, height: "1.5rem" }} />
     </Button>
+  );
+};
+
+export const ColorByLabel = ({ style }) => {
+  const [colorByLabel, setColorByLabel] = useRecoilState(atoms.colorByLabel);
+  const theme = useTheme();
+  return (
+    <OptionContainer
+      style={style}
+      onClick={() => setColorByLabel(!colorByLabel)}
+    >
+      <OptionText>Color by value</OptionText>
+      <Checkbox
+        style={{ color: theme.brand, padding: "0 0.25rem" }}
+        checked={colorByLabel}
+      />
+    </OptionContainer>
   );
 };
 
 const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
   const totalCount = useRecoilValue(selectors.totalCount);
   const filteredCount = useRecoilValue(selectors.filteredCount);
-  const [colorByLabel, setColorByLabel] = useRecoilState(atoms.colorByLabel);
-  const theme = useTheme();
+
   let countStr = null;
   if (
     typeof filteredCount === "number" &&
@@ -126,13 +148,7 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
       />
       <SamplesHeader>
         <OptionsContainer>
-          <OptionContainer onClick={() => setColorByLabel(!colorByLabel)}>
-            <OptionText>Color by value</OptionText>
-            <Checkbox
-              style={{ color: theme.brand, padding: "0 0.25rem" }}
-              checked={colorByLabel}
-            />
-          </OptionContainer>
+          <ColorByLabel />
           <OptionContainer>
             <RefreshButton />
           </OptionContainer>

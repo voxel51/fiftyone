@@ -8,7 +8,7 @@ import FieldsSidebar from "./FieldsSidebar";
 import JSONView from "./JSONView";
 import Player51 from "./Player51";
 import SelectObjectsMenu from "./SelectObjectsMenu";
-import { Button, ModalFooter } from "./utils";
+import { ModalFooter } from "./utils";
 import * as selectors from "../recoil/selectors";
 import * as atoms from "../recoil/atoms";
 import * as labelAtoms from "./Filters/utils";
@@ -21,8 +21,9 @@ import {
   useResizeHandler,
   useVideoData,
 } from "../utils/hooks";
-import { formatMetadata, stringify } from "../utils/labels";
+import { formatMetadata } from "../utils/labels";
 import { useToggleSelectionObject } from "../utils/selection";
+import { Button, ColorByLabel, RefreshButton } from "./ImageContainerHeader";
 
 const Container = styled.div`
   position: relative;
@@ -134,10 +135,6 @@ const Container = styled.div`
     .sidebar-content::-webkit-scrollbar-thumb {
       width: 0px;
       display: none;
-    }
-
-    ${ModalFooter} {
-      align-items: flex-start;
     }
   }
 
@@ -434,10 +431,21 @@ const SampleModal = (
               style={{ position: "absolute", top: 0, right: 0 }}
             />
           </div>
-          <ModalFooter>
-            <Button onClick={() => setShowJSON(!showJSON)}>
-              {showJSON ? "Hide" : "Show"} JSON
-            </Button>
+          <ModalFooter style={{ display: "block" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                width: "100%",
+              }}
+            >
+              <Button
+                onClick={() => setShowJSON(!showJSON)}
+                text={`${showJSON ? "Hide" : "Show"} JSON`}
+              />
+              <RefreshButton />
+            </div>
+            <ColorByLabel style={{ borderWidth: 0, marginTop: "1rem" }} />
           </ModalFooter>
         </div>
       </Container>
