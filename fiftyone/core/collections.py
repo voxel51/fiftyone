@@ -530,14 +530,20 @@ class SampleCollection(object):
         tags = [_remove_tag(t) for t in tags]
         self.set_values("tags", tags)
 
-    def tag_objects(self, label_field, tag):
-        """Adds the tag to all objects in the specified label field of this
+    def tag_objects(self, tag, label_fields=None):
+        """Adds the tag to all objects in the specified label field(s) of this
         collection, if necessary.
 
         Args:
-            label_field: a :class:`fiftyone.core.labels.Label` field name
             tag: a tag
+            label_fields (None): an optional name or iterable of names of
+                :class:`fiftyone.core.labels.Label` fields. By default, all
+                label fields are used
         """
+        if label_fields is None:
+            label_fields = self._get_label_fields()
+        elif etau.is_str(label_fields):
+            label_fields = [label_fields]
 
         def _add_tag(tags):
             if not tags:
@@ -548,22 +554,29 @@ class SampleCollection(object):
 
             return tags + [tag]
 
-        _, tags_path = self._get_label_field_path(label_field, "tags")
+        for label_field in label_fields:
+            _, tags_path = self._get_label_field_path(label_field, "tags")
+            tags = self.values(tags_path)
+            tags = [
+                [_add_tag(t) for t in _tags] if _tags else _tags
+                for _tags in tags
+            ]
+            self.set_values(tags_path, tags)
 
-        tags = self.values(tags_path)
-        tags = [
-            [_add_tag(t) for t in _tags] if _tags else _tags for _tags in tags
-        ]
-        self.set_values(tags_path, tags)
-
-    def untag_objects(self, label_field, tag):
-        """Removes the given tag from all objects in the specified label field
-        of this collection, if necessary.
+    def untag_objects(self, tag, label_fields=None):
+        """Removes the tag from all objects in the specified label field(s) of
+        this collection, if necessary.
 
         Args:
-            label_field: a :class:`fiftyone.core.labels.Label` field name
             tag: a tag
+            label_fields (None): an optional name or iterable of names of
+                :class:`fiftyone.core.labels.Label` fields. By default, all
+                label fields are used
         """
+        if label_fields is None:
+            label_fields = self._get_label_fields()
+        elif etau.is_str(label_fields):
+            label_fields = [label_fields]
 
         def _remove_tag(tags):
             if not tags:
@@ -571,14 +584,14 @@ class SampleCollection(object):
 
             return [t for t in tags if t != tag]
 
-        _, tags_path = self._get_label_field_path(label_field, "tags")
-
-        tags = self.values(tags_path)
-        tags = [
-            [_remove_tag(t) for t in _tags] if _tags else _tags
-            for _tags in tags
-        ]
-        self.set_values(tags_path, tags)
+        for label_field in label_fields:
+            _, tags_path = self._get_label_field_path(label_field, "tags")
+            tags = self.values(tags_path)
+            tags = [
+                [_remove_tag(t) for t in _tags] if _tags else _tags
+                for _tags in tags
+            ]
+            self.set_values(tags_path, tags)
 
     def set_values(self, field_name, values):
         """Sets the field or embedded field on each sample or frame in the
@@ -4027,6 +4040,13 @@ class SampleCollection(object):
             label_type_or_types = (label_type_or_types,)
 
         return any(issubclass(label_type, t) for t in label_type_or_types)
+
+    def _get_label_fields(self):
+        return list(
+            self.get_field_schema(
+                ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+            ).keys()
+        )
 
     def _get_label_field_type(self, field_name):
         field_name, is_frame_field = self._handle_frame_field(field_name)
