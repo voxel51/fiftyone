@@ -47,39 +47,46 @@ const OptionContainer = styled.div`
   color: ${({ theme }) => theme.fontDark};
   font-weight: bold;
   cursor: pointer;
+  margin: 0.25rem 0;
 `;
 
 const Button = animated(styled.div`
   cursor: pointer;
-  width: 100%;
-  margin-top: 3px;
   margin-left: 0;
   margin-right: 0;
-  padding: 0 0.2em;
-  border-radius: 2px;
+  padding: 0.25rem;
+  border-radius: 3px;
   display: flex;
-  height: 32px;
+  margin: 0 0.25rem;
 `);
 
-const ButtonText = styled.div`
-  padding-right: 4px;
-  padding-left: 2px;
-  white-space: nowrap;
-  overflow-x: hidden;
-  text-overflow: ellipsis;
-  font-weight: bold;
-  padding-top: 4px;
-  letter-spacing: 0.00938em;
-  line-height: 24px;
+const OptionTextDiv = styled.div`
+  padding-right: 0.25rem;
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  flex-direction: column;
 `;
+
+const OptionText = ({ style, children }) => {
+  return (
+    <OptionTextDiv style={style}>
+      <span>{children}</span>
+    </OptionTextDiv>
+  );
+};
 
 const RefreshButton = () => {
   const theme = useTheme();
   const [colorSeed, setColorSeed] = useRecoilState(atoms.colorSeed);
   const [clicked, setClicked] = useState(false);
+  const [hover, setHover] = useState(false);
   const props = useSpring({
-    backgroundColor: clicked ? theme.backgroundLight : theme.background,
-    color: clicked ? theme.font : theme.fontDark,
+    backgroundColor: clicked
+      ? theme.backgroundDark
+      : hover
+      ? theme.backgroundLight
+      : theme.background,
     onRest: () => clicked && setClicked(false),
     config: {
       duration: 250,
@@ -92,11 +99,11 @@ const RefreshButton = () => {
         setColorSeed(colorSeed + 1);
         setClicked(true);
       }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
     >
-      <div style={{ marginTop: 4 }}>
-        <Autorenew />
-      </div>
-      <ButtonText>Refresh field colors</ButtonText>
+      <OptionText>Refresh field colors</OptionText>
+      <Autorenew style={{ marginTop: 3, height: "1.5rem" }} />
     </Button>
   );
 };
@@ -127,28 +134,25 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
       <SamplesHeader>
         <OptionsContainer>
           <OptionContainer onClick={() => setColorByLabel(!colorByLabel)}>
-            <span
-              style={{
-                height: "2rem",
-                padding: "0.6rem 0",
-                pointerEvents: "none",
-              }}
-            >
-              Color by label
-            </span>
-            <Checkbox style={{ color: theme.brand }} checked={colorByLabel} />
+            <OptionText>Color by label</OptionText>
+            <Checkbox
+              style={{ color: theme.brand, padding: "0 0.25rem" }}
+              checked={colorByLabel}
+            />
           </OptionContainer>
-          <OptionContainer onClick={() => setColorByLabel(!colorByLabel)}>
+          <OptionContainer>
             <RefreshButton />
           </OptionContainer>
-          <div>
+          <OptionText style={{ marginLeft: "0.25rem" }}>
             <SelectionMenu />
-          </div>
+          </OptionText>
         </OptionsContainer>
         {countStr !== null ? (
-          <div className="total" style={{ paddingRight: "1rem" }}>
-            Viewing <strong>{countStr} samples</strong>
-          </div>
+          <OptionTextDiv>
+            <div className="total" style={{ paddingRight: "1rem" }}>
+              Viewing <strong>{countStr} samples</strong>
+            </div>
+          </OptionTextDiv>
         ) : null}
       </SamplesHeader>
     </Wrapper>
