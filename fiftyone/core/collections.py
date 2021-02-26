@@ -493,6 +493,93 @@ class SampleCollection(object):
                     % (field_name, ftype, field)
                 )
 
+    def add_sample_tag(self, tag):
+        """Adds the tag to all samples in this collection, if necessary.
+
+        Args:
+            tag: a tag
+        """
+
+        def _add_tag(tags):
+            if not tags:
+                return [tag]
+
+            if tag in tags:
+                return tags
+
+            return tags + [tag]
+
+        tags = self.values("tags")
+        tags = [_add_tag(t) for t in tags]
+        self.set_values("tags", tags)
+
+    def remove_sample_tag(self, tag):
+        """Removes the tag from all samples in this collection, if necessary.
+
+        Args:
+            tag: a tag
+        """
+
+        def _remove_tag(tags):
+            if not tags:
+                return tags
+
+            return [t for t in tags if t != tag]
+
+        tags = self.values("tags")
+        tags = [_remove_tag(t) for t in tags]
+        self.set_values("tags", tags)
+
+    def add_label_tag(self, label_field, tag):
+        """Adds the tag to all objects in the specified label field of this
+        collection, if necessary.
+
+        Args:
+            label_field: a :class:`fiftyone.core.labels.Label` field name
+            tag: a tag
+        """
+
+        def _add_tag(tags):
+            if not tags:
+                return [tag]
+
+            if tag in tags:
+                return tags
+
+            return tags + [tag]
+
+        _, tags_path = self._get_label_field_path(label_field, "tags")
+
+        tags = self.values(tags_path)
+        tags = [
+            [_add_tag(t) for t in _tags] if _tags else _tags for _tags in tags
+        ]
+        self.set_values(tags_path, tags)
+
+    def remove_label_tag(self, label_field, tag):
+        """Removes the given tag from all objects in the specified label field
+        of this collection, if necessary.
+
+        Args:
+            label_field: a :class:`fiftyone.core.labels.Label` field name
+            tag: a tag
+        """
+
+        def _remove_tag(tags):
+            if not tags:
+                return tags
+
+            return [t for t in tags if t != tag]
+
+        _, tags_path = self._get_label_field_path(label_field, "tags")
+
+        tags = self.values(tags_path)
+        tags = [
+            [_remove_tag(t) for t in _tags] if _tags else _tags
+            for _tags in tags
+        ]
+        self.set_values(tags_path, tags)
+
     def set_values(self, field_name, values):
         """Sets the field or embedded field on each sample or frame in the
         collection to the given values.
@@ -3966,6 +4053,15 @@ class SampleCollection(object):
             )
 
         return field.document_type
+
+    def _get_label_field_path(self, field_name, subfield):
+        label_type = self._get_label_field_type(field_name)
+
+        if issubclass(label_type, fol._LABEL_LIST_FIELDS):
+            field_name += "." + label_type._LABEL_LIST_FIELD
+
+        field_path = field_name + "." + subfield
+        return label_type, field_path
 
     def _is_array_field(self, field_name):
         return _is_array_field(self, field_name)
