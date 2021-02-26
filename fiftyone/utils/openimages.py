@@ -465,7 +465,7 @@ def _load_open_images_split(
             )
             sample["relationships"] = relationships
 
-        sample["oi_id"] = image_id
+        sample["open_images_id"] = image_id
         samples.append(sample)
 
     print("Adding samples to dataset")
