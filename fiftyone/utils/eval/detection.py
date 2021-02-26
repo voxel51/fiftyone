@@ -148,7 +148,7 @@ def evaluate_detections(
     results = eval_method.generate_results(
         samples, matches, eval_key=eval_key, classes=classes, missing=missing,
     )
-    eval_method.save_results(samples, eval_key, results)
+    eval_method.save_run_results(samples, eval_key, results)
 
     return results
 
@@ -302,16 +302,16 @@ class DetectionResults(ClassificationResults):
     def _from_dict(cls, d, **kwargs):
         matches = list(
             zip(
-                etas.deserialize_numpy_array(d["ytrue"]),
-                etas.deserialize_numpy_array(d["ypred"]),
-                etas.deserialize_numpy_array(d["ious"]),
-                etas.deserialize_numpy_array(d["confs"]),
+                etas.deserialize_numpy_array(d["ytrue"], allow_pickle=True),
+                etas.deserialize_numpy_array(d["ypred"], allow_pickle=True),
+                etas.deserialize_numpy_array(d["ious"], allow_pickle=True),
+                etas.deserialize_numpy_array(d["confs"], allow_pickle=True),
             )
         )
 
         classes = d.get("classes", None)
         if classes is not None:
-            classes = etas.deserialize_numpy_array(classes)
+            classes = etas.deserialize_numpy_array(classes, allow_pickle=True)
 
         missing = d.get("missing", None)
 

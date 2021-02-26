@@ -356,9 +356,15 @@ class COCODetectionResults(DetectionResults):
     def _from_dict(cls, d, **kwargs):
         return super()._from_dict(
             d,
-            precision=etas.deserialize_numpy_array(d["precision"]),
-            recall=etas.deserialize_numpy_array(d["recall"]),
-            iou_threshs=etas.deserialize_numpy_array(d["iou_threshs"]),
+            precision=etas.deserialize_numpy_array(
+                d["precision"], allow_pickle=True
+            ),
+            recall=etas.deserialize_numpy_array(
+                d["recall"], allow_pickle=True
+            ),
+            iou_threshs=etas.deserialize_numpy_array(
+                d["iou_threshs"], allow_pickle=True
+            ),
             **kwargs,
         )
 

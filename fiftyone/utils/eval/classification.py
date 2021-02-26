@@ -81,7 +81,7 @@ def evaluate_classifications(
     results = eval_method.evaluate_samples(
         samples, eval_key=eval_key, classes=classes, missing=missing,
     )
-    eval_method.save_results(samples, eval_key, results)
+    eval_method.save_run_esults(samples, eval_key, results)
 
     return results
 
@@ -494,8 +494,8 @@ class ClassificationResults(foe.EvaluationResults):
         self.ytrue = np.asarray(ytrue)
         self.ypred = np.asarray(ypred)
         self.confs = np.asarray(confs) if confs is not None else None
-        self.weights = np.asarray(weights) if confs is not None else None
-        self.classes = np.asaray(classes)
+        self.weights = np.asarray(weights) if weights is not None else None
+        self.classes = np.asarray(classes)
         self.missing = missing
 
     def _get_labels(self, classes):
@@ -665,20 +665,20 @@ class ClassificationResults(foe.EvaluationResults):
 
     @classmethod
     def _from_dict(cls, d, **kwargs):
-        ytrue = etas.deserialize_numpy_array(d["ytrue"])
-        ypred = etas.deserialize_numpy_array(d["ypred"])
+        ytrue = etas.deserialize_numpy_array(d["ytrue"], allow_pickle=True)
+        ypred = etas.deserialize_numpy_array(d["ypred"], allow_pickle=True)
 
         confs = d.get("confs", None)
         if confs is not None:
-            confs = etas.deserialize_numpy_array(confs)
+            confs = etas.deserialize_numpy_array(confs, allow_pickle=True)
 
         weights = d.get("weights", None)
         if weights is not None:
-            weights = etas.deserialize_numpy_array(weights)
+            weights = etas.deserialize_numpy_array(weights, allow_pickle=True)
 
         classes = d.get("classes", None)
         if classes is not None:
-            classes = etas.deserialize_numpy_array(classes)
+            classes = etas.deserialize_numpy_array(classes, allow_pickle=True)
 
         missing = d.get("missing", None)
 

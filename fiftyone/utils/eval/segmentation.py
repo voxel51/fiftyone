@@ -87,7 +87,7 @@ def evaluate_segmentations(
     results = eval_method.evaluate_samples(
         samples, eval_key=eval_key, mask_index=mask_index
     )
-    eval_method.save_results(samples, eval_key, results)
+    eval_method.save_run_results(samples, eval_key, results)
 
     return results
 
@@ -305,8 +305,10 @@ class SegmentationResults(ClassificationResults):
     @classmethod
     def _from_dict(cls, d, **kwargs):
         return cls(
-            etas.deserialize_numpy_array(d["pixel_confusion_matrix"]),
-            etas.deserialize_numpy_array(d["classes"]),
+            etas.deserialize_numpy_array(
+                d["pixel_confusion_matrix"], allow_pickle=True
+            ),
+            etas.deserialize_numpy_array(d["classes"], allow_pickle=True),
             missing=d.get("missing", None),
             **kwargs,
         )
