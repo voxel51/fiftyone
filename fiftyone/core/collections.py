@@ -2546,7 +2546,6 @@ class SampleCollection(object):
 
             view = dataset.select_objects(ids=ids)
 
-            print(view)
             print(view.count("ground_truth.detections"))
             print(view.count("predictions.detections"))
 
@@ -2570,7 +2569,6 @@ class SampleCollection(object):
             # Retrieve the objects via their tag
             view = dataset.select_objects(tags=["test"])
 
-            print(view)
             print(view.count("ground_truth.detections"))
             print(view.count("predictions.detections"))
 

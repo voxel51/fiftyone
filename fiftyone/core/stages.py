@@ -2547,7 +2547,6 @@ class SelectObjects(ViewStage):
         stage = fo.SelectObjects(ids=ids)
         view = dataset.add_stage(stage)
 
-        print(view)
         print(view.count("ground_truth.detections"))
         print(view.count("predictions.detections"))
 
@@ -2572,7 +2571,6 @@ class SelectObjects(ViewStage):
         stage = fo.SelectObjects(tags=["test"])
         view = dataset.add_stage(stage)
 
-        print(view)
         print(view.count("ground_truth.detections"))
         print(view.count("predictions.detections"))
 
