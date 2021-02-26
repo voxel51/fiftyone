@@ -493,7 +493,7 @@ class SampleCollection(object):
                     % (field_name, ftype, field)
                 )
 
-    def add_sample_tag(self, tag):
+    def tag_samples(self, tag):
         """Adds the tag to all samples in this collection, if necessary.
 
         Args:
@@ -513,7 +513,7 @@ class SampleCollection(object):
         tags = [_add_tag(t) for t in tags]
         self.set_values("tags", tags)
 
-    def remove_sample_tag(self, tag):
+    def untag_samples(self, tag):
         """Removes the tag from all samples in this collection, if necessary.
 
         Args:
@@ -530,7 +530,7 @@ class SampleCollection(object):
         tags = [_remove_tag(t) for t in tags]
         self.set_values("tags", tags)
 
-    def add_label_tag(self, label_field, tag):
+    def tag_objects(self, label_field, tag):
         """Adds the tag to all objects in the specified label field of this
         collection, if necessary.
 
@@ -556,7 +556,7 @@ class SampleCollection(object):
         ]
         self.set_values(tags_path, tags)
 
-    def remove_label_tag(self, label_field, tag):
+    def untag_objects(self, label_field, tag):
         """Removes the given tag from all objects in the specified label field
         of this collection, if necessary.
 
