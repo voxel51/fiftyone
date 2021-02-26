@@ -2489,26 +2489,33 @@ class SampleCollection(object):
         return self._add_view_stage(fos.SelectFields(field_names))
 
     @view_stage
-    def select_objects(self, objects):
-        """Selects only the specified objects from the collection.
+    def select_objects(self, objects=None, ids=None, tags=None, fields=None):
+        """Selects only the specified objects from a collection.
 
         The returned view will omit samples, sample fields, and individual
-        objects that do not appear in the provided ``objects`` argument, which
-        should have the following format::
+        objects that do not match the specified selection criteria.
 
-            [
-                {
-                    "sample_id": "5f8d254a27ad06815ab89df4",
-                    "field": "ground_truth",
-                    "object_id": "5f8d254a27ad06815ab89df3",
-                },
-                {
-                    "sample_id": "5f8d255e27ad06815ab93bf8",
-                    "field": "ground_truth",
-                    "object_id": "5f8d255e27ad06815ab93bf6",
-                },
-                ...
-            ]
+        You can perform a selection via one of the following methods:
+
+        -   Provide the ``objects`` argument, which should have the following
+            format::
+
+                [
+                    {
+                        "sample_id": "5f8d254a27ad06815ab89df4",
+                        "field": "ground_truth",
+                        "object_id": "5f8d254a27ad06815ab89df3",
+                    },
+                    {
+                        "sample_id": "5f8d255e27ad06815ab93bf8",
+                        "field": "ground_truth",
+                        "object_id": "5f8d255e27ad06815ab93bf6",
+                    },
+                    ...
+                ]
+
+        -   Provide one or both of the ``ids`` and ``tags`` arguments, and
+            optionally the ``fields`` argument
 
         Examples::
 
@@ -2525,12 +2532,62 @@ class SampleCollection(object):
 
             # Select some objects in the App...
 
-            view = dataset.select_objects(session.selected_objects)
+            view = dataset.select_objects(objects=session.selected_objects)
+
+            #
+            # Only include objects with the specified IDs
+            #
+
+            # Grab some object IDs
+            ids = [
+                dataset.first().ground_truth.detections[0].id,
+                dataset.last().predictions.detections[0].id,
+            ]
+
+            view = dataset.select_objects(ids=ids)
+
+            print(view)
+            print(view.count("ground_truth.detections"))
+            print(view.count("predictions.detections"))
+
+            #
+            # Only include objects with the specified tags
+            #
+
+            # Grab some object IDs
+            ids = [
+                dataset.first().ground_truth.detections[0].id,
+                dataset.last().predictions.detections[0].id,
+            ]
+
+            # Give the objects a "test" tag
+            dataset = dataset.clone()  # create a copy since we're modifying data
+            dataset.select_objects(ids=ids).tag_objects("test")
+
+            print(dataset.count_values("ground_truth.detections.tags[]"))
+            print(dataset.count_values("predictions.detections.tags[]"))
+
+            # Retrieve the objects via their tag
+            view = dataset.select_objects(tags=["test"])
+
+            print(view)
+            print(view.count("ground_truth.detections"))
+            print(view.count("predictions.detections"))
+
+        Args:
+            objects (None): a list of dicts specifying the objects to select
+            ids (None): a list of IDs of the objects to select
+            tags (None): a list of tags of objects to select
+            fields (None): a list of fields from which to select objects
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.SelectObjects(objects))
+        return self._add_view_stage(
+            fos.SelectObjects(
+                objects=objects, ids=ids, tags=tags, fields=fields
+            )
+        )
 
     @view_stage
     def shuffle(self, seed=None):
