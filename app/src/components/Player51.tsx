@@ -93,7 +93,15 @@ const ContentName = styled.div`
   color: ${({ theme }) => theme.fontDark};
 `;
 
-const ContentItem = ({ name, value }) => {
+const ContentItem = ({
+  name,
+  value,
+  style,
+}: {
+  name: string;
+  value?: number | string;
+  style?: object;
+}) => {
   return (
     <ContentItemDiv>
       <ContentValue>
@@ -110,7 +118,7 @@ const ContentItem = ({ name, value }) => {
           }
         })()}
       </ContentValue>
-      <ContentName>{name}</ContentName>
+      <ContentName style={style}>{name}</ContentName>
     </ContentItemDiv>
   );
 };
@@ -176,7 +184,13 @@ const AttrInfo = ({ attrs }) => {
 const SelectedItem = ({ info }) => {
   const selectedObjects = useRecoilValue(selectors.selectedObjectIds);
   if (selectedObjects.has(info.id)) {
-    return <ContentItem name={"selected"} value={"True"} />;
+    return (
+      <ContentItem
+        name={"selected"}
+        value={"True"}
+        style={{ color: info.color }}
+      />
+    );
   }
   return null;
 };

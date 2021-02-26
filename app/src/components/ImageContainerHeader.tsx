@@ -1,11 +1,13 @@
 import React from "react";
 import styled from "styled-components";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
+import { Checkbox } from "@material-ui/core";
 
 import DropdownHandle from "./DropdownHandle";
 import SelectionMenu from "./SelectionMenu";
+import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
-import { count } from "console";
+import { useTheme } from "../utils/hooks";
 
 type Props = {
   showSidebar: boolean;
@@ -26,17 +28,36 @@ const Wrapper = styled.div`
 const SamplesHeader = styled.div`
   display: flex;
   justify-content: space-between;
-  flex-grow: 1;
   height: 45px;
   overflow-x: hidden;
   margin-left: 1rem;
   margin-right: -1rem;
   padding: 0.5rem 0;
+  flex-grow: 1;
+`;
+
+const OptionsContainer = styled.div`
+  display: flex;
+`;
+
+const OptionContainer = styled.div`
+  display: flex;
+  justify-content: space-between;
+  background: ${({ theme }) => theme.backgroundDark};
+  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
+  border: 1px solid #191c1f;
+  border-radius: 2px;
+  color: ${({ theme }) => theme.fontDark};
+  margin-top: 0.25rem;
+  font-weight: bold;
+  cursor: pointer;
 `;
 
 const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
   const totalCount = useRecoilValue(selectors.totalCount);
   const filteredCount = useRecoilValue(selectors.filteredCount);
+  const [colorByLabel, setColorByLabel] = useRecoilState(atoms.colorByLabel);
+  const theme = useTheme();
   let countStr = null;
   if (
     typeof filteredCount === "number" &&
@@ -56,7 +77,15 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
         style={{ width: 240 }}
       />
       <SamplesHeader>
-        <SelectionMenu />
+        <OptionsContainer>
+          <SelectionMenu />
+          <OptionContainer onClick={() => setColorByLabel(!colorByLabel)}>
+            <span style={{ height: "2rem", padding: "0.5rem" }}>
+              Color by label
+            </span>
+            <Checkbox style={{ color: theme.brand }} checked={colorByLabel} />
+          </OptionContainer>
+        </OptionsContainer>
         {countStr !== null ? (
           <div className="total" style={{ paddingRight: "1rem" }}>
             Viewing <strong>{countStr} samples</strong>
