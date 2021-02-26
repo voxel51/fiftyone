@@ -345,6 +345,7 @@ const UnsupportedCell = ({ modal }: UnsupportedCellProps) => {
         hideCheckbox: true,
         selected: false,
       }))}
+      title={"Currently unsupported"}
       modal={modal}
     />
   ) : null;
