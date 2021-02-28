@@ -151,8 +151,8 @@ class _HasAttributes(Label):
 
 
 class _HasID(Label):
-    """Mixin for :class:`Label` classes that expose an ``id`` property that
-    contains a unique identifier for the label.
+    """Mixin for :class:`Label` classes that expose a UUID via an ``id``
+    property, as well as a ``tags`` attribute.
     """
 
     meta = {"allow_inheritance": True}
@@ -160,6 +160,7 @@ class _HasID(Label):
     _id = fof.ObjectIdField(
         required=True, default=ObjectId, unique=True, primary_key=True
     )
+    tags = fof.ListField(fof.StringField())
 
     @property
     def id(self):
