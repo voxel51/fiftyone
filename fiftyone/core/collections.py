@@ -13,6 +13,7 @@ import random
 import string
 
 from deprecated import deprecated
+from pymongo import UpdateOne
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -509,9 +510,7 @@ class SampleCollection(object):
 
             return tags + [tag]
 
-        tags = self.values("tags")
-        tags = [_add_tag(t) for t in tags]
-        self.set_values("tags", tags)
+        self._edit_sample_tags(_add_tag)
 
     def untag_samples(self, tag):
         """Removes the tag from all samples in this collection, if necessary.
@@ -526,8 +525,11 @@ class SampleCollection(object):
 
             return [t for t in tags if t != tag]
 
+        self._edit_sample_tags(_remove_tag)
+
+    def _edit_sample_tags(self, edit_fcn):
         tags = self.values("tags")
-        tags = [_remove_tag(t) for t in tags]
+        tags = _transform_values(tags, edit_fcn)
         self.set_values("tags", tags)
 
     def tag_objects(self, tag, label_fields=None):
@@ -540,10 +542,6 @@ class SampleCollection(object):
                 :class:`fiftyone.core.labels.Label` fields. By default, all
                 label fields are used
         """
-        if label_fields is None:
-            label_fields = self._get_label_fields()
-        elif etau.is_str(label_fields):
-            label_fields = [label_fields]
 
         def _add_tag(tags):
             if not tags:
@@ -554,14 +552,7 @@ class SampleCollection(object):
 
             return tags + [tag]
 
-        for label_field in label_fields:
-            _, tags_path = self._get_label_field_path(label_field, "tags")
-            tags = self.values(tags_path)
-            tags = [
-                [_add_tag(t) for t in _tags] if _tags else _tags
-                for _tags in tags
-            ]
-            self.set_values(tags_path, tags)
+        self._edit_object_tags(_add_tag, label_fields=label_fields)
 
     def untag_objects(self, tag, label_fields=None):
         """Removes the tag from all objects in the specified label field(s) of
@@ -573,10 +564,6 @@ class SampleCollection(object):
                 :class:`fiftyone.core.labels.Label` fields. By default, all
                 label fields are used
         """
-        if label_fields is None:
-            label_fields = self._get_label_fields()
-        elif etau.is_str(label_fields):
-            label_fields = [label_fields]
 
         def _remove_tag(tags):
             if not tags:
@@ -584,13 +571,20 @@ class SampleCollection(object):
 
             return [t for t in tags if t != tag]
 
+        self._edit_object_tags(_remove_tag, label_fields=label_fields)
+
+    def _edit_object_tags(self, edit_fcn, label_fields=None):
+        if label_fields is None:
+            label_fields = self._get_label_fields()
+        elif etau.is_str(label_fields):
+            label_fields = [label_fields]
+
         for label_field in label_fields:
             _, tags_path = self._get_label_field_path(label_field, "tags")
+            level = 3 if self._is_frame_field(tags_path) else 2
+
             tags = self.values(tags_path)
-            tags = [
-                [_remove_tag(t) for t in _tags] if _tags else _tags
-                for _tags in tags
-            ]
+            tags = _transform_values(tags, edit_fcn, level=level)
             self.set_values(tags_path, tags)
 
     def set_values(self, field_name, values):
@@ -663,14 +657,22 @@ class SampleCollection(object):
                 % (root, self.name)
             )
 
+        if len(list_fields) > 1:
+            raise ValueError(
+                "At most one array field can be unwound when setting values"
+            )
+
         sample_ids = self._get_sample_ids()
 
-        updates = [
-            _make_set_values_pipeline(field_name, value, list_fields)
-            for value in values
-        ]
+        if list_fields:
+            list_field = list_fields[0]
+            elem_ids = self.values(list_field + "._id")
 
-        self._dataset._bulk_update(sample_ids, updates)
+            self._set_list_values_by_id(
+                field_name, sample_ids, elem_ids, values, list_field
+            )
+        else:
+            self._set_values(field_name, sample_ids, values)
 
     def _set_frame_values(self, field_name, values, list_fields):
         root = field_name.split(".", 1)[0]
@@ -680,19 +682,81 @@ class SampleCollection(object):
                 % (root, self.name)
             )
 
-        frame_ids = self._get_frame_ids()
+        if len(list_fields) > 1:
+            raise ValueError(
+                "At most one array field can be unwound when setting values"
+            )
 
+        frame_ids = self._get_frame_ids()
         frame_ids = list(itertools.chain.from_iterable(frame_ids))
+
         values = list(itertools.chain.from_iterable(values))
 
-        _make_set_pipeline = None
+        if list_fields:
+            list_field = list_fields[0]
+            elem_ids = self.values(self._FRAMES_PREFIX + list_field + "._id")
+            elem_ids = list(itertools.chain.from_iterable(elem_ids))
 
-        updates = [
-            _make_set_values_pipeline(field_name, value, list_fields)
-            for value in values
+            self._set_list_values_by_id(
+                field_name,
+                frame_ids,
+                elem_ids,
+                values,
+                list_field,
+                frames=True,
+            )
+        else:
+            self._set_values(field_name, frame_ids, values, frames=True)
+
+    def _set_values(self, field_name, ids, values, frames=False):
+        ops = [
+            UpdateOne({"_id": _id}, {"$set": {field_name: value}})
+            for _id, value in zip(ids, values)
         ]
+        self._dataset._bulk_write(ops, frames=frames)
 
-        self._dataset._bulk_update(frame_ids, updates, frames=True)
+    def _set_list_values_by_id(
+        self, field_name, ids, elem_ids, values, list_field, frames=False
+    ):
+        root = list_field
+        leaf = field_name[len(root) + 1 :]
+
+        ops = []
+        for _id, _elem_ids, _values in zip(ids, elem_ids, values):
+            for _elem_id, value in zip(_elem_ids, _values):
+                if _elem_id is None:
+                    raise ValueError(
+                        "Can only set values of array documents with IDs"
+                    )
+
+                update = {"$set": {root + ".$." + leaf: value}}
+                op = UpdateOne({"_id": _id, root + "._id": _elem_id}, update)
+                ops.append(op)
+
+        self._dataset._bulk_write(ops, frames=frames)
+
+    def _set_all_list_values(
+        self, field_name, ids, values, list_field, frames=False
+    ):
+        # If `self` is a view, this method will only work if the array's
+        # elements have not been filtered or reordered, since it updates the
+        # entire field on the dataset with one `$set`. Therefore, we do not use
+        # this approach currently. However, it does have the advantage that it
+        # works if the array contains items that do not have `_id`s, and it
+        # might (untested) be faster than `_set_list_values_by_id()`
+
+        root = list_field
+        leaf = field_name[len(root) + 1 :]
+
+        ops = []
+        for _id, _values in zip(ids, values):
+            expr = F.zip(F(root), _values).map(
+                F()[0].set_field(leaf, F()[1], relative=False)
+            )
+            update = [{"$set": {root: expr.to_mongo()}}]
+            ops.append(UpdateOne({"_id": _id}, update))
+
+        self._dataset._bulk_write(ops, frames=frames)
 
     def compute_metadata(
         self, overwrite=False, num_workers=None, skip_failures=True
@@ -4097,11 +4161,23 @@ class SampleCollection(object):
         return any(issubclass(label_type, t) for t in label_type_or_types)
 
     def _get_label_fields(self):
-        return list(
+        fields = list(
             self.get_field_schema(
                 ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
             ).keys()
         )
+
+        if self.media_type == fom.VIDEO:
+            fields.extend(
+                list(
+                    self.get_frame_field_schema(
+                        ftype=fof.EmbeddedDocumentField,
+                        embedded_doc_type=fol.Label,
+                    ).keys()
+                )
+            )
+
+        return fields
 
     def _get_label_field_type(self, field_name):
         field_name, is_frame_field = self._handle_frame_field(field_name)
@@ -4532,21 +4608,14 @@ def _is_field_type(field, field_path, types):
     return _is_field_type(field, field_path, types)
 
 
-def _make_set_values_pipeline(field_name, value, list_fields):
-    if not list_fields:
-        return [{"$set": {field_name: value}}]
+def _transform_values(values, fcn, level=1):
+    if level < 1 or not values:
+        return values
 
-    if len(list_fields) > 1:
-        raise ValueError(
-            "At most one array field can be unwound when setting values"
-        )
+    if level == 1:
+        return [fcn(v) for v in values]
 
-    root = list_fields[0]
-    leaf = field_name[len(root) + 1 :]
-    expr = F.zip(F(root), value).map(
-        F()[0].set_field(leaf, F()[1], relative=False)
-    )
-    return [{"$set": {root: expr.to_mongo()}}]
+    return [_transform_values(v, fcn, level - 1) for v in values]
 
 
 def _make_set_field_pipeline(sample_collection, field, expr, embedded_root):
