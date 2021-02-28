@@ -670,7 +670,9 @@ class ViewStageTests(unittest.TestCase):
         self.sample2["test_dets"] = fo.Detections(
             detections=[
                 fo.Detection(
-                    label="friend", confidence=0.99, bounding_box=[0, 0, 1, 1],
+                    label="friend",
+                    confidence=0.99,
+                    bounding_box=[0.01, 0.01, 0.99, 0.99],
                 ),
                 fo.Detection(
                     label="tricam",
@@ -885,40 +887,45 @@ class ViewStageTests(unittest.TestCase):
         view = self.dataset[:1]
 
         tags = self.dataset.count_values("tags")
-        self.assertEqual(tags, {})
+        self.assertDictEqual(tags, {})
 
         view.tag_samples("test")
-        self.assertEqual(tags, {"test": 1})
+        tags = self.dataset.count_values("tags")
+        self.assertDictEqual(tags, {"test": 1})
 
         view.untag_samples("test")
-        self.assertEqual(tags, {})
+        tags = self.dataset.count_values("tags")
+        self.assertDictEqual(tags, {})
 
     def test_tag_objects(self):
         self._setUp_classification()
         self._setUp_detections()
 
         view = self.dataset.filter_labels("test_clf", F("confidence") > 0.95)
-        self.assertEqual(len(view), 1)
+        num_samples = len(view)
+        self.assertEqual(num_samples, 1)
 
         view.tag_objects("test", "test_clf")
         tags = self.dataset.count_values("test_clf.tags[]")
-        self.assertEqual(tags, {"test": 1})
+        self.assertDictEqual(tags, {"test": 1})
 
         view.untag_objects("test", "test_clf")
         tags = self.dataset.count_values("test_clf.tags[]")
-        self.assertEqual(tags, {})
+        self.assertDictEqual(tags, {})
 
         view = self.dataset.filter_labels("test_dets", F("confidence") > 0.7)
-        self.assertEqual(len(view), 2)
-        self.assertEqual(view.count("test_dets.detections"), 2)
+        num_samples = len(view)
+        num_objects = view.count("test_dets.detections")
+        self.assertEqual(num_samples, 2)
+        self.assertEqual(num_objects, 3)
 
         view.tag_objects("test", "test_dets")
-        tags = self.dataset.count_values("test_dets.tags[]")
-        self.assertEqual(tags, {"test": 2})
+        tags = self.dataset.count_values("test_dets.detections.tags[]")
+        self.assertDictEqual(tags, {"test": 3})
 
         view.untag_objects("test", "test_dets")
-        tags = self.dataset.count_values("test_dets.tags[]")
-        self.assertEqual(tags, {})
+        tags = self.dataset.count_values("test_dets.detections.tags[]")
+        self.assertDictEqual(tags, {})
 
     def test_match(self):
         self.sample1["value"] = "value"

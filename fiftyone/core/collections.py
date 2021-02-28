@@ -580,8 +580,13 @@ class SampleCollection(object):
             label_fields = [label_fields]
 
         for label_field in label_fields:
-            _, tags_path = self._get_label_field_path(label_field, "tags")
-            level = 3 if self._is_frame_field(tags_path) else 2
+            label_type, tags_path = self._get_label_field_path(
+                label_field, "tags"
+            )
+
+            level = 1
+            level += issubclass(label_type, fol._LABEL_LIST_FIELDS)
+            level += self._is_frame_field(tags_path)
 
             tags = self.values(tags_path)
             tags = _transform_values(tags, edit_fcn, level=level)
