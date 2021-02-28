@@ -125,6 +125,53 @@ def test_set_values_frames():
     print(view.count_values(path_check))
 
 
+def test_tag_classification():
+    dataset = foz.load_zoo_dataset("imagenet-sample").clone()
+
+    view = dataset.take(100)
+
+    view.tag_objects("test", "ground_truth")
+    print(dataset.count_values("ground_truth.tags[]"))
+
+    view.untag_objects("test", "ground_truth")
+    print(dataset.count_values("ground_truth.tags[]"))
+
+
+def test_tag_detections():
+    dataset = foz.load_zoo_dataset("quickstart").clone()
+
+    view = dataset.filter_labels("predictions", F("confidence") > 0.99)
+
+    print(dataset.count("predictions.detections"))
+    print(view.count("predictions.detections"))
+    print(dataset.count_values("predictions.detections.tags[]"))
+
+    view.tag_objects("test", "predictions")
+    print(dataset.count_values("predictions.detections.tags[]"))
+
+    view.untag_objects("test", "predictions")
+    print(dataset.count_values("predictions.detections.tags[]"))
+
+
+def test_tag_detections_frames():
+    dataset = foz.load_zoo_dataset("quickstart-video").clone()
+    dataset.rename_frame_field("ground_truth_detections", "predictions")
+
+    view = dataset.filter_labels("frames.predictions", F("index") == 1)
+
+    print(dataset.count("frames.predictions.detections"))
+    print(view.count("frames.predictions.detections"))
+    print(dataset.count_values("frames.predictions.detections.tags[]"))
+
+    view.tag_objects("test", "frames.predictions")
+    print(dataset.count("frames.predictions.detections"))
+    print(dataset.count_values("frames.predictions.detections.tags[]"))
+
+    view.untag_objects("test", "frames.predictions")
+    print(dataset.count("frames.predictions.detections"))
+    print(dataset.count_values("frames.predictions.detections.tags[]"))
+
+
 def _to_upper(values):
     if isinstance(values, list):
         return [_to_upper(v) for v in values]
