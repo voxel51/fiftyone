@@ -712,10 +712,10 @@ export const colorPool = selector({
   },
 });
 
-export const colorMap = selector({
+export const colorMap = selectorFamily<{ [key: string]: string }, boolean>({
   key: "colorMap",
-  get: ({ get }) => {
-    const colorByLabel = get(atoms.colorByLabel);
+  get: (modal) => ({ get }) => {
+    const colorByLabel = get(atoms.colorByLabel(modal));
     let pool = get(colorPool);
     pool = pool.length ? pool : [lightTheme.brand];
     const seed = get(atoms.colorSeed);

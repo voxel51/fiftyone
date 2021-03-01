@@ -124,13 +124,8 @@ export const viewCounter = atom({
   default: 0,
 });
 
-export const colorByLabel = atom({
+export const colorByLabel = atomFamily<boolean, boolean>({
   key: "colorByLabel",
-  default: false,
-});
-
-export const modalColorByLabel = atom({
-  key: "modalColorByLabel",
   default: false,
 });
 

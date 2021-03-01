@@ -129,7 +129,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
         get(stringField.excludeAtom(lPath))
       );
 
-      set(atoms.modalColorByLabel, get(atoms.colorByLabel));
+      set(atoms.colorByLabel(true), get(atoms.colorByLabel(false)));
     }
   },
 });
@@ -296,6 +296,14 @@ export const filteredLabelSampleModalCounts = selectorFamily<
     const labels = get(selectors.labelNames(dimension));
     const types = get(selectors.labelTypesMap);
     const sample = get(sampleModalFilter)(get(atoms.modal).sample || {});
+    const frameData = get(atoms.sampleFrameData(sample._id));
+
+    if (dimension === "frame") {
+      labels.reduce((acc, path) => {
+        return acc;
+      }, {});
+    }
+
     return labels.reduce((acc, path) => {
       if (!(path in acc)) acc[path] = 0;
       acc[path] += sampleCountResolver(sample[path], types[path]);

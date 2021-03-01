@@ -108,7 +108,9 @@ export const RefreshButton = () => {
 };
 
 export const ColorByLabel = ({ style }) => {
-  const [colorByLabel, setColorByLabel] = useRecoilState(atoms.colorByLabel);
+  const [colorByLabel, setColorByLabel] = useRecoilState(
+    atoms.colorByLabel(false)
+  );
   const theme = useTheme();
   return (
     <OptionContainer

@@ -141,7 +141,7 @@ const TagsCell = ({ modal }: TagsCellProps) => {
 
   const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
   const count = useRecoilValue(countAtom);
-  const colorByLabel = useRecoilValue(atoms.colorByLabel);
+  const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
 
   return (
@@ -213,7 +213,7 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
 
   const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
   const count = useRecoilValue(countAtom);
-  const colorByLabel = useRecoilValue(atoms.colorByLabel);
+  const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
 
   return (
@@ -283,7 +283,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
 
   const subCount = subCountAtom ? useRecoilValue(subCountAtom) : null;
   const count = useRecoilValue(countAtom);
-  const colorByLabel = useRecoilValue(atoms.colorByLabel);
+  const colorByLabel = useRecoilValue(atoms.colorByLabel(modal));
   const theme = useTheme();
 
   return (
