@@ -2,7 +2,7 @@ import { atom, atomFamily } from "recoil";
 
 import { SelectedObjectMap } from "../utils/selection";
 
-export const colorSeed = atom<number>({
+export const colorSeed = atomFamily<number, boolean>({
   key: "colorSeed",
   default: 0,
 });

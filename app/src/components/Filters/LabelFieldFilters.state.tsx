@@ -130,6 +130,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
       );
 
       set(atoms.colorByLabel(true), get(atoms.colorByLabel(false)));
+      set(atoms.colorSeed(true), get(atoms.colorSeed(false)));
     }
   },
 });

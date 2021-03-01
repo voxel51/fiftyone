@@ -98,8 +98,10 @@ export const Button = ({ onClick, text, children }) => {
   );
 };
 
-export const RefreshButton = () => {
-  const [colorSeed, setColorSeed] = useRecoilState(atoms.colorSeed);
+export const RefreshButton = ({ modal }) => {
+  const [colorSeed, setColorSeed] = useRecoilState(
+    atoms.colorSeed(Boolean(modal))
+  );
   return (
     <Button onClick={() => setColorSeed(colorSeed + 1)} text={"Refresh colors"}>
       <Autorenew style={{ marginTop: 3, height: "1.5rem" }} />
@@ -150,9 +152,9 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
       />
       <SamplesHeader>
         <OptionsContainer>
-          <ColorByLabel />
+          <ColorByLabel modal={false} />
           <OptionContainer>
-            <RefreshButton />
+            <RefreshButton modal={false} />
           </OptionContainer>
           <OptionText style={{ marginLeft: "0.5rem" }}>
             <SelectionMenu />

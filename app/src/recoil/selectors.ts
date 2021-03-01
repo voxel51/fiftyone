@@ -718,7 +718,7 @@ export const colorMap = selectorFamily<{ [key: string]: string }, boolean>({
     const colorByLabel = get(atoms.colorByLabel(modal));
     let pool = get(colorPool);
     pool = pool.length ? pool : [lightTheme.brand];
-    const seed = get(atoms.colorSeed);
+    const seed = get(atoms.colorSeed(modal));
     if (colorByLabel) {
       let values = ["true", "false"];
       const stats = get(datasetStats);

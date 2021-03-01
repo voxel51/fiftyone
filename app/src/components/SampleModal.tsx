@@ -444,7 +444,7 @@ const SampleModal = (
                 onClick={() => setShowJSON(!showJSON)}
                 text={`${showJSON ? "Hide" : "Show"} JSON`}
               />
-              <RefreshButton />
+              <RefreshButton modal={true} />
             </div>
             <ColorByLabel
               style={{ borderWidth: 0, marginTop: "1rem" }}
