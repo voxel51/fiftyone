@@ -778,9 +778,10 @@ export const defaultTargets = selector({
 export const targets = selector({
   key: "targets",
   get: ({ get }) => {
-    const defaults = get(atoms.stateDescription).dataset?.default_targets || {};
+    const defaults =
+      get(atoms.stateDescription).dataset?.default_mask_targets || {};
     const labelTargets =
-      get(atoms.stateDescription).dataset?.label_targets || {};
+      get(atoms.stateDescription).dataset?.mask_targets || {};
     return {
       defaults,
       fields: labelTargets,
