@@ -115,8 +115,8 @@ class DatasetDocument(Document):
     sample_fields = moe.EmbeddedDocumentListField(
         document_type=SampleFieldDocument
     )
-    default_targets = TargetsField(null=True)
-    label_targets = LabelTargetsField(default=dict)
+    default_mask_targets = TargetsField(null=True)
+    mask_targets = LabelTargetsField(default=dict)
     frame_fields = moe.EmbeddedDocumentListField(
         document_type=SampleFieldDocument
     )

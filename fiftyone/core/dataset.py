@@ -288,23 +288,68 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self
 
     @property
-    def default_targets(self):
-        """Default targets..."""
-        return self._doc.default_targets
+    def default_mask_targets(self):
+        """Default mask targets which is a `dict` of integer keys mapping to
+        presentational `str`s (label) for
+        :class:`fiftyone.core.labels.Segmentation` fields when using the App.
 
-    @default_targets.setter
-    def default_targets(self, targets):
-        self._doc.default_targets = targets
+        Note::
+            `0` is the reserved `None` value
+
+        Example::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # create default mask targets
+            dataset.default_mask_targets = {
+                1: "cat",
+                2: "dog"
+            }
+
+            # edit default mask targets
+            dataset.default_mask_targets[3] = "other"
+            dataset.save()
+        """
+        return self._doc.default_mask_targets
+
+    @default_mask_targets.setter
+    def default_mask_targets(self, targets):
+        self._doc.default_mask_targets = targets
         self.save()
 
     @property
-    def label_targets(self):
-        """Label targets..."""
-        return self._doc.label_targets
+    def mark_targets(self):
+        """Named mask targets which is a `dict` whose keys match a
+        :class:`fiftyone.core.labels.Segmentation` field name and values are
+        `dict`s of integer keys mapping to presentational `str`s (label) for
+        segmentation masks.
 
-    @label_targets.setter
-    def label_targets(self, label_targets):
-        self._doc.label_targets = label_targets
+        Note::
+            `0` is the reserved `None` value
+
+        Example::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # create named mask targets
+            dataset.mask_targets = {
+                "ground_truth": { 1: "cat", 2: "dog" },
+                "predictions": { 1: "dog": 2: "cat" }
+            }
+
+            # edit named mask targets
+            dataset.mask_targets["ground_truth"][3] = "other"
+            dataset.save()
+        """
+        return self._doc.mask_targets
+
+    @mask_targets.setter
+    def mask_targets(self, mask_targets):
+        self._doc.mask_targets = mask_targets
         self.save()
 
     def add_label_targets(self, field_name, targets):
