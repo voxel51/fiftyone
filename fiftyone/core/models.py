@@ -529,7 +529,7 @@ def _embed_patches_data_loader(
     alpha,
 ):
     data_loader = _make_patch_data_loader(
-        samples, model, patches_field, force_square, alpha, num_workers,
+        samples, model, patches_field, force_square, alpha, num_workers
     )
 
     embeddings_dict = {}
