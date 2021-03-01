@@ -44,6 +44,8 @@ const InfoWrapper = styled.div`
 const TooltipDiv = animated(styled(ContentDiv)`
   position: absolute;
   margin-top: 0;
+  left: -1000;
+  top: -1000;
   z-index: 20000;
   pointer-events: none;
 `);
@@ -249,7 +251,11 @@ const OVERLAY_INFO = {
 
 const TooltipInfo = ({ player, moveRef }) => {
   const [display, setDisplay] = useState(false);
-  const [coords, setCoords] = useState({ top: 0, left: 0, bottom: "unset" });
+  const [coords, setCoords] = useState({
+    top: -1000,
+    left: -1000,
+    bottom: "unset",
+  });
   const position = display
     ? coords
     : { top: -1000, left: -1000, bottom: "unset" };
@@ -276,6 +282,7 @@ const TooltipInfo = ({ player, moveRef }) => {
     };
   });
 
+  let more;
   let limitedOverlays = overlays ? overlays : [];
   if (limitedOverlays.length > 3) {
     more = limitedOverlays.length - 3;
