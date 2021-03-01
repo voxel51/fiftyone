@@ -829,7 +829,7 @@ class Keypoints(ImageLabel, _HasLabelList):
         )
 
 
-class Segmentation(ImageLabel):
+class Segmentation(ImageLabel, _HasID):
     """A semantic segmentation mask for an image.
 
     Args:
