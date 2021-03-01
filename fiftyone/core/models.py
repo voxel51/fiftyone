@@ -109,7 +109,7 @@ def apply_model(
                 samples, model, label_field, confidence_thresh
             )
 
-        batch_size = _parse_batch_size(batch_size, model)
+        batch_size = _parse_batch_size(batch_size, model, use_data_loader)
 
         if use_data_loader:
             return _apply_image_model_data_loader(
@@ -192,12 +192,8 @@ def _make_data_loader(samples, model, batch_size, num_workers):
     if num_workers is None:
         num_workers = fout.recommend_num_workers()
 
-    image_paths = []
-    for sample in samples.select_fields():
-        image_paths.append(sample.filepath)
-
     dataset = fout.TorchImageDataset(
-        image_paths,
+        samples.values("filepath"),
         transform=model.transforms,
         use_numpy=use_numpy,
         force_rgb=True,
@@ -205,12 +201,13 @@ def _make_data_loader(samples, model, batch_size, num_workers):
 
     if model.ragged_batches:
         kwargs = dict(collate_fn=lambda batch: batch)  # return list
+    elif use_numpy:
+        kwargs = dict(collate_fn=lambda batch: np.stack(batch, axis=0))
     else:
         kwargs = {}
 
-    # @todo is this necessary?
-    # https://github.com/pytorch/pytorch/issues/3830
-    # collate_fn = lambda batch: np.stack(batch, axis=0)
+    if batch_size is None:
+        batch_size = 1
 
     return tud.DataLoader(
         dataset, batch_size=batch_size, num_workers=num_workers, **kwargs
@@ -286,7 +283,7 @@ def compute_embeddings(
         if samples.media_type == fom.VIDEO:
             return _compute_video_embeddings(samples, model, embeddings_field)
 
-        batch_size = _parse_batch_size(batch_size, model)
+        batch_size = _parse_batch_size(batch_size, model, use_data_loader)
 
         if use_data_loader:
             return _compute_image_embeddings_data_loader(
@@ -353,7 +350,6 @@ def _compute_image_embeddings_batch(
 def _compute_image_embeddings_data_loader(
     samples, model, embeddings_field, batch_size, num_workers
 ):
-    batch_size = _parse_batch_size(batch_size, model)
     data_loader = _make_data_loader(samples, model, batch_size, num_workers)
 
     if embeddings_field:
@@ -477,84 +473,75 @@ def compute_patch_embeddings(
     )
     fov.validate_collection_label_fields(samples, patches_field, allowed_types)
 
-    batch_size = _parse_batch_size(batch_size, model)
-
-    if use_data_loader:
-        return _embed_patches_data_loader(
-            samples,
-            model,
-            patches_field,
-            embeddings_field,
-            batch_size,
-            num_workers,
-            force_square,
-            alpha,
-        )
+    batch_size = _parse_batch_size(batch_size, model, use_data_loader)
 
     embeddings_dict = {}
 
-    with model:
-        with fou.ProgressBar() as pb:
-            for sample in pb(samples):
-                patches = _parse_patches(sample, patches_field)
+    with contextlib.ExitStack() as context:
+        if use_data_loader:
+            # pylint: disable=no-member
+            context.enter_context(fou.SetAttributes(model, preprocess=False))
 
-                img = etai.read(sample.filepath)
+        # pylint: disable=no-member
+        context.enter_context(model)
 
-                if batch_size is None:
-                    embeddings = _embed_patches_single(
-                        model, img, patches, force_square, alpha
-                    )
-                else:
-                    embeddings = _embed_patches_batch(
-                        model, img, patches, force_square, alpha, batch_size
-                    )
-
-                if embeddings_field:
-                    sample[embeddings_field] = embeddings
-                    sample.save()
-                else:
-                    embeddings_dict[sample.id] = embeddings
+        if use_data_loader:
+            _embed_patches_data_loader(
+                samples,
+                model,
+                patches_field,
+                embeddings_field,
+                embeddings_dict,
+                batch_size,
+                num_workers,
+                force_square,
+                alpha,
+            )
+        else:
+            _embed_patches(
+                samples,
+                model,
+                patches_field,
+                embeddings_field,
+                embeddings_dict,
+                batch_size,
+                force_square,
+                alpha,
+            )
 
     return embeddings_dict if not embeddings_field else None
 
 
-def _embed_patches_data_loader(
+def _embed_patches(
     samples,
     model,
     patches_field,
     embeddings_field,
+    embeddings_dict,
     batch_size,
-    num_workers,
     force_square,
     alpha,
 ):
-    data_loader = _make_patch_data_loader(
-        samples, model, patches_field, force_square, alpha, num_workers
-    )
+    with fou.ProgressBar() as pb:
+        for sample in pb(samples):
+            patches = _parse_patches(sample, patches_field)
 
-    embeddings_dict = {}
+            img = etai.read(sample.filepath)
 
-    with fou.ProgressBar(samples) as pb:
-        with fou.SetAttributes(model, preprocess=False):
-            with model:
-                for sample, patches in pb(zip(samples, data_loader)):
-                    if patches is None:
-                        continue
+            if batch_size is None:
+                embeddings = _embed_patches_single(
+                    model, img, patches, force_square, alpha
+                )
+            else:
+                embeddings = _embed_patches_batch(
+                    model, img, patches, force_square, alpha, batch_size
+                )
 
-                    embeddings = []
-                    for patches_batch in fou.iter_slices(patches, batch_size):
-                        embeddings_batch = model.embed_all(patches_batch)
-                        embeddings.append(embeddings_batch)
-
-                    embeddings = np.concatenate(embeddings)
-
-                    if embeddings_field:
-                        sample[embeddings_field] = embeddings
-                        sample.save()
-                    else:
-                        embeddings_dict[sample.id] = embeddings
-
-    return embeddings_dict if not embeddings_field else None
+            if embeddings_field:
+                sample[embeddings_field] = embeddings
+                sample.save()
+            else:
+                embeddings_dict[sample.id] = embeddings
 
 
 def _embed_patches_single(model, img, detections, force_square, alpha):
@@ -580,6 +567,37 @@ def _embed_patches_batch(
         embeddings.append(embeddings_batch)
 
     return np.concatenate(embeddings)
+
+
+def _embed_patches_data_loader(
+    samples,
+    model,
+    patches_field,
+    embeddings_field,
+    embeddings_dict,
+    batch_size,
+    num_workers,
+    force_square,
+    alpha,
+):
+    data_loader = _make_patch_data_loader(
+        samples, model, patches_field, force_square, alpha, num_workers
+    )
+
+    with fou.ProgressBar(samples) as pb:
+        for sample, patches in pb(zip(samples, data_loader)):
+            embeddings = []
+            for patches_batch in fou.iter_slices(patches, batch_size):
+                embeddings_batch = model.embed_all(patches_batch)
+                embeddings.append(embeddings_batch)
+
+            embeddings = np.concatenate(embeddings)
+
+            if embeddings_field:
+                sample[embeddings_field] = embeddings
+                sample.save()
+            else:
+                embeddings_dict[sample.id] = embeddings
 
 
 def _make_patch_data_loader(
@@ -651,13 +669,16 @@ def _extract_patch(img, detection, force_square, alpha):
     return bbox.extract_from(img, force_square=force_square)
 
 
-def _parse_batch_size(batch_size, model):
+def _parse_batch_size(batch_size, model, use_data_loader):
     if batch_size is None:
         batch_size = fo.config.default_batch_size
 
     if batch_size is not None and batch_size > 1 and model.ragged_batches:
         logger.warning("Model does not support batching")
         batch_size = None
+
+    if use_data_loader and batch_size is None:
+        batch_size = 1
 
     return batch_size
 
