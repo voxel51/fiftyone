@@ -40,26 +40,6 @@ const OptionsContainer = styled.div`
   display: flex;
 `;
 
-const OptionContainer = styled.div`
-  display: flex;
-  justify-content: space-between;
-  border-right: 1px solid #191c1f;
-  color: ${({ theme }) => theme.font};
-  font-weight: bold;
-  cursor: pointer;
-  margin: 0.25rem 0;
-`;
-
-const ButtonDiv = animated(styled.div`
-  cursor: pointer;
-  margin-left: 0;
-  margin-right: 0;
-  padding: 0.25rem 0.5rem;
-  border-radius: 3px;
-  display: flex;
-  margin: 0 0.25rem;
-`);
-
 const OptionTextDiv = styled.div`
   padding-right: 0.25rem;
   display: flex;
@@ -73,58 +53,6 @@ export const OptionText = ({ style, children }) => {
     <OptionTextDiv style={style}>
       <span>{children}</span>
     </OptionTextDiv>
-  );
-};
-
-export const Button = ({ onClick, text, children }) => {
-  const theme = useTheme();
-  const [hover, setHover] = useState(false);
-  const props = useSpring({
-    backgroundColor: hover ? theme.brand : theme.background,
-    config: {
-      duration: 200,
-    },
-  });
-  return (
-    <ButtonDiv
-      style={{ ...props, userSelect: "none" }}
-      onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-    >
-      <OptionText style={{ fontWeight: "bold" }}>{text}</OptionText>
-      {children}
-    </ButtonDiv>
-  );
-};
-
-export const RefreshButton = ({ modal }) => {
-  const [colorSeed, setColorSeed] = useRecoilState(
-    atoms.colorSeed(Boolean(modal))
-  );
-  return (
-    <Button onClick={() => setColorSeed(colorSeed + 1)} text={"Refresh colors"}>
-      <Autorenew style={{ marginTop: 3, height: "1.5rem" }} />
-    </Button>
-  );
-};
-
-export const ColorByLabel = ({ style, modal }) => {
-  const [colorByLabel, setColorByLabel] = useRecoilState(
-    atoms.colorByLabel(Boolean(modal))
-  );
-  const theme = useTheme();
-  return (
-    <OptionContainer
-      style={style}
-      onClick={() => setColorByLabel(!colorByLabel)}
-    >
-      <OptionText>Color by value</OptionText>
-      <Checkbox
-        style={{ color: theme.brand, padding: "0 0.25rem" }}
-        checked={colorByLabel}
-      />
-    </OptionContainer>
   );
 };
 
@@ -152,11 +80,7 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
       />
       <SamplesHeader>
         <OptionsContainer>
-          <ColorByLabel modal={false} />
-          <OptionContainer>
-            <RefreshButton modal={false} />
-          </OptionContainer>
-          <OptionText style={{ marginLeft: "0.5rem" }}>
+          <OptionText>
             <SelectionMenu />
           </OptionText>
         </OptionsContainer>

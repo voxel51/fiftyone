@@ -132,6 +132,7 @@ export type Entry = {
   totalCount: number;
   filteredCount: number;
   canFilter?: boolean;
+  icon?: any;
 };
 
 type EntryProps = {
@@ -152,6 +153,7 @@ const Entry = ({ entry, onCheck, modal }: EntryProps) => {
     selected,
     title,
     canFilter,
+    icon,
   } = entry;
   const [expanded, setExpanded] = useState(false);
   const theme = useTheme();
@@ -203,6 +205,8 @@ const Entry = ({ entry, onCheck, modal }: EntryProps) => {
                   />
                 )}
               </>
+            ) : icon ? (
+              icon
             ) : (
               <CircularProgress
                 style={{

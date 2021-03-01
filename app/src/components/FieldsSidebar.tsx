@@ -2,15 +2,17 @@ import React, { useState } from "react";
 import styled from "styled-components";
 import { useRecoilValue, useRecoilState } from "recoil";
 import {
+  Autorenew,
   BarChart,
   Check,
-  ClearAllSharp,
   Close,
   Help,
   Label,
   PhotoLibrary,
   Settings,
+  Brush,
 } from "@material-ui/icons";
+import { animated, useSpring } from "react-spring";
 
 import CellHeader from "./CellHeader";
 import CheckboxGrid from "./CheckboxGroup";
@@ -104,8 +106,7 @@ const Cell = ({
       expanded={expanded}
       onExpand={setExpanded}
     >
-      {label === "Options" && <RefreshButton />}
-      {entries.length && !children ? (
+      {entries.length ? (
         <CheckboxGrid entries={entries} onCheck={onSelect} modal={modal} />
       ) : (
         <span>No options available</span>
@@ -356,6 +357,66 @@ const UnsupportedCell = ({ modal }: UnsupportedCellProps) => {
   ) : null;
 };
 
+const ButtonDiv = animated(styled.div`
+  cursor: pointer;
+  margin-left: 0;
+  margin-right: 0;
+  padding: 2.5px 0.5rem;
+  border-radius: 3px;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 3px;
+`);
+
+const OptionTextDiv = styled.div`
+  padding-right: 0.25rem;
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  flex-direction: column;
+`;
+
+export const OptionText = ({ style, children }) => {
+  return (
+    <OptionTextDiv style={style}>
+      <span>{children}</span>
+    </OptionTextDiv>
+  );
+};
+
+export const Button = ({ onClick, text, children }) => {
+  const theme = useTheme();
+  const [hover, setHover] = useState(false);
+  const props = useSpring({
+    backgroundColor: hover ? theme.brand : theme.background,
+    config: {
+      duration: 200,
+    },
+  });
+  return (
+    <ButtonDiv
+      style={{ ...props, userSelect: "none" }}
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <OptionText style={{ fontWeight: "bold" }}>{text}</OptionText>
+      {children}
+    </ButtonDiv>
+  );
+};
+
+export const RefreshButton = ({ modal }) => {
+  const [colorSeed, setColorSeed] = useRecoilState(
+    atoms.colorSeed(Boolean(modal))
+  );
+  return (
+    <Button onClick={() => setColorSeed(colorSeed + 1)} text={"Refresh colors"}>
+      <Autorenew style={{ height: "1.5rem" }} />
+    </Button>
+  );
+};
+
 type OptionsCellProps = {
   modal: boolean;
 };
@@ -381,7 +442,9 @@ const OptionsCell = ({ modal }: OptionsCellProps) => {
           disabled: false,
           totalCount: null,
           path: null,
-          totalCount: null,
+          data: null,
+          filteredCount: null,
+          icon: <Brush />,
         },
       ]}
       title={"Field options"}

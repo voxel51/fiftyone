@@ -23,7 +23,7 @@ import {
 } from "../utils/hooks";
 import { formatMetadata } from "../utils/labels";
 import { useToggleSelectionObject } from "../utils/selection";
-import { Button, ColorByLabel, RefreshButton } from "./ImageContainerHeader";
+import { Button } from "./FieldsSidebar";
 
 const Container = styled.div`
   position: relative;
@@ -438,24 +438,14 @@ const SampleModal = (
                 display: "flex",
                 justifyContent: "space-between",
                 width: "100%",
+                marginTop: -3,
               }}
             >
               <Button
                 onClick={() => setShowJSON(!showJSON)}
                 text={`${showJSON ? "Hide" : "Show"} JSON`}
               />
-              <RefreshButton modal={true} />
             </div>
-            <ColorByLabel
-              style={{
-                borderWidth: 0,
-                marginTop: "1rem",
-                justifyContent: "flex-end",
-                width: "50%",
-                float: "right",
-              }}
-              modal={true}
-            />
           </ModalFooter>
         </div>
       </Container>
