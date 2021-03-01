@@ -290,7 +290,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     @property
     def default_mask_targets(self):
         """Default mask targets which is a `dict` of integer keys mapping to
-        presentational `str`s (label) for
+        presentational `str`s (labels) for
         :class:`fiftyone.core.labels.Segmentation` fields when using the App.
 
         Note::
@@ -323,8 +323,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def mark_targets(self):
         """Named mask targets which is a `dict` whose keys match a
         :class:`fiftyone.core.labels.Segmentation` field name and values are
-        `dict`s of integer keys mapping to presentational `str`s (label) for
-        segmentation masks.
+        `dict`s of integer keys mapping to presentational `str`s (labels) for
+        segmentation masks when using the App
 
         Note::
             `0` is the reserved `None` value
@@ -352,37 +352,42 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.mask_targets = mask_targets
         self.save()
 
-    def add_label_targets(self, field_name, targets):
-        """Add targets for a specific field
+    def add_mask_targets(self, field_name, targets):
+        """Add mask targets for a specific
+        :class:`fiftyone.core.labels.Segmentation` field
+
+        Note::
+            `0` is the reserved `None` value
 
         Args:
-            field_name: a labels field name
-            targets: a `dict` with target integers as keys and strings as
-                values
+            field_name: a :class:`fiftyone.core.labels.Segmentation` field name
+            targets: a `dict` whose keys are integers mapping to presentational
+                `str`s (labels) for masks when using the App
         """
         for field in self._doc.sample_fields:
             if field.name != field_name:
                 continue
 
             if not issubclass(
-                etau.get_class(field.embedded_doc_type), fol._TARGET_FIELDS
+                etau.get_class(field.embedded_doc_type), fol.Segmentation
             ):
                 raise ValueError(
-                    "field %s does not support targets" % field_name
+                    "field %s does not support mask targets" % field_name
                 )
 
-            self._doc.label_targets[field_name] = targets
+            self._doc.mask_targets[field_name] = targets
             self.save()
             return
 
-    def remove_label_targets(self, field_name):
-        """Remove label targets for a specific field.
+    def remove_mask_targets(self, field_name):
+        """Remove mask targets for a specific
+        :class:`fiftyone.core.labels.Segmentation` field
 
         Args:
-            field_name: the labels field name
+            field_name: :class:`fiftyone.core.labels.Segmentation`  field name
         """
-        if field_name in self._doc.label_targets:
-            del self._doc.label_targets[field_name]
+        if field_name in self._doc.mask_targets:
+            del self._doc.mask_targets[field_name]
 
         self.save()
 

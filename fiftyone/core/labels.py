@@ -876,7 +876,6 @@ class _FrameLabels(Label):
 _SINGLE_LABEL_FIELDS = (Classification, Detection, Polyline, Keypoint)
 _LABEL_LIST_FIELDS = (Classifications, Detections, Polylines, Keypoints)
 _LABEL_FIELDS = _SINGLE_LABEL_FIELDS + _LABEL_LIST_FIELDS
-_TARGET_FIELDS = _LABEL_FIELDS + (Segmentation,)
 
 
 def _from_eta_attributes(attrs):
