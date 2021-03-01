@@ -447,7 +447,13 @@ const SampleModal = (
               <RefreshButton modal={true} />
             </div>
             <ColorByLabel
-              style={{ borderWidth: 0, marginTop: "1rem" }}
+              style={{
+                borderWidth: 0,
+                marginTop: "1rem",
+                justifyContent: "flex-end",
+                width: "50%",
+                float: "right",
+              }}
               modal={true}
             />
           </ModalFooter>
