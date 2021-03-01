@@ -768,7 +768,8 @@ export const labelNameGroups = selectorFamily({
 export const defaultTargets = selector({
   key: "defaultTargets",
   get: ({ get }) => {
-    const targets = get(atoms.stateDescription).dataset?.default_targets || {};
+    const targets =
+      get(atoms.stateDescription).dataset?.default_mask_targets || {};
     return Object.fromEntries(
       Object.entries(targets).map(([k, v]) => [parseInt(k, 10), v])
     );

@@ -320,7 +320,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self.save()
 
     @property
-    def mark_targets(self):
+    def mask_targets(self):
         """Named mask targets which is a `dict` whose keys match a
         :class:`fiftyone.core.labels.Segmentation` field name and values are
         `dict`s of integer keys mapping to presentational `str`s (labels) for
@@ -348,8 +348,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.mask_targets
 
     @mask_targets.setter
-    def mask_targets(self, mask_targets):
-        self._doc.mask_targets = mask_targets
+    def mask_targets(self, targets):
+        self._doc.mask_targets = targets
         self.save()
 
     def add_mask_targets(self, field_name, targets):
