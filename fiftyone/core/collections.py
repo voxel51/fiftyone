@@ -5,6 +5,7 @@ Interface for sample collections.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import defaultdict
 import itertools
 import inspect
 import logging
@@ -532,6 +533,14 @@ class SampleCollection(object):
         tags = _transform_values(tags, edit_fcn)
         self.set_values("tags", tags)
 
+    def count_sample_tags(self):
+        """Counts the occurrences of sample tags in this collection.
+
+        Returns:
+            a dict mapping tags to counts
+        """
+        return self.count_values("tags")
+
     def tag_objects(self, tag, label_fields=None):
         """Adds the tag to all objects in the specified label field(s) of this
         collection, if necessary.
@@ -591,6 +600,35 @@ class SampleCollection(object):
             tags = self.values(tags_path)
             tags = _transform_values(tags, edit_fcn, level=level)
             self.set_values(tags_path, tags)
+
+    def count_object_tags(self, label_fields=None):
+        """Counts the occurrences of all object tags in the specified label
+        field(s) of this collection.
+
+        Args:
+            label_fields (None): an optional name or iterable of names of
+                :class:`fiftyone.core.labels.Label` fields. By default, all
+                label fields are used
+
+        Returns:
+            a dict mapping tags to counts
+        """
+        if label_fields is None:
+            label_fields = self._get_label_fields()
+        elif etau.is_str(label_fields):
+            label_fields = [label_fields]
+
+        aggregations = []
+        for label_field in label_fields:
+            _, tags_path = self._get_label_field_path(label_field, "tags")
+            aggregations.append(foa.CountValues(tags_path))
+
+        counts = defaultdict(int)
+        for result in self.aggregate(aggregations):
+            for tag, count in result.items():
+                counts[tag] += count
+
+        return dict(counts)
 
     def set_values(self, field_name, values):
         """Sets the field or embedded field on each sample or frame in the
