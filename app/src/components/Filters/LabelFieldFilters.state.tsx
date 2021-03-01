@@ -139,13 +139,17 @@ export const sampleModalFilter = selector({
   key: "sampleModalFilter",
   get: ({ get }) => {
     const filters = get(labelFilters(true));
+
     const labels = get(activeFields(true));
     const hiddenObjects = get(atoms.hiddenObjects);
     const fields = get(activeFields(false));
-    return (sample) => {
+    return (sample, prefix = null) => {
       return Object.entries(sample).reduce((acc, [key, value]) => {
         if (value && hiddenObjects[value.id]) {
           return acc;
+        }
+        if (prefix) {
+          key = `${prefix}${key}`;
         }
         if (key === "tags") {
           acc[key] = value;
@@ -269,6 +273,21 @@ export const labelSampleModalCounts = selectorFamily<Counts | null, string>({
     const labels = get(selectors.labelNames(dimension));
     const types = get(selectors.labelTypesMap);
     const sample = get(atoms.modal).sample || {};
+    const frameData = get(atoms.sampleFrameData(sample._id));
+
+    if (dimension === "frame") {
+      return labels.reduce((acc, path) => {
+        if (!(path in acc)) acc[path] = 0;
+        if (!Boolean(frameData)) return acc;
+        for (const frame of frameData) {
+          acc[path] += sampleCountResolver(
+            frame[path],
+            types["frames." + path]
+          );
+        }
+        return acc;
+      }, {});
+    }
     return labels.reduce((acc, path) => {
       if (!(path in acc)) acc[path] = 0;
       acc[path] += sampleCountResolver(sample[path], types[path]);
@@ -296,13 +315,26 @@ export const filteredLabelSampleModalCounts = selectorFamily<
   get: (dimension) => ({ get }) => {
     const labels = get(selectors.labelNames(dimension));
     const types = get(selectors.labelTypesMap);
-    const sample = get(sampleModalFilter)(get(atoms.modal).sample || {});
+    const filter = get(sampleModalFilter);
+    const sample = filter(get(atoms.modal).sample || {});
     const frameData = get(atoms.sampleFrameData(sample._id));
-
     if (dimension === "frame") {
-      labels.reduce((acc, path) => {
-        return acc;
-      }, {});
+      return Object.fromEntries(
+        Object.entries(
+          labels.reduce((acc, path) => {
+            if (!(path in acc)) acc[path] = 0;
+            if (!Boolean(frameData)) return acc;
+            for (const frame of frameData) {
+              const filtered = filter(frame, "frames.");
+              acc[path] += sampleCountResolver(
+                filtered[path],
+                types["frames." + path]
+              );
+            }
+            return acc;
+          }, {})
+        ).map(([k, v]) => [k.slice(7), v])
+      );
     }
 
     return labels.reduce((acc, path) => {
