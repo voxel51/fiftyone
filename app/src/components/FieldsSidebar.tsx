@@ -134,7 +134,7 @@ const TagsCell = ({ modal }: TagsCellProps) => {
   const [activeTags, setActiveTags] = useRecoilState(
     fieldAtoms.activeTags(modal)
   );
-  const colorMap = useRecoilValue(selectors.colorMap);
+  const colorMap = useRecoilValue(selectors.colorMap(modal));
   const [subCountAtom, countAtom] = modal
     ? [null, selectors.tagSampleModalCounts]
     : [selectors.filteredTagSampleCounts, selectors.tagSampleCounts];
@@ -200,7 +200,7 @@ const LabelsCell = ({ modal, frames }: LabelsCellProps) => {
   );
   const types = useRecoilValue(selectors.labelTypesMap);
 
-  const colorMap = useRecoilValue(selectors.colorMap);
+  const colorMap = useRecoilValue(selectors.colorMap(modal));
   const [subCountAtom, countAtom] = modal
     ? [
         labelAtoms.filteredLabelSampleModalCounts(key),
@@ -273,7 +273,7 @@ const ScalarsCell = ({ modal }: ScalarsCellProps) => {
     fieldAtoms.activeScalars(modal)
   );
 
-  const colorMap = useRecoilValue(selectors.colorMap);
+  const colorMap = useRecoilValue(selectors.colorMap(modal));
   const [subCountAtom, countAtom] = modal
     ? [null, selectors.modalSample]
     : [

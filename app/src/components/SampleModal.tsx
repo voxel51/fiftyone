@@ -231,7 +231,7 @@ type Props = {
 };
 
 const SampleModal = (
-  { sampleUrl, colorMap = {}, onClose, onNext, onPrevious }: Props,
+  { sampleUrl, onClose, onNext, onPrevious }: Props,
   ref
 ) => {
   const { sample } = useRecoilValue(atoms.modal);
@@ -240,6 +240,7 @@ const SampleModal = (
     height: "100%",
     width: "100%",
   });
+  const colorMap = useRecoilValue(selectors.colorMap(true));
   const setModalFilters = useSetRecoilState(labelFilters(true));
   const [showJSON, setShowJSON] = useState(false);
   const [enableJSONFilter, setEnableJSONFilter] = useState(true);
@@ -445,7 +446,10 @@ const SampleModal = (
               />
               <RefreshButton />
             </div>
-            <ColorByLabel style={{ borderWidth: 0, marginTop: "1rem" }} />
+            <ColorByLabel
+              style={{ borderWidth: 0, marginTop: "1rem" }}
+              modal={true}
+            />
           </ModalFooter>
         </div>
       </Container>

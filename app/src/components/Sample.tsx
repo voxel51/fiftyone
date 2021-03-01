@@ -128,9 +128,9 @@ const revealSample = () => {
 
 const SampleInfo = ({ sample }) => {
   const activeFields = useRecoilValue(labelAtoms.activeFields(false));
-  const colorMap = useRecoilValue(selectors.colorMap);
+  const colorMap = useRecoilValue(selectors.colorMap(false));
   const scalars = useRecoilValue(selectors.scalarNames("sample"));
-  const colorByLabel = useRecoilValue(atoms.colorByLabel);
+  const colorByLabel = useRecoilValue(atoms.colorByLabel(false));
   const labelTypes = useRecoilValue(selectors.labelTypesMap);
   const theme = useTheme();
   const bubbles = activeFields.reduce((acc, cur) => {
@@ -261,7 +261,7 @@ const Sample = ({ sample, metadata }) => {
   const id = sample._id;
   const src = `${http}/filepath/${encodeURI(sample.filepath)}?id=${id}`;
   const socket = useRecoilValue(selectors.socket);
-  const colorByLabel = useRecoilValue(atoms.colorByLabel);
+  const colorByLabel = useRecoilValue(atoms.colorByLabel(false));
   const [hovering, setHovering] = useState(false);
   const selectedSamples = useRecoilValue(atoms.selectedSamples);
 

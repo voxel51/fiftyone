@@ -107,9 +107,9 @@ export const RefreshButton = () => {
   );
 };
 
-export const ColorByLabel = ({ style }) => {
+export const ColorByLabel = ({ style, modal }) => {
   const [colorByLabel, setColorByLabel] = useRecoilState(
-    atoms.colorByLabel(false)
+    atoms.colorByLabel(Boolean(modal))
   );
   const theme = useTheme();
   return (

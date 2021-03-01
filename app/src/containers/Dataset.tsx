@@ -54,7 +54,6 @@ function Dataset() {
   const [modal, setModal] = useRecoilState(atoms.modal);
   const http = useRecoilValue(selectors.http);
   const hasDataset = useRecoilValue(selectors.hasDataset);
-  const colorMap = useRecoilValue(selectors.colorMap);
   const currentSamples = useRecoilValue(atoms.currentSamples);
   const setExtendedDatasetStats = useSetRecoilState(
     atoms.extendedDatasetStatsRaw
@@ -137,7 +136,6 @@ function Dataset() {
       {modal.visible ? (
         <ModalWrapper>
           <SampleModal
-            colorMap={colorMap}
             sampleUrl={src}
             onClose={handleHideModal}
             {...modalProps}

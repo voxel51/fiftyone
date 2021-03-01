@@ -340,7 +340,7 @@ export default ({
   const [savedOverlayOptions, setSavedOverlayOptions] = useRecoilState(
     atoms.savedPlayerOverlayOptions
   );
-  const colorMap = useRecoilValue(selectors.colorMap);
+  const colorMap = useRecoilValue(selectors.colorMap(!thumbnail));
   if (overlay === null) {
     overlay = convertSampleToETA(sample, fieldSchema);
   }
