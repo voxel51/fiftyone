@@ -4,10 +4,12 @@ import { useRecoilValue, useRecoilState } from "recoil";
 import {
   BarChart,
   Check,
+  ClearAllSharp,
   Close,
   Help,
   Label,
   PhotoLibrary,
+  Settings,
 } from "@material-ui/icons";
 
 import CellHeader from "./CellHeader";
@@ -65,6 +67,7 @@ type CellProps = {
   handleClear: (event: Event) => void;
   entries: Entry[];
   icon: any;
+  children?: any;
 };
 
 const Cell = ({
@@ -75,6 +78,7 @@ const Cell = ({
   onSelect,
   title,
   modal,
+  children,
 }: CellProps) => {
   const [expanded, setExpanded] = useState(true);
   const numSelected = entries.filter((e) => e.selected).length;
@@ -101,11 +105,12 @@ const Cell = ({
       onExpand={setExpanded}
     >
       {label === "Options" && <RefreshButton />}
-      {entries.length ? (
+      {entries.length && !children ? (
         <CheckboxGrid entries={entries} onCheck={onSelect} modal={modal} />
       ) : (
         <span>No options available</span>
       )}
+      {children}
     </DropdownCell>
   );
 };
@@ -351,6 +356,44 @@ const UnsupportedCell = ({ modal }: UnsupportedCellProps) => {
   ) : null;
 };
 
+type OptionsCellProps = {
+  modal: boolean;
+};
+
+const OptionsCell = ({ modal }: OptionsCellProps) => {
+  const [colorByLabel, setColorByLabel] = useRecoilState(
+    atoms.colorByLabel(modal)
+  );
+  const theme = useTheme();
+
+  return (
+    <Cell
+      label={"Options"}
+      icon={<Settings />}
+      entries={[
+        {
+          name: "Color by value",
+          title: "Color by value",
+          selected: colorByLabel,
+          color: theme.brand,
+          hasDropdown: false,
+          hideCheckbox: false,
+          disabled: false,
+          totalCount: null,
+          path: null,
+          totalCount: null,
+        },
+      ]}
+      title={"Field options"}
+      modal={modal}
+      onSelect={() => setColorByLabel(!colorByLabel)}
+      handleClear={() => setColorByLabel(false)}
+    >
+      <RefreshButton modal={modal} />
+    </Cell>
+  );
+};
+
 type FieldsSidebarProps = {
   modal: boolean;
   style: object;
@@ -368,6 +411,7 @@ const FieldsSidebar = React.forwardRef(
         {isVideo && <LabelsCell modal={modal} frames={true} />}
         <ScalarsCell modal={modal} />
         <UnsupportedCell modal={modal} />
+        <OptionsCell modal={modal} />
       </Container>
     );
   }
