@@ -619,6 +619,7 @@ class SampleCollection(object):
         confidence_thresh=None,
         store_logits=False,
         batch_size=None,
+        num_workers=None,
     ):
         """Applies the :class:`fiftyone.core.models.Model` to the samples in
         the collection.
@@ -634,6 +635,8 @@ class SampleCollection(object):
                 has logits, ``model.has_logits == True``
             batch_size (None): an optional batch size to use. Only applicable
                 for image samples
+            num_workers (None): the number of workers to use when loading
+                images. Only applicable when PyTorch is installed
         """
         fomo.apply_model(
             self,
@@ -642,10 +645,11 @@ class SampleCollection(object):
             confidence_thresh=confidence_thresh,
             store_logits=store_logits,
             batch_size=batch_size,
+            num_workers=num_workers,
         )
 
     def compute_embeddings(
-        self, model, embeddings_field=None, batch_size=None
+        self, model, embeddings_field=None, batch_size=None, num_workers=None
     ):
         """Computes embeddings for the samples in the collection using the
         given :class:`fiftyone.core.models.Model`.
@@ -662,6 +666,8 @@ class SampleCollection(object):
                 embeddings
             batch_size (None): an optional batch size to use. Only applicable
                 for image samples
+            num_workers (None): the number of workers to use when loading
+                images. Only applicable when PyTorch is installed
 
         Returns:
             ``None``, if an ``embeddings_field`` is provided; otherwise, a
@@ -673,6 +679,7 @@ class SampleCollection(object):
             model,
             embeddings_field=embeddings_field,
             batch_size=batch_size,
+            num_workers=num_workers,
         )
 
     def compute_patch_embeddings(
@@ -681,6 +688,7 @@ class SampleCollection(object):
         patches_field,
         embeddings_field=None,
         batch_size=None,
+        num_workers=None,
         force_square=False,
         alpha=None,
     ):
@@ -704,6 +712,8 @@ class SampleCollection(object):
             embeddings_field (None): the name of a field in which to store the
                 embeddings
             batch_size (None): an optional batch size to use
+            num_workers (None): the number of workers to use when loading
+                images. Only applicable when PyTorch is installed
             force_square (False): whether to minimally manipulate the patch
                 bounding boxes into squares prior to extraction
             alpha (None): an optional expansion/contraction to apply to the
@@ -723,6 +733,7 @@ class SampleCollection(object):
             patches_field,
             embeddings_field=embeddings_field,
             batch_size=batch_size,
+            num_workers=num_workers,
             force_square=force_square,
             alpha=alpha,
         )

@@ -6,7 +6,10 @@ FiftyOne models.
 |
 """
 import contextlib
+import itertools
 import logging
+import warnings
+
 import numpy as np
 
 import eta.core.image as etai
@@ -22,6 +25,8 @@ import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
+tud = fou.lazy_import("torch.utils.data")
+
 foe = fou.lazy_import("fiftyone.core.eta_utils")
 fout = fou.lazy_import("fiftyone.utils.torch")
 
@@ -36,6 +41,7 @@ def apply_model(
     confidence_thresh=None,
     store_logits=False,
     batch_size=None,
+    num_workers=None,
 ):
     """Applies the given :class:`Model` to the samples in the collection.
 
@@ -51,24 +57,27 @@ def apply_model(
             logits, ``model.has_logits == True``
         batch_size (None): an optional batch size to use. Only applicable for
             image samples
+        num_workers (None): the number of workers to use when loading images.
+            Only applicable when PyTorch is installed
     """
-    # Use data loaders for Torch models, if possible
-    if isinstance(model, TorchModelMixin):
-        return fout.apply_torch_image_model(
-            samples,
-            model,
-            label_field,
-            confidence_thresh=confidence_thresh,
-            store_logits=store_logits,
-            batch_size=batch_size,
+    if not isinstance(model, Model):
+        raise ValueError(
+            "Model must be a %s instance; found %s" % (Model, type(model))
         )
 
-    if store_logits:
-        if not model.has_logits:
-            raise ValueError(
-                "The provided model does not expose logits "
-                "(model.has_logits = %s)" % model.has_logits
-            )
+    if store_logits and not model.has_logits:
+        raise ValueError(
+            "The provided model does not expose logits "
+            "(model.has_logits = %s)" % model.has_logits
+        )
+
+    # Use Torch data loaders, if possible
+    use_data_loader = _can_use_data_loaders()
+
+    if num_workers is not None and not use_data_loader:
+        logger.warning(
+            "PyTorch is not installed; ignoring `num_workers` parameter"
+        )
 
     with contextlib.ExitStack() as context:
         try:
@@ -88,6 +97,10 @@ def apply_model(
             # pylint: disable=no-member
             context.enter_context(fou.SetAttributes(model, store_logits=True))
 
+        if use_data_loader:
+            # pylint: disable=no-member
+            context.enter_context(fou.SetAttributes(model, preprocess=False))
+
         # pylint: disable=no-member
         context.enter_context(model)
 
@@ -97,6 +110,16 @@ def apply_model(
             )
 
         batch_size = _parse_batch_size(batch_size, model)
+
+        if use_data_loader:
+            return _apply_image_model_data_loader(
+                samples,
+                model,
+                label_field,
+                confidence_thresh,
+                batch_size,
+                num_workers,
+            )
 
         if batch_size is not None:
             return _apply_image_model_batch(
@@ -111,7 +134,6 @@ def apply_model(
 def _apply_image_model_single(samples, model, label_field, confidence_thresh):
     with fou.ProgressBar() as pb:
         for sample in pb(samples):
-            # @todo use DataLoader-like strategy to improve performance?
             img = etai.read(sample.filepath)
             labels = model.predict(img)
 
@@ -127,7 +149,6 @@ def _apply_image_model_batch(
 
     with fou.ProgressBar(samples) as pb:
         for sample_batch in samples_loader:
-            # @todo use DataLoader-like strategy to improve performance?
             imgs = [etai.read(sample.filepath) for sample in sample_batch]
             labels_batch = model.predict_all(imgs)
 
@@ -137,6 +158,63 @@ def _apply_image_model_batch(
                 )
 
             pb.set_iteration(pb.iteration + len(imgs))
+
+
+def _apply_image_model_data_loader(
+    samples, model, label_field, confidence_thresh, batch_size, num_workers
+):
+    samples_loader = fou.iter_batches(samples, batch_size)
+    data_loader = _make_data_loader(samples, model, batch_size, num_workers)
+
+    with fou.ProgressBar(samples) as pb:
+        for sample_batch, imgs in zip(samples_loader, data_loader):
+            labels_batch = model.predict_all(imgs)
+
+            for sample, labels in zip(sample_batch, labels_batch):
+                sample.add_labels(
+                    labels, label_field, confidence_thresh=confidence_thresh,
+                )
+
+            pb.set_iteration(pb.iteration + len(imgs))
+
+
+def _can_use_data_loaders():
+    try:
+        fou.ensure_torch()
+        return True
+    except:
+        return False
+
+
+def _make_data_loader(samples, model, batch_size, num_workers):
+    use_numpy = not isinstance(model, TorchModelMixin)
+
+    if num_workers is None:
+        num_workers = fout.recommend_num_workers()
+
+    image_paths = []
+    for sample in samples.select_fields():
+        image_paths.append(sample.filepath)
+
+    dataset = fout.TorchImageDataset(
+        image_paths,
+        transform=model.transforms,
+        use_numpy=use_numpy,
+        force_rgb=True,
+    )
+
+    if model.ragged_batches:
+        kwargs = dict(collate_fn=lambda batch: batch)  # return list
+    else:
+        kwargs = {}
+
+    # @todo is this necessary?
+    # https://github.com/pytorch/pytorch/issues/3830
+    # collate_fn = lambda batch: np.stack(batch, axis=0)
+
+    return tud.DataLoader(
+        dataset, batch_size=batch_size, num_workers=num_workers, **kwargs
+    )
 
 
 def _apply_video_model(samples, model, label_field, confidence_thresh):
@@ -151,7 +229,9 @@ def _apply_video_model(samples, model, label_field, confidence_thresh):
             )
 
 
-def compute_embeddings(samples, model, embeddings_field=None, batch_size=None):
+def compute_embeddings(
+    samples, model, embeddings_field=None, batch_size=None, num_workers=None,
+):
     """Computes embeddings for the samples in the collection using the given
     :class:`Model`.
 
@@ -168,32 +248,50 @@ def compute_embeddings(samples, model, embeddings_field=None, batch_size=None):
             embeddings
         batch_size (None): an optional batch size to use. Only applicable for
             image samples
+        num_workers (None): the number of workers to use when loading images.
+            Only applicable when PyTorch is installed
 
     Returns:
         ``None``, if an ``embeddings_field`` is provided; otherwise, a numpy
         array whose first dimension is ``len(samples)`` containing the
         embeddings
     """
+    if not isinstance(model, Model):
+        raise ValueError(
+            "Model must be a %s instance; found %s" % (Model, type(model))
+        )
+
     if not model.has_embeddings:
         raise ValueError(
             "Model does not expose embeddings (model.has_embeddings = %s)"
             % model.has_embeddings
         )
 
-    # Use data loaders for Torch models, if possible
-    if isinstance(model, TorchModelMixin):
-        return fout.compute_torch_image_embeddings(
-            samples,
-            model,
-            embeddings_field=embeddings_field,
-            batch_size=batch_size,
+    # Use Torch data loaders, if possible
+    use_data_loader = _can_use_data_loaders()
+
+    if num_workers is not None and not use_data_loader:
+        logger.warning(
+            "PyTorch is not installed; ignoring `num_workers` parameter"
         )
 
-    with model:
+    with contextlib.ExitStack() as context:
+        if use_data_loader:
+            # pylint: disable=no-member
+            context.enter_context(fou.SetAttributes(model, preprocess=False))
+
+        # pylint: disable=no-member
+        context.enter_context(model)
+
         if samples.media_type == fom.VIDEO:
             return _compute_video_embeddings(samples, model, embeddings_field)
 
         batch_size = _parse_batch_size(batch_size, model)
+
+        if use_data_loader:
+            return _compute_image_embeddings_data_loader(
+                samples, model, embeddings_field, batch_size, num_workers
+            )
 
         if batch_size is not None:
             return _compute_image_embeddings_batch(
@@ -252,6 +350,38 @@ def _compute_image_embeddings_batch(
     return np.concatenate(embeddings)
 
 
+def _compute_image_embeddings_data_loader(
+    samples, model, embeddings_field, batch_size, num_workers
+):
+    batch_size = _parse_batch_size(batch_size, model)
+    data_loader = _make_data_loader(samples, model, batch_size, num_workers)
+
+    if embeddings_field:
+        samples_loader = fou.iter_batches(samples, batch_size)
+    else:
+        samples_loader = itertools.repeat(None)
+
+    embeddings = []
+
+    with fou.ProgressBar(samples) as pb:
+        for sample_batch, imgs in zip(samples_loader, data_loader):
+            embeddings_batch = model.embed_all(imgs)
+
+            if embeddings_field:
+                for sample, embedding in zip(sample_batch, embeddings_batch):
+                    sample[embeddings_field] = embedding
+                    sample.save()
+            else:
+                embeddings.append(embeddings_batch)
+
+            pb.set_iteration(pb.iteration + len(imgs))
+
+    if embeddings_field:
+        return None
+
+    return np.concatenate(embeddings)
+
+
 def _compute_video_embeddings(samples, model, embeddings_field):
     embeddings = []
 
@@ -278,6 +408,7 @@ def compute_patch_embeddings(
     patches_field,
     embeddings_field=None,
     batch_size=None,
+    num_workers=None,
     force_square=False,
     alpha=None,
 ):
@@ -301,6 +432,8 @@ def compute_patch_embeddings(
         embeddings_field (None): the name of a field in which to store the
             embeddings
         batch_size (None): an optional batch size to use
+        num_workers (None): the number of workers to use when loading images.
+            Only applicable when PyTorch is installed
         force_square (False): whether to minimally manipulate the patch
             bounding boxes into squares prior to extraction
         alpha (None): an optional expansion/contraction to apply to the patches
@@ -317,20 +450,23 @@ def compute_patch_embeddings(
     if samples.media_type != fom.IMAGE:
         raise ValueError("This method only supports image samples")
 
+    if not isinstance(model, Model):
+        raise ValueError(
+            "Model must be a %s instance; found %s" % (Model, type(model))
+        )
+
     if not model.has_embeddings:
         raise ValueError(
             "Model does not expose embeddings (model.has_embeddings = %s)"
             % model.has_embeddings
         )
 
-    # Use data loaders for Torch models, if possible
-    if isinstance(model, TorchModelMixin):
-        return fout.compute_torch_image_patch_embeddings(
-            samples,
-            model,
-            patches_field,
-            embeddings_field=embeddings_field,
-            batch_size=batch_size,
+    # Use Torch data loaders, if possible
+    use_data_loader = _can_use_data_loaders()
+
+    if num_workers is not None and not use_data_loader:
+        logger.warning(
+            "PyTorch is not installed; ignoring `num_workers` parameter"
         )
 
     allowed_types = (
@@ -343,24 +479,34 @@ def compute_patch_embeddings(
 
     batch_size = _parse_batch_size(batch_size, model)
 
+    if use_data_loader:
+        return _embed_patches_data_loader(
+            samples,
+            model,
+            patches_field,
+            embeddings_field,
+            batch_size,
+            num_workers,
+            force_square,
+            alpha,
+        )
+
     embeddings_dict = {}
 
     with model:
         with fou.ProgressBar() as pb:
             for sample in pb(samples):
-                detections = _parse_patches(sample, patches_field)
-                if detections is None or not detections.detections:
-                    continue
+                patches = _parse_patches(sample, patches_field)
 
                 img = etai.read(sample.filepath)
 
                 if batch_size is None:
                     embeddings = _embed_patches_single(
-                        model, img, detections, force_square, alpha
+                        model, img, patches, force_square, alpha
                     )
                 else:
                     embeddings = _embed_patches_batch(
-                        model, img, detections, force_square, alpha, batch_size
+                        model, img, patches, force_square, alpha, batch_size
                     )
 
                 if embeddings_field:
@@ -368,6 +514,45 @@ def compute_patch_embeddings(
                     sample.save()
                 else:
                     embeddings_dict[sample.id] = embeddings
+
+    return embeddings_dict if not embeddings_field else None
+
+
+def _embed_patches_data_loader(
+    samples,
+    model,
+    patches_field,
+    embeddings_field,
+    batch_size,
+    num_workers,
+    force_square,
+    alpha,
+):
+    data_loader = _make_patch_data_loader(
+        samples, model, patches_field, force_square, alpha, num_workers,
+    )
+
+    embeddings_dict = {}
+
+    with fou.ProgressBar(samples) as pb:
+        with fou.SetAttributes(model, preprocess=False):
+            with model:
+                for sample, patches in pb(zip(samples, data_loader)):
+                    if patches is None:
+                        continue
+
+                    embeddings = []
+                    for patches_batch in fou.iter_slices(patches, batch_size):
+                        embeddings_batch = model.embed_all(patches_batch)
+                        embeddings.append(embeddings_batch)
+
+                    embeddings = np.concatenate(embeddings)
+
+                    if embeddings_field:
+                        sample[embeddings_field] = embeddings
+                        sample.save()
+                    else:
+                        embeddings_dict[sample.id] = embeddings
 
     return embeddings_dict if not embeddings_field else None
 
@@ -397,22 +582,63 @@ def _embed_patches_batch(
     return np.concatenate(embeddings)
 
 
+def _make_patch_data_loader(
+    samples, model, patches_field, force_square, alpha, num_workers
+):
+    use_numpy = not isinstance(model, TorchModelMixin)
+
+    if num_workers is None:
+        num_workers = fout.recommend_num_workers()
+
+    image_paths = []
+    detections = []
+    for sample in samples.select_fields(patches_field):
+        patches = _parse_patches(sample, patches_field)
+        image_paths.append(sample.filepath)
+        detections.append(patches)
+
+    dataset = fout.TorchImagePatchesDataset(
+        image_paths,
+        detections,
+        transform=model.transforms,
+        ragged_batches=model.ragged_batches,
+        use_numpy=use_numpy,
+        force_rgb=True,
+        force_square=force_square,
+        alpha=alpha,
+    )
+
+    return tud.DataLoader(
+        dataset,
+        batch_size=1,
+        num_workers=num_workers,
+        collate_fn=lambda batch: batch[0],  # return patches directly
+    )
+
+
 def _parse_patches(sample, patches_field):
     label = sample[patches_field]
 
     if isinstance(label, fol.Detections):
-        return label
+        patches = label
+    elif isinstance(label, fol.Detection):
+        patches = fol.Detections(detections=[label])
+    elif isinstance(label, fol.Polyline):
+        patches = fol.Detections(detections=[label.to_detection()])
+    elif isinstance(label, fol.Polylines):
+        patches = label.to_detections()
+    else:
+        patches = None
 
-    if isinstance(label, fol.Detection):
-        return fol.Detections(detections=[label])
+    if patches is None or not patches.detections:
+        msg = "Sample found with no patches; using the entire image..."
+        warnings.warn(msg)
 
-    if isinstance(label, fol.Polyline):
-        return fol.Detections(detections=[label.to_detection()])
+        patches = fol.Detections(
+            detections=[fol.Detection(bounding_box=[0, 0, 1, 1])]
+        )
 
-    if isinstance(label, fol.Polylines):
-        return label.to_detections()
-
-    return None
+    return patches
 
 
 def _extract_patch(img, detection, force_square, alpha):
@@ -567,6 +793,17 @@ class Model(etal.Model):
         """
         raise NotImplementedError("subclasses must implement transforms")
 
+    @property
+    def preprocess(self):
+        """Whether to apply :meth:`transforms` during inference (True) or to
+        assume that they have already been applied (False).
+        """
+        raise NotImplementedError("subclasses must implement preprocess")
+
+    @preprocess.setter
+    def preprocess(self, value):
+        raise NotImplementedError("subclasses must implement preprocess")
+
     def predict(self, arg):
         """Peforms prediction on the given data.
 
@@ -710,14 +947,7 @@ class TorchModelMixin(object):
     that will/must be applied to each input before prediction.
     """
 
-    @property
-    def preprocess(self):
-        """Whether to apply preprocessing transforms during inference."""
-        raise NotImplementedError("subclasses must implement preprocess")
-
-    @preprocess.setter
-    def preprocess(self, value):
-        raise NotImplementedError("subclasses must implement preprocess")
+    pass
 
 
 class ModelManagerConfig(etam.ModelManagerConfig):
