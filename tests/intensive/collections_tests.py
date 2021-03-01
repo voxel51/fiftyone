@@ -131,10 +131,10 @@ def test_tag_classification():
     view = dataset.take(100)
 
     view.tag_objects("test", "ground_truth")
-    print(dataset.count_values("ground_truth.tags[]"))
+    print(dataset.count_values("ground_truth.tags"))
 
     view.untag_objects("test", "ground_truth")
-    print(dataset.count_values("ground_truth.tags[]"))
+    print(dataset.count_values("ground_truth.tags"))
 
 
 def test_tag_detections():
@@ -144,13 +144,13 @@ def test_tag_detections():
 
     print(dataset.count("predictions.detections"))
     print(view.count("predictions.detections"))
-    print(dataset.count_values("predictions.detections.tags[]"))
+    print(dataset.count_values("predictions.detections.tags"))
 
     view.tag_objects("test", "predictions")
-    print(dataset.count_values("predictions.detections.tags[]"))
+    print(dataset.count_values("predictions.detections.tags"))
 
     view.untag_objects("test", "predictions")
-    print(dataset.count_values("predictions.detections.tags[]"))
+    print(dataset.count_values("predictions.detections.tags"))
 
 
 def test_tag_detections_frames():
@@ -161,15 +161,15 @@ def test_tag_detections_frames():
 
     print(dataset.count("frames.predictions.detections"))
     print(view.count("frames.predictions.detections"))
-    print(dataset.count_values("frames.predictions.detections.tags[]"))
+    print(dataset.count_values("frames.predictions.detections.tags"))
 
     view.tag_objects("test", "frames.predictions")
     print(dataset.count("frames.predictions.detections"))
-    print(dataset.count_values("frames.predictions.detections.tags[]"))
+    print(dataset.count_values("frames.predictions.detections.tags"))
 
     view.untag_objects("test", "frames.predictions")
     print(dataset.count("frames.predictions.detections"))
-    print(dataset.count_values("frames.predictions.detections.tags[]"))
+    print(dataset.count_values("frames.predictions.detections.tags"))
 
 
 def _to_upper(values):

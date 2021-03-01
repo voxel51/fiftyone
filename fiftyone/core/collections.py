@@ -2632,8 +2632,8 @@ class SampleCollection(object):
             dataset = dataset.clone()  # create a copy since we're modifying data
             dataset.select_objects(ids=ids).tag_objects("test")
 
-            print(dataset.count_values("ground_truth.detections.tags[]"))
-            print(dataset.count_values("predictions.detections.tags[]"))
+            print(dataset.count_values("ground_truth.detections.tags"))
+            print(dataset.count_values("predictions.detections.tags"))
 
             # Retrieve the objects via their tag
             view = dataset.select_objects(tags=["test"])
@@ -4513,6 +4513,12 @@ def _parse_field_name(sample_collection, field_name, auto_unwind):
     unwind_list_fields = set()
     other_list_fields = set()
 
+    def _record_list_field(field_name):
+        if auto_unwind:
+            unwind_list_fields.add(field_name)
+        elif field_name not in unwind_list_fields:
+            other_list_fields.add(field_name)
+
     # Parse explicit array references
     chunks = field_name.split("[]")
     for idx in range(len(chunks) - 1):
@@ -4533,27 +4539,33 @@ def _parse_field_name(sample_collection, field_name, auto_unwind):
             % (ftype, root_field_name, sample_collection.name)
         )
 
+    #
     # Detect certain list fields automatically
+    #
+    # @todo this implementation would be greatly improved by using the schema
+    # to detect list fields
+    #
+
     if isinstance(root_field, fof.ListField):
-        if auto_unwind:
-            unwind_list_fields.add(root_field_name)
-        elif root_field_name not in unwind_list_fields:
-            other_list_fields.add(root_field_name)
+        _record_list_field(root_field_name)
 
     if isinstance(root_field, fof.EmbeddedDocumentField):
-        if root_field.document_type in fol._LABEL_LIST_FIELDS:
-            prefix = (
-                root_field_name
-                + "."
-                + root_field.document_type._LABEL_LIST_FIELD
-            )
-            if field_name.startswith(prefix):
-                if auto_unwind:
-                    unwind_list_fields.add(prefix)
-                elif prefix not in unwind_list_fields:
-                    other_list_fields.add(prefix)
+        root_type = root_field.document_type
 
-    # sorting is important here because one must unwind field `x` before
+        if root_type in fol._SINGLE_LABEL_FIELDS:
+            if field_name == root_field_name + ".tags":
+                _record_list_field(field_name)
+
+        if root_type in fol._LABEL_LIST_FIELDS:
+            path = root_field_name + "." + root_type._LABEL_LIST_FIELD
+
+            if field_name.startswith(path):
+                _record_list_field(path)
+
+            if field_name == path + ".tags":
+                _record_list_field(field_name)
+
+    # Sorting is important here because one must unwind field `x` before
     # embedded field `x.y`
     unwind_list_fields = sorted(unwind_list_fields)
     other_list_fields = sorted(other_list_fields)

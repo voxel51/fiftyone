@@ -2564,8 +2564,8 @@ class SelectObjects(ViewStage):
         dataset = dataset.clone()  # create a copy since we're modifying data
         dataset.select_objects(ids=ids).tag_objects("test")
 
-        print(dataset.count_values("ground_truth.detections.tags[]"))
-        print(dataset.count_values("predictions.detections.tags[]"))
+        print(dataset.count_values("ground_truth.detections.tags"))
+        print(dataset.count_values("predictions.detections.tags"))
 
         # Retrieve the objects via their tag
         stage = fo.SelectObjects(tags=["test"])
