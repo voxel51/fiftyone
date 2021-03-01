@@ -319,22 +319,18 @@ export const filteredLabelSampleModalCounts = selectorFamily<
     const sample = filter(get(atoms.modal).sample || {});
     const frameData = get(atoms.sampleFrameData(sample._id));
     if (dimension === "frame") {
-      return Object.fromEntries(
-        Object.entries(
-          labels.reduce((acc, path) => {
-            if (!(path in acc)) acc[path] = 0;
-            if (!Boolean(frameData)) return acc;
-            for (const frame of frameData) {
-              const filtered = filter(frame, "frames.");
-              acc[path] += sampleCountResolver(
-                filtered[path],
-                types["frames." + path]
-              );
-            }
-            return acc;
-          }, {})
-        ).map(([k, v]) => [k.slice(7), v])
-      );
+      return labels.reduce((acc, path) => {
+        if (!(path in acc)) acc[path] = 0;
+        if (!Boolean(frameData)) return acc;
+        for (const frame of frameData) {
+          const filtered = filter(frame, "frames.");
+          acc[path] += sampleCountResolver(
+            filtered["frames." + path],
+            types["frames." + path]
+          );
+        }
+        return acc;
+      }, {});
     }
 
     return labels.reduce((acc, path) => {
