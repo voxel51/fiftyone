@@ -874,7 +874,13 @@ class _FrameLabels(Label):
     pass
 
 
-_SINGLE_LABEL_FIELDS = (Classification, Detection, Polyline, Keypoint)
+_SINGLE_LABEL_FIELDS = (
+    Classification,
+    Detection,
+    Polyline,
+    Keypoint,
+    Segmentation,
+)
 _LABEL_LIST_FIELDS = (Classifications, Detections, Polylines, Keypoints)
 _LABEL_FIELDS = _SINGLE_LABEL_FIELDS + _LABEL_LIST_FIELDS
 
