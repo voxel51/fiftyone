@@ -536,18 +536,19 @@ def _embed_patches(
         for sample in pb(samples):
             patches = _parse_patches(sample, patches_field, handle_missing)
 
-            img = etai.read(sample.filepath)
+            if patches is not None:
+                img = etai.read(sample.filepath)
 
-            if patches is None or not patches.detections:
-                embeddings = None
-            elif batch_size is None:
-                embeddings = _embed_patches_single(
-                    model, img, patches, force_square, alpha
-                )
+                if batch_size is None:
+                    embeddings = _embed_patches_single(
+                        model, img, patches, force_square, alpha
+                    )
+                else:
+                    embeddings = _embed_patches_batch(
+                        model, img, patches, force_square, alpha, batch_size
+                    )
             else:
-                embeddings = _embed_patches_batch(
-                    model, img, patches, force_square, alpha, batch_size
-                )
+                embeddings = None
 
             if embeddings_field:
                 sample[embeddings_field] = embeddings
@@ -605,15 +606,15 @@ def _embed_patches_data_loader(
 
     with fou.ProgressBar(samples) as pb:
         for sample, patches in pb(zip(samples, data_loader)):
-            if patches is None or not patches.detections:
-                embeddings = None
-            else:
+            if patches is not None:
                 embeddings = []
                 for patches_batch in fou.iter_slices(patches, batch_size):
                     embeddings_batch = model.embed_all(patches_batch)
                     embeddings.append(embeddings_batch)
 
                 embeddings = np.concatenate(embeddings)
+            else:
+                embeddings = None
 
             if embeddings_field:
                 sample[embeddings_field] = embeddings
