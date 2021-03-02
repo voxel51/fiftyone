@@ -697,7 +697,6 @@ class Session(foc.HasClient):
     def _update_state(self, state=None):
         # see fiftyone.core.client if you would like to understand this
         self.state = state or self.state
-        self._update_listeners()
 
 
 def _display(session, handle, uuid, port=None, height=None, update=False):

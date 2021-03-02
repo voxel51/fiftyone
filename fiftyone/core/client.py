@@ -118,22 +118,6 @@ class HasClient(object):
         self._thread = Thread(target=run_client, daemon=True)
         self._thread.start()
 
-    def get_listeners(self):
-        return self._listeners
-
-    def add_listener(self, key, callback):
-        self._listeners[key] = callback
-
-    def delete_listener(self, key):
-        self._listeners.pop(key, None)
-
-    def delete_listeners(self):
-        self._listeners = {}
-
-    def _update_listeners(self):
-        for listener in self._listeners.values():
-            listener(self)
-
     def __getattr__(self, name):
         """Gets the data via the attribute defined by ``_HC_ATTR_NAME``."""
         if name == self._HC_ATTR_NAME:
@@ -165,6 +149,8 @@ class HasClient(object):
                 time.sleep(0.2)
 
             self._data = value
+            self._update_listeners()
+
             self._client.write_message(
                 json_util.dumps({"type": "update", "state": value.serialize()})
             )
@@ -200,3 +186,23 @@ class HasClient(object):
         print()
         for value in data["session_items"]:
             print(value)
+
+    @property
+    def has_listeners(self):
+        return bool(self._listeners)
+
+    def get_listeners(self):
+        return self._listeners
+
+    def add_listener(self, key, callback):
+        self._listeners[key] = callback
+
+    def delete_listener(self, key):
+        self._listeners.pop(key, None)
+
+    def delete_listeners(self):
+        self._listeners = {}
+
+    def _update_listeners(self):
+        for callback in self._listeners.values():
+            callback(self)
