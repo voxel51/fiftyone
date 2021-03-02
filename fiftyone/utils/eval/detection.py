@@ -309,11 +309,17 @@ class DetectionResults(ClassificationResults):
             )
         )
 
-        classes = d.get("classes", None)
-        if classes is not None:
-            classes = etas.deserialize_numpy_array(classes, allow_pickle=True)
+        if "classes" in d:
+            classes = etas.deserialize_numpy_array(
+                d["classes"], allow_pickle=True
+            )
+        else:
+            classes = None
 
-        missing = d.get("missing", None)
+        if "missing" in d:
+            missing = d["missing"]
+        else:
+            missing = None
 
         return cls(matches, classes=classes, missing=missing, **kwargs)
 

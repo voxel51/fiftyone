@@ -5,9 +5,21 @@ Dataset run documents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from mongoengine import DictField, ListField, StringField, DateTimeField
+from mongoengine import (
+    DictField,
+    ListField,
+    ReferenceField,
+    StringField,
+    DateTimeField,
+)
 
-from .document import EmbeddedDocument
+from .document import DynamicDocument, EmbeddedDocument
+
+
+class RunResultsDocument(DynamicDocument):
+    """Run results for a run on a dataset"""
+
+    meta = {"collection": "run_results"}
 
 
 class RunDocument(EmbeddedDocument):
@@ -17,3 +29,4 @@ class RunDocument(EmbeddedDocument):
     timestamp = DateTimeField()
     config = DictField()
     view_stages = ListField(StringField())
+    results = ReferenceField(RunResultsDocument)

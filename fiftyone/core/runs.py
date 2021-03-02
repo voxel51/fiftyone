@@ -13,7 +13,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 from fiftyone.core.config import Config, Configurable
-from fiftyone.core.odm.runs import RunDocument
+from fiftyone.core.odm.runs import RunResultsDocument, RunDocument
 
 
 class RunInfo(Config):
@@ -130,15 +130,6 @@ class Run(Configurable):
         which the info for these runs are stored.
         """
         raise NotImplementedError("subclass must implement _run_info_field()")
-
-    @classmethod
-    def _run_results_field(cls):
-        """The :class:`fiftyone.core.odm.dataset.DatasetDocument` field in
-        which the results for these runs are stored.
-        """
-        raise NotImplementedError(
-            "subclass must implement _run_results_field()"
-        )
 
     @classmethod
     def _run_str(cls):
@@ -312,8 +303,14 @@ class Run(Configurable):
         if run_results is not None:
             run_results = run_results.serialize()
 
-        results = getattr(samples._dataset._doc, cls._run_results_field())
-        results[key] = run_results
+        info = getattr(samples._dataset._doc, cls._run_info_field())[key]
+
+        result_doc = RunResultsDocument()
+        for k, v in run_results.items():
+            result_doc[k] = v
+
+        result_doc.save()
+        info.results = result_doc
         samples._dataset.save()
 
     @classmethod
@@ -402,8 +399,6 @@ class Run(Configurable):
         run.cleanup(samples, key)
         run_docs = getattr(samples._dataset._doc, cls._run_info_field())
         run_docs.pop(key, None)
-        run_results = getattr(samples._dataset._doc, cls._run_results_field())
-        run_results.pop(key, None)
         samples._dataset.save()
 
     @classmethod
@@ -430,15 +425,17 @@ class Run(Configurable):
 
     @classmethod
     def _get_run_results_dict(cls, samples, key):
-        run_results = getattr(samples._dataset._doc, cls._run_results_field())
-        results_dict = run_results.get(key, None)
-        if results_dict is None:
+        run_docs = getattr(samples._dataset._doc, cls._run_info_field())
+        run_doc = run_docs.get(key, None)
+
+        print(run_doc.results)
+        if run_doc.results is None:
             raise ValueError(
                 "Results for %s key '%s' not found on collection '%s'"
                 % (cls._run_str(), key, samples.name)
             )
 
-        return results_dict
+        return run_doc.results
 
     @classmethod
     def _get_run_fields(cls, samples, key):

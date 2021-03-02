@@ -52,10 +52,6 @@ class EvaluationMethod(Run):
         return "evaluations"
 
     @classmethod
-    def _run_results_field(cls):
-        return "evaluation_results"
-
-    @classmethod
     def _run_str(cls):
         return "evaluation"
 
