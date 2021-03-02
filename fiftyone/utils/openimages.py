@@ -469,8 +469,6 @@ def _load_open_images_split(
         samples.append(sample)
 
     print("Adding samples to dataset")
-    # TODO: Is it better to add samples individually in case samples gets too
-    # large?
     dataset.add_samples(samples)
 
     return dataset
@@ -481,6 +479,9 @@ def _create_labels(lab_data, image_id, classes, classes_map):
     neg_cls = []
     # Get relevant data for this image
     sample_labs = [i for i in lab_data if i[0] == image_id]
+
+    if not sample_labs:
+        return None
 
     for sample_lab in sample_labs:
         # sample_lab reference: [ImageID,Source,LabelName,Confidence]
@@ -494,9 +495,6 @@ def _create_labels(lab_data, image_id, classes, classes_map):
             else:
                 neg_cls.append(cls)
 
-    if not pos_cls and not neg_cls:
-        return None, None
-
     pos_labels = fol.Classifications(classifications=pos_cls)
     neg_labels = fol.Classifications(classifications=neg_cls)
 
@@ -506,6 +504,9 @@ def _create_labels(lab_data, image_id, classes, classes_map):
 def _create_detections(det_data, image_id, classes, classes_map):
     dets = []
     sample_dets = [i for i in det_data if i[0] == image_id]
+
+    if not sample_dets:
+        return None
 
     for sample_det in sample_dets:
         # sample_det reference: [ImageID,Source,LabelName,Confidence,XMin,XMax,YMin,YMax,IsOccluded,IsTruncated,IsGroupOf,IsDepiction,IsInside]
@@ -529,11 +530,6 @@ def _create_detections(det_data, image_id, classes, classes_map):
 
             dets.append(detection)
 
-    # TODO: If there aren't detection for your selected class but there are for
-    # others, do you return None or fol.Detections([])?
-    if not dets:
-        return None
-
     detections = fol.Detections(detections=dets)
 
     return detections
@@ -544,6 +540,9 @@ def _create_relationships(
 ):
     rels = []
     sample_rels = [i for i in rel_data if i[0] == image_id]
+
+    if not sample_rels:
+        return None
 
     for sample_rel in sample_rels:
         # sample_rel reference: [ImageID,LabelName1,LabelName2,XMin1,XMax1,YMin1,YMax1,XMin2,XMax2,YMin2,YMax2,RelationshipLabel]
@@ -596,9 +595,6 @@ def _create_relationships(
 
             rels.append(detection_rel)
 
-    if not rels:
-        return None
-
     relationships = fol.Detections(detections=rels)
 
     return relationships
@@ -609,6 +605,9 @@ def _create_segmentations(
 ):
     segs = []
     sample_segs = [i for i in seg_data if i[1] == image_id]
+
+    if not sample_segs:
+        return None
 
     for sample_seg in sample_segs:
         # sample_seg reference: [MaskPath,ImageID,LabelName,BoxID,BoxXMin,BoxXMax,BoxYMin,BoxYMax,PredictedIoU,Clicks]
@@ -646,9 +645,6 @@ def _create_segmentations(
             )
 
             segs.append(segmentation)
-
-    if not segs:
-        return None
 
     segmentations = fol.Detections(detections=segs)
 
