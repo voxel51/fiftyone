@@ -58,7 +58,7 @@ def apply_model(
         batch_size (None): an optional batch size to use. Only applicable for
             image samples
         num_workers (None): the number of workers to use when loading images.
-            Only applicable when PyTorch is installed
+            Only applicable for Torch models
     """
     if not isinstance(model, Model):
         raise ValueError(
@@ -71,12 +71,11 @@ def apply_model(
             "(model.has_logits = %s)" % model.has_logits
         )
 
-    # Use Torch data loaders, if possible
-    use_data_loader = _can_use_data_loaders()
+    use_data_loader = isinstance(model, TorchModelMixin)
 
     if num_workers is not None and not use_data_loader:
         logger.warning(
-            "PyTorch is not installed; ignoring `num_workers` parameter"
+            "Ignoring `num_workers` parameter; only supported for Torch models"
         )
 
     with contextlib.ExitStack() as context:
@@ -178,15 +177,10 @@ def _apply_image_model_data_loader(
             pb.set_iteration(pb.iteration + len(imgs))
 
 
-def _can_use_data_loaders():
-    try:
-        fou.ensure_torch()
-        return True
-    except:
-        return False
-
-
 def _make_data_loader(samples, model, batch_size, num_workers):
+    # This function supports DataLoaders that emit numpy arrays that can
+    # therefore be used for non-Torch models; but we do not currenly use this
+    # functionality
     use_numpy = not isinstance(model, TorchModelMixin)
 
     if num_workers is None:
@@ -246,7 +240,7 @@ def compute_embeddings(
         batch_size (None): an optional batch size to use. Only applicable for
             image samples
         num_workers (None): the number of workers to use when loading images.
-            Only applicable when PyTorch is installed
+            Only applicable for Torch models
 
     Returns:
         ``None``, if an ``embeddings_field`` is provided; otherwise, a numpy
@@ -264,12 +258,11 @@ def compute_embeddings(
             % model.has_embeddings
         )
 
-    # Use Torch data loaders, if possible
-    use_data_loader = _can_use_data_loaders()
+    use_data_loader = isinstance(model, TorchModelMixin)
 
     if num_workers is not None and not use_data_loader:
         logger.warning(
-            "PyTorch is not installed; ignoring `num_workers` parameter"
+            "Ignoring `num_workers` parameter; only supported for Torch models"
         )
 
     with contextlib.ExitStack() as context:
@@ -403,10 +396,11 @@ def compute_patch_embeddings(
     model,
     patches_field,
     embeddings_field=None,
-    batch_size=None,
-    num_workers=None,
     force_square=False,
     alpha=None,
+    handle_missing="skip",
+    batch_size=None,
+    num_workers=None,
 ):
     """Computes embeddings for the image patches defined by ``patches_field``
     of the samples in the collection using the given :class:`Model`.
@@ -427,9 +421,6 @@ def compute_patch_embeddings(
             patches in each sample to embed
         embeddings_field (None): the name of a field in which to store the
             embeddings
-        batch_size (None): an optional batch size to use
-        num_workers (None): the number of workers to use when loading images.
-            Only applicable when PyTorch is installed
         force_square (False): whether to minimally manipulate the patch
             bounding boxes into squares prior to extraction
         alpha (None): an optional expansion/contraction to apply to the patches
@@ -438,6 +429,16 @@ def compute_patch_embeddings(
             ``alpha < 0``) by ``(100 * alpha)%``. For example, set
             ``alpha = 1.1`` to expand the boxes by 10%, and set ``alpha = 0.9``
             to contract the boxes by 10%
+        handle_missing ("skip"): how to handle images with no patches.
+            Supported values are:
+
+            -   "skip": skip the image and assign its embedding as ``None``
+            -   "image": use the whole image as a single patch
+            -   "error": raise an error
+
+        batch_size (None): an optional batch size to use
+        num_workers (None): the number of workers to use when loading images.
+            Only applicable for Torch models
 
     Returns:
         ``None``, if an ``embeddings_field`` is provided; otherwise, a dict
@@ -457,12 +458,18 @@ def compute_patch_embeddings(
             % model.has_embeddings
         )
 
-    # Use Torch data loaders, if possible
-    use_data_loader = _can_use_data_loaders()
+    use_data_loader = isinstance(model, TorchModelMixin)
+
+    _handle_missing_supported = {"skip", "image", "error"}
+    if handle_missing not in _handle_missing_supported:
+        raise ValueError(
+            "Unsupported handle_missing = '%s'; supported values are %s"
+            % (handle_missing, _handle_missing_supported)
+        )
 
     if num_workers is not None and not use_data_loader:
         logger.warning(
-            "PyTorch is not installed; ignoring `num_workers` parameter"
+            "Ignoring `num_workers` parameter; only supported for Torch models"
         )
 
     allowed_types = (
@@ -492,10 +499,11 @@ def compute_patch_embeddings(
                 patches_field,
                 embeddings_field,
                 embeddings_dict,
-                batch_size,
-                num_workers,
                 force_square,
                 alpha,
+                handle_missing,
+                batch_size,
+                num_workers,
             )
         else:
             _embed_patches(
@@ -504,9 +512,10 @@ def compute_patch_embeddings(
                 patches_field,
                 embeddings_field,
                 embeddings_dict,
-                batch_size,
                 force_square,
                 alpha,
+                handle_missing,
+                batch_size,
             )
 
     return embeddings_dict if not embeddings_field else None
@@ -518,17 +527,20 @@ def _embed_patches(
     patches_field,
     embeddings_field,
     embeddings_dict,
-    batch_size,
     force_square,
     alpha,
+    handle_missing,
+    batch_size,
 ):
     with fou.ProgressBar() as pb:
         for sample in pb(samples):
-            patches = _parse_patches(sample, patches_field)
+            patches = _parse_patches(sample, patches_field, handle_missing)
 
             img = etai.read(sample.filepath)
 
-            if batch_size is None:
+            if patches is None or not patches.detections:
+                embeddings = None
+            elif batch_size is None:
                 embeddings = _embed_patches_single(
                     model, img, patches, force_square, alpha
                 )
@@ -575,23 +587,33 @@ def _embed_patches_data_loader(
     patches_field,
     embeddings_field,
     embeddings_dict,
-    batch_size,
-    num_workers,
     force_square,
     alpha,
+    handle_missing,
+    batch_size,
+    num_workers,
 ):
     data_loader = _make_patch_data_loader(
-        samples, model, patches_field, force_square, alpha, num_workers
+        samples,
+        model,
+        patches_field,
+        force_square,
+        alpha,
+        handle_missing,
+        num_workers,
     )
 
     with fou.ProgressBar(samples) as pb:
         for sample, patches in pb(zip(samples, data_loader)):
-            embeddings = []
-            for patches_batch in fou.iter_slices(patches, batch_size):
-                embeddings_batch = model.embed_all(patches_batch)
-                embeddings.append(embeddings_batch)
+            if patches is None or not patches.detections:
+                embeddings = None
+            else:
+                embeddings = []
+                for patches_batch in fou.iter_slices(patches, batch_size):
+                    embeddings_batch = model.embed_all(patches_batch)
+                    embeddings.append(embeddings_batch)
 
-            embeddings = np.concatenate(embeddings)
+                embeddings = np.concatenate(embeddings)
 
             if embeddings_field:
                 sample[embeddings_field] = embeddings
@@ -601,8 +623,17 @@ def _embed_patches_data_loader(
 
 
 def _make_patch_data_loader(
-    samples, model, patches_field, force_square, alpha, num_workers
+    samples,
+    model,
+    patches_field,
+    force_square,
+    alpha,
+    handle_missing,
+    num_workers,
 ):
+    # This function supports DataLoaders that emit numpy arrays that can
+    # therefore be used for non-Torch models; but we do not currenly use this
+    # functionality
     use_numpy = not isinstance(model, TorchModelMixin)
 
     if num_workers is None:
@@ -611,7 +642,7 @@ def _make_patch_data_loader(
     image_paths = []
     detections = []
     for sample in samples.select_fields(patches_field):
-        patches = _parse_patches(sample, patches_field)
+        patches = _parse_patches(sample, patches_field, handle_missing)
         image_paths.append(sample.filepath)
         detections.append(patches)
 
@@ -634,7 +665,7 @@ def _make_patch_data_loader(
     )
 
 
-def _parse_patches(sample, patches_field):
+def _parse_patches(sample, patches_field, handle_missing):
     label = sample[patches_field]
 
     if isinstance(label, fol.Detections):
@@ -649,12 +680,20 @@ def _parse_patches(sample, patches_field):
         patches = None
 
     if patches is None or not patches.detections:
-        msg = "Sample found with no patches; using the entire image..."
-        warnings.warn(msg)
+        if handle_missing == "skip":
+            msg = "Sample found with no patches; embedding will be None"
+            warnings.warn(msg)
 
-        patches = fol.Detections(
-            detections=[fol.Detection(bounding_box=[0, 0, 1, 1])]
-        )
+            patches = None
+        elif handle_missing == "image":
+            msg = "Sample found with no patches; using entire image instead"
+            warnings.warn(msg)
+
+            patches = fol.Detections(
+                detections=[fol.Detection(bounding_box=[0, 0, 1, 1])]
+            )
+        else:
+            raise ValueError("Sample '%s' has no patches" % sample.id)
 
     return patches
 
