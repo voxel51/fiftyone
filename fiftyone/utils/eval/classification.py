@@ -12,12 +12,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sklearn.metrics as skm
 
-import eta.core.serial as etas
-
 import fiftyone.core.aggregations as foa
 import fiftyone.core.evaluation as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
+import fiftyone.core.utils as fou
 
 
 def evaluate_classifications(
@@ -665,20 +664,20 @@ class ClassificationResults(foe.EvaluationResults):
 
     @classmethod
     def _from_dict(cls, d, samples, **kwargs):
-        ytrue = etas.deserialize_numpy_array(d["ytrue"], allow_pickle=True)
-        ypred = etas.deserialize_numpy_array(d["ypred"], allow_pickle=True)
+        ytrue = fou.deserialize_ndarray(d["ytrue"])
+        ypred = fou.deserialize_ndarray(d["ypred"])
 
         confs = d.get("confs", None)
         if confs is not None:
-            confs = etas.deserialize_numpy_array(confs, allow_pickle=True)
+            confs = fou.deserialize_ndarray(confs)
 
         weights = d.get("weights", None)
         if weights is not None:
-            weights = etas.deserialize_numpy_array(weights, allow_pickle=True)
+            weights = fou.deserialize_ndarray(weights)
 
         classes = d.get("classes", None)
         if classes is not None:
-            classes = etas.deserialize_numpy_array(classes, allow_pickle=True)
+            classes = fou.deserialize_ndarray(classes)
 
         missing = d.get("missing", None)
 

@@ -12,8 +12,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sklearn.metrics as skm
 
-import eta.core.serial as etas
-
 import fiftyone.core.utils as fou
 
 from .detection import (
@@ -357,15 +355,9 @@ class COCODetectionResults(DetectionResults):
         return super()._from_dict(
             d,
             samples,
-            precision=etas.deserialize_numpy_array(
-                d["precision"], allow_pickle=True
-            ),
-            recall=etas.deserialize_numpy_array(
-                d["recall"], allow_pickle=True
-            ),
-            iou_threshs=etas.deserialize_numpy_array(
-                d["iou_threshs"], allow_pickle=True
-            ),
+            precision=fou.deserialize_ndarray(d["precision"]),
+            recall=fou.deserialize_ndarray(d["recall"]),
+            iou_threshs=fou.deserialize_ndarray(d["iou_threshs"]),
             **kwargs,
         )
 

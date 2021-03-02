@@ -21,6 +21,10 @@ import subprocess
 import types
 import zlib
 
+import numpy as np
+from bson.binary import Binary
+
+
 try:
     import pprintpp as _pprint
 
@@ -773,3 +777,16 @@ class SetAttributes(object):
     def __exit__(self, *args):
         for k, v in self._orig_kwargs.items():
             setattr(self._obj, k, v)
+
+
+def serialize_ndarray(array):
+    return {
+        "shape": array.shape,
+        "dtype": array.dtype,
+        "bytes": Binary(array.tobytes()),
+    }
+
+
+def deserialize_ndarray(d):
+    array = np.frombuffer(d["bytes"], d["dtype"])
+    return array.reshape(*d["shape"])

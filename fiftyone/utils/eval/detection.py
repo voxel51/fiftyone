@@ -9,8 +9,6 @@ import logging
 
 import numpy as np
 
-import eta.core.serial as etas
-
 import fiftyone.core.evaluation as foe
 import fiftyone.core.utils as fou
 
@@ -302,17 +300,15 @@ class DetectionResults(ClassificationResults):
     def _from_dict(cls, d, samples, **kwargs):
         matches = list(
             zip(
-                etas.deserialize_numpy_array(d["ytrue"], allow_pickle=True),
-                etas.deserialize_numpy_array(d["ypred"], allow_pickle=True),
-                etas.deserialize_numpy_array(d["ious"], allow_pickle=True),
-                etas.deserialize_numpy_array(d["confs"], allow_pickle=True),
+                fou.deserialize_ndarray(d["ytrue"]),
+                fou.deserialize_ndarray(d["ypred"]),
+                fou.deserialize_ndarray(d["ious"]),
+                fou.deserialize_ndarray(d["confs"]),
             )
         )
 
         if "classes" in d:
-            classes = etas.deserialize_numpy_array(
-                d["classes"], allow_pickle=True
-            )
+            classes = fou.deserialize_ndarray(d["classes"])
         else:
             classes = None
 

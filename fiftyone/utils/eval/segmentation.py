@@ -12,7 +12,6 @@ import numpy as np
 import sklearn.metrics as skm
 
 import eta.core.image as etai
-import eta.core.serial as etas
 
 import fiftyone.core.evaluation as foe
 import fiftyone.core.utils as fou
@@ -305,10 +304,8 @@ class SegmentationResults(ClassificationResults):
     @classmethod
     def _from_dict(cls, d, samples, **kwargs):
         return cls(
-            etas.deserialize_numpy_array(
-                d["pixel_confusion_matrix"], allow_pickle=True
-            ),
-            etas.deserialize_numpy_array(d["classes"], allow_pickle=True),
+            fou.deserialize_ndarray(d["pixel_confusion_matrix"]),
+            fou.deserialize_ndarray(d["classes"]),
             missing=d.get("missing", None),
             **kwargs,
         )
