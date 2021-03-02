@@ -428,7 +428,6 @@ class Run(Configurable):
         run_docs = getattr(samples._dataset._doc, cls._run_info_field())
         run_doc = run_docs.get(key, None)
 
-        print(run_doc.results)
         if run_doc.results is None:
             raise ValueError(
                 "Results for %s key '%s' not found on collection '%s'"
