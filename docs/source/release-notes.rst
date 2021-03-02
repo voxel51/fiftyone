@@ -38,6 +38,8 @@ Brain
   :meth:`load_brain_view() <fiftyone.core.collections.SampleCollection.load_brain_view>`,
   and
   :meth:`delete_brain_run() <fiftyone.core.collections.SampleCollection.delete_brain_run>`,
+- Updated :meth:`compute_mistakenness() <fiftyone.core.collections.SampleCollection.compute_mistakenness>`
+  to use the FiftyOne's evaluation framework
 
 CLI
 ^^^
