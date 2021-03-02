@@ -3022,6 +3022,9 @@ def _get_sample_ids(samples_or_ids):
     if isinstance(samples_or_ids, foc.SampleCollection):
         return [str(_id) for _id in samples_or_ids._get_sample_ids()]
 
+    if not samples_or_ids:
+        return []
+
     if isinstance(next(iter(samples_or_ids)), (fos.Sample, fos.SampleView)):
         return [s.id for s in samples_or_ids]
 
