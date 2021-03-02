@@ -667,19 +667,19 @@ class ClassificationResults(foe.EvaluationResults):
         ytrue = fou.deserialize_ndarray(d["ytrue"])
         ypred = fou.deserialize_ndarray(d["ypred"])
 
-        confs = d.get("confs", None)
+        confs = getattr(d, "confs", None)
         if confs is not None:
             confs = fou.deserialize_ndarray(confs)
 
-        weights = d.get("weights", None)
+        weights = getattr(d, "weights", None)
         if weights is not None:
             weights = fou.deserialize_ndarray(weights)
 
-        classes = d.get("classes", None)
+        classes = getattr(d, "classes", None)
         if classes is not None:
             classes = fou.deserialize_ndarray(classes)
 
-        missing = d.get("missing", None)
+        missing = getattr(d, "missing", None)
 
         return cls(
             ytrue,

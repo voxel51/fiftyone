@@ -465,7 +465,7 @@ class RunResults(etas.Serializable):
 
     def serialize(self):
         """Serializes the results for saving to the database."""
-        super().serialize(serializers={np.ndarray: serialize_ndarray})
+        return super().serialize(serializers={np.ndarray: serialize_ndarray})
 
     @classmethod
     def from_dict(cls, d, samples):

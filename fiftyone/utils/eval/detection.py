@@ -307,15 +307,11 @@ class DetectionResults(ClassificationResults):
             )
         )
 
-        if "classes" in d:
-            classes = fou.deserialize_ndarray(d["classes"])
-        else:
-            classes = None
+        classes = getattr(d, "classes", None)
+        if classes is not None:
+            classes = fou.deserialize_ndarray(classes)
 
-        if "missing" in d:
-            missing = d["missing"]
-        else:
-            missing = None
+        missing = getattr(d, "missing", None)
 
         return cls(matches, classes=classes, missing=missing, **kwargs)
 

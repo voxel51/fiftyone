@@ -780,13 +780,26 @@ class SetAttributes(object):
 
 
 def serialize_ndarray(array):
-    return {
-        "shape": array.shape,
-        "dtype": array.dtype,
-        "bytes": Binary(array.tobytes()),
-    }
+    """Serializes a numpy array for storage in a MongoDB document
+
+    Args:
+        array: a `numpy.ndarray`
+
+    Returns:
+        a `list` tensor
+    """
+    # @todo: improve serialization or return to the ETA default
+    return array.tolist()
 
 
-def deserialize_ndarray(d):
-    array = np.frombuffer(d["bytes"], d["dtype"])
-    return array.reshape(*d["shape"])
+def deserialize_ndarray(array):
+    """Serializes a numpy array from storage in a MongoDB document
+
+    Args:
+        array: a `list` tensor
+
+    Returns:
+        a `numpy.ndarray`
+    """
+    # @todo: improve serialization or return to the ETA default
+    return np.asarray(array)

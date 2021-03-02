@@ -306,7 +306,7 @@ class SegmentationResults(ClassificationResults):
         return cls(
             fou.deserialize_ndarray(d["pixel_confusion_matrix"]),
             fou.deserialize_ndarray(d["classes"]),
-            missing=d.get("missing", None),
+            missing=getattr(d, "missing", None),
             **kwargs,
         )
 
