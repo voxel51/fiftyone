@@ -1385,25 +1385,33 @@ class SampleCollection(object):
         return self._add_view_stage(fos.ExcludeFields(field_names))
 
     @view_stage
-    def exclude_labels(self, labels):
+    def exclude_labels(self, labels=None, ids=None, tags=None, fields=None):
         """Excludes the specified labels from the collection.
 
-        The returned view will omit the labels specified in the provided
-        ``labels`` argument, which should have the following format::
+        The returned view will omit samples, sample fields, and individual
+        labels that do not match the specified selection criteria.
 
-            [
-                {
-                    "sample_id": "5f8d254a27ad06815ab89df4",
-                    "field": "ground_truth",
-                    "label_id": "5f8d254a27ad06815ab89df3",
-                },
-                {
-                    "sample_id": "5f8d255e27ad06815ab93bf8",
-                    "field": "ground_truth",
-                    "label_id": "5f8d255e27ad06815ab93bf6",
-                },
-                ...
-            ]
+        You can perform an exclusion via one of the following methods:
+
+        -   Provide one or both of the ``ids`` and ``tags`` arguments, and
+            optionally the ``fields`` argument
+
+        -   Provide the ``labels`` argument, which should have the following
+            format::
+
+                [
+                    {
+                        "sample_id": "5f8d254a27ad06815ab89df4",
+                        "field": "ground_truth",
+                        "label_id": "5f8d254a27ad06815ab89df3",
+                    },
+                    {
+                        "sample_id": "5f8d255e27ad06815ab93bf8",
+                        "field": "ground_truth",
+                        "label_id": "5f8d255e27ad06815ab93bf6",
+                    },
+                    ...
+                ]
 
         Examples::
 
@@ -1420,15 +1428,61 @@ class SampleCollection(object):
 
             # Select some labels in the App...
 
-            view = dataset.exclude_labels(session.selected_labels)
+            view = dataset.exclude_labels(labels=session.selected_labels)
+
+            #
+            # Exclude labels with the specified IDs
+            #
+
+            # Grab some label IDs
+            ids = [
+                dataset.first().ground_truth.detections[0].id,
+                dataset.last().predictions.detections[0].id,
+            ]
+
+            view = dataset.exclude_labels(ids=ids)
+
+            print(dataset.count("ground_truth.detections"))
+            print(view.count("ground_truth.detections"))
+
+            print(dataset.count("predictions.detections"))
+            print(view.count("predictions.detections"))
+
+            #
+            # Exclude labels with the specified tags
+            #
+
+            # Grab some label IDs
+            ids = [
+                dataset.first().ground_truth.detections[0].id,
+                dataset.last().predictions.detections[0].id,
+            ]
+
+            # Give the labels a "test" tag
+            dataset = dataset.clone()  # create a copy since we're modifying data
+            dataset.select_labels(ids=ids).tag_labels("test")
+
+            print(dataset.count_values("ground_truth.detections.tags"))
+            print(dataset.count_values("predictions.detections.tags"))
+
+            # Exclude the labels via their tag
+            view = dataset.exclude_labels(tags=["test"])
+
+            print(dataset.count("ground_truth.detections"))
+            print(view.count("ground_truth.detections"))
+
+            print(dataset.count("predictions.detections"))
+            print(view.count("predictions.detections"))
 
         Args:
-            labels: a list of dicts specifying the labels to exclude
-
-        Returns:
-            a :class:`fiftyone.core.view.DatasetView`
+            labels (None): a list of dicts specifying the labels to exclude
+            ids (None): a list of IDs of the labels to exclude
+            tags (None): a list of tags of labels to exclude
+            fields (None): a list of fields from which to exclude labels
         """
-        return self._add_view_stage(fos.ExcludeLabels(labels))
+        return self._add_view_stage(
+            fos.ExcludeLabels(labels=labels, ids=ids, tags=tags, fields=fields)
+        )
 
     @view_stage
     def exists(self, field, bool=True):

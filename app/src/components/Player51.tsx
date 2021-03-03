@@ -420,6 +420,9 @@ export default ({
     overlayOptions,
     defaultTargets,
   ]);
+  if (!thumbnail) {
+    console.log(selectedObjects);
+  }
 
   useEffect(() => {
     if (player && selectedObjects) {
