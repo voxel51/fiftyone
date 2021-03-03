@@ -3,6 +3,50 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.7.4:
+
+FiftyOne 0.7.4
+--------------
+*Released March 2, 2021*
+
+App
+^^^
+- Fixed a bug that prevented |Session| updates from triggering App updates
+- Fixed hiding objects in the expanded sample view
+
+Core
+^^^^
+- Decoupled loading video |Sample| and |SampleView| and their frames so the
+  samples are loaded efficiently and frames are only loaded when requested
+- Add a 90 character limit to progress bars in notebook contexts to prevent
+  overflow issues
+- Added low-level utility methods
+  :meth:`list_datasets() <fiftyone.core.odm.database.list_datasets>` and
+  :meth:`delete_dataset() <fiftyone.core.odm.database.delete_dataset>` for
+  managing a corrupted database
+
+Brain
+^^^^^
+- Added support for tracking and cleaning up brain runs similar to how
+  evaluations are tracked. See
+  :meth:`get_brain_info() <fiftyone.core.collections.SampleCollection.get_brain_info>`,
+  :meth:`list_brain_runs() <fiftyone.core.collections.SampleCollection.list_brain_runs>`,
+  :meth:`load_brain_view() <fiftyone.core.collections.SampleCollection.load_brain_view>`,
+  and
+  :meth:`delete_brain_run() <fiftyone.core.collections.SampleCollection.delete_brain_run>`
+  for details
+- Updated :meth:`compute_mistakenness() <fiftyone.brain.compute_mistakenness>`
+  to use FiftyOne's evaluation framework
+
+CLI
+^^^
+- Added a :ref:`dataset stats <cli-fiftyone-datasets-stats>` command
+
+Utils
+^^^^^
+- Added automatic field generation for `labelbox_id_field` when using
+  :meth:`import_from_labelbox() <fiftyone.utils.labelbox.import_from_labelbox>`
+
 .. _release-notes-v0.7.3:
 
 FiftyOne 0.7.3
