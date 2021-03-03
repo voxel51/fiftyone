@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 
 import * as atoms from "../recoil/atoms";
@@ -18,7 +18,7 @@ import DropdownTag from "./Tags/DropdownTag";
 const _addFrameNumberToObjects = (objects, frame_number) =>
   objects.map((obj) => ({ ...obj, frame_number }));
 
-const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
+const SelectLabelsMenu = ({ sample, frameNumberRef }) => {
   const [selectedObjects, setSelectedObjects] = useRecoilState<
     SelectedObjectMap
   >(atoms.selectedObjects);
@@ -119,12 +119,12 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
 
   return (
     <DropdownTag
-      name={`${numTotalSelectedObjects} object${
+      name={`${numTotalSelectedObjects} label${
         numTotalSelectedObjects == 1 ? "" : "s"
       } selected`}
       onSelect={(item) => item.action()}
       onOpen={() => refresh()}
-      title="Click on objects in the media viewer to select them"
+      title="Click on labels in the media viewer to select them"
       menuItems={[
         sampleObjects.length && {
           name: "Select all (current sample)",
@@ -168,7 +168,7 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
           action: () => hideOthers(frameObjects),
         },
         {
-          name: "Show all objects",
+          name: "Show all labels",
           disabled: hiddenObjects.size == 0,
           action: () => resetHiddenObjects(),
         },
@@ -178,4 +178,4 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
   );
 };
 
-export default SelectObjectsMenu;
+export default SelectLabelsMenu;
