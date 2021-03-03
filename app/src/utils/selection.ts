@@ -7,21 +7,21 @@ export interface SelectedObjectData {
 }
 
 export interface SelectedObject extends SelectedObjectData {
-  object_id: string;
+  label_id: string;
 }
 
 export type SelectedObjectMap = {
-  [object_id: string]: SelectedObjectData;
+  [label_id: string]: SelectedObjectData;
 };
 
 export const useToggleSelectionObject = (atom) => {
   const setSelection = useSetRecoilState(atom);
-  return (object_id: string, data: SelectedObjectData) =>
+  return (label_id: string, data: SelectedObjectData) =>
     setSelection((selection: SelectedObjectMap) => {
-      if (selection.hasOwnProperty(object_id)) {
-        return removeObjectIDsFromSelection(selection, [object_id]);
+      if (selection.hasOwnProperty(label_id)) {
+        return removeObjectIDsFromSelection(selection, [label_id]);
       } else {
-        return addObjectsToSelection(selection, [{ object_id, ...data }]);
+        return addObjectsToSelection(selection, [{ label_id, ...data }]);
       }
     });
 };
@@ -31,11 +31,11 @@ export const addObjectsToSelection = (
   objects: SelectedObject[]
 ): SelectedObjectMap => {
   const newSelection = { ...selection };
-  for (const { object_id, ...data } of objects) {
+  for (const { label_id, ...data } of objects) {
     if (data.frame_number === null) {
       delete data.frame_number;
     }
-    newSelection[object_id] = data;
+    newSelection[label_id] = data;
   }
   return newSelection;
 };
@@ -75,8 +75,8 @@ export const removeMatchingObjectsFromSelection = (
 export const convertSelectedObjectsMapToList = (
   map: SelectedObjectMap
 ): SelectedObject[] => {
-  return Object.entries(map).map(([object_id, data]) => ({
-    object_id,
+  return Object.entries(map).map(([label_id, data]) => ({
+    label_id,
     ...data,
   }));
 };
@@ -84,7 +84,7 @@ export const convertSelectedObjectsMapToList = (
 export const convertSelectedObjectsListToMap = (
   list: SelectedObject[]
 ): SelectedObjectMap => {
-  return list.reduce((map, { object_id, ...data }) => {
+  return list.reduce((map, { label_id, ...data }) => {
     map[object_id] = data;
     return map;
   }, {});
