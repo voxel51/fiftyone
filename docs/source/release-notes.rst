@@ -12,22 +12,21 @@ FiftyOne 0.7.4
 App
 ^^^
 - Changed session updates to always trigger an App update so changes in sample
-  data may updated, e.g. `session.dataset = session.dataset` will now update
+  can take effect, e.g. `session.dataset = session.dataset` will now update
   the App
 - Fixed hiding objects in the expanded sample view
 
 Core
 ^^^^
 - Decoupled loading video :class:`Sample <fiftyone.core.sample.Sample>` and
-  :class:`SampleView <fiftyone.core.sample.SampleView` and their frames so
+  :class:`SampleView <fiftyone.core.sample.SampleView>` and their frames so
   the samples are loaded efficiently and frames are only loaded when requested
 - Add a 90 character limit to progress bars in notebook contexts to prevent
   overflow issues
 - Added low-level utility methods
-  :meth:`list_datasets <fiftyone.core.odm.database.list_datasets>` and
-  :meth:`delete_dataset <fiftyone.core.odm.database.delete_dataset>` for
+  :meth:`list_datasets() <fiftyone.core.odm.database.list_datasets>` and
+  :meth:`delete_dataset() <fiftyone.core.odm.database.delete_dataset>` for
   managing a corrupted database
- 
 
 Brain
 ^^^^^
@@ -37,18 +36,18 @@ Brain
   :meth:`list_brain_runs() <fiftyone.core.collections.SampleCollection.list_brain_runs>`,
   :meth:`load_brain_view() <fiftyone.core.collections.SampleCollection.load_brain_view>`,
   and
-  :meth:`delete_brain_run() <fiftyone.core.collections.SampleCollection.delete_brain_run>`,
-- Updated :meth:`compute_mistakenness() <fiftyone.core.collections.SampleCollection.compute_mistakenness>`
-  to use the FiftyOne's evaluation framework
+  :meth:`delete_brain_run() <fiftyone.core.collections.SampleCollection.delete_brain_run>`
+- Updated :meth:`compute_mistakenness() <fiftyone.brain.compute_mistakenness>`
+  to use FiftyOne's evaluation framework
 
 CLI
 ^^^
-- Added a :ref:`dataset stats CLI comment <cli-fiftyone-datasets-stats>`
+- Added a :ref:`dataset stats CLI command <cli-fiftyone-datasets-stats>`
 
 Utils
 ^^^^^
 - Added automatic field generation for `labelbox_id_field` when using
-  :meth:`<import_from_labelbox <fiftyone.utils.labels.import_from_labelbox>`
+  :meth:`import_from_labelbox() <fiftyone.utils.labelbox.import_from_labelbox>`
 
 .. _release-notes-v0.7.3:
 
