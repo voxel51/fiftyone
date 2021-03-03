@@ -11,7 +11,7 @@ FiftyOne 0.7.4
 
 App
 ^^^
-- Session updates will now always trigger App updates
+- Fixed a bug that prevented |Session| updates from triggering App updates
 - Fixed hiding objects in the expanded sample view
 
 Core
