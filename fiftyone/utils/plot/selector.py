@@ -5,6 +5,7 @@ Point selection utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import itertools
 import math
 
 import numpy as np
@@ -18,6 +19,7 @@ import sklearn.metrics.pairwise as skp
 
 from fiftyone import ViewField as F
 from fiftyone.core.expressions import ObjectId
+import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 
 
@@ -26,8 +28,8 @@ class PointSelector(object):
     matplotlib plot.
 
     The currently selected points are given a visually distinctive style, and
-    the user can modify their selection by either clicking on individual points
-    or drawing a lasso around new points.
+    you can modify your selection by either clicking on individual points or
+    drawing a lasso around new points.
 
     When the shift key is pressed, new selections are added to the selected
     set, or subtracted if the new selection is a subset of the current
@@ -40,9 +42,9 @@ class PointSelector(object):
         selected, a view containing the corresponding samples will be loaded in
         the App
 
-    -   Object selection: If ``object_ids`` and ``object_field`` are provided,
+    -   Label selection: If ``label_ids`` and ``label_field`` are provided,
         then when points are selected, a view containing the corresponding
-        objects in ``object_field`` will be loaded in the App
+        labels in ``label_field`` will be loaded in the App
 
     Args:
         collection: a ``matplotlib.collections.Collection`` to select points
@@ -50,8 +52,8 @@ class PointSelector(object):
         session (None): a :class:`fiftyone.core.session.Session` to link with
             this selector
         sample_ids (None): a list of sample IDs corresponding to ``collection``
-        object_ids (None): a list of object IDs corresponding to ``collection``
-        object_field (None): the sample field containing the objects in
+        label_ids (None): a list of label IDs corresponding to ``collection``
+        label_field (None): the sample field containing the labels in
             ``collection``
         buttons (None): a dict mapping button names to callbacks defining
             buttons to add to the plot
@@ -67,8 +69,8 @@ class PointSelector(object):
         collection,
         session=None,
         sample_ids=None,
-        object_ids=None,
-        object_field=None,
+        label_ids=None,
+        label_field=None,
         buttons=None,
         alpha_other=0.25,
         expand_selected=3.0,
@@ -77,8 +79,8 @@ class PointSelector(object):
         if sample_ids is not None:
             sample_ids = np.asarray(sample_ids)
 
-        if object_ids is not None:
-            object_ids = np.asarray(object_ids)
+        if label_ids is not None:
+            label_ids = np.asarray(label_ids)
 
         if buttons is not None:
             button_defs = list(buttons.items())
@@ -95,8 +97,8 @@ class PointSelector(object):
         self.session = session
         self.bidirectional = False
         self.sample_ids = sample_ids
-        self.object_ids = object_ids
-        self.object_field = object_field
+        self.label_ids = label_ids
+        self.label_field = label_field
         self.alpha_other = alpha_other
         self.expand_selected = expand_selected
         self.click_tolerance = click_tolerance
@@ -113,7 +115,7 @@ class PointSelector(object):
 
         self._inds = np.array([], dtype=int)
         self._selected_sample_ids = None
-        self._selected_object_ids = None
+        self._selected_label_ids = None
         self._canvas.mpl_connect("close_event", lambda e: self._disconnect())
 
         self._connected = False
@@ -153,11 +155,11 @@ class PointSelector(object):
         return self.sample_ids is not None
 
     @property
-    def is_selecting_objects(self):
-        """Whether this selector is selecting objects from a field of a sample
+    def is_selecting_labels(self):
+        """Whether this selector is selecting labels from a field of a sample
         collection.
         """
-        return self.object_ids is not None and self.object_field is not None
+        return self.label_ids is not None and self.label_field is not None
 
     @property
     def any_selected(self):
@@ -177,11 +179,11 @@ class PointSelector(object):
         return self._selected_sample_ids
 
     @property
-    def selected_objects(self):
-        """A list of the currently selected objects, or None if
-        :meth:`is_selecting_objects` is False.
+    def selected_labels(self):
+        """A list of the currently selected labels, or None if
+        :meth:`is_selecting_labels` is False.
         """
-        return self._selected_object_ids
+        return self._selected_label_ids
 
     def select_samples(self, sample_ids):
         """Selects the points corresponding to the given sample IDs.
@@ -196,17 +198,17 @@ class PointSelector(object):
         inds = np.nonzero([_id in _sample_ids for _id in self.sample_ids])[0]
         self._select_inds(inds)
 
-    def select_objects(self, object_ids):
-        """Selects the points corresponding to the objects with the given IDs.
+    def select_labels(self, label_ids):
+        """Selects the points corresponding to the labels with the given IDs.
 
         Args:
-            object_ids: a list of object IDs
+            label_ids: a list of label IDs
         """
-        if not self.is_selecting_objects:
-            raise ValueError("This selector cannot select objects")
+        if not self.is_selecting_labels:
+            raise ValueError("This selector cannot select labels")
 
-        _object_ids = set(object_ids)
-        inds = np.nonzero([_id in _object_ids for _id in self.object_ids])[0]
+        _label_ids = set(label_ids)
+        inds = np.nonzero([_id in _label_ids for _id in self.label_ids])[0]
         self._select_inds(inds)
 
     def select_session(self):
@@ -220,13 +222,13 @@ class PointSelector(object):
             select those
         -   Otherwise, select all samples in the current view
 
-        If this selector is selecting objects:
+        If this selector is selecting labels:
 
-        -   If objects are selected in the session
-            (``session.selected_objects``), only select those
+        -   If labels are selected in the session
+            (``session.selected_labels``), only select those
         -   Else if samples are selected (``session.selected``), only select
-            their objects
-        -   Otherwise, select all objects in the current view
+            their labels
+        -   Otherwise, select all labels in the current view
         """
         if not self.has_linked_session:
             raise ValueError("This selector is not linked to a session")
@@ -250,24 +252,24 @@ class PointSelector(object):
             with fou.SetAttributes(self, _lock_session=True):
                 self.select_samples(sample_ids)
 
-        if self.is_selecting_objects:
-            if self._session.selected_objects:
-                object_ids = [
-                    o["object_id"] for o in self._session.selected_objects
+        if self.is_selecting_labels:
+            if self._session.selected_labels:
+                label_ids = [
+                    o["label_id"] for o in self._session.selected_labels
                 ]
             else:
                 selected = self._session.selected or None
-                object_ids = self._get_selected_objects(
-                    view, self.object_field, selected=selected
+                label_ids = self._get_selected_labels(
+                    view, self.label_field, selected=selected
                 )
 
             # Lock the session so that it is not updated, since we are
             # responding to the state of the current session
             with fou.SetAttributes(self, _lock_session=True):
-                self.select_objects(object_ids)
+                self.select_labels(label_ids)
 
     def tag_selected(self, tag):
-        """Adds the tag to the currently selected samples/objects, if
+        """Adds the tag to the currently selected samples/labels, if
         necessary.
 
         Args:
@@ -281,13 +283,13 @@ class PointSelector(object):
         if self.is_selecting_samples:
             view.tag_samples(tag)
 
-        if self.is_selecting_objects:
-            view.tag_objects(tag, label_fields=[self.object_field])
+        if self.is_selecting_labels:
+            view.tag_labels(tag, label_fields=[self.label_field])
 
         self.refresh()
 
     def untag_selected(self, tag):
-        """Removes the tag from the currently selected samples/objects, if
+        """Removes the tag from the currently selected samples/labels, if
         necessary.
 
         Args:
@@ -301,14 +303,14 @@ class PointSelector(object):
         if self.is_selecting_samples:
             view.untag_samples(tag)
 
-        if self.is_selecting_objects:
-            view.untag_objects(tag, label_fields=[self.object_field])
+        if self.is_selecting_labels:
+            view.untag_labels(tag, label_fields=[self.label_field])
 
         self.refresh()
 
     def selected_view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
-        currently selected samples/objects.
+        currently selected samples/labels.
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`, or None if no points are
@@ -323,11 +325,11 @@ class PointSelector(object):
         if self.is_selecting_samples:
             return self._init_view.select(self._selected_sample_ids)
 
-        if self.is_selecting_objects:
-            _object_ids = [ObjectId(_id) for _id in self._selected_object_ids]
+        if self.is_selecting_labels:
+            _label_ids = [ObjectId(_id) for _id in self._selected_label_ids]
             return self._init_view.select_fields(
-                self.object_field
-            ).filter_labels(self.object_field, F("_id").is_in(_object_ids))
+                self.label_field
+            ).filter_labels(self.label_field, F("_id").is_in(_label_ids))
 
         return None
 
@@ -519,8 +521,8 @@ class PointSelector(object):
         if self.is_selecting_samples:
             self._selected_sample_ids = list(self.sample_ids[inds])
 
-        if self.is_selecting_objects:
-            self._selected_object_ids = list(self.object_ids[inds])
+        if self.is_selecting_labels:
+            self._selected_label_ids = list(self.label_ids[inds])
 
         self._update_plot()
         self.refresh()
@@ -574,12 +576,19 @@ class PointSelector(object):
         if selected is not None:
             view = view.select(selected)
 
-        return [str(_id) for _id in view._get_sample_ids()]
+        sample_ids = view._get_sample_ids()
+
+        return [str(_id) for _id in sample_ids]
 
     @staticmethod
-    def _get_selected_objects(view, object_field, selected=None):
+    def _get_selected_labels(view, label_field, selected=None):
         if selected is not None:
             view = view.select(selected)
 
-        _, id_path = view._get_label_field_path(object_field, "_id")
-        return [str(_id) for _id in view.values(id_path)]
+        label_type, id_path = view._get_label_field_path(label_field, "_id")
+        label_ids = view.values(id_path)
+
+        if issubclass(label_type, fol._LABEL_LIST_FIELDS):
+            label_ids = itertools.chain.from_iterable(label_ids)
+
+        return [str(_id) for _id in label_ids]

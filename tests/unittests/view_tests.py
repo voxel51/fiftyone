@@ -897,7 +897,7 @@ class ViewStageTests(unittest.TestCase):
         tags = self.dataset.count_values("tags")
         self.assertDictEqual(tags, {})
 
-    def test_tag_objects(self):
+    def test_tag_labels(self):
         self._setUp_classification()
         self._setUp_detections()
 
@@ -905,26 +905,26 @@ class ViewStageTests(unittest.TestCase):
         num_samples = len(view)
         self.assertEqual(num_samples, 1)
 
-        view.tag_objects("test", "test_clf")
-        tags = self.dataset.count_object_tags("test_clf")
+        view.tag_labels("test", "test_clf")
+        tags = self.dataset.count_label_tags("test_clf")
         self.assertDictEqual(tags, {"test": 1})
 
-        view.untag_objects("test", "test_clf")
-        tags = self.dataset.count_object_tags("test_clf")
+        view.untag_labels("test", "test_clf")
+        tags = self.dataset.count_label_tags("test_clf")
         self.assertDictEqual(tags, {})
 
         view = self.dataset.filter_labels("test_dets", F("confidence") > 0.7)
         num_samples = len(view)
-        num_objects = view.count("test_dets.detections")
+        num_labels = view.count("test_dets.detections")
         self.assertEqual(num_samples, 2)
-        self.assertEqual(num_objects, 3)
+        self.assertEqual(num_labels, 3)
 
-        view.tag_objects("test", "test_dets")
-        tags = self.dataset.count_object_tags("test_dets")
+        view.tag_labels("test", "test_dets")
+        tags = self.dataset.count_label_tags("test_dets")
         self.assertDictEqual(tags, {"test": 3})
 
-        view.untag_objects("test", "test_dets")
-        tags = self.dataset.count_object_tags("test_dets")
+        view.untag_labels("test", "test_dets")
+        tags = self.dataset.count_label_tags("test_dets")
         self.assertDictEqual(tags, {})
 
     def test_match(self):

@@ -34,8 +34,8 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
   const frameNumber = isVideo ? frameNumberRef.current : null;
 
   useSendMessage(
-    "set_selected_objects",
-    { selected_objects: convertSelectedObjectsMapToList(selectedObjects) },
+    "set_selected_labels",
+    { selected_labels: convertSelectedObjectsMapToList(selectedObjects) },
     null,
     [selectedObjects]
   );
@@ -63,7 +63,7 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
   ).length;
 
   const _getObjectSelectionData = (object) => ({
-    object_id: object._id,
+    label_id: object._id,
     sample_id: sample._id,
     field: object.name,
     frame_number: object.frame_number,
@@ -99,7 +99,7 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
     setHiddenObjects((hiddenObjects) =>
       addObjectsToSelection(
         hiddenObjects,
-        ids.map((object_id) => ({ object_id, ...selectedObjects[object_id] }))
+        ids.map((label_id) => ({ label_id, ...selectedObjects[label_id] }))
       )
     );
   };
