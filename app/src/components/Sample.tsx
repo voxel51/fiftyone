@@ -206,7 +206,6 @@ const SelectorDiv = animated(styled.div`
   top: 0;
   right: 0;
   display: flex;
-  direction: rtl;
   cursor: pointer;
   z-index: 499;
   background: linear-gradient(
