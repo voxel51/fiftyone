@@ -53,6 +53,8 @@ class PointSelector(object):
         object_ids (None): a list of object IDs corresponding to ``collection``
         object_field (None): the sample field containing the objects in
             ``collection``
+        buttons (None): a dict mapping button names to callbacks defining
+            buttons to add to the plot
         alpha_other (0.25): a transparency value for unselected points
         expand_selected (3.0): expand the size of selected points by this
             amount
@@ -67,6 +69,7 @@ class PointSelector(object):
         sample_ids=None,
         object_ids=None,
         object_field=None,
+        buttons=None,
         alpha_other=0.25,
         expand_selected=3.0,
         click_tolerance=0.02,
@@ -76,6 +79,16 @@ class PointSelector(object):
 
         if object_ids is not None:
             object_ids = np.asarray(object_ids)
+
+        if buttons is not None:
+            button_defs = list(buttons.items())
+        else:
+            button_defs = []
+
+        if session is not None:
+            button_defs.append(("sync", self._onsync))
+
+        button_defs.append(("disconnect", self._ondisconnect))
 
         self.collection = collection
         self.ax = collection.axes
@@ -110,8 +123,8 @@ class PointSelector(object):
         self._lasso = None
         self._shift = False
         self._title = None
-        self._sync_button = None
-        self._disconnect_button = None
+        self._button_defs = button_defs
+        self._buttons = []
         self._figure_events = []
         self._keypress_events = []
 
@@ -336,9 +349,21 @@ class PointSelector(object):
         self._lasso = LassoSelector(self.ax, onselect=self._onselect)
         self._session = session
 
+        def _make_callback(button, callback):
+            def _callback(event):
+                # Change to non-hover color to convey that something happened
+                # https://stackoverflow.com/a/28079210
+                button.ax.set_facecolor(button.color)
+                self._canvas.draw_idle()
+                callback(event)
+
+            return _callback
+
+        for button, (_, callback) in zip(self._buttons, self._button_defs):
+            _callback = _make_callback(button, callback)
+            button.on_clicked(_callback)
+
         self._title.set_text("  Click or drag to select points")
-        self._sync_button.on_clicked(self._onsync)
-        self._disconnect_button.on_clicked(self._ondisconnect)
 
         self._figure_events = [
             self._canvas.mpl_connect("figure_enter_event", self._onenter),
@@ -386,7 +411,7 @@ class PointSelector(object):
         self._disconnect()
 
     def _init_hud(self):
-        # button sizing
+        # Button styling
         gap = 0.02
         width = 0.2
         height = 0.1
@@ -395,28 +420,24 @@ class PointSelector(object):
 
         self._title = self.ax.set_title("", loc="left")
 
-        rax = self.ax.figure.add_axes([0, 0, 1, 1], label="refresh")
-        rax.set_axes_locator(
-            InsetPosition(
-                self.ax, [1 - 2 * width - gap, 1 + gap, width, height]
-            )
-        )
-        self._sync_button = Button(
-            rax, "sync", color=color, hovercolor=hovercolor
-        )
-
-        dax = self.ax.figure.add_axes([0, 0, 1, 1], label="disconnect")
-        dax.set_axes_locator(
-            InsetPosition(self.ax, [1 - width, 1 + gap, width, height])
-        )
-        self._disconnect_button = Button(
-            dax, "disconnect", color=color, hovercolor=hovercolor
-        )
+        num_buttons = len(self._button_defs)
+        self._buttons = []
+        for i, (label, _) in enumerate(self._button_defs):
+            bax = self.ax.figure.add_axes([0, 0, 1, 1], label=label)
+            bpos = [
+                1 - (num_buttons - i) * width - (num_buttons - i - 1) * gap,
+                1 + gap,
+                width,
+                height,
+            ]
+            bax.set_axes_locator(InsetPosition(self.ax, bpos))
+            button = Button(bax, label, color=color, hovercolor=hovercolor)
+            self._buttons.append(button)
 
     def _update_hud(self, visible):
         self._title.set_visible(visible)
-        self._sync_button.ax.set_visible(visible and self.has_linked_session)
-        self._disconnect_button.ax.set_visible(visible)
+        for button in self._buttons:
+            button.ax.set_visible(visible)
 
     def _disconnect(self):
         if self.session is not None and self.bidirectional:
@@ -465,10 +486,6 @@ class PointSelector(object):
         self.select_session()
 
     def _onsync(self, event):
-        # Change to non-hover color to convey to user that something happened
-        # https://stackoverflow.com/a/28079210
-        self._sync_button.ax.set_facecolor(self._sync_button.color)
-        self._canvas.draw_idle()
         self.select_session()
 
     def _ondisconnect(self, event):

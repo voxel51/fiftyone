@@ -7,3 +7,4 @@ Plotting utilities.
 """
 
 from .selector import PointSelector
+from .scatter import scatterplot
