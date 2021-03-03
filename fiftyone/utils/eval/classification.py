@@ -664,23 +664,12 @@ class ClassificationResults(foe.EvaluationResults):
 
     @classmethod
     def _from_dict(cls, d, samples, **kwargs):
-        ytrue = fou.deserialize_ndarray(d["ytrue"])
-        ypred = fou.deserialize_ndarray(d["ypred"])
-
-        confs = getattr(d, "confs", None)
-        if confs is not None:
-            confs = fou.deserialize_ndarray(confs)
-
-        weights = getattr(d, "weights", None)
-        if weights is not None:
-            weights = fou.deserialize_ndarray(weights)
-
-        classes = getattr(d, "classes", None)
-        if classes is not None:
-            classes = fou.deserialize_ndarray(classes)
-
-        missing = getattr(d, "missing", None)
-
+        ytrue = d["ytrue"]
+        ypred = d["ypred"]
+        confs = d.get("confs", None)
+        weights = d.get("weights", None)
+        classes = d.get("classes", None)
+        missing = d.get("missing", None)
         return cls(
             ytrue,
             ypred,

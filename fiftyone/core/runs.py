@@ -14,7 +14,6 @@ import numpy as np
 import eta.core.serial as etas
 import eta.core.utils as etau
 
-from fiftyone.core.utils import serialize_ndarray
 from fiftyone.core.config import Config, Configurable
 from fiftyone.core.odm.runs import RunResultsDocument, RunDocument
 
@@ -462,10 +461,6 @@ class RunResults(etas.Serializable):
             a list of attributes
         """
         return ["cls"] + super().attributes()
-
-    def serialize(self):
-        """Serializes the results for saving to the database."""
-        return super().serialize(serializers={np.ndarray: serialize_ndarray})
 
     @classmethod
     def from_dict(cls, d, samples):

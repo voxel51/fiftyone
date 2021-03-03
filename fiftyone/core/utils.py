@@ -21,9 +21,6 @@ import subprocess
 import types
 import zlib
 
-import numpy as np
-from bson.binary import Binary
-
 
 try:
     import pprintpp as _pprint
@@ -777,29 +774,3 @@ class SetAttributes(object):
     def __exit__(self, *args):
         for k, v in self._orig_kwargs.items():
             setattr(self._obj, k, v)
-
-
-def serialize_ndarray(array):
-    """Serializes a numpy array for storage in a MongoDB document
-
-    Args:
-        array: a `numpy.ndarray`
-
-    Returns:
-        a `list` tensor
-    """
-    # @todo: improve serialization or return to the ETA default
-    return array.tolist()
-
-
-def deserialize_ndarray(array):
-    """Serializes a numpy array from storage in a MongoDB document
-
-    Args:
-        array: a `list` tensor
-
-    Returns:
-        a `numpy.ndarray`
-    """
-    # @todo: improve serialization or return to the ETA default
-    return np.asarray(array)

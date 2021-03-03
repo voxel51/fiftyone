@@ -355,9 +355,9 @@ class COCODetectionResults(DetectionResults):
         return super()._from_dict(
             d,
             samples,
-            precision=fou.deserialize_ndarray(d["precision"]),
-            recall=fou.deserialize_ndarray(d["recall"]),
-            iou_threshs=fou.deserialize_ndarray(d["iou_threshs"]),
+            precision=d["precision"],
+            recall=d["recall"],
+            iou_threshs=d["iou_threshs"],
             **kwargs,
         )
 

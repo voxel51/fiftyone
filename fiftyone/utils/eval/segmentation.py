@@ -304,9 +304,9 @@ class SegmentationResults(ClassificationResults):
     @classmethod
     def _from_dict(cls, d, samples, **kwargs):
         return cls(
-            fou.deserialize_ndarray(d["pixel_confusion_matrix"]),
-            fou.deserialize_ndarray(d["classes"]),
-            missing=getattr(d, "missing", None),
+            d["pixel_confusion_matrix"],
+            d["classes"],
+            missing=d.get("missing", None),
             **kwargs,
         )
 

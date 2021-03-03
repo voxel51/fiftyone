@@ -298,21 +298,9 @@ class DetectionResults(ClassificationResults):
 
     @classmethod
     def _from_dict(cls, d, samples, **kwargs):
-        matches = list(
-            zip(
-                fou.deserialize_ndarray(d["ytrue"]),
-                fou.deserialize_ndarray(d["ypred"]),
-                fou.deserialize_ndarray(d["ious"]),
-                fou.deserialize_ndarray(d["confs"]),
-            )
-        )
-
-        classes = getattr(d, "classes", None)
-        if classes is not None:
-            classes = fou.deserialize_ndarray(classes)
-
-        missing = getattr(d, "missing", None)
-
+        matches = list(zip(d["ytrue"], d["ypred"], d["ious"], d["confs"]))
+        classes = d.get("classes", None)
+        missing = d.get("missing", None)
         return cls(matches, classes=classes, missing=missing, **kwargs)
 
 
