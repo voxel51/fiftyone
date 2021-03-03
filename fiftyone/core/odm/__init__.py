@@ -15,6 +15,7 @@ from .database import (
     delete_dataset,
     drop_orphan_collections,
     list_collections,
+    get_collection_stats,
     stream_collection,
     ASC,
     DESC,

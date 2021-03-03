@@ -144,6 +144,22 @@ def stream_collection(collection_name):
     fou.stream_objects(objects)
 
 
+def get_collection_stats(collection_name):
+    """Sets stats about the collection.
+
+    Args:
+        collection_name: the name of the collection
+
+    Returns:
+        a stats dict
+    """
+    conn = get_db_conn()
+    stats = dict(conn.command("collstats", collection_name))
+    stats["wiredTiger"] = None
+    stats["indexDetails"] = None
+    return stats
+
+
 def list_datasets():
     """Returns the list of available FiftyOne datasets.
 
