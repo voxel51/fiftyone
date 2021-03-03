@@ -85,7 +85,7 @@ export const convertSelectedObjectsListToMap = (
   list: SelectedObject[]
 ): SelectedObjectMap => {
   return list.reduce((map, { label_id, ...data }) => {
-    map[object_id] = data;
+    map[label_id] = data;
     return map;
   }, {});
 };
