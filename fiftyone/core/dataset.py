@@ -17,7 +17,6 @@ import string
 
 from bson import ObjectId
 import mongoengine.errors as moe
-from pymongo import UpdateOne
 from pymongo.errors import BulkWriteError
 
 import eta.core.serial as etas
@@ -1277,18 +1276,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return [str(d["_id"]) for d in dicts]
 
-    def _bulk_update(self, ids, updates, frames=False, ordered=False):
-        ops = [
-            UpdateOne({"_id": _id}, update)
-            for _id, update in zip(ids, updates)
-        ]
-        self._bulk_write(ops, frames=frames, ordered=ordered)
-
-        if frames:
-            fofr.Frame._reload_docs(self._frame_collection_name)
-        else:
-            fos.Sample._reload_docs(self._sample_collection_name)
-
     def _bulk_write(self, ops, frames=False, ordered=False):
         if frames:
             coll = self._frame_collection
@@ -1301,6 +1288,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         except BulkWriteError as bwe:
             msg = bwe.details["writeErrors"][0]["errmsg"]
             raise ValueError(msg) from bwe
+
+        if frames:
+            fofr.Frame._reload_docs(self._frame_collection_name)
+        else:
+            fos.Sample._reload_docs(self._sample_collection_name)
 
     def merge_samples(
         self,
@@ -3134,6 +3126,9 @@ def _get_sample_ids(samples_or_ids):
 
     if isinstance(samples_or_ids, foc.SampleCollection):
         return [str(_id) for _id in samples_or_ids._get_sample_ids()]
+
+    if not samples_or_ids:
+        return []
 
     if isinstance(next(iter(samples_or_ids)), (fos.Sample, fos.SampleView)):
         return [s.id for s in samples_or_ids]
