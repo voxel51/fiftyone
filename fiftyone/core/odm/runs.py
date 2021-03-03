@@ -17,7 +17,7 @@ from .document import DynamicDocument, EmbeddedDocument
 
 
 class RunResultsDocument(DynamicDocument):
-    """Run results for a run on a dataset"""
+    """Results of a run on a dataset."""
 
     meta = {"collection": "run_results"}
 
