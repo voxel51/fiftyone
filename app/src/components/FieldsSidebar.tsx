@@ -375,7 +375,6 @@ const OptionTextDiv = animated(styled.div`
   align-content: center;
   flex-direction: column;
   color: inherit;
-  font-family: "Roboto", "Helvetica", "Arial", sans-serif;
   line-height: 1.7;
 `);
 
@@ -387,7 +386,7 @@ export const OptionText = ({ style, children }) => {
   );
 };
 
-export const Button = ({ onClick, text, children }) => {
+export const Button = ({ onClick, text, children, style }) => {
   const theme = useTheme();
   const [hover, setHover] = useState(false);
   const props = useSpring({
@@ -399,7 +398,7 @@ export const Button = ({ onClick, text, children }) => {
   });
   return (
     <ButtonDiv
-      style={{ ...props, userSelect: "none" }}
+      style={{ ...props, userSelect: "none", ...style }}
       onClick={onClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
@@ -416,7 +415,11 @@ export const RefreshButton = ({ modal }) => {
   );
   const theme = useTheme();
   return (
-    <Button onClick={() => setColorSeed(colorSeed + 1)} text={"Refresh colors"}>
+    <Button
+      onClick={() => setColorSeed(colorSeed + 1)}
+      text={"Refresh colors"}
+      style={{ fontFamily: `"Roboto", "Helvetica", "Arial", sans-serif"` }}
+    >
       <Autorenew style={{ height: "1.5rem", color: "inherit" }} />
     </Button>
   );
