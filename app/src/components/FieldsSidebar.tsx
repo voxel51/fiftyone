@@ -375,6 +375,8 @@ const OptionTextDiv = animated(styled.div`
   align-content: center;
   flex-direction: column;
   color: inherit;
+  font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+  line-height: 1.7;
 `);
 
 export const OptionText = ({ style, children }) => {
