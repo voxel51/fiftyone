@@ -45,7 +45,7 @@ class BrainMethod(Run):
         return BrainInfo
 
     @classmethod
-    def _run_info_field(cls):
+    def _runs_field(cls):
         return "brain_methods"
 
     @classmethod

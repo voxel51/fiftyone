@@ -48,7 +48,7 @@ class EvaluationMethod(Run):
         return EvaluationInfo
 
     @classmethod
-    def _run_info_field(cls):
+    def _runs_field(cls):
         return "evaluations"
 
     @classmethod

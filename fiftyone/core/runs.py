@@ -127,11 +127,11 @@ class Run(Configurable):
         raise NotImplementedError("subclass must implement run_info_cls()")
 
     @classmethod
-    def _run_info_field(cls):
+    def _runs_field(cls):
         """The :class:`fiftyone.core.odm.dataset.DatasetDocument` field in
-        which the info for these runs are stored.
+        which these runs are stored.
         """
-        raise NotImplementedError("subclass must implement _run_info_field()")
+        raise NotImplementedError("subclass must implement _runs_field()")
 
     @classmethod
     def _run_str(cls):
@@ -253,7 +253,7 @@ class Run(Configurable):
         Returns:
             a list of run keys
         """
-        run_docs = getattr(samples._dataset._doc, cls._run_info_field())
+        run_docs = getattr(samples._dataset._doc, cls._runs_field())
         return sorted(run_docs.keys())
 
     @classmethod
@@ -281,7 +281,7 @@ class Run(Configurable):
         """
         key = run_info.key
         view_stages = [json.dumps(s) for s in samples.view()._serialize()]
-        run_docs = getattr(samples._dataset._doc, cls._run_info_field())
+        run_docs = getattr(samples._dataset._doc, cls._runs_field())
         run_docs[key] = RunDocument(
             key=key,
             timestamp=run_info.timestamp,
@@ -310,7 +310,7 @@ class Run(Configurable):
 
         result_doc.save()
 
-        run_docs = getattr(samples._dataset._doc, cls._run_info_field())
+        run_docs = getattr(samples._dataset._doc, cls._runs_field())
         run_docs[key].results = result_doc
         samples._dataset.save()
 
@@ -399,7 +399,7 @@ class Run(Configurable):
         run_info = cls.get_run_info(samples, key)
         run = run_info.config.build()
         run.cleanup(samples, key)
-        run_docs = getattr(samples._dataset._doc, cls._run_info_field())
+        run_docs = getattr(samples._dataset._doc, cls._runs_field())
         run_docs.pop(key, None)
         samples._dataset.save()
 
@@ -415,7 +415,7 @@ class Run(Configurable):
 
     @classmethod
     def _get_run_doc(cls, samples, key):
-        run_docs = getattr(samples._dataset._doc, cls._run_info_field())
+        run_docs = getattr(samples._dataset._doc, cls._runs_field())
         run_doc = run_docs.get(key, None)
         if run_doc is None:
             raise ValueError(
