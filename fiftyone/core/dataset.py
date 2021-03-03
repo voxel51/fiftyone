@@ -1506,7 +1506,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         updated such that ``sample.in_dataset == False``.
         """
         self.clear()
-        self._doc.delete()
+        _delete_dataset_doc(self._doc)
         self._deleted = True
 
     def add_dir(
@@ -3007,9 +3007,28 @@ def _drop_dataset(name, drop_persistent=True):
     )
     frame_doc_cls.drop_collection()
 
-    dataset_doc.delete()
+    _delete_dataset_doc(dataset_doc)
 
     return True
+
+
+def _delete_dataset_doc(dataset_doc):
+    #
+    # Must manually cleanup run results
+    #
+    # @todo is there a way to configure MongoEngine to cascade-delete these
+    # references? It seems this is not supported for DictFields...
+    #
+
+    for run_doc in dataset_doc.evaluations.values():
+        if run_doc.results is not None:
+            run_doc.results.delete()
+
+    for run_doc in dataset_doc.brain_methods.values():
+        if run_doc.results is not None:
+            run_doc.results.delete()
+
+    dataset_doc.delete()
 
 
 def _get_sample_ids(samples_or_ids):

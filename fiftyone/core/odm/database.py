@@ -8,6 +8,7 @@ Database connection.
 from copy import copy
 import logging
 
+from bson import ObjectId
 from mongoengine import connect
 import motor
 import pymongo
@@ -130,6 +131,43 @@ def drop_orphan_collections(dry_run=False):
                 conn.drop_collection(name)
 
 
+def drop_orphan_run_results(dry_run=False):
+    """Drops all orphan run results from the database.
+
+    Orphan run results are results that are not associated with any known
+    dataset.
+
+    Args:
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+
+    all_run_results = set(conn.run_results.distinct("_id", {}, {}))
+
+    results_in_use = set()
+    for name in list_datasets():
+        dataset_dict = conn.datasets.find_one({"name": name})
+        for run_doc in dataset_dict.get("evaluations", {}).values():
+            result_id = run_doc.get("results", None)
+            if result_id is not None:
+                results_in_use.add(result_id)
+
+    orphan_results = [
+        _id for _id in all_run_results if _id not in results_in_use
+    ]
+
+    if not orphan_results:
+        return
+
+    logger.info(
+        "Deleting %d orphan run result(s): %s"
+        % (len(orphan_results), orphan_results)
+    )
+    if not dry_run:
+        conn.run_results.delete_many({"_id": {"$in": orphan_results}})
+
+
 def stream_collection(collection_name):
     """Streams the contents of the collection to stdout.
 
@@ -220,3 +258,19 @@ def delete_dataset(name, dry_run=False):
         logger.info("Dropping collection '%s'", frame_collection_name)
         if not dry_run:
             conn.drop_collection(frame_collection_name)
+
+    delete_results = []
+
+    for run_doc in dataset_dict.get("evaluations", {}).values():
+        result_id = run_doc.get("results", None)
+        if result_id is not None:
+            delete_results.append(result_id)
+
+    for run_doc in dataset_dict.get("brain_methods", {}).values():
+        result_id = run_doc.get("results", None)
+        if result_id is not None:
+            delete_results.append(result_id)
+
+    logger.info("Deleting %d run result(s)", len(delete_results))
+    if not dry_run:
+        conn.run_results.delete_many({"_id": {"$in": delete_results}})
