@@ -389,26 +389,33 @@ class ExcludeFields(ViewStage):
         self._dataset.validate_fields_exist(self.field_names)
 
 
-# @todo add support for `ids` and `tags` fields
 class ExcludeLabels(ViewStage):
     """Excludes the specified labels from a collection.
 
-    The returned view will omit the labels specified in the provided ``labels``
-    argument, which should have the following format::
+    The returned view will omit samples, sample fields, and individual labels
+    that do not match the specified selection criteria.
 
-        [
-            {
-                "sample_id": "5f8d254a27ad06815ab89df4",
-                "field": "ground_truth",
-                "label_id": "5f8d254a27ad06815ab89df3",
-            },
-            {
-                "sample_id": "5f8d255e27ad06815ab93bf8",
-                "field": "ground_truth",
-                "label_id": "5f8d255e27ad06815ab93bf6",
-            },
-            ...
-        ]
+    You can perform an exclusion via one of the following methods:
+
+    -   Provide one or both of the ``ids`` and ``tags`` arguments, and
+        optionally the ``fields`` argument
+
+    -   Provide the ``labels`` argument, which should have the following
+        format::
+
+            [
+                {
+                    "sample_id": "5f8d254a27ad06815ab89df4",
+                    "field": "ground_truth",
+                    "label_id": "5f8d254a27ad06815ab89df3",
+                },
+                {
+                    "sample_id": "5f8d255e27ad06815ab93bf8",
+                    "field": "ground_truth",
+                    "label_id": "5f8d255e27ad06815ab93bf6",
+                },
+                ...
+            ]
 
     Examples::
 
@@ -425,16 +432,82 @@ class ExcludeLabels(ViewStage):
 
         # Select some labels in the App...
 
-        stage = fo.ExcludeLabels(session.selected_labels)
+        stage = fo.ExcludeLabels(labels=session.selected_labels)
         view = dataset.add_stage(stage)
 
+        #
+        # Exclude labels with the specified IDs
+        #
+
+        # Grab some label IDs
+        ids = [
+            dataset.first().ground_truth.detections[0].id,
+            dataset.last().predictions.detections[0].id,
+        ]
+
+        stage = fo.ExcludeLabels(ids=ids)
+        view = dataset.add_stage(stage)
+
+        print(dataset.count("ground_truth.detections"))
+        print(view.count("ground_truth.detections"))
+
+        print(dataset.count("predictions.detections"))
+        print(view.count("predictions.detections"))
+
+        #
+        # Exclude labels with the specified tags
+        #
+
+        # Grab some label IDs
+        ids = [
+            dataset.first().ground_truth.detections[0].id,
+            dataset.last().predictions.detections[0].id,
+        ]
+
+        # Give the labels a "test" tag
+        dataset = dataset.clone()  # create a copy since we're modifying data
+        dataset.select_labels(ids=ids).tag_labels("test")
+
+        print(dataset.count_values("ground_truth.detections.tags"))
+        print(dataset.count_values("predictions.detections.tags"))
+
+        # Exclude the labels via their tag
+        stage = fo.ExcludeLabels(tags=["test"])
+        view = dataset.add_stage(stage)
+
+        print(dataset.count("ground_truth.detections"))
+        print(view.count("ground_truth.detections"))
+
+        print(dataset.count("predictions.detections"))
+        print(view.count("predictions.detections"))
+
     Args:
-        labels: a list of dicts specifying the labels to exclude
+        labels (None): a list of dicts specifying the labels to exclude
+        ids (None): a list of IDs of the labels to exclude
+        tags (None): a list of tags of labels to exclude
+        fields (None): a list of fields from which to exclude labels
     """
 
-    def __init__(self, labels):
-        _, labels_map = _parse_labels(labels)
+    def __init__(self, labels=None, ids=None, tags=None, fields=None):
+        if labels is not None:
+            sample_ids, labels_map = _parse_labels(labels)
+        else:
+            sample_ids, labels_map = None, None
+
+        if etau.is_str(ids):
+            ids = [ids]
+
+        if etau.is_str(tags):
+            tags = [tags]
+
+        if etau.is_str(fields):
+            fields = [fields]
+
         self._labels = labels
+        self._ids = ids
+        self._tags = tags
+        self._fields = fields
+        self._sample_ids = sample_ids
         self._labels_map = labels_map
         self._pipeline = None
 
@@ -442,6 +515,21 @@ class ExcludeLabels(ViewStage):
     def labels(self):
         """A list of dicts specifying the labels to exclude."""
         return self._labels
+
+    @property
+    def ids(self):
+        """A list of IDs of labels to exclude."""
+        return self._ids
+
+    @property
+    def tags(self):
+        """A list of tags of labels to exclude."""
+        return self._tags
+
+    @property
+    def fields(self):
+        """A list of fields from which labels are being excluded."""
+        return self._fields
 
     def to_mongo(self, _, **__):
         if self._pipeline is None:
@@ -453,19 +541,43 @@ class ExcludeLabels(ViewStage):
         return self._pipeline
 
     def _kwargs(self):
-        return [["labels", self._labels]]
+        return [
+            ["labels", self._labels],
+            ["ids", self._ids],
+            ["tags", self._tags],
+            ["fields", self._fields],
+        ]
 
     @classmethod
     def _params(self):
         return [
             {
                 "name": "labels",
-                "type": "dict",  # @todo use "list<dict>" when supported
+                "type": "dict|NoneType",  # @todo use "list<dict>" when supported
                 "placeholder": "[{...}]",
-            }
+                "default": "None",
+            },
+            {
+                "name": "ids",
+                "type": "list<id>|id|NoneType",
+                "placeholder": "...",
+                "default": "None",
+            },
+            {
+                "name": "tags",
+                "type": "list<str>|str|NoneType",
+                "placeholder": "...",
+                "default": "None",
+            },
+            {
+                "name": "fields",
+                "type": "list<str>|str|NoneType",
+                "placeholder": "...",
+                "default": "None",
+            },
         ]
 
-    def _make_pipeline(self, sample_collection):
+    def _make_labels_pipeline(self, sample_collection):
         label_schema = sample_collection.get_field_schema(
             ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
         )
@@ -473,7 +585,7 @@ class ExcludeLabels(ViewStage):
         pipeline = []
         for field, labels_map in self._labels_map.items():
             label_filter = ~F("_id").is_in(
-                [foe.ObjectId(oid) for oid in labels_map]
+                [foe.ObjectId(_id) for _id in labels_map]
             )
             stage = _make_label_filter_stage(label_schema, field, label_filter)
             if stage is None:
@@ -484,8 +596,76 @@ class ExcludeLabels(ViewStage):
 
         return pipeline
 
+    def _make_pipeline(self, sample_collection):
+        if self._fields is not None:
+            fields = self._fields
+        else:
+            fields = list(
+                sample_collection.get_field_schema(
+                    ftype=fof.EmbeddedDocumentField,
+                    embedded_doc_type=fol.Label,
+                ).keys()
+            )
+
+        pipeline = []
+
+        # Handle early exit
+        num_fields = len(fields)
+        if num_fields == 0 or (self._ids is None and self._tags is None):
+            # No filtering to do
+            return pipeline
+
+        #
+        # Filter labels that match `tags` or `id`
+        #
+
+        only_matches = num_fields == 1
+
+        filter_expr = None
+        if self._ids is not None:
+            filter_expr = ~F("_id").is_in([ObjectId(_id) for _id in self._ids])
+
+        if self._tags is not None:
+            tag_expr = (F("tags") != None).if_else(
+                ~F("tags").contains(self._tags), False
+            )
+            if filter_expr is not None:
+                filter_expr &= tag_expr
+            else:
+                filter_expr = tag_expr
+
+        for field in fields:
+            stage = FilterLabels(field, filter_expr, only_matches=only_matches)
+            stage.validate(sample_collection)
+            pipeline.extend(stage.to_mongo(sample_collection))
+
+        if num_fields <= 1:
+            return pipeline
+
+        # Filter empty samples
+        match_exprs = []
+        for field in fields:
+            label_type = sample_collection._get_label_field_type(field)
+            if issubclass(label_type, fol._LABEL_LIST_FIELDS):
+                match_expr = (
+                    F(field + "." + label_type._LABEL_LIST_FIELD).length() > 0
+                )
+            else:
+                match_expr = F(field) != None
+
+            match_exprs.append(match_expr)
+
+        stage = Match(F.any(match_exprs))
+        stage.validate(sample_collection)
+        pipeline.extend(stage.to_mongo(sample_collection))
+
+        return pipeline
+
     def validate(self, sample_collection):
-        self._pipeline = self._make_pipeline(sample_collection)
+        if self._labels is not None:
+            self._pipeline = self._make_labels_pipeline(sample_collection)
+        else:
+            self._pipeline = self._make_pipeline(sample_collection)
 
 
 class Exists(ViewStage):
@@ -2712,13 +2892,20 @@ class SelectLabels(ViewStage):
 
         pipeline = []
 
+        # We know that only `fields` will have matches, so select them
         stage = SelectFields(fields)
         stage.validate(sample_collection)
         pipeline.extend(stage.to_mongo(sample_collection))
 
+        # Handle early exit
         num_fields = len(fields)
         if num_fields == 0 or (self._ids is None and self._tags is None):
+            # Nothing will match
             return pipeline + [{"$match": {"_id": None}}]
+
+        #
+        # Filter labels that don't match `tags` and `ids
+        #
 
         only_matches = num_fields == 1
 
@@ -2743,6 +2930,7 @@ class SelectLabels(ViewStage):
         if num_fields <= 1:
             return pipeline
 
+        # Filter empty samples
         match_exprs = []
         for field in fields:
             label_type = sample_collection._get_label_field_type(field)
