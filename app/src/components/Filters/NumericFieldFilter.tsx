@@ -53,7 +53,7 @@ const setFilter = (
   const bounds = get(boundsAtom({ path, defaultRange }));
   const filter = {
     range: bounds,
-    ...getFilter(get, path),
+    ...getFilter(get, path, defaultRange),
     [key]: value,
     _CLS: "numeric",
   };
