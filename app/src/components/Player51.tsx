@@ -153,9 +153,6 @@ export default ({
     fps,
     overlayOptions,
   ]);
-  if (!thumbnail) {
-    console.log(selectedObjects);
-  }
 
   useEffect(() => {
     if (player && selectedObjects) {
