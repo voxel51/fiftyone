@@ -151,8 +151,8 @@ class _HasAttributes(Label):
 
 
 class _HasID(Label):
-    """Mixin for :class:`Label` classes that expose an ``id`` property that
-    contains a unique identifier for the label.
+    """Mixin for :class:`Label` classes that expose a UUID via an ``id``
+    property, as well as a ``tags`` attribute.
     """
 
     meta = {"allow_inheritance": True}
@@ -160,6 +160,7 @@ class _HasID(Label):
     _id = fof.ObjectIdField(
         required=True, default=ObjectId, unique=True, primary_key=True
     )
+    tags = fof.ListField(fof.StringField())
 
     @property
     def id(self):
@@ -828,7 +829,7 @@ class Keypoints(ImageLabel, _HasLabelList):
         )
 
 
-class Segmentation(ImageLabel):
+class Segmentation(ImageLabel, _HasID):
     """A semantic segmentation mask for an image.
 
     Args:
@@ -873,7 +874,13 @@ class _FrameLabels(Label):
     pass
 
 
-_SINGLE_LABEL_FIELDS = (Classification, Detection, Polyline, Keypoint)
+_SINGLE_LABEL_FIELDS = (
+    Classification,
+    Detection,
+    Polyline,
+    Keypoint,
+    Segmentation,
+)
 _LABEL_LIST_FIELDS = (Classifications, Detections, Polylines, Keypoints)
 _LABEL_FIELDS = _SINGLE_LABEL_FIELDS + _LABEL_LIST_FIELDS
 

@@ -83,9 +83,9 @@ detailed examples of using each aggregation.
     All aggregations can operate on embedded sample fields using the
     ``embedded.field.name`` syntax.
 
-    In addition, you can aggregate the elements of array fields. Some array
-    fields are automatically handled, but you can always manually unwind an
-    array using the ``embedded.array[].field`` syntax. See
+    Aggregation fields can also include array fields. Most array fields are
+    automatically unwound, but you can always manually unwind an array using
+    the ``embedded.array[].field`` syntax. See
     :ref:`this section <aggregations-list-fields>` for more details.
 
 .. _aggregations-bounds:
@@ -381,14 +381,18 @@ The example below demonstrates this capability:
 
 .. note::
 
-    There are two cases where FiftyOne will automatically unwind array fields
+    There are three cases where FiftyOne will automatically unwind array fields
     without requiring you to explicitly specify this via the ``[]`` syntax:
 
-    **Top-level lists:** when you write an aggregation that refers to a
+    **Top-level lists:** When you write an aggregation that refers to a
     top-level list field of a dataset; i.e., ``list_field`` is automatically
     coerced to ``list_field[]``, if necessary.
 
-    **List fields:** When you write an aggregation that refers to the list
+    **Tags fields:** When you write an aggregation that refers to the ``tags``
+    attribute of a |Sample| or |Label| object; i.e., ``tags`` is automatically
+    coerced to ``tags[]``, if necessary.
+
+    **Label lists:** When you write an aggregation that refers to the list
     field of a |Label| class, such as the
     :attr:`Detections.detections <fiftyone.core.labels.Detections.detections>`
     attribute; i.e., ``ground_truth.detections.label`` is automatically
