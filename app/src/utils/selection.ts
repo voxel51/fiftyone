@@ -57,7 +57,7 @@ export const removeMatchingObjectsFromSelection = (
 ) => {
   const newSelection = { ...selection };
   if (Object.keys(filter).length) {
-    for (const [object_id, data] of Object.entries(selection)) {
+    for (const [label_id, data] of Object.entries(selection)) {
       if (
         (filter.sample_id === undefined ||
           filter.sample_id === data.sample_id) &&
@@ -65,7 +65,7 @@ export const removeMatchingObjectsFromSelection = (
         (filter.frame_number === undefined ||
           filter.frame_number === data.frame_number)
       ) {
-        delete newSelection[object_id];
+        delete newSelection[label_id];
       }
     }
   }
