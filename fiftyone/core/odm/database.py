@@ -5,6 +5,7 @@ Database connection.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from copy import copy
 import logging
 
 from mongoengine import connect
@@ -22,6 +23,8 @@ logger = logging.getLogger(__name__)
 
 ASC = pymongo.ASCENDING
 DESC = pymongo.DESCENDING
+
+_PERMANENT_COLLS = {"datasets", "run_results"}
 
 
 def _connect():
@@ -112,7 +115,7 @@ def drop_orphan_collections(dry_run=False):
     """
     conn = get_db_conn()
 
-    colls_in_use = {"datasets"}
+    colls_in_use = copy(_PERMANENT_COLLS)
     for name in list_datasets():
         dataset_dict = conn.datasets.find_one({"name": name})
         sample_coll_name = dataset_dict.get("sample_collection_name", None)
