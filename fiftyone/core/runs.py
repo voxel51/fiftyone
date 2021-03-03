@@ -302,17 +302,16 @@ class Run(Configurable):
         if key is None:
             return
 
-        if run_results is not None:
-            run_results = run_results.serialize()
-
-        info = getattr(samples._dataset._doc, cls._run_info_field())[key]
-
         result_doc = RunResultsDocument()
-        for k, v in run_results.items():
-            result_doc[k] = v
+
+        if run_results is not None:
+            for k, v in run_results.serialize().items():
+                result_doc[k] = v
 
         result_doc.save()
-        info.results = result_doc
+
+        run_docs = getattr(samples._dataset._doc, cls._run_info_field())
+        run_docs[key].results = result_doc
         samples._dataset.save()
 
     @classmethod
@@ -326,7 +325,8 @@ class Run(Configurable):
         Returns:
             a :class:`RunResults`, or None if the run did not save results
         """
-        results_dict = cls._get_run_results_dict(samples, key)
+        run_doc = cls._get_run_doc(samples, key)
+        results_dict = run_doc.results
         if results_dict is None:
             return None
 
@@ -424,19 +424,6 @@ class Run(Configurable):
             )
 
         return run_doc
-
-    @classmethod
-    def _get_run_results_dict(cls, samples, key):
-        run_docs = getattr(samples._dataset._doc, cls._run_info_field())
-        run_doc = run_docs.get(key, None)
-
-        if run_doc.results is None:
-            raise ValueError(
-                "Results for %s key '%s' not found on collection '%s'"
-                % (cls._run_str(), key, samples.name)
-            )
-
-        return run_doc.results
 
     @classmethod
     def _get_run_fields(cls, samples, key):
