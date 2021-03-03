@@ -326,9 +326,15 @@ class Run(Configurable):
             a :class:`RunResults`, or None if the run did not save results
         """
         run_doc = cls._get_run_doc(samples, key)
-        results_dict = run_doc.results
-        if results_dict is None:
+        run_results = run_doc.results
+
+        if run_results is None:
             return None
+
+        results_dict = {}
+        for field in run_results:
+            if field not in ("id", "_id"):
+                results_dict[field] = getattr(run_results, field)
 
         view = cls.load_run_view(samples, key)
         return RunResults.from_dict(results_dict, view)
