@@ -368,13 +368,14 @@ const ButtonDiv = animated(styled.div`
   margin-top: 3px;
 `);
 
-const OptionTextDiv = styled.div`
+const OptionTextDiv = animated(styled.div`
   padding-right: 0.25rem;
   display: flex;
   justify-content: center;
   align-content: center;
   flex-direction: column;
-`;
+  color: inherit;
+`);
 
 export const OptionText = ({ style, children }) => {
   return (
@@ -389,8 +390,9 @@ export const Button = ({ onClick, text, children }) => {
   const [hover, setHover] = useState(false);
   const props = useSpring({
     backgroundColor: hover ? theme.brand : theme.background,
+    color: hover ? theme.font : theme.fontDark,
     config: {
-      duration: 200,
+      duration: 150,
     },
   });
   return (
@@ -410,9 +412,10 @@ export const RefreshButton = ({ modal }) => {
   const [colorSeed, setColorSeed] = useRecoilState(
     atoms.colorSeed(Boolean(modal))
   );
+  const theme = useTheme();
   return (
     <Button onClick={() => setColorSeed(colorSeed + 1)} text={"Refresh colors"}>
-      <Autorenew style={{ height: "1.5rem" }} />
+      <Autorenew style={{ height: "1.5rem", color: "inherit" }} />
     </Button>
   );
 };
