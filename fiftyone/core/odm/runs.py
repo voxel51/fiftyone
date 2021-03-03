@@ -21,6 +21,9 @@ class RunResultsDocument(DynamicDocument):
 
     meta = {"collection": "run_results"}
 
+    def __repr__(self):
+        return "<%s>" % self.__class__.__name__
+
 
 class RunDocument(EmbeddedDocument):
     """Description of a run on a dataset."""
