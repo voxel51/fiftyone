@@ -216,18 +216,16 @@ const SelectorDiv = animated(styled.div`
   );
 `);
 
-const Selector = ({ id, spring }: { id: string }) => {
-  const theme = useTheme();
+const useSelect = (id) => {
   const [stateDescription, setStateDescription] = useRecoilState(
     atoms.stateDescription
   );
-
+  const socket = useRecoilValue(selectors.socket);
   const [selectedSamples, setSelectedSamples] = useRecoilState(
     atoms.selectedSamples
   );
-  const socket = useRecoilValue(selectors.socket);
 
-  const handleClick = (e) => {
+  return (e) => {
     e.preventDefault();
     const newSelected = new Set(selectedSamples);
     let event;
@@ -242,6 +240,14 @@ const Selector = ({ id, spring }: { id: string }) => {
     socket.send(packageMessage(event, { _id: id }));
     setStateDescription({ ...stateDescription, selected: [...newSelected] });
   };
+};
+
+const Selector = ({ id, spring }: { id: string }) => {
+  const theme = useTheme();
+
+  const selectedSamples = useRecoilValue(atoms.selectedSamples);
+
+  const handleClick = useSelect(id);
   return (
     <SelectorDiv style={{ ...spring }} onClick={handleClick}>
       <Checkbox
@@ -269,6 +275,8 @@ const Sample = ({ sample, metadata }) => {
   const selectorSpring = useSpring({
     opacity: hovering || selectedSamples.has(id) ? 1 : 0,
   });
+
+  const selectSample = useSelect(id);
 
   return (
     <SampleDiv className="sample" style={revealSample()}>
@@ -299,7 +307,11 @@ const Sample = ({ sample, metadata }) => {
           filterSelector={labelFilters(false)}
           onMouseEnter={onMouseEnter}
           onMouseLeave={onMouseLeave}
-          onClick={() => setModal({ visible: true, sample, metadata })}
+          onClick={(e) =>
+            selectedSamples.size
+              ? selectSample(e)
+              : setModal({ visible: true, sample, metadata })
+          }
         />
         {bar.map(({ key, props }) => (
           <LoadingBar key={key} style={props} />
