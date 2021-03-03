@@ -389,22 +389,23 @@ class ExcludeFields(ViewStage):
         self._dataset.validate_fields_exist(self.field_names)
 
 
-class ExcludeObjects(ViewStage):
-    """Excludes the specified objects from a collection.
+# @todo add support for `ids` and `tags` fields
+class ExcludeLabels(ViewStage):
+    """Excludes the specified labels from a collection.
 
-    The returned view will omit the objects specified in the provided
-    ``objects`` argument, which should have the following format::
+    The returned view will omit the labels specified in the provided ``labels``
+    argument, which should have the following format::
 
         [
             {
                 "sample_id": "5f8d254a27ad06815ab89df4",
                 "field": "ground_truth",
-                "object_id": "5f8d254a27ad06815ab89df3",
+                "label_id": "5f8d254a27ad06815ab89df3",
             },
             {
                 "sample_id": "5f8d255e27ad06815ab93bf8",
                 "field": "ground_truth",
-                "object_id": "5f8d255e27ad06815ab93bf6",
+                "label_id": "5f8d255e27ad06815ab93bf6",
             },
             ...
         ]
@@ -417,30 +418,30 @@ class ExcludeObjects(ViewStage):
         dataset = foz.load_zoo_dataset("quickstart")
 
         #
-        # Exclude the objects currently selected in the App
+        # Exclude the labels currently selected in the App
         #
 
         session = fo.launch_app(dataset)
 
-        # Select some objects in the App...
+        # Select some labels in the App...
 
-        stage = fo.ExcludeObjects(session.selected_objects)
+        stage = fo.ExcludeLabels(session.selected_labels)
         view = dataset.add_stage(stage)
 
     Args:
-        objects: a list of dicts specifying the objects to exclude
+        labels: a list of dicts specifying the labels to exclude
     """
 
-    def __init__(self, objects):
-        _, objects_map = _parse_objects(objects)
-        self._objects = objects
-        self._objects_map = objects_map
+    def __init__(self, labels):
+        _, labels_map = _parse_labels(labels)
+        self._labels = labels
+        self._labels_map = labels_map
         self._pipeline = None
 
     @property
-    def objects(self):
-        """A list of dicts specifying the objects to exclude."""
-        return self._objects
+    def labels(self):
+        """A list of dicts specifying the labels to exclude."""
+        return self._labels
 
     def to_mongo(self, _, **__):
         if self._pipeline is None:
@@ -452,13 +453,13 @@ class ExcludeObjects(ViewStage):
         return self._pipeline
 
     def _kwargs(self):
-        return [["objects", self._objects]]
+        return [["labels", self._labels]]
 
     @classmethod
     def _params(self):
         return [
             {
-                "name": "objects",
+                "name": "labels",
                 "type": "dict",  # @todo use "list<dict>" when supported
                 "placeholder": "[{...}]",
             }
@@ -470,9 +471,9 @@ class ExcludeObjects(ViewStage):
         )
 
         pipeline = []
-        for field, objects_map in self._objects_map.items():
+        for field, labels_map in self._labels_map.items():
             label_filter = ~F("_id").is_in(
-                [foe.ObjectId(oid) for oid in objects_map]
+                [foe.ObjectId(oid) for oid in labels_map]
             )
             stage = _make_label_filter_stage(label_schema, field, label_filter)
             if stage is None:
@@ -2488,10 +2489,10 @@ class SelectFields(ViewStage):
         sample_collection.validate_fields_exist(self.field_names)
 
 
-class SelectObjects(ViewStage):
-    """Selects only the specified objects from a collection.
+class SelectLabels(ViewStage):
+    """Selects only the specified labels from a collection.
 
-    The returned view will omit samples, sample fields, and individual objects
+    The returned view will omit samples, sample fields, and individual labels
     that do not match the specified selection criteria.
 
     You can perform a selection via one of the following methods:
@@ -2499,19 +2500,19 @@ class SelectObjects(ViewStage):
     -   Provide one or both of the ``ids`` and ``tags`` arguments, and
         optionally the ``fields`` argument
 
-    -   Provide the ``objects`` argument, which should have the following
+    -   Provide the ``labels`` argument, which should have the following
         format::
 
             [
                 {
                     "sample_id": "5f8d254a27ad06815ab89df4",
                     "field": "ground_truth",
-                    "object_id": "5f8d254a27ad06815ab89df3",
+                    "label_id": "5f8d254a27ad06815ab89df3",
                 },
                 {
                     "sample_id": "5f8d255e27ad06815ab93bf8",
                     "field": "ground_truth",
-                    "object_id": "5f8d255e27ad06815ab93bf6",
+                    "label_id": "5f8d255e27ad06815ab93bf6",
                 },
                 ...
             ]
@@ -2524,68 +2525,68 @@ class SelectObjects(ViewStage):
         dataset = foz.load_zoo_dataset("quickstart")
 
         #
-        # Only include the objects currently selected in the App
+        # Only include the labels currently selected in the App
         #
 
         session = fo.launch_app(dataset)
 
-        # Select some objects in the App...
+        # Select some labels in the App...
 
-        stage = fo.SelectObjects(objects=session.selected_objects)
+        stage = fo.SelectLabels(labels=session.selected_labels)
         view = dataset.add_stage(stage)
 
         #
-        # Only include objects with the specified IDs
+        # Only include labels with the specified IDs
         #
 
-        # Grab some object IDs
+        # Grab some label IDs
         ids = [
             dataset.first().ground_truth.detections[0].id,
             dataset.last().predictions.detections[0].id,
         ]
 
-        stage = fo.SelectObjects(ids=ids)
+        stage = fo.SelectLabels(ids=ids)
         view = dataset.add_stage(stage)
 
         print(view.count("ground_truth.detections"))
         print(view.count("predictions.detections"))
 
         #
-        # Only include objects with the specified tags
+        # Only include labels with the specified tags
         #
 
-        # Grab some object IDs
+        # Grab some label IDs
         ids = [
             dataset.first().ground_truth.detections[0].id,
             dataset.last().predictions.detections[0].id,
         ]
 
-        # Give the objects a "test" tag
+        # Give the labels a "test" tag
         dataset = dataset.clone()  # create a copy since we're modifying data
-        dataset.select_objects(ids=ids).tag_objects("test")
+        dataset.select_labels(ids=ids).tag_labels("test")
 
         print(dataset.count_values("ground_truth.detections.tags"))
         print(dataset.count_values("predictions.detections.tags"))
 
-        # Retrieve the objects via their tag
-        stage = fo.SelectObjects(tags=["test"])
+        # Retrieve the labels via their tag
+        stage = fo.SelectLabels(tags=["test"])
         view = dataset.add_stage(stage)
 
         print(view.count("ground_truth.detections"))
         print(view.count("predictions.detections"))
 
     Args:
-        objects (None): a list of dicts specifying the objects to select
-        ids (None): a list of IDs of the objects to select
-        tags (None): a list of tags of objects to select
-        fields (None): a list of fields from which to select objects
+        labels (None): a list of dicts specifying the labels to select
+        ids (None): a list of IDs of the labels to select
+        tags (None): a list of tags of labels to select
+        fields (None): a list of fields from which to select labels
     """
 
-    def __init__(self, objects=None, ids=None, tags=None, fields=None):
-        if objects is not None:
-            sample_ids, objects_map = _parse_objects(objects)
+    def __init__(self, labels=None, ids=None, tags=None, fields=None):
+        if labels is not None:
+            sample_ids, labels_map = _parse_labels(labels)
         else:
-            sample_ids, objects_map = None, None
+            sample_ids, labels_map = None, None
 
         if etau.is_str(ids):
             ids = [ids]
@@ -2596,32 +2597,32 @@ class SelectObjects(ViewStage):
         if etau.is_str(fields):
             fields = [fields]
 
-        self._objects = objects
+        self._labels = labels
         self._ids = ids
         self._tags = tags
         self._fields = fields
         self._sample_ids = sample_ids
-        self._objects_map = objects_map
+        self._labels_map = labels_map
         self._pipeline = None
 
     @property
-    def objects(self):
-        """A list of dicts specifying the objects to select."""
-        return self._objects
+    def labels(self):
+        """A list of dicts specifying the labels to select."""
+        return self._labels
 
     @property
     def ids(self):
-        """A list of IDs of objects to select."""
+        """A list of IDs of labels to select."""
         return self._ids
 
     @property
     def tags(self):
-        """A list of tags of objects to select."""
+        """A list of tags of labels to select."""
         return self._tags
 
     @property
     def fields(self):
-        """A list of fields from which objects are being selected."""
+        """A list of fields from which labels are being selected."""
         return self._fields
 
     def to_mongo(self, _, **__):
@@ -2635,7 +2636,7 @@ class SelectObjects(ViewStage):
 
     def _kwargs(self):
         return [
-            ["objects", self._objects],
+            ["labels", self._labels],
             ["ids", self._ids],
             ["tags", self._tags],
             ["fields", self._fields],
@@ -2645,7 +2646,7 @@ class SelectObjects(ViewStage):
     def _params(self):
         return [
             {
-                "name": "objects",
+                "name": "labels",
                 "type": "dict|NoneType",  # @todo use "list<dict>" when supported
                 "placeholder": "[{...}]",
                 "default": "None",
@@ -2670,7 +2671,7 @@ class SelectObjects(ViewStage):
             },
         ]
 
-    def _make_objects_pipeline(self, sample_collection):
+    def _make_labels_pipeline(self, sample_collection):
         label_schema = sample_collection.get_field_schema(
             ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
         )
@@ -2681,13 +2682,13 @@ class SelectObjects(ViewStage):
         stage.validate(sample_collection)
         pipeline.extend(stage.to_mongo(sample_collection))
 
-        stage = SelectFields(list(self._objects_map.keys()))
+        stage = SelectFields(list(self._labels_map.keys()))
         stage.validate(sample_collection)
         pipeline.extend(stage.to_mongo(sample_collection))
 
-        for field, objects_map in self._objects_map.items():
+        for field, labels_map in self._labels_map.items():
             label_filter = F("_id").is_in(
-                [foe.ObjectId(_id) for _id in objects_map]
+                [foe.ObjectId(_id) for _id in labels_map]
             )
             stage = _make_label_filter_stage(label_schema, field, label_filter)
             if stage is None:
@@ -2761,8 +2762,8 @@ class SelectObjects(ViewStage):
         return pipeline
 
     def validate(self, sample_collection):
-        if self._objects is not None:
-            self._pipeline = self._make_objects_pipeline(sample_collection)
+        if self._labels is not None:
+            self._pipeline = self._make_labels_pipeline(sample_collection)
         else:
             self._pipeline = self._make_pipeline(sample_collection)
 
@@ -3199,14 +3200,14 @@ def _get_field(sample_collection, field_path):
     return field, is_frame_field
 
 
-def _parse_objects(objects):
+def _parse_labels(labels):
     sample_ids = set()
-    objects_map = defaultdict(set)
-    for obj in objects:
-        sample_ids.add(obj["sample_id"])
-        objects_map[obj["field"]].add(obj["object_id"])
+    labels_map = defaultdict(set)
+    for label in labels:
+        sample_ids.add(label["sample_id"])
+        labels_map[label["field"]].add(label["label_id"])
 
-    return sample_ids, objects_map
+    return sample_ids, labels_map
 
 
 def _make_label_filter_stage(label_schema, field, label_filter):
@@ -3258,7 +3259,7 @@ _repr.maxother = 30
 _STAGES = [
     Exclude,
     ExcludeFields,
-    ExcludeObjects,
+    ExcludeLabels,
     Exists,
     FilterField,
     FilterLabels,
@@ -3275,7 +3276,7 @@ _STAGES = [
     Shuffle,
     Select,
     SelectFields,
-    SelectObjects,
+    SelectLabels,
     SetField,
     Skip,
     SortBy,

@@ -35,7 +35,7 @@ function App() {
   const handleStateUpdate = (state) => {
     setStateDescription(state);
     setSelectedSamples(new Set(state.selected));
-    setSelectedObjects(convertSelectedObjectsListToMap(state.selected_objects));
+    setSelectedObjects(convertSelectedObjectsListToMap(state.selected_labels));
   };
 
   useEventHandler(socket, "open", () => {

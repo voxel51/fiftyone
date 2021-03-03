@@ -102,7 +102,7 @@ function Dataset() {
     }
   }, [hideModal]);
 
-  useSendMessage("set_selected_objects", { selected_objects: [] }, !hideModal);
+  useSendMessage("set_selected_labels", { selected_labels: [] }, !hideModal);
 
   let src = null;
   let s = null;

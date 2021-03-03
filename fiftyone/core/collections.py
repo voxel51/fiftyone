@@ -541,8 +541,8 @@ class SampleCollection(object):
         """
         return self.count_values("tags")
 
-    def tag_objects(self, tag, label_fields=None):
-        """Adds the tag to all objects in the specified label field(s) of this
+    def tag_labels(self, tag, label_fields=None):
+        """Adds the tag to all labels in the specified label field(s) of this
         collection, if necessary.
 
         Args:
@@ -561,10 +561,10 @@ class SampleCollection(object):
 
             return tags + [tag]
 
-        self._edit_object_tags(_add_tag, label_fields=label_fields)
+        self._edit_label_tags(_add_tag, label_fields=label_fields)
 
-    def untag_objects(self, tag, label_fields=None):
-        """Removes the tag from all objects in the specified label field(s) of
+    def untag_labels(self, tag, label_fields=None):
+        """Removes the tag from all labels in the specified label field(s) of
         this collection, if necessary.
 
         Args:
@@ -580,9 +580,9 @@ class SampleCollection(object):
 
             return [t for t in tags if t != tag]
 
-        self._edit_object_tags(_remove_tag, label_fields=label_fields)
+        self._edit_label_tags(_remove_tag, label_fields=label_fields)
 
-    def _edit_object_tags(self, edit_fcn, label_fields=None):
+    def _edit_label_tags(self, edit_fcn, label_fields=None):
         if label_fields is None:
             label_fields = self._get_label_fields()
         elif etau.is_str(label_fields):
@@ -601,8 +601,8 @@ class SampleCollection(object):
             tags = _transform_values(tags, edit_fcn, level=level)
             self.set_values(tags_path, tags)
 
-    def count_object_tags(self, label_fields=None):
-        """Counts the occurrences of all object tags in the specified label
+    def count_label_tags(self, label_fields=None):
+        """Counts the occurrences of all label tags in the specified label
         field(s) of this collection.
 
         Args:
@@ -1385,22 +1385,22 @@ class SampleCollection(object):
         return self._add_view_stage(fos.ExcludeFields(field_names))
 
     @view_stage
-    def exclude_objects(self, objects):
-        """Excludes the specified objects from the collection.
+    def exclude_labels(self, labels):
+        """Excludes the specified labels from the collection.
 
-        The returned view will omit the objects specified in the provided
-        ``objects`` argument, which should have the following format::
+        The returned view will omit the labels specified in the provided
+        ``labels`` argument, which should have the following format::
 
             [
                 {
                     "sample_id": "5f8d254a27ad06815ab89df4",
                     "field": "ground_truth",
-                    "object_id": "5f8d254a27ad06815ab89df3",
+                    "label_id": "5f8d254a27ad06815ab89df3",
                 },
                 {
                     "sample_id": "5f8d255e27ad06815ab93bf8",
                     "field": "ground_truth",
-                    "object_id": "5f8d255e27ad06815ab93bf6",
+                    "label_id": "5f8d255e27ad06815ab93bf6",
                 },
                 ...
             ]
@@ -1413,22 +1413,22 @@ class SampleCollection(object):
             dataset = foz.load_zoo_dataset("quickstart")
 
             #
-            # Exclude the objects currently selected in the App
+            # Exclude the labels currently selected in the App
             #
 
             session = fo.launch_app(dataset)
 
-            # Select some objects in the App...
+            # Select some labels in the App...
 
-            view = dataset.exclude_objects(session.selected_objects)
+            view = dataset.exclude_labels(session.selected_labels)
 
         Args:
-            objects: a list of dicts specifying the objects to exclude
+            labels: a list of dicts specifying the labels to exclude
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.ExcludeObjects(objects))
+        return self._add_view_stage(fos.ExcludeLabels(labels))
 
     @view_stage
     def exists(self, field, bool=True):
@@ -2596,30 +2596,30 @@ class SampleCollection(object):
         return self._add_view_stage(fos.SelectFields(field_names))
 
     @view_stage
-    def select_objects(self, objects=None, ids=None, tags=None, fields=None):
-        """Selects only the specified objects from the collection.
+    def select_labels(self, labels=None, ids=None, tags=None, fields=None):
+        """Selects only the specified labels from the collection.
 
         The returned view will omit samples, sample fields, and individual
-        objects that do not match the specified selection criteria.
+        labels that do not match the specified selection criteria.
 
         You can perform a selection via one of the following methods:
 
         -   Provide one or both of the ``ids`` and ``tags`` arguments, and
             optionally the ``fields`` argument
 
-        -   Provide the ``objects`` argument, which should have the following
+        -   Provide the ``labels`` argument, which should have the following
             format::
 
                 [
                     {
                         "sample_id": "5f8d254a27ad06815ab89df4",
                         "field": "ground_truth",
-                        "object_id": "5f8d254a27ad06815ab89df3",
+                        "label_id": "5f8d254a27ad06815ab89df3",
                     },
                     {
                         "sample_id": "5f8d255e27ad06815ab93bf8",
                         "field": "ground_truth",
-                        "object_id": "5f8d255e27ad06815ab93bf6",
+                        "label_id": "5f8d255e27ad06815ab93bf6",
                     },
                     ...
                 ]
@@ -2632,65 +2632,63 @@ class SampleCollection(object):
             dataset = foz.load_zoo_dataset("quickstart")
 
             #
-            # Only include the objects currently selected in the App
+            # Only include the labels currently selected in the App
             #
 
             session = fo.launch_app(dataset)
 
-            # Select some objects in the App...
+            # Select some labels in the App...
 
-            view = dataset.select_objects(objects=session.selected_objects)
+            view = dataset.select_labels(labels=session.selected_labels)
 
             #
-            # Only include objects with the specified IDs
+            # Only include labels with the specified IDs
             #
 
-            # Grab some object IDs
+            # Grab some label IDs
             ids = [
                 dataset.first().ground_truth.detections[0].id,
                 dataset.last().predictions.detections[0].id,
             ]
 
-            view = dataset.select_objects(ids=ids)
+            view = dataset.select_labels(ids=ids)
 
             print(view.count("ground_truth.detections"))
             print(view.count("predictions.detections"))
 
             #
-            # Only include objects with the specified tags
+            # Only include labels with the specified tags
             #
 
-            # Grab some object IDs
+            # Grab some label IDs
             ids = [
                 dataset.first().ground_truth.detections[0].id,
                 dataset.last().predictions.detections[0].id,
             ]
 
-            # Give the objects a "test" tag
+            # Give the labels a "test" tag
             dataset = dataset.clone()  # create a copy since we're modifying data
-            dataset.select_objects(ids=ids).tag_objects("test")
+            dataset.select_labels(ids=ids).tag_labels("test")
 
-            print(dataset.count_object_tags())
+            print(dataset.count_label_tags())
 
-            # Retrieve the objects via their tag
-            view = dataset.select_objects(tags=["test"])
+            # Retrieve the labels via their tag
+            view = dataset.select_labels(tags=["test"])
 
             print(view.count("ground_truth.detections"))
             print(view.count("predictions.detections"))
 
         Args:
-            objects (None): a list of dicts specifying the objects to select
-            ids (None): a list of IDs of the objects to select
-            tags (None): a list of tags of objects to select
-            fields (None): a list of fields from which to select objects
+            labels (None): a list of dicts specifying the labels to select
+            ids (None): a list of IDs of the labels to select
+            tags (None): a list of tags of labels to select
+            fields (None): a list of fields from which to select labels
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.SelectObjects(
-                objects=objects, ids=ids, tags=tags, fields=fields
-            )
+            fos.SelectLabels(labels=labels, ids=ids, tags=tags, fields=fields)
         )
 
     @view_stage
