@@ -419,8 +419,8 @@ class Run(Configurable):
         run_doc = run_docs.get(key, None)
         if run_doc is None:
             raise ValueError(
-                "Info for %s key '%s' not found on collection '%s'"
-                % (cls._run_str(), key, samples.name)
+                "%s key '%s' not found on collection '%s'"
+                % (cls._run_str().capitalize(), key, samples.name)
             )
 
         return run_doc

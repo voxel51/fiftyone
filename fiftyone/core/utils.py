@@ -21,7 +21,6 @@ import subprocess
 import types
 import zlib
 
-
 try:
     import pprintpp as _pprint
 

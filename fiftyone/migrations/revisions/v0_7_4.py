@@ -40,5 +40,4 @@ def down(db, dataset_name):
     dataset_dict["evaluations"] = evaluations
 
     dataset_dict.pop("brain_methods", None)
-
     db.datasets.replace_one(match_d, dataset_dict)
