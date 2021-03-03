@@ -6,5 +6,6 @@ Plotting utilities.
 |
 """
 
+from .location import location_scatterplot
 from .selector import PointSelector
 from .scatter import scatterplot
