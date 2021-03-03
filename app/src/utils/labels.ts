@@ -370,6 +370,7 @@ const convertImageSampleToETA = (
       imgLabels.masks.push({
         name: prefix + sampleField,
         mask: field.mask,
+        _id: field._id,
       });
     } else if (VALID_SCALAR_TYPES.includes(fieldSchema[sampleField])) {
       _addToETAContainer(imgLabels, "attrs", {
