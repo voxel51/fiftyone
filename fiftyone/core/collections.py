@@ -5,6 +5,7 @@ Interface for sample collections.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import defaultdict
 import itertools
 import inspect
 import logging
@@ -13,6 +14,7 @@ import random
 import string
 
 from deprecated import deprecated
+from pymongo import UpdateOne
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -493,6 +495,141 @@ class SampleCollection(object):
                     % (field_name, ftype, field)
                 )
 
+    def tag_samples(self, tag):
+        """Adds the tag to all samples in this collection, if necessary.
+
+        Args:
+            tag: a tag
+        """
+
+        def _add_tag(tags):
+            if not tags:
+                return [tag]
+
+            if tag in tags:
+                return tags
+
+            return tags + [tag]
+
+        self._edit_sample_tags(_add_tag)
+
+    def untag_samples(self, tag):
+        """Removes the tag from all samples in this collection, if necessary.
+
+        Args:
+            tag: a tag
+        """
+
+        def _remove_tag(tags):
+            if not tags:
+                return tags
+
+            return [t for t in tags if t != tag]
+
+        self._edit_sample_tags(_remove_tag)
+
+    def _edit_sample_tags(self, edit_fcn):
+        tags = self.values("tags")
+        tags = _transform_values(tags, edit_fcn)
+        self.set_values("tags", tags)
+
+    def count_sample_tags(self):
+        """Counts the occurrences of sample tags in this collection.
+
+        Returns:
+            a dict mapping tags to counts
+        """
+        return self.count_values("tags")
+
+    def tag_labels(self, tag, label_fields=None):
+        """Adds the tag to all labels in the specified label field(s) of this
+        collection, if necessary.
+
+        Args:
+            tag: a tag
+            label_fields (None): an optional name or iterable of names of
+                :class:`fiftyone.core.labels.Label` fields. By default, all
+                label fields are used
+        """
+
+        def _add_tag(tags):
+            if not tags:
+                return [tag]
+
+            if tag in tags:
+                return tags
+
+            return tags + [tag]
+
+        self._edit_label_tags(_add_tag, label_fields=label_fields)
+
+    def untag_labels(self, tag, label_fields=None):
+        """Removes the tag from all labels in the specified label field(s) of
+        this collection, if necessary.
+
+        Args:
+            tag: a tag
+            label_fields (None): an optional name or iterable of names of
+                :class:`fiftyone.core.labels.Label` fields. By default, all
+                label fields are used
+        """
+
+        def _remove_tag(tags):
+            if not tags:
+                return tags
+
+            return [t for t in tags if t != tag]
+
+        self._edit_label_tags(_remove_tag, label_fields=label_fields)
+
+    def _edit_label_tags(self, edit_fcn, label_fields=None):
+        if label_fields is None:
+            label_fields = self._get_label_fields()
+        elif etau.is_str(label_fields):
+            label_fields = [label_fields]
+
+        for label_field in label_fields:
+            label_type, tags_path = self._get_label_field_path(
+                label_field, "tags"
+            )
+
+            level = 1
+            level += issubclass(label_type, fol._LABEL_LIST_FIELDS)
+            level += self._is_frame_field(tags_path)
+
+            tags = self.values(tags_path)
+            tags = _transform_values(tags, edit_fcn, level=level)
+            self.set_values(tags_path, tags)
+
+    def count_label_tags(self, label_fields=None):
+        """Counts the occurrences of all label tags in the specified label
+        field(s) of this collection.
+
+        Args:
+            label_fields (None): an optional name or iterable of names of
+                :class:`fiftyone.core.labels.Label` fields. By default, all
+                label fields are used
+
+        Returns:
+            a dict mapping tags to counts
+        """
+        if label_fields is None:
+            label_fields = self._get_label_fields()
+        elif etau.is_str(label_fields):
+            label_fields = [label_fields]
+
+        aggregations = []
+        for label_field in label_fields:
+            _, tags_path = self._get_label_field_path(label_field, "tags")
+            aggregations.append(foa.CountValues(tags_path))
+
+        counts = defaultdict(int)
+        for result in self.aggregate(aggregations):
+            for tag, count in result.items():
+                counts[tag] += count
+
+        return dict(counts)
+
     def set_values(self, field_name, values):
         """Sets the field or embedded field on each sample or frame in the
         collection to the given values.
@@ -546,6 +683,10 @@ class SampleCollection(object):
             field_name
         )
 
+        if list_fields:
+            # Don't unroll terminal lists unless explicitly requested
+            list_fields = [lf for lf in list_fields if lf != field_name]
+
         if is_frame_field:
             self._set_frame_values(field_name, values, list_fields)
         else:
@@ -559,14 +700,22 @@ class SampleCollection(object):
                 % (root, self.name)
             )
 
+        if len(list_fields) > 1:
+            raise ValueError(
+                "At most one array field can be unwound when setting values"
+            )
+
         sample_ids = self._get_sample_ids()
 
-        updates = [
-            _make_set_values_pipeline(field_name, value, list_fields)
-            for value in values
-        ]
+        if list_fields:
+            list_field = list_fields[0]
+            elem_ids = self.values(list_field + "._id")
 
-        self._dataset._bulk_update(sample_ids, updates)
+            self._set_list_values_by_id(
+                field_name, sample_ids, elem_ids, values, list_field
+            )
+        else:
+            self._set_values(field_name, sample_ids, values)
 
     def _set_frame_values(self, field_name, values, list_fields):
         root = field_name.split(".", 1)[0]
@@ -576,19 +725,81 @@ class SampleCollection(object):
                 % (root, self.name)
             )
 
-        frame_ids = self._get_frame_ids()
+        if len(list_fields) > 1:
+            raise ValueError(
+                "At most one array field can be unwound when setting values"
+            )
 
+        frame_ids = self._get_frame_ids()
         frame_ids = list(itertools.chain.from_iterable(frame_ids))
+
         values = list(itertools.chain.from_iterable(values))
 
-        _make_set_pipeline = None
+        if list_fields:
+            list_field = list_fields[0]
+            elem_ids = self.values(self._FRAMES_PREFIX + list_field + "._id")
+            elem_ids = list(itertools.chain.from_iterable(elem_ids))
 
-        updates = [
-            _make_set_values_pipeline(field_name, value, list_fields)
-            for value in values
+            self._set_list_values_by_id(
+                field_name,
+                frame_ids,
+                elem_ids,
+                values,
+                list_field,
+                frames=True,
+            )
+        else:
+            self._set_values(field_name, frame_ids, values, frames=True)
+
+    def _set_values(self, field_name, ids, values, frames=False):
+        ops = [
+            UpdateOne({"_id": _id}, {"$set": {field_name: value}})
+            for _id, value in zip(ids, values)
         ]
+        self._dataset._bulk_write(ops, frames=frames)
 
-        self._dataset._bulk_update(frame_ids, updates, frames=True)
+    def _set_list_values_by_id(
+        self, field_name, ids, elem_ids, values, list_field, frames=False
+    ):
+        root = list_field
+        leaf = field_name[len(root) + 1 :]
+
+        ops = []
+        for _id, _elem_ids, _values in zip(ids, elem_ids, values):
+            for _elem_id, value in zip(_elem_ids, _values):
+                if _elem_id is None:
+                    raise ValueError(
+                        "Can only set values of array documents with IDs"
+                    )
+
+                update = {"$set": {root + ".$." + leaf: value}}
+                op = UpdateOne({"_id": _id, root + "._id": _elem_id}, update)
+                ops.append(op)
+
+        self._dataset._bulk_write(ops, frames=frames)
+
+    def _set_all_list_values(
+        self, field_name, ids, values, list_field, frames=False
+    ):
+        # If `self` is a view, this method will only work if the array's
+        # elements have not been filtered or reordered, since it updates the
+        # entire field on the dataset with one `$set`. Therefore, we do not use
+        # this approach currently. However, it does have the advantage that it
+        # works if the array contains items that do not have `_id`s, and it
+        # might (untested) be faster than `_set_list_values_by_id()`
+
+        root = list_field
+        leaf = field_name[len(root) + 1 :]
+
+        ops = []
+        for _id, _values in zip(ids, values):
+            expr = F.zip(F(root), _values).map(
+                F()[0].set_field(leaf, F()[1], relative=False)
+            )
+            update = [{"$set": {root: expr.to_mongo()}}]
+            ops.append(UpdateOne({"_id": _id}, update))
+
+        self._dataset._bulk_write(ops, frames=frames)
 
     def compute_metadata(
         self, overwrite=False, num_workers=None, skip_failures=True
@@ -1198,25 +1409,33 @@ class SampleCollection(object):
         return self._add_view_stage(fos.ExcludeFields(field_names))
 
     @view_stage
-    def exclude_objects(self, objects):
-        """Excludes the specified objects from the collection.
+    def exclude_labels(self, labels=None, ids=None, tags=None, fields=None):
+        """Excludes the specified labels from the collection.
 
-        The returned view will omit the objects specified in the provided
-        ``objects`` argument, which should have the following format::
+        The returned view will omit samples, sample fields, and individual
+        labels that do not match the specified selection criteria.
 
-            [
-                {
-                    "sample_id": "5f8d254a27ad06815ab89df4",
-                    "field": "ground_truth",
-                    "object_id": "5f8d254a27ad06815ab89df3",
-                },
-                {
-                    "sample_id": "5f8d255e27ad06815ab93bf8",
-                    "field": "ground_truth",
-                    "object_id": "5f8d255e27ad06815ab93bf6",
-                },
-                ...
-            ]
+        You can perform an exclusion via one of the following methods:
+
+        -   Provide one or both of the ``ids`` and ``tags`` arguments, and
+            optionally the ``fields`` argument
+
+        -   Provide the ``labels`` argument, which should have the following
+            format::
+
+                [
+                    {
+                        "sample_id": "5f8d254a27ad06815ab89df4",
+                        "field": "ground_truth",
+                        "label_id": "5f8d254a27ad06815ab89df3",
+                    },
+                    {
+                        "sample_id": "5f8d255e27ad06815ab93bf8",
+                        "field": "ground_truth",
+                        "label_id": "5f8d255e27ad06815ab93bf6",
+                    },
+                    ...
+                ]
 
         Examples::
 
@@ -1226,22 +1445,68 @@ class SampleCollection(object):
             dataset = foz.load_zoo_dataset("quickstart")
 
             #
-            # Exclude the objects currently selected in the App
+            # Exclude the labels currently selected in the App
             #
 
             session = fo.launch_app(dataset)
 
-            # Select some objects in the App...
+            # Select some labels in the App...
 
-            view = dataset.exclude_objects(session.selected_objects)
+            view = dataset.exclude_labels(labels=session.selected_labels)
+
+            #
+            # Exclude labels with the specified IDs
+            #
+
+            # Grab some label IDs
+            ids = [
+                dataset.first().ground_truth.detections[0].id,
+                dataset.last().predictions.detections[0].id,
+            ]
+
+            view = dataset.exclude_labels(ids=ids)
+
+            print(dataset.count("ground_truth.detections"))
+            print(view.count("ground_truth.detections"))
+
+            print(dataset.count("predictions.detections"))
+            print(view.count("predictions.detections"))
+
+            #
+            # Exclude labels with the specified tags
+            #
+
+            # Grab some label IDs
+            ids = [
+                dataset.first().ground_truth.detections[0].id,
+                dataset.last().predictions.detections[0].id,
+            ]
+
+            # Give the labels a "test" tag
+            dataset = dataset.clone()  # create a copy since we're modifying data
+            dataset.select_labels(ids=ids).tag_labels("test")
+
+            print(dataset.count_values("ground_truth.detections.tags"))
+            print(dataset.count_values("predictions.detections.tags"))
+
+            # Exclude the labels via their tag
+            view = dataset.exclude_labels(tags=["test"])
+
+            print(dataset.count("ground_truth.detections"))
+            print(view.count("ground_truth.detections"))
+
+            print(dataset.count("predictions.detections"))
+            print(view.count("predictions.detections"))
 
         Args:
-            objects: a list of dicts specifying the objects to exclude
-
-        Returns:
-            a :class:`fiftyone.core.view.DatasetView`
+            labels (None): a list of dicts specifying the labels to exclude
+            ids (None): a list of IDs of the labels to exclude
+            tags (None): a list of tags of labels to exclude
+            fields (None): a list of fields from which to exclude labels
         """
-        return self._add_view_stage(fos.ExcludeObjects(objects))
+        return self._add_view_stage(
+            fos.ExcludeLabels(labels=labels, ids=ids, tags=tags, fields=fields)
+        )
 
     @view_stage
     def exists(self, field, bool=True):
@@ -2409,26 +2674,33 @@ class SampleCollection(object):
         return self._add_view_stage(fos.SelectFields(field_names))
 
     @view_stage
-    def select_objects(self, objects):
-        """Selects only the specified objects from the collection.
+    def select_labels(self, labels=None, ids=None, tags=None, fields=None):
+        """Selects only the specified labels from the collection.
 
         The returned view will omit samples, sample fields, and individual
-        objects that do not appear in the provided ``objects`` argument, which
-        should have the following format::
+        labels that do not match the specified selection criteria.
 
-            [
-                {
-                    "sample_id": "5f8d254a27ad06815ab89df4",
-                    "field": "ground_truth",
-                    "object_id": "5f8d254a27ad06815ab89df3",
-                },
-                {
-                    "sample_id": "5f8d255e27ad06815ab93bf8",
-                    "field": "ground_truth",
-                    "object_id": "5f8d255e27ad06815ab93bf6",
-                },
-                ...
-            ]
+        You can perform a selection via one of the following methods:
+
+        -   Provide one or both of the ``ids`` and ``tags`` arguments, and
+            optionally the ``fields`` argument
+
+        -   Provide the ``labels`` argument, which should have the following
+            format::
+
+                [
+                    {
+                        "sample_id": "5f8d254a27ad06815ab89df4",
+                        "field": "ground_truth",
+                        "label_id": "5f8d254a27ad06815ab89df3",
+                    },
+                    {
+                        "sample_id": "5f8d255e27ad06815ab93bf8",
+                        "field": "ground_truth",
+                        "label_id": "5f8d255e27ad06815ab93bf6",
+                    },
+                    ...
+                ]
 
         Examples::
 
@@ -2438,19 +2710,64 @@ class SampleCollection(object):
             dataset = foz.load_zoo_dataset("quickstart")
 
             #
-            # Only include the objects currently selected in the App
+            # Only include the labels currently selected in the App
             #
 
             session = fo.launch_app(dataset)
 
-            # Select some objects in the App...
+            # Select some labels in the App...
 
-            view = dataset.select_objects(session.selected_objects)
+            view = dataset.select_labels(labels=session.selected_labels)
+
+            #
+            # Only include labels with the specified IDs
+            #
+
+            # Grab some label IDs
+            ids = [
+                dataset.first().ground_truth.detections[0].id,
+                dataset.last().predictions.detections[0].id,
+            ]
+
+            view = dataset.select_labels(ids=ids)
+
+            print(view.count("ground_truth.detections"))
+            print(view.count("predictions.detections"))
+
+            #
+            # Only include labels with the specified tags
+            #
+
+            # Grab some label IDs
+            ids = [
+                dataset.first().ground_truth.detections[0].id,
+                dataset.last().predictions.detections[0].id,
+            ]
+
+            # Give the labels a "test" tag
+            dataset = dataset.clone()  # create a copy since we're modifying data
+            dataset.select_labels(ids=ids).tag_labels("test")
+
+            print(dataset.count_label_tags())
+
+            # Retrieve the labels via their tag
+            view = dataset.select_labels(tags=["test"])
+
+            print(view.count("ground_truth.detections"))
+            print(view.count("predictions.detections"))
+
+        Args:
+            labels (None): a list of dicts specifying the labels to select
+            ids (None): a list of IDs of the labels to select
+            tags (None): a list of tags of labels to select
+            fields (None): a list of fields from which to select labels
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.SelectObjects(objects))
+        return self._add_view_stage(
+            fos.SelectLabels(labels=labels, ids=ids, tags=tags, fields=fields)
+        )
 
     @view_stage
     def shuffle(self, seed=None):
@@ -3961,6 +4278,25 @@ class SampleCollection(object):
 
         return any(issubclass(label_type, t) for t in label_type_or_types)
 
+    def _get_label_fields(self):
+        fields = list(
+            self.get_field_schema(
+                ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
+            ).keys()
+        )
+
+        if self.media_type == fom.VIDEO:
+            fields.extend(
+                list(
+                    self.get_frame_field_schema(
+                        ftype=fof.EmbeddedDocumentField,
+                        embedded_doc_type=fol.Label,
+                    ).keys()
+                )
+            )
+
+        return fields
+
     def _get_label_field_type(self, field_name):
         field_name, is_frame_field = self._handle_frame_field(field_name)
         if is_frame_field:
@@ -3986,6 +4322,15 @@ class SampleCollection(object):
             )
 
         return field.document_type
+
+    def _get_label_field_path(self, field_name, subfield):
+        label_type = self._get_label_field_type(field_name)
+
+        if issubclass(label_type, fol._LABEL_LIST_FIELDS):
+            field_name += "." + label_type._LABEL_LIST_FIELD
+
+        field_path = field_name + "." + subfield
+        return label_type, field_path
 
     def _is_array_field(self, field_name):
         return _is_array_field(self, field_name)
@@ -4281,6 +4626,12 @@ def _parse_field_name(sample_collection, field_name, auto_unwind):
     unwind_list_fields = set()
     other_list_fields = set()
 
+    def _record_list_field(field_name):
+        if auto_unwind:
+            unwind_list_fields.add(field_name)
+        elif field_name not in unwind_list_fields:
+            other_list_fields.add(field_name)
+
     # Parse explicit array references
     chunks = field_name.split("[]")
     for idx in range(len(chunks) - 1):
@@ -4301,27 +4652,33 @@ def _parse_field_name(sample_collection, field_name, auto_unwind):
             % (ftype, root_field_name, sample_collection.name)
         )
 
+    #
     # Detect certain list fields automatically
+    #
+    # @todo this implementation would be greatly improved by using the schema
+    # to detect list fields
+    #
+
     if isinstance(root_field, fof.ListField):
-        if auto_unwind:
-            unwind_list_fields.add(root_field_name)
-        elif root_field_name not in unwind_list_fields:
-            other_list_fields.add(root_field_name)
+        _record_list_field(root_field_name)
 
     if isinstance(root_field, fof.EmbeddedDocumentField):
-        if root_field.document_type in fol._LABEL_LIST_FIELDS:
-            prefix = (
-                root_field_name
-                + "."
-                + root_field.document_type._LABEL_LIST_FIELD
-            )
-            if field_name.startswith(prefix):
-                if auto_unwind:
-                    unwind_list_fields.add(prefix)
-                elif prefix not in unwind_list_fields:
-                    other_list_fields.add(prefix)
+        root_type = root_field.document_type
 
-    # sorting is important here because one must unwind field `x` before
+        if root_type in fol._SINGLE_LABEL_FIELDS:
+            if field_name == root_field_name + ".tags":
+                _record_list_field(field_name)
+
+        if root_type in fol._LABEL_LIST_FIELDS:
+            path = root_field_name + "." + root_type._LABEL_LIST_FIELD
+
+            if field_name.startswith(path):
+                _record_list_field(path)
+
+            if field_name == path + ".tags":
+                _record_list_field(field_name)
+
+    # Sorting is important here because one must unwind field `x` before
     # embedded field `x.y`
     unwind_list_fields = sorted(unwind_list_fields)
     other_list_fields = sorted(other_list_fields)
@@ -4381,21 +4738,14 @@ def _is_field_type(field, field_path, types):
     return _is_field_type(field, field_path, types)
 
 
-def _make_set_values_pipeline(field_name, value, list_fields):
-    if not list_fields:
-        return [{"$set": {field_name: value}}]
+def _transform_values(values, fcn, level=1):
+    if level < 1 or not values:
+        return values
 
-    if len(list_fields) > 1:
-        raise ValueError(
-            "At most one array field can be unwound when setting values"
-        )
+    if level == 1:
+        return [fcn(v) for v in values]
 
-    root = list_fields[0]
-    leaf = field_name[len(root) + 1 :]
-    expr = F.zip(F(root), value).map(
-        F()[0].set_field(leaf, F()[1], relative=False)
-    )
-    return [{"$set": {root: expr.to_mongo()}}]
+    return [_transform_values(v, fcn, level - 1) for v in values]
 
 
 def _make_set_field_pipeline(sample_collection, field, expr, embedded_root):

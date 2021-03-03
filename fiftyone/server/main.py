@@ -649,16 +649,16 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         await self.send_updates(ignore=self)
 
     @staticmethod
-    async def on_set_selected_objects(self, selected_objects):
+    async def on_set_selected_labels(self, selected_labels):
         """Event for setting the entire selected objects list.
 
         Args:
-            selected_object: a list of selected objects
+            selected_labels: a list of selected labels
         """
-        if not isinstance(selected_objects, list):
-            raise TypeError("selected_objects must be a list")
+        if not isinstance(selected_labels, list):
+            raise TypeError("selected_labels must be a list")
 
-        StateHandler.state["selected_objects"] = selected_objects
+        StateHandler.state["selected_labels"] = selected_labels
         await self.send_updates(ignore=self)
 
     @staticmethod

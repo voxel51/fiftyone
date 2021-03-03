@@ -1868,9 +1868,9 @@ class ViewExpression(object):
         """
         return ViewExpression({"$size": {"$ifNull": [self, []]}})
 
-    def contains(self, value):
-        """Checks whether the given value is in this expression, which must
-        resolve to an array.
+    def contains(self, value_or_values):
+        """Checks whether the given value (or any of the given values) is in
+        this expression, which must resolve to an array.
 
         Examples::
 
@@ -1888,13 +1888,29 @@ class ViewExpression(object):
             print(dataset.count())
             print(view.count())
 
+            # Only contains samples with "cat" or "dog" predictions
+            view = dataset.match(
+                F("predictions.detections").map(F("label")).contains(["cat", "dog"])
+            )
+
+            print(dataset.count())
+            print(view.count())
+
         Args:
-            value: a value
+            value_or_values: a value or iterable of values
 
         Returns:
             a :class:`ViewExpression`
         """
-        return ViewExpression({"$in": [value, self]})
+        if etau.is_container(value_or_values):
+            values = list(value_or_values)
+        else:
+            values = [value_or_values]
+
+        expr = ViewExpression.any(
+            [ViewExpression({"$in": [value, self]}) for value in values]
+        )
+        return self.let_in(expr)
 
     def reverse(self):
         """Reverses the order of the elements in the expression, which must
@@ -3065,6 +3081,102 @@ class ViewExpression(object):
             a :class:`ViewExpression`
         """
         return ViewExpression({"$rand": {}})
+
+    @staticmethod
+    def any(exprs):
+        """Checks whether any of the given expressions evaluate to True.
+
+        If no expressions are provided, returns False.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Create a view that only contains predictions that are "cat" or
+            # highly confident
+            is_cat = F("label") == "cat"
+            is_confident = F("confidence") > 0.95
+            view = dataset.filter_labels(
+                "predictions", F.any([is_cat, is_confident])
+            )
+
+            print(dataset.count("predictions.detections"))
+            print(view.count("predictions.detections"))
+
+        Args:
+            exprs: a :class:`ViewExpression` or iterable of
+                :class:`ViewExpression` instances
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        if etau.is_container(exprs):
+            exprs = list(exprs)
+        else:
+            exprs = [exprs]
+
+        num_exprs = len(exprs)
+
+        if num_exprs == 0:
+            return ViewExpression(False)
+
+        any_expr = exprs[0]
+        for expr in exprs[1:]:
+            any_expr |= expr
+
+        return any_expr
+
+    @staticmethod
+    def all(exprs):
+        """Checks whether all of the given expressions evaluate to True.
+
+        If no expressions are provided, returns True.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Create a view that only contains predictions that are "cat" and
+            # highly confident
+            is_cat = F("label") == "cat"
+            is_confident = F("confidence") > 0.95
+            view = dataset.filter_labels(
+                "predictions", F.all([is_cat, is_confident])
+            )
+
+            print(dataset.count("predictions.detections"))
+            print(view.count("predictions.detections"))
+
+        Args:
+            exprs: a :class:`ViewExpression` or iterable of
+                :class:`ViewExpression` instances
+
+        Returns:
+            a :class:`ViewExpression`
+        """
+        if etau.is_container(exprs):
+            exprs = list(exprs)
+        else:
+            exprs = [exprs]
+
+        num_exprs = len(exprs)
+
+        if num_exprs == 0:
+            return ViewExpression(True)
+
+        any_expr = exprs[0]
+        for expr in exprs[1:]:
+            any_expr &= expr
+
+        return any_expr
 
     @staticmethod
     def range(start, stop=None):
