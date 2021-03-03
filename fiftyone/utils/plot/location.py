@@ -16,18 +16,13 @@ import fiftyone.core.utils as fou
 
 from .scatter import scatterplot
 
-# requires all of these packages to be installed:
-# salem pyproj netCDF4 xarray shapely descartes pandas motionless
-salem = fou.lazy_import("salem", callback=lambda: etau.ensure_package("salem"))
-
 
 def location_scatterplot(
     locations,
-    samples,
+    ax=None,
     map_type="satellite",
     show_scale_bar=False,
     api_key=None,
-    ax=None,
     **kwargs,
 ):
     """Generates an interactive scatterplot of the given location coordinates.
@@ -37,11 +32,12 @@ def location_scatterplot(
     image using Google Maps and performs the necessary coordinate
     transformations so that the locations can be visualized.
 
+    See :meth:`fiftyone.utils.plot.scatter.scatterplot` for more usage details.
+
     Args:
         locations: a ``num_samples x 2`` array of ``(longitude, latitude)``
             coordinates
-        samples: the :class:`fiftyone.core.collections.SampleCollection` whose
-            sample locations are being visualized
+        ax (None): an optional matplotlib axis to plot in
         map_type ("satellite"): the map type to render. Supported values are
             ``("roadmap", "satellite", "hybrid", "terrain")``
         show_scale_bar (False): whether to render a scale bar on the plot
@@ -64,8 +60,6 @@ def location_scatterplot(
         ax, locations, api_key, map_type, show_scale_bar
     )
 
-    # Add button that can toggle the map
-
     def _onclick(event):
         for child in ax.get_children():
             if isinstance(child, matplotlib.image.AxesImage):
@@ -75,7 +69,7 @@ def location_scatterplot(
 
     buttons = {"map": _onclick}
 
-    return scatterplot(locations, samples, ax=ax, buttons=buttons, **kwargs)
+    return scatterplot(locations, ax=ax, buttons=buttons, **kwargs)
 
 
 def _plot_map_background(ax, locations, api_key, map_type, show_scale_bar):
@@ -108,3 +102,33 @@ def _plot_map_background(ax, locations, api_key, map_type, show_scale_bar):
     locations = np.stack((x, y), axis=1)
 
     return locations
+
+
+def _ensure_salem():
+    # pip installing `salem` does not automatically install these...
+    required_packages = [
+        "salem",
+        "pyproj",
+        "netCDF4",
+        "xarray",
+        "shapely",
+        "descartes",
+        "pandas",
+        "motionless",
+    ]
+
+    missing_packages = []
+    for pkg in required_packages:
+        try:
+            etau.ensure_package(pkg)
+        except:
+            missing_packages.append(pkg)
+
+    if missing_packages:
+        raise ImportError(
+            "The requested operation requires that the following packages are "
+            "installed on your machine: %s" % (tuple(missing_packages),)
+        )
+
+
+salem = fou.lazy_import("salem", callback=_ensure_salem)
