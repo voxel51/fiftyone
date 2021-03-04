@@ -850,7 +850,12 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
             schema = sample_collection._serialize_frame_field_schema()
             self._metadata["frame_fields"] = schema
 
-        self._metadata["info"] = sample_collection.info
+        info = dict(sample_collection.info)
+
+        # Package mask targets into `info`
+        sample_collection._serialize_mask_targets(info)
+
+        self._metadata["info"] = info
 
     def export_sample(self, sample):
         out_filepath = self._filename_maker.get_output_path(sample.filepath)

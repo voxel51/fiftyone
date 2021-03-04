@@ -118,10 +118,45 @@ class SampleCollection(object):
 
     @property
     def info(self):
-        """The :meth:`fiftyone.core.dataset.Dataset.info` dict of the dataset
-        underlying the collection.
+        """The info dict of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.info` for more information.
         """
         raise NotImplementedError("Subclass must implement info")
+
+    @info.setter
+    def info(self, info):
+        raise NotImplementedError("Subclass must implement info")
+
+    @property
+    def default_mask_targets(self):
+        """The default mask targets of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.default_mask_targets` for more
+        information.
+        """
+        raise NotImplementedError(
+            "Subclass must implement default_mask_targets"
+        )
+
+    @default_mask_targets.setter
+    def default_mask_targets(self, targets):
+        raise NotImplementedError(
+            "Subclass must implement default_mask_targets"
+        )
+
+    @property
+    def mask_targets(self):
+        """The mask targets of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.mask_targets` for more
+        information.
+        """
+        raise NotImplementedError("Subclass must implement mask_targets")
+
+    @mask_targets.setter
+    def mask_targets(self, targets):
+        raise NotImplementedError("Subclass must implement mask_targets")
 
     def summary(self):
         """Returns a string summary of the collection.
@@ -1099,7 +1134,7 @@ class SampleCollection(object):
         pred_field,
         gt_field="ground_truth",
         eval_key=None,
-        mask_index=None,
+        mask_targets=None,
         method="simple",
         config=None,
         **kwargs,
@@ -1138,10 +1173,13 @@ class SampleCollection(object):
                 instances
             eval_key (None): an evaluation key to use to refer to this
                 evaluation
-            mask_index (None): a dict mapping mask values to labels. May
+            mask_targets (None): a dict mapping mask values to labels. May
                 contain a subset of the possible classes if you wish to
-                evaluate a subset of the semantic classes. By default, the
-                observed mask values are used as labels
+                evaluate a subset of the semantic classes. If not provided,
+                mask targets are loaded from
+                :meth:`fiftyone.core.dataset.Dataset.mask_targets` or
+                :meth:`fiftyone.core.dataset.Dataset.default_mask_targets` if
+                possible, or else the observed pixel values are used
             method ("simple"): a string specifying the evaluation method to
                 use. Supported values are ``("simple")``
             config (None): a
@@ -1160,7 +1198,7 @@ class SampleCollection(object):
             pred_field,
             gt_field=gt_field,
             eval_key=eval_key,
-            mask_index=mask_index,
+            mask_targets=mask_targets,
             method=method,
             config=config,
             **kwargs,
@@ -3958,7 +3996,12 @@ class SampleCollection(object):
         if is_video:
             d["frame_fields"] = self._serialize_frame_field_schema()
 
-        d["info"] = self.info
+        info = dict(self.info)
+
+        # Package mask targets into `info`
+        self._serialize_mask_targets(info)
+
+        d["info"] = info
 
         # Serialize samples
         samples = []
@@ -4227,6 +4270,32 @@ class SampleCollection(object):
 
     def _serialize_schema(self, schema):
         return {field_name: str(field) for field_name, field in schema.items()}
+
+    def _serialize_mask_targets(self, info):
+        if self.default_mask_targets:
+            info["default_mask_targets"] = self._dataset._doc.field_to_mongo(
+                "default_mask_targets"
+            )
+
+        if self.mask_targets:
+            info["mask_targets"] = self._dataset._doc.field_to_mongo(
+                "mask_targets"
+            )
+
+    def _parse_mask_targets(self, info):
+        default_mask_targets = info.pop("default_mask_targets", None)
+        if default_mask_targets:
+            default_mask_targets = self._dataset._doc.field_to_python(
+                "default_mask_targets", default_mask_targets
+            )
+
+        mask_targets = info.pop("mask_targets", None)
+        if mask_targets:
+            mask_targets = self._dataset._doc.field_to_python(
+                "mask_targets", mask_targets
+            )
+
+        return default_mask_targets, mask_targets
 
     def _parse_field_name(self, field_name, auto_unwind=True):
         return _parse_field_name(self, field_name, auto_unwind)

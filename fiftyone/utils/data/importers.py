@@ -59,7 +59,7 @@ def import_samples(
             encountered to the dataset schema. If False, an error is raised
             if a sample's schema is not a subset of the dataset schema
         add_info (True): whether to add dataset info from the importer (if
-            any) to the dataset's ``info``
+            any) to the dataset
 
     Returns:
         a list of IDs of the samples that were added to the dataset
@@ -234,9 +234,24 @@ def import_samples(
 
         # Load dataset info
         if add_info and dataset_importer.has_dataset_info:
-            _info = dataset_importer.get_dataset_info()
-            if _info:
-                dataset.info.update(_info)
+            info = dataset_importer.get_dataset_info()
+            if info:
+                # Mask targets are serialized into `info`; extract them if
+                # present
+                (
+                    default_mask_targets,
+                    mask_targets,
+                ) = dataset._parse_mask_targets(info)
+
+                if default_mask_targets:
+                    dataset.default_mask_targets = default_mask_targets
+
+                # Some mask targets may already exist, so update, not overwrite
+                if mask_targets:
+                    dataset.mask_targets.update(mask_targets)
+
+                dataset.info.update(info)
+
                 dataset.save()
 
         return sample_ids
