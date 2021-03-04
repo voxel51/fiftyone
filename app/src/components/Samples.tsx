@@ -1,14 +1,14 @@
 import React, { useEffect } from "react";
 import InfiniteScroll from "react-infinite-scroller";
 import useMeasure from "react-use-measure";
-import { useSetRecoilState } from "recoil";
+import { useSetRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
-import { ExpandLess, ExpandMore } from "@material-ui/icons";
 
 import Loading from "./Loading";
 import Sample from "./Sample";
 import tile from "./Samples.hooks";
 import * as atoms from "../recoil/atoms";
+import * as selectors from "../recoil/selectors";
 import { scrollbarStyles } from "./utils";
 
 const Container = styled.div`
@@ -27,6 +27,7 @@ function Samples() {
     scrollState.initialized &&
       setCurrentSamples(scrollState.rows.map((row) => row.samples).flat());
   }, [scrollState.rows]);
+  const indices = useRecoilValue(selectors.selectedSampleIndices);
 
   return (
     <Container ref={containerRef}>
@@ -54,7 +55,11 @@ function Samples() {
               {r.samples.map((s, j) => (
                 <React.Fragment key={j}>
                   <div key={"column"} style={{ padding: 0, width: "100%" }}>
-                    <Sample sample={s.sample} metadata={s.metadata} />
+                    <Sample
+                      sample={s.sample}
+                      metadata={s.metadata}
+                      index={indices[s.sample._id]}
+                    />
                   </div>
                   {j < r.samples.length - 1 && (
                     <div

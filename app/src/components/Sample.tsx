@@ -220,7 +220,11 @@ const SelectorDiv = animated(styled.div`
   );
 `);
 
-const useSelect = (id) => {
+const argMin = (array) => {
+  return [].reduce.call(array, (m, c, i, arr) => (c < arr[m] ? i : m), 0);
+};
+
+const useSelect = (id: string, index: number) => {
   return useRecoilCallback(
     ({ snapshot, set }) => async (e: {
       shiftKey: boolean;
@@ -234,22 +238,32 @@ const useSelect = (id) => {
       ]);
       const newSelected = new Set<string>(selectedSamples);
       const setOne = () => {
-        let event;
         if (newSelected.has(id)) {
           newSelected.delete(id);
-          event = "remove_selection";
         } else {
           newSelected.add(id);
-          event = "add_selection";
         }
       };
-      if (e.shiftKey) {
-        const ind = await snapshot.getPromise(selectors.selectedSampleIndices);
+      const ind = await snapshot.getPromise(selectors.selectedSampleIndices);
+      const rev = Object.fromEntries(
+        Object.entries(ind).map((i) => [i[1], i[0]])
+      );
+      const entries = Object.entries(ind)
+        .filter((e) => newSelected.has(e[0]))
+        .map((e) => [...e, Math.abs(e[1] - index)]);
+      if (e.shiftKey && !newSelected.has(id) && entries.length) {
+        const best = entries[argMin(entries.map((e) => e[2]))][1];
+
+        const [start, end] = best > index ? [index, best] : [best, index];
+        console.log(rev);
+        for (let idx = start; idx <= end; idx++) {
+          newSelected.add(rev[idx]);
+        }
       } else {
         setOne();
       }
       set(atoms.selectedSamples, newSelected);
-      socket.send(packageMessage(event, { _id: id }));
+      socket.send(packageMessage("set_selection", { _ids: newSelected }));
       set(atoms.stateDescription, {
         ...stateDescription,
         selected: [...newSelected],
@@ -258,14 +272,26 @@ const useSelect = (id) => {
   );
 };
 
-const Selector = ({ id, spring }: { id: string }) => {
+const Selector = ({
+  id,
+  spring,
+  index,
+}: {
+  id: string;
+  spring: any;
+  index: number;
+}) => {
   const theme = useTheme();
 
   const selectedSamples = useRecoilValue(atoms.selectedSamples);
 
-  const handleClick = useSelect(id);
+  const handleClick = useSelect(id, index);
   return (
-    <SelectorDiv style={{ ...spring }} onClick={handleClick}>
+    <SelectorDiv
+      style={{ ...spring }}
+      onClick={handleClick}
+      title={"Click to select sample, Shift+Click to select a range"}
+    >
       <Checkbox
         checked={selectedSamples.has(id)}
         style={{
@@ -277,7 +303,7 @@ const Selector = ({ id, spring }: { id: string }) => {
   );
 };
 
-const Sample = ({ sample, metadata }) => {
+const Sample = ({ sample, metadata, index }) => {
   const http = useRecoilValue(selectors.http);
   const setModal = useSetRecoilState(atoms.modal);
   const id = sample._id;
@@ -292,7 +318,7 @@ const Sample = ({ sample, metadata }) => {
     opacity: hovering || selectedSamples.has(id) ? 1 : 0,
   });
 
-  const selectSample = useSelect(id);
+  const selectSample = useSelect(id, index);
 
   return (
     <SampleDiv className="sample" style={revealSample()}>
@@ -305,7 +331,7 @@ const Sample = ({ sample, metadata }) => {
         onMouseEnter={() => setHovering(true)}
         onMouseLeave={() => setHovering(false)}
       >
-        <Selector key={id} id={id} spring={selectorSpring} />
+        <Selector key={id} id={id} spring={selectorSpring} index={index} />
         <SampleInfo sample={sample} />
         <Player51
           src={src}

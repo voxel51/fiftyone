@@ -830,11 +830,12 @@ export const selectedObjectIds = selector<Set<string>>({
   },
 });
 
-export const selectedSampleIndices = selector<{}>({
+export const selectedSampleIndices = selector<{ [key: string]: number }>({
   key: "selectedSampleIndices",
   get: ({ get }) => {
     const samples = get(atoms.currentSamples);
-    console.log(samples);
-    return {};
+    return Object.fromEntries(
+      samples.map(({ sample }, index) => [sample._id, index])
+    );
   },
 });
