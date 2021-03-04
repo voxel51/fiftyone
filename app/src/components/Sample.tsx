@@ -1,5 +1,10 @@
-import React, { useState } from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import React, { BaseSyntheticEvent, useState } from "react";
+import {
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import styled from "styled-components";
 import { animated, useSpring, useTransition } from "react-spring";
 
@@ -216,29 +221,41 @@ const SelectorDiv = animated(styled.div`
 `);
 
 const useSelect = (id) => {
-  const [stateDescription, setStateDescription] = useRecoilState(
-    atoms.stateDescription
-  );
-  const socket = useRecoilValue(selectors.socket);
-  const [selectedSamples, setSelectedSamples] = useRecoilState(
-    atoms.selectedSamples
-  );
-
-  return (e) => {
-    e.preventDefault();
-    const newSelected = new Set(selectedSamples);
-    let event;
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-      event = "remove_selection";
-    } else {
-      newSelected.add(id);
-      event = "add_selection";
+  return useRecoilCallback(
+    ({ snapshot, set }) => async (e: {
+      shiftKey: boolean;
+      preventDefault: () => void;
+    }) => {
+      e.preventDefault();
+      const [socket, selectedSamples, stateDescription] = await Promise.all([
+        snapshot.getPromise(selectors.socket),
+        snapshot.getPromise(atoms.selectedSamples),
+        snapshot.getPromise(atoms.stateDescription),
+      ]);
+      const newSelected = new Set<string>(selectedSamples);
+      const setOne = () => {
+        let event;
+        if (newSelected.has(id)) {
+          newSelected.delete(id);
+          event = "remove_selection";
+        } else {
+          newSelected.add(id);
+          event = "add_selection";
+        }
+      };
+      if (e.shiftKey) {
+        const ind = await snapshot.getPromise(selectors.selectedSampleIndices);
+      } else {
+        setOne();
+      }
+      set(atoms.selectedSamples, newSelected);
+      socket.send(packageMessage(event, { _id: id }));
+      set(atoms.stateDescription, {
+        ...stateDescription,
+        selected: [...newSelected],
+      });
     }
-    setSelectedSamples(newSelected);
-    socket.send(packageMessage(event, { _id: id }));
-    setStateDescription({ ...stateDescription, selected: [...newSelected] });
-  };
+  );
 };
 
 const Selector = ({ id, spring }: { id: string }) => {
