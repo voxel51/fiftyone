@@ -313,6 +313,7 @@ class Run(Configurable):
         if run_results is None:
             run_doc.results = None
         else:
+            # Write run result to GridFS
             results_bytes = run_results.to_str().encode()
             run_doc.results.put(results_bytes, content_type="application/json")
 
@@ -334,6 +335,7 @@ class Run(Configurable):
         if not run_doc.results:
             return None
 
+        # Load run result from GridFS
         view = cls.load_run_view(samples, key)
         run_doc.results.seek(0)
         results_str = run_doc.results.read().decode()
@@ -402,11 +404,19 @@ class Run(Configurable):
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             key: a run key
         """
+        # Cleanup run
         run_info = cls.get_run_info(samples, key)
         run = run_info.config.build()
         run.cleanup(samples, key)
+
+        # Delete run from dataset
         run_docs = getattr(samples._dataset._doc, cls._runs_field())
-        run_docs.pop(key, None)
+        run_doc = run_docs.pop(key, None)
+
+        # Must manually delete run result, which is stored via GridFS
+        if run_doc and run_doc.results:
+            run_doc.results.delete()
+
         samples._dataset.save()
 
     @classmethod
