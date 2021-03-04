@@ -553,25 +553,25 @@ class ExcludeLabels(ViewStage):
         return [
             {
                 "name": "labels",
-                "type": "dict|NoneType",  # @todo use "list<dict>" when supported
+                "type": "NoneType|dict",  # @todo use "list<dict>" when supported
                 "placeholder": "[{...}]",
                 "default": "None",
             },
             {
                 "name": "ids",
-                "type": "list<id>|id|NoneType",
+                "type": "NoneType|list<id>|id",
                 "placeholder": "...",
                 "default": "None",
             },
             {
                 "name": "tags",
-                "type": "list<str>|str|NoneType",
+                "type": "NoneType|list<str>|str",
                 "placeholder": "...",
                 "default": "None",
             },
             {
                 "name": "fields",
-                "type": "list<str>|str|NoneType",
+                "type": "NoneType|list<str>|str",
                 "placeholder": "...",
                 "default": "None",
             },
@@ -2827,25 +2827,25 @@ class SelectLabels(ViewStage):
         return [
             {
                 "name": "labels",
-                "type": "dict|NoneType",  # @todo use "list<dict>" when supported
+                "type": "NoneType|dict",  # @todo use "list<dict>" when supported
                 "placeholder": "[{...}]",
                 "default": "None",
             },
             {
                 "name": "ids",
-                "type": "list<id>|id|NoneType",
+                "type": "NoneType|list<id>|id",
                 "placeholder": "...",
                 "default": "None",
             },
             {
                 "name": "tags",
-                "type": "list<str>|str|NoneType",
+                "type": "NoneType|list<str>|str",
                 "placeholder": "...",
                 "default": "None",
             },
             {
                 "name": "fields",
-                "type": "list<str>|str|NoneType",
+                "type": "NoneType|list<str>|str",
                 "placeholder": "...",
                 "default": "None",
             },
@@ -3025,11 +3025,11 @@ class Shuffle(ViewStage):
         return [
             {
                 "name": "seed",
-                "type": "float|NoneType",
+                "type": "NoneType|float",
                 "default": "None",
                 "placeholder": "seed (default=None)",
             },
-            {"name": "_randint", "type": "int|NoneType", "default": "None"},
+            {"name": "_randint", "type": "NoneType|int", "default": "None"},
         ]
 
 
@@ -3294,11 +3294,11 @@ class Take(ViewStage):
             {"name": "size", "type": "int", "placeholder": "int"},
             {
                 "name": "seed",
-                "type": "float|NoneType",
+                "type": "NoneType|float",
                 "default": "None",
                 "placeholder": "seed (default=None)",
             },
-            {"name": "_randint", "type": "int|NoneType", "default": "None"},
+            {"name": "_randint", "type": "NoneType|int", "default": "None"},
         ]
 
 
