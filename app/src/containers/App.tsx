@@ -34,6 +34,7 @@ function App() {
   const isNotebook = useRecoilValue(selectors.isNotebook);
   const handleStateUpdate = (state) => {
     setStateDescription(state);
+    console.log(state.selected);
     setSelectedSamples(new Set(state.selected));
     setSelectedObjects(convertSelectedObjectsListToMap(state.selected_labels));
   };

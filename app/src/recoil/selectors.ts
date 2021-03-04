@@ -855,9 +855,13 @@ export const modalLabelAttrs = selectorFamily<
       label = label[type.toLocaleLowerCase()].filter((l) => l._id === id)[0];
     }
 
-    const hidden = HIDDEN_LABEL_ATTRS[label._cls.toLowerCase()];
+    const hidden = HIDDEN_LABEL_ATTRS[label._cls];
     return Object.entries(label)
       .filter((a) => !hidden.includes(a[0]) && !a[0].startsWith("_"))
-      .sort((a, b) => (a[0] < b[0] ? -1 : 1));
+      .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+      .map(([k, v]) => [
+        k,
+        typeof v === "object" ? (Array.isArray(v) ? "[...]" : "{...}") : v,
+      ]);
   },
 });

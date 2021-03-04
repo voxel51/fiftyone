@@ -164,8 +164,8 @@ const AttrInfo = ({ field, id }) => {
 
   return (
     <>
-      {entries.map((a) => (
-        <ContentItem key={a.name} name={a.name} value={a.value} />
+      {entries.map(([name, value]) => (
+        <ContentItem key={name} name={name} value={value} />
       ))}
       {etc && (
         <>
