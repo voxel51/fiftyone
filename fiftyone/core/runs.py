@@ -15,7 +15,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 from fiftyone.core.config import Config, Configurable
-from fiftyone.core.odm.runs import RunResultsDocument, RunDocument
+from fiftyone.core.odm.runs import RunDocument
 
 
 class RunInfo(Config):
@@ -287,6 +287,7 @@ class Run(Configurable):
             timestamp=run_info.timestamp,
             config=run_info.config.serialize(),
             view_stages=view_stages,
+            results=None,
         )
         samples._dataset.save()
 
@@ -302,16 +303,19 @@ class Run(Configurable):
         if key is None:
             return
 
-        result_doc = RunResultsDocument()
-
-        if run_results is not None:
-            for k, v in run_results.serialize().items():
-                result_doc[k] = v
-
-        result_doc.save()
-
         run_docs = getattr(samples._dataset._doc, cls._runs_field())
-        run_docs[key].results = result_doc
+        run_doc = run_docs[key]
+
+        # Delete existing
+        if run_doc.results:
+            run_doc.results.delete()
+
+        if run_results is None:
+            run_doc.results = None
+        else:
+            results_bytes = run_results.to_str().encode()
+            run_doc.results.put(results_bytes, content_type="application/json")
+
         samples._dataset.save()
 
     @classmethod
@@ -326,18 +330,14 @@ class Run(Configurable):
             a :class:`RunResults`, or None if the run did not save results
         """
         run_doc = cls._get_run_doc(samples, key)
-        run_results = run_doc.results
 
-        if run_results is None:
+        if not run_doc.results:
             return None
 
-        results_dict = {}
-        for field in run_results:
-            if field not in ("id", "_id"):
-                results_dict[field] = getattr(run_results, field)
-
         view = cls.load_run_view(samples, key)
-        return RunResults.from_dict(results_dict, view)
+        run_doc.results.seek(0)
+        results_str = run_doc.results.read().decode()
+        return RunResults.from_str(results_str, view)
 
     @classmethod
     def load_run_view(cls, samples, key, select_fields=False):

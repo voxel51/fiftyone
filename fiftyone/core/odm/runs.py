@@ -11,18 +11,10 @@ from mongoengine import (
     ReferenceField,
     StringField,
     DateTimeField,
+    FileField,
 )
 
-from .document import DynamicDocument, EmbeddedDocument
-
-
-class RunResultsDocument(DynamicDocument):
-    """Results of a run on a dataset."""
-
-    meta = {"collection": "run_results"}
-
-    def __repr__(self):
-        return "<%s>" % self.__class__.__name__
+from .document import EmbeddedDocument
 
 
 class RunDocument(EmbeddedDocument):
@@ -32,4 +24,4 @@ class RunDocument(EmbeddedDocument):
     timestamp = DateTimeField()
     config = DictField()
     view_stages = ListField(StringField())
-    results = ReferenceField(RunResultsDocument)
+    results = FileField()

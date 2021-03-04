@@ -3014,10 +3014,8 @@ def _drop_dataset(name, drop_persistent=True):
 
 def _delete_dataset_doc(dataset_doc):
     #
-    # Must manually cleanup run results
-    #
-    # @todo is there a way to configure MongoEngine to cascade-delete these
-    # references? It seems this is not supported for DictFields...
+    # Must manually cleanup run results, which are stored using GridFS
+    # https://docs.mongoengine.org/guide/gridfs.html
     #
 
     for run_doc in dataset_doc.evaluations.values():

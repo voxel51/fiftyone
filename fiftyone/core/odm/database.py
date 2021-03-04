@@ -8,7 +8,6 @@ Database connection.
 from copy import copy
 import logging
 
-from bson import ObjectId
 from mongoengine import connect
 import motor
 import pymongo
@@ -25,7 +24,7 @@ logger = logging.getLogger(__name__)
 ASC = pymongo.ASCENDING
 DESC = pymongo.DESCENDING
 
-_PERMANENT_COLLS = {"datasets", "run_results"}
+_PERMANENT_COLLS = {"datasets", "fs.files", "fs.chunks"}
 
 
 def _connect():
@@ -143,15 +142,12 @@ def drop_orphan_run_results(dry_run=False):
     """
     conn = get_db_conn()
 
-    all_run_results = set(conn.run_results.distinct("_id", {}, {}))
-
     results_in_use = set()
     for name in list_datasets():
         dataset_dict = conn.datasets.find_one({"name": name})
-        for run_doc in dataset_dict.get("evaluations", {}).values():
-            result_id = run_doc.get("results", None)
-            if result_id is not None:
-                results_in_use.add(result_id)
+        results_in_use.update(_get_result_ids(dataset_dict))
+
+    all_run_results = set(conn.fs.files.distinct("_id", {}, {}))
 
     orphan_results = [
         _id for _id in all_run_results if _id not in results_in_use
@@ -161,11 +157,12 @@ def drop_orphan_run_results(dry_run=False):
         return
 
     logger.info(
-        "Deleting %d orphan run result(s): %s"
-        % (len(orphan_results), orphan_results)
+        "Deleting %d orphan run result(s): %s",
+        len(orphan_results),
+        orphan_results,
     )
     if not dry_run:
-        conn.run_results.delete_many({"_id": {"$in": orphan_results}})
+        _delete_run_results(orphan_results)
 
 
 def stream_collection(collection_name):
@@ -229,7 +226,7 @@ def delete_dataset(name, dry_run=False):
 
     dataset_dict = conn.datasets.find_one({"name": name})
     if not dataset_dict:
-        logger.warning("Dataset '%s' not found" % name)
+        logger.warning("Dataset '%s' not found", name)
         return
 
     logger.info("Dropping document '%s' from 'datasets' collection", name)
@@ -259,18 +256,32 @@ def delete_dataset(name, dry_run=False):
         if not dry_run:
             conn.drop_collection(frame_collection_name)
 
-    delete_results = []
+    delete_results = _get_result_ids(dataset_dict)
+
+    logger.info("Deleting %d run result(s)", len(delete_results))
+    if not dry_run:
+        _delete_run_results(delete_results)
+
+
+def _get_result_ids(dataset_dict):
+    result_ids = []
 
     for run_doc in dataset_dict.get("evaluations", {}).values():
         result_id = run_doc.get("results", None)
         if result_id is not None:
-            delete_results.append(result_id)
+            result_ids.append(result_id)
 
     for run_doc in dataset_dict.get("brain_methods", {}).values():
         result_id = run_doc.get("results", None)
         if result_id is not None:
-            delete_results.append(result_id)
+            result_ids.append(result_id)
 
-    logger.info("Deleting %d run result(s)", len(delete_results))
-    if not dry_run:
-        conn.run_results.delete_many({"_id": {"$in": delete_results}})
+    return result_ids
+
+
+def _delete_run_results(result_ids):
+    conn = get_db_conn()
+
+    # Delete from GridFS
+    conn.fs.files.delete_many({"_id": {"$in": result_ids}})
+    conn.fs.chunks.delete_many({"files_id": {"$in": result_ids}})
