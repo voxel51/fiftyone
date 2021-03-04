@@ -1,10 +1,5 @@
-import React, { BaseSyntheticEvent, useState } from "react";
-import {
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+import React, { useState } from "react";
+import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { animated, useSpring, useTransition } from "react-spring";
 
@@ -227,7 +222,7 @@ const argMin = (array) => {
 const useSelect = (id: string, index: number) => {
   return useRecoilCallback(
     ({ snapshot, set }) => async (e: {
-      shiftKey: boolean;
+      ctrlKey: boolean;
       preventDefault: () => void;
     }) => {
       e.preventDefault();
@@ -251,7 +246,7 @@ const useSelect = (id: string, index: number) => {
       const entries = Object.entries(ind)
         .filter((e) => newSelected.has(e[0]))
         .map((e) => [...e, Math.abs(e[1] - index)]);
-      if (e.shiftKey && !newSelected.has(id) && entries.length) {
+      if (e.ctrlKey && !newSelected.has(id) && entries.length) {
         const best = entries[argMin(entries.map((e) => e[2]))][1];
 
         const [start, end] = best > index ? [index, best] : [best, index];
@@ -290,7 +285,7 @@ const Selector = ({
     <SelectorDiv
       style={{ ...spring }}
       onClick={handleClick}
-      title={"Click to select sample, Shift+Click to select a range"}
+      title={"Click to select sample, Ctrl+Click to select a range"}
     >
       <Checkbox
         checked={selectedSamples.has(id)}
