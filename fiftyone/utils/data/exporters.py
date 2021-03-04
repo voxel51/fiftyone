@@ -852,8 +852,12 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
         info = dict(sample_collection.info)
 
-        # Package mask targets into `info`
-        sample_collection._serialize_mask_targets(info)
+        # Package mask targets into `info`, since the import API only supports
+        # checking for `info`
+        info[
+            "default_mask_targets"
+        ] = sample_collection._serialize_default_mask_targets()
+        info["mask_targets"] = sample_collection._serialize_mask_targets()
 
         self._metadata["info"] = info
 

@@ -2490,18 +2490,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if media_type == fom.VIDEO:
             dataset._apply_frame_field_schema(d["frame_fields"])
 
-        info = d.get("info", {})
-
-        # Mask targets are serialized into `info`; extract them if present
-        default_mask_targets, mask_targets = dataset._parse_mask_targets(info)
-
-        if default_mask_targets:
-            dataset.default_mask_targets = default_mask_targets
-
-        if mask_targets:
-            dataset.mask_targets = mask_targets
-
-        dataset.info = info
+        dataset.info = d.get("info", {})
+        dataset.default_mask_targets = dataset._parse_default_mask_targets(
+            d.get("default_mask_targets", {})
+        )
+        dataset.mask_targets = dataset._parse_mask_targets(
+            d.get("mask_targets", {})
+        )
 
         def parse_sample(sd):
             if rel_dir and not sd["filepath"].startswith(os.path.sep):
