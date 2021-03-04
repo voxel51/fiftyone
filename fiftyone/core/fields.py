@@ -60,13 +60,6 @@ class IntField(mongoengine.IntField, Field):
     pass
 
 
-class TargetField(IntField):
-    """An 8 bit integer field."""
-
-    def __init__(self):
-        super().__init__(null=True, min_value=0, max_value=255)
-
-
 class ObjectIdField(mongoengine.ObjectIdField, Field):
     """An Object ID field."""
 
