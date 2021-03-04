@@ -125,7 +125,10 @@ class Service(object):
     def stop(self):
         """Stops the service."""
         self.child.stdin.close()
-        self.child.wait()
+        try:
+            self.child.wait()
+        except TypeError:
+            pass
 
     def wait(self):
         """Waits for the service to exit and returns its exit code."""
