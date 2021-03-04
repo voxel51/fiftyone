@@ -3996,12 +3996,9 @@ class SampleCollection(object):
         if is_video:
             d["frame_fields"] = self._serialize_frame_field_schema()
 
-        info = dict(self.info)
-
-        # Package mask targets into `info`
-        self._serialize_mask_targets(info)
-
-        d["info"] = info
+        d["info"] = self.info
+        d["default_mask_targets"] = self._serialize_default_mask_targets()
+        d["mask_targets"] = self._serialize_mask_targets()
 
         # Serialize samples
         samples = []
@@ -4271,31 +4268,25 @@ class SampleCollection(object):
     def _serialize_schema(self, schema):
         return {field_name: str(field) for field_name, field in schema.items()}
 
-    def _serialize_mask_targets(self, info):
-        if self.default_mask_targets:
-            info["default_mask_targets"] = self._dataset._doc.field_to_mongo(
-                "default_mask_targets"
-            )
+    def _serialize_mask_targets(self):
+        return self._dataset._doc.field_to_mongo("mask_targets")
 
-        if self.mask_targets:
-            info["mask_targets"] = self._dataset._doc.field_to_mongo(
-                "mask_targets"
-            )
+    def _serialize_default_mask_targets(self):
+        return self._dataset._doc.field_to_mongo("default_mask_targets")
 
-    def _parse_mask_targets(self, info):
-        default_mask_targets = info.pop("default_mask_targets", None)
-        if default_mask_targets:
-            default_mask_targets = self._dataset._doc.field_to_python(
-                "default_mask_targets", default_mask_targets
-            )
+    def _parse_mask_targets(self, mask_targets):
+        if not mask_targets:
+            return mask_targets
 
-        mask_targets = info.pop("mask_targets", None)
-        if mask_targets:
-            mask_targets = self._dataset._doc.field_to_python(
-                "mask_targets", mask_targets
-            )
+        return self._dataset._doc.field_to_python("mask_targets", mask_targets)
 
-        return default_mask_targets, mask_targets
+    def _parse_default_mask_targets(self, default_mask_targets):
+        if not default_mask_targets:
+            return default_mask_targets
+
+        return self._dataset._doc.field_to_python(
+            "default_mask_targets", default_mask_targets
+        )
 
     def _parse_field_name(self, field_name, auto_unwind=True):
         return _parse_field_name(self, field_name, auto_unwind)

@@ -236,19 +236,19 @@ def import_samples(
         if add_info and dataset_importer.has_dataset_info:
             info = dataset_importer.get_dataset_info()
             if info:
-                # Mask targets are serialized into `info`; extract them if
-                # present
-                (
-                    default_mask_targets,
-                    mask_targets,
-                ) = dataset._parse_mask_targets(info)
-
+                default_mask_targets = info.pop("default_mask_targets", None)
                 if default_mask_targets:
-                    dataset.default_mask_targets = default_mask_targets
+                    dataset.default_mask_targets = dataset._parse_default_mask_targets(
+                        default_mask_targets
+                    )
 
-                # Some mask targets may already exist, so update, not overwrite
+                mask_targets = info.pop("mask_targets", None)
                 if mask_targets:
-                    dataset.mask_targets.update(mask_targets)
+                    # Some mask targets may already exist, so update, not
+                    # overwrite
+                    dataset.mask_targets.update(
+                        dataset._parse_mask_targets(mask_targets)
+                    )
 
                 dataset.info.update(info)
 
