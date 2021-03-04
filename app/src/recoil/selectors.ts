@@ -861,7 +861,21 @@ export const modalLabelAttrs = selectorFamily<
       .sort((a, b) => (a[0] < b[0] ? -1 : 1))
       .map(([k, v]) => [
         k,
-        typeof v === "object" ? (Array.isArray(v) ? "[...]" : "{...}") : v,
+        typeof v === "object" && k !== "tags"
+          ? Array.isArray(v)
+            ? "[...]"
+            : "{...}"
+          : v,
       ]);
+  },
+});
+
+export const modalLabelTags = selectorFamily<
+  string[],
+  { field: string; id: string }
+>({
+  key: "modalLabelTags",
+  get: (params) => ({ get }) => {
+    return get(modalLabelAttrs(params)).filter(([k, v]) => k === "tags")[0][1];
   },
 });

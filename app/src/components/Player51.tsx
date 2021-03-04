@@ -215,6 +215,11 @@ const OVERLAY_INFO = {
   polyline: PolylineInfo,
 };
 
+const TagInfo = (props) => {
+  const tags = useRecoilValue(selectors.modalLabelTags(props));
+  return <div>{tags.join(", ")}</div>;
+};
+
 const TooltipInfo = ({ player, moveRef }) => {
   const selectedObjects = useRecoilValue(selectors.selectedObjectIds);
   const [display, setDisplay] = useState(false);
@@ -259,6 +264,7 @@ const TooltipInfo = ({ player, moveRef }) => {
           ref={ref}
         >
           <ContentHeader key="header">{overlays[0].field}</ContentHeader>
+          <TagInfo field={overlays[0].field} id={overlays[0].id} />
           {overlays.map((o, i) => {
             const Component = OVERLAY_INFO[overlays[0].type];
             return (
