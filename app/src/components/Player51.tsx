@@ -406,6 +406,7 @@ export default ({
       });
       player.updateOverlayOptions(overlayOptions);
       if (!thumbnail) {
+        player.updateOptions({ selectedObjects });
         player.updateOverlay(overlay);
       }
     }
@@ -419,13 +420,8 @@ export default ({
     fps,
     overlayOptions,
     defaultTargets,
+    selectedObjects,
   ]);
-
-  useEffect(() => {
-    if (player && selectedObjects) {
-      player.updateOptions({ selectedObjects });
-    }
-  }, [player, selectedObjects]);
 
   useEffect(() => {
     return () => player && !keep && player.destroy();
