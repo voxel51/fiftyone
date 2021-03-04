@@ -839,3 +839,15 @@ export const selectedSampleIndices = selector<{ [key: string]: number }>({
     );
   },
 });
+
+export const modalLabelAttrs = selectorFamily<
+  { [key: string]: string | null | number },
+  { field: string; id: string }
+>({
+  key: "modalLabelAttrs",
+  get: ({ field, id }) => ({ get }) => {
+    const sample = get(modalSample);
+
+    return {};
+  },
+});

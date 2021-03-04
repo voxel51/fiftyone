@@ -11,7 +11,7 @@ import { animated, useSpring } from "react-spring";
 import { ContentDiv, ContentHeader, ContentBlock } from "./utils";
 import ExternalLink from "./ExternalLink";
 import Player51 from "player51";
-import { useEventHandler } from "../utils/hooks";
+import { useEventHandler, useTheme } from "../utils/hooks";
 import { convertSampleToETA } from "../utils/labels";
 import { useMove } from "react-use-gesture";
 
@@ -115,6 +115,8 @@ const ContentItem = ({
               return value;
             case "boolean":
               return value ? "True" : "False";
+            case "object":
+              return Array.isArray(value) ? "[...]" : "{...}";
             default:
               return "None";
           }
@@ -129,10 +131,9 @@ const ConfidenceItem = ({ confidence }) => {
   return <ContentItem name={"confidence"} value={confidence} />;
 };
 
-const ClassificationInfo = ({ info }) => {
+const ClassificationInfo = ({ info, style }) => {
   return (
-    <ContentBlock style={{ borderColor: info.color }}>
-      <SelectedItem info={info} />
+    <ContentBlock style={{ borderColor: info.color, ...style }}>
       <ContentItem key={"field"} name={"field"} value={info.field} />
       <ContentItem key={"label"} name={"label"} value={info.label} />
       <ConfidenceItem confidence={info.confidence} />
@@ -146,11 +147,10 @@ const useTarget = (field, target) => {
   return getTarget(field, target);
 };
 
-const MaskInfo = ({ info }) => {
+const MaskInfo = ({ info, style }) => {
   const targetValue = useTarget(info.field, info.target);
   return (
-    <ContentBlock style={{ borderColor: info.color }}>
-      <SelectedItem info={info} />
+    <ContentBlock style={{ borderColor: info.color, ...style }}>
       <ContentItem key={"field"} name={"field"} value={info.field} />
       <ContentItem key={"target-value"} name={"label"} value={targetValue} />
     </ContentBlock>
@@ -183,25 +183,9 @@ const AttrInfo = ({ attrs }) => {
   );
 };
 
-const SelectedItem = ({ info }) => {
-  const selectedObjects = useRecoilValue(selectors.selectedObjectIds);
-  if (selectedObjects.has(info.id)) {
-    return (
-      <ContentItem
-        name={"selected"}
-        value={"True"}
-        style={{ color: info.color }}
-      />
-    );
-  }
-  return null;
-};
-
-const DetectionInfo = ({ info }) => {
+const DetectionInfo = ({ info, style }) => {
   return (
-    <ContentBlock style={{ borderColor: info.color }}>
-      <SelectedItem info={info} />
-      <ContentItem key={"field"} name={"field"} value={info.field} />
+    <ContentBlock style={{ borderColor: info.color, ...style }}>
       <ContentItem key={"label"} name={"label"} value={info.label} />
       <ConfidenceItem confidence={info.confidence} />
       <AttrInfo attrs={info.attrs} />
@@ -209,11 +193,9 @@ const DetectionInfo = ({ info }) => {
   );
 };
 
-const KeypointInfo = ({ info }) => {
+const KeypointInfo = ({ info, style }) => {
   return (
-    <ContentBlock style={{ borderColor: info.color }}>
-      <SelectedItem info={info} />
-      <ContentItem key={"field"} name={"field"} value={info.field} />
+    <ContentBlock style={{ borderColor: info.color, ...style }}>
       <ContentItem key={"label"} name={"label"} value={info.label} />
       <ContentItem
         key={"# keypoints"}
@@ -226,11 +208,9 @@ const KeypointInfo = ({ info }) => {
   );
 };
 
-const PolylineInfo = ({ info }) => {
+const PolylineInfo = ({ info, style }) => {
   return (
-    <ContentBlock style={{ borderColor: info.color }}>
-      <SelectedItem info={info} />
-      <ContentItem key={"field"} name={"field"} value={info.field} />
+    <ContentBlock style={{ borderColor: info.color, ...style }}>
       <ContentItem key={"label"} name={"label"} value={info.label} />
       <ConfidenceItem confidence={info.confidence} />
       <ContentItem key={"closed"} name={"closed"} value={info.closed} />
@@ -250,6 +230,7 @@ const OVERLAY_INFO = {
 };
 
 const TooltipInfo = ({ player, moveRef }) => {
+  const selectedObjects = useRecoilValue(selectors.selectedObjectIds);
   const [display, setDisplay] = useState(false);
   const [coords, setCoords] = useState({
     top: -1000,
@@ -266,12 +247,10 @@ const TooltipInfo = ({ player, moveRef }) => {
     },
   });
   const [overlays, setOverlays] = useState([]);
-  const [point, setPoint] = useState([0, 0]);
   const ref = useRef<HTMLDivElement>(null);
 
   useEventHandler(player, "tooltipinfo", (e) => {
     setOverlays(e.data.overlays);
-    setPoint(e.data.point);
   });
   useEventHandler(player, "mouseenter", () => setDisplay(true));
   useEventHandler(player, "mouseleave", () => setDisplay(false));
@@ -282,30 +261,31 @@ const TooltipInfo = ({ player, moveRef }) => {
     };
   });
 
-  let more;
-  let limitedOverlays = overlays ? overlays : [];
-  if (limitedOverlays.length > 3) {
-    more = limitedOverlays.length - 3;
-    limitedOverlays = limitedOverlays.slice(0, 3);
-  }
-
   const showProps = useSpring({
     display: display ? "block" : "none",
-    opacity: display && limitedOverlays.length ? 1 : 0,
+    opacity: display && overlays.length ? 1 : 0,
   });
 
-  return limitedOverlays.length
+  return overlays.length
     ? ReactDOM.createPortal(
         <TooltipDiv
           style={{ ...coordsProps, ...showProps, position: "fixed" }}
           ref={ref}
         >
-          <ContentHeader key="header">
-            {point[0]}, {point[1]}
-          </ContentHeader>
-          {limitedOverlays.map((o, i) => {
-            const Component = OVERLAY_INFO[o.type];
-            return <Component info={o} key={i} />;
+          <ContentHeader key="header">{overlays[0].field}</ContentHeader>
+          {overlays.map((o, i) => {
+            const Component = OVERLAY_INFO[overlays[0].type];
+            return (
+              <Component
+                info={overlays[0]}
+                key={i}
+                style={{
+                  borderTop: `2px ${
+                    selectedObjects.has(overlays[0].id) ? "dashed" : "solid"
+                  } ${overlays[0].color}`,
+                }}
+              />
+            );
           })}
         </TooltipDiv>,
         document.body
