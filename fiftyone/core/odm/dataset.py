@@ -5,30 +5,30 @@ Documents that track datasets and their sample schemas in the database.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import mongoengine as moe
-from mongoengine import (
+import eta.core.utils as etau
+
+from fiftyone.core.fields import (
     BooleanField,
     DictField,
     EmbeddedDocumentField,
     EmbeddedDocumentListField,
+    IntDictField,
     StringField,
+    TargetsField,
+    MultiTargetsField,
 )
 
-import eta.core.utils as etau
-
 from .document import Document, EmbeddedDocument
-from .fields import DictField, LabelTargetsField, TargetsField
 from .runs import RunDocument
 
 
 class SampleFieldDocument(EmbeddedDocument):
     """Description of a sample field."""
 
-    name = moe.StringField()
-    ftype = moe.StringField()
-    subfield = moe.StringField(null=True)
-    embedded_doc_type = moe.StringField(null=True)
-    targets_name = moe.StringField(null=True)
+    name = StringField()
+    ftype = StringField()
+    subfield = StringField(null=True)
+    embedded_doc_type = StringField(null=True)
 
     @classmethod
     def from_field(cls, field):
@@ -101,23 +101,17 @@ class DatasetDocument(Document):
 
     meta = {"collection": "datasets"}
 
-    media_type = moe.StringField()
-    name = moe.StringField(unique=True, required=True)
-    sample_collection_name = moe.StringField(unique=True, required=True)
-    persistent = moe.BooleanField(default=False)
-    info = moe.DictField(default=dict)
-    evaluations = moe.DictField(
-        EmbeddedDocumentField(document_type=RunDocument), default=dict
-    )
-    brain_methods = moe.DictField(
-        EmbeddedDocumentField(document_type=RunDocument), default=dict
-    )
-    sample_fields = moe.EmbeddedDocumentListField(
+    media_type = StringField()
+    name = StringField(unique=True, required=True)
+    sample_collection_name = StringField(unique=True, required=True)
+    persistent = BooleanField(default=False)
+    info = DictField()
+    evaluations = DictField(EmbeddedDocumentField(document_type=RunDocument))
+    brain_methods = DictField(EmbeddedDocumentField(document_type=RunDocument))
+    sample_fields = EmbeddedDocumentListField(
         document_type=SampleFieldDocument
     )
-    default_mask_targets = TargetsField(null=True)
-    mask_targets = LabelTargetsField(default=dict)
-    frame_fields = moe.EmbeddedDocumentListField(
-        document_type=SampleFieldDocument
-    )
-    version = moe.StringField(required=True, null=True)
+    default_mask_targets = TargetsField()
+    mask_targets = MultiTargetsField()
+    frame_fields = EmbeddedDocumentListField(document_type=SampleFieldDocument)
+    version = StringField(required=True, null=True)

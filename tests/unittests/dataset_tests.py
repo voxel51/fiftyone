@@ -9,6 +9,8 @@ import gc
 import unittest
 import os
 
+import eta.core.utils as etau
+
 import fiftyone as fo
 from fiftyone import ViewField as F
 import fiftyone.core.odm as foo
@@ -327,6 +329,89 @@ class DatasetTests(unittest.TestCase):
         self.assertIsNotNone(sample.predictions.field)
         with self.assertRaises(AttributeError):
             sample.predictions.new_field
+
+    @drop_datasets
+    def test_mask_targets(self):
+        dataset = fo.Dataset()
+
+        default_mask_targets = {1: "cat", 2: "dog"}
+
+        dataset.default_mask_targets = default_mask_targets
+        self.assertDictEqual(
+            dataset.default_mask_targets, default_mask_targets
+        )
+
+        with self.assertRaises(Exception):
+            dataset.default_mask_targets["hi"] = "there"
+            dataset.save()  # error
+
+        dataset.default_mask_targets.pop("hi")
+        dataset.save()  # success
+
+        mask_targets = {"ground_truth": {1: "cat", 2: "dog"}}
+
+        dataset.mask_targets = mask_targets
+        self.assertDictEqual(dataset.mask_targets, mask_targets)
+
+        with self.assertRaises(Exception):
+            dataset.mask_targets["hi"] = "there"
+            dataset.save()  # error
+
+        with self.assertRaises(Exception):
+            dataset.mask_targets[1] = {1: "cat", 2: "dog"}
+            dataset.save()  # error
+
+        dataset.mask_targets.pop("hi")
+        dataset.mask_targets.pop(1)
+        dataset.save()  # success
+
+        with self.assertRaises(Exception):
+            dataset.mask_targets["ground_truth"]["hi"] = "there"
+            dataset.save()  # error
+
+        dataset.mask_targets["ground_truth"].pop("hi")
+        dataset.save()  # success
+
+        with self.assertRaises(Exception):
+            dataset.mask_targets["predictions"] = {1: {"too": "many"}}
+            dataset.save()  # error
+
+        dataset.mask_targets.pop("predictions")
+        dataset.save()  # success
+
+    @drop_datasets
+    def test_dataset_info_import_export(self):
+        dataset = fo.Dataset()
+
+        dataset.info = {"hi": "there"}
+        dataset.default_mask_targets = {1: "cat", 2: "dog"}
+        dataset.mask_targets = {"ground_truth": {1: "cat", 2: "dog"}}
+
+        with etau.TempDir() as tmp_dir:
+            json_path = os.path.join(tmp_dir, "dataset.json")
+
+            dataset.write_json(json_path)
+            dataset2 = fo.Dataset.from_json(json_path)
+
+            self.assertDictEqual(dataset2.info, dataset.info)
+            self.assertDictEqual(dataset2.mask_targets, dataset.mask_targets)
+            self.assertDictEqual(
+                dataset2.default_mask_targets, dataset.default_mask_targets
+            )
+
+        with etau.TempDir() as tmp_dir:
+            dataset_dir = os.path.join(tmp_dir, "dataset")
+
+            dataset.export(dataset_dir, fo.types.FiftyOneDataset)
+            dataset3 = fo.Dataset.from_dir(
+                dataset_dir, fo.types.FiftyOneDataset
+            )
+
+            self.assertDictEqual(dataset3.info, dataset.info)
+            self.assertDictEqual(dataset3.mask_targets, dataset.mask_targets)
+            self.assertDictEqual(
+                dataset3.default_mask_targets, dataset.default_mask_targets
+            )
 
 
 if __name__ == "__main__":
