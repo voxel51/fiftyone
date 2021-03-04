@@ -42,9 +42,9 @@ def load_open_images_v6(
             ``("detections", "classifications", "relationships", "segmentations")``. 
             By default, all labels are loaded. Not all samples will include all
             label types
-        classes (None): a list of strings of classes to load. Only data related
-            to the specified classes will be downloaded. See available classes
-            with `get_classes()`
+        classes (None): a list of strings specifying required classes to load. Only samples
+            containing at least one instance of a specified classes will be
+            downloaded. See available classes with `get_classes()`
         split (None) a split to download, if applicable. Values are
             ``("train", "validation", "test")``. If neither ``split`` nor
             ``splits`` are provided, all available splits are downloaded.
@@ -58,19 +58,13 @@ def load_open_images_v6(
             all samples are imported
         dataset_dir (None): the directory to which the dataset will be
             downloaded
-    
+   
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
     """
-    if not label_types:
-        label_types = [
-            "detections",
-            "classifications",
-            "relationships",
-            "segmentations",
-        ]
-
+    label_types = _parse_label_types(label_types)
     splits = _parse_splits(split, splits)
+
     if not name or not isinstance(name, str):
         name = "open-images-v6"
 
@@ -207,12 +201,11 @@ def get_segmentation_classes(dataset_dir=None, classes_map=None):
     if not classes_map:
         classes_map = _get_classes_map(dataset_dir)
 
-    seg_cls_txt = os.path.join(
-        dataset_dir, "general", "segmentation_classes.txt"
-    )
+    annot_link = _ANNOTATION_DOWNLOAD_LINKS["general"]["segmentation_classes"]
+    seg_cls_txt_filename = os.path.basename(annot_link)
+    seg_cls_txt = os.path.join(dataset_dir, "general", seg_cls_txt_filename)
     _download_if_necessary(
-        seg_cls_txt,
-        _ANNOTATION_DOWNLOAD_LINKS["general"]["segmentation_classes"],
+        seg_cls_txt, annot_link,
     )
 
     with open(seg_cls_txt, "r") as f:
@@ -226,12 +219,10 @@ def _get_attrs_map(dataset_dir=None):
     if not dataset_dir:
         dataset_dir = os.path.join(fo.config.dataset_zoo_dir, "open-images-v6")
 
-    attrs_csv = os.path.join(
-        dataset_dir, "general", "oidv6-attributes-description.csv"
-    )
-    _download_if_necessary(
-        attrs_csv, _ANNOTATION_DOWNLOAD_LINKS["general"]["attr_names"]
-    )
+    annot_link = _ANNOTATION_DOWNLOAD_LINKS["general"]["attr_names"]
+    attrs_csv_name = os.path.basename(annot_link)
+    attrs_csv = os.path.join(dataset_dir, "general", attrs_csv_name)
+    _download_if_necessary(attrs_csv, annot_link)
     attrs_data = _parse_csv(attrs_csv)
     attrs_map = {k: v for k, v in attrs_data}
     return attrs_map
@@ -242,12 +233,10 @@ def _get_classes_map(dataset_dir=None):
         dataset_dir = os.path.join(fo.config.dataset_zoo_dir, "open-images-v6")
 
     # Map of class IDs to class names
-    cls_csv = os.path.join(
-        dataset_dir, "general", "class-descriptions-boxable.csv"
-    )
-    _download_if_necessary(
-        cls_csv, _ANNOTATION_DOWNLOAD_LINKS["general"]["class_names"]
-    )
+    annot_link = _ANNOTATION_DOWNLOAD_LINKS["general"]["class_names"]
+    cls_csv_name = os.path.basename(annot_link)
+    cls_csv = os.path.join(dataset_dir, "general", cls_csv_name)
+    _download_if_necessary(cls_csv, annot_link)
     cls_data = _parse_csv(cls_csv)
     classes_map = {k: v for k, v in cls_data}
     return classes_map
@@ -258,6 +247,81 @@ def _parse_csv(filename):
         reader = csv.reader(f, delimiter=",")
         data = [row for row in reader]
     return data
+
+
+def _parse_label_types(label_types):
+    if not label_types:
+        label_types = _DEFAULT_LABEL_TYPES
+
+    _label_types = []
+    for l in label_types:
+        if l not in _DEFAULT_LABEL_TYPES:
+            raise ValueError(
+                'Label type %s is not supported. Options include ("detections", "classifications", "relationships", "segmentations")'
+                % l
+            )
+        else:
+            _label_types.append(l)
+
+    return _label_types
+
+
+def _verify_field(dataset, field_name, label_class):
+    if field_name not in dataset.get_field_schema():
+        dataset.add_sample_field(
+            field_name,
+            fof.EmbeddedDocumentField,
+            embedded_doc_type=label_class,
+        )
+    return dataset
+
+
+def _get_label_data(
+    dataset,
+    split,
+    label_type,
+    annot_link,
+    dataset_dir,
+    label_inds,
+    oi_classes,
+    oi_attrs=[],
+    id_ind=0,
+):
+    csv_name = os.path.basename(annot_link)
+    csv_path = os.path.join(dataset_dir, split, label_type, csv_name)
+    _download_if_necessary(
+        csv_path, annot_link,
+    )
+    data = _parse_csv(csv_path)
+
+    # Find intersection of ImageIDs with all annotations
+    label_id_data = {}
+    relevant_ids = set()
+    oi_classes_attrs = set(oi_classes) | set(oi_attrs)
+    for l in data[1:]:
+        image_id = l[id_ind]
+        if image_id not in label_id_data:
+            label_id_data[image_id] = [l]
+        else:
+            label_id_data[image_id].append(l)
+
+        # Check that any labels for this entry exist in the given classes or
+        # attributes
+        valid_labels = []
+        for i in label_inds:
+            valid_labels.append(l[i] in oi_classes_attrs)
+
+        if any(valid_labels):
+            relevant_ids.add(image_id)
+
+    # Only keep samples with at least one label relevant to specified classes or attributes
+    # Images without specified classes or attributes are []
+    # Images without any of this label type do not exist in this dict
+    for image_id, data in label_id_data.items():
+        if image_id not in relevant_ids:
+            label_id_data[image_id] = []
+
+    return label_id_data, relevant_ids, dataset
 
 
 def _load_open_images_split(
@@ -274,82 +338,67 @@ def _load_open_images_split(
     max_samples,
 ):
 
-    valid_ids = set()
+    valid_ids = None
 
     if "detections" in label_types:
-        if "detections" not in dataset.get_field_schema():
-            dataset.add_sample_field(
-                "detections",
-                fof.EmbeddedDocumentField,
-                embedded_doc_type=fol.Detections,
-            )
-        det_csv = os.path.join(
-            dataset_dir, split, "detections", "%s-annotations-bbox.csv" % split
+        dataset = _verify_field(dataset, "detections", fol.Detections)
+        annot_link = _ANNOTATION_DOWNLOAD_LINKS[split]["boxes"]
+        det_id_data, det_ids, dataset = _get_label_data(
+            dataset,
+            split,
+            "detections",
+            annot_link,
+            dataset_dir,
+            [2],
+            oi_classes,
         )
-        _download_if_necessary(
-            det_csv, _ANNOTATION_DOWNLOAD_LINKS[split]["boxes"],
-        )
-        det_data = _parse_csv(det_csv)
 
-        # Find intersection of ImageIDs with all annotations
-        det_ids = {l[0] for l in det_data[1:] if l[2] in oi_classes}
-        valid_ids = valid_ids | det_ids
+        if valid_ids is None:
+            valid_ids = det_ids
+        else:
+            valid_ids = valid_ids & det_ids
 
     if "classifications" in label_types:
-        if "positive_labels" not in dataset.get_field_schema():
-            dataset.add_sample_field(
-                "positive_labels",
-                fof.EmbeddedDocumentField,
-                embedded_doc_type=fol.Classifications,
-            )
-        if "negative_labels" not in dataset.get_field_schema():
-            dataset.add_sample_field(
-                "negative_labels",
-                fof.EmbeddedDocumentField,
-                embedded_doc_type=fol.Classifications,
-            )
-
-        lab_csv = os.path.join(
-            dataset_dir,
+        dataset = _verify_field(
+            dataset, "positive_labels", fol.Classifications
+        )
+        dataset = _verify_field(
+            dataset, "negative_labels", fol.Classifications
+        )
+        annot_link = _ANNOTATION_DOWNLOAD_LINKS[split]["labels"]
+        lab_id_data, lab_ids, dataset = _get_label_data(
+            dataset,
             split,
-            "labels",
-            "%s-annotations-human-imagelabels-boxable.csv" % split,
+            "classifications",
+            annot_link,
+            dataset_dir,
+            [2],
+            oi_classes,
         )
-        _download_if_necessary(
-            lab_csv, _ANNOTATION_DOWNLOAD_LINKS[split]["labels"],
-        )
-        lab_data = _parse_csv(lab_csv)
 
-        lab_ids = {l[0] for l in lab_data[1:] if l[2] in oi_classes}
-        valid_ids = valid_ids | lab_ids
+        if valid_ids is None:
+            valid_ids = lab_ids
+        else:
+            valid_ids = valid_ids & lab_ids
 
     if "relationships" in label_types:
-        if "relationships" not in dataset.get_field_schema():
-            dataset.add_sample_field(
-                "relationships",
-                fof.EmbeddedDocumentField,
-                embedded_doc_type=fol.Detections,
-            )
-        rel_csv = os.path.join(
-            dataset_dir,
+        dataset = _verify_field(dataset, "relationships", fol.Detections)
+        annot_link = _ANNOTATION_DOWNLOAD_LINKS[split]["relationships"]
+        rel_id_data, rel_ids, dataset = _get_label_data(
+            dataset,
             split,
             "relationships",
-            "oidv6-%s-annotations-vrd.csv" % split,
+            annot_link,
+            dataset_dir,
+            [1, 2],
+            oi_classes,
+            oi_attrs=oi_attrs,
         )
-        _download_if_necessary(
-            rel_csv, _ANNOTATION_DOWNLOAD_LINKS[split]["relationships"],
-        )
-        rel_data = _parse_csv(rel_csv)
-        rel_ids = set()
-        oi_classes_attrs = set(oi_classes) | set(oi_classes)
-        for l in rel_data[1:]:
-            valid_label1 = l[1] in oi_classes_attrs
-            valid_label2 = l[2] in oi_classes_attrs
 
-            if valid_label1 or valid_label2:
-                rel_ids.add(l[0])
-
-        valid_ids = valid_ids | rel_ids
+        if valid_ids is None:
+            valid_ids = rel_ids
+        else:
+            valid_ids = valid_ids & rel_ids
 
     if "segmentations" in label_types:
         seg_classes = get_segmentation_classes(dataset_dir, classes_map)
@@ -363,26 +412,25 @@ def _load_open_images_split(
                 % ",".join(list(non_seg_classes))
             )
 
-        if "segmentations" not in dataset.get_field_schema():
-            dataset.add_sample_field(
-                "segmentations",
-                fof.EmbeddedDocumentField,
-                embedded_doc_type=fol.Detections,
-            )
-
-        seg_csv = os.path.join(
-            dataset_dir,
+        dataset = _verify_field(dataset, "segmentations", fol.Detections)
+        annot_link = _ANNOTATION_DOWNLOAD_LINKS[split]["segmentations"][
+            "mask_csv"
+        ]
+        seg_id_data, seg_ids, dataset = _get_label_data(
+            dataset,
             split,
             "segmentations",
-            "%s-annotations-object-segmentation.csv" % split,
+            annot_link,
+            dataset_dir,
+            [2],
+            oi_classes,
+            id_ind=1,
         )
-        _download_if_necessary(
-            seg_csv,
-            _ANNOTATION_DOWNLOAD_LINKS[split]["segmentations"]["mask_csv"],
-        )
-        seg_data = _parse_csv(seg_csv)
-        seg_ids = {l[1] for l in seg_data[1:] if l[2] in oi_classes}
-        valid_ids = valid_ids | seg_ids
+
+        if valid_ids is None:
+            valid_ids = seg_ids
+        else:
+            valid_ids = valid_ids & seg_ids
 
     valid_ids = list(valid_ids)
     if max_samples:
@@ -439,29 +487,27 @@ def _load_open_images_split(
         if "classifications" in label_types:
             # Add Labels
             pos_labels, neg_labels = _create_labels(
-                lab_data, image_id, classes, classes_map
+                lab_id_data, image_id, classes_map
             )
             sample["positive_labels"] = pos_labels
             sample["negative_labels"] = neg_labels
 
         if "detections" in label_types:
             # Add Detections
-            detections = _create_detections(
-                det_data, image_id, classes, classes_map
-            )
+            detections = _create_detections(det_id_data, image_id, classes_map)
             sample["detections"] = detections
 
         if "segmentations" in label_types:
             # Add Segmentations
             segmentations = _create_segmentations(
-                seg_data, image_id, classes, classes_map, dataset_dir, split
+                seg_id_data, image_id, classes_map, dataset_dir, split
             )
             sample["segmentations"] = segmentations
 
         if "relationships" in label_types:
             # Add Relationships
             relationships = _create_relationships(
-                rel_data, image_id, classes, attrs, classes_map, attrs_map
+                rel_id_data, image_id, classes_map, attrs_map
             )
             sample["relationships"] = relationships
 
@@ -474,26 +520,25 @@ def _load_open_images_split(
     return dataset
 
 
-def _create_labels(lab_data, image_id, classes, classes_map):
+def _create_labels(lab_id_data, image_id, classes_map):
+    if image_id not in lab_id_data:
+        return None, None
+
     pos_cls = []
     neg_cls = []
     # Get relevant data for this image
-    sample_labs = [i for i in lab_data if i[0] == image_id]
-
-    if not sample_labs:
-        return None
+    sample_labs = lab_id_data[image_id]
 
     for sample_lab in sample_labs:
         # sample_lab reference: [ImageID,Source,LabelName,Confidence]
         label = classes_map[sample_lab[2]]
-        if label in classes:
-            conf = float(sample_lab[3])
-            cls = fol.Classification(label=label, confidence=conf)
+        conf = float(sample_lab[3])
+        cls = fol.Classification(label=label, confidence=conf)
 
-            if conf > 0.1:
-                pos_cls.append(cls)
-            else:
-                neg_cls.append(cls)
+        if conf > 0.1:
+            pos_cls.append(cls)
+        else:
+            neg_cls.append(cls)
 
     pos_labels = fol.Classifications(classifications=pos_cls)
     neg_labels = fol.Classifications(classifications=neg_cls)
@@ -501,54 +546,55 @@ def _create_labels(lab_data, image_id, classes, classes_map):
     return pos_labels, neg_labels
 
 
-def _create_detections(det_data, image_id, classes, classes_map):
-    dets = []
-    sample_dets = [i for i in det_data if i[0] == image_id]
-
-    if not sample_dets:
+def _create_detections(det_id_data, image_id, classes_map):
+    if image_id not in det_id_data:
         return None
+
+    dets = []
+    sample_dets = det_id_data[image_id]
 
     for sample_det in sample_dets:
         # sample_det reference: [ImageID,Source,LabelName,Confidence,XMin,XMax,YMin,YMax,IsOccluded,IsTruncated,IsGroupOf,IsDepiction,IsInside]
         label = classes_map[sample_det[2]]
-        if label in classes:
-            xmin = float(sample_det[4])
-            xmax = float(sample_det[5])
-            ymin = float(sample_det[6])
-            ymax = float(sample_det[7])
+        xmin = float(sample_det[4])
+        xmax = float(sample_det[5])
+        ymin = float(sample_det[6])
+        ymax = float(sample_det[7])
 
-            # Convert to [top-left-x, top-left-y, width, height]
-            bbox = [xmin, ymin, xmax - xmin, ymax - ymin]
+        # Convert to [top-left-x, top-left-y, width, height]
+        bbox = [xmin, ymin, xmax - xmin, ymax - ymin]
 
-            detection = fol.Detection(bounding_box=bbox, label=label)
+        detection = fol.Detection(bounding_box=bbox, label=label)
 
-            detection["IsOccluded"] = bool(int(sample_det[8]))
-            detection["IsTruncated"] = bool(int(sample_det[9]))
-            detection["IsGroupOf"] = bool(int(sample_det[10]))
-            detection["IsDepiction"] = bool(int(sample_det[11]))
-            detection["IsInside"] = bool(int(sample_det[12]))
+        detection["IsOccluded"] = bool(int(sample_det[8]))
+        detection["IsTruncated"] = bool(int(sample_det[9]))
+        detection["IsGroupOf"] = bool(int(sample_det[10]))
+        detection["IsDepiction"] = bool(int(sample_det[11]))
+        detection["IsInside"] = bool(int(sample_det[12]))
 
-            dets.append(detection)
+        dets.append(detection)
 
     detections = fol.Detections(detections=dets)
 
     return detections
 
 
-def _create_relationships(
-    rel_data, image_id, classes, attrs, classes_map, attrs_map
-):
-    rels = []
-    sample_rels = [i for i in rel_data if i[0] == image_id]
-
-    if not sample_rels:
+def _create_relationships(rel_id_data, image_id, classes_map, attrs_map):
+    if image_id not in rel_id_data:
         return None
+
+    rels = []
+    sample_rels = rel_id_data[image_id]
 
     for sample_rel in sample_rels:
         # sample_rel reference: [ImageID,LabelName1,LabelName2,XMin1,XMax1,YMin1,YMax1,XMin2,XMax2,YMin2,YMax2,RelationshipLabel]
-        label1 = classes_map[sample_rel[1]]
-
         attribute = False
+        if sample_rel[1] in classes_map:
+            label1 = classes_map[sample_rel[1]]
+        else:
+            label1 = attrs_map[sample_rel[1]]
+            attribute = True
+
         if sample_rel[2] in classes_map:
             label2 = classes_map[sample_rel[2]]
         else:
@@ -556,44 +602,36 @@ def _create_relationships(
             attribute = True
 
         label_rel = sample_rel[-1]
-        valid_label = (
-            label1 in classes
-            or label2 in classes
-            or label1 in attrs
-            or label2 in attrs
-        )
-        if valid_label:
-            xmin1 = float(sample_rel[3])
-            xmax1 = float(sample_rel[4])
-            ymin1 = float(sample_rel[5])
-            ymax1 = float(sample_rel[6])
 
-            xmin2 = float(sample_rel[7])
-            xmax2 = float(sample_rel[8])
-            ymin2 = float(sample_rel[9])
-            ymax2 = float(sample_rel[10])
+        xmin1 = float(sample_rel[3])
+        xmax1 = float(sample_rel[4])
+        ymin1 = float(sample_rel[5])
+        ymax1 = float(sample_rel[6])
 
-            xmin_int = min(xmin1, xmin2)
-            ymin_int = min(ymin1, ymin2)
-            xmax_int = max(xmax1, xmax2)
-            ymax_int = max(ymax1, ymax2)
+        xmin2 = float(sample_rel[7])
+        xmax2 = float(sample_rel[8])
+        ymin2 = float(sample_rel[9])
+        ymax2 = float(sample_rel[10])
 
-            # Convert to [top-left-x, top-left-y, width, height]
-            bbox_int = [
-                xmin_int,
-                ymin_int,
-                xmax_int - xmin_int,
-                ymax_int - ymin_int,
-            ]
+        xmin_int = min(xmin1, xmin2)
+        ymin_int = min(ymin1, ymin2)
+        xmax_int = max(xmax1, xmax2)
+        ymax_int = max(ymax1, ymax2)
 
-            detection_rel = fol.Detection(
-                bounding_box=bbox_int, label=label_rel
-            )
+        # Convert to [top-left-x, top-left-y, width, height]
+        bbox_int = [
+            xmin_int,
+            ymin_int,
+            xmax_int - xmin_int,
+            ymax_int - ymin_int,
+        ]
 
-            detection_rel["Label1"] = label1
-            detection_rel["Label2"] = label2
+        detection_rel = fol.Detection(bounding_box=bbox_int, label=label_rel)
 
-            rels.append(detection_rel)
+        detection_rel["Label1"] = label1
+        detection_rel["Label2"] = label2
+
+        rels.append(detection_rel)
 
     relationships = fol.Detections(detections=rels)
 
@@ -601,50 +639,49 @@ def _create_relationships(
 
 
 def _create_segmentations(
-    seg_data, image_id, classes, classes_map, dataset_dir, split
+    seg_id_data, image_id, classes_map, dataset_dir, split
 ):
-    segs = []
-    sample_segs = [i for i in seg_data if i[1] == image_id]
-
-    if not sample_segs:
+    if image_id not in seg_id_data:
         return None
+
+    segs = []
+    sample_segs = seg_id_data[image_id]
 
     for sample_seg in sample_segs:
         # sample_seg reference: [MaskPath,ImageID,LabelName,BoxID,BoxXMin,BoxXMax,BoxYMin,BoxYMax,PredictedIoU,Clicks]
         label = classes_map[sample_seg[2]]
-        if label in classes:
-            xmin = float(sample_seg[4])
-            xmax = float(sample_seg[5])
-            ymin = float(sample_seg[6])
-            ymax = float(sample_seg[7])
+        xmin = float(sample_seg[4])
+        xmax = float(sample_seg[5])
+        ymin = float(sample_seg[6])
+        ymax = float(sample_seg[7])
 
-            # Convert to [top-left-x, top-left-y, width, height]
-            bbox = [xmin, ymin, xmax - xmin, ymax - ymin]
+        # Convert to [top-left-x, top-left-y, width, height]
+        bbox = [xmin, ymin, xmax - xmin, ymax - ymin]
 
-            # Load boolean mask
-            mask_path = os.path.join(
-                dataset_dir,
-                split,
-                "segmentations",
-                "masks",
-                image_id[0].upper(),
-                sample_seg[0],
-            )
-            if not os.path.isfile(mask_path):
-                print("Segmentation %s does not exists" % mask_path)
-                continue
-            rgb_mask = etai.read(mask_path)
-            mask = etai.rgb_to_gray(rgb_mask) > 122
-            h, w = mask.shape
-            cropped_mask = mask[
-                int(ymin * h) : int(ymax * h), int(xmin * w) : int(xmax * w)
-            ]
+        # Load boolean mask
+        mask_path = os.path.join(
+            dataset_dir,
+            split,
+            "segmentations",
+            "masks",
+            image_id[0].upper(),
+            sample_seg[0],
+        )
+        if not os.path.isfile(mask_path):
+            print("Segmentation %s does not exists" % mask_path)
+            continue
+        rgb_mask = etai.read(mask_path)
+        mask = etai.rgb_to_gray(rgb_mask) > 122
+        h, w = mask.shape
+        cropped_mask = mask[
+            int(ymin * h) : int(ymax * h), int(xmin * w) : int(xmax * w)
+        ]
 
-            segmentation = fol.Detection(
-                bounding_box=bbox, label=label, mask=cropped_mask
-            )
+        segmentation = fol.Detection(
+            bounding_box=bbox, label=label, mask=cropped_mask
+        )
 
-            segs.append(segmentation)
+        segs.append(segmentation)
 
     segmentations = fol.Detections(detections=segs)
 
@@ -774,3 +811,10 @@ _ANNOTATION_DOWNLOAD_LINKS = {
 }
 
 _BUCKET_NAME = "open-images-dataset"
+
+_DEFAULT_LABEL_TYPES = [
+    "detections",
+    "classifications",
+    "relationships",
+    "segmentations",
+]
