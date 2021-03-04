@@ -181,9 +181,11 @@ def delete_non_persistent_datasets(verbose=False):
         verbose (False): whether to log the names of deleted datasets
     """
     for name in list_datasets():
-        did_delete = _drop_dataset(name, drop_persistent=False)
-        if did_delete and verbose:
-            logger.info("Dataset '%s' deleted", name)
+        dataset = load_dataset(name)
+        if not dataset.persistent and not dataset.deleted:
+            dataset.delete()
+            if verbose:
+                logger.info("Dataset '%s' deleted", name)
 
 
 class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
@@ -1492,9 +1494,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_doc_cls.drop_collection()
         fos.Sample._reset_docs(self._sample_collection_name)
 
-        if self.media_type == fom.VIDEO:
-            self._frame_doc_cls.drop_collection()
-            fofr.Frame._reset_docs(self._frame_collection_name)
+        self._frame_doc_cls.drop_collection()
+        fofr.Frame._reset_docs(self._frame_collection_name)
 
     def delete(self):
         """Deletes the dataset.
@@ -2987,35 +2988,22 @@ def _load_dataset(name):
     return dataset_doc, sample_doc_cls, frame_doc_cls
 
 
-def _drop_dataset(name, drop_persistent=True):
-    try:
-        # pylint: disable=no-member
-        dataset_doc = foo.DatasetDocument.objects.get(name=name)
-    except moe.DoesNotExist:
-        raise ValueError("Dataset '%s' not found" % name)
+def _drop_samples(dataset_doc):
+    conn = foo.get_db_conn()
 
-    if dataset_doc.persistent and not drop_persistent:
-        return False
+    sample_collection_name = dataset_doc.sample_collection_name
+    sample_collection = conn[sample_collection_name]
+    sample_collection.drop()
 
-    sample_doc_cls = _create_sample_document_cls(
-        dataset_doc.sample_collection_name
-    )
-    sample_doc_cls.drop_collection()
-
-    frame_doc_cls = _create_frame_document_cls(
-        "frames." + dataset_doc.sample_collection_name
-    )
-    frame_doc_cls.drop_collection()
-
-    _delete_dataset_doc(dataset_doc)
-
-    return True
+    frame_collection_name = "frames." + dataset_doc.sample_collection_name
+    frame_collection = conn[frame_collection_name]
+    frame_collection.drop()
 
 
 def _delete_dataset_doc(dataset_doc):
     #
     # Must manually cleanup run results, which are stored using GridFS
-    # https://docs.mongoengine.org/guide/gridfs.html
+    # https://docs.mongoengine.org/guide/gridfs.html#deletion
     #
 
     for run_doc in dataset_doc.evaluations.values():
