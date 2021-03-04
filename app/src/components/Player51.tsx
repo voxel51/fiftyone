@@ -127,17 +127,10 @@ const ContentItem = ({
   );
 };
 
-const ConfidenceItem = ({ confidence }) => {
-  return <ContentItem name={"confidence"} value={confidence} />;
-};
-
 const ClassificationInfo = ({ info, style }) => {
   return (
     <ContentBlock style={{ borderColor: info.color, ...style }}>
-      <ContentItem key={"field"} name={"field"} value={info.field} />
-      <ContentItem key={"label"} name={"label"} value={info.label} />
-      <ConfidenceItem confidence={info.confidence} />
-      <AttrInfo attrs={info.attrs} />
+      <AttrInfo field={info.field} id={info.id} />
     </ContentBlock>
   );
 };
@@ -151,14 +144,15 @@ const MaskInfo = ({ info, style }) => {
   const targetValue = useTarget(info.field, info.target);
   return (
     <ContentBlock style={{ borderColor: info.color, ...style }}>
-      <ContentItem key={"field"} name={"field"} value={info.field} />
+      <AttrInfo field={info.field} id={info.id} />
       <ContentItem key={"target-value"} name={"label"} value={targetValue} />
     </ContentBlock>
   );
 };
 
-const AttrInfo = ({ attrs }) => {
-  if (!attrs) {
+const AttrInfo = ({ field, id }) => {
+  const attrs = useRecoilValue(selectors.modalLabelAttrs({ field, id }));
+  if (!attrs || !attrs.length) {
     return null;
   }
   let etc = null;
@@ -186,9 +180,7 @@ const AttrInfo = ({ attrs }) => {
 const DetectionInfo = ({ info, style }) => {
   return (
     <ContentBlock style={{ borderColor: info.color, ...style }}>
-      <ContentItem key={"label"} name={"label"} value={info.label} />
-      <ConfidenceItem confidence={info.confidence} />
-      <AttrInfo attrs={info.attrs} />
+      <AttrInfo field={info.field} id={info.id} />
     </ContentBlock>
   );
 };
@@ -196,14 +188,12 @@ const DetectionInfo = ({ info, style }) => {
 const KeypointInfo = ({ info, style }) => {
   return (
     <ContentBlock style={{ borderColor: info.color, ...style }}>
-      <ContentItem key={"label"} name={"label"} value={info.label} />
+      <AttrInfo field={info.field} id={info.id} />
       <ContentItem
         key={"# keypoints"}
         name={"# keypoints"}
         value={info.numPoints}
       />
-      <ConfidenceItem confidence={info.confidence} />
-      <AttrInfo attrs={info.attrs} />
     </ContentBlock>
   );
 };
@@ -211,12 +201,8 @@ const KeypointInfo = ({ info, style }) => {
 const PolylineInfo = ({ info, style }) => {
   return (
     <ContentBlock style={{ borderColor: info.color, ...style }}>
-      <ContentItem key={"label"} name={"label"} value={info.label} />
-      <ConfidenceItem confidence={info.confidence} />
-      <ContentItem key={"closed"} name={"closed"} value={info.closed} />
-      <ContentItem key={"filled"} name={"filled"} value={info.filled} />
+      <AttrInfo field={info.field} id={info.id} />
       <ContentItem key={"# points"} name={"# points"} value={info.points} />
-      <AttrInfo attrs={info.attrs} />
     </ContentBlock>
   );
 };

@@ -20,6 +20,14 @@ export const VALID_LABEL_TYPES = [
   ...VALID_MASK_TYPES,
 ];
 
+export const HIDDEN_LABEL_ATTRS = {
+  Classification: ["logits"],
+  Detection: ["bounding_box", "attributes", "mask"],
+  Polyline: ["points", "attributes"],
+  Keypoint: ["points", "attributes"],
+  Segmentation: ["mask"],
+};
+
 export const OBJECT_TYPES = [
   "Detection",
   "Detections",

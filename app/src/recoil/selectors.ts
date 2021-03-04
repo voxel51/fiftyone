@@ -12,6 +12,8 @@ import {
   makeLabelNameGroups,
   labelTypeHasColor,
   AGGS,
+  VALID_LIST_TYPES,
+  HIDDEN_LABEL_ATTRS,
 } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
@@ -841,13 +843,21 @@ export const selectedSampleIndices = selector<{ [key: string]: number }>({
 });
 
 export const modalLabelAttrs = selectorFamily<
-  { [key: string]: string | null | number },
+  [string, string | null | number],
   { field: string; id: string }
 >({
   key: "modalLabelAttrs",
   get: ({ field, id }) => ({ get }) => {
     const sample = get(modalSample);
+    const type = get(labelTypesMap)[field];
+    let label = sample[field];
+    if (VALID_LIST_TYPES.includes(type)) {
+      label = label[type.toLocaleLowerCase()].filter((l) => l._id === id)[0];
+    }
 
-    return {};
+    const hidden = HIDDEN_LABEL_ATTRS[label._cls.toLowerCase()];
+    return Object.entries(label)
+      .filter((a) => !hidden.includes(a[0]) && !a[0].startsWith("_"))
+      .sort((a, b) => (a[0] < b[0] ? -1 : 1));
   },
 });
