@@ -238,21 +238,20 @@ const useSelect = (id: string, index: number) => {
       ]);
       const newSelected = new Set<string>(selectedSamples);
       const setOne = () => {
-        let event;
         if (newSelected.has(id)) {
           newSelected.delete(id);
         } else {
           newSelected.add(id);
         }
       };
-      if (e.shiftKey && !newSelected.has(id)) {
-        const ind = await snapshot.getPromise(selectors.selectedSampleIndices);
-        const rev = Object.fromEntries(
-          Object.entries(ind).map((i) => [i[1], i[0]])
-        );
-        const entries = Object.entries(ind)
-          .filter((e) => newSelected.has(e[0]))
-          .map((e) => [...e, Math.abs(e[1] - index)]);
+      const ind = await snapshot.getPromise(selectors.selectedSampleIndices);
+      const rev = Object.fromEntries(
+        Object.entries(ind).map((i) => [i[1], i[0]])
+      );
+      const entries = Object.entries(ind)
+        .filter((e) => newSelected.has(e[0]))
+        .map((e) => [...e, Math.abs(e[1] - index)]);
+      if (e.shiftKey && !newSelected.has(id) && entries.length) {
         const best = entries[argMin(entries.map((e) => e[2]))][1];
 
         const [start, end] = best > index ? [index, best] : [best, index];
@@ -288,7 +287,11 @@ const Selector = ({
 
   const handleClick = useSelect(id, index);
   return (
-    <SelectorDiv style={{ ...spring }} onClick={handleClick}>
+    <SelectorDiv
+      style={{ ...spring }}
+      onClick={handleClick}
+      title={"Click to select sample, Shift+Click to select a range"}
+    >
       <Checkbox
         checked={selectedSamples.has(id)}
         style={{
