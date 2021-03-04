@@ -829,3 +829,12 @@ export const selectedObjectIds = selector<Set<string>>({
     return new Set(Object.keys(objs));
   },
 });
+
+export const selectedSampleIndices = selector<{}>({
+  key: "selectedSampleIndices",
+  get: ({ get }) => {
+    const samples = get(atoms.currentSamples);
+    console.log(samples);
+    return {};
+  },
+});

@@ -69,7 +69,7 @@ export const stateDescription = atom({
   default: {},
 });
 
-export const selectedSamples = atom({
+export const selectedSamples = atom<Set<string>>({
   key: "selectedSamples",
   default: new Set(),
 });
