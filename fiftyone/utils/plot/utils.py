@@ -22,6 +22,20 @@ BUTTON_ICONS = {
 }
 
 
+def load_button_icon(name):
+    """Loads the button icon with the given name.
+
+    The available buttons are :const:`BUTTON_ICONS`.
+
+    Args:
+        name: the button name
+
+    Returns:
+        the numpy image
+    """
+    return load_icon(BUTTON_ICONS[name])
+
+
 def load_icon(icon_bytes):
     """Loads the icon image from bytes.
 

@@ -18,7 +18,7 @@ from fiftyone.core.expressions import ObjectId
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 
-from .utils import BUTTON_ICONS, load_icon
+from .utils import load_button_icon
 
 
 class PointSelector(object):
@@ -86,10 +86,10 @@ class PointSelector(object):
             button_defs = []
 
         if session is not None:
-            sync_icon = load_icon(BUTTON_ICONS["sync"])
+            sync_icon = load_button_icon("sync")
             button_defs.append(("sync", sync_icon, self._onsync))
 
-        disconnect_icon = load_icon(BUTTON_ICONS["disconnect"])
+        disconnect_icon = load_button_icon("disconnect")
         button_defs.append(("disconnect", disconnect_icon, self._ondisconnect))
 
         self.collection = collection
