@@ -8,7 +8,7 @@ import CircularProgress from "@material-ui/core/CircularProgress";
 import { Warning } from "@material-ui/icons";
 import { animated, useSpring } from "react-spring";
 
-import { ContentDiv, ContentHeader, ContentBlock } from "./utils";
+import { ContentDiv, ContentHeader } from "./utils";
 import ExternalLink from "./ExternalLink";
 import Player51 from "player51";
 import { useEventHandler, useTheme } from "../utils/hooks";
@@ -39,6 +39,21 @@ const InfoWrapper = styled.div`
   p {
     margin: 0;
   }
+`;
+
+const TagBlock = styled.div`
+  padding: 0.5rem 0 0;
+  border-top: 2px solid ${({ theme }) => theme.font};
+  margin: 0;
+`;
+
+const AttrBlock = styled.div`
+  padding: 0.1rem 0 0 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-row-gap: 0.1rem;
+  grid-column-gap: 0.5rem;
 `;
 
 const TooltipDiv = animated(styled(ContentDiv)`
@@ -129,9 +144,9 @@ const ContentItem = ({
 
 const ClassificationInfo = ({ info, style }) => {
   return (
-    <ContentBlock style={{ borderColor: info.color, ...style }}>
+    <AttrBlock style={{ borderColor: info.color, ...style }}>
       <AttrInfo field={info.field} id={info.id} />
-    </ContentBlock>
+    </AttrBlock>
   );
 };
 
@@ -143,20 +158,21 @@ const useTarget = (field, target) => {
 const MaskInfo = ({ info, style }) => {
   const targetValue = useTarget(info.field, info.target);
   return (
-    <ContentBlock style={{ borderColor: info.color, ...style }}>
+    <AttrBlock style={{ borderColor: info.color, ...style }}>
       <AttrInfo field={info.field} id={info.id} />
       <ContentItem key={"target-value"} name={"label"} value={targetValue} />
-    </ContentBlock>
+    </AttrBlock>
   );
 };
 
 const AttrInfo = ({ field, id }) => {
   const attrs = useRecoilValue(selectors.modalLabelAttrs({ field, id }));
-  if (!attrs || !attrs.length) {
+  let entries = attrs.filter(([k, v]) => k !== "tags");
+  if (!entries || !entries.length) {
     return null;
   }
   let etc = null;
-  let entries = attrs;
+
   if (attrs.length > 4) {
     etc = `and ${entries.length - 4} more attribues`;
     entries = entries.slice(0, 4);
@@ -179,31 +195,31 @@ const AttrInfo = ({ field, id }) => {
 
 const DetectionInfo = ({ info, style }) => {
   return (
-    <ContentBlock style={{ borderColor: info.color, ...style }}>
+    <AttrBlock style={{ borderColor: info.color, ...style }}>
       <AttrInfo field={info.field} id={info.id} />
-    </ContentBlock>
+    </AttrBlock>
   );
 };
 
 const KeypointInfo = ({ info, style }) => {
   return (
-    <ContentBlock style={{ borderColor: info.color, ...style }}>
+    <AttrBlock style={{ borderColor: info.color, ...style }}>
       <AttrInfo field={info.field} id={info.id} />
       <ContentItem
         key={"# keypoints"}
         name={"# keypoints"}
         value={info.numPoints}
       />
-    </ContentBlock>
+    </AttrBlock>
   );
 };
 
 const PolylineInfo = ({ info, style }) => {
   return (
-    <ContentBlock style={{ borderColor: info.color, ...style }}>
+    <AttrBlock style={{ borderColor: info.color, ...style }}>
       <AttrInfo field={info.field} id={info.id} />
       <ContentItem key={"# points"} name={"# points"} value={info.points} />
-    </ContentBlock>
+    </AttrBlock>
   );
 };
 
@@ -215,13 +231,27 @@ const OVERLAY_INFO = {
   polyline: PolylineInfo,
 };
 
-const TagInfo = (props) => {
-  const tags = useRecoilValue(selectors.modalLabelTags(props));
-  return <div>{tags.join(", ")}</div>;
+const TagInfo = ({ field, id, color }) => {
+  const tags = useRecoilValue(selectors.modalLabelTags({ field, id }));
+  const selectedObjects = useRecoilValue(selectors.selectedObjectIds);
+  return (
+    <TagBlock
+      style={{
+        borderTop: `2px ${
+          selectedObjects.has(id) ? "dashed" : "solid"
+        } ${color}`,
+      }}
+    >
+      <ContentItem
+        key={"tags"}
+        name={"tags"}
+        value={tags.length ? tags.join(", ") : "No tags"}
+      />
+    </TagBlock>
+  );
 };
 
 const TooltipInfo = ({ player, moveRef }) => {
-  const selectedObjects = useRecoilValue(selectors.selectedObjectIds);
   const [display, setDisplay] = useState(false);
   const [coords, setCoords] = useState({
     top: -1000,
@@ -237,11 +267,11 @@ const TooltipInfo = ({ player, moveRef }) => {
       duration: 0,
     },
   });
-  const [overlays, setOverlays] = useState([]);
+  const [overlay, setOverlay] = useState(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEventHandler(player, "tooltipinfo", (e) => {
-    setOverlays(e.data.overlays);
+    setOverlay(e.data.overlays.length ? e.data.overlays[0] : null);
   });
   useEventHandler(player, "mouseenter", () => setDisplay(true));
   useEventHandler(player, "mouseleave", () => setDisplay(false));
@@ -254,31 +284,25 @@ const TooltipInfo = ({ player, moveRef }) => {
 
   const showProps = useSpring({
     display: display ? "block" : "none",
-    opacity: display && overlays.length ? 1 : 0,
+    opacity: display && overlay ? 1 : 0,
   });
+  const Component = overlay ? OVERLAY_INFO[overlay.type] : null;
 
-  return overlays.length
+  return Component
     ? ReactDOM.createPortal(
         <TooltipDiv
           style={{ ...coordsProps, ...showProps, position: "fixed" }}
           ref={ref}
         >
-          <ContentHeader key="header">{overlays[0].field}</ContentHeader>
-          <TagInfo field={overlays[0].field} id={overlays[0].id} />
-          {overlays.map((o, i) => {
-            const Component = OVERLAY_INFO[overlays[0].type];
-            return (
-              <Component
-                info={overlays[0]}
-                key={i}
-                style={{
-                  borderTop: `2px ${
-                    selectedObjects.has(overlays[0].id) ? "dashed" : "solid"
-                  } ${overlays[0].color}`,
-                }}
-              />
-            );
-          })}
+          <ContentHeader key="header">{overlay.field}</ContentHeader>
+          <TagInfo
+            key={"tags"}
+            field={overlay.field}
+            id={overlay.id}
+            color={overlay.color}
+          />
+
+          <Component key={"attrs"} info={overlay} />
         </TooltipDiv>,
         document.body
       )
