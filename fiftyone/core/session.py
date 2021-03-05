@@ -424,7 +424,7 @@ class Session(foc.HasClient):
         self.state.dataset = dataset
         self.state.view = None
         self.state.selected = []
-        self.state.selected_objects = []
+        self.state.selected_labels = []
         self.state.filters = {}
 
     @_update_state
@@ -450,7 +450,7 @@ class Session(foc.HasClient):
             self.state.dataset._reload()
 
         self.state.selected = []
-        self.state.selected_objects = []
+        self.state.selected_labels = []
         self.state.filters = {}
 
     @_update_state
@@ -473,18 +473,18 @@ class Session(foc.HasClient):
         return list(self.state.selected)
 
     @property
-    def selected_objects(self):
-        """A list of objects currently selected in the App.
+    def selected_labels(self):
+        """A list of labels currently selected in the App.
 
         Items are dictionaries with the following keys:
 
-            -   ``object_id``: the internal ID of the object
-            -   ``sample_id``: the ID of the sample containing the object
-            -   ``field``: the field name containing the object
-            -   ``frame_number``: the frame number containing the object (only
+            -   ``label_id``: the ID of the label
+            -   ``sample_id``: the ID of the sample containing the label
+            -   ``field``: the field name containing the label
+            -   ``frame_number``: the frame number containing the label (only
                 applicable to video samples)
         """
-        return list(self.state.selected_objects)
+        return list(self.state.selected_labels)
 
     def summary(self):
         """Returns a string summary of the session.
@@ -508,7 +508,7 @@ class Session(foc.HasClient):
                     "Media type:       %s" % media_type,
                     "Num samples:      %d" % num_samples,
                     "Selected samples: %d" % len(self.selected),
-                    "Selected objects: %d" % len(self.selected_objects),
+                    "Selected labels:  %d" % len(self.selected_labels),
                 ]
             )
 

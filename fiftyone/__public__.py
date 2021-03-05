@@ -96,7 +96,7 @@ from .core.sample import Sample
 from .core.stages import (
     Exclude,
     ExcludeFields,
-    ExcludeObjects,
+    ExcludeLabels,
     Exists,
     FilterField,
     FilterLabels,
@@ -113,7 +113,7 @@ from .core.stages import (
     Shuffle,
     Select,
     SelectFields,
-    SelectObjects,
+    SelectLabels,
     SetField,
     Skip,
     SortBy,

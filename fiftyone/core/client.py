@@ -5,7 +5,7 @@ Web socket client mixins.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import asyncio
+import asyncio  # pylint: disable=unused-import
 from collections import defaultdict
 import logging
 import requests
@@ -14,7 +14,6 @@ from threading import Thread
 import time
 
 from bson import json_util
-from tornado import gen
 from tornado.ioloop import IOLoop
 from tornado.websocket import websocket_connect
 
@@ -45,6 +44,7 @@ class HasClient(object):
         self._client = None
         self._initial_connection = True
         self._url = "ws://%s:%d/%s" % (SERVER_NAME, port, self._HC_NAMESPACE)
+        self._listeners = {}
 
         async def connect():
             try:
@@ -76,16 +76,19 @@ class HasClient(object):
                             )
                         except:
                             print(
-                                "\r\nCould not connect session, trying again in 10 seconds\r\n"
+                                "\r\nCould not connect session, trying again "
+                                "in 10 seconds\r\n"
                             )
                             time.sleep(10)
 
                     if message is None and _printer[self._url] == self:
                         print("\r\nSession reconnected\r\n")
+
                     continue
 
                 message = json_util.loads(message)
                 event = message.pop("type")
+
                 if event == "update":
                     config = None
                     if self._data:
@@ -93,13 +96,18 @@ class HasClient(object):
                             "config"
                         ] = self._data.config.serialize()
                         config = self._data.config
+
                     self._data = self._HC_ATTR_TYPE.from_dict(
                         message["state"], with_config=config
                     )
+                    self._update_listeners()
+
                 if event == "notification":
                     self.on_notification(message)
+
                 if event == "capture":
                     self.on_capture(message)
+
                 if event == "reactivate":
                     self.on_reactivate(message)
 
@@ -109,6 +117,60 @@ class HasClient(object):
 
         self._thread = Thread(target=run_client, daemon=True)
         self._thread.start()
+
+    def __getattr__(self, name):
+        """Gets the data via the attribute defined by ``_HC_ATTR_NAME``."""
+        if name == self._HC_ATTR_NAME:
+            if self._client is None and not self._initial_connection:
+                raise RuntimeError("Session is not connected")
+
+            while self._data is None:
+                time.sleep(0.2)
+
+            return self._data
+
+        return None
+
+    def __setattr__(self, name, value):
+        """Sets the data to the attribute defined by ``_HC_ATTR_NAME``."""
+        if name == self._HC_ATTR_NAME:
+            if self._HC_ATTR_TYPE is not None and not isinstance(
+                value, self._HC_ATTR_TYPE
+            ):
+                raise ValueError(
+                    "Client expected type %s, but got type %s"
+                    % (self._HC_ATTR_TYPE, type(value))
+                )
+
+            if self._client is None and not self._initial_connection:
+                raise RuntimeError("Session is not connected")
+
+            while self._data is None:
+                time.sleep(0.2)
+
+            self._data = value
+            self._update_listeners()
+
+            self._client.write_message(
+                json_util.dumps({"type": "update", "state": value.serialize()})
+            )
+        else:
+            super().__setattr__(name, value)
+
+    def __del__(self):
+        _printer[self._url] = None
+
+    def on_capture(self, data):
+        self._capture(data)
+
+    def _capture(self, data):
+        raise NotImplementedError("subclasses must implement _capture()")
+
+    def on_reactivate(self, data):
+        self._reactivate(data)
+
+    def _reactivate(self, data):
+        raise NotImplementedError("subclasses must implement _reactivate()")
 
     def on_notification(self, data):
         global _printer
@@ -125,50 +187,22 @@ class HasClient(object):
         for value in data["session_items"]:
             print(value)
 
-    def _capture(self, data):
-        raise NotImplementedError("subclasses must implement capture()")
+    @property
+    def has_listeners(self):
+        return bool(self._listeners)
 
-    def on_capture(self, data):
-        self._capture(data)
+    def get_listeners(self):
+        return self._listeners
 
-    def _capture(self, data):
-        raise NotImplementedError("subclasses must implement reactivate()")
+    def add_listener(self, key, callback):
+        self._listeners[key] = callback
 
-    def on_reactivate(self, data):
-        self._reactivate(data)
+    def delete_listener(self, key):
+        self._listeners.pop(key, None)
 
-    def __del__(self):
-        _printer[self._url] = None
+    def delete_listeners(self):
+        self._listeners = {}
 
-    def __getattr__(self, name):
-        """Gets the data via the attribute defined by ``_HC_ATTR_NAME``."""
-        if name == self._HC_ATTR_NAME:
-            if self._client is None and not self._initial_connection:
-                raise RuntimeError("Session is not connected")
-            while self._data is None:
-                time.sleep(0.2)
-            return self._data
-
-        return None
-
-    def __setattr__(self, name, value):
-        """Sets the data to the attribute defined by ``_HC_ATTR_NAME``."""
-        if name == self._HC_ATTR_NAME:
-            if self._HC_ATTR_TYPE is not None and not isinstance(
-                value, self._HC_ATTR_TYPE
-            ):
-                raise ValueError(
-                    "Client expected type %s, but got type %s"
-                    % (self._HC_ATTR_TYPE, type(value))
-                )
-            if self._client is None and not self._initial_connection:
-                raise RuntimeError("Session is not connected")
-            while self._data is None:
-                time.sleep(0.2)
-
-            self._data = value
-            self._client.write_message(
-                json_util.dumps({"type": "update", "state": value.serialize()})
-            )
-        else:
-            super().__setattr__(name, value)
+    def _update_listeners(self):
+        for callback in self._listeners.values():
+            callback(self)
