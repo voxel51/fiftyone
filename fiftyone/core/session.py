@@ -522,8 +522,15 @@ class Session(foc.HasClient):
     def select_labels(self, labels=None, ids=None, tags=None, fields=None):
         """Selects the specified labels in the App.
 
+        This method uses the same interface as
+        :meth:`fiftyone.core.collections.SampleCollection.select_labels` to
+        specify the labels to select.
+
         Args:
-            sample_ids: an iterable of sample IDs
+            labels (None): a list of dicts specifying the labels to select
+            ids (None): an ID or iterable of IDs of the labels to select
+            tags (None): a tag or iterable of tags of labels to select
+            fields (None): a field or iterable of fields from which to select
         """
         if labels is None:
             labels = self._collection._get_selected_labels(
