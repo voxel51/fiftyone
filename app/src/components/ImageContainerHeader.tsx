@@ -1,12 +1,9 @@
 import React, { useState } from "react";
-import styled from "styled-components";
-import { useRecoilState, useRecoilValue } from "recoil";
+import styled, { ThemeProvider } from "styled-components";
+import { useRecoilValue } from "recoil";
 import { Checkbox } from "@material-ui/core";
-import { Autorenew } from "@material-ui/icons";
-import { animated, useSpring } from "react-spring";
 
 import DropdownHandle from "./DropdownHandle";
-import SelectionMenu from "./SelectionMenu";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { useTheme } from "../utils/hooks";
@@ -57,40 +54,95 @@ export const OptionText = ({ style, children }) => {
   );
 };
 
-const StringInput = styled.input`
-  width: 100%;
-  background: ${({ theme }) => theme.backgroundDark};
+const TagItemsDiv = styled.div`
   border: 1px solid #191c1f;
   box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
   border-radius: 2px;
+  margin-bottom: 0.5rem;
+  margin-left: 2rem;
+  background: ${({ theme }) => theme.backgroundDark};
+  display: flex;
+`;
+
+const StringInput = styled.input`
+  width: 100%;
   font-size: 14px;
   height: 2.5rem;
   font-weight: bold;
   padding: 0.5rem;
-  margin-bottom: 0.5rem;
-  margin-left: 2rem;
+  background: transparent;
+  border: none;
 
   &:focus {
     outline: none;
   }
 `;
 
+const TagOptions = styled.div`
+  display: flex;
+`;
+
+const CheckboxOptionDiv = styled.div`
+  margin-left: -1rem;
+  display: flex;
+`;
+
+type CheckboxOptionProps = {
+  onCheck: () => void;
+  value: boolean;
+  text: string;
+};
+
+const CheckboxOption = ({ onCheck, value, text }: CheckboxOptionProps) => {
+  const theme = useTheme();
+  return (
+    <CheckboxOptionDiv>
+      <Checkbox
+        checked={value}
+        onChange={onCheck}
+        style={{
+          color: theme.brand,
+        }}
+      />
+      {text}
+    </CheckboxOptionDiv>
+  );
+};
+
 const TagItems = () => {
   const [invert, setInvert] = useState(false);
   const [targetLabels, setTargetLabels] = useState(false);
-  const isInSelection = useRecoilValue(atoms.selectedSamples).size > 0;
+  const selectedSamples = useRecoilValue(atoms.selectedSamples);
+
+  const isInSelection = selectedSamples.size > 0;
 
   return (
-    <StringInput
-      placeholder={`${invert ? "remove tag from" : "add tag to"} ${
-        isInSelection
-          ? "selected samples"
-          : targetLabels
-          ? "shown labels"
-          : "samples"
-      }`}
-      value=""
-    ></StringInput>
+    <TagItemsDiv>
+      <StringInput
+        placeholder={`${invert ? "- remove tag from" : "+ add tag to"} ${
+          isInSelection
+            ? `${selectedSamples.size} selected sample${
+                selectedSamples.size > 1 ? "s" : ""
+              }`
+            : targetLabels
+            ? "shown labels"
+            : "samples"
+        }`}
+        value=""
+      />
+      <TagOptions>
+        <CheckboxOption
+          onCheck={() => setInvert(!invert)}
+          value={invert}
+          text={"remove"}
+        />
+        <CheckboxOption
+          onCheck={() => setTargetLabels(!targetLabels)}
+          value={invert}
+          text={"target labels"}
+        />
+      </TagOptions>
+    </TagItemsDiv>
   );
 };
 
@@ -117,11 +169,7 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
         style={{ width: 240 }}
       />
       <SamplesHeader>
-        <OptionsContainer>
-          <OptionText>
-            <TagItems />
-          </OptionText>
-        </OptionsContainer>
+        <TagItems />
         {countStr !== null ? (
           <OptionTextDiv>
             <div className="total" style={{ paddingRight: "1rem" }}>
