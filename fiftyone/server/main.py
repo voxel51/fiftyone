@@ -530,12 +530,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             )
             return
 
-        for stage in _make_filter_stages(state.dataset, state.filters):
-            if type(stage) == fosg.FilterLabels:
-                stage._hide_result = True
-
-            view = view.add_stage(stage)
-
+        view = _get_extended_view(view, state.filters, hide_result=True)
         view = view.skip((page - 1) * page_length)
         if view.media_type == fom.VIDEO:
             view = view.set_field("frames", F("frames")[0])
@@ -722,6 +717,30 @@ class StateHandler(tornado.websocket.WebSocketHandler):
             }
         )
 
+    @staticmethod
+    async def on_tag(
+        caller,
+        tag,
+        untag=False,
+        target_labels=False,
+        selected=False,
+        active_labels=None,
+    ):
+        state = fos.StateDescription.from_dict(StateHandler.state)
+        view = state.view or state.dataset
+        view = _get_extended_view(view, state.filters)
+
+        if untag and selected:
+            view.untag_samples(tag)
+        elif selected:
+            view.tag_samples(tag)
+        elif untag and target_labels:
+            view.untag_labels(tag, active_labels)
+        elif target_labels:
+            view.tag_labels(tag, active_labels)
+
+        StateHandler.on_update(caller, StateHandler.state)
+
     @classmethod
     def get_statistics_awaitables(cls, only=None):
         """Gets statistic awaitables that will send statistics to the relevant
@@ -793,9 +812,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         base_view = view
         data = {"main": [], "none": []}
         if view is not None and (filters is None or len(filters)):
-            if filters is not None and len(filters):
-                for stage in _make_filter_stages(view._dataset, filters):
-                    view = view.add_stage(stage)
+            view = _get_extended_view(view, filters)
 
             stats = fos.DatasetStatistics(view)
             aggs = stats.aggregations
@@ -867,8 +884,7 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             results = []
 
-        for stage in _make_filter_stages(state.dataset, state.filters):
-            view = view.add_stage(stage)
+        view = _get_extended_view(view, state.filters)
 
         if group == "labels" and results is None:
 
@@ -923,6 +939,16 @@ class StateHandler(tornado.websocket.WebSocketHandler):
 
         results = sorted(results, key=lambda i: i["name"])
         self.write_message({"type": "distributions", "results": results})
+
+
+def _get_extended_view(view, filters, hide_result=False):
+    if filters is not None and len(filters):
+        for stage in _make_filter_stages(view._dataset, filters):
+            if hide_result and type(stage) == fosg.FilterLabels:
+                stage._hide_result = True
+            view = view.add_stage(stage)
+
+    return view
 
 
 def _parse_histogram_values(result, field):
