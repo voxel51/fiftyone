@@ -568,36 +568,6 @@ class ViewExpressionTests(unittest.TestCase):
         )
 
 
-class AggregationTests(unittest.TestCase):
-    @drop_datasets
-    def test_aggregate(self):
-        dataset = fo.Dataset()
-        dataset.add_samples(
-            [
-                fo.Sample("1.jpg", tags=["tag1"]),
-                fo.Sample("2.jpg", tags=["tag1", "tag2"]),
-                fo.Sample("3.jpg", tags=["tag2", "tag3"]),
-            ]
-        )
-
-        counts = {
-            "tag1": 2,
-            "tag2": 2,
-            "tag3": 1,
-        }
-
-        pipeline = [
-            {"$unwind": "$tags"},
-            {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
-        ]
-
-        for ds in dataset, dataset.view():
-            for d in ds._aggregate(pipeline):
-                tag = d["_id"]
-                count = d["count"]
-                self.assertEqual(count, counts[tag])
-
-
 class SliceTests(unittest.TestCase):
     @drop_datasets
     def test_slice(self):
@@ -700,7 +670,9 @@ class ViewStageTests(unittest.TestCase):
         self.sample2["test_dets"] = fo.Detections(
             detections=[
                 fo.Detection(
-                    label="friend", confidence=0.99, bounding_box=[0, 0, 1, 1],
+                    label="friend",
+                    confidence=0.99,
+                    bounding_box=[0.01, 0.01, 0.99, 0.99],
                 ),
                 fo.Detection(
                     label="tricam",
@@ -829,7 +801,7 @@ class ViewStageTests(unittest.TestCase):
                     else:
                         self.assertEqual(lv.label, l.label)
 
-    def test_set_field1(self):
+    def test_set_field(self):
         self._setUp_numeric()
 
         # Clip all negative values of `numeric_field` to zero
@@ -867,7 +839,7 @@ class ViewStageTests(unittest.TestCase):
                 else:
                     self.assertTrue(fv >= 0)
 
-    def test_set_field2(self):
+    def test_set_embedded_field(self):
         self._setUp_detections()
 
         # Set a new embedded list field
@@ -910,6 +882,50 @@ class ViewStageTests(unittest.TestCase):
             for det in sample.test_dets.detections:
                 for coord in det.bounding_box:
                     self.assertEqual(coord, 0)
+
+    def test_tag_samples(self):
+        view = self.dataset[:1]
+
+        tags = self.dataset.count_values("tags")
+        self.assertDictEqual(tags, {})
+
+        view.tag_samples("test")
+        tags = self.dataset.count_values("tags")
+        self.assertDictEqual(tags, {"test": 1})
+
+        view.untag_samples("test")
+        tags = self.dataset.count_values("tags")
+        self.assertDictEqual(tags, {})
+
+    def test_tag_labels(self):
+        self._setUp_classification()
+        self._setUp_detections()
+
+        view = self.dataset.filter_labels("test_clf", F("confidence") > 0.95)
+        num_samples = len(view)
+        self.assertEqual(num_samples, 1)
+
+        view.tag_labels("test", "test_clf")
+        tags = self.dataset.count_label_tags("test_clf")
+        self.assertDictEqual(tags, {"test": 1})
+
+        view.untag_labels("test", "test_clf")
+        tags = self.dataset.count_label_tags("test_clf")
+        self.assertDictEqual(tags, {})
+
+        view = self.dataset.filter_labels("test_dets", F("confidence") > 0.7)
+        num_samples = len(view)
+        num_labels = view.count("test_dets.detections")
+        self.assertEqual(num_samples, 2)
+        self.assertEqual(num_labels, 3)
+
+        view.tag_labels("test", "test_dets")
+        tags = self.dataset.count_label_tags("test_dets")
+        self.assertDictEqual(tags, {"test": 3})
+
+        view.untag_labels("test", "test_dets")
+        tags = self.dataset.count_label_tags("test_dets")
+        self.assertDictEqual(tags, {})
 
     def test_match(self):
         self.sample1["value"] = "value"

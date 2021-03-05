@@ -136,7 +136,7 @@ jobs:
           git clone https://github.com/voxel51/eta eta --depth 1 --branch develop
           cd eta
           python setup.py bdist_wheel
-          pip install ./dist/*.whl
+          pip install ./dist/*.whl --force-reinstall
       # obtained from "Windows, pip" instructions at
       # https://pytorch.org/get-started/locally/ - unaware of a way to update
       # the version number automatically, but tests on other platforms should

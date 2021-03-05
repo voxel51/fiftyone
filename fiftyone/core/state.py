@@ -30,11 +30,11 @@ class StateDescription(etas.Serializable):
     a corresponding :class:`fiftyone.core.session.Session`.
 
     Args:
-        close (False): whether to close the app
-        connected (False): whether the session is connected to an app
+        close (False): whether to close the App
+        connected (False): whether the session is connected to an App
         dataset (None): the current :class:`fiftyone.core.dataset.Dataset`
         selected (None): the list of currently selected samples
-        selected_objects (None): the list of currently selected objects
+        selected_labels (None): the list of currently selected labels
         view (None): the current :class:`fiftyone.core.view.DatasetView`
         config (None): an optional :class:`fiftyone.core.config.AppConfig`
         refresh (False): a boolean toggle for forcing an App refresh
@@ -48,7 +48,7 @@ class StateDescription(etas.Serializable):
         dataset=None,
         datasets=None,
         selected=None,
-        selected_objects=None,
+        selected_labels=None,
         view=None,
         filters={},
         config=None,
@@ -60,7 +60,7 @@ class StateDescription(etas.Serializable):
         self.dataset = dataset
         self.view = view
         self.selected = selected or []
-        self.selected_objects = selected_objects or []
+        self.selected_labels = selected_labels or []
         self.filters = filters
         self.datasets = datasets or fod.list_datasets()
         self.active_handle = active_handle
@@ -113,7 +113,7 @@ class StateDescription(etas.Serializable):
         connected = d.get("connected", False)
         filters = d.get("filters", {})
         selected = d.get("selected", [])
-        selected_objects = d.get("selected_objects", [])
+        selected_labels = d.get("selected_labels", [])
         refresh = d.get("refresh", False)
 
         dataset = d.get("dataset", None)
@@ -133,7 +133,7 @@ class StateDescription(etas.Serializable):
             connected=connected,
             dataset=dataset,
             selected=selected,
-            selected_objects=selected_objects,
+            selected_labels=selected_labels,
             view=view,
             filters=filters,
             refresh=refresh,
