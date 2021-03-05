@@ -82,7 +82,7 @@ export const labelFilters = selectorFamily<LabelFilters, boolean>({
       ];
 
       filters[label] = (s) => {
-        if (hiddenObjects && hiddenObjects[s.id]) {
+        if (hiddenObjects && hiddenObjects[s.id ?? s._id]) {
           return false;
         }
         const inRange =
@@ -145,7 +145,7 @@ export const sampleModalFilter = selector({
     const fields = get(activeFields(false));
     return (sample, prefix = null) => {
       return Object.entries(sample).reduce((acc, [key, value]) => {
-        if (value && hiddenObjects[value.id]) {
+        if (value && hiddenObjects[value.id ?? value._id]) {
           return acc;
         }
         if (prefix) {
@@ -161,7 +161,9 @@ export const sampleModalFilter = selector({
                     ...value,
                     [value._cls.toLowerCase()]: value[
                       value._cls.toLowerCase()
-                    ].filter((l) => filters[key](l) && !hiddenObjects[l.id]),
+                    ].filter(
+                      (l) => filters[key](l) && !hiddenObjects[l.id ?? l._id]
+                    ),
                   }
                 : value;
           }
