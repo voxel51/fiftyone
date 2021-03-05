@@ -428,7 +428,7 @@ class Session(foc.HasClient):
         self.state.selected_labels = []
         self.state.filters = {}
 
-    @_update_state
+    @_update_state()
     def clear_dataset(self):
         """Clears the current :class:`fiftyone.core.dataset.Dataset` from the
         session, if any.
@@ -461,14 +461,14 @@ class Session(foc.HasClient):
         self.state.selected_labels = []
         self.state.filters = {}
 
-    @_update_state
+    @_update_state()
     def clear_view(self):
         """Clears the current :class:`fiftyone.core.view.DatasetView` from the
         session, if any.
         """
         self.state.view = None
 
-    @_update_state(auto_show=True)
+    @_update_state()
     def refresh(self):
         """Refreshes the App, reloading the current dataset/view."""
         pass
@@ -513,8 +513,8 @@ class Session(foc.HasClient):
         """
         return list(self.state.selected_labels)
 
-    @_update_state
     @selected_labels.setter
+    @_update_state()
     def selected_labels(self, labels):
         self.state.selected_labels = list(labels) if labels else []
 
@@ -537,7 +537,7 @@ class Session(foc.HasClient):
         """Clears the currently selected labels, if any."""
         self.state.selected_labels = []
 
-    @_update_state
+    @_update_state()
     def tag_selected_samples(self, tag):
         """Adds the tag to the currently selected samples, if necessary.
 
@@ -548,7 +548,7 @@ class Session(foc.HasClient):
         """
         self._collection.select(self.selected).tag_samples(tag)
 
-    @_update_state
+    @_update_state()
     def untag_selected_samples(self, tag):
         """Removes the tag from the currently selected samples, if necessary.
 
@@ -559,7 +559,7 @@ class Session(foc.HasClient):
         """
         self._collection.select(self.selected).untag_samples(tag)
 
-    @_update_state
+    @_update_state()
     def tag_selected_labels(self, tag):
         """Adds the tag to the currently selected labels, if necessary.
 
@@ -572,7 +572,7 @@ class Session(foc.HasClient):
             tag
         )
 
-    @_update_state
+    @_update_state()
     def untag_selected_labels(self, tag):
         """Removes the tag from the currently selected labels, if necessary.
 
