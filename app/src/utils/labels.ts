@@ -396,7 +396,7 @@ export const listSampleObjects = (sample) => {
     if (
       field === null ||
       field === undefined ||
-      !VALID_OBJECT_TYPES.includes(field._cls)
+      !VALID_LABEL_TYPES.includes(field._cls)
     )
       continue;
     if (FIFTYONE_TO_ETA_CONVERTERS[field._cls]) {
@@ -409,6 +409,13 @@ export const listSampleObjects = (sample) => {
           FIFTYONE_TO_ETA_CONVERTERS[object._cls].convert(fieldName, object)
         );
       }
+    } else {
+      objects.push({
+        name: fieldName,
+        _id: field._id,
+        frame_number: field.frame_number,
+        sample_id: sample._id,
+      });
     }
   }
   return objects;
