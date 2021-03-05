@@ -5,6 +5,7 @@ Open Images V6  utilities.
 |
 """
 import csv
+import multiprocessing
 import os
 import random
 
@@ -37,6 +38,7 @@ def load_open_images_v6(
     dataset_dir=None,
     image_ids=None,
     image_ids_file=None,
+    num_workers=None,
 ):
     """Utility to download the `Open Images v6 dataset <https://storage.googleapis.com/openimages/web/index.html>`_ with annotations.
 
@@ -71,6 +73,9 @@ def load_open_images_v6(
             of ``<split>/<image-id>`` or just a list of ``<image-id>``.
             ``image_ids`` takes precedence if both ``image_ids`` and
             ``image_ids_file`` are provided.
+        num_workers (None): the number of processes to use to download images. By default,
+            ``multiprocessing.cpu_count()`` is used
+
 
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
@@ -82,6 +87,9 @@ def load_open_images_v6(
         # Samples may not contain multiple label types, but will contain at
         # least one
         guarantee_all_types = False
+
+    if num_workers is None:
+        num_workers = multiprocessing.cpu_count()
 
     label_types = _parse_label_types(label_types)
     splits = _parse_splits(split, splits)
@@ -170,6 +178,7 @@ def load_open_images_v6(
             classes,
             attrs,
             max_samples,
+            num_workers,
         )
 
     return dataset
@@ -492,6 +501,7 @@ def _load_open_images_split(
     classes,
     attrs,
     max_samples,
+    num_workers,
 ):
 
     ids_all_labels = None
@@ -616,21 +626,28 @@ def _load_open_images_split(
     if not valid_ids:
         return dataset
 
-    bucket = boto3.resource(
-        "s3",
-        config=botocore.config.Config(signature_version=botocore.UNSIGNED),
-    ).Bucket(_BUCKET_NAME)
-
     print("Downloading %s samples" % split)
     etau.ensure_dir(os.path.join(dataset_dir, split, "images"))
-    with fou.ProgressBar() as pb:
-        for image_id in pb(valid_ids):
-            fp = os.path.join(
-                dataset_dir, split, "images", "%s.jpg" % image_id
-            )
-            if not os.path.isfile(fp):
-                fp_download = os.path.join(split, "%s.jpg" % image_id)
-                bucket.download_file(fp_download, fp)
+
+    inputs = []
+    for image_id in valid_ids:
+        fp = os.path.join(dataset_dir, split, "images", "%s.jpg" % image_id)
+        fp_download = os.path.join(split, "%s.jpg" % image_id)
+        inputs.append((fp, fp_download))
+
+    s3_client = None
+
+    def initialize():
+        global s3_client
+        s3_client = boto3.client(
+            "s3",
+            config=botocore.config.Config(signature_version=botocore.UNSIGNED),
+        )
+
+    with fou.ProgressBar(total=len(inputs)) as pb:
+        with multiprocessing.Pool(num_workers, initialize) as pool:
+            for _ in pool.imap_unordered(_do_download_image, inputs):
+                pb.update()
 
     if "segmentations" in label_types:
         print("Downloading relevant segmentation masks")
@@ -891,6 +908,11 @@ def _download_image_ids(dataset_dir, split):
     csv_data = _parse_csv(csv_filepath)
     split_ids = [i[0].rstrip() for i in csv_data[1:]]
     return split_ids
+
+
+def _do_download_image(args):
+    filepath, filepath_download = args
+    s3_client.download_file(_BUCKET_NAME, filepath_download, filepath)
 
 
 _ANNOTATION_DOWNLOAD_LINKS = {
