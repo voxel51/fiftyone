@@ -856,9 +856,8 @@ export const modalLabelAttrs = selectorFamily<
     }
 
     const hidden = HIDDEN_LABEL_ATTRS[label._cls];
-    return Object.entries(label)
+    let attrs = Object.entries(label)
       .filter((a) => !hidden.includes(a[0]) && !a[0].startsWith("_"))
-      .sort((a, b) => (a[0] < b[0] ? -1 : 1))
       .map(([k, v]) => [
         k,
         typeof v === "object" && k !== "tags"
@@ -867,6 +866,16 @@ export const modalLabelAttrs = selectorFamily<
             : "{...}"
           : v,
       ]);
+    if (label.attributes) {
+      attrs = [
+        ...Object.entries(label.attributes).map(([k, v]) => [
+          `attributes.${k}`,
+          v.value,
+        ]),
+        ...attrs,
+      ];
+    }
+    return attrs.sort((a, b) => (a[0] < b[0] ? -1 : 1));
   },
 });
 
