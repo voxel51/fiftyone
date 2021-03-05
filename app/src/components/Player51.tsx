@@ -267,10 +267,10 @@ const TooltipInfo = ({ player, moveRef }) => {
   const ref = useRef<HTMLDivElement>(null);
 
   useEventHandler(player, "tooltipinfo", (e) => {
-    setOverlay(e.data.overlays.length ? e.data.overlays[0] : overlay);
+    setOverlay(e.data.overlays.length ? e.data.overlays[0] : null);
   });
   useEventHandler(player, "mouseenter", () => setDisplay(true));
-  //useEventHandler(player, "mouseleave", () => setDisplay(false));
+  useEventHandler(player, "mouseleave", () => setDisplay(false));
 
   useEffect(() => {
     moveRef.current = ({ values }) => {
