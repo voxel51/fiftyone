@@ -31,8 +31,9 @@ const SamplesHeader = styled.div`
   display: flex;
   justify-content: space-between;
   overflow-x: hidden;
-  margin-left: 1rem;
+  margin-left: -1rem;
   margin-right: -1rem;
+  margin-bottom: -0.5rem;
   flex-grow: 1;
 `;
 
@@ -53,6 +54,43 @@ export const OptionText = ({ style, children }) => {
     <OptionTextDiv style={style}>
       <span>{children}</span>
     </OptionTextDiv>
+  );
+};
+
+const StringInput = styled.input`
+  width: 100%;
+  background: ${({ theme }) => theme.backgroundDark};
+  border: 1px solid #191c1f;
+  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
+  border-radius: 2px;
+  font-size: 14px;
+  height: 2.5rem;
+  font-weight: bold;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  margin-left: 2rem;
+
+  &:focus {
+    outline: none;
+  }
+`;
+
+const TagItems = () => {
+  const [invert, setInvert] = useState(false);
+  const [targetLabels, setTargetLabels] = useState(false);
+  const isInSelection = useRecoilValue(atoms.selectedSamples).size > 0;
+
+  return (
+    <StringInput
+      placeholder={`${invert ? "remove tag from" : "add tag to"} ${
+        isInSelection
+          ? "selected samples"
+          : targetLabels
+          ? "shown labels"
+          : "samples"
+      }`}
+      value=""
+    ></StringInput>
   );
 };
 
@@ -81,7 +119,7 @@ const ImageContainerHeader = ({ showSidebar, onShowSidebar }: Props) => {
       <SamplesHeader>
         <OptionsContainer>
           <OptionText>
-            <SelectionMenu />
+            <TagItems />
           </OptionText>
         </OptionsContainer>
         {countStr !== null ? (
