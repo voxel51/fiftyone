@@ -6,14 +6,10 @@ Point selection utilities.
 |
 """
 import itertools
-import math
 
 import numpy as np
-import matplotlib as mpl
 from matplotlib.widgets import Button, LassoSelector
 from matplotlib.path import Path
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.axes_grid1.inset_locator import InsetPosition
 import sklearn.metrics.pairwise as skp
 
@@ -21,6 +17,8 @@ from fiftyone import ViewField as F
 from fiftyone.core.expressions import ObjectId
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
+
+from .utils import load_button_icon
 
 
 class PointSelector(object):
@@ -55,8 +53,8 @@ class PointSelector(object):
         label_ids (None): a list of label IDs corresponding to ``collection``
         label_field (None): the sample field containing the labels in
             ``collection``
-        buttons (None): a dict mapping button names to callbacks defining
-            buttons to add to the plot
+        buttons (None): a list of ``(label, icon_image, callback)`` tuples
+            defining buttons to add to the plot
         alpha_other (0.25): a transparency value for unselected points
         expand_selected (3.0): expand the size of selected points by this
             amount
@@ -83,14 +81,16 @@ class PointSelector(object):
             label_ids = np.asarray(label_ids)
 
         if buttons is not None:
-            button_defs = list(buttons.items())
+            button_defs = list(buttons)
         else:
             button_defs = []
 
         if session is not None:
-            button_defs.append(("sync", self._onsync))
+            sync_icon = load_button_icon("sync")
+            button_defs.append(("sync", sync_icon, self._onsync))
 
-        button_defs.append(("disconnect", self._ondisconnect))
+        disconnect_icon = load_button_icon("disconnect")
+        button_defs.append(("disconnect", disconnect_icon, self._ondisconnect))
 
         self.collection = collection
         self.ax = collection.axes
@@ -117,6 +117,10 @@ class PointSelector(object):
         self._selected_sample_ids = None
         self._selected_label_ids = None
         self._canvas.mpl_connect("close_event", lambda e: self._disconnect())
+
+        # Hides the pesky `Figure X` header visible in notebooks
+        # https://github.com/matplotlib/ipympl/issues/134
+        self._canvas.header_visible = False
 
         self._connected = False
         self._session = None
@@ -361,11 +365,11 @@ class PointSelector(object):
 
             return _callback
 
-        for button, (_, callback) in zip(self._buttons, self._button_defs):
+        for button, (_, _, callback) in zip(self._buttons, self._button_defs):
             _callback = _make_callback(button, callback)
             button.on_clicked(_callback)
 
-        self._title.set_text("  Click or drag to select points")
+        self._title.set_text("Click or drag to select points")
 
         self._figure_events = [
             self._canvas.mpl_connect("figure_enter_event", self._onenter),
@@ -415,25 +419,21 @@ class PointSelector(object):
     def _init_hud(self):
         # Button styling
         gap = 0.02
-        width = 0.2
-        height = 0.1
-        color = "#DBEBFC"  # "#FFF0E5"
-        hovercolor = "#499CEF"  # "#FF6D04"
+        size = 0.1
+        color = "#DBEBFC"
+        hovercolor = "#499CEF"
 
-        self._title = self.ax.set_title("", loc="left")
+        self._title = self.ax.set_title("")
 
         num_buttons = len(self._button_defs)
         self._buttons = []
-        for i, (label, _) in enumerate(self._button_defs):
+        for i, (label, icon_img, _) in enumerate(self._button_defs):
             bax = self.ax.figure.add_axes([0, 0, 1, 1], label=label)
-            bpos = [
-                1 - (num_buttons - i) * width - (num_buttons - i - 1) * gap,
-                1 + gap,
-                width,
-                height,
-            ]
+            bpos = [1 + gap, 1 - (i + 1) * size - i * gap, size, size]
             bax.set_axes_locator(InsetPosition(self.ax, bpos))
-            button = Button(bax, label, color=color, hovercolor=hovercolor)
+            button = Button(
+                bax, "", color=color, hovercolor=hovercolor, image=icon_img
+            )
             self._buttons.append(button)
 
     def _update_hud(self, visible):
@@ -459,13 +459,13 @@ class PointSelector(object):
     def _onkeypress(self, event):
         if event.key == "shift":
             self._shift = True
-            self._title.set_text("  Click or drag to add/remove points")
+            self._title.set_text("Click or drag to add/remove points")
             self._canvas.draw_idle()
 
     def _onkeyrelease(self, event):
         if event.key == "shift":
             self._shift = False
-            self._title.set_text("  Click or drag to select points")
+            self._title.set_text("Click or drag to select points")
             self._canvas.draw_idle()
 
     def _onselect(self, vertices):
@@ -555,7 +555,10 @@ class PointSelector(object):
             view = self._init_view
 
         with fou.SetAttributes(self, _lock_session=True):
-            self._session.view = view
+            # Temporarily set `session._auto` to False since this update should
+            # not spawn a new App instance in notebook contexts
+            with fou.SetAttributes(self._session, _auto=False):
+                self._session.view = view
 
     def _prep_collection(self):
         # @todo why is this necessary? We do this JIT here because it seems
