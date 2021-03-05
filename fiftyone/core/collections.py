@@ -604,9 +604,6 @@ class SampleCollection(object):
     def _get_selected_labels(self, ids=None, tags=None, fields=None):
         view = self.select_labels(ids=ids, tags=tags, fields=fields)
 
-        if view.media_type == fom.VIDEO:
-            raise ValueError("Video collections are not yet supported")
-
         labels = []
         for label_field in view._get_label_fields():
             sample_ids = view._get_sample_ids()
@@ -614,15 +611,33 @@ class SampleCollection(object):
             _, id_path = view._get_label_field_path(label_field, "_id")
             label_ids = view.values(id_path)
 
-            for sample_id, _label_ids in zip(sample_ids, label_ids):
-                for label_id in _label_ids:
-                    labels.append(
-                        {
-                            "sample_id": str(sample_id),
-                            "field": label_field,
-                            "label_id": str(label_id),
-                        }
-                    )
+            if self._is_frame_field(label_field):
+                frame_numbers = view.values("frames.frame_number")
+                for sample_id, sample_frame_numbers, sample_label_ids in zip(
+                    sample_ids, frame_numbers, label_ids
+                ):
+                    for frame_number, frame_label_ids in zip(
+                        sample_frame_numbers, sample_label_ids
+                    ):
+                        for label_id in frame_label_ids:
+                            labels.append(
+                                {
+                                    "sample_id": str(sample_id),
+                                    "frame_number": frame_number,
+                                    "field": label_field,
+                                    "label_id": str(label_id),
+                                }
+                            )
+            else:
+                for sample_id, _label_ids in zip(sample_ids, label_ids):
+                    for label_id in _label_ids:
+                        labels.append(
+                            {
+                                "sample_id": str(sample_id),
+                                "field": label_field,
+                                "label_id": str(label_id),
+                            }
+                        )
 
         return labels
 
@@ -4288,12 +4303,13 @@ class SampleCollection(object):
 
         if self.media_type == fom.VIDEO:
             fields.extend(
-                list(
-                    self.get_frame_field_schema(
+                [
+                    self._FRAMES_PREFIX + field
+                    for field in self.get_frame_field_schema(
                         ftype=fof.EmbeddedDocumentField,
                         embedded_doc_type=fol.Label,
                     ).keys()
-                )
+                ]
             )
 
         return fields
