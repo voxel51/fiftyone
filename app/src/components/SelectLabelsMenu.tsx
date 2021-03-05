@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 
 import * as atoms from "../recoil/atoms";
@@ -18,7 +18,7 @@ import DropdownTag from "./Tags/DropdownTag";
 const _addFrameNumberToObjects = (objects, frame_number) =>
   objects.map((obj) => ({ ...obj, frame_number }));
 
-const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
+const SelectLabelsMenu = ({ sample, frameNumberRef }) => {
   const [selectedObjects, setSelectedObjects] = useRecoilState<
     SelectedObjectMap
   >(atoms.selectedObjects);
@@ -34,8 +34,8 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
   const frameNumber = isVideo ? frameNumberRef.current : null;
 
   useSendMessage(
-    "set_selected_objects",
-    { selected_objects: convertSelectedObjectsMapToList(selectedObjects) },
+    "set_selected_labels",
+    { selected_labels: convertSelectedObjectsMapToList(selectedObjects) },
     null,
     [selectedObjects]
   );
@@ -63,7 +63,7 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
   ).length;
 
   const _getObjectSelectionData = (object) => ({
-    object_id: object._id,
+    label_id: object._id,
     sample_id: sample._id,
     field: object.name,
     frame_number: object.frame_number,
@@ -99,7 +99,7 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
     setHiddenObjects((hiddenObjects) =>
       addObjectsToSelection(
         hiddenObjects,
-        ids.map((object_id) => ({ object_id, ...selectedObjects[object_id] }))
+        ids.map((label_id) => ({ label_id, ...selectedObjects[label_id] }))
       )
     );
   };
@@ -119,12 +119,12 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
 
   return (
     <DropdownTag
-      name={`${numTotalSelectedObjects} object${
+      name={`${numTotalSelectedObjects} label${
         numTotalSelectedObjects == 1 ? "" : "s"
       } selected`}
       onSelect={(item) => item.action()}
       onOpen={() => refresh()}
-      title="Click on objects in the media viewer to select them"
+      title="Click on labels in the media viewer to select them"
       menuItems={[
         sampleObjects.length && {
           name: "Select all (current sample)",
@@ -168,7 +168,7 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
           action: () => hideOthers(frameObjects),
         },
         {
-          name: "Show all objects",
+          name: "Show all labels",
           disabled: hiddenObjects.size == 0,
           action: () => resetHiddenObjects(),
         },
@@ -178,4 +178,4 @@ const SelectObjectsMenu = ({ sample, frameNumberRef }) => {
   );
 };
 
-export default SelectObjectsMenu;
+export default SelectLabelsMenu;

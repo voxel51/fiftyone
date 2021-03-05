@@ -1061,9 +1061,9 @@ class Values(Aggregation):
     .. note::
 
         Unlike other aggregations, :class:`Values` does not *automatically*
-        unwind top-level list fields and label list fields. This default
-        behavior ensures that there is a 1-1 correspondence between the
-        elements of the output list and the samples in the collection.
+        unwind list fields. This ensures that there is a 1-1 correspondence
+        between the elements of the output list and the samples in the
+        collection.
 
         You can opt-in to unwinding list fields using the ``[]`` syntax.
 
