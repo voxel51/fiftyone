@@ -24,7 +24,7 @@ def evaluate_detections(
     gt_field="ground_truth",
     eval_key=None,
     classes=None,
-    missing="none",
+    missing=None,
     method="coco",
     iou=0.50,
     classwise=True,
@@ -73,8 +73,8 @@ def evaluate_detections(
         classes (None): the list of possible classes. If not provided, the
             observed ground truth/predicted labels are used for results
             purposes
-        missing ("none"): a missing label string. Any unmatched objects are
-            given this label for results purposes
+        missing (None): a missing label string. Any unmatched objects are given
+            this label for results purposes
         method ("coco"): a string specifying the evaluation method to use.
             Supported values are ``("coco")``
         iou (0.50): the IoU threshold to use to determine matches
@@ -212,7 +212,7 @@ class DetectionEvaluation(foe.EvaluationMethod):
             classes (None): the list of possible classes. If not provided, the
                 observed ground truth/predicted labels are used for results
                 purposes
-            missing ("none"): a missing label string. Any unmatched objects are
+            missing (None): a missing label string. Any unmatched objects are
                 given this label for results purposes
 
         Returns:
@@ -285,11 +285,11 @@ class DetectionResults(ClassificationResults):
             object
         classes (None): the list of possible classes. If not provided, the
             observed ground truth/predicted labels are used
-        missing ("none"): a missing label string. Any unmatched objects are
-            given this label for evaluation purposes
+        missing (None): a missing label string. Any unmatched objects are given
+            this label for evaluation purposes
     """
 
-    def __init__(self, matches, classes=None, missing="none"):
+    def __init__(self, matches, classes=None, missing=None):
         ytrue, ypred, ious, confs = zip(*matches)
         super().__init__(
             ytrue, ypred, confs=confs, classes=classes, missing=missing

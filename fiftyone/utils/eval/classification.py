@@ -9,6 +9,7 @@ import itertools
 import warnings
 
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 import sklearn.metrics as skm
 
@@ -25,7 +26,7 @@ def evaluate_classifications(
     gt_field="ground_truth",
     eval_key=None,
     classes=None,
-    missing="none",
+    missing=None,
     method="simple",
     config=None,
     **kwargs,
@@ -60,7 +61,7 @@ def evaluate_classifications(
         classes (None): the list of possible classes. If not provided, the
             observed ground truth/predicted labels are used for results
             purposes
-        missing ("none"): a missing label string. Any None-valued labels are
+        missing (None): a missing label string. Any None-valued labels are
             given this label for results purposes
         method ("simple"): a string specifying the evaluation method to use.
             Supported values are ``("simple", "binary", "top-k")``
@@ -121,8 +122,8 @@ class ClassificationEvaluation(foe.EvaluationMethod):
             classes (None): the list of possible classes. If not provided, the
                 observed ground truth/predicted labels are used for results
                 purposes
-            missing ("none"): a missing label string. Any None-valued labels
-                are given this label for results purposes
+            missing (None): a missing label string. Any None-valued labels are
+                given this label for results purposes
 
         Returns:
             a :class:`ClassificationResults` instance
@@ -476,7 +477,7 @@ class ClassificationResults(foe.EvaluationResults):
         weights (None): an optional list of sample weights
         classes (None): the list of possible classes. If not provided, the
             observed ground truth/predicted labels are used
-        missing ("none"): a missing label string. Any None-valued labels are
+        missing (None): a missing label string. Any None-valued labels are
             given this label for evaluation purposes
     """
 
@@ -487,8 +488,11 @@ class ClassificationResults(foe.EvaluationResults):
         confs=None,
         weights=None,
         classes=None,
-        missing="none",
+        missing=None,
     ):
+        if missing is None:
+            missing = "(none)"
+
         ytrue, ypred, classes = _parse_labels(ytrue, ypred, classes, missing)
         self.ytrue = np.asarray(ytrue)
         self.ypred = np.asarray(ypred)
@@ -497,9 +501,12 @@ class ClassificationResults(foe.EvaluationResults):
         self.classes = np.asarray(classes)
         self.missing = missing
 
-    def _get_labels(self, classes):
+    def _get_labels(self, classes, include_missing=False):
         if classes is not None:
             return classes
+
+        if include_missing:
+            return self.classes
 
         return [c for c in self.classes if c != self.missing]
 
@@ -508,13 +515,13 @@ class ClassificationResults(foe.EvaluationResults):
         ``sklearn.metrics.classification_report``.
 
         Args:
-            classes (None): an optional list of classes for which to compute
-                metrics
+            classes (None): an optional list of ground truth classes to include
+                in the report
 
         Returns:
             a dict
         """
-        labels = self._get_labels(classes)
+        labels = self._get_labels(classes, include_missing=False)
         return skm.classification_report(
             self.ytrue,
             self.ypred,
@@ -532,15 +539,15 @@ class ClassificationResults(foe.EvaluationResults):
         ``sklearn.metrics.precision_recall_fscore_support`` for details.
 
         Args:
-            classes (None): an optional list of classes for which to compute
-                metrics
+            classes (None): an optional list of ground truth classes to include
+                in the calculations
             average ("micro"): the averaging strategy to use
             beta (1.0): the F-beta value to use
 
         Returns:
             a dict
         """
-        labels = self._get_labels(classes)
+        labels = self._get_labels(classes, include_missing=False)
 
         try:
             accuracy = skm.accuracy_score(
@@ -574,11 +581,11 @@ class ClassificationResults(foe.EvaluationResults):
         ``sklearn.metrics.classification_report``.
 
         Args:
-            classes (None): an optional list of classes for which to compute
-                metrics
+            classes (None): an optional list of ground truth classes to include
+                in the report
             digits (2): the number of digits of precision to print
         """
-        labels = self._get_labels(classes)
+        labels = self._get_labels(classes, include_missing=False)
         report_str = skm.classification_report(
             self.ytrue,
             self.ypred,
@@ -589,7 +596,7 @@ class ClassificationResults(foe.EvaluationResults):
         )
         print(report_str)
 
-    def confusion_matrix(self, classes=None):
+    def confusion_matrix(self, classes=None, include_other=False):
         """Generates a confusion matrix for the results via
         ``sklearn.metrics.confusion_matrix``.
 
@@ -598,38 +605,84 @@ class ClassificationResults(foe.EvaluationResults):
 
         Args:
             classes (None): an optional list of classes to include in the
-                confusion matrix
+                confusion matrix. Include ``self.missing`` in this list if you
+                would like to study a subset of classes including missing data
+            include_other (False): whether to include an extra row/column at
+                the end of the matrix for labels that do not appear in
+                ``classes``
 
         Returns:
-            a ``num_classes x num_classes`` array containing integer counts
+            a ``num_classes x num_classes`` confusion matrix
         """
-        labels = self._get_labels(classes)
-        return skm.confusion_matrix(
-            self.ytrue, self.ypred, labels=labels, sample_weight=self.weights
+        labels = self._get_labels(classes, include_missing=True)
+        confusion_matrix, _ = self._confusion_matrix(
+            labels, include_other=include_other
         )
+        return confusion_matrix
+
+    def _confusion_matrix(
+        self,
+        labels,
+        include_other=False,
+        other_label=None,
+        include_missing=False,
+    ):
+        labels = list(labels)
+
+        if include_other:
+            if other_label not in labels:
+                labels.append(other_label)
+
+        if include_missing and self.missing not in labels:
+            labels.append(self.missing)
+
+        if include_other:
+            labels_set = set(labels)
+            ypred = [y if y in labels_set else other_label for y in self.ypred]
+            ytrue = [y if y in labels_set else other_label for y in self.ytrue]
+        else:
+            ypred = self.ypred
+            ytrue = self.ytrue
+
+        confusion_matrix = skm.confusion_matrix(
+            ytrue, ypred, labels=labels, sample_weight=self.weights
+        )
+        return confusion_matrix, labels
 
     def plot_confusion_matrix(
         self,
         classes=None,
-        include_values=True,
+        include_other=True,
+        other_label="(other)",
+        show_values=True,
+        show_colorbar=True,
         cmap="viridis",
         xticks_rotation=45.0,
         ax=None,
         figsize=None,
         block=False,
         return_ax=False,
-        **kwargs,
     ):
         """Plots a confusion matrix for the results.
 
         Args:
             classes (None): an optional list of classes to include in the
                 confusion matrix
-            include_values (True): whether to include count values in the
-                confusion matrix cells
+            include_other (True): whether to include extra columns at the end
+                of the confusion matrix for **predictions** that are either
+                (i) missing, or (ii) are not missing but do not appear in
+                ``classes``. If ``self.missing`` already appears in ``classes``
+                or there are no missing predictions, no extra column is added
+                for (i). Likewise, no extra column is added for (ii) if there
+                are no predictions that fall in this case
+            other_label ("(other)"): the label to use for "other" predictions.
+                Only applicable when ``include_other`` is True
+            show_values (True): whether to show counts in the confusion matrix
+                cells
+            show_colorbar (True): whether to show a colorbar
             cmap ("viridis"): a colormap recognized by ``matplotlib``
             xticks_rotation (45.0): a rotation for the x-tick labels. Can be
-                numeric degrees, or "vertical" or "horizontal"
+                numeric degrees, "vertical", "horizontal", or None
             ax (None): an optional matplotlib axis to plot in
             figsize (None): an optional ``(width, height)`` for the figure, in
                 inches
@@ -637,30 +690,49 @@ class ClassificationResults(foe.EvaluationResults):
                 displayed via ``matplotlib.pyplot.show(block=block)``
             return_ax (False): whether to return the matplotlib axis containing
                 the plot
-            **kwargs: optional keyword arguments for
-                ``sklearn.metrics.ConfusionMatrixDisplay.plot(**kwargs)``
 
         Returns:
             the matplotlib axis containing the plot
         """
-        classes = self._get_labels(classes)
-        confusion_matrix = self.confusion_matrix(classes=classes)
-        display = skm.ConfusionMatrixDisplay(
-            confusion_matrix=confusion_matrix, display_labels=classes,
+        _labels = self._get_labels(classes, include_missing=True)
+        confusion_matrix, labels = self._confusion_matrix(
+            _labels,
+            include_other=include_other,
+            other_label=other_label,
+            include_missing=include_other,
         )
-        display.plot(
-            include_values=include_values,
+
+        if include_other:
+            num_labels = len(labels)
+            num_extra = num_labels - len(_labels)
+
+            # Don't include extra ground truth rows
+            if num_extra > 0:
+                confusion_matrix = confusion_matrix[:-num_extra, :]
+
+            # Only include non-trivial extra prediction rows
+            rm_inds = []
+            for idx in range(num_labels - num_extra, num_labels):
+                if not any(confusion_matrix[:, idx]):
+                    rm_inds.append(idx)
+
+            if rm_inds:
+                np.delete(confusion_matrix, rm_inds, axis=1)
+                labels = [l for i, l in enumerate(labels) if i not in rm_inds]
+
+        ax = _plot_confusion_matrix(
+            confusion_matrix,
+            labels,
+            show_values=show_values,
+            show_colorbar=show_colorbar,
             cmap=cmap,
             xticks_rotation=xticks_rotation,
             ax=ax,
-            **kwargs,
+            figsize=figsize,
         )
-        if figsize is not None:
-            display.figure_.set_size_inches(*figsize)
 
-        plt.tight_layout()
         plt.show(block=block)
-        return display.ax_ if return_ax else None
+        return ax if return_ax else None
 
     @classmethod
     def _from_dict(cls, d, samples, **kwargs):
@@ -707,7 +779,7 @@ class BinaryClassificationResults(ClassificationResults):
         self._pos_label = classes[1]
         self.scores = _to_binary_scores(ypred, confs, self._pos_label)
 
-    def _get_labels(self, classes):
+    def _get_labels(self, classes, *args, **kwargs):
         if classes is not None:
             return classes
 
@@ -752,8 +824,7 @@ class BinaryClassificationResults(ClassificationResults):
                 displayed via ``matplotlib.pyplot.show(block=block)``
             return_ax (False): whether to return the matplotlib axis containing
                 the plot
-            **kwargs: optional keyword arguments for
-                ``sklearn.metrics.PrecisionRecallDisplay.plot(**kwargs)``
+            **kwargs: optional keyword arguments for matplotlib's ``plot()``
 
         Returns:
             the matplotlib axis containing the plot
@@ -791,8 +862,7 @@ class BinaryClassificationResults(ClassificationResults):
                 displayed via ``matplotlib.pyplot.show(block=block)``
             return_ax (False): whether to return the matplotlib axis containing
                 the plot
-            **kwargs: optional keyword arguments for
-                ``sklearn.metrics.RocCurveDisplay.plot(**kwargs)``
+            **kwargs: optional keyword arguments for matplotlib's ``plot()``
 
         Returns:
             the matplotlib axis containing the plot
@@ -874,3 +944,69 @@ def _to_binary_scores(y, confs, pos_label):
         scores.append(score)
 
     return scores
+
+
+def _plot_confusion_matrix(
+    cm,
+    labels,
+    show_values=True,
+    show_colorbar=True,
+    cmap="viridis",
+    xticks_rotation=None,
+    values_format=None,
+    ax=None,
+    figsize=None,
+):
+    if ax is None:
+        fig, ax = plt.subplots()
+    else:
+        fig = ax.figure
+
+    nrows = cm.shape[0]
+    ncols = cm.shape[1]
+    im = ax.imshow(cm, interpolation="nearest", cmap=cmap)
+
+    if show_values:
+        # Print text with appropriate color depending on background
+        cmap_min = im.cmap(0)
+        cmap_max = im.cmap(256)
+        thresh = (cm.max() + cm.min()) / 2.0
+
+        for i, j in itertools.product(range(nrows), range(ncols)):
+            color = cmap_max if cm[i, j] < thresh else cmap_min
+
+            if values_format is None:
+                text_cm = format(cm[i, j], ".2g")
+                if cm.dtype.kind != "f":
+                    text_d = format(cm[i, j], "d")
+                    if len(text_d) < len(text_cm):
+                        text_cm = text_d
+            else:
+                text_cm = format(cm[i, j], values_format)
+
+            ax.text(j, i, text_cm, ha="center", va="center", color=color)
+
+    ax.set(
+        xticks=np.arange(ncols),
+        yticks=np.arange(nrows),
+        xticklabels=labels[:ncols],
+        yticklabels=labels[:nrows],
+        xlabel="Predicted label",
+        ylabel="True label",
+    )
+    ax.set_ylim((nrows - 0.5, -0.5))  # flip axis
+
+    if xticks_rotation is not None:
+        plt.setp(ax.get_xticklabels(), rotation=xticks_rotation)
+
+    if show_colorbar:
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.1)
+        fig.colorbar(im, cax=cax)
+
+    if figsize is not None:
+        fig.set_size_inches(*figsize)
+
+    plt.tight_layout()
+
+    return ax
