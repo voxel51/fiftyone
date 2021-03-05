@@ -480,15 +480,24 @@ class Session(foc.HasClient):
         """
         return list(self.state.selected)
 
-    @_update_state
     @selected.setter
+    @_update_state()
     def selected(self, sample_ids):
         self.state.selected = list(sample_ids) if sample_ids else []
 
-    @_update_state
+    @_update_state()
     def clear_selected(self):
         """Clears the currently selected samples, if any."""
         self.state.selected = []
+
+    @_update_state()
+    def select_samples(self, sample_ids):
+        """Selects the samples with the given IDs in the App.
+
+        Args:
+            sample_ids: an iterable of sample IDs
+        """
+        self.state.selected = list(sample_ids)
 
     @property
     def selected_labels(self):
@@ -509,7 +518,21 @@ class Session(foc.HasClient):
     def selected_labels(self, labels):
         self.state.selected_labels = list(labels) if labels else []
 
-    @_update_state
+    @_update_state()
+    def select_labels(self, labels=None, ids=None, tags=None, fields=None):
+        """Selects the specified labels in the App.
+
+        Args:
+            sample_ids: an iterable of sample IDs
+        """
+        if labels is None:
+            labels = self._collection._get_selected_labels(
+                ids=ids, tags=tags, fields=fields
+            )
+
+        self.state.selected_labels = list(labels)
+
+    @_update_state()
     def clear_selected_labels(self):
         """Clears the currently selected labels, if any."""
         self.state.selected_labels = []

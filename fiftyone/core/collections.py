@@ -601,6 +601,31 @@ class SampleCollection(object):
             tags = _transform_values(tags, edit_fcn, level=level)
             self.set_values(tags_path, tags)
 
+    def _get_selected_labels(self, ids=None, tags=None, fields=None):
+        view = self.select_labels(ids=ids, tags=tags, fields=fields)
+
+        if view.media_type == fom.VIDEO:
+            raise ValueError("Video collections are not yet supported")
+
+        labels = []
+        for label_field in view._get_label_fields():
+            sample_ids = view._get_sample_ids()
+
+            _, id_path = view._get_label_field_path(label_field, "_id")
+            label_ids = view.values(id_path)
+
+            for sample_id, _label_ids in zip(sample_ids, label_ids):
+                for label_id in _label_ids:
+                    labels.append(
+                        {
+                            "sample_id": str(sample_id),
+                            "field": label_field,
+                            "label_id": str(label_id),
+                        }
+                    )
+
+        return labels
+
     def count_label_tags(self, label_fields=None):
         """Counts the occurrences of all label tags in the specified label
         field(s) of this collection.
