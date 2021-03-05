@@ -20,6 +20,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.client as foc
 import fiftyone.core.context as focx
 import fiftyone.core.service as fos
+import fiftyone.core.utils as fou
 import fiftyone.utils.templates as fout
 from fiftyone.core.state import StateDescription
 
@@ -427,7 +428,7 @@ class Session(foc.HasClient):
         self.state.selected_labels = []
         self.state.filters = {}
 
-    @_update_state
+    @_update_state()
     def clear_dataset(self):
         """Clears the current :class:`fiftyone.core.dataset.Dataset` from the
         session, if any.
@@ -441,6 +442,13 @@ class Session(foc.HasClient):
         """
         return self.state.view
 
+    @property
+    def _collection(self):
+        if self.view is not None:
+            return self.view
+
+        return self.dataset
+
     @view.setter
     @_update_state(auto_show=True)
     def view(self, view):
@@ -453,14 +461,14 @@ class Session(foc.HasClient):
         self.state.selected_labels = []
         self.state.filters = {}
 
-    @_update_state
+    @_update_state()
     def clear_view(self):
         """Clears the current :class:`fiftyone.core.view.DatasetView` from the
         session, if any.
         """
         self.state.view = None
 
-    @_update_state(auto_show=True)
+    @_update_state()
     def refresh(self):
         """Refreshes the App, reloading the current dataset/view."""
         pass
@@ -471,6 +479,25 @@ class Session(foc.HasClient):
         if any.
         """
         return list(self.state.selected)
+
+    @selected.setter
+    @_update_state()
+    def selected(self, sample_ids):
+        self.state.selected = list(sample_ids) if sample_ids else []
+
+    @_update_state()
+    def clear_selected(self):
+        """Clears the currently selected samples, if any."""
+        self.state.selected = []
+
+    @_update_state()
+    def select_samples(self, sample_ids):
+        """Selects the samples with the given IDs in the App.
+
+        Args:
+            sample_ids: an iterable of sample IDs
+        """
+        self.state.selected = list(sample_ids)
 
     @property
     def selected_labels(self):
@@ -485,6 +512,85 @@ class Session(foc.HasClient):
                 applicable to video samples)
         """
         return list(self.state.selected_labels)
+
+    @selected_labels.setter
+    @_update_state()
+    def selected_labels(self, labels):
+        self.state.selected_labels = list(labels) if labels else []
+
+    @_update_state()
+    def select_labels(self, labels=None, ids=None, tags=None, fields=None):
+        """Selects the specified labels in the App.
+
+        This method uses the same interface as
+        :meth:`fiftyone.core.collections.SampleCollection.select_labels` to
+        specify the labels to select.
+
+        Args:
+            labels (None): a list of dicts specifying the labels to select
+            ids (None): an ID or iterable of IDs of the labels to select
+            tags (None): a tag or iterable of tags of labels to select
+            fields (None): a field or iterable of fields from which to select
+        """
+        if labels is None:
+            labels = self._collection._get_selected_labels(
+                ids=ids, tags=tags, fields=fields
+            )
+
+        self.state.selected_labels = list(labels)
+
+    @_update_state()
+    def clear_selected_labels(self):
+        """Clears the currently selected labels, if any."""
+        self.state.selected_labels = []
+
+    @_update_state()
+    def tag_selected_samples(self, tag):
+        """Adds the tag to the currently selected samples, if necessary.
+
+        The currently selected labels are :meth:`Sesssion.selected`.
+
+        Args:
+            tag: a tag
+        """
+        self._collection.select(self.selected).tag_samples(tag)
+
+    @_update_state()
+    def untag_selected_samples(self, tag):
+        """Removes the tag from the currently selected samples, if necessary.
+
+        The currently selected labels are :meth:`Sesssion.selected`.
+
+        Args:
+            tag: a tag
+        """
+        self._collection.select(self.selected).untag_samples(tag)
+
+    @_update_state()
+    def tag_selected_labels(self, tag):
+        """Adds the tag to the currently selected labels, if necessary.
+
+        The currently selected labels are :meth:`Sesssion.selected_labels`.
+
+        Args:
+            tag: a tag
+        """
+        self._collection.select_labels(labels=self.selected_labels).tag_labels(
+            tag
+        )
+
+    @_update_state()
+    def untag_selected_labels(self, tag):
+        """Removes the tag from the currently selected labels, if necessary.
+
+        The currently selected labels are :meth:`Sesssion.selected_labels`.
+
+        Args:
+            tag: a tag
+        """
+        self._collection.select_labels(
+            labels=self.selected_labels
+        ).untag_labels(tag)
 
     def summary(self):
         """Returns a string summary of the session.
@@ -582,6 +688,36 @@ class Session(foc.HasClient):
         """
         self._show(height)
         self._update_state()
+
+    def no_show(self):
+        """Returns a context manager that temporarily prevents new App
+        instances from being opened in the current notebook cell when methods
+        are run that normally would show new App windows.
+
+        This method has no effect in non-notebook contexts.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            session = fo.launch_app(dataset)
+
+            # (new cell)
+
+            # Opens a new App instance
+            session.view = dataset.take(100)
+
+            # (new cell)
+
+            # Does not open a new App instance
+            with session.no_show():
+                session.view = dataset.take(100)
+
+        Returns:
+            a context manager
+        """
+        return fou.SetAttributes(self, _auto=False)
 
     def wait(self):
         """Blocks execution until the session is closed by the user.

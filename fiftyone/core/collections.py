@@ -636,6 +636,46 @@ class SampleCollection(object):
             tags = _transform_values(tags, edit_fcn, level=level)
             self.set_values(tags_path, tags)
 
+    def _get_selected_labels(self, ids=None, tags=None, fields=None):
+        view = self.select_labels(ids=ids, tags=tags, fields=fields)
+
+        labels = []
+        for label_field in view._get_label_fields():
+            sample_ids = view._get_sample_ids()
+
+            _, id_path = view._get_label_field_path(label_field, "_id")
+            label_ids = view.values(id_path)
+
+            if self._is_frame_field(label_field):
+                frame_numbers = view.values("frames.frame_number")
+                for sample_id, sample_frame_numbers, sample_label_ids in zip(
+                    sample_ids, frame_numbers, label_ids
+                ):
+                    for frame_number, frame_label_ids in zip(
+                        sample_frame_numbers, sample_label_ids
+                    ):
+                        for label_id in frame_label_ids:
+                            labels.append(
+                                {
+                                    "sample_id": str(sample_id),
+                                    "frame_number": frame_number,
+                                    "field": label_field,
+                                    "label_id": str(label_id),
+                                }
+                            )
+            else:
+                for sample_id, _label_ids in zip(sample_ids, label_ids):
+                    for label_id in _label_ids:
+                        labels.append(
+                            {
+                                "sample_id": str(sample_id),
+                                "field": label_field,
+                                "label_id": str(label_id),
+                            }
+                        )
+
+        return labels
+
     def count_label_tags(self, label_fields=None):
         """Counts the occurrences of all label tags in the specified label
         field(s) of this collection.
@@ -1514,9 +1554,9 @@ class SampleCollection(object):
 
         Args:
             labels (None): a list of dicts specifying the labels to exclude
-            ids (None): a list of IDs of the labels to exclude
-            tags (None): a list of tags of labels to exclude
-            fields (None): a list of fields from which to exclude labels
+            ids (None): an ID or iterable of IDs of the labels to exclude
+            tags (None): a tag or iterable of tags of labels to exclude
+            fields (None): a field or iterable of fields from which to exclude
         """
         return self._add_view_stage(
             fos.ExcludeLabels(labels=labels, ids=ids, tags=tags, fields=fields)
@@ -2772,9 +2812,9 @@ class SampleCollection(object):
 
         Args:
             labels (None): a list of dicts specifying the labels to select
-            ids (None): a list of IDs of the labels to select
-            tags (None): a list of tags of labels to select
-            fields (None): a list of fields from which to select labels
+            ids (None): an ID or iterable of IDs of the labels to select
+            tags (None): a tag or iterable of tags of labels to select
+            fields (None): a field or iterable of fields from which to select
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -4323,12 +4363,13 @@ class SampleCollection(object):
 
         if self.media_type == fom.VIDEO:
             fields.extend(
-                list(
-                    self.get_frame_field_schema(
+                [
+                    self._FRAMES_PREFIX + field
+                    for field in self.get_frame_field_schema(
                         ftype=fof.EmbeddedDocumentField,
                         embedded_doc_type=fol.Label,
                     ).keys()
-                )
+                ]
             )
 
         return fields

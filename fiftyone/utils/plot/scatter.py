@@ -17,7 +17,6 @@ from mpl_toolkits.mplot3d import Axes3D  # pylint: disable=unused-import
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
-import fiftyone.core.utils as fou
 from fiftyone.core.view import DatasetView
 
 from .selector import PointSelector
@@ -191,9 +190,8 @@ def scatterplot(
                 sample_ids = sample_ids[inds]
 
     if session is not None:
-        # Temporarily set `session._auto` to False since this update should not
-        # spawn new a App instance in notebook contexts
-        with fou.SetAttributes(session, _auto=False):
+        # Don't spawn a new App instance in notebook contexts here
+        with session.no_show():
             if isinstance(samples, DatasetView):
                 session.view = samples
             else:

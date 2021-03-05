@@ -483,9 +483,9 @@ class ExcludeLabels(ViewStage):
 
     Args:
         labels (None): a list of dicts specifying the labels to exclude
-        ids (None): a list of IDs of the labels to exclude
-        tags (None): a list of tags of labels to exclude
-        fields (None): a list of fields from which to exclude labels
+        ids (None): an ID or iterable of IDs of the labels to exclude
+        tags (None): a tag or iterable of tags of labels to exclude
+        fields (None): a field or iterable of fields from which to exclude
     """
 
     def __init__(self, labels=None, ids=None, tags=None, fields=None):
@@ -496,12 +496,18 @@ class ExcludeLabels(ViewStage):
 
         if etau.is_str(ids):
             ids = [ids]
+        elif ids is not None:
+            ids = list(ids)
 
         if etau.is_str(tags):
             tags = [tags]
+        elif tags is not None:
+            tags = list(tags)
 
         if etau.is_str(fields):
             fields = [fields]
+        elif fields is not None:
+            fields = list(fields)
 
         self._labels = labels
         self._ids = ids
@@ -2757,9 +2763,9 @@ class SelectLabels(ViewStage):
 
     Args:
         labels (None): a list of dicts specifying the labels to select
-        ids (None): a list of IDs of the labels to select
-        tags (None): a list of tags of labels to select
-        fields (None): a list of fields from which to select labels
+        ids (None): an ID or iterable of IDs of the labels to select
+        tags (None): a tag or iterable of tags of labels to select
+        fields (None): a field or iterable of fields from which to select
     """
 
     def __init__(self, labels=None, ids=None, tags=None, fields=None):
@@ -2770,12 +2776,18 @@ class SelectLabels(ViewStage):
 
         if etau.is_str(ids):
             ids = [ids]
+        elif ids is not None:
+            ids = list(ids)
 
         if etau.is_str(tags):
             tags = [tags]
+        elif tags is not None:
+            tags = list(tags)
 
         if etau.is_str(fields):
             fields = [fields]
+        elif fields is not None:
+            fields = list(fields)
 
         self._labels = labels
         self._ids = ids
