@@ -20,6 +20,7 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.client as foc
 import fiftyone.core.context as focx
 import fiftyone.core.service as fos
+import fiftyone.core.utils as fou
 import fiftyone.utils.templates as fout
 from fiftyone.core.state import StateDescription
 
@@ -441,6 +442,13 @@ class Session(foc.HasClient):
         """
         return self.state.view
 
+    @property
+    def _collection(self):
+        if self.view is not None:
+            return self.view
+
+        return self.dataset
+
     @view.setter
     @_update_state(auto_show=True)
     def view(self, view):
@@ -472,6 +480,16 @@ class Session(foc.HasClient):
         """
         return list(self.state.selected)
 
+    @_update_state
+    @selected.setter
+    def selected(self, sample_ids):
+        self.state.selected = list(sample_ids) if sample_ids else []
+
+    @_update_state
+    def clear_selected(self):
+        """Clears the currently selected samples, if any."""
+        self.state.selected = []
+
     @property
     def selected_labels(self):
         """A list of labels currently selected in the App.
@@ -485,6 +503,64 @@ class Session(foc.HasClient):
                 applicable to video samples)
         """
         return list(self.state.selected_labels)
+
+    @_update_state
+    @selected_labels.setter
+    def selected_labels(self, labels):
+        self.state.selected_labels = list(labels) if labels else []
+
+    @_update_state
+    def clear_selected_labels(self):
+        """Clears the currently selected labels, if any."""
+        self.state.selected_labels = []
+
+    @_update_state
+    def tag_selected_samples(self, tag):
+        """Adds the tag to the currently selected samples, if necessary.
+
+        The currently selected labels are :meth:`Sesssion.selected`.
+
+        Args:
+            tag: a tag
+        """
+        self._collection.select(self.selected).tag_samples(tag)
+
+    @_update_state
+    def untag_selected_samples(self, tag):
+        """Removes the tag from the currently selected samples, if necessary.
+
+        The currently selected labels are :meth:`Sesssion.selected`.
+
+        Args:
+            tag: a tag
+        """
+        self._collection.select(self.selected).untag_samples(tag)
+
+    @_update_state
+    def tag_selected_labels(self, tag):
+        """Adds the tag to the currently selected labels, if necessary.
+
+        The currently selected labels are :meth:`Sesssion.selected_labels`.
+
+        Args:
+            tag: a tag
+        """
+        self._collection.select_labels(labels=self.selected_labels).tag_labels(
+            tag
+        )
+
+    @_update_state
+    def untag_selected_labels(self, tag):
+        """Removes the tag from the currently selected labels, if necessary.
+
+        The currently selected labels are :meth:`Sesssion.selected_labels`.
+
+        Args:
+            tag: a tag
+        """
+        self._collection.select_labels(
+            labels=self.selected_labels
+        ).untag_labels(tag)
 
     def summary(self):
         """Returns a string summary of the session.
@@ -582,6 +658,36 @@ class Session(foc.HasClient):
         """
         self._show(height)
         self._update_state()
+
+    def no_show(self):
+        """Returns a context manager that temporarily prevents new App
+        instances from being opened in the current notebook cell when methods
+        are run that normally would show new App windows.
+
+        This method has no effect in non-notebook contexts.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            session = fo.launch_app(dataset)
+
+            # (new cell)
+
+            # Opens a new App instance
+            session.view = dataset.take(100)
+
+            # (new cell)
+
+            # Does not open a new App instance
+            with session.no_show():
+                session.view = dataset.take(100)
+
+        Returns:
+            a context manager
+        """
+        return fou.SetAttributes(self, _auto=False)
 
     def wait(self):
         """Blocks execution until the session is closed by the user.
