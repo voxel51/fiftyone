@@ -610,33 +610,14 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         asyncio.gather(*awaitables)
 
     @staticmethod
-    async def on_add_selection(self, _id):
-        """Event for adding a :class:`fiftyone.core.samples.Sample` _id to the
-        currently selected sample _ids.
-
-        Sends state updates to all active clients.
+    async def on_set_selection(self, _ids):
+        """Event for setting the selected
+        :class:`fiftyone.core.samples.Sample` _ids
 
         Args:
-            _id: a sample _id
+            _ids: a list of sample _id
         """
-        selected = set(StateHandler.state["selected"])
-        selected.add(_id)
-        StateHandler.state["selected"] = selected
-        await self.send_updates(ignore=self)
-
-    @staticmethod
-    async def on_remove_selection(self, _id):
-        """Event for removing a :class:`fiftyone.core.samples.Sample` _id from the
-        currently selected sample _ids
-
-        Sends state updates to all active clients.
-
-        Args:
-            _id: a sample _id
-        """
-        selected = set(StateHandler.state["selected"])
-        selected.remove(_id)
-        StateHandler.state["selected"] = selected
+        StateHandler.state["selected"] = _ids
         await self.send_updates(ignore=self)
 
     @staticmethod
@@ -649,16 +630,16 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         await self.send_updates(ignore=self)
 
     @staticmethod
-    async def on_set_selected_objects(self, selected_objects):
+    async def on_set_selected_labels(self, selected_labels):
         """Event for setting the entire selected objects list.
 
         Args:
-            selected_object: a list of selected objects
+            selected_labels: a list of selected labels
         """
-        if not isinstance(selected_objects, list):
-            raise TypeError("selected_objects must be a list")
+        if not isinstance(selected_labels, list):
+            raise TypeError("selected_labels must be a list")
 
-        StateHandler.state["selected_objects"] = selected_objects
+        StateHandler.state["selected_labels"] = selected_labels
         await self.send_updates(ignore=self)
 
     @staticmethod

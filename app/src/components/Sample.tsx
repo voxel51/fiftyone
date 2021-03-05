@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { animated, useSpring, useTransition } from "react-spring";
 
@@ -206,7 +206,6 @@ const SelectorDiv = animated(styled.div`
   top: 0;
   right: 0;
   display: flex;
-  direction: rtl;
   cursor: pointer;
   z-index: 499;
   background: linear-gradient(
@@ -216,34 +215,78 @@ const SelectorDiv = animated(styled.div`
   );
 `);
 
-const Selector = ({ id, spring }: { id: string }) => {
-  const theme = useTheme();
-  const [stateDescription, setStateDescription] = useRecoilState(
-    atoms.stateDescription
-  );
+const argMin = (array) => {
+  return [].reduce.call(array, (m, c, i, arr) => (c < arr[m] ? i : m), 0);
+};
 
-  const [selectedSamples, setSelectedSamples] = useRecoilState(
-    atoms.selectedSamples
-  );
-  const socket = useRecoilValue(selectors.socket);
+const useSelect = (id: string, index: number) => {
+  return useRecoilCallback(
+    ({ snapshot, set }) => async (e: {
+      ctrlKey: boolean;
+      preventDefault: () => void;
+    }) => {
+      e.preventDefault();
+      const [socket, selectedSamples, stateDescription] = await Promise.all([
+        snapshot.getPromise(selectors.socket),
+        snapshot.getPromise(atoms.selectedSamples),
+        snapshot.getPromise(atoms.stateDescription),
+      ]);
+      const newSelected = new Set<string>(selectedSamples);
+      const setOne = () => {
+        if (newSelected.has(id)) {
+          newSelected.delete(id);
+        } else {
+          newSelected.add(id);
+        }
+      };
+      const ind = await snapshot.getPromise(selectors.selectedSampleIndices);
+      const rev = Object.fromEntries(
+        Object.entries(ind).map((i) => [i[1], i[0]])
+      );
+      const entries = Object.entries(ind)
+        .filter((e) => newSelected.has(e[0]))
+        .map((e) => [...e, Math.abs(e[1] - index)]);
+      if (e.ctrlKey && !newSelected.has(id) && entries.length) {
+        const best = entries[argMin(entries.map((e) => e[2]))][1];
 
-  const handleClick = (e) => {
-    e.preventDefault();
-    const newSelected = new Set(selectedSamples);
-    let event;
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-      event = "remove_selection";
-    } else {
-      newSelected.add(id);
-      event = "add_selection";
+        const [start, end] = best > index ? [index, best] : [best, index];
+        console.log(rev);
+        for (let idx = start; idx <= end; idx++) {
+          newSelected.add(rev[idx]);
+        }
+      } else {
+        setOne();
+      }
+      set(atoms.selectedSamples, newSelected);
+      socket.send(packageMessage("set_selection", { _ids: newSelected }));
+      set(atoms.stateDescription, {
+        ...stateDescription,
+        selected: [...newSelected],
+      });
     }
-    setSelectedSamples(newSelected);
-    socket.send(packageMessage(event, { _id: id }));
-    setStateDescription({ ...stateDescription, selected: [...newSelected] });
-  };
+  );
+};
+
+const Selector = ({
+  id,
+  spring,
+  index,
+}: {
+  id: string;
+  spring: any;
+  index: number;
+}) => {
+  const theme = useTheme();
+
+  const selectedSamples = useRecoilValue(atoms.selectedSamples);
+
+  const handleClick = useSelect(id, index);
   return (
-    <SelectorDiv style={{ ...spring }} onClick={handleClick}>
+    <SelectorDiv
+      style={{ ...spring }}
+      onClick={handleClick}
+      title={"Click to select sample, Ctrl+Click to select a range"}
+    >
       <Checkbox
         checked={selectedSamples.has(id)}
         style={{
@@ -255,7 +298,7 @@ const Selector = ({ id, spring }: { id: string }) => {
   );
 };
 
-const Sample = ({ sample, metadata }) => {
+const Sample = ({ sample, metadata, index }) => {
   const http = useRecoilValue(selectors.http);
   const setModal = useSetRecoilState(atoms.modal);
   const id = sample._id;
@@ -270,6 +313,8 @@ const Sample = ({ sample, metadata }) => {
     opacity: hovering || selectedSamples.has(id) ? 1 : 0,
   });
 
+  const selectSample = useSelect(id, index);
+
   return (
     <SampleDiv className="sample" style={revealSample()}>
       <div
@@ -281,7 +326,7 @@ const Sample = ({ sample, metadata }) => {
         onMouseEnter={() => setHovering(true)}
         onMouseLeave={() => setHovering(false)}
       >
-        <Selector key={id} id={id} spring={selectorSpring} />
+        <Selector key={id} id={id} spring={selectorSpring} index={index} />
         <SampleInfo sample={sample} />
         <Player51
           src={src}
@@ -299,7 +344,11 @@ const Sample = ({ sample, metadata }) => {
           filterSelector={labelFilters(false)}
           onMouseEnter={onMouseEnter}
           onMouseLeave={onMouseLeave}
-          onClick={() => setModal({ visible: true, sample, metadata })}
+          onClick={(e) =>
+            selectedSamples.size
+              ? selectSample(e)
+              : setModal({ visible: true, sample, metadata })
+          }
         />
         {bar.map(({ key, props }) => (
           <LoadingBar key={key} style={props} />

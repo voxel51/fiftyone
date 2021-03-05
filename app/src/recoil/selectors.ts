@@ -12,6 +12,8 @@ import {
   makeLabelNameGroups,
   labelTypeHasColor,
   AGGS,
+  VALID_LIST_TYPES,
+  HIDDEN_LABEL_ATTRS,
 } from "../utils/labels";
 import { packageMessage } from "../utils/socket";
 import { viewsAreEqual } from "../utils/view";
@@ -827,5 +829,65 @@ export const selectedObjectIds = selector<Set<string>>({
   get: ({ get }) => {
     const objs = get(atoms.selectedObjects);
     return new Set(Object.keys(objs));
+  },
+});
+
+export const selectedSampleIndices = selector<{ [key: string]: number }>({
+  key: "selectedSampleIndices",
+  get: ({ get }) => {
+    const samples = get(atoms.currentSamples);
+    return Object.fromEntries(
+      samples.map(({ sample }, index) => [sample._id, index])
+    );
+  },
+});
+
+export const modalLabelAttrs = selectorFamily<
+  [string, string | null | number],
+  { field: string; id: string }
+>({
+  key: "modalLabelAttrs",
+  get: ({ field, id }) => ({ get }) => {
+    const sample = get(modalSample);
+    const type = get(labelTypesMap)[field];
+    let label = sample[field];
+    if (VALID_LIST_TYPES.includes(type)) {
+      label = label[type.toLocaleLowerCase()].filter((l) => l._id === id)[0];
+    }
+
+    const hidden = HIDDEN_LABEL_ATTRS[label._cls];
+    let attrs = Object.entries(label)
+      .filter((a) => !hidden.includes(a[0]) && !a[0].startsWith("_"))
+      .map(([k, v]) => [
+        k,
+        typeof v === "object" && k !== "tags"
+          ? Array.isArray(v)
+            ? "[...]"
+            : "{...}"
+          : v,
+      ]);
+    if (label.attributes) {
+      attrs = [
+        ...Object.entries(label.attributes).map(([k, v]) => [
+          `attributes.${k}`,
+          v.value,
+        ]),
+        ...attrs,
+      ];
+    }
+    return attrs.sort((a, b) => (a[0] < b[0] ? -1 : 1));
+  },
+});
+
+export const modalLabelTags = selectorFamily<
+  string[],
+  { field: string; id: string }
+>({
+  key: "modalLabelTags",
+  get: (params) => ({ get }) => {
+    const tags = get(modalLabelAttrs(params)).filter(
+      ([k, v]) => k === "tags"
+    )[0][1];
+    return tags ? Array.from(tags).sort() : [];
   },
 });

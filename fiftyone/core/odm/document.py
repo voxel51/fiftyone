@@ -275,6 +275,15 @@ class MongoEngineBaseDocument(SerializableDocument):
                 f for f in self._fields_ordered if f != field_name
             )
 
+    def field_to_mongo(self, field_name):
+        # pylint: disable=no-member
+        value = self.get_field(field_name)
+        return self._fields[field_name].to_mongo(value)
+
+    def field_to_python(self, field_name, value):
+        # pylint: disable=no-member
+        return self._fields[field_name].to_python(value)
+
     def _get_field_names(self, include_private=False):
         if not include_private:
             return tuple(

@@ -8,10 +8,10 @@ import CircularProgress from "@material-ui/core/CircularProgress";
 import { Warning } from "@material-ui/icons";
 import { animated, useSpring } from "react-spring";
 
-import { ContentDiv, ContentHeader, ContentBlock } from "./utils";
+import { ContentDiv, ContentHeader } from "./utils";
 import ExternalLink from "./ExternalLink";
 import Player51 from "player51";
-import { useEventHandler } from "../utils/hooks";
+import { useEventHandler, useTheme } from "../utils/hooks";
 import { convertSampleToETA } from "../utils/labels";
 import { useMove } from "react-use-gesture";
 
@@ -39,6 +39,21 @@ const InfoWrapper = styled.div`
   p {
     margin: 0;
   }
+`;
+
+const TagBlock = styled.div`
+  padding: 0.5rem 0 0;
+  border-top: 2px solid ${({ theme }) => theme.font};
+  margin: 0;
+`;
+
+const AttrBlock = styled.div`
+  padding: 0.1rem 0 0 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-row-gap: 0.1rem;
+  grid-column-gap: 0.5rem;
 `;
 
 const TooltipDiv = animated(styled(ContentDiv)`
@@ -78,7 +93,7 @@ const computeCoordinates = (
 const ContentItemDiv = styled.div`
   margin: 0;
   padding: 0;
-  max-width: 12rem;
+  max-width: 10rem;
   word-wrap: break-word;
 `;
 
@@ -105,7 +120,7 @@ const ContentItem = ({
   style?: object;
 }) => {
   return (
-    <ContentItemDiv>
+    <ContentItemDiv style={style}>
       <ContentValue>
         {(() => {
           switch (typeof value) {
@@ -115,29 +130,23 @@ const ContentItem = ({
               return value;
             case "boolean":
               return value ? "True" : "False";
+            case "object":
+              return Array.isArray(value) ? "[...]" : "{...}";
             default:
               return "None";
           }
         })()}
       </ContentValue>
-      <ContentName style={style}>{name}</ContentName>
+      <ContentName>{name}</ContentName>
     </ContentItemDiv>
   );
 };
 
-const ConfidenceItem = ({ confidence }) => {
-  return <ContentItem name={"confidence"} value={confidence} />;
-};
-
-const ClassificationInfo = ({ info }) => {
+const ClassificationInfo = ({ info, style }) => {
   return (
-    <ContentBlock style={{ borderColor: info.color }}>
-      <SelectedItem info={info} />
-      <ContentItem key={"field"} name={"field"} value={info.field} />
-      <ContentItem key={"label"} name={"label"} value={info.label} />
-      <ConfidenceItem confidence={info.confidence} />
-      <AttrInfo attrs={info.attrs} />
-    </ContentBlock>
+    <AttrBlock style={{ borderColor: info.color, ...style }}>
+      <AttrInfo field={info.field} id={info.id} />
+    </AttrBlock>
   );
 };
 
@@ -146,98 +155,66 @@ const useTarget = (field, target) => {
   return getTarget(field, target);
 };
 
-const MaskInfo = ({ info }) => {
+const MaskInfo = ({ info, style }) => {
   const targetValue = useTarget(info.field, info.target);
   return (
-    <ContentBlock style={{ borderColor: info.color }}>
-      <SelectedItem info={info} />
-      <ContentItem key={"field"} name={"field"} value={info.field} />
+    <AttrBlock style={{ borderColor: info.color, ...style }}>
+      <AttrInfo field={info.field} id={info.id} />
       <ContentItem key={"target-value"} name={"label"} value={targetValue} />
-    </ContentBlock>
+    </AttrBlock>
   );
 };
 
-const AttrInfo = ({ attrs }) => {
-  if (!attrs) {
+const AttrInfo = ({ field, id }) => {
+  const attrs = useRecoilValue(selectors.modalLabelAttrs({ field, id }));
+  let entries = attrs.filter(([k, v]) => k !== "tags");
+  if (!entries || !entries.length) {
     return null;
   }
   let etc = null;
-  let entries = attrs;
+
   if (attrs.length > 4) {
-    etc = `and ${entries.length - 4} more attribues`;
-    entries = entries.slice(0, 4);
+    const extra = entries.length - 4;
+    etc = `and ${extra} more attribue${extra > 1 ? "s" : ""}`;
+    // entries = entries.slice(0, 4);
   }
 
   return (
     <>
-      {entries.map((a) => (
-        <ContentItem key={a.name} name={a.name} value={a.value} />
+      {entries.map(([name, value]) => (
+        <ContentItem key={name} name={name} value={value} />
       ))}
-      {etc && (
-        <>
-          <br />
-          {etc}
-        </>
-      )}
     </>
   );
 };
 
-const SelectedItem = ({ info }) => {
-  const selectedObjects = useRecoilValue(selectors.selectedObjectIds);
-  if (selectedObjects.has(info.id)) {
-    return (
-      <ContentItem
-        name={"selected"}
-        value={"True"}
-        style={{ color: info.color }}
-      />
-    );
-  }
-  return null;
-};
-
-const DetectionInfo = ({ info }) => {
+const DetectionInfo = ({ info, style }) => {
   return (
-    <ContentBlock style={{ borderColor: info.color }}>
-      <SelectedItem info={info} />
-      <ContentItem key={"field"} name={"field"} value={info.field} />
-      <ContentItem key={"label"} name={"label"} value={info.label} />
-      <ConfidenceItem confidence={info.confidence} />
-      <AttrInfo attrs={info.attrs} />
-    </ContentBlock>
+    <AttrBlock style={{ borderColor: info.color, ...style }}>
+      <AttrInfo field={info.field} id={info.id} />
+    </AttrBlock>
   );
 };
 
-const KeypointInfo = ({ info }) => {
+const KeypointInfo = ({ info, style }) => {
   return (
-    <ContentBlock style={{ borderColor: info.color }}>
-      <SelectedItem info={info} />
-      <ContentItem key={"field"} name={"field"} value={info.field} />
-      <ContentItem key={"label"} name={"label"} value={info.label} />
+    <AttrBlock style={{ borderColor: info.color, ...style }}>
+      <AttrInfo field={info.field} id={info.id} />
       <ContentItem
         key={"# keypoints"}
         name={"# keypoints"}
         value={info.numPoints}
       />
-      <ConfidenceItem confidence={info.confidence} />
-      <AttrInfo attrs={info.attrs} />
-    </ContentBlock>
+    </AttrBlock>
   );
 };
 
-const PolylineInfo = ({ info }) => {
+const PolylineInfo = ({ info, style }) => {
   return (
-    <ContentBlock style={{ borderColor: info.color }}>
-      <SelectedItem info={info} />
-      <ContentItem key={"field"} name={"field"} value={info.field} />
-      <ContentItem key={"label"} name={"label"} value={info.label} />
-      <ConfidenceItem confidence={info.confidence} />
-      <ContentItem key={"closed"} name={"closed"} value={info.closed} />
-      <ContentItem key={"filled"} name={"filled"} value={info.filled} />
+    <AttrBlock style={{ borderColor: info.color, ...style }}>
+      <AttrInfo field={info.field} id={info.id} />
       <ContentItem key={"# points"} name={"# points"} value={info.points} />
-      <AttrInfo attrs={info.attrs} />
-    </ContentBlock>
+    </AttrBlock>
   );
 };
 
@@ -247,6 +224,27 @@ const OVERLAY_INFO = {
   keypoints: KeypointInfo,
   mask: MaskInfo,
   polyline: PolylineInfo,
+};
+
+const TagInfo = ({ field, id, color }) => {
+  const tags = useRecoilValue(selectors.modalLabelTags({ field, id }));
+  const selectedObjects = useRecoilValue(selectors.selectedObjectIds);
+  return (
+    <TagBlock
+      style={{
+        borderTop: `2px ${
+          selectedObjects.has(id) ? "dashed" : "solid"
+        } ${color}`,
+      }}
+    >
+      <ContentItem
+        key={"tags"}
+        name={"tags"}
+        value={tags.length ? tags.join(", ") : "No tags"}
+        style={{ maxWidth: "20rem" }}
+      />
+    </TagBlock>
+  );
 };
 
 const TooltipInfo = ({ player, moveRef }) => {
@@ -265,16 +263,14 @@ const TooltipInfo = ({ player, moveRef }) => {
       duration: 0,
     },
   });
-  const [overlays, setOverlays] = useState([]);
-  const [point, setPoint] = useState([0, 0]);
+  const [overlay, setOverlay] = useState(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEventHandler(player, "tooltipinfo", (e) => {
-    setOverlays(e.data.overlays);
-    setPoint(e.data.point);
+    setOverlay(e.data.overlays.length ? e.data.overlays[0] : overlay);
   });
   useEventHandler(player, "mouseenter", () => setDisplay(true));
-  useEventHandler(player, "mouseleave", () => setDisplay(false));
+  //useEventHandler(player, "mouseleave", () => setDisplay(false));
 
   useEffect(() => {
     moveRef.current = ({ values }) => {
@@ -282,31 +278,27 @@ const TooltipInfo = ({ player, moveRef }) => {
     };
   });
 
-  let more;
-  let limitedOverlays = overlays ? overlays : [];
-  if (limitedOverlays.length > 3) {
-    more = limitedOverlays.length - 3;
-    limitedOverlays = limitedOverlays.slice(0, 3);
-  }
-
   const showProps = useSpring({
     display: display ? "block" : "none",
-    opacity: display && limitedOverlays.length ? 1 : 0,
+    opacity: display && overlay ? 1 : 0,
   });
+  const Component = overlay ? OVERLAY_INFO[overlay.type] : null;
 
-  return limitedOverlays.length
+  return Component
     ? ReactDOM.createPortal(
         <TooltipDiv
           style={{ ...coordsProps, ...showProps, position: "fixed" }}
           ref={ref}
         >
-          <ContentHeader key="header">
-            {point[0]}, {point[1]}
-          </ContentHeader>
-          {limitedOverlays.map((o, i) => {
-            const Component = OVERLAY_INFO[o.type];
-            return <Component info={o} key={i} />;
-          })}
+          <ContentHeader key="header">{overlay.field}</ContentHeader>
+          <TagInfo
+            key={"tags"}
+            field={overlay.field}
+            id={overlay.id}
+            color={overlay.color}
+          />
+
+          <Component key={"attrs"} info={overlay} />
         </TooltipDiv>,
         document.body
       )
@@ -406,6 +398,7 @@ export default ({
       });
       player.updateOverlayOptions(overlayOptions);
       if (!thumbnail) {
+        player.updateOptions({ selectedObjects });
         player.updateOverlay(overlay);
       }
     }
@@ -419,13 +412,8 @@ export default ({
     fps,
     overlayOptions,
     defaultTargets,
+    selectedObjects,
   ]);
-
-  useEffect(() => {
-    if (player && selectedObjects) {
-      player.updateOptions({ selectedObjects });
-    }
-  }, [player, selectedObjects]);
 
   useEffect(() => {
     return () => player && !keep && player.destroy();

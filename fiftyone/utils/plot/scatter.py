@@ -5,6 +5,7 @@ Scatterplot utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import itertools
 import logging
 
 import numpy as np
@@ -15,6 +16,7 @@ from mpl_toolkits.mplot3d import Axes3D  # pylint: disable=unused-import
 
 import eta.core.utils as etau
 
+import fiftyone.core.labels as fol
 from fiftyone.core.view import DatasetView
 
 from .selector import PointSelector
@@ -25,7 +27,8 @@ logger = logging.getLogger(__name__)
 
 def scatterplot(
     points,
-    samples,
+    samples=None,
+    label_field=None,
     field=None,
     labels=None,
     classes=None,
@@ -34,6 +37,7 @@ def scatterplot(
     marker_size=None,
     cmap=None,
     ax=None,
+    ax_equal=False,
     figsize=None,
     style="seaborn-ticks",
     block=False,
@@ -44,10 +48,41 @@ def scatterplot(
     This method supports 2D or 3D visualizations, but interactive point
     selection is only aviailable in 2D.
 
+    The currently selected points are given a visually distinctive style, and
+    you can modify your selection by either clicking on individual points or
+    drawing a lasso around new points.
+
+    When the shift key is pressed, new selections are added to the selected
+    set, or subtracted if the new selection is a subset of the current
+    selection.
+
+    If you provide a ``samples`` object, then you can access the IDs of the
+    samples/labels corresponding to the points via the returned
+    :class:`fiftyone.utils.plot.selector.PointSelector` object. If you specify
+    a ``label_field``, then ``points`` are assumed to correspond to the labels
+    in this field. Otherwise, ``points`` are assumed to correspond to the
+    samples themselves.
+
+    In addition, you can provide a ``session`` object to link the currently
+    selected points to a FiftyOne App instance:
+
+    -   Sample selection: If no ``label_field`` is provided, then when points
+        are selected, a view containing the corresponding samples will be
+        loaded in the App
+
+    -   Label selection: If ``label_field`` is provided, then when points are
+        selected, a view containing the corresponding labels in
+        ``label_field`` will be loaded in the App
+
+    The ``field``, ``labels``, and ``classes`` parameters allow you to define
+    a coloring for the points.
+
     Args:
-        points: a ``num_samples x num_dims`` array of points
+        points: a ``num_points x num_dims`` array of points
         samples: the :class:`fiftyone.core.collections.SampleCollection` whose
-            sample locations are being visualized
+            data is being visualized
+        label_field (None): a :class:`fiftyone.core.labels.Label` field
+            containing the labels corresponding to ``points``
         field (None): a sample field or ``embedded.field.name`` to use to
             color the points. Can be numeric or strings
         labels (None): a list of numeric or string values to use to color
@@ -61,6 +96,7 @@ def scatterplot(
         marker_size (None): the marker size to use
         cmap (None): a colormap recognized by ``matplotlib``
         ax (None): an optional matplotlib axis to plot in
+        ax_equal (False): whether to set ``axis("equal")``
         figsize (None): an optional ``(width, height)`` for the figure, in
             inches
         style ("seaborn-ticks"): a style to use for the plot
@@ -77,11 +113,25 @@ def scatterplot(
     if num_dims not in {2, 3}:
         raise ValueError("This method only supports 2D or 3D points")
 
-    if session is not None and num_dims != 2:
-        logger.warning("Interactive selection is only supported in 2D")
+    if session is not None:
+        if samples is None:
+            raise ValueError(
+                "You must provide `samples` in order to link to a session"
+            )
+
+        if num_dims != 2:
+            logger.warning("Interactive selection is only supported in 2D")
 
     if field is not None:
+        if samples is None:
+            raise ValueError(
+                "You must provide `samples` in order to extract field values"
+            )
+
         labels = samples.values(field)
+
+    if labels and isinstance(labels[0], (list, tuple)):
+        labels = list(itertools.chain.from_iterable(labels))
 
     if labels is not None:
         if len(labels) != len(points):
@@ -104,16 +154,42 @@ def scatterplot(
         )
 
     if num_dims != 2:
+        if ax_equal:
+            collection.axes.axis("equal")
+
         plt.tight_layout()
         plt.show(block=block)
         return None
 
-    sample_ids = _get_sample_ids(samples)
+    sample_ids = None
+    label_ids = None
+    if samples is not None:
+        if label_field is not None:
+            label_ids = _get_label_ids(samples, label_field)
+            if len(label_ids) != len(points):
+                raise ValueError(
+                    "Number of label IDs (%d) does not match number of "
+                    "points (%d). You may have missing data/labels that you "
+                    "need to omit from your view before visualizing"
+                    % (len(label_ids), len(points))
+                )
+
+            if inds is not None:
+                label_ids = label_ids[inds]
+        else:
+            sample_ids = _get_sample_ids(samples)
+            if len(sample_ids) != len(points):
+                raise ValueError(
+                    "Number of sample IDs (%d) does not match number of "
+                    "points (%d). You may have missing data/labels that you "
+                    "need to omit from your view before visualizing"
+                    % (len(sample_ids), len(points))
+                )
+
+            if inds is not None:
+                sample_ids = sample_ids[inds]
 
     if session is not None:
-        if inds is not None:
-            sample_ids = sample_ids[inds]
-
         if isinstance(samples, DatasetView):
             session.view = samples
         else:
@@ -121,8 +197,16 @@ def scatterplot(
 
     with plt.style.context(style):
         selector = PointSelector(
-            collection, session=session, sample_ids=sample_ids, buttons=buttons
+            collection,
+            session=session,
+            sample_ids=sample_ids,
+            label_ids=label_ids,
+            label_field=label_field,
+            buttons=buttons,
         )
+
+    if ax_equal:
+        selector.ax.axis("equal")
 
     plt.show(block=block)
 
@@ -232,3 +316,13 @@ def _parse_data(points, labels, classes):
 
 def _get_sample_ids(samples):
     return np.array([str(_id) for _id in samples._get_sample_ids()])
+
+
+def _get_label_ids(samples, label_field):
+    label_type, id_path = samples._get_label_field_path(label_field, "_id")
+
+    label_ids = samples.values(id_path)
+    if issubclass(label_type, fol._LABEL_LIST_FIELDS):
+        label_ids = itertools.chain.from_iterable(label_ids)
+
+    return np.array([str(_id) for _id in label_ids])
