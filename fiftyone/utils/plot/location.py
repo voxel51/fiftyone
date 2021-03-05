@@ -9,12 +9,12 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 
-import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone.core.utils as fou
 
 from .scatter import scatterplot
+from .utils import BUTTON_ICONS, load_icon
 
 
 def location_scatterplot(
@@ -67,7 +67,8 @@ def location_scatterplot(
 
         ax.figure.canvas.draw_idle()
 
-    buttons = {"map": _onclick}
+    map_icon = load_icon(BUTTON_ICONS["map"])
+    buttons = [("map", map_icon, _onclick)]
 
     return scatterplot(locations, ax=ax, buttons=buttons, **kwargs)
 
