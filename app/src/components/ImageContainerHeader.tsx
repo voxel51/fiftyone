@@ -119,7 +119,7 @@ const TagItems = () => {
   return (
     <TagItemsDiv>
       <StringInput
-        placeholder={`${invert ? "- remove tag from" : "+ add tag to"} ${
+        placeholder={`${invert ? "- untag" : "+ tag"} ${
           isInSelection
             ? `${selectedSamples.size} selected sample${
                 selectedSamples.size > 1 ? "s" : ""
