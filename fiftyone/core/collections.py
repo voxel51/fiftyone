@@ -1501,9 +1501,9 @@ class SampleCollection(object):
 
         Args:
             labels (None): a list of dicts specifying the labels to exclude
-            ids (None): a list of IDs of the labels to exclude
-            tags (None): a list of tags of labels to exclude
-            fields (None): a list of fields from which to exclude labels
+            ids (None): an ID or iterable of IDs of the labels to exclude
+            tags (None): a tag or iterable of tags of labels to exclude
+            fields (None): a field or iterable of fields from which to exclude
         """
         return self._add_view_stage(
             fos.ExcludeLabels(labels=labels, ids=ids, tags=tags, fields=fields)
@@ -2759,9 +2759,9 @@ class SampleCollection(object):
 
         Args:
             labels (None): a list of dicts specifying the labels to select
-            ids (None): a list of IDs of the labels to select
-            tags (None): a list of tags of labels to select
-            fields (None): a list of fields from which to select labels
+            ids (None): an ID or iterable of IDs of the labels to select
+            tags (None): a tag or iterable of tags of labels to select
+            fields (None): a field or iterable of fields from which to select
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
