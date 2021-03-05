@@ -291,7 +291,7 @@ export const labelSampleModalCounts = selectorFamily<Counts | null, string>({
       }, {});
     }
     return labels.reduce((acc, path) => {
-      if (!(path in acc)) acc[path] = 0;
+      if (!(path in acc)) acc[path] = null;
       acc[path] += sampleCountResolver(sample[path], types[path]);
       return acc;
     }, {});
@@ -336,8 +336,11 @@ export const filteredLabelSampleModalCounts = selectorFamily<
     }
 
     return labels.reduce((acc, path) => {
-      if (!(path in acc)) acc[path] = 0;
-      acc[path] += sampleCountResolver(sample[path], types[path]);
+      const result = sampleCountResolver(sample[path], types[path]);
+      if (result > 0) {
+        acc[path] = !acc[path] ? 0 : acc[path];
+        acc[path] += result;
+      }
       return acc;
     }, {});
   },
