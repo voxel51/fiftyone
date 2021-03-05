@@ -118,6 +118,10 @@ class PointSelector(object):
         self._selected_label_ids = None
         self._canvas.mpl_connect("close_event", lambda e: self._disconnect())
 
+        # Hides the pesky `Figure X` header visible in notebooks
+        # https://github.com/matplotlib/ipympl/issues/134
+        self._canvas.header_visible = False
+
         self._connected = False
         self._session = None
         self._lock_session = False
@@ -555,7 +559,10 @@ class PointSelector(object):
             view = self._init_view
 
         with fou.SetAttributes(self, _lock_session=True):
-            self._session.view = view
+            # Temporarily set `session._auto` to False since this update should
+            # not spawn a new App instance in notebook contexts
+            with fou.SetAttributes(self._session, _auto=False):
+                self._session.view = view
 
     def _prep_collection(self):
         # @todo why is this necessary? We do this JIT here because it seems
