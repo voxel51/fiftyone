@@ -93,7 +93,7 @@ const computeCoordinates = (
 const ContentItemDiv = styled.div`
   margin: 0;
   padding: 0;
-  max-width: 12rem;
+  max-width: 10rem;
   word-wrap: break-word;
 `;
 
@@ -120,7 +120,7 @@ const ContentItem = ({
   style?: object;
 }) => {
   return (
-    <ContentItemDiv>
+    <ContentItemDiv style={style}>
       <ContentValue>
         {(() => {
           switch (typeof value) {
@@ -137,7 +137,7 @@ const ContentItem = ({
           }
         })()}
       </ContentValue>
-      <ContentName style={style}>{name}</ContentName>
+      <ContentName>{name}</ContentName>
     </ContentItemDiv>
   );
 };
@@ -174,7 +174,8 @@ const AttrInfo = ({ field, id }) => {
   let etc = null;
 
   if (attrs.length > 4) {
-    etc = `and ${entries.length - 4} more attribues`;
+    const extra = entries.length - 4;
+    etc = `and ${extra} more attribue${extra > 1 ? "s" : ""}`;
     entries = entries.slice(0, 4);
   }
 
@@ -183,12 +184,7 @@ const AttrInfo = ({ field, id }) => {
       {entries.map(([name, value]) => (
         <ContentItem key={name} name={name} value={value} />
       ))}
-      {etc && (
-        <>
-          <br />
-          {etc}
-        </>
-      )}
+      {etc && <>{etc}</>}
     </>
   );
 };
@@ -246,6 +242,7 @@ const TagInfo = ({ field, id, color }) => {
         key={"tags"}
         name={"tags"}
         value={tags.length ? tags.join(", ") : "No tags"}
+        style={{ maxWidth: "20rem" }}
       />
     </TagBlock>
   );
@@ -271,10 +268,10 @@ const TooltipInfo = ({ player, moveRef }) => {
   const ref = useRef<HTMLDivElement>(null);
 
   useEventHandler(player, "tooltipinfo", (e) => {
-    setOverlay(e.data.overlays.length ? e.data.overlays[0] : null);
+    setOverlay(e.data.overlays.length ? e.data.overlays[0] : overlay);
   });
   useEventHandler(player, "mouseenter", () => setDisplay(true));
-  useEventHandler(player, "mouseleave", () => setDisplay(false));
+  //useEventHandler(player, "mouseleave", () => setDisplay(false));
 
   useEffect(() => {
     moveRef.current = ({ values }) => {
