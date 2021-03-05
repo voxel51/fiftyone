@@ -2941,7 +2941,7 @@ def _load_dataset(name):
     if is_video:
         for frame_field in dataset_doc.frame_fields:
             subfield = (
-                etau.get_class(frame_field.subfield)
+                etau.get_class(frame_field.subfield)()
                 if frame_field.subfield
                 else None
             )
@@ -2963,7 +2963,7 @@ def _load_dataset(name):
             continue
 
         subfield = (
-            etau.get_class(sample_field.subfield)
+            etau.get_class(sample_field.subfield)()
             if sample_field.subfield
             else None
         )
