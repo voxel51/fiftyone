@@ -176,7 +176,7 @@ const AttrInfo = ({ field, id }) => {
   if (attrs.length > 4) {
     const extra = entries.length - 4;
     etc = `and ${extra} more attribue${extra > 1 ? "s" : ""}`;
-    entries = entries.slice(0, 4);
+    // entries = entries.slice(0, 4);
   }
 
   return (
@@ -184,7 +184,6 @@ const AttrInfo = ({ field, id }) => {
       {entries.map(([name, value]) => (
         <ContentItem key={name} name={name} value={value} />
       ))}
-      {etc && <>{etc}</>}
     </>
   );
 };
