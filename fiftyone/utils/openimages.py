@@ -11,6 +11,7 @@ import random
 import cv2
 
 import eta.core.image as etai
+import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
@@ -34,14 +35,17 @@ def load_open_images_v6(
     name=None,
     max_samples=None,
     dataset_dir=None,
+    image_ids=None,
+    image_ids_file=None,
 ):
     """Utility to download the `Open Images v6 dataset <https://storage.googleapis.com/openimages/web/index.html>`_ with annotations.
 
     Args:
         label_types (None): a list of types of labels to load. Values are
             ``("detections", "classifications", "relationships", "segmentations")``. 
-            By default, all labels are loaded. Not all samples will include all
-            label types
+            By default, all labels are loaded but not every sample will include
+            each label type. If ``max_samples`` and ``label_types`` are both
+            specified, then every sample will include the specified label types.
         classes (None): a list of strings specifying required classes to load. Only samples
             containing at least one instance of a specified classes will be
             downloaded. See available classes with `get_classes()`
@@ -58,10 +62,27 @@ def load_open_images_v6(
             all samples are imported
         dataset_dir (None): the directory to which the dataset will be
             downloaded
-   
+        image_ids (None): list of specific image ids to load either in the form
+            of ``<split>/<image-id>`` or just a list of ``<image-id>``.
+            ``image_ids`` takes precedence if both ``image_ids`` and
+            ``image_ids_file`` are provided.
+        image_ids_file (None): path to a newline separated text, json, or csv file containing a
+            list of image ids to load either in the form
+            of ``<split>/<image-id>`` or just a list of ``<image-id>``.
+            ``image_ids`` takes precedence if both ``image_ids`` and
+            ``image_ids_file`` are provided.
+
     Returns:
         a :class:`fiftyone.core.dataset.Dataset`
     """
+    if max_samples and label_types:
+        # Only samples with every specified label type will be loaded
+        guarantee_all_types = True
+    else:
+        # Samples may not contain multiple label types, but will contain at
+        # least one
+        guarantee_all_types = False
+
     label_types = _parse_label_types(label_types)
     splits = _parse_splits(split, splits)
 
@@ -70,6 +91,10 @@ def load_open_images_v6(
 
     if not dataset_dir:
         dataset_dir = os.path.join(fo.config.dataset_zoo_dir, "open-images-v6")
+
+    split_image_ids = _parse_image_ids(
+        image_ids, image_ids_file, label_types, splits, dataset_dir
+    )
 
     dataset = fod.Dataset(name)
 
@@ -134,6 +159,8 @@ def load_open_images_v6(
         dataset = _load_open_images_split(
             dataset,
             label_types,
+            guarantee_all_types,
+            split_image_ids,
             classes_map,
             attrs_map,
             oi_classes,
@@ -210,6 +237,7 @@ def get_segmentation_classes(dataset_dir=None, classes_map=None):
 
     with open(seg_cls_txt, "r") as f:
         seg_classes_oi = [l.rstrip("\n") for l in f]
+
     seg_classes = [classes_map[c] for c in seg_classes_oi]
 
     return sorted(seg_classes)
@@ -243,14 +271,95 @@ def _get_classes_map(dataset_dir=None):
 
 
 def _parse_csv(filename):
-    with open(filename) as f:
-        reader = csv.reader(f, delimiter=",")
+    with open(filename, "r", newline="") as csvfile:
+        dialect = csv.Sniffer().sniff(csvfile.read(10240))
+        csvfile.seek(0)
+        if dialect.delimiter in _CSV_DELIMITERS:
+            reader = csv.reader(csvfile, dialect)
+        else:
+            reader = csv.reader(csvfile)
         data = [row for row in reader]
+
     return data
 
 
+def _parse_image_ids(
+    image_ids, image_ids_file, label_types, splits, dataset_dir
+):
+    if not image_ids and not image_ids_file:
+        if label_types:
+            # No specific image IDs were given, load all images we can from the
+            # given labels later
+            return {s: None for s in splits}
+        else:
+            # No IDs were provided and no labels are being loaded
+            # Load all images
+            _split_image_ids = {}
+            for split in splits:
+                _split_image_ids[split] = _download_image_ids(
+                    dataset_dir, split
+                )
+            _split_image_ids[_UNSPECIFIED_SPLIT] = []
+            return _split_image_ids
+
+    _split_image_ids = {s: [] for s in splits}
+    _split_image_ids[_UNSPECIFIED_SPLIT] = []
+
+    if image_ids:
+        # image_ids has precedence over image_ids_file
+        _image_ids = image_ids
+
+    else:
+        ext = os.path.splitext(image_ids_file)[-1]
+        if ext == ".txt":
+            with open(image_ids_file, "r") as f:
+                _image_ids = [i for i in f.readlines()]
+
+        elif ext == ".json":
+            _image_ids = etas.load_json(image_ids_file)
+
+        elif ext == ".csv":
+            _image_ids = _parse_csv(image_ids_file)
+
+            if isinstance(_image_ids[0], list):
+                # Flatten list
+                _image_ids = [i for lst in _image_ids for i in lst]
+
+        else:
+            raise ValueError(
+                "Image ID file extension must be .txt, .csv, or .json, found %s"
+                % ext
+            )
+
+    # Parse each provided ID into the given split
+    for i in _image_ids:
+        if "/" in i:
+            split, image_id = i.split("/")
+            if split not in _DEFAULT_SPLITS:
+                raise ValueError(
+                    "Split %s does not exist. Options are (train, test, validation)"
+                    % split
+                )
+        else:
+            split = _UNSPECIFIED_SPLIT
+            image_id = i
+
+        if split not in _split_image_ids:
+            continue
+
+        image_id = image_id.rstrip().replace(".jpg", "")
+        _split_image_ids[split].append(image_id)
+
+    for split in splits:
+        _split_image_ids = _verify_image_ids(
+            _split_image_ids, dataset_dir, split
+        )
+
+    return _split_image_ids
+
+
 def _parse_label_types(label_types):
-    if not label_types:
+    if label_types is None:
         label_types = _DEFAULT_LABEL_TYPES
 
     _label_types = []
@@ -266,6 +375,21 @@ def _parse_label_types(label_types):
     return _label_types
 
 
+def _parse_splits(split, splits):
+    _splits = []
+
+    if split:
+        _splits.append(split)
+
+    if splits:
+        _splits.extend(list(splits))
+
+    if not _splits:
+        _splits = _DEFAULT_SPLITS
+
+    return list(set(_splits))
+
+
 def _verify_field(dataset, field_name, label_class):
     if field_name not in dataset.get_field_schema():
         dataset.add_sample_field(
@@ -274,6 +398,36 @@ def _verify_field(dataset, field_name, label_class):
             embedded_doc_type=label_class,
         )
     return dataset
+
+
+def _verify_image_ids(_split_image_ids, dataset_dir, split):
+    # Download all image IDs, verify given IDs, sort unspecified IDs into current split
+    split_ids = _download_image_ids(dataset_dir, split)
+
+    # Need to verify image IDs are in correct split
+    selected_split_ids = _split_image_ids[split]
+    sid_set = set(split_ids)
+    ssid_set = set(selected_split_ids)
+    verified_split_ids = sid_set & ssid_set
+    incorrect_split_ids = ssid_set - verified_split_ids
+    if incorrect_split_ids:
+        print(
+            "The following user-specified image IDs do not exist in split %s: %s"
+            % (split, ",".join(list(incorrect_split_ids)))
+        )
+
+    # Find any unspecified IDs in this split and add them
+    unspecified_ids = _split_image_ids[_UNSPECIFIED_SPLIT]
+    uids_set = set(unspecified_ids)
+    unspecified_ids_in_split = sid_set & uids_set
+    uids_set -= unspecified_ids_in_split
+
+    _split_image_ids[split] = list(verified_split_ids) + list(
+        unspecified_ids_in_split
+    )
+    _split_image_ids[_UNSPECIFIED_SPLIT] = list(uids_set)
+
+    return _split_image_ids
 
 
 def _get_label_data(
@@ -327,6 +481,8 @@ def _get_label_data(
 def _load_open_images_split(
     dataset,
     label_types,
+    guarantee_all_types,
+    split_image_ids,
     classes_map,
     attrs_map,
     oi_classes,
@@ -338,7 +494,8 @@ def _load_open_images_split(
     max_samples,
 ):
 
-    valid_ids = None
+    ids_all_labels = None
+    ids_any_labels = set()
 
     if "detections" in label_types:
         dataset = _verify_field(dataset, "detections", fol.Detections)
@@ -353,10 +510,12 @@ def _load_open_images_split(
             oi_classes,
         )
 
-        if valid_ids is None:
-            valid_ids = det_ids
+        if ids_all_labels is None:
+            ids_all_labels = det_ids
         else:
-            valid_ids = valid_ids & det_ids
+            ids_all_labels = ids_all_labels & det_ids
+
+        ids_any_labels = ids_any_labels | det_ids
 
     if "classifications" in label_types:
         dataset = _verify_field(
@@ -376,10 +535,12 @@ def _load_open_images_split(
             oi_classes,
         )
 
-        if valid_ids is None:
-            valid_ids = lab_ids
+        if ids_all_labels is None:
+            ids_all_labels = lab_ids
         else:
-            valid_ids = valid_ids & lab_ids
+            ids_all_labels = ids_all_labels & lab_ids
+
+        ids_any_labels = ids_any_labels | lab_ids
 
     if "relationships" in label_types:
         dataset = _verify_field(dataset, "relationships", fol.Detections)
@@ -395,10 +556,12 @@ def _load_open_images_split(
             oi_attrs=oi_attrs,
         )
 
-        if valid_ids is None:
-            valid_ids = rel_ids
+        if ids_all_labels is None:
+            ids_all_labels = rel_ids
         else:
-            valid_ids = valid_ids & rel_ids
+            ids_all_labels = ids_all_labels & rel_ids
+
+        ids_any_labels = ids_any_labels | rel_ids
 
     if "segmentations" in label_types:
         seg_classes = get_segmentation_classes(dataset_dir, classes_map)
@@ -427,10 +590,23 @@ def _load_open_images_split(
             id_ind=1,
         )
 
-        if valid_ids is None:
-            valid_ids = seg_ids
+        if ids_all_labels is None:
+            ids_all_labels = seg_ids
         else:
-            valid_ids = valid_ids & seg_ids
+            ids_all_labels = ids_all_labels & seg_ids
+
+        ids_any_labels = ids_any_labels | seg_ids
+
+    valid_ids = split_image_ids[split]
+
+    if valid_ids is None:
+        # No IDs specified, load all IDs relevant to given classes
+        if guarantee_all_types:
+            # When providing specific labels to load and max_samples, only load
+            # samples that include all labels
+            valid_ids = ids_all_labels
+        else:
+            valid_ids = ids_any_labels
 
     valid_ids = list(valid_ids)
     if max_samples:
@@ -438,7 +614,7 @@ def _load_open_images_split(
         valid_ids = valid_ids[:max_samples]
 
     if not valid_ids:
-        raise ValueError("No samples found")
+        return dataset
 
     bucket = boto3.resource(
         "s3",
@@ -453,9 +629,8 @@ def _load_open_images_split(
                 dataset_dir, split, "images", "%s.jpg" % image_id
             )
             if not os.path.isfile(fp):
-                bucket.download_file(
-                    os.path.join(split, "%s.jpg" % image_id), fp
-                )
+                fp_download = os.path.join(split, "%s.jpg" % image_id)
+                bucket.download_file(fp_download, fp)
 
     if "segmentations" in label_types:
         print("Downloading relevant segmentation masks")
@@ -708,19 +883,14 @@ def _download_if_necessary(filename, source, is_zip=False):
         etau.extract_zip(filename, outdir=unzipped_dir, delete_zip=True)
 
 
-def _parse_splits(split, splits):
-    if split is None and splits is None:
-        return None
-
-    _splits = []
-
-    if split:
-        _splits.append(split)
-
-    if splits:
-        _splits.extend(list(splits))
-
-    return _splits
+def _download_image_ids(dataset_dir, split):
+    file_link = _ANNOTATION_DOWNLOAD_LINKS[split]["image_ids"]
+    csv_filename = os.path.basename(file_link)
+    csv_filepath = os.path.join(dataset_dir, split, csv_filename)
+    _download_if_necessary(csv_filepath, file_link)
+    csv_data = _parse_csv(csv_filepath)
+    split_ids = [i[0].rstrip() for i in csv_data[1:]]
+    return split_ids
 
 
 _ANNOTATION_DOWNLOAD_LINKS = {
@@ -755,6 +925,7 @@ _ANNOTATION_DOWNLOAD_LINKS = {
         },
         "relationships": "https://storage.googleapis.com/openimages/v6/oidv6-test-annotations-vrd.csv",
         "labels": "https://storage.googleapis.com/openimages/v5/test-annotations-human-imagelabels-boxable.csv",
+        "image_ids": "https://storage.googleapis.com/openimages/2018_04/test/test-images-with-rotation.csv",
     },
     "train": {
         "boxes": "https://storage.googleapis.com/openimages/v6/oidv6-train-annotations-bbox.csv",
@@ -781,6 +952,7 @@ _ANNOTATION_DOWNLOAD_LINKS = {
         },
         "relationships": "https://storage.googleapis.com/openimages/v6/oidv6-train-annotations-vrd.csv",
         "labels": "https://storage.googleapis.com/openimages/v5/train-annotations-human-imagelabels-boxable.csv",
+        "image_ids": "https://storage.googleapis.com/openimages/2018_04/train/train-images-boxable-with-rotation.csv",
     },
     "validation": {
         "boxes": "https://storage.googleapis.com/openimages/v5/validation-annotations-bbox.csv",
@@ -807,10 +979,13 @@ _ANNOTATION_DOWNLOAD_LINKS = {
         },
         "relationships": "https://storage.googleapis.com/openimages/v6/oidv6-validation-annotations-vrd.csv",
         "labels": "https://storage.googleapis.com/openimages/v5/validation-annotations-human-imagelabels-boxable.csv",
+        "image_ids": "https://storage.googleapis.com/openimages/2018_04/validation/validation-images-with-rotation.csv",
     },
 }
 
 _BUCKET_NAME = "open-images-dataset"
+
+_CSV_DELIMITERS = [",", ";", ":", " ", "\t", "\n"]
 
 _DEFAULT_LABEL_TYPES = [
     "detections",
@@ -818,3 +993,11 @@ _DEFAULT_LABEL_TYPES = [
     "relationships",
     "segmentations",
 ]
+
+_DEFAULT_SPLITS = [
+    "train",
+    "test",
+    "validation",
+]
+
+_UNSPECIFIED_SPLIT = "unspecified"
