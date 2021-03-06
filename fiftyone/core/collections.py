@@ -428,7 +428,9 @@ class SampleCollection(object):
                     field_name not in frame_schema
                     and field_name not in default_frame_fields
                 ):
-                    raise ValueError("Field '%s' does not exist" % field_name)
+                    raise ValueError(
+                        "Frame field '%s' does not exist" % field_name
+                    )
 
     def validate_field_type(
         self, field_name, ftype, embedded_doc_type=None, subfield=None
@@ -806,6 +808,9 @@ class SampleCollection(object):
 
         ops = []
         for _id, _elem_ids, _values in zip(ids, elem_ids, values):
+            if not _values:
+                continue
+
             for _elem_id, value in zip(_elem_ids, _values):
                 if _elem_id is None:
                     raise ValueError(
@@ -4629,6 +4634,9 @@ def _get_field_with_type(label_fields, label_cls):
 
 
 def _parse_field_name(sample_collection, field_name, auto_unwind):
+    if field_name == "id":
+        return "_id", False, [], []
+
     field_name, is_frame_field = sample_collection._handle_frame_field(
         field_name
     )

@@ -704,14 +704,14 @@ class DatasetView(foc.SampleCollection):
         excluded_fields = set()
 
         for stage in self._stages:
-            _selected_fields = stage.get_selected_fields(frames=frames)
+            _selected_fields = stage.get_selected_fields(self, frames=frames)
             if _selected_fields:
                 if selected_fields is None:
                     selected_fields = set(_selected_fields)
                 else:
                     selected_fields.intersection_update(_selected_fields)
 
-            _excluded_fields = stage.get_excluded_fields(frames=frames)
+            _excluded_fields = stage.get_excluded_fields(self, frames=frames)
             if _excluded_fields:
                 excluded_fields.update(_excluded_fields)
 

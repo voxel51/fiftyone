@@ -491,13 +491,20 @@ class Session(foc.HasClient):
         self.state.selected = []
 
     @_update_state()
-    def select_samples(self, sample_ids):
-        """Selects the samples with the given IDs in the App.
+    def select_samples(self, ids=None, tags=None):
+        """Selects the specified samples in the current view in the App,
 
         Args:
-            sample_ids: an iterable of sample IDs
+            ids (None): an ID or iterable of IDs of samples to select
+            tags (None): a tag or iterable of tags of samples to select
         """
-        self.state.selected = list(sample_ids)
+        if tags is not None:
+            ids = self._collection.match_tags(tags).values("id")
+
+        if ids is None:
+            ids = []
+
+        self.state.selected = list(ids)
 
     @property
     def selected_labels(self):
@@ -520,7 +527,7 @@ class Session(foc.HasClient):
 
     @_update_state()
     def select_labels(self, labels=None, ids=None, tags=None, fields=None):
-        """Selects the specified labels in the App.
+        """Selects the specified labels in the current view in the App.
 
         This method uses the same interface as
         :meth:`fiftyone.core.collections.SampleCollection.select_labels` to
