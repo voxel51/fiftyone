@@ -808,7 +808,7 @@ class SampleCollection(object):
 
         ops = []
         for _id, _elem_ids, _values in zip(ids, elem_ids, values):
-            if not _values:
+            if not _elem_ids:
                 continue
 
             for _elem_id, value in zip(_elem_ids, _values):
