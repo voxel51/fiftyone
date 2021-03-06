@@ -181,7 +181,7 @@ def delete_non_persistent_datasets(verbose=False):
         verbose (False): whether to log the names of deleted datasets
     """
     for name in list_datasets():
-        dataset = load_dataset(name)
+        dataset = Dataset(name, _create=False, _migrate=False)
         if not dataset.persistent and not dataset.deleted:
             dataset.delete()
             if verbose:
@@ -212,7 +212,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     """
 
     def __init__(
-        self, name=None, persistent=False, overwrite=False, _create=True
+        self,
+        name=None,
+        persistent=False,
+        overwrite=False,
+        _create=True,
+        _migrate=True,
     ):
         if name is None and _create:
             name = get_default_dataset_name()
@@ -231,7 +236,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self._doc,
                 self._sample_doc_cls,
                 self._frame_doc_cls,
-            ) = _load_dataset(name)
+            ) = _load_dataset(name, migrate=_migrate)
 
         self._deleted = False
 
@@ -2916,8 +2921,9 @@ def _create_frame_document_cls(frame_collection_name):
     return type(frame_collection_name, (foo.DatasetFrameSampleDocument,), {})
 
 
-def _load_dataset(name):
-    fomi.migrate_dataset_if_necessary(name, destination=focn.VERSION)
+def _load_dataset(name, migrate=True):
+    if migrate:
+        fomi.migrate_dataset_if_necessary(name, destination=focn.VERSION)
 
     try:
         # pylint: disable=no-member
