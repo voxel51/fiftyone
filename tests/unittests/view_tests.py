@@ -12,10 +12,6 @@ import fiftyone as fo
 from fiftyone import ViewField as F
 import fiftyone.core.sample as fos
 import fiftyone.core.stages as fosg
-from fiftyone.core.odm.sample import (
-    DatasetSampleDocument,
-    default_sample_fields,
-)
 
 from decorators import drop_datasets
 
@@ -971,11 +967,7 @@ class ViewStageTests(unittest.TestCase):
         for sample in self.dataset.select_fields():
             self.assertSetEqual(
                 sample.selected_field_names,
-                set(
-                    default_sample_fields(
-                        DatasetSampleDocument, include_private=True
-                    )
-                ),
+                set(fos.get_default_sample_fields(include_private=True)),
             )
             self.assertIsNone(sample.excluded_field_names)
             sample.filepath

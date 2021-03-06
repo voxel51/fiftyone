@@ -25,15 +25,12 @@ import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.evaluation as foev
 import fiftyone.core.fields as fof
+import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
-from fiftyone.core.odm.frame import DatasetFrameSampleDocument
-from fiftyone.core.odm.sample import (
-    DatasetSampleDocument,
-    default_sample_fields,
-)
+import fiftyone.core.sample as fosa
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
 
@@ -393,13 +390,12 @@ class SampleCollection(object):
 
         if fields:
             schema = self.get_field_schema(include_private=True)
+
             default_fields = set(
-                default_sample_fields(
-                    DatasetSampleDocument,
-                    include_private=True,
-                    include_id=True,
-                )
+                fosa.get_default_sample_fields(include_private=True)
+                + ("id", "_id")
             )
+
             for field in fields:
                 # We only validate that the root field exists
                 field_name = field.split(".", 1)[0]
@@ -414,13 +410,12 @@ class SampleCollection(object):
 
         if frame_fields:
             frame_schema = self.get_frame_field_schema(include_private=True)
+
             default_frame_fields = set(
-                default_sample_fields(
-                    DatasetFrameSampleDocument,
-                    include_private=True,
-                    include_id=True,
-                )
+                fofr.get_default_frame_fields(include_private=True)
+                + ("id", "_id")
             )
+
             for field in frame_fields:
                 # We only validate that the root field exists
                 field_name = field.split(".", 2)[1]  # removes "frames."

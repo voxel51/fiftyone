@@ -513,7 +513,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @classmethod
     def get_default_sample_fields(cls, include_private=False):
-        """Get the default fields present on any :class:`Dataset`.
+        """Gets the default fields present on all :class:`Dataset` instances.
 
         Args:
             include_private (False): whether or not to return fields prefixed
@@ -522,13 +522,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a tuple of field names
         """
-        return foos.default_sample_fields(
-            foo.DatasetSampleDocument, include_private=include_private
-        )
+        return fos.get_default_sample_fields(include_private=include_private)
 
     @classmethod
     def get_default_frame_fields(cls, include_private=False):
-        """Get the default fields present on any :class:`Frame`.
+        """Gets the default fields present on all
+        :class:`fiftyone.core.frame.Frame` instances.
 
         Args:
             include_private (False): whether or not to return fields prefixed
@@ -537,9 +536,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a tuple of field names
         """
-        return foos.default_sample_fields(
-            foo.DatasetFrameSampleDocument, include_private=include_private
-        )
+        return fofr.get_default_frame_fields(include_private=include_private)
 
     def get_field_schema(
         self, ftype=None, embedded_doc_type=None, include_private=False

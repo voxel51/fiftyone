@@ -35,7 +35,7 @@ from .frame import (
     DatasetFrameSampleDocument,
     NoDatasetFrameSampleDocument,
 )
-from .mixins import default_sample_fields
+from .mixins import get_default_fields
 from .sample import (
     DatasetSampleDocument,
     NoDatasetSampleDocument,

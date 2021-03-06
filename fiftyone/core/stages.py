@@ -21,13 +21,11 @@ import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 from fiftyone.core.expressions import VALUE
 import fiftyone.core.fields as fof
+import fiftyone.core.frame as fofr
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.sample as fos
 from fiftyone.core.odm.document import MongoEngineBaseDocument
-from fiftyone.core.odm.frame import DatasetFrameSampleDocument
-from fiftyone.core.odm.mixins import default_sample_fields
-from fiftyone.core.odm.sample import DatasetSampleDocument
 
 
 class ViewStage(object):
@@ -339,8 +337,8 @@ class ExcludeFields(ViewStage):
 
     def get_excluded_fields(self, sample_collection, frames=False):
         if frames:
-            default_fields = default_sample_fields(
-                DatasetFrameSampleDocument, include_private=True
+            default_fields = fofr.get_default_frame_fields(
+                include_private=True, include_id=True
             )
 
             excluded_fields = []
@@ -352,8 +350,8 @@ class ExcludeFields(ViewStage):
                 if is_frame_field:
                     excluded_fields.append(field_name)
         else:
-            default_fields = default_sample_fields(
-                DatasetSampleDocument, include_private=True
+            default_fields = fos.get_default_sample_fields(
+                include_private=True, include_id=True
             )
             if sample_collection.media_type == fom.VIDEO:
                 default_fields += ("frames",)
@@ -369,7 +367,7 @@ class ExcludeFields(ViewStage):
                     "Cannot exclude private field '%s'" % field_name
                 )
 
-            if field_name in default_fields:
+            if field_name == "id" or field_name in default_fields:
                 ftype = "frame field" if frames else "field"
                 raise ValueError(
                     "Cannot exclude default %s '%s'" % (ftype, field_name)
@@ -2586,8 +2584,8 @@ class SelectFields(ViewStage):
 
     def get_selected_fields(self, sample_collection, frames=False):
         if frames:
-            default_fields = default_sample_fields(
-                DatasetFrameSampleDocument, include_private=True
+            default_fields = fofr.get_default_frame_fields(
+                include_private=True, include_id=True
             )
 
             selected_fields = []
@@ -2599,8 +2597,8 @@ class SelectFields(ViewStage):
                 if is_frame_field:
                     selected_fields.append(field_name)
         else:
-            default_fields = default_sample_fields(
-                DatasetSampleDocument, include_private=True
+            default_fields = fos.get_default_sample_fields(
+                include_private=True, include_id=True
             )
             if sample_collection.media_type == fom.VIDEO:
                 default_fields += ("frames",)
