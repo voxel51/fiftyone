@@ -3075,7 +3075,7 @@ import routine:
         """
         classes = info.pop("classes", None)
         if isinstance(classes, dict):
-            # Classes may already exist, so update rather than setting
+            # Classes may already exist, so update rather than set
             dataset.classes.update(classes)
         elif isinstance(classes, list):
             dataset.default_classes = classes
@@ -3086,7 +3086,7 @@ import routine:
 
         mask_targets = info.pop("mask_targets", None)
         if mask_targets:
-            # Mask targets may already exist, so update rather than setting
+            # Mask targets may already exist, so update rather than set
             dataset.mask_targets.update(dataset._parse_mask_targets(mask_targets))
 
         default_mask_targets = info.pop("default_mask_targets", None)
