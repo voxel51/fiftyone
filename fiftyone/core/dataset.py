@@ -515,7 +515,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             "Media type:     %s" % self.media_type,
             "Num samples:    %d" % aggs[0],
             "Persistent:     %s" % self.persistent,
-            "Info:           %s" % _info_repr.repr(self.info),
             "Tags:           %s" % aggs[1],
             "Sample fields:",
             self._to_fields_str(self.get_field_schema()),
@@ -2831,24 +2830,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _reload(self):
         self._doc.reload()
-
-
-class _DatasetInfoRepr(reprlib.Repr):
-    def repr_BaseList(self, obj, level):
-        return self.repr_list(obj, level)
-
-    def repr_BaseDict(self, obj, level):
-        return self.repr_dict(obj, level)
-
-
-_info_repr = _DatasetInfoRepr()
-_info_repr.maxlevel = 2
-_info_repr.maxdict = 3
-_info_repr.maxlist = 3
-_info_repr.maxtuple = 3
-_info_repr.maxset = 3
-_info_repr.maxstring = 63
-_info_repr.maxother = 63
 
 
 def _get_random_characters(n):

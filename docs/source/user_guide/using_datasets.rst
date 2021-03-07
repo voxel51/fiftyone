@@ -483,7 +483,6 @@ printing it:
     Media type:     image
     Num samples:    0
     Persistent:     False
-    Info:           {}
     Tags:           []
     Sample fields:
         media_type: fiftyone.core.fields.StringField
@@ -527,7 +526,6 @@ updated to reflect the new field:
     Media type:     image
     Num samples:    0
     Persistent:     False
-    Info:           {}
     Tags:           []
     Sample fields:
         media_type:    fiftyone.core.fields.StringField

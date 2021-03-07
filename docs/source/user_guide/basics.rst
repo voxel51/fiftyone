@@ -77,7 +77,6 @@ obtain a desired subset of the samples.
     Media type:     None
     Num samples:    0
     Persistent:     False
-    Info:           {}
     Tags:           []
     Sample fields:
         media_type: fiftyone.core.fields.StringField
@@ -189,7 +188,6 @@ schema and thus accessible on all other samples in the dataset.
     Media type:     image
     Num samples:    1
     Persistent:     False
-    Info:           {}
     Tags:           []
     Sample fields:
         filepath:  fiftyone.core.fields.StringField
