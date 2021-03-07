@@ -17,6 +17,7 @@ import fiftyone.core.aggregations as foa
 import fiftyone.core.evaluation as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
+import fiftyone.core.utils as fou
 
 
 def evaluate_classifications(
@@ -76,9 +77,13 @@ def evaluate_classifications(
     config = _parse_config(config, pred_field, gt_field, method, **kwargs)
     eval_method = config.build()
     eval_method.register_run(samples, eval_key)
-    return eval_method.evaluate_samples(
+
+    results = eval_method.evaluate_samples(
         samples, eval_key=eval_key, classes=classes, missing=missing,
     )
+    eval_method.save_run_esults(samples, eval_key, results)
+
+    return results
 
 
 class ClassificationEvaluationConfig(foe.EvaluationMethodConfig):
@@ -468,7 +473,7 @@ class ClassificationResults(foe.EvaluationResults):
     Args:
         ytrue: a list of ground truth labels
         ypred: a list of predicted labels
-        confs: a list of confidences for the predictions
+        confs (None): an optional list of confidences for the predictions
         weights (None): an optional list of sample weights
         classes (None): the list of possible classes. If not provided, the
             observed ground truth/predicted labels are used
@@ -477,18 +482,23 @@ class ClassificationResults(foe.EvaluationResults):
     """
 
     def __init__(
-        self, ytrue, ypred, confs, weights=None, classes=None, missing=None
+        self,
+        ytrue,
+        ypred,
+        confs=None,
+        weights=None,
+        classes=None,
+        missing=None,
     ):
         if missing is None:
             missing = "(none)"
 
         ytrue, ypred, classes = _parse_labels(ytrue, ypred, classes, missing)
-
-        self.ytrue = ytrue
-        self.ypred = ypred
-        self.confs = confs
-        self.weights = weights
-        self.classes = classes
+        self.ytrue = np.asarray(ytrue)
+        self.ypred = np.asarray(ypred)
+        self.confs = np.asarray(confs) if confs is not None else None
+        self.weights = np.asarray(weights) if weights is not None else None
+        self.classes = np.asarray(classes)
         self.missing = missing
 
     def _get_labels(self, classes, include_missing=False):
@@ -724,6 +734,24 @@ class ClassificationResults(foe.EvaluationResults):
         plt.show(block=block)
         return ax if return_ax else None
 
+    @classmethod
+    def _from_dict(cls, d, samples, **kwargs):
+        ytrue = d["ytrue"]
+        ypred = d["ypred"]
+        confs = d.get("confs", None)
+        weights = d.get("weights", None)
+        classes = d.get("classes", None)
+        missing = d.get("missing", None)
+        return cls(
+            ytrue,
+            ypred,
+            confs=confs,
+            weights=weights,
+            classes=classes,
+            missing=missing,
+            **kwargs,
+        )
+
 
 class BinaryClassificationResults(ClassificationResults):
     """Class that stores the results of a binary classification evaluation.
@@ -743,7 +771,7 @@ class BinaryClassificationResults(ClassificationResults):
         super().__init__(
             ytrue,
             ypred,
-            confs,
+            confs=confs,
             weights=weights,
             classes=classes,
             missing=classes[0],
