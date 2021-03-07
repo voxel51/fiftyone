@@ -120,30 +120,16 @@ class DatasetView(foc.SampleCollection):
         self._dataset.info = info
 
     @property
-    def default_mask_targets(self):
-        """The default mask targets of the underlying dataset.
+    def classes(self):
+        """The classes of the underlying dataset.
 
-        See :meth:`fiftyone.core.dataset.Dataset.default_mask_targets` for more
-        information.
+        See :meth:`fiftyone.core.dataset.Dataset.classes` for more information.
         """
-        return self._dataset.default_mask_targets
+        return self._dataset.classes
 
-    @default_mask_targets.setter
-    def default_mask_targets(self, targets):
-        self._dataset.default_mask_targets = targets
-
-    @property
-    def mask_targets(self):
-        """The mask targets of the underlying dataset.
-
-        See :meth:`fiftyone.core.dataset.Dataset.mask_targets` for more
-        information.
-        """
-        return self._dataset.mask_targets
-
-    @mask_targets.setter
-    def mask_targets(self, targets):
-        self._dataset.mask_targets = targets
+    @classes.setter
+    def classes(self, classes):
+        self._dataset.classes = classes
 
     @property
     def default_classes(self):
@@ -159,16 +145,30 @@ class DatasetView(foc.SampleCollection):
         self._dataset.default_classes = classes
 
     @property
-    def classes(self):
-        """The classes of the underlying dataset.
+    def mask_targets(self):
+        """The mask targets of the underlying dataset.
 
-        See :meth:`fiftyone.core.dataset.Dataset.classes` for more information.
+        See :meth:`fiftyone.core.dataset.Dataset.mask_targets` for more
+        information.
         """
-        return self._dataset.classes
+        return self._dataset.mask_targets
 
-    @classes.setter
-    def classes(self, classes):
-        self._dataset.classes = classes
+    @mask_targets.setter
+    def mask_targets(self, targets):
+        self._dataset.mask_targets = targets
+
+    @property
+    def default_mask_targets(self):
+        """The default mask targets of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.default_mask_targets` for more
+        information.
+        """
+        return self._dataset.default_mask_targets
+
+    @default_mask_targets.setter
+    def default_mask_targets(self, targets):
+        self._dataset.default_mask_targets = targets
 
     @property
     def stages(self):

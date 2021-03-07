@@ -377,16 +377,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.save()
 
     @property
-    def default_mask_targets(self):
-        """A dict defining a default mapping between pixel values and label
-        strings for the segmentation masks of all
-        :class:`fiftyone.core.labels.Segmentation` fields of this dataset that
-        do not have customized mask targets defined in :meth:`mask_targets`.
-
-        .. note::
-
-            The pixel value `0` is a reserved "background" class that is
-            rendered as invislble in the App.
+    def classes(self):
+        """A dict mapping field names to list of class label strings for the
+        corresponding fields of the dataset.
 
         Examples::
 
@@ -394,18 +387,47 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             dataset = fo.Dataset()
 
-            # Set default mask targets
-            dataset.default_mask_targets = {1: "cat", 2: "dog"}
+            # Set classes for the `ground_truth` and `predictions` fields
+            dataset.classes = {
+                "ground_truth": ["cat", "dog"]
+                "predictions": ["cat", "dog", "other"]
+            }
 
-            # Edit the default mask targets
-            dataset.default_mask_targets[255] = "other"
+            # Edit an existing classes list
+            dataset.classes["ground_truth"].append("other")
             dataset.save()  # must save after edits
         """
-        return self._doc.default_mask_targets
+        return self._doc.classes
 
-    @default_mask_targets.setter
-    def default_mask_targets(self, targets):
-        self._doc.default_mask_targets = targets
+    @classes.setter
+    def classes(self, classes):
+        self._doc.classes = classes
+        self.save()
+
+    @property
+    def default_classes(self):
+        """A list of class label strings for all
+        :class:`fiftyone.core.labels.Label` fields of this dataset that do not
+        have customized classes defined in :meth:`classes`.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set default classes
+            dataset.default_classes = ["cat", "dog"]
+
+            # Edit the default classes
+            dataset.default_classes.append("rabbit")
+            dataset.save()  # must save after edits
+        """
+        return self._doc.default_classes
+
+    @default_classes.setter
+    def default_classes(self, classes):
+        self._doc.default_classes = classes
         self.save()
 
     @property
@@ -443,10 +465,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self.save()
 
     @property
-    def default_classes(self):
-        """A list of class label strings for all
-        :class:`fiftyone.core.labels.Label` fields of this dataset that do not
-        have customized classes defined in :meth:`classes`.
+    def default_mask_targets(self):
+        """A dict defining a default mapping between pixel values and label
+        strings for the segmentation masks of all
+        :class:`fiftyone.core.labels.Segmentation` fields of this dataset that
+        do not have customized mask targets defined in :meth:`mask_targets`.
+
+        .. note::
+
+            The pixel value `0` is a reserved "background" class that is
+            rendered as invislble in the App.
 
         Examples::
 
@@ -454,46 +482,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             dataset = fo.Dataset()
 
-            # Set default classes
-            dataset.default_classes = ["cat", "dog"]
+            # Set default mask targets
+            dataset.default_mask_targets = {1: "cat", 2: "dog"}
 
-            # Edit the default classes
-            dataset.default_classes.append("rabbit")
+            # Edit the default mask targets
+            dataset.default_mask_targets[255] = "other"
             dataset.save()  # must save after edits
         """
-        return self._doc.default_classes
+        return self._doc.default_mask_targets
 
-    @default_classes.setter
-    def default_classes(self, classes):
-        self._doc.default_classes = classes
-        self.save()
-
-    @property
-    def classes(self):
-        """A dict mapping field names to list of class label strings for the
-        corresponding fields of the dataset.
-
-        Examples::
-
-            import fiftyone as fo
-
-            dataset = fo.Dataset()
-
-            # Set classes for the `ground_truth` and `predictions` fields
-            dataset.classes = {
-                "ground_truth": ["cat", "dog"]
-                "predictions": ["cat", "dog", "other"]
-            }
-
-            # Edit an existing classes list
-            dataset.classes["ground_truth"].append("other")
-            dataset.save()  # must save after edits
-        """
-        return self._doc.classes
-
-    @classes.setter
-    def classes(self, classes):
-        self._doc.classes = classes
+    @default_mask_targets.setter
+    def default_mask_targets(self, targets):
+        self._doc.default_mask_targets = targets
         self.save()
 
     @property

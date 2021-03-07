@@ -11,17 +11,17 @@ def up(db, dataset_name):
     match_d = {"name": dataset_name}
     dataset_dict = db.datasets.find_one(match_d)
 
-    if "default_classes" not in dataset_dict:
-        dataset_dict["default_classes"] = []
-
     if "classes" not in dataset_dict:
         dataset_dict["classes"] = {}
 
-    if "default_mask_targets" not in dataset_dict:
-        dataset_dict["default_mask_targets"] = {}
+    if "default_classes" not in dataset_dict:
+        dataset_dict["default_classes"] = []
 
     if "mask_targets" not in dataset_dict:
         dataset_dict["mask_targets"] = {}
+
+    if "default_mask_targets" not in dataset_dict:
+        dataset_dict["default_mask_targets"] = {}
 
     evaluations = dataset_dict.get("evaluations", {})
     for run_doc in evaluations.values():
@@ -40,11 +40,11 @@ def down(db, dataset_name):
     match_d = {"name": dataset_name}
     dataset_dict = db.datasets.find_one(match_d)
 
-    dataset_dict.pop("default_classes", None)
     dataset_dict.pop("classes", None)
+    dataset_dict.pop("default_classes", None)
 
-    dataset_dict.pop("default_mask_targets", None)
     dataset_dict.pop("mask_targets", None)
+    dataset_dict.pop("default_mask_targets", None)
 
     evaluations = dataset_dict.get("evaluations", {})
     for run_doc in evaluations.values():

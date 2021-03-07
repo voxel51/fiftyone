@@ -129,34 +129,16 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement info")
 
     @property
-    def default_mask_targets(self):
-        """The default mask targets of the underlying dataset.
+    def classes(self):
+        """The classes of the underlying dataset.
 
-        See :meth:`fiftyone.core.dataset.Dataset.default_mask_targets` for more
-        information.
+        See :meth:`fiftyone.core.dataset.Dataset.classes` for more information.
         """
-        raise NotImplementedError(
-            "Subclass must implement default_mask_targets"
-        )
+        raise NotImplementedError("Subclass must implement classes")
 
-    @default_mask_targets.setter
-    def default_mask_targets(self, targets):
-        raise NotImplementedError(
-            "Subclass must implement default_mask_targets"
-        )
-
-    @property
-    def mask_targets(self):
-        """The mask targets of the underlying dataset.
-
-        See :meth:`fiftyone.core.dataset.Dataset.mask_targets` for more
-        information.
-        """
-        raise NotImplementedError("Subclass must implement mask_targets")
-
-    @mask_targets.setter
-    def mask_targets(self, targets):
-        raise NotImplementedError("Subclass must implement mask_targets")
+    @classes.setter
+    def classes(self, classes):
+        raise NotImplementedError("Subclass must implement classes")
 
     @property
     def default_classes(self):
@@ -172,16 +154,34 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement default_classes")
 
     @property
-    def classes(self):
-        """The classes of the underlying dataset.
+    def mask_targets(self):
+        """The mask targets of the underlying dataset.
 
-        See :meth:`fiftyone.core.dataset.Dataset.classes` for more information.
+        See :meth:`fiftyone.core.dataset.Dataset.mask_targets` for more
+        information.
         """
-        raise NotImplementedError("Subclass must implement classes")
+        raise NotImplementedError("Subclass must implement mask_targets")
 
-    @classes.setter
-    def classes(self, classes):
-        raise NotImplementedError("Subclass must implement classes")
+    @mask_targets.setter
+    def mask_targets(self, targets):
+        raise NotImplementedError("Subclass must implement mask_targets")
+
+    @property
+    def default_mask_targets(self):
+        """The default mask targets of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.default_mask_targets` for more
+        information.
+        """
+        raise NotImplementedError(
+            "Subclass must implement default_mask_targets"
+        )
+
+    @default_mask_targets.setter
+    def default_mask_targets(self, targets):
+        raise NotImplementedError(
+            "Subclass must implement default_mask_targets"
+        )
 
     def summary(self):
         """Returns a string summary of the collection.
@@ -1205,10 +1205,8 @@ class SampleCollection(object):
                 instances
             eval_key (None): an evaluation key to use to refer to this
                 evaluation
-            mask_targets (None): a dict mapping mask values to labels. May
-                contain a subset of the possible classes if you wish to
-                evaluate a subset of the semantic classes. If not provided,
-                mask targets are loaded from
+            mask_targets (None): a dict mapping mask values to labels. If not
+                provided, mask targets are loaded from
                 :meth:`fiftyone.core.dataset.Dataset.mask_targets` or
                 :meth:`fiftyone.core.dataset.Dataset.default_mask_targets` if
                 possible, or else the observed pixel values are used

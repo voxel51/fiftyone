@@ -9,14 +9,13 @@ import eta.core.utils as etau
 
 from fiftyone.core.fields import (
     BooleanField,
+    ClassesField,
     DictField,
     EmbeddedDocumentField,
     EmbeddedDocumentListField,
     IntDictField,
     StringField,
-    ClassesField,
     TargetsField,
-    MultiTargetsField,
 )
 
 from .document import Document, EmbeddedDocument
@@ -112,9 +111,9 @@ class DatasetDocument(Document):
     sample_fields = EmbeddedDocumentListField(
         document_type=SampleFieldDocument
     )
-    default_mask_targets = TargetsField()
-    mask_targets = MultiTargetsField()
     frame_fields = EmbeddedDocumentListField(document_type=SampleFieldDocument)
-    default_classes = ClassesField()
     classes = DictField(ClassesField())
+    default_classes = ClassesField()
+    mask_targets = DictField(TargetsField())
+    default_mask_targets = TargetsField()
     version = StringField(required=True, null=True)

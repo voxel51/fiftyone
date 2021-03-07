@@ -180,8 +180,8 @@ class DictField(mongoengine.DictField, Field):
             self.error("Dict fields must have string keys")
 
         if self.field is not None:
-            for classes in value.values():
-                self.field.validate(classes)
+            for _value in value.values():
+                self.field.validate(_value)
 
 
 class IntDictField(DictField):
@@ -209,47 +209,14 @@ class IntDictField(DictField):
 
     def validate(self, value):
         if not isinstance(value, dict):
-            self.error("Int dict field values must be dicts")
+            self.error("Value must be a dict")
 
         if not all(map(lambda k: isinstance(k, six.integer_types), value)):
             self.error("Int dict fields must have integer keys")
 
         if self.field is not None:
-            for val in value.values():
-                self.field.validate(val)
-
-
-class TargetsField(IntDictField):
-    """An :class:`DictField` that stores mapping between integer keys and
-    string targets.
-
-    If this field is not set, its default value is ``{}``.
-    """
-
-    def __init__(self, **kwargs):
-        super().__init__(field=StringField(), **kwargs)
-
-
-class MultiTargetsField(DictField):
-    """A :class:`DictField` whose values are :class:`TargetsField` instance.
-
-    This field can store multiple target dicts, keyed by a string.
-
-    If this field is not set, its default value is ``{}``.
-    """
-
-    def __init__(self, **kwargs):
-        super().__init__(field=TargetsField(), **kwargs)
-
-    def validate(self, value):
-        if not isinstance(value, dict):
-            self.error("Multi target field values must be dicts")
-
-        if not all(map(lambda k: etau.is_str(k), value)):
-            self.error("Multi target fields must have string keys")
-
-        for targets in value.values():
-            self.field.validate(targets)
+            for _value in value.values():
+                self.field.validate(_value)
 
 
 class KeypointsField(ListField):
@@ -366,6 +333,17 @@ class ArrayField(mongoengine.fields.BinaryField, Field):
 
 class ClassesField(ListField):
     """A :class:`ListField` that stores class label strings.
+
+    If this field is not set, its default value is ``{}``.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(field=StringField(), **kwargs)
+
+
+class TargetsField(IntDictField):
+    """An :class:`DictField` that stores mapping between integer keys and
+    string targets.
 
     If this field is not set, its default value is ``{}``.
     """
