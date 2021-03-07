@@ -168,8 +168,6 @@ def _update_state(auto_show=False):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
             result = func(self, *args, **kwargs)
-            self.state.datasets = fod.list_datasets()
-            self.state.refresh = not self.state.refresh
             if auto_show:
                 self._auto_show()
 
@@ -291,7 +289,6 @@ class Session(foc.HasClient):
         if state.dataset is not None:
             state.dataset._reload()
 
-        state.datasets = fod.list_datasets()
         state.active_handle = self._auto_show()
         self._update_state(state)
 
@@ -470,7 +467,7 @@ class Session(foc.HasClient):
 
     @_update_state()
     def refresh(self):
-        """Refreshes the App, reloading the current dataset/view."""
+        """Refreshes the current App window."""
         pass
 
     @property
@@ -685,6 +682,7 @@ class Session(foc.HasClient):
 
         webbrowser.open(self.url, new=2)
 
+    @_update_state()
     def show(self, height=None):
         """Opens the App in the output of the current notebook cell.
 
@@ -694,7 +692,6 @@ class Session(foc.HasClient):
             height (None): a height, in pixels, for the App
         """
         self._show(height)
-        self._update_state()
 
     def no_show(self):
         """Returns a context manager that temporarily prevents new App
@@ -824,7 +821,6 @@ class Session(foc.HasClient):
 
         import IPython.display
 
-        self.state.datasets = fod.list_datasets()
         handle = IPython.display.display(display_id=True)
         uuid = str(uuid4())
         self.state.active_handle = uuid
@@ -838,8 +834,15 @@ class Session(foc.HasClient):
         return uuid
 
     def _update_state(self, state=None):
-        # see fiftyone.core.client if you would like to understand this
-        self.state = state or self.state
+        if state is None:
+            # pylint: disable=access-member-before-definition
+            state = self.state
+
+        state.datasets = fod.list_datasets()
+        state.refresh = not state.refresh
+
+        # See ``fiftyone.core.client`` to understand this
+        self.state = state
 
 
 def _display(session, handle, uuid, port=None, height=None, update=False):
