@@ -115,6 +115,31 @@ class DatasetView(foc.SampleCollection):
         return self._dataset.info
 
     @property
+    def default_classes(self):
+        """The default classes of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.default_classes` for more
+        information.
+        """
+        return self._dataset.default_classes
+
+    @default_classes.setter
+    def default_classes(self, classes):
+        self._dataset.default_classes = classes
+
+    @property
+    def classes(self):
+        """The classes of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.classes` for more information.
+        """
+        return self._dataset.classes
+
+    @classes.setter
+    def classes(self, classes):
+        self._dataset.classes = classes
+
+    @property
     def stages(self):
         """The list of :class:`fiftyone.core.stages.ViewStage` instances in
         this view's pipeline.

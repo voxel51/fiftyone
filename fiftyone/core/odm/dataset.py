@@ -7,13 +7,17 @@ Documents that track datasets and their sample schemas in the database.
 """
 from mongoengine import (
     BooleanField,
-    DictField,
     EmbeddedDocumentField,
     EmbeddedDocumentListField,
     StringField,
 )
 
 import eta.core.utils as etau
+
+from fiftyone.core.fields import (
+    ClassesField,
+    DictField,
+)
 
 from .document import Document, EmbeddedDocument
 from .runs import RunDocument
@@ -113,4 +117,6 @@ class DatasetDocument(Document):
         document_type=SampleFieldDocument
     )
     frame_fields = EmbeddedDocumentListField(document_type=SampleFieldDocument)
+    default_classes = ClassesField()
+    classes = DictField(ClassesField())
     version = StringField(required=True, null=True)

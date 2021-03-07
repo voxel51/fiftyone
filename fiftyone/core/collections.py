@@ -123,6 +123,31 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement info")
 
+    @property
+    def default_classes(self):
+        """The default classes of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.default_classes` for more
+        information.
+        """
+        raise NotImplementedError("Subclass must implement default_classes")
+
+    @default_classes.setter
+    def default_classes(self, classes):
+        raise NotImplementedError("Subclass must implement default_classes")
+
+    @property
+    def classes(self):
+        """The classes of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.classes` for more information.
+        """
+        raise NotImplementedError("Subclass must implement classes")
+
+    @classes.setter
+    def classes(self, classes):
+        raise NotImplementedError("Subclass must implement classes")
+
     def summary(self):
         """Returns a string summary of the collection.
 
@@ -978,9 +1003,12 @@ class SampleCollection(object):
                 instances
             eval_key (None): an evaluation key to use to refer to this
                 evaluation
-            classes (None): the list of possible classes. If not provided, the
-                observed ground truth/predicted labels are used for results
-                purposes
+            classes (None): the list of possible classes. If not provided,
+                classes are loaded from
+                :meth:`fiftyone.core.dataset.Dataset.classes` or
+                :meth:`fiftyone.core.dataset.Dataset.default_classes` if
+                possible, or else the observed ground truth/predicted labels
+                are used
             missing (None): a missing label string. Any None-valued labels
                 are given this label for results purposes
             method ("simple"): a string specifying the evaluation method to use.
@@ -1059,8 +1087,12 @@ class SampleCollection(object):
                 ground truth :class:`fiftyone.core.labels.Detections`
             eval_key (None): an evaluation key to use to refer to this
                 evaluation
-            classes (None): the list of possible classes. If not provided, the
-                observed ground truth/predicted labels are used
+            classes (None): the list of possible classes. If not provided,
+                classes are loaded from
+                :meth:`fiftyone.core.dataset.Dataset.classes` or
+                :meth:`fiftyone.core.dataset.Dataset.default_classes` if
+                possible, or else the observed ground truth/predicted labels
+                are used
             missing (None): a missing label string. Any unmatched objects are
                 given this label for evaluation purposes
             method ("coco"): a string specifying the evaluation method to use.

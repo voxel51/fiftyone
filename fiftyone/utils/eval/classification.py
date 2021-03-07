@@ -58,9 +58,11 @@ def evaluate_classifications(
         gt_field ("ground_truth"): the name of the field containing the ground
             truth :class:`fiftyone.core.labels.Classification` instances
         eval_key (None): an evaluation key to use to refer to this evaluation
-        classes (None): the list of possible classes. If not provided, the
-            observed ground truth/predicted labels are used for results
-            purposes
+        classes (None): the list of possible classes. If not provided, classes
+            are loaded from :meth:`fiftyone.core.dataset.Dataset.classes` or
+            :meth:`fiftyone.core.dataset.Dataset.default_classes` if
+            possible, or else the observed ground truth/predicted labels are
+            used
         missing (None): a missing label string. Any None-valued labels are
             given this label for results purposes
         method ("simple"): a string specifying the evaluation method to use.
@@ -74,12 +76,20 @@ def evaluate_classifications(
     Returns:
         a :class:`ClassificationResults`
     """
+    if classes is None:
+        if pred_field in samples.classes:
+            classes = samples.classes[pred_field]
+        elif gt_field in samples.classes:
+            classes = samples.classes[gt_field]
+        elif samples.default_classes:
+            classes = samples.default_classes
+
     config = _parse_config(config, pred_field, gt_field, method, **kwargs)
     eval_method = config.build()
     eval_method.register_run(samples, eval_key)
 
     results = eval_method.evaluate_samples(
-        samples, eval_key=eval_key, classes=classes, missing=missing,
+        samples, eval_key=eval_key, classes=classes, missing=missing
     )
     eval_method.save_run_esults(samples, eval_key, results)
 

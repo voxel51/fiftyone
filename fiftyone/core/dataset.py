@@ -361,6 +361,60 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.info = info
 
     @property
+    def default_classes(self):
+        """A list of class label strings for all
+        :class:`fiftyone.core.labels.Label` fields of this dataset that do not
+        have customized classes defined in :meth:`classes`.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set default classes
+            dataset.default_classes = ["cat", "dog"]
+
+            # Edit the default classes
+            dataset.default_classes.append("rabbit")
+            dataset.save()  # must save after edits
+        """
+        return self._doc.default_classes
+
+    @default_classes.setter
+    def default_classes(self, classes):
+        self._doc.default_classes = classes
+        self.save()
+
+    @property
+    def classes(self):
+        """A dict mapping field names to list of class label strings for the
+        corresponding fields of the dataset.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set classes for the `ground_truth` and `predictions` fields
+            dataset.classes = {
+                "ground_truth": ["cat", "dog"]
+                "predictions": ["cat", "dog", "other"]
+            }
+
+            # Edit an existing classes list
+            dataset.classes["ground_truth"].append("other")
+            dataset.save()  # must save after edits
+        """
+        return self._doc.classes
+
+    @classes.setter
+    def classes(self, classes):
+        self._doc.classes = classes
+        self.save()
+
+    @property
     def deleted(self):
         """Whether the dataset is deleted."""
         return self._deleted

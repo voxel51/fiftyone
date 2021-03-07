@@ -226,6 +226,17 @@ class DictField(mongoengine.DictField, Field):
 
         return etau.get_class_name(self)
 
+    def validate(self, value):
+        if not isinstance(value, dict):
+            self.error("Value must be a dict")
+
+        if not all(map(lambda k: etau.is_str(k), value)):
+            self.error("Dict fields must have string keys")
+
+        if self.field is not None:
+            for classes in value.values():
+                self.field.validate(classes)
+
 
 class VectorField(mongoengine.fields.BinaryField, Field):
     """A one-dimensional array field.
@@ -284,6 +295,16 @@ class ArrayField(mongoengine.fields.BinaryField, Field):
     def validate(self, value):
         if not isinstance(value, (np.ndarray, Binary)):
             self.error("Only numpy arrays may be used in an array field")
+
+
+class ClassesField(ListField):
+    """A :class:`ListField` that stores class label strings.
+
+    If this field is not set, its default value is ``{}``.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(field=StringField(), **kwargs)
 
 
 class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
