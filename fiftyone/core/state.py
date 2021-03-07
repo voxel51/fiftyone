@@ -30,42 +30,45 @@ class StateDescription(etas.Serializable):
     a corresponding :class:`fiftyone.core.session.Session`.
 
     Args:
-        close (False): whether to close the App
-        connected (False): whether the session is connected to an App
+        datasets (None): the list of available datasets
         dataset (None): the current :class:`fiftyone.core.dataset.Dataset`
+        view (None): the current :class:`fiftyone.core.view.DatasetView`
+        filters (None): a dictionary of currently active App filters
+        connected (False): whether the session is connected to an App
+        active_handle (None): the UUID of the currently active App. Only
+            applicable in notebook contexts
         selected (None): the list of currently selected samples
         selected_labels (None): the list of currently selected labels
-        view (None): the current :class:`fiftyone.core.view.DatasetView`
         config (None): an optional :class:`fiftyone.core.config.AppConfig`
         refresh (False): a boolean toggle for forcing an App refresh
+        close (False): whether to close the App
     """
 
     def __init__(
         self,
-        active_handle=None,
-        close=False,
-        connected=False,
-        dataset=None,
         datasets=None,
+        dataset=None,
+        view=None,
+        filters=None,
+        connected=False,
+        active_handle=None,
         selected=None,
         selected_labels=None,
-        view=None,
-        filters={},
         config=None,
         refresh=False,
+        close=False,
     ):
-        self.config = config or fo.app_config.copy()
-        self.close = close
-        self.connect = connected
+        self.datasets = datasets or fod.list_datasets()
         self.dataset = dataset
         self.view = view
+        self.filters = filters or {}
+        self.connected = connected
+        self.active_handle = active_handle
         self.selected = selected or []
         self.selected_labels = selected_labels or []
-        self.filters = filters
-        self.datasets = datasets or fod.list_datasets()
-        self.active_handle = active_handle
+        self.config = config or fo.app_config.copy()
         self.refresh = refresh
-        super().__init__()
+        self.close = close
 
     def serialize(self, reflective=False):
         """Serializes the state into a dictionary.
@@ -95,27 +98,16 @@ class StateDescription(etas.Serializable):
         )
 
     @classmethod
-    def from_dict(cls, d, with_config=None, **kwargs):
+    def from_dict(cls, d, with_config=None):
         """Constructs a :class:`StateDescription` from a JSON dictionary.
 
         Args:
             d: a JSON dictionary
-            with_config: an existing app config to attach and apply settings to
+            with_config: an existing App config to attach and apply settings to
 
         Returns:
             :class:`StateDescription`
         """
-        config = with_config or fo.app_config.copy()
-        foc._set_settings(config, d.get("config", {}))
-
-        active_handle = d.get("active_handle", None)
-        close = d.get("close", False)
-        connected = d.get("connected", False)
-        filters = d.get("filters", {})
-        selected = d.get("selected", [])
-        selected_labels = d.get("selected_labels", [])
-        refresh = d.get("refresh", False)
-
         dataset = d.get("dataset", None)
         if dataset is not None:
             dataset = fod.load_dataset(dataset.get("name"))
@@ -126,39 +118,75 @@ class StateDescription(etas.Serializable):
         else:
             view = None
 
+        filters = d.get("filters", {})
+        connected = d.get("connected", False)
+        active_handle = d.get("active_handle", None)
+        selected = d.get("selected", [])
+        selected_labels = d.get("selected_labels", [])
+
+        config = with_config or fo.app_config.copy()
+        foc._set_settings(config, d.get("config", {}))
+
+        close = d.get("close", False)
+        refresh = d.get("refresh", False)
+
         return cls(
-            active_handle=active_handle,
-            config=config,
-            close=close,
-            connected=connected,
             dataset=dataset,
-            selected=selected,
-            selected_labels=selected_labels,
             view=view,
             filters=filters,
+            connected=connected,
+            active_handle=active_handle,
+            selected=selected,
+            selected_labels=selected_labels,
+            config=config,
             refresh=refresh,
-            **kwargs
+            close=close,
         )
 
 
 class DatasetStatistics(object):
-    """Encapsulates the aggregation statistics required by the App's dataset
-    view.
+    """Class that encapsulates the aggregation statistics required by the App's
+    dataset view.
+
+    Args:
+        view: a :class:`fiftyone.core.view.DatasetView`
     """
 
     def __init__(self, view):
-        schemas = [("", view.get_field_schema())]
+        aggs, exists_aggs = self._build(view)
+        self._aggregations = aggs
+        self._exists_aggregations = exists_aggs
+
+    @property
+    def aggregations(self):
+        """The list of :class:`fiftyone.core.aggregations.Aggregation`
+        instances to run to compute the stats for the view.
+        """
+        return self._aggregations
+
+    @property
+    def exists_aggregations(self):
+        """The list of :class:`fiftyone.core.aggregations.Aggregation`
+        instances that
+        """
+        return self._exists_aggregations
+
+    def _build(self, view):
         aggregations = [foa.Count()]
+        exists_aggregations = []
+
+        default_fields = fosa.get_default_sample_fields()
+
+        schemas = [("", view.get_field_schema())]
         if view.media_type == fom.VIDEO:
             schemas.append(
                 (view._FRAMES_PREFIX, view.get_frame_field_schema())
             )
             aggregations.extend([foa.Count("frames")])
 
-        default_fields = fosa.get_default_sample_fields()
         aggregations.append(foa.CountValues("tags"))
-        is_none = (~(fo.ViewField().exists())).if_else(True, None)
-        none_aggregations = []
+
+        exists_expr = (~(fo.ViewField().exists())).if_else(True, None)
         for prefix, schema in schemas:
             for field_name, field in schema.items():
                 if field_name in default_fields or (
@@ -185,17 +213,17 @@ class DatasetStatistics(object):
                             foa.Bounds(confidence_path),
                         ]
                     )
-                    none_aggregations.append(
-                        foa.Count(label_path, expr=is_none)
+                    exists_aggregations.append(
+                        foa.Count(label_path, expr=exists_expr)
                     )
-                    none_aggregations.append(
-                        foa.Count(confidence_path, expr=is_none)
+                    exists_aggregations.append(
+                        foa.Count(confidence_path, expr=exists_expr)
                     )
                 else:
                     aggregations.append(foa.Count(field_name))
                     aggregations.append(foa.Count(field_name))
-                    none_aggregations.append(
-                        foa.Count(field_name, expr=is_none)
+                    exists_aggregations.append(
+                        foa.Count(field_name, expr=exists_expr)
                     )
 
                     if _meets_type(field, (fof.IntField, fof.FloatField)):
@@ -203,12 +231,7 @@ class DatasetStatistics(object):
                     elif _meets_type(field, fof.StringField):
                         aggregations.append(foa.Distinct(field_name))
 
-        self._aggregations = aggregations + none_aggregations
-        self._none_len = len(none_aggregations)
-
-    @property
-    def aggregations(self):
-        return self._aggregations
+        return aggregations, exists_aggregations
 
 
 def _meets_type(field, t):
