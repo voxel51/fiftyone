@@ -289,8 +289,9 @@ class Session(foc.HasClient):
         if state.dataset is not None:
             state.dataset._reload()
 
+        state.datasets = fod.list_datasets()
         state.active_handle = self._auto_show()
-        self._update_state(state)
+        self.state = state
 
         if self._remote:
             if self._context != focx._NONE:
@@ -833,16 +834,12 @@ class Session(foc.HasClient):
         _display(self, handle, uuid, self._port, height=height)
         return uuid
 
-    def _update_state(self, state=None):
-        if state is None:
-            # pylint: disable=access-member-before-definition
-            state = self.state
-
-        state.datasets = fod.list_datasets()
-        state.refresh = not state.refresh
+    def _update_state(self):
+        self.state.datasets = fod.list_datasets()
+        self.state.refresh = not self.state.refresh
 
         # See ``fiftyone.core.client`` to understand this
-        self.state = state
+        self.state = self.state
 
 
 def _display(session, handle, uuid, port=None, height=None, update=False):
