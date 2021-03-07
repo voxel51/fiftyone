@@ -984,7 +984,7 @@ class SampleCollection(object):
         gt_field="ground_truth",
         eval_key=None,
         classes=None,
-        missing="none",
+        missing=None,
         method="simple",
         config=None,
         **kwargs,
@@ -1021,7 +1021,7 @@ class SampleCollection(object):
             classes (None): the list of possible classes. If not provided, the
                 observed ground truth/predicted labels are used for results
                 purposes
-            missing ("none"): a missing label string. Any None-valued labels
+            missing (None): a missing label string. Any None-valued labels
                 are given this label for results purposes
             method ("simple"): a string specifying the evaluation method to use.
                 Supported values are ``("simple", "binary", "top-k")``
@@ -1052,7 +1052,7 @@ class SampleCollection(object):
         gt_field="ground_truth",
         eval_key=None,
         classes=None,
-        missing="none",
+        missing=None,
         method="coco",
         iou=0.50,
         classwise=True,
@@ -1101,7 +1101,7 @@ class SampleCollection(object):
                 evaluation
             classes (None): the list of possible classes. If not provided, the
                 observed ground truth/predicted labels are used
-            missing ("none"): a missing label string. Any unmatched objects are
+            missing (None): a missing label string. Any unmatched objects are
                 given this label for evaluation purposes
             method ("coco"): a string specifying the evaluation method to use.
                 Supported values are ``("coco")``

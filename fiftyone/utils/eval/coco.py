@@ -155,7 +155,7 @@ class COCOEvaluation(DetectionEvaluation):
             classes (None): the list of possible classes. If not provided, the
                 observed ground truth/predicted labels are used for results
                 purposes
-            missing ("none"): a missing label string. Any unmatched objects are
+            missing (None): a missing label string. Any unmatched objects are
                 given this label for results purposes
 
         Returns:
@@ -263,12 +263,12 @@ class COCODetectionResults(DetectionResults):
         recall: an array of recall values
         iou_threshs: the list of IoU thresholds
         classes: the list of possible classes
-        missing ("none"): a missing label string. Any unmatched objects are
+        missing (None): a missing label string. Any unmatched objects are
             given this label for evaluation purposes
     """
 
     def __init__(
-        self, matches, precision, recall, iou_threshs, classes, missing="none"
+        self, matches, precision, recall, iou_threshs, classes, missing=None
     ):
         super().__init__(matches, classes=classes, missing=missing)
         self.precision = precision
