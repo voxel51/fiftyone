@@ -91,7 +91,7 @@ def evaluate_classifications(
     results = eval_method.evaluate_samples(
         samples, eval_key=eval_key, classes=classes, missing=missing
     )
-    eval_method.save_run_esults(samples, eval_key, results)
+    eval_method.save_run_results(samples, eval_key, results)
 
     return results
 
