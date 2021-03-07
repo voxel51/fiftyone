@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { useRecoilState, useSetRecoilState, useRecoilValue } from "recoil";
 import ResizeObserver from "resize-observer-polyfill";
 import ReactGA from "react-ga";
+import { ThemeContext } from "styled-components";
 import html2canvas from "html2canvas";
 
+import { ColorTheme } from "../shared/colors";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 import { attachDisposableHandler, packageMessage } from "./socket";
@@ -115,15 +117,6 @@ export const useFollow = (leaderRef, followerRef, set) => {
   useEventHandler(window, "scroll", follow);
   useEventHandler(leaderRef ? leaderRef.current : null, "scroll", follow);
   useObserve(followerRef ? followerRef.current : null, follow);
-};
-
-// allows re-rendering before recoil's Batcher updates
-export const useFastRerender = () => {
-  const [counter, setCounter] = useState(0);
-  const rerender = useCallback(() => {
-    setCounter((prev) => prev + 1);
-  }, []);
-  return rerender;
 };
 
 export const useVideoData = (socket, sample, callback = null) => {
@@ -331,4 +324,8 @@ export const useScreenshot = () => {
       chain.then(capture);
     }
   });
+};
+
+export const useTheme = (): ColorTheme => {
+  return useContext<ColorTheme>(ThemeContext);
 };

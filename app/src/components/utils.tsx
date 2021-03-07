@@ -46,9 +46,7 @@ export const ModalWrapper = styled.div`
   background-color: ${({ theme }) => theme.overlay};
 `;
 
-export const ModalFooter = styled.footer`
-  display: flex;
-  flex-shrink: 0;
+export const ModalFooter = styled.div`
   border-top: 2px solid ${({ theme }) => theme.border};
   padding: 1em;
   background-color: ${({ theme }) => theme.backgroundLight};
@@ -76,4 +74,26 @@ scrollbar-width: none;
 &:hover::-webkit-scrollbar-thumb {
   box-shadow: inset 0 0 10px 10px ${theme.fontDarkest};
 }
+`;
+
+export const ContentDiv = styled.div`
+  box-sizing: border-box;
+  border-radius: 3px;
+  background-color: ${({ theme }) => theme.backgroundDarker};
+  color: ${({ theme }) => theme.fontDark};
+  border: 1px solid #191c1f;
+  box-shadow: 0 8px 15px 0 rgba(0, 0, 0, 0.43);
+  border-radius: 2px;
+  padding: 0.5rem;
+  line-height: 1rem;
+  margin-top: 2.5rem;
+  font-weight: bold;
+  width: auto;
+  z-index: 802;
+`;
+
+export const ContentHeader = styled.div`
+  color: ${({ theme }) => theme.font};
+  display: flex;
+  padding-bottom: 0.5rem;
 `;

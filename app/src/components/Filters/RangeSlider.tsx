@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
+import numeral from "numeral";
 import styled, { ThemeContext } from "styled-components";
 import {
   RecoilState,
@@ -110,6 +111,7 @@ const RangeSlider = React.memo(({ rangeAtom, boundsAtom, color }: Props) => {
           active: "active",
           valueLabel: "valueLabel",
         }}
+        valueLabelFormat={(v) => numeral(v).format("0.00a")}
         aria-labelledby="range-slider"
         valueLabelDisplay={"on"}
         max={bounds[1]}

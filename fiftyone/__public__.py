@@ -53,7 +53,11 @@ from .core.fields import (
     PolylinePointsField,
     DictField,
     ClassesField,
+    IntDictField,
+    TargetsField,
+    MultiTargetsField,
     EmbeddedDocumentField,
+    EmbeddedDocumentListField,
     VectorField,
     ArrayField,
 )

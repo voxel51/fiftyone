@@ -28,6 +28,7 @@ import fiftyone.constants as focn
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
+import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
@@ -353,12 +354,93 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def info(self):
-        """A dictionary of information about the dataset."""
+        """A user-facing dictionary of information about the dataset.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Store a class list in the dataset's info
+            dataset.info = {"classes": ["cat", "dog"]}
+
+            # Edit the info
+            dataset.info["other_classes"] = ["bird", "plane"]
+            dataset.save()  # must save after edits
+        """
         return self._doc.info
 
     @info.setter
     def info(self, info):
         self._doc.info = info
+        self._doc.save()
+
+    @property
+    def default_mask_targets(self):
+        """A dict defining a default mapping between pixel values and label
+        strings for the segmentation masks of all
+        :class:`fiftyone.core.labels.Segmentation` fields of this dataset that
+        do not have customized mask targets defined in :meth:`mask_targets`.
+
+        .. note::
+
+            The pixel value `0` is a reserved "background" class that is
+            rendered as invislble in the App.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set default mask targets
+            dataset.default_mask_targets = {1: "cat", 2: "dog"}
+
+            # Edit the default mask targets
+            dataset.default_mask_targets[255] = "other"
+            dataset.save()  # must save after edits
+        """
+        return self._doc.default_mask_targets
+
+    @default_mask_targets.setter
+    def default_mask_targets(self, targets):
+        self._doc.default_mask_targets = targets
+        self.save()
+
+    @property
+    def mask_targets(self):
+        """A dict mapping field names to mask target dicts, each of which
+        defines a mapping between pixel values and label strings for the
+        segmentation masks in the corresponding field of the dataset.
+
+        .. note::
+
+            The pixel value `0` is a reserved "background" class that is
+            rendered as invislble in the App.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set mask targets for the `ground_truth` and `predictions` fields
+            dataset.mask_targets = {
+                "ground_truth": {1: "cat", 2: "dog"},
+                "predictions": {1: "cat": 2: "dog", 255: "other"},
+            }
+
+            # Edit an existing mask target
+            dataset.mask_targets["ground_truth"][255] = "other"
+            dataset.save()  # must save after edits
+        """
+        return self._doc.mask_targets
+
+    @mask_targets.setter
+    def mask_targets(self, targets):
+        self._doc.mask_targets = targets
+        self.save()
 
     @property
     def default_classes(self):
@@ -2469,7 +2551,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset._apply_frame_field_schema(d["frame_fields"])
 
         dataset.info = d.get("info", {})
-        dataset.save()
+        dataset.default_mask_targets = dataset._parse_default_mask_targets(
+            d.get("default_mask_targets", {})
+        )
+        dataset.mask_targets = dataset._parse_mask_targets(
+            d.get("mask_targets", {})
+        )
 
         def parse_sample(sd):
             if rel_dir and not sd["filepath"].startswith(os.path.sep):
