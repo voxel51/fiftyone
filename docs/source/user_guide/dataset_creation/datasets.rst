@@ -2401,7 +2401,8 @@ should implement is determined by the type of dataset that you are importing.
                 )
 
             if importer.has_dataset_info:
-                dataset.info.update(importer.get_dataset_info())
+                info = importer.get_dataset_info()
+                parse_info(dataset, info)
 
     Note that the importer is invoked via its context manager interface, which
     automatically calls the
@@ -2418,10 +2419,9 @@ should implement is determined by the type of dataset that you are importing.
     :meth:`has_dataset_info <fiftyone.utils.data.importers.UnlabeledImageDatasetImporter.has_dataset_info>`
     property of the importer allows it to declare whether its
     :meth:`get_dataset_info() <fiftyone.utils.data.importers.UnlabeledImageDatasetImporter.get_dataset_info>`
-    method should be called after all samples have been imported to retrieve a
-    dictionary of information to store in the
-    :meth:`info <fiftyone.core.dataset.Dataset.info>` property of the FiftyOne
-    dataset.
+    method should be called after all samples have been imported to retrieve
+    dataset-level information to store on the FiftyOne datset. See
+    :ref:`this section <importing-dataset-level-info>` for more information.
 
     The
     :meth:`has_image_metadata <fiftyone.utils.data.importers.UnlabeledImageDatasetImporter.has_image_metadata>`
@@ -2599,7 +2599,8 @@ should implement is determined by the type of dataset that you are importing.
                 dataset.add_sample(sample)
 
             if importer.has_dataset_info:
-                dataset.info.update(importer.get_dataset_info())
+                info = importer.get_dataset_info()
+                parse_info(dataset, info)
 
     Note that the importer is invoked via its context manager interface, which
     automatically calls the
@@ -2617,10 +2618,9 @@ should implement is determined by the type of dataset that you are importing.
     :meth:`has_dataset_info <fiftyone.utils.data.importers.LabeledImageDatasetImporter.has_dataset_info>`
     property of the importer allows it to declare whether its
     :meth:`get_dataset_info() <fiftyone.utils.data.importers.LabeledImageDatasetImporter.get_dataset_info>`
-    method should be called after all samples have been imported to retrieve a
-    dictionary of information to store in the
-    :meth:`info <fiftyone.core.dataset.Dataset.info>` property of the FiftyOne
-    dataset.
+    method should be called after all samples have been imported to retrieve
+    dataset-level information to store on the FiftyOne datset. See
+    :ref:`this section <importing-dataset-level-info>` for more information.
 
     The
     :meth:`label_cls <fiftyone.utils.data.importers.LabeledImageDatasetImporter.label_cls>`
@@ -2760,7 +2760,8 @@ should implement is determined by the type of dataset that you are importing.
                 )
 
             if importer.has_dataset_info:
-                dataset.info.update(importer.get_dataset_info())
+                info = importer.get_dataset_info()
+                parse_info(dataset, info)
 
     Note that the importer is invoked via its context manager interface, which
     automatically calls the
@@ -2777,10 +2778,9 @@ should implement is determined by the type of dataset that you are importing.
     :meth:`has_dataset_info <fiftyone.utils.data.importers.UnlabeledVideoDatasetImporter.has_dataset_info>`
     property of the importer allows it to declare whether its
     :meth:`get_dataset_info() <fiftyone.utils.data.importers.UnlabeledVideoDatasetImporter.get_dataset_info>`
-    method should be called after all samples have been imported to retrieve a
-    dictionary of information to store in the
-    :meth:`info <fiftyone.core.dataset.Dataset.info>` property of the FiftyOne
-    dataset.
+    method should be called after all samples have been imported to retrieve
+    dataset-level information to store on the FiftyOne datset. See
+    :ref:`this section <importing-dataset-level-info>` for more information.
 
     The
     :meth:`has_video_metadata <fiftyone.utils.data.importers.UnlabeledVideoDatasetImporter.has_video_metadata>`
@@ -3000,7 +3000,8 @@ should implement is determined by the type of dataset that you are importing.
                 dataset.add_sample(sample)
 
             if importer.has_dataset_info:
-                dataset.info.update(importer.get_dataset_info())
+                info = importer.get_dataset_info()
+                parse_info(dataset, info)
 
     Note that the importer is invoked via its context manager interface, which
     automatically calls the
@@ -3022,10 +3023,9 @@ should implement is determined by the type of dataset that you are importing.
     :meth:`has_dataset_info <fiftyone.utils.data.importers.LabeledVideoDatasetImporter.has_dataset_info>`
     property of the importer allows it to declare whether its
     :meth:`get_dataset_info() <fiftyone.utils.data.importers.LabeledVideoDatasetImporter.get_dataset_info>`
-    method should be called after all samples have been imported to retrieve a
-    dictionary of information to store in the
-    :meth:`info <fiftyone.core.dataset.Dataset.info>` property of the FiftyOne
-    dataset.
+    method should be called after all samples have been imported to retrieve
+    dataset-level information to store on the FiftyOne datset. See
+    :ref:`this section <importing-dataset-level-info>` for more information.
 
     The
     :meth:`label_cls <fiftyone.utils.data.importers.LabeledVideoDatasetImporter.label_cls>`
@@ -3041,6 +3041,62 @@ should implement is determined by the type of dataset that you are importing.
     |VideoMetadata| instances for each video that it loads when
     :meth:`__next__() <fiftyone.utils.data.importers.LabeledVideoDatasetImporter.__next__>`
     is called.
+
+.. _importing-dataset-level-info:
+
+Importing dataset-level information
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The
+:meth:`has_dataset_info <fiftyone.utils.data.importers.DatasetImporter.has_dataset_info>`
+property of the importer allows it to declare whether its
+:meth:`get_dataset_info() <fiftyone.utils.data.importers.DatasetImporter.get_dataset_info>`
+method should be called after all samples have been imported to retrieve
+dataset-level information to store in the relevant properties of the FiftyOne
+dataset, including
+:meth:`info <fiftyone.core.dataset.Dataset.info>`,
+:meth:`classes <fiftyone.core.dataset.Dataset.classes>`,
+:meth:`default_classes <fiftyone.core.dataset.Dataset.default_classes>`,
+:meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>`, and
+:meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`.
+
+The function below describes how the ``info`` dict is dissected by the dataset
+import routine:
+
+.. code-block:: python
+
+    def parse_info(dataset, info):
+        """Parses the info returned by :meth:`DatasetImporter.get_dataset_info` and
+        stores it on the relevant properties of the dataset.
+
+        Args:
+            dataset: a :class:`fiftyone.core.dataset.Dataset`
+            info: an info dict
+        """
+        classes = info.pop("classes", None)
+        if isinstance(classes, dict):
+            # Classes may already exist, so update rather than setting
+            dataset.classes.update(classes)
+        elif isinstance(classes, list):
+            dataset.default_classes = classes
+
+        default_classes = info.pop("default_classes", None)
+        if default_classes:
+            dataset.default_classes = default_classes
+
+        mask_targets = info.pop("mask_targets", None)
+        if mask_targets:
+            # Mask targets may already exist, so update rather than setting
+            dataset.mask_targets.update(dataset._parse_mask_targets(mask_targets))
+
+        default_mask_targets = info.pop("default_mask_targets", None)
+        if default_mask_targets:
+            dataset.default_mask_targets = dataset._parse_default_mask_targets(
+                default_mask_targets
+            )
+
+        dataset.info.update(info)
+        dataset.save()
 
 .. _writing-a-custom-dataset-type-importer:
 

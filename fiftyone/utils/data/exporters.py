@@ -383,8 +383,8 @@ class DatasetExporter(object):
 
         Subclasses can optionally implement this method if their export format
         can record information such as the
-        :meth:`fiftyone.core.collections.SampleCollection.name` and
-        :meth:`fiftyone.core.collections.SampleCollection.info` of the
+        :meth:`fiftyone.core.collections.SampleCollection.info` or
+        :meth:`fiftyone.core.collections.SampleCollection.classes` of the
         collection being exported.
 
         By convention, this method must be optional; i.e., if it is not called

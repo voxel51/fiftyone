@@ -236,36 +236,43 @@ def import_samples(
         if add_info and dataset_importer.has_dataset_info:
             info = dataset_importer.get_dataset_info()
             if info:
-                classes = info.pop("classes", None)
-                if isinstance(classes, dict):
-                    # Some classes may already exist, so update, not overwrite
-                    dataset.classes.update(classes)
-                elif isinstance(classes, list):
-                    dataset.default_classes = classes
-
-                default_classes = info.pop("default_classes", None)
-                if default_classes:
-                    dataset.default_classes = default_classes
-
-                mask_targets = info.pop("mask_targets", None)
-                if mask_targets:
-                    # Some mask targets may already exist, so update, not
-                    # overwrite
-                    dataset.mask_targets.update(
-                        dataset._parse_mask_targets(mask_targets)
-                    )
-
-                default_mask_targets = info.pop("default_mask_targets", None)
-                if default_mask_targets:
-                    dataset.default_mask_targets = dataset._parse_default_mask_targets(
-                        default_mask_targets
-                    )
-
-                dataset.info.update(info)
-
-                dataset.save()
+                parse_info(dataset, info)
 
         return sample_ids
+
+
+def parse_info(dataset, info):
+    """Parses the info returned by :meth:`DatasetImporter.get_dataset_info` and
+    stores it on the relevant properties of the dataset.
+
+    Args:
+        dataset: a :class:`fiftyone.core.dataset.Dataset`
+        info: an info dict
+    """
+    classes = info.pop("classes", None)
+    if isinstance(classes, dict):
+        # Classes may already exist, so update rather than setting
+        dataset.classes.update(classes)
+    elif isinstance(classes, list):
+        dataset.default_classes = classes
+
+    default_classes = info.pop("default_classes", None)
+    if default_classes:
+        dataset.default_classes = default_classes
+
+    mask_targets = info.pop("mask_targets", None)
+    if mask_targets:
+        # Mask targets may already exist, so update rather than setting
+        dataset.mask_targets.update(dataset._parse_mask_targets(mask_targets))
+
+    default_mask_targets = info.pop("default_mask_targets", None)
+    if default_mask_targets:
+        dataset.default_mask_targets = dataset._parse_default_mask_targets(
+            default_mask_targets
+        )
+
+    dataset.info.update(info)
+    dataset.save()
 
 
 class DatasetImporter(object):
