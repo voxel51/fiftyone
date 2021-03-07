@@ -328,6 +328,39 @@ class DatasetTests(unittest.TestCase):
         with self.assertRaises(AttributeError):
             sample.predictions.new_field
 
+    @drop_datasets
+    def test_classes(self):
+        dataset = fo.Dataset()
+
+        default_classes = ["cat", "dog"]
+
+        dataset.default_classes = default_classes
+        self.assertDictEqual(dataset.default_classes, default_classes)
+
+        with self.assertRaises(Exception):
+            dataset.default_classes.append(1)
+            dataset.save()  # error
+
+        dataset.default_classes.pop()
+        dataset.save()  # success
+
+        classes = {"ground_truth": ["cat", "dog"]}
+
+        dataset.classes = classes
+        self.assertDictEqual(dataset.classes, classes)
+
+        with self.assertRaises(Exception):
+            dataset.classes["other"] = {"hi": "there"}
+            dataset.save()  # error
+
+        with self.assertRaises(Exception):
+            dataset.classes["ground_truth"].append(1)
+            dataset.save()  # error
+
+        dataset.classes.pop("other")
+        dataset.classes["ground_truth"].pop(1)
+        dataset.save()  # success
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
