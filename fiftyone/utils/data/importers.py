@@ -237,9 +237,11 @@ def import_samples(
             info = dataset_importer.get_dataset_info()
             if info:
                 classes = info.pop("classes", None)
-                if classes:
+                if isinstance(classes, dict):
                     # Some classes may already exist, so update, not overwrite
                     dataset.classes.update(classes)
+                elif isinstance(classes, list):
+                    dataset.default_classes = classes
 
                 default_classes = info.pop("default_classes", None)
                 if default_classes:
