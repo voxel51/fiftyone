@@ -9,6 +9,9 @@ from copy import copy
 import datetime
 import json
 
+import numpy as np
+
+import eta.core.serial as etas
 import eta.core.utils as etau
 
 from fiftyone.core.config import Config, Configurable
@@ -284,8 +287,59 @@ class Run(Configurable):
             timestamp=run_info.timestamp,
             config=run_info.config.serialize(),
             view_stages=view_stages,
+            results=None,
         )
         samples._dataset.save()
+
+    @classmethod
+    def save_run_results(cls, samples, key, run_results):
+        """Saves the run results on the collection.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            key: a run key
+            run_results: a :class:`RunResults`, or None
+        """
+        if key is None:
+            return
+
+        run_docs = getattr(samples._dataset._doc, cls._runs_field())
+        run_doc = run_docs[key]
+
+        # Delete existing
+        if run_doc.results:
+            run_doc.results.delete()
+
+        if run_results is None:
+            run_doc.results = None
+        else:
+            # Write run result to GridFS
+            results_bytes = run_results.to_str().encode()
+            run_doc.results.put(results_bytes, content_type="application/json")
+
+        samples._dataset.save()
+
+    @classmethod
+    def load_run_results(cls, samples, key):
+        """Loads the :class:`RunResults` for the given key on the collection.
+
+        Args:
+            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            key: a run key
+
+        Returns:
+            a :class:`RunResults`, or None if the run did not save results
+        """
+        run_doc = cls._get_run_doc(samples, key)
+
+        if not run_doc.results:
+            return None
+
+        # Load run result from GridFS
+        view = cls.load_run_view(samples, key)
+        run_doc.results.seek(0)
+        results_str = run_doc.results.read().decode()
+        return RunResults.from_str(results_str, view)
 
     @classmethod
     def load_run_view(cls, samples, key, select_fields=False):
@@ -350,11 +404,19 @@ class Run(Configurable):
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             key: a run key
         """
+        # Cleanup run
         run_info = cls.get_run_info(samples, key)
         run = run_info.config.build()
         run.cleanup(samples, key)
+
+        # Delete run from dataset
         run_docs = getattr(samples._dataset._doc, cls._runs_field())
-        run_docs.pop(key, None)
+        run_doc = run_docs.pop(key, None)
+
+        # Must manually delete run result, which is stored via GridFS
+        if run_doc and run_doc.results:
+            run_doc.results.delete()
+
         samples._dataset.save()
 
     @classmethod
@@ -384,3 +446,50 @@ class Run(Configurable):
         run_info = cls.get_run_info(samples, key)
         run = run_info.config.build()
         return run.get_fields(samples, key)
+
+
+class RunResults(etas.Serializable):
+    """Base class for storing the results of a run."""
+
+    @property
+    def cls(self):
+        """The fully-qualified name of this :class:`RunResults` class."""
+        return etau.get_class_name(self)
+
+    def attributes(self):
+        """Returns the list of class attributes that will be serialized by
+        :meth:`serialize`.
+
+        Returns:
+            a list of attributes
+        """
+        return ["cls"] + super().attributes()
+
+    @classmethod
+    def from_dict(cls, d, samples):
+        """Builds a :class:`RunResults` from a JSON dict representation of it.
+
+        Args:
+            d: a JSON dict
+            samples: the :class:`fiftyone.core.collections.SampleCollection`
+                for the run
+
+        Returns:
+            a :class:`RunResults`
+        """
+        run_results_cls = etau.get_class(d["cls"])
+        return run_results_cls._from_dict(d, samples)
+
+    @classmethod
+    def _from_dict(cls, d, samples):
+        """Subclass implementation of :meth:`from_dict`.
+
+        Args:
+            d: a JSON dict
+            samples: the :class:`fiftyone.core.collections.SampleCollection`
+                for the run
+
+        Returns:
+            a :class:`RunResults`
+        """
+        raise NotImplementedError("subclass must implement _from_dict()")

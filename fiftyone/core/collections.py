@@ -964,7 +964,7 @@ class SampleCollection(object):
         gt_field="ground_truth",
         eval_key=None,
         classes=None,
-        missing="none",
+        missing=None,
         method="simple",
         config=None,
         **kwargs,
@@ -1001,7 +1001,7 @@ class SampleCollection(object):
             classes (None): the list of possible classes. If not provided, the
                 observed ground truth/predicted labels are used for results
                 purposes
-            missing ("none"): a missing label string. Any None-valued labels
+            missing (None): a missing label string. Any None-valued labels
                 are given this label for results purposes
             method ("simple"): a string specifying the evaluation method to use.
                 Supported values are ``("simple", "binary", "top-k")``
@@ -1032,7 +1032,7 @@ class SampleCollection(object):
         gt_field="ground_truth",
         eval_key=None,
         classes=None,
-        missing="none",
+        missing=None,
         method="coco",
         iou=0.50,
         classwise=True,
@@ -1081,7 +1081,7 @@ class SampleCollection(object):
                 evaluation
             classes (None): the list of possible classes. If not provided, the
                 observed ground truth/predicted labels are used
-            missing ("none"): a missing label string. Any unmatched objects are
+            missing (None): a missing label string. Any unmatched objects are
                 given this label for evaluation purposes
             method ("coco"): a string specifying the evaluation method to use.
                 Supported values are ``("coco")``
@@ -1206,6 +1206,18 @@ class SampleCollection(object):
         """
         return foev.EvaluationMethod.get_run_info(self, eval_key)
 
+    def load_evaluation_results(self, eval_key):
+        """Loads the :class:`fiftyone.core.evaluation.EvaluationResults` for
+        the evaluation with the given key on this collection.
+
+        Args:
+            eval_key: an evaluation key
+
+        Returns:
+            a :class:`fiftyone.core.evaluation.EvaluationResults`
+        """
+        return foev.EvaluationMethod.load_run_results(self, eval_key)
+
     def load_evaluation_view(self, eval_key, select_fields=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` on which the
         specified evaluation was performed on this collection.
@@ -1251,9 +1263,21 @@ class SampleCollection(object):
             brain_key: a brain key
 
         Returns:
-            an :class:`fiftyone.core.brain.BrainInfo`
+            a :class:`fiftyone.core.brain.BrainInfo`
         """
         return fob.BrainMethod.get_run_info(self, brain_key)
+
+    def load_brain_results(self, brain_key):
+        """Loads the :class:`fiftyone.core.brain.BrainResults` for the run with
+        the given key on this collection.
+
+        Args:
+            brain_key: a brain key
+
+        Returns:
+            a :class:`fiftyone.core.brain.BrainResults`
+        """
+        return fob.BrainMethod.load_run_results(self, brain_key)
 
     def load_brain_view(self, brain_key, select_fields=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` on which the
