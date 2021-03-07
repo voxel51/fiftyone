@@ -181,9 +181,11 @@ def delete_non_persistent_datasets(verbose=False):
         verbose (False): whether to log the names of deleted datasets
     """
     for name in list_datasets():
-        did_delete = _drop_dataset(name, drop_persistent=False)
-        if did_delete and verbose:
-            logger.info("Dataset '%s' deleted", name)
+        dataset = Dataset(name, _create=False, _migrate=False)
+        if not dataset.persistent and not dataset.deleted:
+            dataset.delete()
+            if verbose:
+                logger.info("Dataset '%s' deleted", name)
 
 
 class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
@@ -210,7 +212,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     """
 
     def __init__(
-        self, name=None, persistent=False, overwrite=False, _create=True
+        self,
+        name=None,
+        persistent=False,
+        overwrite=False,
+        _create=True,
+        _migrate=True,
     ):
         if name is None and _create:
             name = get_default_dataset_name()
@@ -229,7 +236,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self._doc,
                 self._sample_doc_cls,
                 self._frame_doc_cls,
-            ) = _load_dataset(name)
+            ) = _load_dataset(name, migrate=_migrate)
 
         self._deleted = False
 
@@ -1489,9 +1496,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_doc_cls.drop_collection()
         fos.Sample._reset_docs(self._sample_collection_name)
 
-        if self.media_type == fom.VIDEO:
-            self._frame_doc_cls.drop_collection()
-            fofr.Frame._reset_docs(self._frame_collection_name)
+        self._frame_doc_cls.drop_collection()
+        fofr.Frame._reset_docs(self._frame_collection_name)
 
     def delete(self):
         """Deletes the dataset.
@@ -1503,7 +1509,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         updated such that ``sample.in_dataset == False``.
         """
         self.clear()
-        self._doc.delete()
+        _delete_dataset_doc(self._doc)
         self._deleted = True
 
     def add_dir(
@@ -2912,8 +2918,9 @@ def _create_frame_document_cls(frame_collection_name):
     return type(frame_collection_name, (foo.DatasetFrameSampleDocument,), {})
 
 
-def _load_dataset(name):
-    fomi.migrate_dataset_if_necessary(name, destination=focn.VERSION)
+def _load_dataset(name, migrate=True):
+    if migrate:
+        fomi.migrate_dataset_if_necessary(name, destination=focn.VERSION)
 
     try:
         # pylint: disable=no-member
@@ -2937,7 +2944,7 @@ def _load_dataset(name):
     if is_video:
         for frame_field in dataset_doc.frame_fields:
             subfield = (
-                etau.get_class(frame_field.subfield)
+                etau.get_class(frame_field.subfield)()
                 if frame_field.subfield
                 else None
             )
@@ -2959,7 +2966,7 @@ def _load_dataset(name):
             continue
 
         subfield = (
-            etau.get_class(sample_field.subfield)
+            etau.get_class(sample_field.subfield)()
             if sample_field.subfield
             else None
         )
@@ -2984,29 +2991,33 @@ def _load_dataset(name):
     return dataset_doc, sample_doc_cls, frame_doc_cls
 
 
-def _drop_dataset(name, drop_persistent=True):
-    try:
-        # pylint: disable=no-member
-        dataset_doc = foo.DatasetDocument.objects.get(name=name)
-    except moe.DoesNotExist:
-        raise ValueError("Dataset '%s' not found" % name)
+def _drop_samples(dataset_doc):
+    conn = foo.get_db_conn()
 
-    if dataset_doc.persistent and not drop_persistent:
-        return False
+    sample_collection_name = dataset_doc.sample_collection_name
+    sample_collection = conn[sample_collection_name]
+    sample_collection.drop()
 
-    sample_doc_cls = _create_sample_document_cls(
-        dataset_doc.sample_collection_name
-    )
-    sample_doc_cls.drop_collection()
+    frame_collection_name = "frames." + dataset_doc.sample_collection_name
+    frame_collection = conn[frame_collection_name]
+    frame_collection.drop()
 
-    frame_doc_cls = _create_frame_document_cls(
-        "frames." + dataset_doc.sample_collection_name
-    )
-    frame_doc_cls.drop_collection()
+
+def _delete_dataset_doc(dataset_doc):
+    #
+    # Must manually cleanup run results, which are stored using GridFS
+    # https://docs.mongoengine.org/guide/gridfs.html#deletion
+    #
+
+    for run_doc in dataset_doc.evaluations.values():
+        if run_doc.results is not None:
+            run_doc.results.delete()
+
+    for run_doc in dataset_doc.brain_methods.values():
+        if run_doc.results is not None:
+            run_doc.results.delete()
 
     dataset_doc.delete()
-
-    return True
 
 
 def _get_sample_ids(samples_or_ids):

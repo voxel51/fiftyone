@@ -82,9 +82,13 @@ def evaluate_segmentations(
     config = _parse_config(config, pred_field, gt_field, method, **kwargs)
     eval_method = config.build()
     eval_method.register_run(samples, eval_key)
-    return eval_method.evaluate_samples(
+
+    results = eval_method.evaluate_samples(
         samples, eval_key=eval_key, mask_index=mask_index
     )
+    eval_method.save_run_results(samples, eval_key, results)
+
+    return results
 
 
 class SegmentationEvaluationConfig(foe.EvaluationMethodConfig):
@@ -280,12 +284,34 @@ class SegmentationResults(ClassificationResults):
     """Class that stores the results of a segmentation evaluation.
 
     Args:
-        confusion_matrix: a pixel value confusion matrix
+        pixel_confusion_matrix: a pixel value confusion matrix
         classes: a list of class labels corresponding to the confusion matrix
         missing (None): a missing (background) class
     """
 
-    def __init__(self, confusion_matrix, classes, missing=None):
+    def __init__(self, pixel_confusion_matrix, classes, missing=None):
+        ytrue, ypred, weights = self._parse_confusion_matrix(
+            pixel_confusion_matrix, classes
+        )
+        super().__init__(
+            ytrue, ypred, weights=weights, classes=classes, missing=missing
+        )
+        self.pixel_confusion_matrix = pixel_confusion_matrix
+
+    def attributes(self):
+        return ["cls", "pixel_confusion_matrix", "classes", "missing"]
+
+    @classmethod
+    def _from_dict(cls, d, samples, **kwargs):
+        return cls(
+            d["pixel_confusion_matrix"],
+            d["classes"],
+            missing=d.get("missing", None),
+            **kwargs,
+        )
+
+    @staticmethod
+    def _parse_confusion_matrix(confusion_matrix, classes):
         ytrue = []
         ypred = []
         weights = []
@@ -298,14 +324,7 @@ class SegmentationResults(ClassificationResults):
                     ypred.append(classes[j])
                     weights.append(cij)
 
-        super().__init__(
-            ytrue,
-            ypred,
-            None,
-            weights=weights,
-            classes=classes,
-            missing=missing,
-        )
+        return ytrue, ypred, weights
 
 
 def _parse_config(config, pred_field, gt_field, method, **kwargs):

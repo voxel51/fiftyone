@@ -5,7 +5,14 @@ Dataset run documents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from mongoengine import DictField, ListField, StringField, DateTimeField
+from mongoengine import (
+    DictField,
+    ListField,
+    ReferenceField,
+    StringField,
+    DateTimeField,
+    FileField,
+)
 
 from .document import EmbeddedDocument
 
@@ -17,3 +24,4 @@ class RunDocument(EmbeddedDocument):
     timestamp = DateTimeField()
     config = DictField()
     view_stages = ListField(StringField())
+    results = FileField()
