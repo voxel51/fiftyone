@@ -357,12 +357,14 @@ class DatasetTests(unittest.TestCase):
             dataset.mask_targets["hi"] = "there"
             dataset.save()  # error
 
+        dataset.mask_targets.pop("hi")
+
         with self.assertRaises(Exception):
             dataset.mask_targets[1] = {1: "cat", 2: "dog"}
             dataset.save()  # error
 
-        dataset.mask_targets.pop("hi")
         dataset.mask_targets.pop(1)
+
         dataset.save()  # success
 
         with self.assertRaises(Exception):
