@@ -335,7 +335,7 @@ class DatasetTests(unittest.TestCase):
         default_classes = ["cat", "dog"]
 
         dataset.default_classes = default_classes
-        self.assertDictEqual(dataset.default_classes, default_classes)
+        self.assertListEqual(dataset.default_classes, default_classes)
 
         with self.assertRaises(Exception):
             dataset.default_classes.append(1)
@@ -353,12 +353,14 @@ class DatasetTests(unittest.TestCase):
             dataset.classes["other"] = {"hi": "there"}
             dataset.save()  # error
 
+        dataset.classes.pop("other")
+
         with self.assertRaises(Exception):
             dataset.classes["ground_truth"].append(1)
             dataset.save()  # error
 
-        dataset.classes.pop("other")
-        dataset.classes["ground_truth"].pop(1)
+        dataset.classes["ground_truth"].pop()
+
         dataset.save()  # success
 
 
