@@ -271,6 +271,9 @@ def import_samples(
 class DatasetImporter(object):
     """Base interface for importing datasets stored on disk into FiftyOne.
 
+    See `this page <https://voxel51.com/docs/fiftyone/user_guide/dataset_creation/datasets.html#writing-a-custom-datasetimporter>`_
+    for information about implementing/using dataset importers.
+
     .. automethod:: __len__
     .. automethod:: __next__
 
@@ -395,22 +398,11 @@ class GenericSampleDatasetImporter(DatasetImporter):
     """Interface for importing datasets that contain arbitrary
     :class:`fiftyone.core.sample.Sample` instances.
 
+    See `this page <https://voxel51.com/docs/fiftyone/user_guide/dataset_creation/datasets.html#writing-a-custom-datasetimporter>`_
+    for information about implementing/using dataset importers.
+
     .. automethod:: __len__
     .. automethod:: __next__
-
-    FiftyOne imports datasets of this type using the pseudocode below::
-
-        import fiftyone as fo
-
-        dataset = fo.Dataset(...)
-
-        importer = GenericSampleDatasetImporter(dataset_dir, ...)
-        with importer:
-            for sample in importer:
-                dataset.add_sample(sample)
-
-            if importer.has_dataset_info:
-                dataset.info.update(importer.get_dataset_info())
 
     Args:
         dataset_dir: the dataset directory
@@ -462,24 +454,11 @@ class GenericSampleDatasetImporter(DatasetImporter):
 class UnlabeledImageDatasetImporter(DatasetImporter):
     """Interface for importing datasets of unlabeled image samples.
 
+    See `this page <https://voxel51.com/docs/fiftyone/user_guide/dataset_creation/datasets.html#writing-a-custom-datasetimporter>`_
+    for information about implementing/using dataset importers.
+
     .. automethod:: __len__
     .. automethod:: __next__
-
-    FiftyOne imports datasets of this type using the pseudocode below::
-
-        import fiftyone as fo
-
-        dataset = fo.Dataset(...)
-
-        importer = UnlabeledImageDatasetImporter(dataset_dir, ...)
-        with importer:
-            for image_path, image_metadata in importer:
-                dataset.add_sample(
-                    fo.Sample(filepath=image_path, metadata=image_metadata)
-                )
-
-            if importer.has_dataset_info:
-                dataset.info.update(importer.get_dataset_info())
 
     Args:
         dataset_dir: the dataset directory
@@ -517,24 +496,11 @@ class UnlabeledImageDatasetImporter(DatasetImporter):
 class UnlabeledVideoDatasetImporter(DatasetImporter):
     """Interface for importing datasets of unlabeled video samples.
 
+    See `this page <https://voxel51.com/docs/fiftyone/user_guide/dataset_creation/datasets.html#writing-a-custom-datasetimporter>`_
+    for information about implementing/using dataset importers.
+
     .. automethod:: __len__
     .. automethod:: __next__
-
-    FiftyOne imports datasets of this type using the pseudocode below::
-
-        import fiftyone as fo
-
-        dataset = fo.Dataset(...)
-
-        importer = UnlabeledVideoDatasetImporter(dataset_dir, ...)
-        with importer:
-            for video_path, video_metadata in importer:
-                dataset.add_sample(
-                    fo.Sample(filepath=video_path, metadata=video_metadata)
-                )
-
-            if importer.has_dataset_info:
-                dataset.info.update(importer.get_dataset_info())
 
     Args:
         dataset_dir: the dataset directory
@@ -572,34 +538,11 @@ class UnlabeledVideoDatasetImporter(DatasetImporter):
 class LabeledImageDatasetImporter(DatasetImporter):
     """Interface for importing datasets of labeled image samples.
 
+    See `this page <https://voxel51.com/docs/fiftyone/user_guide/dataset_creation/datasets.html#writing-a-custom-datasetimporter>`_
+    for information about implementing/using dataset importers.
+
     .. automethod:: __len__
     .. automethod:: __next__
-
-    FiftyOne imports datasets of this type using the pseudocode below::
-
-        import fiftyone as fo
-
-        dataset = fo.Dataset(...)
-        label_field = ...
-
-        importer = LabeledImageDatasetImporter(dataset_dir, ...)
-        with importer:
-            for image_path, image_metadata, label in importer:
-                sample = fo.Sample(
-                    filepath=image_path, metadata=image_metadata
-                )
-
-                if isinstance(label, dict):
-                    sample.update_fields(
-                        {label_field + "_" + k: v for k, v in label.items()}
-                    )
-                elif label is not None:
-                    sample[label_field] = label
-
-                dataset.add_sample(sample)
-
-            if importer.has_dataset_info:
-                dataset.info.update(importer.get_dataset_info())
 
     Args:
         dataset_dir: the dataset directory
@@ -676,42 +619,8 @@ class LabeledVideoDatasetImporter(DatasetImporter):
     .. automethod:: __len__
     .. automethod:: __next__
 
-    FiftyOne imports datasets of this type using the pseudocode below::
-
-        import fiftyone as fo
-
-        dataset = fo.Dataset(...)
-        label_field = ...
-
-        importer = LabeledVideoDatasetImporter(dataset_dir, ...)
-        with importer:
-            for video_path, video_metadata, label, frames in importer:
-                sample = fo.Sample(
-                    filepath=video_path, metadata=video_metadata
-                )
-
-                if isinstance(label, dict):
-                    sample.update_fields(
-                        {label_field + "_" + k: v for k, v in label.items()}
-                    )
-                elif label is not None:
-                    sample[label_field] = label
-
-                if frames is not None:
-                    sample.frames.merge(
-                        {
-                            frame_number: {
-                                label_field + "_" + fname: flabel
-                                for fname, flabel in frame_dict.items()
-                            }
-                            for frame_number, frame_dict in frames.items()
-                        }
-                    )
-
-                dataset.add_sample(sample)
-
-            if importer.has_dataset_info:
-                dataset.info.update(importer.get_dataset_info())
+    See `this page <https://voxel51.com/docs/fiftyone/user_guide/dataset_creation/datasets.html#writing-a-custom-datasetimporter>`_
+    for information about implementing/using dataset importers.
 
     Args:
         dataset_dir: the dataset directory
