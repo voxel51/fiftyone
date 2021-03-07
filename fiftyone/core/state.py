@@ -71,14 +71,6 @@ class StateDescription(etas.Serializable):
         self.close = close
 
     def serialize(self, reflective=False):
-        """Serializes the state into a dictionary.
-
-        Args:
-            reflective: whether to include reflective attributes when
-                serializing the object. By default, this is False
-        Returns:
-            a JSON dictionary representation of the object
-        """
         with fou.disable_progress_bars():
             d = super().serialize(reflective=reflective)
             d["dataset"] = (
@@ -90,7 +82,6 @@ class StateDescription(etas.Serializable):
             return d
 
     def attributes(self):
-        """Returns list of attributes to be serialize"""
         return list(
             filter(
                 lambda a: a not in {"dataset", "view"}, super().attributes()
@@ -103,7 +94,9 @@ class StateDescription(etas.Serializable):
 
         Args:
             d: a JSON dictionary
-            with_config: an existing App config to attach and apply settings to
+            with_config (None): an existing
+                :class:`fiftyone.core.config.AppConfig` to attach and apply
+                settings to
 
         Returns:
             :class:`StateDescription`
@@ -167,7 +160,7 @@ class DatasetStatistics(object):
     @property
     def exists_aggregations(self):
         """The list of :class:`fiftyone.core.aggregations.Aggregation`
-        instances that
+        instances that check whether fields exist.
         """
         return self._exists_aggregations
 
