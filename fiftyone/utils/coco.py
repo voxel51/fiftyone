@@ -366,9 +366,16 @@ class COCODetectionDatasetExporter(foud.LabeledImageDatasetExporter):
         self._parse_classes()
 
     def log_collection(self, sample_collection):
-        if self.classes is None and "classes" in sample_collection.info:
-            self.classes = sample_collection.info["classes"]
-            self._parse_classes()
+        if self.classes is None:
+            if sample_collection.default_classes:
+                self.classes = sample_collection.default_classes
+                self._parse_classes()
+            elif sample_collection.classes:
+                self.classes = next(iter(sample_collection.classes.values()))
+                self._parse_classes()
+            elif "classes" in sample_collection.info:
+                self.classes = sample_collection.info["classes"]
+                self._parse_classes()
 
         if self.info is None:
             self.info = sample_collection.info

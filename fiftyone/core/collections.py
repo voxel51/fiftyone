@@ -4051,8 +4051,12 @@ class SampleCollection(object):
             d["frame_fields"] = self._serialize_frame_field_schema()
 
         d["info"] = self.info
-        d["default_mask_targets"] = self._serialize_default_mask_targets()
+
+        d["classes"] = self.classes
+        d["default_classes"] = self.default_classes
+
         d["mask_targets"] = self._serialize_mask_targets()
+        d["default_mask_targets"] = self._serialize_default_mask_targets()
 
         # Serialize samples
         samples = []

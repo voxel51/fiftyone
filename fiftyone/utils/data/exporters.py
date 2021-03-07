@@ -852,12 +852,14 @@ class FiftyOneDatasetExporter(GenericSampleDatasetExporter):
 
         info = dict(sample_collection.info)
 
-        # Package mask targets into `info`, since the import API only supports
-        # checking for `info`
+        # Package classes and mask targets into `info`, since the import API
+        # only supports checking for `info`
+        info["classes"] = sample_collection.classes
+        info["default_classes"] = sample_collection.default_classes
+        info["mask_targets"] = sample_collection._serialize_mask_targets()
         info[
             "default_mask_targets"
         ] = sample_collection._serialize_default_mask_targets()
-        info["mask_targets"] = sample_collection._serialize_mask_targets()
 
         self._metadata["info"] = info
 
@@ -1027,9 +1029,16 @@ class FiftyOneImageClassificationDatasetExporter(LabeledImageDatasetExporter):
         self._parse_classes()
 
     def log_collection(self, sample_collection):
-        if self.classes is None and "classes" in sample_collection.info:
-            self.classes = sample_collection.info["classes"]
-            self._parse_classes()
+        if self.classes is None:
+            if sample_collection.default_classes:
+                self.classes = sample_collection.default_classes
+                self._parse_classes()
+            elif sample_collection.classes:
+                self.classes = next(iter(sample_collection.classes.values()))
+                self._parse_classes()
+            elif "classes" in sample_collection.info:
+                self.classes = sample_collection.info["classes"]
+                self._parse_classes()
 
     def export_sample(self, image_or_path, classification, metadata=None):
         out_image_path = self._export_image_or_path(
@@ -1249,9 +1258,16 @@ class FiftyOneImageDetectionDatasetExporter(LabeledImageDatasetExporter):
         self._parse_classes()
 
     def log_collection(self, sample_collection):
-        if self.classes is None and "classes" in sample_collection.info:
-            self.classes = sample_collection.info["classes"]
-            self._parse_classes()
+        if self.classes is None:
+            if sample_collection.default_classes:
+                self.classes = sample_collection.default_classes
+                self._parse_classes()
+            elif sample_collection.classes:
+                self.classes = next(iter(sample_collection.classes.values()))
+                self._parse_classes()
+            elif "classes" in sample_collection.info:
+                self.classes = sample_collection.info["classes"]
+                self._parse_classes()
 
     def export_sample(self, image_or_path, detections, metadata=None):
         out_image_path = self._export_image_or_path(

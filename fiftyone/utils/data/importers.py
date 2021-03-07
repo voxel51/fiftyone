@@ -236,11 +236,14 @@ def import_samples(
         if add_info and dataset_importer.has_dataset_info:
             info = dataset_importer.get_dataset_info()
             if info:
-                default_mask_targets = info.pop("default_mask_targets", None)
-                if default_mask_targets:
-                    dataset.default_mask_targets = dataset._parse_default_mask_targets(
-                        default_mask_targets
-                    )
+                classes = info.pop("classes", None)
+                if classes:
+                    # Some classes may already exist, so update, not overwrite
+                    dataset.classes.update(classes)
+
+                default_classes = info.pop("default_classes", None)
+                if default_classes:
+                    dataset.default_classes = default_classes
 
                 mask_targets = info.pop("mask_targets", None)
                 if mask_targets:
@@ -248,6 +251,12 @@ def import_samples(
                     # overwrite
                     dataset.mask_targets.update(
                         dataset._parse_mask_targets(mask_targets)
+                    )
+
+                default_mask_targets = info.pop("default_mask_targets", None)
+                if default_mask_targets:
+                    dataset.default_mask_targets = dataset._parse_default_mask_targets(
+                        default_mask_targets
                     )
 
                 dataset.info.update(info)
@@ -906,6 +915,15 @@ class FiftyOneDatasetImporter(GenericSampleDatasetImporter):
             return None
 
         metadata = etas.load_json(metadata_path)
+
+        classes = metadata.get("default_classes", None)
+        if classes:
+            return classes
+
+        classes = metadata.get("classes", {})
+        if classes:
+            return next(iter(classes.values()))
+
         return metadata.get("info", {}).get("classes", None)
 
     @staticmethod

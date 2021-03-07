@@ -421,8 +421,12 @@ class DatasetTests(unittest.TestCase):
         dataset = fo.Dataset()
 
         dataset.info = {"hi": "there"}
-        dataset.default_mask_targets = {1: "cat", 2: "dog"}
+
+        dataset.classes = {"ground_truth": ["cat", "dog"]}
+        dataset.default_classes = ["cat", "dog"]
+
         dataset.mask_targets = {"ground_truth": {1: "cat", 2: "dog"}}
+        dataset.default_mask_targets = {1: "cat", 2: "dog"}
 
         with etau.TempDir() as tmp_dir:
             json_path = os.path.join(tmp_dir, "dataset.json")
@@ -431,6 +435,12 @@ class DatasetTests(unittest.TestCase):
             dataset2 = fo.Dataset.from_json(json_path)
 
             self.assertDictEqual(dataset2.info, dataset.info)
+
+            self.assertDictEqual(dataset2.classes, dataset.classes)
+            self.assertListEqual(
+                dataset2.default_classes, dataset.default_classes
+            )
+
             self.assertDictEqual(dataset2.mask_targets, dataset.mask_targets)
             self.assertDictEqual(
                 dataset2.default_mask_targets, dataset.default_mask_targets
@@ -445,6 +455,12 @@ class DatasetTests(unittest.TestCase):
             )
 
             self.assertDictEqual(dataset3.info, dataset.info)
+
+            self.assertDictEqual(dataset3.classes, dataset.classes)
+            self.assertListEqual(
+                dataset3.default_classes, dataset.default_classes
+            )
+
             self.assertDictEqual(dataset3.mask_targets, dataset.mask_targets)
             self.assertDictEqual(
                 dataset3.default_mask_targets, dataset.default_mask_targets

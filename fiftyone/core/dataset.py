@@ -2551,11 +2551,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset._apply_frame_field_schema(d["frame_fields"])
 
         dataset.info = d.get("info", {})
-        dataset.default_mask_targets = dataset._parse_default_mask_targets(
-            d.get("default_mask_targets", {})
-        )
+
+        dataset.classes = d.get("classes", {})
+        dataset.default_classes = d.get("default_classes", [])
+
         dataset.mask_targets = dataset._parse_mask_targets(
             d.get("mask_targets", {})
+        )
+        dataset.default_mask_targets = dataset._parse_default_mask_targets(
+            d.get("default_mask_targets", {})
         )
 
         def parse_sample(sd):
