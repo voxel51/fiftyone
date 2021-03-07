@@ -389,8 +389,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             # Set classes for the `ground_truth` and `predictions` fields
             dataset.classes = {
-                "ground_truth": ["cat", "dog"]
-                "predictions": ["cat", "dog", "other"]
+                "ground_truth": ["cat", "dog"],
+                "predictions": ["cat", "dog", "other"],
             }
 
             # Edit an existing classes list
@@ -450,7 +450,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             # Set mask targets for the `ground_truth` and `predictions` fields
             dataset.mask_targets = {
                 "ground_truth": {1: "cat", 2: "dog"},
-                "predictions": {1: "cat": 2: "dog", 255: "other"},
+                "predictions": {1: "cat", 2: "dog", 255: "other"},
             }
 
             # Edit an existing mask target
