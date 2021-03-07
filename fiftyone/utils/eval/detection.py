@@ -7,6 +7,8 @@ Detection evaluation.
 """
 import logging
 
+import numpy as np
+
 import fiftyone.core.evaluation as foe
 import fiftyone.core.utils as fou
 
@@ -22,7 +24,7 @@ def evaluate_detections(
     gt_field="ground_truth",
     eval_key=None,
     classes=None,
-    missing="none",
+    missing=None,
     method="coco",
     iou=0.50,
     classwise=True,
@@ -71,8 +73,8 @@ def evaluate_detections(
         classes (None): the list of possible classes. If not provided, the
             observed ground truth/predicted labels are used for results
             purposes
-        missing ("none"): a missing label string. Any unmatched objects are
-            given this label for results purposes
+        missing (None): a missing label string. Any unmatched objects are given
+            this label for results purposes
         method ("coco"): a string specifying the evaluation method to use.
             Supported values are ``("coco")``
         iou (0.50): the IoU threshold to use to determine matches
@@ -141,9 +143,12 @@ def evaluate_detections(
                 sample["%s_fn" % eval_key] = sample_fn
                 sample.save()
 
-    return eval_method.generate_results(
+    results = eval_method.generate_results(
         samples, matches, eval_key=eval_key, classes=classes, missing=missing,
     )
+    eval_method.save_run_results(samples, eval_key, results)
+
+    return results
 
 
 class DetectionEvaluationConfig(foe.EvaluationMethodConfig):
@@ -207,7 +212,7 @@ class DetectionEvaluation(foe.EvaluationMethod):
             classes (None): the list of possible classes. If not provided, the
                 observed ground truth/predicted labels are used for results
                 purposes
-            missing ("none"): a missing label string. Any unmatched objects are
+            missing (None): a missing label string. Any unmatched objects are
                 given this label for results purposes
 
         Returns:
@@ -280,14 +285,23 @@ class DetectionResults(ClassificationResults):
             object
         classes (None): the list of possible classes. If not provided, the
             observed ground truth/predicted labels are used
-        missing ("none"): a missing label string. Any unmatched objects are
-            given this label for evaluation purposes
+        missing (None): a missing label string. Any unmatched objects are given
+            this label for evaluation purposes
     """
 
-    def __init__(self, matches, classes=None, missing="none"):
+    def __init__(self, matches, classes=None, missing=None):
         ytrue, ypred, ious, confs = zip(*matches)
-        super().__init__(ytrue, ypred, confs, classes=classes, missing=missing)
-        self.ious = ious
+        super().__init__(
+            ytrue, ypred, confs=confs, classes=classes, missing=missing
+        )
+        self.ious = np.array(ious)
+
+    @classmethod
+    def _from_dict(cls, d, samples, **kwargs):
+        matches = list(zip(d["ytrue"], d["ypred"], d["ious"], d["confs"]))
+        classes = d.get("classes", None)
+        missing = d.get("missing", None)
+        return cls(matches, classes=classes, missing=missing, **kwargs)
 
 
 def _parse_config(config, pred_field, gt_field, method, **kwargs):
