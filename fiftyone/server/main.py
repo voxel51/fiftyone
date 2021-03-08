@@ -744,7 +744,8 @@ class StateHandler(tornado.websocket.WebSocketHandler):
         else:
             view.tag_samples(tag)
 
-        StateHandler.on_update(caller, StateHandler.state)
+        StateHandler.state["refresh"] = not state.refresh
+        await StateHandler.on_update(caller, StateHandler.state)
 
     @classmethod
     def get_statistics_awaitables(cls, only=None):
