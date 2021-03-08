@@ -57,7 +57,7 @@ class PointSelector(object):
             defining buttons to add to the plot
         alpha_other (0.25): a transparency value for unselected points
         expand_selected (3.0): expand the size of selected points by this
-            amount
+            multiple
         click_tolerance (0.02): a click distance tolerance in ``[0, 1]`` when
             clicking individual points
     """
@@ -109,9 +109,6 @@ class PointSelector(object):
         self._fc = collection.get_facecolors()
         self._ms = collection.get_sizes()
         self._init_ms = self._ms[0]
-        self._click_thresh = click_tolerance * min(
-            np.max(self._xy, axis=0) - np.min(self._xy, axis=0)
-        )
 
         self._inds = np.array([], dtype=int)
         self._selected_sample_ids = None
@@ -419,18 +416,26 @@ class PointSelector(object):
     def _init_hud(self):
         # Button styling
         gap = 0.02
-        size = 0.1
+        size = 0.06
         color = "#DBEBFC"
         hovercolor = "#499CEF"
 
         self._title = self.ax.set_title("")
 
         num_buttons = len(self._button_defs)
+
+        def _button_pos(i):
+            # top of right-side
+            # return [1 + gap, 1 - (i + 1) * size - i * gap, size, size]
+
+            # right-side of top
+            i = num_buttons - 1 - i
+            return [1 - (i + 1) * size - i * gap, 1 + gap, size, size]
+
         self._buttons = []
         for i, (label, icon_img, _) in enumerate(self._button_defs):
             bax = self.ax.figure.add_axes([0, 0, 1, 1], label=label)
-            bpos = [1 + gap, 1 - (i + 1) * size - i * gap, size, size]
-            bax.set_axes_locator(InsetPosition(self.ax, bpos))
+            bax.set_axes_locator(InsetPosition(self.ax, _button_pos(i)))
             button = Button(
                 bax, "", color=color, hovercolor=hovercolor, image=icon_img
             )
@@ -469,10 +474,16 @@ class PointSelector(object):
             self._canvas.draw_idle()
 
     def _onselect(self, vertices):
-        if self._is_click(vertices):
+        x1, x2 = self.ax.get_xlim()
+        y1, y2 = self.ax.get_ylim()
+        click_thresh = self.click_tolerance * min(abs(x2 - x1), abs(y2 - y1))
+
+        is_click = np.abs(np.diff(vertices, axis=0)).sum() < click_thresh
+
+        if is_click:
             dists = skp.euclidean_distances(self._xy, np.array([vertices[0]]))
             click_ind = np.argmin(dists)
-            if dists[click_ind] < self._click_thresh:
+            if dists[click_ind] < click_thresh:
                 inds = [click_ind]
             else:
                 inds = []
@@ -492,9 +503,6 @@ class PointSelector(object):
 
     def _ondisconnect(self, event):
         self.disconnect()
-
-    def _is_click(self, vertices):
-        return np.abs(np.diff(vertices, axis=0)).sum() < self._click_thresh
 
     def _select_inds(self, inds):
         if self._shift:

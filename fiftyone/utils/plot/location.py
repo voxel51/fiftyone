@@ -49,7 +49,7 @@ def location_scatterplot(
     This method is a thin layer on top of
     :meth:`fiftyone.utils.plot.scatter.scatterplot` that renders a background
     image using Google Maps and performs the necessary coordinate
-    transformations so that the locations can be visualized.
+    transformations to correctly render a geo-location scatterplot.
 
     See :meth:`fiftyone.utils.plot.scatter.scatterplot` for more usage details.
 
@@ -121,16 +121,6 @@ def location_scatterplot(
     locations = _plot_map_background(
         ax, locations, api_key, map_type, show_scale_bar
     )
-
-    """
-    def _onzoom(ax):
-        x1, x2 = ax.get_xlim()
-        y1, y2 = ax.get_ylim()
-        # @todo update map
-
-    ax.callbacks.connect("xlim_changed", _onzoom)
-    ax.callbacks.connect("ylim_changed", _onzoom)
-    """
 
     def _onclick(event):
         for child in ax.get_children():

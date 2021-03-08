@@ -55,25 +55,25 @@ class Field(mongoengine.fields.BaseField):
         return etau.get_class_name(self)
 
 
-class ObjectIdField(mongoengine.ObjectIdField, Field):
+class ObjectIdField(mongoengine.fields.ObjectIdField, Field):
     """An Object ID field."""
 
     pass
 
 
-class UUIDField(mongoengine.UUIDField, Field):
+class UUIDField(mongoengine.fields.UUIDField, Field):
     """A UUID field."""
 
     pass
 
 
-class BooleanField(mongoengine.BooleanField, Field):
+class BooleanField(mongoengine.fields.BooleanField, Field):
     """A boolean field."""
 
     pass
 
 
-class IntField(mongoengine.IntField, Field):
+class IntField(mongoengine.fields.IntField, Field):
     """A 32 bit integer field."""
 
     pass
@@ -89,7 +89,7 @@ class FrameNumberField(IntField):
             self.error(str(e))
 
 
-class FloatField(mongoengine.FloatField, Field):
+class FloatField(mongoengine.fields.FloatField, Field):
     """A floating point number field."""
 
     def validate(self, value):
@@ -107,13 +107,13 @@ class FloatField(mongoengine.FloatField, Field):
             self.error("Float value is too large")
 
 
-class StringField(mongoengine.StringField, Field):
+class StringField(mongoengine.fields.StringField, Field):
     """A unicode string field."""
 
     pass
 
 
-class ListField(mongoengine.ListField, Field):
+class ListField(mongoengine.fields.ListField, Field):
     """A list field that wraps a standard :class:`Field`, allowing multiple
     instances of the field to be stored as a list in the database.
 
@@ -122,6 +122,36 @@ class ListField(mongoengine.ListField, Field):
     Args:
         field (None): an optional :class:`Field` instance describing the
             type of the list elements
+    """
+
+    def __init__(self, field=None, **kwargs):
+        if field is not None:
+            if not isinstance(field, Field):
+                raise ValueError(
+                    "Invalid field type '%s'; must be a subclass of %s"
+                    % (type(field), Field)
+                )
+
+        super().__init__(field=field, **kwargs)
+
+    def __str__(self):
+        if self.field is not None:
+            return "%s(%s)" % (
+                etau.get_class_name(self),
+                etau.get_class_name(self.field),
+            )
+
+        return etau.get_class_name(self)
+
+
+class DictField(mongoengine.fields.DictField, Field):
+    """A dictionary field that wraps a standard Python dictionary.
+
+    If this field is not set, its default value is ``{}``.
+
+    Args:
+        field (None): an optional :class:`Field` instance describing the type
+            of the values in the dict
     """
 
     def __init__(self, field=None, **kwargs):
@@ -284,36 +314,6 @@ class GeoMultiPolygonField(mongoengine.fields.MultiPolygonField, Field):
     pass
 
 
-class DictField(mongoengine.fields.DictField, Field):
-    """A dictionary field that wraps a standard Python dictionary.
-
-    If this field is not set, its default value is ``{}``.
-
-    Args:
-        field (None): an optional :class:`Field` instance describing the type
-            of the values in the dict
-    """
-
-    def __init__(self, field=None, **kwargs):
-        if field is not None:
-            if not isinstance(field, Field):
-                raise ValueError(
-                    "Invalid field type '%s'; must be a subclass of %s"
-                    % (type(field), Field)
-                )
-
-        super().__init__(field=field, **kwargs)
-
-    def __str__(self):
-        if self.field is not None:
-            return "%s(%s)" % (
-                etau.get_class_name(self),
-                etau.get_class_name(self.field),
-            )
-
-        return etau.get_class_name(self)
-
-
 class VectorField(mongoengine.fields.BinaryField, Field):
     """A one-dimensional array field.
 
@@ -373,7 +373,7 @@ class ArrayField(mongoengine.fields.BinaryField, Field):
             self.error("Only numpy arrays may be used in an array field")
 
 
-class EmbeddedDocumentField(mongoengine.EmbeddedDocumentField, Field):
+class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
     """A field that stores instances of a given type of
     :class:`fiftyone.core.odm.BaseEmbeddedDocument` object.
 
