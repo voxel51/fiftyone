@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { animated, useSpring } from "react-spring";
 import { useRecoilState, useRecoilValue } from "recoil";
@@ -12,7 +12,17 @@ import { packageMessage } from "../utils/socket";
 import * as atoms from "../recoil/atoms";
 import * as selectors from "../recoil/selectors";
 
-const ActionOptionDiv = styled.div``;
+const ActionOptionDiv = animated(styled.div`
+  cursor: pointer;
+  margin: 0.25rem 0.25rem;
+  padding: 0.25rem;
+  font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  flex-direction: column;
+  color: ${({ theme }) => theme.fontDark};
+`);
 
 type ActionOptionProps = {
   onClick: () => void;
@@ -20,19 +30,48 @@ type ActionOptionProps = {
   title: string;
 };
 
+const useHighlightHover = () => {
+  const [hovering, setHovering] = useState(false);
+  const theme = useTheme();
+  const style = useSpring({
+    backgroundColor: hovering ? theme.backgroundLight : theme.backgroundDark,
+    color: hovering ? theme.font : theme.fontDark,
+  });
+
+  const onMouseEnter = () => setHovering(true);
+
+  const onMouseLeave = () => setHovering(false);
+
+  return {
+    style,
+    onMouseEnter,
+    onMouseLeave,
+  };
+};
+
 const ActionOption = ({ onClick, text, title }: ActionOptionProps) => {
+  const props = useHighlightHover();
   return (
-    <ActionOptionDiv title={title} onClick={onClick}>
+    <ActionOptionDiv title={title} onClick={onClick} {...props}>
       {text}
     </ActionOptionDiv>
   );
 };
 
-const CheckboxOptionDiv = styled.div`
+const CheckboxOptionDiv = animated(styled.div`
   display: flex;
   font-weight: bold;
-  line-height: 3;
-`;
+  cursor: pointer;
+  margin: 0.25rem 0.25rem;
+
+  & > span {
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    flex-direction: column;
+    cursor: inherit;
+  }
+`);
 
 type CheckboxOptionProps = {
   onCheck: () => void;
@@ -41,18 +80,26 @@ type CheckboxOptionProps = {
   text: string;
 };
 
-const CheckboxOption = ({ onCheck, value, text }: CheckboxOptionProps) => {
+const CheckboxOption = ({
+  onCheck,
+  value,
+  text,
+  title,
+}: CheckboxOptionProps) => {
   const theme = useTheme();
+  const props = useHighlightHover();
   return (
-    <CheckboxOptionDiv>
+    <CheckboxOptionDiv onClick={onCheck} title={title} {...props}>
       <Checkbox
         checked={value}
         onChange={onCheck}
         style={{
           color: theme.brand,
+          padding: "0.25rem",
+          height: "2rem",
         }}
       />
-      {text}
+      <span>{text}</span>
     </CheckboxOptionDiv>
   );
 };
@@ -87,11 +134,15 @@ const OptionsDiv = animated(styled.div`
 type OptionsProps = {
   checkboxes: Array<CheckboxOptionProps>;
   actions: Array<ActionOptionProps>;
+  focused: boolean;
 };
 
-const Options = ({ checkboxes, actions }: OptionsProps) => {
+const Options = React.memo(({ checkboxes, actions, focused }: OptionsProps) => {
+  const props = useSpring({
+    opacity: focused ? 1 : 0,
+  });
   return (
-    <OptionsDiv>
+    <OptionsDiv style={props}>
       {checkboxes.map((props, key) => (
         <CheckboxOption {...props} key={`checkbox-${key}`} />
       ))}
@@ -100,14 +151,20 @@ const Options = ({ checkboxes, actions }: OptionsProps) => {
       ))}
     </OptionsDiv>
   );
-};
+});
 
 const IconDiv = styled.div`
   position: absolute;
-  top: 0;
-  right: 0;
+  top: 0.25rem;
+  right: -0.75rem;
   height: 2rem;
   width: 2rem;
+
+  & > svg {
+    margin-top: 0.5rem;
+    margin-right: 0.25rem;
+    color: ${({ theme }) => theme.font};
+  }
 `;
 
 type IconProps = {
@@ -118,29 +175,21 @@ type IconProps = {
 
 const Icon = React.memo(({ focused, tagging, onClick }: IconProps) => {
   const theme = useTheme();
-
-  const style = { color: theme.font, height: 16, width: 16, minWidth: 16 };
   return (
     <IconDiv>
       {tagging ? (
-        <CircularProgress style={style} />
+        <CircularProgress />
       ) : focused ? (
-        <ArrowDropUp
-          style={{ cursor: "pointer", ...style }}
-          onClick={onClick}
-        />
+        <ArrowDropUp style={{ cursor: "pointer" }} onClick={onClick} />
       ) : (
-        <ArrowDropDown
-          style={{ cursor: "pointer", ...style }}
-          onClick={onClick}
-        />
+        <ArrowDropDown style={{ cursor: "pointer" }} onClick={onClick} />
       )}
     </IconDiv>
   );
 });
 
 const TaggingContainerInput = styled.div`
-  font-size: 1rem;
+  font-size: 14px;
   border-bottom: 1px ${({ theme }) => theme.brand} solid;
   margin-bottom: 0.5rem;
   margin-left: 2rem;
@@ -149,13 +198,14 @@ const TaggingContainerInput = styled.div`
 
 const TaggingInput = styled(AutosizeInput)`
   min-width: 8rem;
+  padding-right: 1.5rem;
   & input {
     background-color: transparent;
     border: none;
     color: ${({ theme }) => theme.font};
     height: 2rem;
     margin-top: 0.4rem;
-    font-size: 1rem;
+    font-size: 14px;
     border: none;
     align-items: center;
     font-weight: bold;
@@ -258,6 +308,7 @@ const Tagger = ({ modal }: TaggerProps) => {
       />
       {focused && (
         <Options
+          focused={focused}
           checkboxes={[
             {
               text: "untag",
