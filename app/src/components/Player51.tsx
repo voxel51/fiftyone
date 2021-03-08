@@ -42,9 +42,13 @@ const InfoWrapper = styled.div`
 `;
 
 const TagBlock = styled.div`
-  padding: 0.5rem 0 0;
-  border-top: 2px solid ${({ theme }) => theme.font};
   margin: 0;
+`;
+
+const BorderDiv = styled.div`
+  border-top: 2px solid ${({ theme }) => theme.font};
+  width: 100%;
+  padding: 0.5rem 0 0;
 `;
 
 const AttrBlock = styled.div`
@@ -157,15 +161,17 @@ const useTarget = (field, target) => {
 
 const MaskInfo = ({ info, style }) => {
   const targetValue = useTarget(info.field, info.target);
+
   return (
     <AttrBlock style={{ borderColor: info.color, ...style }}>
-      <AttrInfo field={info.field} id={info.id} />
-      <ContentItem key={"target-value"} name={"label"} value={targetValue} />
+      <AttrInfo field={info.field} id={info.id}>
+        <ContentItem key={"target-value"} name={"label"} value={targetValue} />
+      </AttrInfo>
     </AttrBlock>
   );
 };
 
-const AttrInfo = ({ field, id }) => {
+const AttrInfo = ({ field, id, children }) => {
   const attrs = useRecoilValue(selectors.modalLabelAttrs({ field, id }));
   let entries = attrs.filter(([k, v]) => k !== "tags");
   if (!entries || !entries.length) {
@@ -178,12 +184,14 @@ const AttrInfo = ({ field, id }) => {
     etc = `and ${extra} more attribue${extra > 1 ? "s" : ""}`;
     // entries = entries.slice(0, 4);
   }
+  const mapper = ([name, value]) => (
+    <ContentItem key={name} name={name} value={value} />
+  );
 
   return (
     <>
-      {entries.map(([name, value]) => (
-        <ContentItem key={name} name={name} value={value} />
-      ))}
+      {entries.map(mapper)}
+      {children}
     </>
   );
 };
@@ -199,12 +207,13 @@ const DetectionInfo = ({ info, style }) => {
 const KeypointInfo = ({ info, style }) => {
   return (
     <AttrBlock style={{ borderColor: info.color, ...style }}>
-      <AttrInfo field={info.field} id={info.id} />
-      <ContentItem
-        key={"# keypoints"}
-        name={"# keypoints"}
-        value={info.numPoints}
-      />
+      <AttrInfo field={info.field} id={info.id}>
+        <ContentItem
+          key={"# keypoints"}
+          name={"# keypoints"}
+          value={info.numPoints}
+        />
+      </AttrInfo>
     </AttrBlock>
   );
 };
@@ -212,9 +221,23 @@ const KeypointInfo = ({ info, style }) => {
 const PolylineInfo = ({ info, style }) => {
   return (
     <AttrBlock style={{ borderColor: info.color, ...style }}>
-      <AttrInfo field={info.field} id={info.id} />
-      <ContentItem key={"# points"} name={"# points"} value={info.points} />
+      <AttrInfo field={info.field} id={info.id}>
+        <ContentItem key={"# points"} name={"# points"} value={info.points} />
+      </AttrInfo>
     </AttrBlock>
+  );
+};
+
+const Border = ({ color, id }) => {
+  const selectedObjects = useRecoilValue(selectors.selectedObjectIds);
+  return (
+    <BorderDiv
+      style={{
+        borderTop: `2px ${
+          selectedObjects.has(id) ? "dashed" : "solid"
+        } ${color}`,
+      }}
+    />
   );
 };
 
@@ -226,17 +249,11 @@ const OVERLAY_INFO = {
   polyline: PolylineInfo,
 };
 
-const TagInfo = ({ field, id, color }) => {
+const TagInfo = ({ field, id }) => {
   const tags = useRecoilValue(selectors.modalLabelTags({ field, id }));
-  const selectedObjects = useRecoilValue(selectors.selectedObjectIds);
+  if (!tags.length) return null;
   return (
-    <TagBlock
-      style={{
-        borderTop: `2px ${
-          selectedObjects.has(id) ? "dashed" : "solid"
-        } ${color}`,
-      }}
-    >
+    <TagBlock>
       <ContentItem
         key={"tags"}
         name={"tags"}
@@ -291,12 +308,8 @@ const TooltipInfo = ({ player, moveRef }) => {
           ref={ref}
         >
           <ContentHeader key="header">{overlay.field}</ContentHeader>
-          <TagInfo
-            key={"tags"}
-            field={overlay.field}
-            id={overlay.id}
-            color={overlay.color}
-          />
+          <Border color={overlay.color} id={overlay.id} />
+          <TagInfo key={"tags"} field={overlay.field} id={overlay.id} />
 
           <Component key={"attrs"} info={overlay} />
         </TooltipDiv>,
