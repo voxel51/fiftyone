@@ -81,6 +81,7 @@ from .core.labels import (
     Keypoints,
     Segmentation,
     GeoLocation,
+    GeoLocations,
 )
 from .core.metadata import (
     Metadata,
