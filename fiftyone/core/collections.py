@@ -2019,6 +2019,26 @@ class SampleCollection(object):
         )
 
     @view_stage
+    def geo_near(
+        self, field, point, query=None, min_distance=None, max_distance=None
+    ):
+        return self._add_view_stage(
+            fos.GeoNear(
+                field,
+                point,
+                query=query,
+                min_distance=min_distance,
+                max_distance=max_distance,
+            )
+        )
+
+    @view_stage
+    def geo_within(self, field, boundary, strict=True):
+        return self._add_view_stage(
+            fos.GeoWithin(field, boundary, strict=strict)
+        )
+
+    @view_stage
     def limit(self, limit):
         """Returns a view with at most the given number of samples.
 
@@ -4269,7 +4289,10 @@ class SampleCollection(object):
         )
 
     def _is_label_field(self, field_name, label_type_or_types):
-        label_type = self._get_label_field_type(field_name)
+        try:
+            label_type = self._get_label_field_type(field_name)
+        except:
+            return False
 
         try:
             iter(label_type_or_types)

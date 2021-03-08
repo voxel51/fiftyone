@@ -28,6 +28,7 @@ import fiftyone.constants as focn
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
+import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
@@ -2332,10 +2333,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             field_name: the field name or ``embedded.field.name``
             unique (False): whether to add a uniqueness constraint to the index
         """
-        if ("." not in field_name) and (
-            field_name not in self.get_field_schema()
-        ):
-            raise ValueError("Dataset has no field '%s'" % field_name)
+        root = field_name.split(".", 1)[0]
+
+        if root not in self.get_field_schema():
+            raise ValueError("Dataset has no field '%s'" % root)
 
         index_info = self._sample_collection.index_information()
         index_map = {
@@ -2350,7 +2351,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             # Must drop existing index
             self.drop_index(field_name)
 
-        self._sample_collection.create_index(field_name, unique=unique)
+        if self._is_label_field(root, fol.GeoLocation):
+            index_spec = [(field_name, "2dsphere")]
+        else:
+            index_spec = field_name
+
+        self._sample_collection.create_index(index_spec, unique=unique)
 
     def drop_index(self, field_name):
         """Drops the index on the given field.

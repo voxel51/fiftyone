@@ -114,6 +114,8 @@ from .core.stages import (
     FilterKeypoints,
     Limit,
     LimitLabels,
+    GeoNear,
+    GeoWithin,
     MapLabels,
     Match,
     MatchTags,

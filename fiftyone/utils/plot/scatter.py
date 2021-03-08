@@ -29,11 +29,11 @@ logger = logging.getLogger(__name__)
 def scatterplot(
     points,
     samples=None,
+    session=None,
     label_field=None,
     field=None,
     labels=None,
     classes=None,
-    session=None,
     marker_size=None,
     cmap=None,
     ax=None,
@@ -82,6 +82,8 @@ def scatterplot(
         points: a ``num_points x num_dims`` array of points
         samples: the :class:`fiftyone.core.collections.SampleCollection` whose
             data is being visualized
+        session (None): a :class:`fiftyone.core.session.Session` object to
+            link with the interactive plot
         label_field (None): a :class:`fiftyone.core.labels.Label` field
             containing the labels corresponding to ``points``
         field (None): a sample field or ``embedded.field.name`` to use to
@@ -90,8 +92,6 @@ def scatterplot(
             the points
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
-        session (None): a :class:`fiftyone.core.session.Session` object to
-            link with the interactive plot
         marker_size (None): the marker size to use
         cmap (None): a colormap recognized by ``matplotlib``
         ax (None): an optional matplotlib axis to plot in
@@ -116,9 +116,7 @@ def scatterplot(
 
     if session is not None:
         if samples is None:
-            raise ValueError(
-                "You must provide `samples` in order to link to a session"
-            )
+            samples = session._collection
 
         if num_dims != 2:
             logger.warning("Interactive selection is only supported in 2D")

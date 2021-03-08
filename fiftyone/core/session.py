@@ -460,6 +460,13 @@ class Session(foc.HasClient):
         """
         self.state.view = None
 
+    @property
+    def _collection(self):
+        if self.view is not None:
+            return self.view
+
+        return self.dataset
+
     @_update_state(auto_show=True)
     def refresh(self):
         """Refreshes the App, reloading the current dataset/view."""

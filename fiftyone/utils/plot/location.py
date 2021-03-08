@@ -21,8 +21,9 @@ from .utils import load_button_icon
 
 def location_scatterplot(
     locations=None,
-    samples=None,
     location_field=None,
+    samples=None,
+    session=None,
     map_type="satellite",
     show_scale_bar=False,
     api_key=None,
@@ -30,7 +31,6 @@ def location_scatterplot(
     field=None,
     labels=None,
     classes=None,
-    session=None,
     marker_size=None,
     cmap=None,
     ax=None,
@@ -43,8 +43,9 @@ def location_scatterplot(
 ):
     """Generates an interactive scatterplot of the given location coordinates.
 
-    The location data to use can be specified either via the ``locations`` or
-    ``location_field`` parameters.
+    Location data can be specified either via the ``locations`` or
+    ``location_field`` parameters. If you specify neither, the first
+    :class:`fiftyone.core.labels.GeoLocation` field on the dataset is used.
 
     This method is a thin layer on top of
     :meth:`fiftyone.utils.plot.scatter.scatterplot` that renders a background
@@ -58,6 +59,8 @@ def location_scatterplot(
             ``(longitude, latitude)`` coordinates
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
             whose data is being visualized
+        session (None): a :class:`fiftyone.core.session.Session` object to
+            link with the interactive plot
         location_field (None): the name of a
             :class:`fiftyone.core.labels.GeoLocation` field with
             ``(longitude, latitude)`` coordinates in its ``point`` attribute
@@ -73,8 +76,6 @@ def location_scatterplot(
             the points
         classes (None): an optional list of classes whose points to plot.
             Only applicable when ``labels`` contains strings
-        session (None): a :class:`fiftyone.core.session.Session` object to
-            link with the interactive plot
         marker_size (None): the marker size to use
         cmap (None): a colormap recognized by ``matplotlib``
         ax (None): an optional matplotlib axis to plot in
@@ -97,26 +98,10 @@ def location_scatterplot(
     else:
         fig = ax.figure
 
-    if location_field is not None:
-        if samples is None:
-            raise ValueError(
-                "You must provide `samples` in order to extract location "
-                "coordinates from a field"
-            )
+    if session is not None and samples is None:
+        samples = session._collection
 
-        samples.validate_field_type(
-            location_field,
-            fof.EmbeddedDocumentField,
-            embedded_doc_type=fol.GeoLocation,
-        )
-
-        locations = samples.values(location_field + ".point.coordinates")
-    elif locations is None:
-        raise ValueError(
-            "You must provide either ``locations`` or ``location_field``"
-        )
-
-    locations = np.asarray(locations)
+    locations = _parse_locations(locations, location_field, samples)
 
     locations = _plot_map_background(
         ax, locations, api_key, map_type, show_scale_bar
@@ -138,11 +123,11 @@ def location_scatterplot(
     return scatterplot(
         locations,
         samples=samples,
+        session=session,
         label_field=label_field,
         field=field,
         labels=labels,
         classes=classes,
-        session=session,
         marker_size=marker_size,
         cmap=cmap,
         ax=ax,
@@ -153,6 +138,36 @@ def location_scatterplot(
         block=block,
         **kwargs,
     )
+
+
+def _parse_locations(locations, location_field, samples):
+    if locations is not None:
+        return np.asarray(locations)
+
+    if samples is None:
+        raise ValueError(
+            "You must provide `samples` when `locations` are not manually "
+            "specified"
+        )
+
+    if location_field is not None:
+        samples.validate_field_type(
+            location_field,
+            fof.EmbeddedDocumentField,
+            embedded_doc_type=fol.GeoLocation,
+        )
+    else:
+        geo_schema = samples.get_field_schema(
+            ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.GeoLocation,
+        )
+        if not geo_schema:
+            raise ValueError("No %s field found to use" % fol.GeoLocation)
+
+        location_field = next(iter(geo_schema.keys()))
+
+    locations = samples.values(location_field + ".point.coordinates")
+
+    return np.asarray(locations)
 
 
 def _plot_map_background(ax, locations, api_key, map_type, show_scale_bar):

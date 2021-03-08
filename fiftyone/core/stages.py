@@ -1681,6 +1681,189 @@ class FilterKeypoints(_FilterListField):
         )
 
 
+class _GeoStage(ViewStage):
+    def __init__(self, field):
+        self._field = field
+        self._location_field = None
+
+    @property
+    def field(self):
+        """The location field."""
+        return self._field
+
+    def validate(self, sample_collection):
+        if sample_collection._is_label_field(self._field, fol.GeoLocation):
+            # Assume the user meant the `.point` field
+            self._location_field = self._field + ".point"
+        else:
+            # Assume the user specified which sub-field to use
+            self._location_field = self._field
+
+        # This operation requires a `sphere2d` index
+        sample_collection.create_index(self._location_field)
+
+
+class GeoNear(_GeoStage):
+    def __init__(
+        self, field, point, query=None, min_distance=None, max_distance=None
+    ):
+        super().__init__(field)
+        self._point = self._parse_point(point)
+        self._query = self._parse_query(query)
+        self._min_distance = min_distance
+        self._max_distance = max_distance
+
+    @property
+    def point(self):
+        """The point to search proximity to."""
+        return self._point
+
+    @property
+    def query(self):
+        """A query dict specifying a match condition."""
+        return self._query
+
+    @property
+    def min_distance(self):
+        """The minimum distance for matches, in meters."""
+        return self._min_distance
+
+    @property
+    def max_distance(self):
+        """The maximum distance for matches, in meters."""
+        return self._max_distance
+
+    def to_mongo(self, _, **__):
+        distance_field = self._field + "._distance"
+
+        geo_near_expr = {
+            "near": self._point,
+            "key": self._location_field,
+            "distanceField": distance_field,
+            "spherical": True,
+        }
+
+        if self._query is not None:
+            geo_near_expr["query"] = self._query
+
+        if self._min_distance is not None:
+            geo_near_expr["minDistance"] = self._min_distance
+
+        if self._max_distance is not None:
+            geo_near_expr["maxDistance"] = self._max_distance
+
+        return [{"$geoNear": geo_near_expr}, {"$unset": distance_field}]
+
+    def _kwargs(self):
+        return [
+            ["field", self._field],
+            ["point", self._point],
+            ["query", self._query],
+            ["min_distance", self._min_distance],
+            ["max_distance", self._max_distance],
+        ]
+
+    @classmethod
+    def _params(self):
+        return [
+            {"name": "field", "type": "field"},
+            {"name": "point", "type": "dict", "placeholder": ""},
+            {
+                "name": "query",
+                "type": "NoneType|dict",
+                "placeholder": "",
+                "default": "None",
+            },
+            {"name": "min_distance", "type": "float", "placeholder": "meters"},
+            {"name": "max_distance", "type": "float", "placeholder": "meters"},
+        ]
+
+    @staticmethod
+    def _parse_point(point):
+        if isinstance(point, dict):
+            point = point["coordinates"]
+
+        if isinstance(point, list):
+            point = fol.GeoLocation(point=point)
+
+        if isinstance(point, fol.GeoLocation):
+            return {"type": "Point", "coordinates": point.point}
+
+        raise ValueError("Unsupported point format: %s" % point)
+
+    @staticmethod
+    def _parse_query(query):
+        if not isinstance(query, foe.ViewExpression):
+            return query
+
+        return query.to_mongo()
+
+
+class GeoWithin(_GeoStage):
+    def __init__(self, field, boundary, strict=True):
+        super().__init__(field)
+        self._boundary = self._parse_polygon(boundary)
+        self._strict = strict
+
+    @property
+    def boundary(self):
+        """A GeoJSON dict describing the boundary to match within."""
+        return self._boundary
+
+    @property
+    def strict(self):
+        """Whether matches must be strictly contained in the boundary."""
+        return self._strict
+
+    def to_mongo(self, _, **__):
+        op = "$geoWithin" if self._strict else "$geoIntersects"
+        return [
+            {
+                "$match": {
+                    self._location_field: {op: {"$geometry": self._boundary}}
+                }
+            }
+        ]
+
+    def _kwargs(self):
+        return [
+            ["field", self._field],
+            ["boundary", self._boundary],
+        ]
+
+    @classmethod
+    def _params(self):
+        return [
+            {"name": "field", "type": "field"},
+            {"name": "boundary", "type": "dict", "placeholder": ""},
+            {
+                "name": "strict",
+                "type": "bool",
+                "default": "True",
+                "placeholder": "strict (default=True)",
+            },
+        ]
+
+    @staticmethod
+    def _parse_polygon(boundary):
+        if isinstance(boundary, dict):
+            boundary = boundary["coordinates"]
+
+        if isinstance(boundary, list):
+            try:
+                boundary = fol.GeoLocations(polygons=boundary)
+            except:
+                boundary = fol.GeoLocation(polygon=boundary)
+
+        if isinstance(boundary, fol.GeoLocation):
+            return {"type": "Polygon", "coordinates": boundary.polygon}
+
+        if isinstance(boundary, fol.GeoLocations):
+            return {"type": "MultiPolygon", "coordinates": boundary.polygons}
+
+        raise ValueError("Unsupported boundary format: %s" % boundary)
+
+
 class Limit(ViewStage):
     """Creates a view with at most the given number of samples.
 
@@ -3455,6 +3638,8 @@ _STAGES = [
     FilterDetections,
     FilterPolylines,
     FilterKeypoints,
+    GeoNear,
+    GeoWithin,
     Limit,
     LimitLabels,
     MapLabels,
