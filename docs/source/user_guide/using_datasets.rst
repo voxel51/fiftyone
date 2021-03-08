@@ -149,13 +149,19 @@ If you upgrade your `fiftyone` package and then load a dataset that was created
 with an older version of the package, it will be automatically migrated to the
 new package version (if necessary) the first time you load it.
 
-Storing dataset information
----------------------------
+.. _storing-info:
+
+Storing info
+------------
 
 All |Dataset| instances have an
 :meth:`info <fiftyone.core.dataset.Dataset.info>` property, which contains a
-dictionary that you can use to store any (JSON-serializable) information you
-wish about your dataset.
+dictionary that you can use to store any JSON-serializable information you wish
+about your dataset.
+
+Datasets can also store more specific types of ancillary information such as
+:ref:`class lists <storing-classes>` and
+:ref:`mask targets <storing-mask-targets>`.
 
 .. code-block:: python
 
@@ -172,10 +178,6 @@ wish about your dataset.
     # Edit existing info
     dataset.info["owner"] = "..."
     dataset.save()  # must save after edits
-
-Datasets can also store more specific types of ancillary information such as
-:ref:`class lists <storing-classes>` and
-:ref:`mask targets <storing-mask-targets>`.
 
 .. note::
 
@@ -1744,10 +1746,10 @@ is rendered as a distinct color.
 
 .. note::
 
-    You can :ref:`store semantic labels <storing-mask-targets>` for your
-    |Segmentation| masks on your dataset. Then, when you view the dataset in
-    the App, label strings will appear in the App's tooltip when you hover over
-    pixels.
+    Did you know? You can :ref:`store semantic labels <storing-mask-targets>`
+    for your segmentation fields on your dataset. Then, when you view the
+    dataset in the App, label strings will appear in the App's tooltip when you
+    hover over pixels.
 
 .. _video-frame-labels:
 
