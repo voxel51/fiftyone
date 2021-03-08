@@ -297,7 +297,7 @@ def _parse_image_ids(
 ):
     if not image_ids and not image_ids_file:
         if label_types:
-            # No specific image IDs were given, load all images we can from the
+            # No specific image IDs were given, load all relevant images from the
             # given labels later
             return {s: None for s in splits}
         else:
@@ -626,49 +626,10 @@ def _load_open_images_split(
     if not valid_ids:
         return dataset
 
-    print("Downloading %s samples" % split)
-    etau.ensure_dir(os.path.join(dataset_dir, split, "images"))
-
-    inputs = []
-    for image_id in valid_ids:
-        fp = os.path.join(dataset_dir, split, "images", "%s.jpg" % image_id)
-        fp_download = os.path.join(split, "%s.jpg" % image_id)
-        inputs.append((fp, fp_download))
-
-    s3_client = None
-
-    def initialize():
-        global s3_client
-        s3_client = boto3.client(
-            "s3",
-            config=botocore.config.Config(signature_version=botocore.UNSIGNED),
-        )
-
-    with fou.ProgressBar(total=len(inputs)) as pb:
-        with multiprocessing.Pool(num_workers, initialize) as pool:
-            for _ in pool.imap_unordered(_do_download_image, inputs):
-                pb.update()
+    _download_specific_images(valid_ids, split, dataset_dir, num_workers)
 
     if "segmentations" in label_types:
-        print("Downloading relevant segmentation masks")
-        seg_zip_names = list(
-            {i[0].upper() for i in (set(valid_ids) & seg_ids)}
-        )
-        for zip_name in seg_zip_names:
-            zip_path = os.path.join(
-                dataset_dir,
-                split,
-                "segmentations",
-                "masks",
-                "%s.zip" % zip_name,
-            )
-            _download_if_necessary(
-                zip_path,
-                _ANNOTATION_DOWNLOAD_LINKS[split]["segmentations"][
-                    "mask_data"
-                ][zip_name],
-                is_zip=True,
-            )
+        _download_segmentation_masks(valid_ids, seg_ids, dataset_dir, split)
 
     samples = []
     # Add Samples to Dataset
@@ -910,7 +871,48 @@ def _download_image_ids(dataset_dir, split):
     return split_ids
 
 
-def _do_download_image(args):
+def _download_segmentation_masks(valid_ids, seg_ids, dataset_dir, split):
+    print("Downloading relevant segmentation masks")
+    seg_zip_names = list({i[0].upper() for i in (set(valid_ids) & seg_ids)})
+    for zip_name in seg_zip_names:
+        zip_path = os.path.join(
+            dataset_dir, split, "segmentations", "masks", "%s.zip" % zip_name,
+        )
+        _download_if_necessary(
+            zip_path,
+            _ANNOTATION_DOWNLOAD_LINKS[split]["segmentations"]["mask_data"][
+                zip_name
+            ],
+            is_zip=True,
+        )
+
+
+def _download_specific_images(valid_ids, split, dataset_dir, num_workers):
+    print("Downloading %s samples" % split)
+    etau.ensure_dir(os.path.join(dataset_dir, split, "images"))
+
+    inputs = []
+    for image_id in valid_ids:
+        fp = os.path.join(dataset_dir, split, "images", "%s.jpg" % image_id)
+        fp_download = os.path.join(split, "%s.jpg" % image_id)
+        inputs.append((fp, fp_download))
+
+    s3_client = None
+
+    def initialize():
+        global s3_client
+        s3_client = boto3.client(
+            "s3",
+            config=botocore.config.Config(signature_version=botocore.UNSIGNED),
+        )
+
+    with fou.ProgressBar(total=len(inputs)) as pb:
+        with multiprocessing.Pool(num_workers, initialize) as pool:
+            for _ in pool.imap_unordered(_do_s3_download, inputs):
+                pb.update()
+
+
+def _do_s3_download(args):
     filepath, filepath_download = args
     s3_client.download_file(_BUCKET_NAME, filepath_download, filepath)
 
@@ -948,6 +950,7 @@ _ANNOTATION_DOWNLOAD_LINKS = {
         "relationships": "https://storage.googleapis.com/openimages/v6/oidv6-test-annotations-vrd.csv",
         "labels": "https://storage.googleapis.com/openimages/v5/test-annotations-human-imagelabels-boxable.csv",
         "image_ids": "https://storage.googleapis.com/openimages/2018_04/test/test-images-with-rotation.csv",
+        "num_images": 125436,
     },
     "train": {
         "boxes": "https://storage.googleapis.com/openimages/v6/oidv6-train-annotations-bbox.csv",
@@ -975,6 +978,7 @@ _ANNOTATION_DOWNLOAD_LINKS = {
         "relationships": "https://storage.googleapis.com/openimages/v6/oidv6-train-annotations-vrd.csv",
         "labels": "https://storage.googleapis.com/openimages/v5/train-annotations-human-imagelabels-boxable.csv",
         "image_ids": "https://storage.googleapis.com/openimages/2018_04/train/train-images-boxable-with-rotation.csv",
+        "num_images": 1743042,
     },
     "validation": {
         "boxes": "https://storage.googleapis.com/openimages/v5/validation-annotations-bbox.csv",
@@ -1002,6 +1006,7 @@ _ANNOTATION_DOWNLOAD_LINKS = {
         "relationships": "https://storage.googleapis.com/openimages/v6/oidv6-validation-annotations-vrd.csv",
         "labels": "https://storage.googleapis.com/openimages/v5/validation-annotations-human-imagelabels-boxable.csv",
         "image_ids": "https://storage.googleapis.com/openimages/2018_04/validation/validation-images-with-rotation.csv",
+        "num_images": 41620,
     },
 }
 
