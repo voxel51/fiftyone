@@ -157,27 +157,21 @@ All |Dataset| instances have an
 dictionary that you can use to store any (JSON-serializable) information you
 wish about your dataset.
 
-A typical use case is to store the class list for a classification/detection
-model:
-
 .. code-block:: python
-
-    # Store a class list in the dataset's info
-    dataset1.info["classes"] = ["bird", "cat", "deer", "dog", "frog", "horse"]
-    dataset1.save()
-
-In a new Python session:
-
-.. code-block:: python
-    :linenos:
 
     import fiftyone as fo
 
-    dataset = fo.load_dataset("my_first_dataset")
+    dataset = fo.Dataset()
 
-    # Load the class list for the dataset
-    classes = dataset.info["classes"]
-    print(classes)  # ['bird', 'cat', 'deer', ...]
+    # Store a class list in the dataset's info
+    dataset.info = {
+        "dataset_source": "https://...",
+        "author": "...",
+    }
+
+    # Edit existing info
+    dataset.info["owner"] = "..."
+    dataset.save()  # must save after edits
 
 Datasets can also store more specific types of ancillary information such as
 :ref:`class lists <storing-classes>` and
@@ -237,7 +231,7 @@ that require knowledge of the possible classes in a field.
     }
 
     # Edit a field's classes
-    dataset.mask_targets["ground_truth"].append("other")
+    dataset.classes["ground_truth"].append("other")
     dataset.save()  # must save after edits
 
 .. note::
@@ -290,7 +284,7 @@ when you hover over pixels.
     # Set mask targets for the `ground_truth` and `predictions` fields
     dataset.mask_targets = {
         "ground_truth": {1: "cat", 2: "dog"},
-        "predictions": {1: "cat": 2: "dog", 255: "other"},
+        "predictions": {1: "cat", 2: "dog", 255: "other"},
     }
 
     # Edit an existing mask target
